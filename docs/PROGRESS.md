@@ -13,7 +13,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - **ADR 0009**: `@lhci/cli` 0.15.1 nel lockfile fa fallire `npm audit --audit-level=high` (basic-ftp, extract-zip, nessuna correzione compatibile): eseguito con `npx` a versione esatta solo nel job Lighthouse, senza segreti, report su file. Soglie di SPEC 15 già attive; aggiunti `robots.txt` e `meta description` (SEO 0,91 → 1).
 - **M0-07** `.github/workflows/deploy-staging.yml`: dopo una CI verde da push su `main` (mai da PR o fork), build con `CLOUDFLARE_ENV=staging`, `wrangler deploy`, smoke test (`/api/health`, shell, CSP, HSTS). `DATA_VERSION` di staging = `none` finché non c'è l'import OSM (M1-03): M0-07 passa del tutto solo dopo M1-03.
 - **M0-11 / ADR 0010**: la documentazione non dice se il binding Rate Limiting è nel piano Free. Binding `RATE_LIMITER` dichiarato in locale e staging; l'esito lo decide il primo deploy di staging.
-- **M0-10** `design-system/MASTER.md` + `pages/` (mappa, scheda bar, aggiungi prezzo, revisione listino, ricerca), `src/app/styles/tokens.css` e `base.css`, font Plus Jakarta Sans variabile (1 woff2, 27 KB, OFL) in `public/fonts/`. La query di SPEC dava un risultato fuori tema (FAQ, font accademici), non salvato; usata la categoria più vicina (Food Delivery / On-Demand). Anteprime `design-system/preview-light.png` e `preview-dark.png` a 390×844. **In attesa dell'approvazione di Roberto.**
+- **M0-10** `design-system/MASTER.md` + `pages/` (mappa, scheda bar, aggiungi prezzo, revisione listino, ricerca), `src/app/styles/tokens.css` e `base.css`, font Plus Jakarta Sans variabile (1 woff2, 27 KB, OFL) in `public/fonts/`. La query di SPEC dava un risultato fuori tema (FAQ, font accademici), non salvato; usata la categoria più vicina (Food Delivery / On-Demand). Anteprime `design-system/preview-light.png` e `preview-dark.png` a 390×844. Roberto ha chiesto un'altra palette: tre varianti AA a confronto (A notte e ambra, B viola, C blu e arancio); **approvato con la palette C** l'11/10/2026, token e MASTER aggiornati, anteprime rigenerate.
 
 **Prove**
 - CI sulla PR #2 (`m0-tooling` → `main`): 5 job su 5 verdi al primo giro.
@@ -22,7 +22,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - Contrasti dei token (script WCAG): tutte le coppie testo/sfondo ≥ 4,5:1 in chiaro e scuro (minimo 4,80 per i bordi dei controlli in chiaro; pill "nella media" 4,92).
 - Locale: lint, typecheck, unit 9, e2e 12 + sicurezza 5, Lighthouse (Performance, Accessibility, Best Practices, SEO = 1; LCP 1,1 s; CLS 0), `format:check`, `npm audit` 0.
 
-**Aperte in M0**: M0-04 (mappa), M0-07 e M0-11 (primo deploy dopo il merge), M0-08 (Dependabot si attiva dopo il merge su `main`), M0-10 (approvazione).
+**Aperte in M0**: M0-04 (mappa), M0-07 e M0-11 (primo deploy dopo il merge), M0-08 (Dependabot si attiva dopo il merge su `main`), M0-10 approvato.
 
 ---
 

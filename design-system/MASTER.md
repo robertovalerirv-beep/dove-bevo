@@ -1,14 +1,14 @@
 # Dove bevo — Design system (MASTER)
 
-> Vale ovunque; il file di pagina in `pages/` prevale. Token implementati in `src/app/styles/tokens.css`. Stato: **proposta, da approvare da Roberto (M0-10)**.
+> Vale ovunque; il file di pagina in `pages/` prevale. Token implementati in `src/app/styles/tokens.css`. Stato: **approvato da Roberto l'11/10/2026 con la palette C "Blu e arancio"** (M0-10).
 
 ## Fonte e scelte
 Generato con UI UX Pro Max 2.13 (SPEC 15.1). La query di SPEC (in italiano) e una riformulazione in inglese ("nightlife bar drink prices map mobile app") hanno restituito un risultato fuori tema (landing di documentazione, font accademici): **non** è stato salvato. Il catalogo non ha la categoria "nightlife"; la più vicina è **Food Delivery / On-Demand** (mobile, mappa, uso rapido, prezzi):
 - stile **Vibrant & Block-based**: blocchi netti, alto contrasto, energico, giovane;
-- palette **arancio caldo + blu fiducia** (`--domain color "food delivery restaurant warm"`);
+- palette di partenza **arancio caldo + blu fiducia** (`--domain color "food delivery restaurant warm"`); Roberto ha scelto fra tre varianti la **C: blu come colore principale, arancio per focus e dettagli** (verde e rosso esclusi come principali perché indicano i prezzi);
 - tipografia: la coppia suggerita (Playfair Display SC + Karla) è scartata perché richiederebbe più di 2 file woff2 (SPEC 15.1.4); si usa **Plus Jakarta Sans** variabile (`--domain typography`, "Friendly SaaS"/"Mobile"), un solo file.
 
-Correzioni per i vincoli (prevalgono su skill): arancio e testo scuriti finché ogni coppia testo/sfondo ≥ 4,5:1 nei due temi (calcolo in PROGRESS); motion al minimo (dial 3/10) e nessuna libreria di animazione; niente hero né landing: l'app apre direttamente sulla mappa.
+Correzioni per i vincoli (prevalgono su skill): colori scuriti finché ogni coppia testo/sfondo ≥ 4,5:1 nei due temi (calcolo in PROGRESS); motion al minimo (dial 3/10) e nessuna libreria di animazione; niente hero né landing: l'app apre direttamente sulla mappa.
 
 ## Principi (SPEC 15)
 Una schermata, un'azione primaria. Uso con una mano, al bancone, con poca luce: comandi principali nella metà bassa dello schermo, target ≥ 48×48 px, testo ≥ 16 px nei controlli. Il prezzo è il contenuto: sempre scritto in cifre, mai solo colore. Italiano semplice. Nessuna emoji come icona.
@@ -16,20 +16,20 @@ Una schermata, un'azione primaria. Uso con una mano, al bancone, con poca luce: 
 ## Colore (token semantici; nei componenti mai valori grezzi)
 | Token | Chiaro | Scuro | Uso |
 |---|---|---|---|
-| `--color-bg` | `#FFF7ED` | `#1C1917` | sfondo app |
-| `--color-surface` | `#FFFFFF` | `#292524` | fogli, schede, liste |
-| `--color-text` | `#1C1917` | `#FAFAF9` | testo |
-| `--color-text-muted` | `#57534E` | `#D6D3D1` | testo secondario, date |
-| `--color-primary` | `#C2410C` | `#FB923C` | azione primaria ("Aggiungi prezzo", "Salva") |
-| `--color-on-primary` | `#FFFFFF` | `#1C1917` | testo su primario |
-| `--color-focus` | `#1D4ED8` | `#93C5FD` | anello di focus, link |
-| `--color-border` | `#E7E5E4` | `#44403C` | separatori decorativi |
-| `--color-border-strong` | `#78716C` | `#A8A29E` | bordi di campi e controlli (≥ 3:1) |
+| `--color-bg` | `#F8FAFC` | `#0F172A` | sfondo app |
+| `--color-surface` | `#FFFFFF` | `#1E293B` | fogli, schede, liste |
+| `--color-text` | `#0F172A` | `#F8FAFC` | testo |
+| `--color-text-muted` | `#475569` | `#CBD5E1` | testo secondario, date |
+| `--color-primary` | `#1D4ED8` | `#93C5FD` | azione primaria ("Aggiungi prezzo", "Salva") |
+| `--color-on-primary` | `#FFFFFF` | `#0F172A` | testo su primario |
+| `--color-focus` | `#C2410C` | `#FDBA74` | anello di focus, dettagli |
+| `--color-border` | `#E2E8F0` | `#334155` | separatori decorativi |
+| `--color-border-strong` | `#64748B` | `#94A3B8` | bordi di campi e controlli (≥ 3:1) |
 | `--color-error` | `#B91C1C` | `#FCA5A5` | errori (sempre con testo) |
 | `--price-cheap` / `--on-price-cheap` | `#15803D` / `#FFFFFF` | `#4ADE80` / `#052E16` | più economico della mediana (D-12) |
 | `--price-avg` / `--on-price-avg` | `#A16207` / `#FFFFFF` | `#FACC15` / `#422006` | nella media |
 | `--price-high` / `--on-price-high` | `#B91C1C` / `#FFFFFF` | `#F87171` / `#450A0A` | più caro |
-| `--price-neutral` / `--on-price-neutral` | `#FFFFFF` / `#1C1917` | `#292524` / `#FAFAF9` | < 5 prezzi o bar senza prezzo (con bordo `--color-border-strong`) |
+| `--price-neutral` / `--on-price-neutral` | `#FFFFFF` / `#0F172A` | `#1E293B` / `#F8FAFC` | < 5 prezzi o bar senza prezzo (con bordo `--color-border-strong`) |
 
 Il tema segue `prefers-color-scheme`; nessun interruttore (niente onboarding/impostazioni in Fase 0). Il colore della mediana è sempre accompagnato dal valore e, nell'elenco accessibile, da un testo ("più economico", "nella media", "più caro").
 

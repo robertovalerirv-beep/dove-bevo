@@ -67,7 +67,7 @@
     "milestone": "M0",
     "descrizione": "Design system approvato",
     "verifica": "`design-system/MASTER.md` e override di pagina presenti; token in `src/app/styles/tokens.css`; font ≤ 2 woff2 self-hosted; approvazione di Roberto registrata in PROGRESS",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-11",

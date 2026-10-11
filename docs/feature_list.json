@@ -32,7 +32,7 @@
     "milestone": "M0",
     "descrizione": "Pipeline CI su PR",
     "verifica": "una PR di prova esegue tutti i job della sezione 16 e fallisce se uno fallisce (prova: PR con errore di lint volutamente rossa, poi verde)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-06",
@@ -60,7 +60,7 @@
     "milestone": "M0",
     "descrizione": "Scansione segreti",
     "verifica": "gitleaks in CI fallisce su un segreto di prova in un branch di test; `.dev.vars.example` senza valori",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-10",

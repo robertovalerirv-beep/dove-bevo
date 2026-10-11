@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dove bevo — anteprima design system</title>
+    <!-- Static preview for approval (M0-10); not part of the app build. -->
+    <link rel="stylesheet" href="../src/app/styles/base.css" />
+    <style>
+      @font-face {
+        font-family: "Plus Jakarta Sans";
+        src: url("../public/fonts/plus-jakarta-sans-latin-wght.woff2") format("woff2");
+        font-weight: 200 800;
+      }
+      body {
+        padding: var(--space-4);
+        padding-bottom: 140px;
+      }
+      h1 {
+        font-size: var(--text-2xl);
+        margin: 0 0 var(--space-1);
+      }
+      h2 {
+        font-size: var(--text-lg);
+        margin: var(--space-6) 0 var(--space-2);
+      }
+      .muted {
+        color: var(--color-text-muted);
+        font-size: var(--text-sm);
+        margin: 0;
+      }
+      .row {
+        display: flex;
+        gap: var(--space-2);
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .chip {
+        min-height: var(--target);
+        padding: 0 var(--space-4);
+        border-radius: var(--radius-pill);
+        border: 1px solid var(--color-border-strong);
+        background: var(--color-surface);
+        color: var(--color-text);
+        font: 600 var(--text-md) var(--font-sans);
+      }
+      .chip[aria-pressed="true"] {
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        border-color: var(--color-primary);
+      }
+      .pin {
+        display: inline-flex;
+        align-items: center;
+        min-height: 32px;
+        padding: 0 var(--space-3);
+        border-radius: var(--radius-pill);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .cheap {
+        background: var(--price-cheap);
+        color: var(--on-price-cheap);
+      }
+      .avg {
+        background: var(--price-avg);
+        color: var(--on-price-avg);
+      }
+      .high {
+        background: var(--price-high);
+        color: var(--on-price-high);
+      }
+      .neutral {
+        background: var(--price-neutral);
+        color: var(--on-price-neutral);
+        border: 1px solid var(--color-border-strong);
+      }
+      .card {
+        background: var(--color-surface);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        padding: var(--space-4);
+      }
+      .price-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: var(--space-4);
+      }
+      .price {
+        font-size: var(--text-lg);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .btn2 {
+        min-height: var(--target);
+        padding: 0 var(--space-4);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-border-strong);
+        background: var(--color-surface);
+        color: var(--color-text);
+        font: 600 var(--text-md) var(--font-sans);
+      }
+      .primary {
+        position: fixed;
+        left: var(--space-4);
+        right: var(--space-4);
+        bottom: var(--space-4);
+        min-height: var(--target-primary);
+        border: 0;
+        border-radius: var(--radius-md);
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        font: 700 var(--text-lg) var(--font-sans);
+      }
+      .toast {
+        position: fixed;
+        left: var(--space-4);
+        right: var(--space-4);
+        bottom: 84px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-2) var(--space-4);
+        background: var(--color-text);
+        color: var(--color-bg);
+        border-radius: var(--radius-md);
+      }
+      .toast button {
+        min-height: var(--target);
+        background: none;
+        border: 0;
+        color: inherit;
+        font: 700 var(--text-md) var(--font-sans);
+        text-decoration: underline;
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: var(--space-2);
+      }
+      .sw {
+        height: 40px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-border);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Dove bevo</h1>
+    <p class="muted">Anteprima del design system · Plus Jakarta Sans</p>
+
+    <h2>Drink</h2>
+    <div class="row">
+      <button class="chip" aria-pressed="true">Birra media</button>
+      <button class="chip" aria-pressed="false">Spritz</button>
+      <button class="chip" aria-pressed="false">Gin tonic</button>
+    </div>
+
+    <h2>Segnaposto sulla mappa</h2>
+    <div class="row">
+      <span class="pin cheap">4,50 €</span>
+      <span class="pin avg">6,00 €</span>
+      <span class="pin high">8,50 €</span>
+      <span class="pin neutral">7,00 € HH</span>
+    </div>
+    <p class="muted">Più economico · nella media · più caro · pochi dati (D-12)</p>
+
+    <h2>Scheda bar</h2>
+    <div class="card">
+      <div class="price-row"><strong>Spritz</strong><span class="price">7,50 €</span></div>
+      <p class="muted">11 ott 2026 · 3 conferme</p>
+      <div class="row" style="margin-top: var(--space-3)">
+        <button class="btn2">Confermo</button>
+        <button class="btn2">È cambiato</button>
+      </div>
+    </div>
+
+    <h2>Colori</h2>
+    <div class="swatches">
+      <div class="sw" style="background: var(--color-primary)"></div>
+      <div class="sw" style="background: var(--color-focus)"></div>
+      <div class="sw" style="background: var(--color-surface)"></div>
+      <div class="sw" style="background: var(--color-text)"></div>
+    </div>
+
+    <div class="toast" role="status"><span>Prezzo salvato</span><button>Annulla</button></div>
+    <button class="primary">Aggiungi prezzo</button>
+  </body>
+</html>

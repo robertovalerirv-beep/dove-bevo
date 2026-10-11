@@ -32,14 +32,14 @@
     "milestone": "M0",
     "descrizione": "Pipeline CI su PR",
     "verifica": "una PR di prova esegue tutti i job della sezione 16 e fallisce se uno fallisce (prova: PR con errore di lint volutamente rossa, poi verde)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-06",
     "milestone": "M0",
     "descrizione": "Guardia della feature list",
     "verifica": "`node scripts/check-feature-list.mjs` passa con un cambio di `passes` e fallisce se si modifica `descrizione` o `verifica` o si rimuove una voce (test unit con i tre casi)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-07",
@@ -60,14 +60,14 @@
     "milestone": "M0",
     "descrizione": "Scansione segreti",
     "verifica": "gitleaks in CI fallisce su un segreto di prova in un branch di test; `.dev.vars.example` senza valori",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-10",
     "milestone": "M0",
     "descrizione": "Design system approvato",
     "verifica": "`design-system/MASTER.md` e override di pagina presenti; token in `src/app/styles/tokens.css`; font ≤ 2 woff2 self-hosted; approvazione di Roberto registrata in PROGRESS",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-11",

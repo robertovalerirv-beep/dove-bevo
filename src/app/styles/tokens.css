@@ -1,0 +1,97 @@
+/* Design tokens from design-system/MASTER.md. Components use these, never raw values. */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/plus-jakarta-sans-latin-wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light dark;
+
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-text-muted: #475569;
+  --color-primary: #1d4ed8;
+  --color-on-primary: #ffffff;
+  --color-focus: #c2410c;
+  --color-border: #e2e8f0;
+  --color-border-strong: #64748b;
+  --color-error: #b91c1c;
+
+  --price-cheap: #15803d;
+  --on-price-cheap: #ffffff;
+  --price-avg: #a16207;
+  --on-price-avg: #ffffff;
+  --price-high: #b91c1c;
+  --on-price-high: #ffffff;
+  --price-neutral: #ffffff;
+  --on-price-neutral: #0f172a;
+
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-pill: 999px;
+  --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.18);
+
+  --target: 48px;
+  --target-primary: 56px;
+  --icon-md: 24px;
+
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --ease-out: ease-out;
+
+  --focus-width: 3px;
+  --focus-offset: 2px;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --weight-bold: 800;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f172a;
+    --color-surface: #1e293b;
+    --color-text: #f8fafc;
+    --color-text-muted: #cbd5e1;
+    --color-primary: #93c5fd;
+    --color-on-primary: #0f172a;
+    --color-focus: #fdba74;
+    --color-border: #334155;
+    --color-border-strong: #94a3b8;
+    --color-error: #fca5a5;
+
+    --price-cheap: #4ade80;
+    --on-price-cheap: #052e16;
+    --price-avg: #facc15;
+    --on-price-avg: #422006;
+    --price-high: #f87171;
+    --on-price-high: #450a0a;
+    --price-neutral: #1e293b;
+    --on-price-neutral: #f8fafc;
+    --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

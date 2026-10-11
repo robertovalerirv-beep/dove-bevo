@@ -1,4 +1,5 @@
 import { render } from "preact";
+import "./styles/base.css";
 import { APP_NAME } from "../shared/config";
 
 function App() {

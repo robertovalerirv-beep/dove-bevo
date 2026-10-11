@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    ignore:
+      # ADR 0008: typescript-eslint needs TypeScript < 6.1; the Workers pool needs Vitest 4.
+      - dependency-name: typescript
+        versions: [">=6.1.0"]
+      - dependency-name: vitest
+        versions: [">=5.0.0"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

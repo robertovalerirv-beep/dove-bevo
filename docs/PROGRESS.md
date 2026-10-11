@@ -4,6 +4,35 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-11 · Sessione 2 · M0 · M0-04/05/06/08/09/10/11 e deploy
+
+**Fatto**
+- **M0-04** `tests/e2e/csp.spec.ts`: violazioni CSP raccolte con l'evento `securitypolicyviolation` e dalla console. Mutazione (stile inline in `index.html`) → rosso su Chromium e WebKit (`style-src-attr inline`); ripristinato → verde. `passes` resta `false` finché non c'è la mappa (la verifica dice "shell e mappa"): il test copre `/`, dove arriverà la mappa in M1.
+- **M0-06** `scripts/check-feature-list.mjs` (CLI) + `scripts/feature-list.ts` (logica pura, eseguita da Node 24 senza build); 4 test unit (cambio di `passes` ok; `descrizione`/`verifica` cambiate, voce tolta o aggiunta, `passes` non booleano o campo extra → errore). Sul file reale: ok; con una descrizione modificata: exit 1.
+- **M0-05/08/09** `.github/workflows/ci.yml`: job lint+format+typecheck+unit+guardia+policy dei workflow+`npm audit`, e2e (Chromium, WebKit), sicurezza, Lighthouse CI, gitleaks. Actions fissate a SHA, `permissions: contents: read`, `persist-credentials: false`. `scripts/check-workflows.mjs` fallisce su Action non fissate o su `pull_request_target`. `.github/dependabot.yml` (npm, Actions; TS < 6.1 e Vitest 4 mantenuti). `.dev.vars.example` senza valori.
+- **ADR 0009**: `@lhci/cli` 0.15.1 nel lockfile fa fallire `npm audit --audit-level=high` (basic-ftp, extract-zip, nessuna correzione compatibile): eseguito con `npx` a versione esatta solo nel job Lighthouse, senza segreti, report su file. Soglie di SPEC 15 già attive; aggiunti `robots.txt` e `meta description` (SEO 0,91 → 1).
+- **M0-07** `.github/workflows/deploy-staging.yml`: dopo una CI verde da push su `main` (mai da PR o fork), build con `CLOUDFLARE_ENV=staging`, `wrangler deploy`, smoke test (`/api/health`, shell, CSP, HSTS). `DATA_VERSION` di staging = `none` finché non c'è l'import OSM (M1-03): M0-07 passa del tutto solo dopo M1-03.
+- **M0-11 / ADR 0010**: la documentazione non dice se il binding Rate Limiting è nel piano Free. Binding `RATE_LIMITER` dichiarato in locale e staging; l'esito lo decide il primo deploy di staging.
+- **M0-10** `design-system/MASTER.md` + `pages/` (mappa, scheda bar, aggiungi prezzo, revisione listino, ricerca), `src/app/styles/tokens.css` e `base.css`, font Plus Jakarta Sans variabile (1 woff2, 27 KB, OFL) in `public/fonts/`. La query di SPEC dava un risultato fuori tema (FAQ, font accademici), non salvato; usata la categoria più vicina (Food Delivery / On-Demand). Anteprime `design-system/preview-light.png` e `preview-dark.png` a 390×844. Roberto ha chiesto un'altra palette: tre varianti AA a confronto (A notte e ambra, B viola, C blu e arancio); **approvato con la palette C** l'11/10/2026, token e MASTER aggiornati, anteprime rigenerate.
+
+**Prove**
+- CI sulla PR #2 (`m0-tooling` → `main`): 5 job su 5 verdi al primo giro.
+- M0-05: PR di prova #3 con `any` voluto → job lint rosso (`no-explicit-any`), poi revert → tutta verde. Chiusa senza merge.
+- M0-09: PR di prova #4 con un token finto → gitleaks rosso (`generic-api-key`, "leaks found: 1"). Chiusa senza merge (il token è finto; il commit resta raggiungibile su GitHub solo per SHA).
+- Contrasti dei token (script WCAG): tutte le coppie testo/sfondo ≥ 4,5:1 in chiaro e scuro (palette C: minimo 4,55 per `--color-border-strong` su `--color-bg` in chiaro, soglia per i controlli 3:1; pill "nella media" 4,92).
+- Locale: lint, typecheck, unit 9, e2e 12 + sicurezza 5, Lighthouse (Performance, Accessibility, Best Practices, SEO = 1; LCP 1,1 s; CLS 0), `format:check`, `npm audit` 0.
+
+**Revisioni di chiusura M0**
+- `/code-review` (alto): 6 rilievi. Corretti: smoke test `curl | grep -q` con pipefail, guardia che non vedeva gli `id` duplicati (+ test), durata mancante nel log d'errore (CLAUDE.md), escape HTML di titolo e descrizione, e2e e sicurezza in un solo job (una build). Non applicato: header definiti in due file (`_headers` e Worker) — il test di sicurezza confronta entrambi con SPEC.
+- `spec-reviewer`: nessun blocco; le 7 voci a `true` hanno prove adeguate. Corretti: `set -o pipefail` nel deploy (il `bash -e` di default non lo ha), revisione listino come **tabella** (SPEC 7.4), ADR 0011 sul design system, budget shell ≤ 50 KB gzip in CI (`scripts/check-bundle-size.mjs`: 6.296 B). Da decidere con Roberto: protezione di `main`, ruleset sul tag `spec-approved`, approvazione dell'ADR 0009, aggiornamenti di sicurezza Dependabot. Nota: la PR #1 (`m0-tooling` → `main`, M0-01…03) è stata unita da Roberto alle 18:12 UTC, prima che esistesse la CI.
+- `ux-a11y-reviewer`: nessun blocco; axe 0 violazioni (Chromium/WebKit × chiaro/scuro, reduced motion), token coerenti con MASTER. Corretti: preload del font, token per focus e pesi, regola in MASTER per gli elementi sopra la mappa (che resta chiara in tema scuro: pill con token chiari e bordo scuro, focus a due toni), cifra di contrasto in PROGRESS (4,55). Per M1: `@axe-core/playwright` con test axe; screenshot di confronto da Chromium (WebKit su Windows non applica il peso del font variabile).
+
+**Checklist UI UX Pro Max (shell M0)**: emoji come icone PASS (nessuna icona) · feedback al tocco N/A · target/focus/etichette N/A (token pronti) · contrasto chiaro e scuro PASS sulle pagine, sopra la mappa da verificare in M1 · reduced motion e zoom 200% PASS · 390 px PASS, aree sicure in M1 · solo token semantici PASS.
+
+**Aperte in M0**: M0-04 (mappa), M0-07 e M0-11 (primo deploy dopo il merge), M0-08 (Dependabot si attiva dopo il merge su `main`), M0-10 approvato.
+
+---
+
 ## 2026-10-11 · Sessione 2 · M0 · M0-03 Header di sicurezza
 
 **Fatto**

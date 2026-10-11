@@ -10,6 +10,10 @@ export function compareFeatureLists(
   const before = byId(base);
   const after = byId(current);
   const problems: string[] = [];
+  const ids = current.map((f) => String((f as Feature).id));
+  for (const id of new Set(ids.filter((id, i) => ids.indexOf(id) !== i))) {
+    problems.push(`${id}: duplicated`);
+  }
   for (const [id, old] of before) {
     const now = after.get(id);
     if (!now) {

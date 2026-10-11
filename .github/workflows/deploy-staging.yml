@@ -41,6 +41,7 @@ jobs:
       - name: Deploy
         id: deploy
         run: |
+          set -o pipefail # default `bash -e` has no pipefail: a failed deploy must fail here
           npx wrangler deploy 2>&1 | tee deploy.log
           url="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)"
           test -n "$url"
@@ -54,7 +55,11 @@ jobs:
         run: |
           for i in $(seq 1 20); do curl -fsS "$URL/api/health" && break; sleep 3; done
           echo
-          curl -fsS "$URL/api/health" | grep -q '"status":"ok"'
+          # Capture first, then match: curl | grep -q can fail with EPIPE under pipefail.
+          health="$(curl -fsS "$URL/api/health")"
+          grep -q '"status":"ok"' <<<"$health"
           curl -fsS -o /dev/null -w "shell: HTTP %{http_code}\n" "$URL/"
-          curl -fsSI "$URL/" | grep -qi '^content-security-policy:'
-          curl -fsSI "$URL/api/health" | grep -qi '^strict-transport-security:'
+          shell_headers="$(curl -fsSI "$URL/")"
+          grep -qi '^content-security-policy:' <<<"$shell_headers"
+          api_headers="$(curl -fsSI "$URL/api/health")"
+          grep -qi '^strict-transport-security:' <<<"$api_headers"

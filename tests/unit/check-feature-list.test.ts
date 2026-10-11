@@ -26,6 +26,11 @@ describe("feature list guard (M0-06, D-21)", () => {
     expect(compareFeatureLists(base, [a1, a2, { ...a1, id: "A-03" }])).toEqual(["A-03: added"]);
   });
 
+  it("rejects a duplicated entry", () => {
+    const current = [a1, a2, { ...a2, verifica: "nessuna" }];
+    expect(compareFeatureLists(base, current)).toContain("A-02: duplicated");
+  });
+
   it("rejects a non-boolean passes or an extra field", () => {
     const current = [
       { ...a1, passes: "yes" },

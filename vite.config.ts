@@ -4,6 +4,13 @@ import { defineConfig } from "vite";
 import { it } from "./src/app/i18n/it.ts";
 import { APP_NAME } from "./src/shared/config.ts";
 
+const escapeHtml = (text: string) =>
+  text
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+
 export default defineConfig({
   plugins: [
     preact(),
@@ -13,8 +20,8 @@ export default defineConfig({
       name: "html-texts",
       transformIndexHtml: (html) =>
         html
-          .replaceAll("%APP_NAME%", APP_NAME)
-          .replaceAll("%APP_DESCRIPTION%", it.meta.description),
+          .replaceAll("%APP_NAME%", escapeHtml(APP_NAME))
+          .replaceAll("%APP_DESCRIPTION%", escapeHtml(it.meta.description)),
     },
   ],
 });

@@ -19,8 +19,15 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - CI sulla PR #2 (`m0-tooling` → `main`): 5 job su 5 verdi al primo giro.
 - M0-05: PR di prova #3 con `any` voluto → job lint rosso (`no-explicit-any`), poi revert → tutta verde. Chiusa senza merge.
 - M0-09: PR di prova #4 con un token finto → gitleaks rosso (`generic-api-key`, "leaks found: 1"). Chiusa senza merge (il token è finto; il commit resta raggiungibile su GitHub solo per SHA).
-- Contrasti dei token (script WCAG): tutte le coppie testo/sfondo ≥ 4,5:1 in chiaro e scuro (minimo 4,80 per i bordi dei controlli in chiaro; pill "nella media" 4,92).
+- Contrasti dei token (script WCAG): tutte le coppie testo/sfondo ≥ 4,5:1 in chiaro e scuro (palette C: minimo 4,55 per `--color-border-strong` su `--color-bg` in chiaro, soglia per i controlli 3:1; pill "nella media" 4,92).
 - Locale: lint, typecheck, unit 9, e2e 12 + sicurezza 5, Lighthouse (Performance, Accessibility, Best Practices, SEO = 1; LCP 1,1 s; CLS 0), `format:check`, `npm audit` 0.
+
+**Revisioni di chiusura M0**
+- `/code-review` (alto): 6 rilievi. Corretti: smoke test `curl | grep -q` con pipefail, guardia che non vedeva gli `id` duplicati (+ test), durata mancante nel log d'errore (CLAUDE.md), escape HTML di titolo e descrizione, e2e e sicurezza in un solo job (una build). Non applicato: header definiti in due file (`_headers` e Worker) — il test di sicurezza confronta entrambi con SPEC.
+- `spec-reviewer`: nessun blocco; le 7 voci a `true` hanno prove adeguate. Corretti: `set -o pipefail` nel deploy (il `bash -e` di default non lo ha), revisione listino come **tabella** (SPEC 7.4), ADR 0011 sul design system, budget shell ≤ 50 KB gzip in CI (`scripts/check-bundle-size.mjs`: 6.296 B). Da decidere con Roberto: protezione di `main`, ruleset sul tag `spec-approved`, approvazione dell'ADR 0009, aggiornamenti di sicurezza Dependabot. Nota: la PR #1 (`m0-tooling` → `main`, M0-01…03) è stata unita da Roberto alle 18:12 UTC, prima che esistesse la CI.
+- `ux-a11y-reviewer`: nessun blocco; axe 0 violazioni (Chromium/WebKit × chiaro/scuro, reduced motion), token coerenti con MASTER. Corretti: preload del font, token per focus e pesi, regola in MASTER per gli elementi sopra la mappa (che resta chiara in tema scuro: pill con token chiari e bordo scuro, focus a due toni), cifra di contrasto in PROGRESS (4,55). Per M1: `@axe-core/playwright` con test axe; screenshot di confronto da Chromium (WebKit su Windows non applica il peso del font variabile).
+
+**Checklist UI UX Pro Max (shell M0)**: emoji come icone PASS (nessuna icona) · feedback al tocco N/A · target/focus/etichette N/A (token pronti) · contrasto chiaro e scuro PASS sulle pagine, sopra la mappa da verificare in M1 · reduced motion e zoom 200% PASS · 390 px PASS, aree sicure in M1 · solo token semantici PASS.
 
 **Aperte in M0**: M0-04 (mappa), M0-07 e M0-11 (primo deploy dopo il merge), M0-08 (Dependabot si attiva dopo il merge su `main`), M0-10 approvato.
 

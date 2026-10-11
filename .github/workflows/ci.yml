@@ -39,7 +39,7 @@ jobs:
       - run: npm audit --audit-level=high
 
   e2e:
-    name: E2E (Chromium, WebKit)
+    name: E2E (Chromium, WebKit) and security tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,21 +51,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
-
-  security:
-    name: Security tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run test:security
+      # All Playwright projects (chromium, webkit, security) share one build and server.
+      - run: npx playwright test
 
   lighthouse:
     name: Lighthouse CI
@@ -80,6 +67,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - run: node scripts/check-bundle-size.mjs
       # Not in the lockfile: its transitive dependencies fail npm audit (ADR 0009).
       - run: npx --yes @lhci/cli@0.15.1 autorun
 

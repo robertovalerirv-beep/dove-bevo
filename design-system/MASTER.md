@@ -61,6 +61,8 @@ Il tema segue `prefers-color-scheme`; nessun interruttore (niente onboarding/imp
 ## Mappa
 Stile OpenFreeMap **positron** (neutro e chiaro: fa risaltare i segnaposto colorati) in entrambi i temi; uno stile scuro richiederebbe una deroga a SPEC 4 (solo `liberty` o `positron`), da decidere con Roberto. Attribuzioni sempre visibili in basso a sinistra, sopra il pulsante primario, contrasto AA.
 
+**Elementi sopra la mappa** (la mappa resta chiara anche in tema scuro; revisione UX di M0): i segnaposto usano sempre i token prezzo del tema chiaro, con bordo 2 px `#0F172A`, così il contrasto non testuale verso la mappa resta ≥ 3:1 (WCAG 1.4.11); il focus sui controlli sopra la mappa è un anello a due toni (anello `--color-focus` più un bordo interno del colore opposto). I movimenti di camera di MapLibre rispettano `prefers-reduced-motion` anche in JavaScript.
+
 ## Anti-pattern
 Colori spenti e testo grigio su grigio; emoji come icone; prezzo comunicato solo dal colore; hero o splash; animazioni in ingresso; testo dentro immagini; target piccoli vicini; stili inline (vietati anche dalla CSP).
 

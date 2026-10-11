@@ -25,12 +25,12 @@ h1,
 h2,
 h3 {
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: var(--weight-bold);
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 2px;
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: var(--focus-offset);
 }
 
 @media (prefers-reduced-motion: reduce) {

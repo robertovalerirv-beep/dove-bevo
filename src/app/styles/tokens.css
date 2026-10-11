@@ -55,6 +55,13 @@
 
   --duration-fast: 150ms;
   --duration-base: 200ms;
+  --ease-out: ease-out;
+
+  --focus-width: 3px;
+  --focus-offset: 2px;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --weight-bold: 800;
 }
 
 @media (prefers-color-scheme: dark) {

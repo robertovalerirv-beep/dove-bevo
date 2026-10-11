@@ -5,5 +5,5 @@
     "lib": ["ES2023", "DOM"],
     "allowImportingTsExtensions": true
   },
-  "include": ["tests/unit", "tests/e2e", "scripts", "*.config.ts", "*.config.js"]
+  "include": ["tests/unit", "tests/e2e", "tests/security", "scripts", "*.config.ts", "*.config.js"]
 }

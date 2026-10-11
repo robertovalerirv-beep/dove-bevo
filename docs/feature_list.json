@@ -18,7 +18,7 @@
     "milestone": "M0",
     "descrizione": "Header di sicurezza su asset e API",
     "verifica": "sec: per `/`, un asset JS e `/api/health` tutti gli header di 13.1 sono presenti con i valori esatti; nessun header `Access-Control-*`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-04",

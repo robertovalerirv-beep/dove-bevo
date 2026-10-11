@@ -4,6 +4,23 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-11 · Sessione 2 · M0 · M0-03 Header di sicurezza
+
+**Fatto**
+- Repo pubblico https://github.com/robertovalerirv-beep/dove-bevo creato con `gh` su richiesta di Roberto (scansione segreti sulla storia prima del push: nulla). Pushati `main`, tag `spec-approved`, `m0-tooling`.
+- Roberto ha creato il token Cloudflare (solo Workers Scripts: Edit, D1: Edit, Account Settings: Read, solo il suo account) e i secret di Actions `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (verificati con `gh secret list`, solo i nomi).
+- Header di SPEC 13.1: `public/_headers` (`/*`) per asset e fallback SPA; middleware `src/worker/lib/security-headers.ts` su tutte le risposte del Worker, errori compresi.
+- `tests/security/headers.spec.ts`: valori esatti su `/`, `/bar/n1`, un asset JS, `/api/health`, `/api/nonesiste` (con `Origin` estraneo); nessun `Access-Control-*`. Progetto Playwright `security` (solo HTTP), script `test:security`.
+- **Scoperta**: con `upgrade-insecure-requests` WebKit chiede gli script di `http://localhost` in `https://` e la shell non parte (prova: richiesta a `https://localhost:4173/assets/…` fallita con "SSL connect error"). La direttiva resta; e2e e test di sicurezza girano in HTTPS con `wrangler dev --local-protocol https` sulla configurazione di build `dist/dovebevo/wrangler.json` (la stessa del deploy; certificato locale generato da wrangler, nessuna dipendenza). `npm run preview` ora è questo comando.
+- `vite dev` (init.sh, http) non applica `_headers` all'HTML: lo sviluppo locale non è toccato dalla CSP; l'API ha comunque gli header.
+
+**Prove**
+- Test prima: `test:security` 5 falliti ("Received: undefined"), poi 5 verdi.
+- e2e WebKit rossi con la CSP via http (2 falliti), verdi dopo il passaggio a HTTPS.
+- `npm ci && lint && typecheck && test && test:e2e && test:security` → exit 0 (unit 5, e2e 8, sicurezza 5). `format:check` verde. `./init.sh` exit 0.
+
+---
+
 ## 2026-10-11 · Sessione 2 · M0 (branch `m0-tooling`) · M0-02 Worker con assets
 
 **Fatto**

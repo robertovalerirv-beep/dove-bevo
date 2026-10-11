@@ -53,7 +53,7 @@
     "milestone": "M0",
     "descrizione": "Supply chain",
     "verifica": "`npm audit --audit-level=high` verde in CI; Dependabot attivo per npm e Actions; tutte le Actions di terzi fissate a SHA; nessun `pull_request_target` (grep in CI)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-09",
@@ -74,7 +74,7 @@
     "milestone": "M0",
     "descrizione": "Rate Limiting binding verificato",
     "verifica": "ADR con esito della verifica sul piano gratuito (D-22)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-01",

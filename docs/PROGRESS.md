@@ -4,6 +4,21 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-11 · Sessione 2 · Chiusura M0 e inizio M1 (branch `m1-map`)
+
+**M0 unita** (PR #2, merge commit `408ef73`, CI 4/4 verde, revisioni chiuse; Roberto ha autorizzato Claude a unire le PR delle milestone con CI verde e revisioni chiuse).
+- Primo deploy di staging (run 38167216787): https://dovebevo-staging.roberto-valeri-rv.workers.dev — `/api/health` → `{"status":"ok","version":"0.0.0","data_version":"none"}`; `/`, `/bar/n1` 200 HTML; `/api/nonesiste` 404 JSON; CSP e HSTS presenti, nessun `Access-Control-*` (verificato anche da Claude con `fetch`).
+- **M0-11**: binding Rate Limiting accettato sul piano gratuito (ADR 0010 accettata). **M0-08**: `npm audit` verde su `main`, Dependabot attivo (prime esecuzioni npm e Actions completate, nessun aggiornamento), Actions a SHA, nessun `pull_request_target`.
+- Restano: M0-04 (mappa) e M0-07 (passa con il `data_version` dell'import, M1-03).
+
+**M1 finora**
+- **M1-01** `src/shared/geohash.ts`: encoder (~30 righe) e copertura delle celle visibili (≤ 12, altrimenti `null`). 6 test: `u0nd9`, `u4pruydqqvj`, bordi ±90/±180, celle senza duplicati.
+- **M1-02** `scripts/osm-import/`: `osm.ts` (logica pura: filtri, centroidi, città più vicina entro 15 km con griglia, file D-11, `places.json`, `LICENSE.txt`, limiti 15.000 file e 1 MB, riquadro Italia, nomi ≤ 120), `build.mjs` (streaming del GeoJSON-seq), `import.sh` (osmium), `check-output.mjs` (validazione e conteggi). 7 test unit; job CI `osm-import` con osmium vero su `tests/fixtures/osm/sample.osm` → PBF, confronto con l'output atteso. `passes` dopo il primo verde in CI.
+- **M1-04** `/data/*` con `Cache-Control: public, max-age=31536000, immutable` (test di sicurezza rosso → verde).
+- **Fixture reale** `tests/fixtures/data/`: 9 celle di Milano centro, 2.446 bar e 71 località, 185 KB, dati OSM via Overpass (mirror `overpass.private.coffee`, base 28/7/2026; l'istanza principale rispondeva 504), generati con lo stesso `build.mjs` (le vie hanno il centro di Overpass invece del centroide). `npm run fixture` lo copia in `public/data/fixture/`.
+
+---
+
 ## 2026-10-11 · Sessione 2 · M0 · M0-04/05/06/08/09/10/11 e deploy
 
 **Fatto**

@@ -1,0 +1,541 @@
+[
+  {
+    "id": "M0-01",
+    "milestone": "M0",
+    "descrizione": "Tooling: lint, typecheck, test, format con le sole dipendenze consentite",
+    "verifica": "`npm ci && npm run lint && npm run typecheck && npm run test` escono con 0; `package.json` contiene solo dipendenze della sezione 4.1 a versione esatta",
+    "passes": false
+  },
+  {
+    "id": "M0-02",
+    "milestone": "M0",
+    "descrizione": "Worker con static assets, fallback SPA e `/api/health`",
+    "verifica": "e2e: `GET /` e `GET /bar/n1` restituiscono la shell; `GET /api/health` → 200 `{status:\"ok\",version,data_version}`; `GET /api/nonesiste` → 404 JSON `not_found`",
+    "passes": false
+  },
+  {
+    "id": "M0-03",
+    "milestone": "M0",
+    "descrizione": "Header di sicurezza su asset e API",
+    "verifica": "sec: per `/`, un asset JS e `/api/health` tutti gli header di 13.1 sono presenti con i valori esatti; nessun header `Access-Control-*`",
+    "passes": false
+  },
+  {
+    "id": "M0-04",
+    "milestone": "M0",
+    "descrizione": "CSP senza violazioni",
+    "verifica": "e2e: apertura della shell e della mappa senza messaggi CSP in console",
+    "passes": false
+  },
+  {
+    "id": "M0-05",
+    "milestone": "M0",
+    "descrizione": "Pipeline CI su PR",
+    "verifica": "una PR di prova esegue tutti i job della sezione 16 e fallisce se uno fallisce (prova: PR con errore di lint volutamente rossa, poi verde)",
+    "passes": false
+  },
+  {
+    "id": "M0-06",
+    "milestone": "M0",
+    "descrizione": "Guardia della feature list",
+    "verifica": "`node scripts/check-feature-list.mjs` passa con un cambio di `passes` e fallisce se si modifica `descrizione` o `verifica` o si rimuove una voce (test unit con i tre casi)",
+    "passes": false
+  },
+  {
+    "id": "M0-07",
+    "milestone": "M0",
+    "descrizione": "Deploy in staging da `main` con smoke test",
+    "verifica": "dopo il merge il job di deploy è verde; `curl https://<staging>/api/health` → 200 con `data_version` dell'import",
+    "passes": false
+  },
+  {
+    "id": "M0-08",
+    "milestone": "M0",
+    "descrizione": "Supply chain",
+    "verifica": "`npm audit --audit-level=high` verde in CI; Dependabot attivo per npm e Actions; tutte le Actions di terzi fissate a SHA; nessun `pull_request_target` (grep in CI)",
+    "passes": false
+  },
+  {
+    "id": "M0-09",
+    "milestone": "M0",
+    "descrizione": "Scansione segreti",
+    "verifica": "gitleaks in CI fallisce su un segreto di prova in un branch di test; `.dev.vars.example` senza valori",
+    "passes": false
+  },
+  {
+    "id": "M0-10",
+    "milestone": "M0",
+    "descrizione": "Design system approvato",
+    "verifica": "`design-system/MASTER.md` e override di pagina presenti; token in `src/app/styles/tokens.css`; font ≤ 2 woff2 self-hosted; approvazione di Roberto registrata in PROGRESS",
+    "passes": false
+  },
+  {
+    "id": "M0-11",
+    "milestone": "M0",
+    "descrizione": "Rate Limiting binding verificato",
+    "verifica": "ADR con esito della verifica sul piano gratuito (D-22)",
+    "passes": false
+  },
+  {
+    "id": "M1-01",
+    "milestone": "M1",
+    "descrizione": "Encoder geohash",
+    "verifica": "unit: vettori noti (es. 45.4642, 9.19 → `u0nd9` a 5 caratteri), bordi ±90/±180, calcolo delle celle visibili ≤ 12",
+    "passes": false
+  },
+  {
+    "id": "M1-02",
+    "milestone": "M1",
+    "descrizione": "Import OSM in file statici",
+    "verifica": "unit dello script su un PBF di test: formato D-11, `key` corrette, centroidi delle aree, `places.json` solo city/town, `LICENSE.txt` presente; lo script fallisce oltre 15.000 file o con un file > 1 MB",
+    "passes": false
+  },
+  {
+    "id": "M1-03",
+    "milestone": "M1",
+    "descrizione": "Import completo in CI",
+    "verifica": "log del job: numero di bar e file, tutti i file ≤ 1 MB, totale ≤ 15.000, durata",
+    "passes": false
+  },
+  {
+    "id": "M1-04",
+    "milestone": "M1",
+    "descrizione": "Cache immutabile dei dati",
+    "verifica": "e2e/sec: `/data/<DATA_VERSION>/v/<cell>.json` ha `Cache-Control: public, max-age=31536000, immutable`",
+    "passes": false
+  },
+  {
+    "id": "M1-05",
+    "milestone": "M1",
+    "descrizione": "ADR licenza e quote D1",
+    "verifica": "`docs/adr/` contiene licenza ODbL (separazione prezzi) e stima quote con misure reali",
+    "passes": false
+  },
+  {
+    "id": "M1-06",
+    "milestone": "M1",
+    "descrizione": "Mappa iniziale sull'Italia con attribuzioni",
+    "verifica": "e2e: all'apertura la mappa mostra l'Italia; attribuzioni OpenFreeMap, OpenMapTiles, OpenStreetMap visibili; screenshot 390×844",
+    "passes": false
+  },
+  {
+    "id": "M1-07",
+    "milestone": "M1",
+    "descrizione": "Invito sotto zoom 13 e caricamento celle da zoom 13",
+    "verifica": "e2e: a zoom 12 nessuna richiesta `/api/prices` e invito visibile; a zoom 14 su Milano richieste per ≤ 12 celle e segnaposto visibili",
+    "passes": false
+  },
+  {
+    "id": "M1-08",
+    "milestone": "M1",
+    "descrizione": "`GET /api/prices/:cell`",
+    "verifica": "unit: formato compatto 9.2, `review`/`removed` esclusi, cella non valida → 400; misura CPU < 2 ms riportata in PROGRESS",
+    "passes": false
+  },
+  {
+    "id": "M1-09",
+    "milestone": "M1",
+    "descrizione": "Chip dei drink",
+    "verifica": "e2e: toccando \"Spritz\" i segnaposto mostrano il prezzo dello spritz; bar senza prezzo restano visibili e discreti",
+    "passes": false
+  },
+  {
+    "id": "M1-10",
+    "milestone": "M1",
+    "descrizione": "\"Vicino a me\"",
+    "verifica": "e2e con geolocalizzazione simulata: la mappa si centra sulla posizione; con permesso negato appare l'invito alla ricerca e tutto resta usabile",
+    "passes": false
+  },
+  {
+    "id": "M1-11",
+    "milestone": "M1",
+    "descrizione": "Ricerca città",
+    "verifica": "e2e: cerco \"milano\" → primo risultato Milano → la mappa si sposta e carica le celle",
+    "passes": false
+  },
+  {
+    "id": "M1-12",
+    "milestone": "M1",
+    "descrizione": "Scheda bar in lettura",
+    "verifica": "e2e: apro un bar con prezzi fixture: nome, indirizzo, tipo, prezzi con data, conferme, link \"Indicazioni\"; URL `/bar/<key>` funziona anche ricaricando",
+    "passes": false
+  },
+  {
+    "id": "M1-13",
+    "milestone": "M1",
+    "descrizione": "Elenco accessibile dei bar visibili",
+    "verifica": "e2e: \"Elenco\" mostra i bar visibili; navigazione solo da tastiera fino all'apertura di una scheda; axe senza violazioni",
+    "passes": false
+  },
+  {
+    "id": "M1-14",
+    "milestone": "M1",
+    "descrizione": "Nessuna coordinata dell'utente in rete",
+    "verifica": "e2e con posizione simulata: nessuna richiesta (URL, header, body) contiene le coordinate simulate né loro arrotondamenti a 2+ decimali",
+    "passes": false
+  },
+  {
+    "id": "M1-15",
+    "milestone": "M1",
+    "descrizione": "Storico di un bar",
+    "verifica": "unit: `GET /api/venues/:key/prices` restituisce correnti e ≤ 10 osservazioni per drink e formato, solo data",
+    "passes": false
+  },
+  {
+    "id": "M2-01",
+    "milestone": "M2",
+    "descrizione": "STRIDE in `SECURITY.md`",
+    "verifica": "documento con asset, attori, minacce e contromisure mappate ai test",
+    "passes": false
+  },
+  {
+    "id": "M2-02",
+    "milestone": "M2",
+    "descrizione": "Turnstile caricato solo al primo contributo",
+    "verifica": "e2e: nessuna richiesta a `challenges.cloudflare.com` finché non si salva un prezzo",
+    "passes": false
+  },
+  {
+    "id": "M2-03",
+    "milestone": "M2",
+    "descrizione": "Sessione anonima",
+    "verifica": "unit/sec: `POST /api/session` con token valido → cookie `__Host-sid` con attributi esatti e 30 min; token riusato → 403; firma alterata o scaduta → 401",
+    "passes": false
+  },
+  {
+    "id": "M2-04",
+    "milestone": "M2",
+    "descrizione": "Controlli comuni delle POST",
+    "verifica": "sec: 401 senza sessione, 403 con `Origin` estraneo o assente, 415 senza JSON, 413 oltre 16 KB, 400 con campi extra",
+    "passes": false
+  },
+  {
+    "id": "M2-05",
+    "milestone": "M2",
+    "descrizione": "Inserimento in 4 tocchi più le cifre",
+    "verifica": "e2e: dalla mappa `Aggiungi prezzo` → primo bar proposto → Spritz → \"7,50\" → `Salva`: esattamente 4 tocchi; dopo 10 s il prezzo compare nella scheda",
+    "passes": false
+  },
+  {
+    "id": "M2-06",
+    "milestone": "M2",
+    "descrizione": "Annulla senza scritture",
+    "verifica": "e2e: `Salva` poi `Annulla` entro 10 s → nessuna `POST /api/prices`; passaggio in background entro 10 s → invio con `keepalive`",
+    "passes": false
+  },
+  {
+    "id": "M2-07",
+    "milestone": "M2",
+    "descrizione": "Bar proposti per vicinanza",
+    "verifica": "e2e: con posizione simulata i 5 bar proposti sono i più vicini secondo i dati fixture; senza posizione, i più vicini al centro mappa",
+    "passes": false
+  },
+  {
+    "id": "M2-08",
+    "milestone": "M2",
+    "descrizione": "Validazione prezzo e bar",
+    "verifica": "sec: prezzo fuori limite → `rejected` con messaggio; bar inesistente nella cella → 400; drink o formato fuori catalogo → 400",
+    "passes": false
+  },
+  {
+    "id": "M2-09",
+    "milestone": "M2",
+    "descrizione": "Quarantena anti-frode",
+    "verifica": "sec: con 5 prezzi attivi a ~5 €, un prezzo a 9 € → `quarantined`, non in mappa, presente in \"In verifica\"; conferma da altra sessione → `active`",
+    "passes": false
+  },
+  {
+    "id": "M2-10",
+    "milestone": "M2",
+    "descrizione": "Stesso prezzo stesso giorno = conferma",
+    "verifica": "unit: secondo inserimento identico da altra sessione → `confirmed`, `confirmations` +1, nessuna nuova riga corrente",
+    "passes": false
+  },
+  {
+    "id": "M2-11",
+    "milestone": "M2",
+    "descrizione": "\"Confermo\" in 1 tocco",
+    "verifica": "e2e: un tocco su \"Confermo\" incrementa il contatore; secondo tocco della stessa sessione non incrementa",
+    "passes": false
+  },
+  {
+    "id": "M2-12",
+    "milestone": "M2",
+    "descrizione": "\"È cambiato\" precompilato",
+    "verifica": "e2e: apre l'inserimento con bar, drink, formato e fascia già scelti; basta cifre e `Salva`",
+    "passes": false
+  },
+  {
+    "id": "M2-13",
+    "milestone": "M2",
+    "descrizione": "Segnalazioni",
+    "verifica": "e2e/unit: motivi chiusi; una per sessione per prezzo; alla quarta distinta il prezzo passa in `review` e sparisce",
+    "passes": false
+  },
+  {
+    "id": "M2-14",
+    "milestone": "M2",
+    "descrizione": "Quote e rate limit",
+    "verifica": "sec: 31° prezzo manuale della giornata → 429 con `Retry-After`; stesso limite per IP con sessioni diverse",
+    "passes": false
+  },
+  {
+    "id": "M2-15",
+    "milestone": "M2",
+    "descrizione": "Pulizia giornaliera",
+    "verifica": "unit: lo scheduled handler elimina `counters` e `dedup` più vecchi di 2 giorni e lascia gli altri",
+    "passes": false
+  },
+  {
+    "id": "M2-16",
+    "milestone": "M2",
+    "descrizione": "Nessun dato personale salvato",
+    "verifica": "unit: dopo un flusso completo nessuna tabella contiene sid, IP o loro hash fuori da `counters`/`dedup`",
+    "passes": false
+  },
+  {
+    "id": "M3-01",
+    "milestone": "M3",
+    "descrizione": "Elaborazione foto sul client",
+    "verifica": "unit (browser): una foto con EXIF GPS e orientamento 6 → JPEG ≤ 1568 px di lato e ≤ 1,15 MP, orientata, senza segmenti APP1/EXIF nei byte",
+    "passes": false
+  },
+  {
+    "id": "M3-02",
+    "milestone": "M3",
+    "descrizione": "Fotocamera senza permessi",
+    "verifica": "e2e: l'input ha `accept=\"image/*\"` e `capture=\"environment\"`; nessuna richiesta di permesso camera",
+    "passes": false
+  },
+  {
+    "id": "M3-03",
+    "milestone": "M3",
+    "descrizione": "`POST /api/menu-extract` protezioni",
+    "verifica": "sec: 413 oltre 1,5 MB (anche senza `Content-Length`), 415 senza magic bytes JPEG, 401 senza sessione, 429 all'11ª foto",
+    "passes": false
+  },
+  {
+    "id": "M3-04",
+    "milestone": "M3",
+    "descrizione": "Chiamata AI e validazione",
+    "verifica": "unit con API simulata: structured output, troncamento a 80 voci e 60 caratteri, drink fuori catalogo → `null`, `refusal` → 422, `max_tokens` → voci parziali",
+    "passes": false
+  },
+  {
+    "id": "M3-05",
+    "milestone": "M3",
+    "descrizione": "Output del modello reso come testo",
+    "verifica": "e2e: una voce `<img src=x onerror=alert(1)>` appare come testo nella revisione, nessun elemento creato, nessun dialog",
+    "passes": false
+  },
+  {
+    "id": "M3-06",
+    "milestone": "M3",
+    "descrizione": "Revisione obbligatoria con etichetta AI",
+    "verifica": "e2e: tabella modificabile, voci incerte evidenziate e escluse di default, etichetta \"Letti dall'intelligenza artificiale, controllati da te\"; solo le voci confermate partono in un'unica `POST /api/prices`",
+    "passes": false
+  },
+  {
+    "id": "M3-07",
+    "milestone": "M3",
+    "descrizione": "Token di estrazione",
+    "verifica": "sec: `menu_photo` senza token → 403; token riusato → 403; più voci di quelle estratte → 400; prezzi da foto non consumano la quota manuale",
+    "passes": false
+  },
+  {
+    "id": "M3-08",
+    "milestone": "M3",
+    "descrizione": "Tetto di spesa",
+    "verifica": "sec: a tetto raggiunto → 503 `ai_paused` con messaggio; 20 richieste concorrenti con budget per 3 → al massimo 3 chiamate all'API simulata; `AI_ENABLED=false` → 503",
+    "passes": false
+  },
+  {
+    "id": "M3-09",
+    "milestone": "M3",
+    "descrizione": "Etichetta AI nella scheda bar",
+    "verifica": "e2e: un prezzo da foto mostra l'etichetta \"Letto dall'AI…\"",
+    "passes": false
+  },
+  {
+    "id": "M3-10",
+    "milestone": "M3",
+    "descrizione": "Prima esecuzione evals",
+    "verifica": "`docs/evals.md` con metriche, costo e tempo per foto; costo stimato approvato da Roberto prima del lancio",
+    "passes": false
+  },
+  {
+    "id": "M4-01",
+    "milestone": "M4",
+    "descrizione": "Bar mancante",
+    "verifica": "e2e: \"Non trovi il bar?\" → nome, tipo, punto sulla mappa → `pending`; non compare sulla mappa",
+    "passes": false
+  },
+  {
+    "id": "M4-02",
+    "milestone": "M4",
+    "descrizione": "Conferma dei bar pending",
+    "verifica": "e2e/unit: il pending compare nella scelta del bar per altre sessioni; la sessione creatrice non può confermarlo; dopo 2 conferme distinte (o un prezzo + una conferma) diventa `approved` e compare sulla mappa con i suoi prezzi",
+    "passes": false
+  },
+  {
+    "id": "M4-03",
+    "milestone": "M4",
+    "descrizione": "Colori sulla mediana",
+    "verifica": "unit + e2e: con ≥ 5 prezzi colori più economico/media/più caro secondo D-12 con valore scritto; con < 5 colore neutro; contrasto AA in entrambi i temi",
+    "passes": false
+  },
+  {
+    "id": "M4-04",
+    "milestone": "M4",
+    "descrizione": "\"I più economici qui\"",
+    "verifica": "e2e: lista ordinata per prezzo del drink scelto nell'area visibile, al massimo 10, esclusi quarantena e `review`",
+    "passes": false
+  },
+  {
+    "id": "M4-05",
+    "milestone": "M4",
+    "descrizione": "Freschezza",
+    "verifica": "e2e: un prezzo con data > 90 giorni mostra \"da confermare\" in mappa e scheda",
+    "passes": false
+  },
+  {
+    "id": "M4-06",
+    "milestone": "M4",
+    "descrizione": "Ricerca bar per nome",
+    "verifica": "e2e: cerco il nome di un bar fixture tra le celle caricate e apro la scheda",
+    "passes": false
+  },
+  {
+    "id": "M4-07",
+    "milestone": "M4",
+    "descrizione": "PWA installabile",
+    "verifica": "Lighthouse/manifest valido; e2e: service worker registrato, precache della shell, nessuna voce `/api/*` o `/data/*` in cache",
+    "passes": false
+  },
+  {
+    "id": "M4-08",
+    "milestone": "M4",
+    "descrizione": "Shell offline",
+    "verifica": "e2e: dopo una visita, offline la shell si apre e mostra il messaggio offline",
+    "passes": false
+  },
+  {
+    "id": "M4-09",
+    "milestone": "M4",
+    "descrizione": "Invito all'installazione",
+    "verifica": "e2e: invito assente dopo il primo prezzo, presente dopo il secondo, una volta sola",
+    "passes": false
+  },
+  {
+    "id": "M4-10",
+    "milestone": "M4",
+    "descrizione": "Happy hour",
+    "verifica": "e2e: con solo prezzo HH la mappa mostra \"HH\"; la scheda mostra entrambe le fasce",
+    "passes": false
+  },
+  {
+    "id": "M5-01",
+    "milestone": "M5",
+    "descrizione": "Eventi anonimi",
+    "verifica": "e2e: una visita genera un solo `sendBeacon` a `/api/events`; sec: evento o proprietà fuori elenco → 400, body > 2 KB → 413, `Origin` estraneo → 403; `metrics_daily` incrementato",
+    "passes": false
+  },
+  {
+    "id": "M5-02",
+    "milestone": "M5",
+    "descrizione": "Admin protetta",
+    "verifica": "sec: `/api/admin/*` senza JWT Access valido → 403 (firma, `aud`, scadenza verificati)",
+    "passes": false
+  },
+  {
+    "id": "M5-03",
+    "milestone": "M5",
+    "descrizione": "Admin: revisione e metriche",
+    "verifica": "e2e con JWT di test: code `review`/`quarantined`/`pending` con Approva/Rimuovi; metriche giornaliere; copertura per città; stato budget AI",
+    "passes": false
+  },
+  {
+    "id": "M5-04",
+    "milestone": "M5",
+    "descrizione": "Pagine `/privacy` e `/regole`",
+    "verifica": "e2e: raggiungibili dal piè di pagina e dalla scheda; contenuto da `PRIVACY-NOTES.md`; \"servizio per maggiorenni\" presente",
+    "passes": false
+  },
+  {
+    "id": "M5-05",
+    "milestone": "M5",
+    "descrizione": "Accessibilità",
+    "verifica": "axe senza violazioni su tutte le viste; navigazione completa da tastiera; target ≥ 48×48 px (test sulle dimensioni); `prefers-reduced-motion` rispettato",
+    "passes": false
+  },
+  {
+    "id": "M5-06",
+    "milestone": "M5",
+    "descrizione": "Performance",
+    "verifica": "Lighthouse CI mobile: Performance ≥ 90, Accessibility/Best Practices/SEO ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip esclusa MapLibre; INP ≤ 200 ms misurato in e2e",
+    "passes": false
+  },
+  {
+    "id": "M5-07",
+    "milestone": "M5",
+    "descrizione": "ASVS L1",
+    "verifica": "`docs/security/asvs-l1.md` senza voci \"da fare\", ogni voce con test o motivazione",
+    "passes": false
+  },
+  {
+    "id": "M5-08",
+    "milestone": "M5",
+    "descrizione": "Nessun segreto nel bundle",
+    "verifica": "sec: scansione di `dist/` per i nomi e i formati dei segreti",
+    "passes": false
+  },
+  {
+    "id": "M5-09",
+    "milestone": "M5",
+    "descrizione": "security.txt e robots.txt",
+    "verifica": "e2e: `/.well-known/security.txt` conforme a RFC 9116 (Contact, Expires); `robots.txt` presente",
+    "passes": false
+  },
+  {
+    "id": "M5-10",
+    "milestone": "M5",
+    "descrizione": "Traccia del test con 5 persone",
+    "verifica": "`docs/user-test.md` con compiti, domande e criteri di successo",
+    "passes": false
+  },
+  {
+    "id": "M6-01",
+    "milestone": "M6",
+    "descrizione": "Dominio di produzione",
+    "verifica": "`APP_DOMAIN` aggiornato; HTTPS e header 13.1 verificati sul dominio; Cache API attiva (header `cf-cache-status` o test di hit)",
+    "passes": false
+  },
+  {
+    "id": "M6-02",
+    "milestone": "M6",
+    "descrizione": "Segreti di produzione",
+    "verifica": "checklist firmata da Roberto in PROGRESS (impostati da lui)",
+    "passes": false
+  },
+  {
+    "id": "M6-03",
+    "milestone": "M6",
+    "descrizione": "Rollback provato",
+    "verifica": "esecuzione in staging documentata in `docs/runbook-rollback.md` con esito",
+    "passes": false
+  },
+  {
+    "id": "M6-04",
+    "milestone": "M6",
+    "descrizione": "Rilascio `v0.1.0`",
+    "verifica": "tag `v0.1.0` approvato, deploy di produzione verde, `CHANGELOG.md` aggiornato",
+    "passes": false
+  },
+  {
+    "id": "M6-05",
+    "milestone": "M6",
+    "descrizione": "Smoke test in produzione",
+    "verifica": "`/api/health`, una cella, header e CSP verificati in produzione; feature list tutta a `passes: true`",
+    "passes": false
+  }
+]

@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.wrangler/
+public/data/
+tests/evals/photos/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+.dev-server.pid
+.dev-server.log
+playwright-report/
+test-results/
+.lighthouseci/
+.claude/settings.local.json

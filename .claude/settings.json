@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.dev.vars)",
+      "Read(./.dev.vars.*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Bash(wrangler deploy*)",
+      "Bash(npx wrangler deploy*)",
+      "Bash(wrangler secret*)",
+      "Bash(npx wrangler secret*)",
+      "Bash(wrangler d1 execute * --remote*)",
+      "Bash(npx wrangler d1 execute * --remote*)",
+      "Bash(wrangler d1 migrations apply * --remote*)",
+      "Bash(npx wrangler d1 migrations apply * --remote*)",
+      "Bash(npm run deploy*)"
+    ],
+    "ask": ["Bash(git push*)", "Edit(.github/workflows/**)", "Edit(migrations/**)"],
+    "allow": [
+      "Bash(npm run lint*)",
+      "Bash(npm run typecheck*)",
+      "Bash(npm run test*)",
+      "Bash(npx vitest*)",
+      "Bash(npx playwright*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-files.sh\"" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/format-and-lint.sh\"" }]
+      }
+    ]
+  },
+  "enabledPlugins": { "security-guidance@claude-plugins-official": true }
+}

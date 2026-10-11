@@ -37,5 +37,7 @@ export default defineConfig(
   {
     files: ["**/*.js", "**/*.mjs"],
     extends: [tseslint.configs.disableTypeChecked],
+    // Node scripts and configs (no @types/node, no globals package).
+    languageOptions: { globals: { process: "readonly", console: "readonly" } },
   },
 );

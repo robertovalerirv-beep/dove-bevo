@@ -39,7 +39,7 @@
     "milestone": "M0",
     "descrizione": "Guardia della feature list",
     "verifica": "`node scripts/check-feature-list.mjs` passa con un cambio di `passes` e fallisce se si modifica `descrizione` o `verifica` o si rimuove una voce (test unit con i tre casi)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-07",

@@ -44,12 +44,14 @@ if [[ -d tests/fixtures/data ]]; then
   node -e 'require("fs").cpSync("tests/fixtures/data","public/data/fixture",{recursive:true})'
 fi
 
-echo "== Local D1 migrations"
-npx wrangler d1 migrations apply DB --local
+if [[ -d migrations ]]; then
+  echo "== Local D1 migrations"
+  npx wrangler d1 migrations apply DB --local
+fi
 
 echo "== Start dev server"
 stop_server
-npm run dev -- --port "$PORT" --strictPort >"$LOG_FILE" 2>&1 &
+node node_modules/vite/bin/vite.js --port "$PORT" --strictPort >"$LOG_FILE" 2>&1 &
 echo $! >"$PID_FILE"
 
 for _ in $(seq 1 60); do
@@ -60,6 +62,8 @@ done
 echo "== Smoke test"
 curl -fsS "http://localhost:$PORT/api/health" && echo
 curl -fsS -o /dev/null -w "shell: HTTP %{http_code}\n" "http://localhost:$PORT/"
-curl -fsS -o /dev/null -w "cell:  HTTP %{http_code}\n" "http://localhost:$PORT/api/prices/u0nd9"
+if [[ -d tests/fixtures/data ]]; then # the cell route and its fixture arrive in M1
+  curl -fsS -o /dev/null -w "cell:  HTTP %{http_code}\n" "http://localhost:$PORT/api/prices/u0nd9"
+fi
 
 echo "Dev server running on http://localhost:$PORT (log: $LOG_FILE, stop: ./init.sh --stop)"

@@ -4,21 +4,21 @@
     "milestone": "M0",
     "descrizione": "Tooling: lint, typecheck, test, format con le sole dipendenze consentite",
     "verifica": "`npm ci && npm run lint && npm run typecheck && npm run test` escono con 0; `package.json` contiene solo dipendenze della sezione 4.1 a versione esatta",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-02",
     "milestone": "M0",
     "descrizione": "Worker con static assets, fallback SPA e `/api/health`",
     "verifica": "e2e: `GET /` e `GET /bar/n1` restituiscono la shell; `GET /api/health` → 200 `{status:\"ok\",version,data_version}`; `GET /api/nonesiste` → 404 JSON `not_found`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-03",
     "milestone": "M0",
     "descrizione": "Header di sicurezza su asset e API",
     "verifica": "sec: per `/`, un asset JS e `/api/health` tutti gli header di 13.1 sono presenti con i valori esatti; nessun header `Access-Control-*`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-04",

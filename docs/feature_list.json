@@ -81,7 +81,7 @@
     "milestone": "M1",
     "descrizione": "Encoder geohash",
     "verifica": "unit: vettori noti (es. 45.4642, 9.19 → `u0nd9` a 5 caratteri), bordi ±90/±180, calcolo delle celle visibili ≤ 12",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-02",

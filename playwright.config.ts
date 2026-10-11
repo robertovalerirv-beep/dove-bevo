@@ -18,7 +18,7 @@ export default defineConfig({
     { name: "security", testDir: "tests/security" },
   ],
   webServer: {
-    command: `npm run build && npm run preview -- --port ${String(PORT)}`,
+    command: `npm run fixture && npm run build && npm run preview -- --port ${String(PORT)}`,
     url: `https://localhost:${String(PORT)}/api/health`,
     ignoreHTTPSErrors: true,
     env: { WRANGLER_SEND_METRICS: "false" },

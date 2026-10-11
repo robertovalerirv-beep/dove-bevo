@@ -17,7 +17,8 @@
     "test:e2e": "playwright test --project=chromium --project=webkit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:security": "playwright test --project=security"
+    "test:security": "playwright test --project=security",
+    "fixture": "node -e \"require('fs').cpSync('tests/fixtures/data','public/data/fixture',{recursive:true})\""
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.63.1",

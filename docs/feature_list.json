@@ -102,7 +102,7 @@
     "milestone": "M1",
     "descrizione": "Cache immutabile dei dati",
     "verifica": "e2e/sec: `/data/<DATA_VERSION>/v/<cell>.json` ha `Cache-Control: public, max-age=31536000, immutable`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-05",

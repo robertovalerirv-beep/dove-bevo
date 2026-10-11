@@ -29,3 +29,12 @@ export interface CellPrices {
   u: UserVenue[];
   pend: PendingVenue[];
 }
+
+/** History row: [drink, size_ml, hh, price_cents, observed_on (date only)] */
+export type HistoryRow = [string, number, 0 | 1, number, string];
+
+/** `GET /api/venues/:key/prices` (D-26): current prices and ≤ 10 observations per drink and size. */
+export interface VenuePrices {
+  p: PriceRow[];
+  h: HistoryRow[];
+}

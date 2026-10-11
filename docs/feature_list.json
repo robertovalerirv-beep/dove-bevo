@@ -179,7 +179,7 @@
     "milestone": "M1",
     "descrizione": "Storico di un bar",
     "verifica": "unit: `GET /api/venues/:key/prices` restituisce correnti e ≤ 10 osservazioni per drink e formato, solo data",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-01",

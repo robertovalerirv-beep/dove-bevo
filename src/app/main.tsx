@@ -1,14 +1,10 @@
 import { render } from "preact";
 import "./styles/base.css";
-import { APP_NAME } from "../shared/config";
+import "./styles/app.css";
+import { App } from "./app";
 
-function App() {
-  return (
-    <main>
-      <h1>{APP_NAME}</h1>
-    </main>
-  );
-}
+// MapLibre is the heaviest part: start loading it now, in parallel with the shell (SPEC 4).
+const mapModule = import("./lib/maplibre-map");
 
 const root = document.getElementById("app");
-if (root) render(<App />, root);
+if (root) render(<App mapModule={mapModule} />, root);

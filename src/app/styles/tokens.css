@@ -30,6 +30,11 @@
   --price-neutral: #ffffff;
   --on-price-neutral: #0f172a;
 
+  /* Overlays on the map, which stays light in both themes (MASTER, map section). */
+  --map-pill-bg: #ffffff;
+  --map-pill-text: #0f172a;
+  --map-pill-border: #0f172a;
+
   --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
   --text-sm: 0.875rem;
   --text-md: 1rem;

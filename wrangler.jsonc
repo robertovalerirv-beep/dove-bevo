@@ -14,4 +14,18 @@
   "observability": { "enabled": true, "logs": { "invocation_logs": false } },
   // Local and e2e use the fixture data; the deploy job sets the OSM import date (SPEC 5.3).
   "vars": { "DATA_VERSION": "fixture" },
+  // Burst limit keyed by the HMAC of the IP (SPEC 13.3); free-plan availability: ADR 0010.
+  "ratelimits": [
+    { "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 10 } },
+  ],
+  // Bindings and vars are not inherited by environments: repeat them here.
+  "env": {
+    "staging": {
+      "name": "dovebevo-staging",
+      "vars": { "DATA_VERSION": "none" },
+      "ratelimits": [
+        { "name": "RATE_LIMITER", "namespace_id": "1002", "simple": { "limit": 20, "period": 10 } },
+      ],
+    },
+  },
 }

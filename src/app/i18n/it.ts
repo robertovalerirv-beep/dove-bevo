@@ -5,6 +5,7 @@ export const it = {
       "Dove si beve e a quale prezzo: la mappa gratuita dei bar con i prezzi reali di birre e drink.",
   },
   errors: {
+    bad_request: "Richiesta non valida.",
     not_found: "Risorsa non trovata.",
     internal: "Si è verificato un errore. Riprova tra poco.",
   },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import packageJson from "../../package.json" with { type: "json" };
 
-// SPEC 4.1 plus the lint configuration packages approved in ADR 0008.
+// SPEC 4.1 plus the lint configuration packages (ADR 0008) and the renamed Vitest plugin (ADR 0012).
 const ALLOWED_RUNTIME = ["preact", "maplibre-gl", "hono", "zod"];
 const ALLOWED_DEV = [
   "vite",
@@ -11,6 +11,7 @@ const ALLOWED_DEV = [
   "typescript",
   "vitest",
   "@cloudflare/vitest-pool-workers",
+  "@cloudflare/vitest-plugin", // renamed successor of the pool (ADR 0012)
   "@playwright/test",
   "@axe-core/playwright",
   "eslint",
@@ -38,7 +39,7 @@ describe("package.json dependencies (SPEC 4.1)", () => {
 
   it("lists only allowed dev dependencies", () => {
     const extra = Object.keys(pkg.devDependencies ?? {}).filter((n) => !ALLOWED_DEV.includes(n));
-    expect(extra, "dev dependencies outside SPEC 4.1 / ADR 0008").toEqual([]);
+    expect(extra, "dev dependencies outside SPEC 4.1 / ADR 0008 / ADR 0012").toEqual([]);
   });
 
   it("has no optional or peer dependencies", () => {

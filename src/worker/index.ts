@@ -3,8 +3,10 @@ import { routePath } from "hono/route";
 import { version } from "../../package.json";
 import { apiError } from "./lib/errors";
 import { securityHeaders } from "./lib/security-headers";
+import { prices } from "./routes/prices";
+import type { AppEnv } from "./types";
 
-const app = new Hono<{ Bindings: Env; Variables: { start: number } }>();
+const app = new Hono<AppEnv>();
 
 app.use(async (c, next) => {
   c.set("start", Date.now());
@@ -13,6 +15,8 @@ app.use(async (c, next) => {
 app.use(securityHeaders);
 
 app.get("/api/health", (c) => c.json({ status: "ok", version, data_version: c.env.DATA_VERSION }));
+
+app.route("/api/prices", prices);
 
 app.notFound((c) => apiError(c, "not_found"));
 

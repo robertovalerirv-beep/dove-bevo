@@ -2,7 +2,7 @@ import type { Context } from "hono";
 import { it } from "../../app/i18n/it";
 
 // SPEC 9.1 error codes; further codes are added with the routes that use them.
-const STATUS = { not_found: 404, internal: 500 } as const;
+const STATUS = { bad_request: 400, not_found: 404, internal: 500 } as const;
 
 export type ErrorCode = keyof typeof STATUS;
 

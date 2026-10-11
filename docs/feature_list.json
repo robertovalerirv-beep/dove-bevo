@@ -130,7 +130,7 @@
     "milestone": "M1",
     "descrizione": "`GET /api/prices/:cell`",
     "verifica": "unit: formato compatto 9.2, `review`/`removed` esclusi, cella non valida → 400; misura CPU < 2 ms riportata in PROGRESS",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-09",

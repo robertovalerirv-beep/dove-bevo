@@ -1,0 +1,9 @@
+# Hand-written prose: SPEC, ADR and PROGRESS tables must not be realigned.
+*.md
+package-lock.json
+dist/
+.wrangler/
+public/data/
+playwright-report/
+test-results/
+.lighthouseci/

@@ -4,7 +4,7 @@
     "milestone": "M0",
     "descrizione": "Tooling: lint, typecheck, test, format con le sole dipendenze consentite",
     "verifica": "`npm ci && npm run lint && npm run typecheck && npm run test` escono con 0; `package.json` contiene solo dipendenze della sezione 4.1 a versione esatta",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-02",

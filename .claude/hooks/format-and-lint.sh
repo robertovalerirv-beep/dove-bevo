@@ -26,7 +26,7 @@ esac
 
 case "$file" in
   *.ts|*.tsx|*.js|*.mjs)
-    out="$(cd "$PROJECT_DIR" && "$BIN/eslint" --format unix "$file" 2>&1)" || {
+    out="$(cd "$PROJECT_DIR" && "$BIN/eslint" "$file" 2>&1)" || {
       node -e '
         const msg = "ESLint on " + process.argv[1] + ":\n" + process.argv[2].slice(0, 4000);
         process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: msg } }));

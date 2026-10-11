@@ -39,6 +39,14 @@ fi
 echo "== Install"
 npm ci
 
+if [[ ! -f wrangler.jsonc ]]; then
+  echo "No wrangler.jsonc yet: Worker arrives in M0-02. Running static checks only."
+  npm run lint
+  npm run typecheck
+  npm run test
+  exit 0
+fi
+
 echo "== Local data (fixture)"
 if [[ -d tests/fixtures/data ]]; then
   node -e 'require("fs").cpSync("tests/fixtures/data","public/data/fixture",{recursive:true})'

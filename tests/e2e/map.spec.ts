@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { DUOMO, goToMilano, mapRegion, mapStatus, waitForBars, zoomOf } from "./helpers";
 
 test("M1-06 opens on Italy with the attributions visible", async ({ page }, info) => {
@@ -77,6 +77,10 @@ test.describe("M1-10 with the position granted", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Vicino a me" }).click();
     await expect.poll(() => zoomOf(page), { timeout: 15_000 }).toBeGreaterThanOrEqual(14.9);
+    const center = (await mapRegion(page).getAttribute("data-center")) ?? "";
+    const [lat = 0, lon = 0] = center.split(",").map(Number);
+    expect(Math.abs(lat - DUOMO.latitude)).toBeLessThan(0.0005);
+    expect(Math.abs(lon - DUOMO.longitude)).toBeLessThan(0.0005);
     await waitForBars(page);
   });
 });
@@ -98,7 +102,7 @@ test("M1-11 the city search moves the map and loads the cells", async ({ page })
   await page.goto("/");
   await page.getByRole("button", { name: "Cerca" }).click();
   await page.getByRole("searchbox", { name: "Cerca una città o un bar" }).fill("milano");
-  const first = page.getByRole("option").first();
+  const first = page.getByRole("list", { name: "Città e paesi" }).getByRole("button").first();
   await expect(first).toContainText("Milano");
   const request = page.waitForRequest((r) => r.url().includes("/api/prices/"));
   await first.click();
@@ -127,18 +131,31 @@ test("M1-12 the bar page shows details and prices, also after a reload", async (
   await expect(page).toHaveURL(/\/$/);
 });
 
-test("M1-13 the accessible list works with the keyboard only", async ({ page }) => {
+/** Presses Tab (Option+Tab in WebKit, like Safari) until the named control has the focus. */
+async function tabTo(page: Page, key: string, name: string) {
+  for (let i = 0; i < 30; i++) {
+    await page.keyboard.press(key);
+    const label = await page.evaluate(() => (document.activeElement?.textContent ?? "").trim());
+    if (label === name) return;
+  }
+  throw new Error(`${name} not reachable with ${key}`);
+}
+
+test("M1-13 the accessible list works with the keyboard only", async ({ page, browserName }) => {
+  const key = browserName === "webkit" ? "Alt+Tab" : "Tab";
   await page.goto("/");
-  await page.getByRole("button", { name: "Cerca" }).focus();
+  await tabTo(page, key, "Cerca città o bar");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("searchbox", { name: "Cerca una città o un bar" })).toBeFocused();
   await page.keyboard.type("milano");
-  await expect(page.getByRole("option").first()).toContainText("Milano");
+  await expect(
+    page.getByRole("list", { name: "Città e paesi" }).getByRole("button").first(),
+  ).toContainText("Milano");
   await page.keyboard.press("Tab");
   await page.keyboard.press("Enter");
   await waitForBars(page);
 
-  await page.getByRole("button", { name: "Elenco" }).focus();
+  await tabTo(page, key, "Elenco");
   await page.keyboard.press("Enter");
   const list = page.getByRole("dialog", { name: "Bar nella zona" });
   await expect(list).toBeVisible();
@@ -157,4 +174,38 @@ test("axe finds no violations on the map screen", async ({ page }) => {
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);
+});
+
+test.describe("cells without a static file (lakes, fields, sea)", () => {
+  // Corner of the fixture: some visible cells have no file and fall back to the SPA HTML.
+  test.use({ geolocation: { latitude: 45.5265, longitude: 9.272 }, permissions: ["geolocation"] });
+  test("count as empty and do not break the cells that exist", async ({ page }) => {
+    const missing: string[] = [];
+    page.on("response", (r) => {
+      if (r.url().includes("/data/fixture/v/") && !r.headers()["content-type"]?.includes("json")) {
+        missing.push(r.url());
+      }
+    });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Vicino a me" }).click();
+    await waitForBars(page);
+    expect(missing.length).toBeGreaterThan(0);
+  });
+});
+
+test("prices are drawn right after a city search, not hidden in clusters", async ({ page }) => {
+  await page.goto("/");
+  await goToMilano(page);
+  expect(await zoomOf(page)).toBeLessThan(14.5); // search lands at zoom 14
+  await page.getByRole("button", { name: "Spritz" }).click();
+  await expect(mapRegion(page)).toHaveAttribute("data-prices-shown", /7,50 €/);
+  await expect(mapRegion(page)).toHaveAttribute("data-prices-shown", /12,00 €/);
+});
+
+test("the status follows the cells after a denied position", async ({ page, context }) => {
+  await context.clearPermissions();
+  await page.goto("/");
+  await page.getByRole("button", { name: "Vicino a me" }).click();
+  await expect(mapStatus(page)).toHaveText("Posizione non disponibile: cerca una città.");
+  await goToMilano(page);
 });

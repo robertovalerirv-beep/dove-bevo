@@ -38,12 +38,14 @@ export function App({ mapModule }: Props) {
   // A move asked before the map is ready (fast tap, slow network) is applied when it is.
   const pendingMove = useRef<[number, number, number] | null>(null);
   const [ready, setReady] = useState(false);
+  const [pricesShown, setPricesShown] = useState<string[]>([]);
   const [view, setView] = useState<MapView | null>(null);
   const [route, setRoute] = useState<Route>(parseRoute);
   const [sheet, setSheet] = useState<"search" | "list" | null>(null);
   const [chip, setChip] = useState<ChipId>(MAP_CHIPS[0].id);
   const [venues, setVenues] = useState<Map<string, Venue>>(new Map());
   const [cellsState, setCellsState] = useState<CellsState>("idle");
+  const [attempt, setAttempt] = useState(0); // "Riprova" after a cell error
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
@@ -57,6 +59,7 @@ export function App({ mapModule }: Props) {
       .then((created) => {
         if (!created || cancelled) return;
         created.onMove(setView);
+        created.onRendered(setPricesShown);
         created.onIdle(() => {
           setReady(true);
         });
@@ -121,7 +124,7 @@ export function App({ mapModule }: Props) {
     return () => {
       current = false;
     };
-  }, [view]);
+  }, [view, attempt]);
 
   const allVenues = useMemo(() => [...venues.values()], [venues]);
   const inView = useMemo(
@@ -150,10 +153,14 @@ export function App({ mapModule }: Props) {
     );
   }, [map, allVenues, selected]);
 
+  const zoomedIn = view !== null && view.zoom >= MIN_ZOOM_CELLS;
+  // From zoom 13 the cell status wins, so loading, errors and counts are always announced;
+  // only "searching your position" is shown over it.
+  const shownMessage = message && (!zoomedIn || message === it.map.locating) ? message : null;
   const status =
     (mapFailed ? it.map.mapError : null) ??
-    message ??
-    (!view || view.zoom < MIN_ZOOM_CELLS
+    shownMessage ??
+    (!zoomedIn
       ? it.map.zoomIn
       : cellsState === "too-many"
         ? it.map.tooManyCells
@@ -207,7 +214,7 @@ export function App({ mapModule }: Props) {
           <h1 class="brand">{APP_NAME}</h1>
           <button
             type="button"
-            class="btn btn--secondary"
+            class="btn search-field"
             onClick={() => {
               setSheet("search");
             }}
@@ -238,12 +245,25 @@ export function App({ mapModule }: Props) {
           class="map"
           aria-label={it.map.region}
           data-zoom={view ? view.zoom.toFixed(1) : ""}
+          data-center={view ? `${view.lat.toFixed(5)},${view.lon.toFixed(5)}` : ""}
           data-ready={ready ? "true" : "false"}
+          data-prices-shown={pricesShown.join("|")}
         >
           <div ref={container} class="map__canvas" />
           <p class="map__status" data-testid="map-status" role="status">
             {status}
           </p>
+          {zoomedIn && cellsState === "error" && !message && (
+            <button
+              type="button"
+              class="btn btn--secondary map__retry"
+              onClick={() => {
+                setAttempt((n) => n + 1);
+              }}
+            >
+              {it.map.retry}
+            </button>
+          )}
         </section>
       </main>
 

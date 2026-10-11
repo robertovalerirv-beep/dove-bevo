@@ -20,9 +20,12 @@ const ITALY: [[number, number], [number, number]] = [
   [18.6, 47.1],
 ];
 const FONT = ["Noto Sans Bold"];
+const TEXT_SIZE = 14; // MASTER: no text under 14 px
 
 export interface MapView {
   zoom: number;
+  lat: number;
+  lon: number;
   south: number;
   west: number;
   north: number;
@@ -145,13 +148,17 @@ export class VenueMap {
       stretchY: [[22, 26]],
       content: [14, 8, 50, 40],
     });
+    const empty = { type: "FeatureCollection" as const, features: [] };
+    // Bars without a price are clustered; priced bars never are, so prices stay readable at any
+    // zoom (SPEC 1: the map must not look empty) and are drawn above the clusters.
     map.addSource("venues", {
       type: "geojson",
-      data: { type: "FeatureCollection", features: [] },
+      data: empty,
       cluster: true,
       clusterMaxZoom: 14,
       clusterRadius: 44,
     });
+    map.addSource("prices", { type: "geojson", data: empty });
     const isCluster: ExpressionSpecification = ["has", "point_count"];
     const isVenue: ExpressionSpecification = ["!", isCluster];
     map.addLayer({
@@ -174,7 +181,10 @@ export class VenueMap {
       layout: {
         "text-field": ["get", "point_count_abbreviated"],
         "text-font": FONT,
-        "text-size": 13,
+        "text-size": TEXT_SIZE,
+        // A circle without its number is meaningless: always draw the count.
+        "text-allow-overlap": true,
+        "text-ignore-placement": true,
       },
       paint: { "text-color": text },
     });
@@ -182,7 +192,7 @@ export class VenueMap {
       id: "venue-dot",
       type: "circle",
       source: "venues",
-      filter: ["all", isVenue, ["==", ["get", "label"], ""]],
+      filter: isVenue,
       paint: {
         "circle-radius": 5,
         "circle-color": bg,
@@ -193,26 +203,33 @@ export class VenueMap {
     map.addLayer({
       id: "venue-price",
       type: "symbol",
-      source: "venues",
-      filter: ["all", isVenue, ["!=", ["get", "label"], ""]],
+      source: "prices",
       layout: {
         "icon-image": "pill",
         "icon-text-fit": "both",
         "text-field": ["get", "label"],
         "text-font": FONT,
-        "text-size": 13,
+        "text-size": TEXT_SIZE,
       },
       paint: { "text-color": text },
     });
-    // Invisible 48 px touch target around every bar (MASTER: target ≥ 48 px).
-    map.addLayer({
-      id: "venue-hit",
-      type: "circle",
-      source: "venues",
-      filter: isVenue,
-      paint: { "circle-radius": 24, "circle-opacity": 0 },
-    });
-    map.on("click", "clusters", (e) => {
+    // Invisible 48 px touch targets for bars and clusters (MASTER: target ≥ 48 px).
+    for (const [id, source, filter] of [
+      ["venue-hit", "venues", isVenue],
+      ["price-hit", "prices", null],
+      ["cluster-hit", "venues", isCluster],
+    ] as const) {
+      map.addLayer({
+        id,
+        type: "circle",
+        source,
+        ...(filter ? { filter } : {}),
+        paint: { "circle-radius": 24, "circle-opacity": 0 },
+      });
+      map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
+      map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
+    }
+    map.on("click", "cluster-hit", (e) => {
       const id = e.features?.[0]?.properties.cluster_id as number | undefined;
       const source = map.getSource<GeoJSONSource>("venues");
       if (id === undefined || !source) return;
@@ -220,16 +237,15 @@ export class VenueMap {
         this.moveTo(e.lngLat.lat, e.lngLat.lng, zoom);
       });
     });
-    for (const layer of ["venue-hit", "clusters"]) {
-      map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
-      map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
-    }
   }
 
   view(): MapView {
     const b = this.map.getBounds();
+    const center = this.map.getCenter();
     return {
       zoom: this.map.getZoom(),
+      lat: center.lat,
+      lon: center.lng,
       south: b.getSouth(),
       west: b.getWest(),
       north: b.getNorth(),
@@ -243,26 +259,42 @@ export class VenueMap {
     });
   }
 
+  /** Price labels actually drawn after each render settles (exposed in the DOM for tests). */
+  onRendered(listener: (labels: string[]) => void) {
+    this.map.on("idle", () => {
+      const features = this.map.queryRenderedFeatures({ layers: ["venue-price"] });
+      listener([...new Set(features.map((f) => String(f.properties.label)))].sort());
+    });
+  }
+
   onIdle(listener: () => void) {
     this.map.once("idle", listener);
   }
 
   onVenueClick(listener: (key: string, cell: string) => void) {
-    this.map.on("click", "venue-hit", (e) => {
-      const props = e.features?.[0]?.properties;
-      if (props) listener(String(props.key), String(props.cell));
-    });
+    for (const layer of ["venue-hit", "price-hit"]) {
+      this.map.on("click", layer, (e) => {
+        const props = e.features?.[0]?.properties;
+        if (props) listener(String(props.key), String(props.cell));
+      });
+    }
   }
 
   setVenues(points: VenuePoint[]) {
-    void this.map.getSource<GeoJSONSource>("venues")?.setData({
-      type: "FeatureCollection",
-      features: points.map((p) => ({
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+    const collection = (list: VenuePoint[]) => ({
+      type: "FeatureCollection" as const,
+      features: list.map((p) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [p.lon, p.lat] },
         properties: { key: p.key, cell: p.cell, label: p.label },
       })),
     });
+    void this.map
+      .getSource<GeoJSONSource>("venues")
+      ?.setData(collection(points.filter((p) => !p.label)));
+    void this.map
+      .getSource<GeoJSONSource>("prices")
+      ?.setData(collection(points.filter((p) => p.label)));
   }
 
   moveTo(lat: number, lon: number, zoom: number) {

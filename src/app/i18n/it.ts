@@ -26,6 +26,7 @@ export const it = {
     noPosition: "Posizione non disponibile: cerca una città.",
     list: "Elenco",
     actions: "Azioni della mappa",
+    retry: "Riprova",
     mapError: "La mappa non si carica: controlla la connessione e ricarica la pagina.",
     attribution: {
       openFreeMap: "OpenFreeMap",
@@ -34,7 +35,7 @@ export const it = {
     },
   },
   search: {
-    open: "Cerca",
+    open: "Cerca città o bar",
     title: "Cerca",
     label: "Cerca una città o un bar",
     places: "Città e paesi",

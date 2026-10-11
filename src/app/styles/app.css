@@ -42,7 +42,9 @@
   display: flex;
   gap: var(--space-2);
   overflow-x: auto;
-  margin-top: var(--space-2);
+  /* Room for the focus ring, which overflow would otherwise clip. */
+  padding: 5px 0;
+  margin: calc(var(--space-2) - 5px) 0 -5px;
   scrollbar-width: none;
 }
 .chip {
@@ -84,6 +86,15 @@
   background: var(--color-surface);
   color: var(--color-text);
 }
+/* Search opens the search sheet; it looks like a field (pages/mappa.md). */
+.search-field {
+  flex: 1;
+  justify-content: flex-start;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-weight: var(--weight-regular);
+}
 .btn--ghost {
   border: 0;
   background: none;
@@ -121,7 +132,26 @@
   text-align: center;
   pointer-events: none;
 }
+/* Controls on the map (light in both themes): two-tone ring, ≥ 3:1 on any background (MASTER). */
+.map :focus-visible {
+  outline-color: var(--map-focus);
+  box-shadow: 0 0 0 var(--focus-offset) var(--map-pill-bg);
+}
+/* The canvas clips anything outside it: draw the ring inside. */
+.map .maplibregl-canvas:focus-visible {
+  outline: var(--focus-width) solid var(--map-focus);
+  outline-offset: calc(-1 * var(--focus-width));
+  box-shadow: inset 0 0 0 calc(var(--focus-width) + var(--focus-offset)) var(--map-pill-bg);
+}
+.map__retry {
+  position: absolute;
+  top: calc(var(--space-3) + var(--target));
+  left: 50%;
+  transform: translateX(-50%);
+}
 .map .maplibregl-ctrl-attrib {
+  font-family: inherit;
+  line-height: 1.5;
   font-size: var(--text-sm);
   color: var(--map-pill-text);
   background: color-mix(in srgb, var(--map-pill-bg) 90%, transparent);
@@ -144,7 +174,7 @@
 /* Sheets */
 .sheet {
   width: 100%;
-  max-width: 640px;
+  max-width: var(--sheet-max-width);
   max-height: 85dvh;
   margin: auto auto 0;
   padding: 0;
@@ -155,7 +185,7 @@
   box-shadow: var(--shadow-sheet);
 }
 .sheet::backdrop {
-  background: rgb(15 23 42 / 0.45);
+  background: var(--color-backdrop);
 }
 .sheet__head {
   position: sticky;
@@ -201,11 +231,18 @@
   margin: 0;
   padding: 0;
 }
+.rows button.row {
+  width: 100%;
+  border-width: 0 0 1px;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
 .row {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 0 var(--space-3);
-  min-height: 56px;
+  min-height: var(--target-primary);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text);
@@ -235,6 +272,9 @@
 .bar__addr {
   margin: 0 0 var(--space-2);
   color: var(--color-text-muted);
+}
+.bar__kind {
+  font-size: var(--text-sm);
 }
 .prices {
   list-style: none;

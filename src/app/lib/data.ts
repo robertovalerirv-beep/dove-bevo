@@ -9,7 +9,8 @@ import type {
   VenuePrices,
 } from "../../shared/api-types";
 
-export const DATA_VERSION = import.meta.env.VITE_DATA_VERSION ?? "fixture";
+const BUILT_VERSION = import.meta.env.VITE_DATA_VERSION ?? "";
+export const DATA_VERSION = /^\d{8}$/.test(BUILT_VERSION) ? BUILT_VERSION : "fixture";
 
 export interface Venue {
   key: string;
@@ -27,7 +28,9 @@ const cells = new Map<string, Promise<Venue[]>>();
 
 async function getJson<T>(url: string, fallback: T): Promise<T> {
   const response = await fetch(url);
-  if (response.status === 404) return fallback;
+  // A missing static file (no bars in that cell) comes back as the SPA fallback HTML, not a 404.
+  const isJson = response.headers.get("content-type")?.includes("application/json") ?? false;
+  if (response.status === 404 || (response.ok && !isJson)) return fallback;
   if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
   return (await response.json()) as T;
 }

@@ -86,7 +86,11 @@ export function BarSheet({ venueKey, cell, onVenue, onClose }: Props) {
         {it.bar.directions}
       </a>
       <h3 class="section-title">{it.bar.prices}</h3>
-      {pricesFailed && <p class="hint">{it.bar.pricesError}</p>}
+      {pricesFailed && (
+        <p class="hint" role="alert">
+          {it.bar.pricesError}
+        </p>
+      )}
       {prices && active.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
       <ul class="prices">
         {active.map((row) => (

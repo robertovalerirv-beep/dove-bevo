@@ -19,7 +19,8 @@ export async function goToMilano(page: Page) {
   await page.getByRole("button", { name: "Cerca" }).click();
   await page.getByRole("searchbox", { name: "Cerca una città o un bar" }).fill("milano");
   await page
-    .getByRole("option", { name: /^Milano/ })
+    .getByRole("list", { name: "Città e paesi" })
+    .getByRole("button", { name: /^Milano/ })
     .first()
     .click();
   await waitForBars(page);

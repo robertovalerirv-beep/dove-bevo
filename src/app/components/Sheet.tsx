@@ -15,11 +15,13 @@ export function Sheet({ title, onClose, children }: Props) {
   const titleId = useId();
   useEffect(() => {
     const dialog = ref.current;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (dialog && !dialog.open) dialog.showModal();
     // WebKit does not always honour autofocus inside showModal().
     dialog?.querySelector<HTMLElement>("[autofocus]")?.focus();
     return () => {
       dialog?.close();
+      if (opener?.isConnected) opener.focus();
     };
   }, []);
   return (

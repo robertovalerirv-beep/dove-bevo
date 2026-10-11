@@ -28,7 +28,7 @@ function match<T>(items: T[], query: string, name: (item: T) => string, max: num
   return [...prefix, ...inner].slice(0, max);
 }
 
-function Option({
+function Result({
   label,
   detail,
   onSelect,
@@ -38,21 +38,11 @@ function Option({
   onSelect: () => void;
 }) {
   return (
-    <li
-      role="option"
-      aria-selected="false"
-      tabIndex={0}
-      class="row row--option"
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
-    >
-      <span class="row__name">{label}</span>
-      <span class="row__meta">{detail}</span>
+    <li>
+      <button type="button" class="row" onClick={onSelect}>
+        <span class="row__name">{label}</span>
+        <span class="row__meta">{detail}</span>
+      </button>
     </li>
   );
 }
@@ -88,16 +78,26 @@ export function SearchSheet({ venues, onPlace, onVenue, onClose }: Props) {
         }}
       />
       <p class="sr-only" aria-live="polite">
-        {key ? (total ? it.search.results(total) : it.search.none) : ""}
+        {failed
+          ? it.search.loadError
+          : key
+            ? total
+              ? it.search.results(total)
+              : it.search.none
+            : ""}
       </p>
-      {failed && <p class="hint">{it.search.loadError}</p>}
+      {failed && (
+        <p class="hint" role="alert">
+          {it.search.loadError}
+        </p>
+      )}
       {key && total === 0 && !failed && <p class="hint">{it.search.none}</p>}
       {foundPlaces.length > 0 && (
         <>
           <h3 class="section-title">{it.search.places}</h3>
-          <ul role="listbox" aria-label={it.search.places} class="rows">
+          <ul aria-label={it.search.places} class="rows">
             {foundPlaces.map((p) => (
-              <Option
+              <Result
                 key={p[0]}
                 label={p[1]}
                 detail={it.search.barsCount(p[4])}
@@ -112,9 +112,9 @@ export function SearchSheet({ venues, onPlace, onVenue, onClose }: Props) {
       {foundBars.length > 0 && (
         <>
           <h3 class="section-title">{it.search.bars}</h3>
-          <ul role="listbox" aria-label={it.search.bars} class="rows">
+          <ul aria-label={it.search.bars} class="rows">
             {foundBars.map((v) => (
-              <Option
+              <Result
                 key={v.key}
                 label={v.name}
                 detail={[it.kinds[v.kind], v.addr].filter(Boolean).join(" · ")}

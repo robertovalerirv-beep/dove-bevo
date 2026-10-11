@@ -41,6 +41,7 @@ jobs:
       - name: Geofabrik extract date
         id: pbf
         run: |
+          set -o pipefail # default bash -e has no pipefail: a failed request must fail here
           modified="$(curl -fsSI "$PBF_URL" | grep -i "^last-modified:" | cut -d" " -f2- | tr -d '\r')"
           echo "key=osm-italy-$(date -u -d "$modified" +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -52,8 +53,10 @@ jobs:
       - name: OSM import
         id: import
         run: |
+          set -o pipefail # a failed import must fail the deploy (SPEC 5.3)
           started=$(date +%s)
           version="$(scripts/osm-import/import.sh "$RUNNER_TEMP/italy.osm.pbf" public/data | tail -1)"
+          [[ "$version" =~ ^[0-9]{8}$ ]] || { echo "Bad DATA_VERSION: '$version'"; exit 1; }
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "DATA_VERSION=$version · import took $(( $(date +%s) - started )) s"
       - run: npm run build
@@ -95,5 +98,6 @@ jobs:
           grep -qi '^strict-transport-security:' <<<"$api_headers"
           grep -q "\"data_version\":\"$DATA_VERSION\"" <<<"$health"
           cell_headers="$(curl -fsSI "$URL/data/$DATA_VERSION/v/u0nd9.json")"
+          grep -qi '^content-type: application/json' <<<"$cell_headers" # not the SPA fallback
           grep -qi '^cache-control: public, max-age=31536000, immutable' <<<"$cell_headers"
           curl -fsS -o /dev/null -w "cell prices: HTTP %{http_code}\n" "$URL/api/prices/u0nd9"

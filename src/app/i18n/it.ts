@@ -26,6 +26,12 @@ export const it = {
     noPosition: "Posizione non disponibile: cerca una città.",
     list: "Elenco",
     actions: "Azioni della mappa",
+    mapError: "La mappa non si carica: controlla la connessione e ricarica la pagina.",
+    attribution: {
+      openFreeMap: "OpenFreeMap",
+      openMapTiles: "© OpenMapTiles",
+      openStreetMap: "© OpenStreetMap contributors",
+    },
   },
   search: {
     open: "Cerca",
@@ -36,6 +42,7 @@ export const it = {
     results: (n: number) => (n === 1 ? "1 risultato" : `${String(n)} risultati`),
     none: "Nessun risultato: controlla il nome o sposta la mappa.",
     barsCount: (n: number) => `${String(n)} bar`,
+    loadError: "Non riesco a caricare l'elenco delle città. Controlla la connessione.",
   },
   list: {
     title: "Bar nella zona",
@@ -54,6 +61,7 @@ export const it = {
     aiLabel: "Letto dall'AI da una foto del listino, controllato da chi l'ha inserito",
     notFound: "Questo bar non è più nei nostri dati.",
     loading: "Carico il bar…",
+    pricesError: "Non riesco a caricare i prezzi. Controlla la connessione.",
   },
   kinds: ["Caffè", "Bar", "Pub", "Birreria all'aperto", "Discoteca"],
   drinks: {

@@ -41,6 +41,7 @@ export function encodeGeohash(lat: number, lon: number, precision: number): stri
 
 /** Cells of CELL_PRECISION covering the bounds, or null when more than MAX_VISIBLE_CELLS. */
 export function visibleCells(bounds: Bounds): string[] | null {
+  if (![bounds.south, bounds.west, bounds.north, bounds.east].every(Number.isFinite)) return null;
   const totalBits = CELL_PRECISION * 5;
   const cellWidth = 360 / 2 ** Math.ceil(totalBits / 2);
   const cellHeight = 180 / 2 ** Math.floor(totalBits / 2);

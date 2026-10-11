@@ -46,6 +46,7 @@ export function App({ mapModule }: Props) {
   const [cellsState, setCellsState] = useState<CellsState>("idle");
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [mapFailed, setMapFailed] = useState(false);
   const selected = MAP_CHIPS.find((c) => c.id === chip) ?? MAP_CHIPS[0];
 
   // Map: created once, as soon as the MapLibre chunk is loaded (started in main.tsx).
@@ -66,6 +67,9 @@ export function App({ mapModule }: Props) {
         if (pendingMove.current) created.moveTo(...pendingMove.current);
         pendingMove.current = null;
         setMap(created);
+      })
+      .catch(() => {
+        setMapFailed(true);
       });
     return () => {
       cancelled = true;
@@ -83,7 +87,7 @@ export function App({ mapModule }: Props) {
   }, []);
 
   function navigate(path: string) {
-    history.pushState(null, "", path);
+    history.pushState({ inApp: true }, "", path);
     setSheet(null);
     setRoute(parseRoute());
   }
@@ -147,6 +151,7 @@ export function App({ mapModule }: Props) {
   }, [map, allVenues, selected]);
 
   const status =
+    (mapFailed ? it.map.mapError : null) ??
     message ??
     (!view || view.zoom < MIN_ZOOM_CELLS
       ? it.map.zoomIn
@@ -157,6 +162,16 @@ export function App({ mapModule }: Props) {
           : cellsState === "error"
             ? it.map.loadError
             : it.map.bars(inView.length));
+
+  /** Back to the map: a real "back" when we opened the bar, otherwise replace (MASTER: predictable back). */
+  function closeBar() {
+    if ((history.state as { inApp?: boolean } | null)?.inApp) {
+      history.back();
+      return;
+    }
+    history.replaceState(null, "", "/");
+    setRoute(parseRoute());
+  }
 
   function moveTo(lat: number, lon: number, zoom: number) {
     if (map) map.moveTo(lat, lon, zoom);
@@ -283,9 +298,7 @@ export function App({ mapModule }: Props) {
           onVenue={(v) => {
             if (!view || view.zoom < MIN_ZOOM_CELLS) moveTo(v.lat, v.lon, 16);
           }}
-          onClose={() => {
-            navigate("/");
-          }}
+          onClose={closeBar}
         />
       )}
     </div>

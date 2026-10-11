@@ -79,7 +79,10 @@ let places: Promise<Place[]> | null = null;
 
 /** places.json, loaded at the first search (SPEC 5.1). */
 export function loadPlaces(): Promise<Place[]> {
-  places ??= getJson<Place[]>(`/data/${DATA_VERSION}/places.json`, []);
+  if (!places) {
+    places = getJson<Place[]>(`/data/${DATA_VERSION}/places.json`, []);
+    places.catch(() => (places = null)); // retry at the next search after a network error
+  }
   return places;
 }
 

@@ -60,8 +60,13 @@ function Option({
 export function SearchSheet({ venues, onPlace, onVenue, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [places, setPlaces] = useState<Place[]>([]);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
-    void loadPlaces().then(setPlaces);
+    loadPlaces()
+      .then(setPlaces)
+      .catch(() => {
+        setFailed(true);
+      });
   }, []);
   const key = searchKey(query);
   const foundPlaces = useMemo(() => match(places, key, (p) => p[1], MAX_PLACES), [places, key]);
@@ -85,7 +90,8 @@ export function SearchSheet({ venues, onPlace, onVenue, onClose }: Props) {
       <p class="sr-only" aria-live="polite">
         {key ? (total ? it.search.results(total) : it.search.none) : ""}
       </p>
-      {key && total === 0 && <p class="hint">{it.search.none}</p>}
+      {failed && <p class="hint">{it.search.loadError}</p>}
+      {key && total === 0 && !failed && <p class="hint">{it.search.none}</p>}
       {foundPlaces.length > 0 && (
         <>
           <h3 class="section-title">{it.search.places}</h3>

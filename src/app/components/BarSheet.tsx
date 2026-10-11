@@ -35,6 +35,7 @@ function PriceItem({ row }: { row: PriceRow }) {
 export function BarSheet({ venueKey, cell, onVenue, onClose }: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
+  const [pricesFailed, setPricesFailed] = useState(false);
   useEffect(() => {
     void loadCell(cell)
       .then((venues) => {
@@ -45,7 +46,11 @@ export function BarSheet({ venueKey, cell, onVenue, onClose }: Props) {
       .catch(() => {
         setVenue(null);
       });
-    void loadVenuePrices(venueKey).then(setPrices);
+    loadVenuePrices(venueKey)
+      .then(setPrices)
+      .catch(() => {
+        setPricesFailed(true);
+      });
   }, [venueKey, cell]);
 
   if (venue === undefined) {
@@ -81,6 +86,7 @@ export function BarSheet({ venueKey, cell, onVenue, onClose }: Props) {
         {it.bar.directions}
       </a>
       <h3 class="section-title">{it.bar.prices}</h3>
+      {pricesFailed && <p class="hint">{it.bar.pricesError}</p>}
       {prices && active.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
       <ul class="prices">
         {active.map((row) => (

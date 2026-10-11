@@ -9,10 +9,12 @@ import { it } from "../i18n/it";
 setWorkerUrl(workerUrl);
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+const TILEJSON_URL = "https://tiles.openfreemap.org/planet";
+const { openFreeMap, openMapTiles, openStreetMap } = it.map.attribution;
 const ATTRIBUTION =
-  '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ' +
-  '<a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">© OpenMapTiles</a> ' +
-  '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>';
+  `<a href="https://openfreemap.org" target="_blank" rel="noopener">${openFreeMap}</a> ` +
+  `<a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">${openMapTiles}</a> ` +
+  `<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${openStreetMap}</a>`;
 const ITALY: [[number, number], [number, number]] = [
   [6.6, 36.6],
   [18.6, 47.1],
@@ -43,14 +45,14 @@ const token = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 async function loadStyle(): Promise<StyleSpecification> {
-  const style = (await (await fetch(STYLE_URL)).json()) as StyleSpecification;
+  // Style and TileJSON in parallel: the TileJSON is inlined so the attribution is exactly ours.
+  const [style, tileJson] = (await Promise.all(
+    [STYLE_URL, TILEJSON_URL].map(
+      async (url): Promise<unknown> => (await fetch(url)).json() as Promise<unknown>,
+    ),
+  )) as [StyleSpecification, { tiles: string[]; minzoom?: number; maxzoom?: number }];
   for (const [id, source] of Object.entries(style.sources)) {
-    if (source.type === "vector" && source.url) {
-      const tileJson = (await (await fetch(source.url)).json()) as {
-        tiles: string[];
-        minzoom?: number;
-        maxzoom?: number;
-      };
+    if (source.type === "vector" && source.url === TILEJSON_URL) {
       style.sources[id] = {
         type: "vector",
         tiles: tileJson.tiles,
@@ -84,7 +86,14 @@ function pillImage(): ImageData {
   const ctx = canvas.getContext("2d");
   if (!ctx) return new ImageData(w, h);
   ctx.beginPath();
-  ctx.roundRect(2, 2, w - 4, h - 4, r);
+  // Rounded rectangle by arcs: roundRect() is missing before Safari 16.
+  const [x0, y0, x1, y1] = [2, 2, w - 2, h - 2];
+  ctx.moveTo(x0 + r, y0);
+  ctx.arcTo(x1, y0, x1, y1, r);
+  ctx.arcTo(x1, y1, x0, y1, r);
+  ctx.arcTo(x0, y1, x0, y0, r);
+  ctx.arcTo(x0, y0, x1, y0, r);
+  ctx.closePath();
   ctx.fillStyle = token("--map-pill-bg");
   ctx.fill();
   ctx.lineWidth = 4;

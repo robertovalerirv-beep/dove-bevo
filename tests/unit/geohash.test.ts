@@ -51,3 +51,9 @@ describe("visible cells (M1-01)", () => {
     expect(visibleCells({ south: 45.3, west: 9.0, north: 45.6, east: 9.4 })).toBeNull();
   });
 });
+
+describe("visible cells with invalid bounds", () => {
+  it("returns null instead of an empty list", () => {
+    expect(visibleCells({ south: NaN, west: 9.15, north: 45.5, east: 9.24 })).toBeNull();
+  });
+});

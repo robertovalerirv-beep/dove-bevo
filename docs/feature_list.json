@@ -109,7 +109,7 @@
     "milestone": "M1",
     "descrizione": "ADR licenza e quote D1",
     "verifica": "`docs/adr/` contiene licenza ODbL (separazione prezzi) e stima quote con misure reali",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-06",

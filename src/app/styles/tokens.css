@@ -1,0 +1,90 @@
+/* Design tokens from design-system/MASTER.md. Components use these, never raw values. */
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/plus-jakarta-sans-latin-wght.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light dark;
+
+  --color-bg: #fff7ed;
+  --color-surface: #ffffff;
+  --color-text: #1c1917;
+  --color-text-muted: #57534e;
+  --color-primary: #c2410c;
+  --color-on-primary: #ffffff;
+  --color-focus: #1d4ed8;
+  --color-border: #e7e5e4;
+  --color-border-strong: #78716c;
+  --color-error: #b91c1c;
+
+  --price-cheap: #15803d;
+  --on-price-cheap: #ffffff;
+  --price-avg: #a16207;
+  --on-price-avg: #ffffff;
+  --price-high: #b91c1c;
+  --on-price-high: #ffffff;
+  --price-neutral: #ffffff;
+  --on-price-neutral: #1c1917;
+
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-pill: 999px;
+  --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.18);
+
+  --target: 48px;
+  --target-primary: 56px;
+  --icon-md: 24px;
+
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #1c1917;
+    --color-surface: #292524;
+    --color-text: #fafaf9;
+    --color-text-muted: #d6d3d1;
+    --color-primary: #fb923c;
+    --color-on-primary: #1c1917;
+    --color-focus: #93c5fd;
+    --color-border: #44403c;
+    --color-border-strong: #a8a29e;
+    --color-error: #fca5a5;
+
+    --price-cheap: #4ade80;
+    --on-price-cheap: #052e16;
+    --price-avg: #facc15;
+    --on-price-avg: #422006;
+    --price-high: #f87171;
+    --on-price-high: #450a0a;
+    --price-neutral: #292524;
+    --on-price-neutral: #fafaf9;
+    --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+  }
+}

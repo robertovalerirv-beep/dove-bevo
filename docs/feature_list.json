@@ -11,7 +11,7 @@
     "milestone": "M0",
     "descrizione": "Worker con static assets, fallback SPA e `/api/health`",
     "verifica": "e2e: `GET /` e `GET /bar/n1` restituiscono la shell; `GET /api/health` → 200 `{status:\"ok\",version,data_version}`; `GET /api/nonesiste` → 404 JSON `not_found`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-03",

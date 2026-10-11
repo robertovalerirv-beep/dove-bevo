@@ -7,18 +7,36 @@
     "node": ">=24"
   },
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "wrangler types --check --strict-vars=false && tsc -b",
+    "types": "wrangler types --strict-vars=false",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "1.63.1",
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.0",
+    "@preact/preset-vite": "2.10.6",
     "eslint": "10.12.0",
     "prettier": "3.9.10",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1",
-    "vitest": "4.1.11"
+    "vite": "8.3.4",
+    "vitest": "4.1.11",
+    "wrangler": "4.149.0"
+  },
+  "dependencies": {
+    "hono": "4.13.13",
+    "preact": "11.0.1"
+  },
+  "allowScripts": {
+    "esbuild": false,
+    "workerd": false
   }
 }

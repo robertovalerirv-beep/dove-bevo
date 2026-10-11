@@ -4,6 +4,26 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-11 · Sessione 2 · M0 (branch `m0-tooling`) · M0-02 Worker con assets
+
+**Fatto**
+- Dipendenze (versioni esatte, SPEC 4.1): hono 4.13.13, preact 11.0.1; dev vite 8.3.4, @preact/preset-vite 2.10.6, @cloudflare/vite-plugin 1.63.1, wrangler 4.149.0, @playwright/test 1.64.0. Install script di `esbuild` e `workerd` negati con `allowScripts` (i binari arrivano dai pacchetti di piattaforma; tutto funziona senza).
+- `wrangler.jsonc` come SPEC 4 (assets, `not_found_handling: single-page-application`, `run_worker_first: ["/api/*"]`, observability senza log di invocazione), `DATA_VERSION=fixture`, `compatibility_date` 2026-10-01 (workerd locale 1.20261006).
+- `src/worker/index.ts` (Hono): `GET /api/health` → `{status, version (da package.json), data_version}`; 404 JSON `not_found` e 500 `internal` con il formato di SPEC 9.1 (`src/worker/lib/errors.ts`, messaggi in `src/app/i18n/it.ts`). Log di errore: solo codice e pattern di rotta.
+- Shell minima: `index.html` (lang `it`, `<title>` da `APP_NAME` via plugin Vite), `src/app/main.tsx` (Preact, `<h1>`). L'aspetto arriva con il design system (M0-10).
+- TypeScript diviso in progetti `app` (DOM, JSX Preact), `worker` (tipi runtime da `wrangler types`, `worker-configuration.d.ts` versionato; `typecheck` fallisce se non aggiornato) e `node` (test e config), `tsc -b`.
+- Playwright: Chromium e WebKit a 390×844 contro la build di produzione servita da `vite preview` (Worker in workerd). Script `dev`, `build`, `preview`, `types`, `test:e2e`.
+- `init.sh`: migrazioni D1 solo se esiste `migrations/`, smoke della cella solo con il fixture (M1); dev server avviato con `node` diretto così `--stop` lo ferma davvero su Windows.
+
+**Prove**
+- `npm ci && lint && typecheck && test && test:e2e` → exit 0; e2e `8 passed` (4 test × Chromium, WebKit).
+- Mutazione: tolto `app.notFound` → test `not_found` rosso su entrambi i browser ("Received: text/plain"); file ripristinato, di nuovo verde.
+- `./init.sh` → exit 0: `{"status":"ok","version":"0.0.0","data_version":"fixture"}`, `shell: HTTP 200`; `/bar/n1` 200 `text/html`; `/api/nonesiste` → `{"error":{"code":"not_found","message":"Risorsa non trovata."}}`. `./init.sh --stop` → server fermo (verificato con curl).
+- Bundle del Worker senza il resto di `package.json` (solo `version`). `format:check` verde, `npm audit` 0 vulnerabilità.
+- Nessuno screenshot significativo: la shell è un segnaposto senza design system (M0-10).
+
+---
+
 ## 2026-10-11 · Sessione 2 · M0 (branch `m0-tooling`) · M0-01 Tooling
 
 **Fatto**

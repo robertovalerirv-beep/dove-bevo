@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dovebevo",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  // Assets never run the Worker; only /api/* does (SPEC 4).
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  // Invocation logs off: we log only what we write ourselves (SPEC 13.8).
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  // Local and e2e use the fixture data; the deploy job sets the OSM import date (SPEC 5.3).
+  "vars": { "DATA_VERSION": "fixture" },
+}

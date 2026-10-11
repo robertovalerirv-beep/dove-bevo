@@ -54,6 +54,22 @@ jobs:
       # All Playwright projects (chromium, webkit, security) share one build and server.
       - run: npx playwright test
 
+  osm-import:
+    name: OSM import on a test PBF
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: sudo apt-get update && sudo apt-get install -y osmium-tool
+      - run: osmium cat tests/fixtures/osm/sample.osm -o "$RUNNER_TEMP/sample.osm.pbf"
+      - run: scripts/osm-import/import.sh "$RUNNER_TEMP/sample.osm.pbf" "$RUNNER_TEMP/data" fixture
+      - name: Output matches the expected cell
+        run: diff <(cat "$RUNNER_TEMP/data/fixture/v/u0nd9.json") <(tr -d '\n' < tests/fixtures/osm/expected-u0nd9.json)
+
   lighthouse:
     name: Lighthouse CI
     runs-on: ubuntu-latest

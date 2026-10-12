@@ -58,6 +58,7 @@ test.describe("with the position (Duomo)", () => {
     await page.getByRole("button", { name: "Vicino a me" }).click();
     await waitForBars(page);
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+    await expect(barChoices(page)).toHaveCount(5); // the list fills once the cells are loaded
     const names = (await barChoices(page).allTextContents()).map((t) => t.trim());
     const expected = nearestNames(DUOMO.latitude, DUOMO.longitude);
     expect(names).toHaveLength(5);
@@ -157,6 +158,7 @@ test("M2-07 without the position, the nearest to the map centre", async ({ page 
   await page.goto("/");
   await goToMilano(page); // centre: the Milano place node
   await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+  await expect(barChoices(page)).toHaveCount(5); // the list fills once the cells are loaded
   const names = (await barChoices(page).allTextContents()).map((t) => t.trim());
   const expected = nearestNames(45.46419, 9.18963);
   expect(names).toHaveLength(5);

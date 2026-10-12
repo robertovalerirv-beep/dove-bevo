@@ -87,7 +87,11 @@ jobs:
           URL: ${{ steps.deploy.outputs.url }}
           DATA_VERSION: ${{ steps.import.outputs.version }}
         run: |
-          for i in $(seq 1 20); do curl -fsS "$URL/api/health" && break; sleep 3; done
+          # The new version takes a few seconds to answer everywhere: wait for its data_version.
+          for i in $(seq 1 40); do
+            curl -fsS "$URL/api/health" 2>/dev/null | grep -q "\"data_version\":\"$DATA_VERSION\"" && break
+            sleep 3
+          done
           echo
           # Capture first, then match: curl | grep -q can fail with EPIPE under pipefail.
           health="$(curl -fsS "$URL/api/health")"

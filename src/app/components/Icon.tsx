@@ -1,6 +1,7 @@
 // Inline SVG icons, 2 px stroke, decorative (labels are always visible text).
 const PATHS = {
   close: "M6 6l12 12M18 6L6 18",
+  back: "M15 6l-6 6 6 6",
   search: "M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM16 16l5 5",
   locate: "M12 3v3M12 18v3M3 12h3M18 12h3M12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10z",
   list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",

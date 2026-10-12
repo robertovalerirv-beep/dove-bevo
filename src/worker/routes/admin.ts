@@ -1,0 +1,110 @@
+// /api/admin/* — review queues and bar corrections for Roberto (SPEC 7.9, D-19).
+// Behind Cloudflare Access; requireAccess verifies the JWT on every request.
+import { Hono } from "hono";
+import { z } from "zod";
+import { CATALOG } from "../../shared/catalog";
+import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
+import { romeDay } from "../lib/day";
+import {
+  addApprovedVenue,
+  hideVenue,
+  listHidden,
+  listPricesToReview,
+  listUserVenues,
+  setPriceStatus,
+  setUserVenueStatus,
+  unhideVenue,
+} from "../lib/db";
+import { ApiError } from "../lib/errors";
+import { readJson } from "../lib/guards";
+import { osmVenue } from "../lib/venues";
+import { forgetCell } from "./prices";
+import type { AppEnv } from "../types";
+import { VenueKey } from "./venues";
+
+const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
+const OsmKey = z.string().regex(/^[nwr]\d{1,15}$/);
+/** Same box as the OSM import (scripts/osm-import): Italy, San Marino, Vatican. */
+const Lat = z.number().min(35.2).max(47.2);
+const Lon = z.number().min(6.5).max(18.6);
+
+const NewVenue = z.strictObject({
+  name: z.string().trim().min(2).max(80),
+  kind: z.number().int().min(0).max(4),
+  lat: Lat,
+  lon: Lon,
+});
+const VenueStatus = z.strictObject({ status: z.enum(["approved", "removed"]) });
+const Hide = z.strictObject({ venue: OsmKey, cell: Cell });
+const Unhide = z.strictObject({ venue: OsmKey });
+const PriceStatus = z.strictObject({
+  venue: VenueKey,
+  drink: z.string().refine((d) => CATALOG.some((e) => e.code === d)),
+  size_ml: z.number().int().min(0).max(2000),
+  hh: z.union([z.literal(0), z.literal(1)]),
+  status: z.enum(["active", "removed"]),
+});
+
+export const admin = new Hono<AppEnv>();
+
+// Everything the admin page shows, in one request.
+admin.get("/overview", async (c) => {
+  const [venues, hidden, prices] = await Promise.all([
+    listUserVenues(c.env.DB),
+    listHidden(c.env.DB),
+    listPricesToReview(c.env.DB),
+  ]);
+  return c.json({ venues, hidden, prices });
+});
+
+// A bar missing from OpenStreetMap, added directly as approved (key "u<id>").
+admin.post("/venues", async (c) => {
+  const body = await readJson(c, NewVenue);
+  const cell = encodeGeohash(body.lat, body.lon, CELL_PRECISION);
+  const id = await addApprovedVenue(c.env.DB, {
+    ...body,
+    lat: Math.round(body.lat * 1e5) / 1e5,
+    lon: Math.round(body.lon * 1e5) / 1e5,
+    cell,
+  });
+  await forgetCell(c.req.url, cell);
+  return c.json({ key: `u${String(id)}`, cell });
+});
+
+// Approve a pending bar or remove a user bar.
+admin.post("/venues/:id/status", async (c) => {
+  const id = z.coerce.number().int().positive().safeParse(c.req.param("id"));
+  if (!id.success) throw new ApiError("bad_request");
+  const body = await readJson(c, VenueStatus);
+  const cell = await setUserVenueStatus(c.env.DB, id.data, body.status);
+  if (!cell) throw new ApiError("not_found");
+  await forgetCell(c.req.url, cell);
+  return c.json({ status: body.status });
+});
+
+// Hide an OSM entry that is not a bar (or is closed): off the map, no new prices.
+admin.post("/hide", async (c) => {
+  const body = await readJson(c, Hide);
+  const found = await osmVenue(c.env, body.venue, body.cell);
+  if (!found) throw new ApiError("not_found");
+  await hideVenue(c.env.DB, { key: body.venue, cell: body.cell, name: found.name, day: romeDay() });
+  await forgetCell(c.req.url, body.cell);
+  return c.json({ status: "hidden" });
+});
+
+admin.post("/unhide", async (c) => {
+  const body = await readJson(c, Unhide);
+  const cell = await unhideVenue(c.env.DB, body.venue);
+  if (cell) await forgetCell(c.req.url, cell);
+  return c.json({ status: "visible" });
+});
+
+// Decide on a price in review or in quarantine (SPEC 11).
+admin.post("/prices/status", async (c) => {
+  const body = await readJson(c, PriceStatus);
+  const k = { venue: body.venue, drink: body.drink, size: body.size_ml, hh: body.hh };
+  const cell = await setPriceStatus(c.env.DB, k, body.status);
+  if (!cell) throw new ApiError("not_found");
+  await forgetCell(c.req.url, cell);
+  return c.json({ status: body.status });
+});

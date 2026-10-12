@@ -4,6 +4,73 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-12 · Sessione 2 · Admin anticipata, guide, CI stabile
+
+**Richiesta di Roberto**: link funzionante, guida all'inserimento, pagina admin per controllare gli inserimenti e aggiungere o cancellare bar.
+
+**Fatto**
+- `/admin` (ADR 0017): trova e **nascondi** le voci OSM che non sono bar (tabella `venues_hidden`, migrazione 0002; campo `h` nella risposta della cella), **aggiungi** bar mancanti (approvati subito), approva/rimuovi bar aggiunti e prezzi in `review`/quarantena, ripristina i nascosti. Rotte `/api/admin/*` con verifica del JWT di Cloudflare Access nel Worker (RS256, `aud`, `iss`, scadenza; D-19). La cache della cella viene svuotata a ogni azione.
+- Guide: `docs/guida-inserimento.md`, `docs/guida-admin.md` (configurazione di Access passo per passo).
+- CI: i test del Worker dipendevano da una build locale (`dist/`); ora la config di Vitest copia il fixture nella cartella degli asset → verdi anche senza build. Test di scrittura (e2e) eseguiti dopo quelli di sola lettura; `test.slow()` sui test che aspettano i 10 s di Annulla.
+- Decisioni di Roberto: ADR 0015 (unicità per IP), ADR 0016 (chiavi cancellate entro 48 h, cron orario), stesso prezzo in un altro giorno = conferma.
+
+**Prove**: `npx vitest run` 86/86 (nuovo `admin.test.ts`: 403 senza JWT, firma falsa, `aud`/`iss` errati, scaduto; nascondi/ripristina, aggiungi/rimuovi, decisione su prezzo in review). e2e `admin.spec.ts` 4/4 Chromium e WebKit, axe 0 violazioni; screenshot `docs/screenshots/admin/admin.png`.
+
+**Da fare da Roberto**: configurare Access (guida) e mandarmi team domain e AUD.
+
+---
+
+## 2026-10-12 · Sessione 2 · M2: revisioni di chiusura (spec e UX/a11y)
+
+**Revisione spec (NON OK, 3 bloccanti) → corretti**
+- Rate limit sulle scritture e sullo storico (commit `4298525`).
+- Bar proposti a freddo: "Aggiungi prezzo" senza mappa caricata usa la posizione se già concessa, altrimenti il centro della vista, e scarica le celle intorno (D-16).
+- Storico: le osservazioni di un prezzo in `review`/`removed` non compaiono. Stesso prezzo ripetuto e non contato → codice `already` con messaggio dedicato.
+- e2e allineati al testo delle verifiche: M2-05 da avvio a freddo con Spritz "7,50"; M2-02 controlla l’assenza di Turnstile subito prima di Salva; M2-12 invia e controlla drink, formato e fascia nella richiesta; nuovo e2e M2-09 ("In verifica" in scheda, assente in mappa). `npm run test:security` esegue anche i test "sec" del Worker.
+- `docs/data-quality.md` (SPEC 11).
+
+**Revisione UX/a11y (NON OK, 3 bloccanti) → corretti**
+- Focus tra i passi: il campo prezzo riceve il focus nello stesso tocco del drink (tastiera aperta: 4 tocchi reali), il titolo "Scegli il drink" al cambio di passo; "Indietro" in alto a sinistra; Invio salva (form).
+- Toast e Turnstile vivono fuori dall’albero di Preact e seguono il foglio modale più in alto: "Annulla" funziona anche sopra la scheda bar. Regione `role="status"` sempre presente; posizione misurata sopra le attribuzioni (niente pixel fissi).
+- "Annulla" senza limite fisso: con focus o puntatore sul toast il conto alla rovescia (toast e invio) si ferma (WCAG 2.2.1); barra di avanzamento, assente con `prefers-reduced-motion`.
+- Inoltre: "Confermato" con `aria-disabled` (il focus resta), conteggio annunciato; formati come radio native; anello di focus leggibile sul toast scuro; righe dei bar 64 px; misure in token (`--switch-*`, `--tile-min-h`, `--control-sm`). Restano da fare: icone SVG dei drink (design system).
+
+**Prove**
+- `npx vitest run --project unit` 28/28 (nuovo `timer.test.ts`: pausa, ripresa, annullo).
+- `npx playwright test tests/e2e/contribute.spec.ts` 18/18 Chromium e WebKit, tra cui il nuovo e2e "Annulla sopra la scheda bar": focus su Annulla per 11,5 s → nessuna POST; Invio → "Annullato", focus sul titolo della scheda, nessuna POST.
+- Screenshot rigenerati dal flusso reale in `docs/screenshots/m2/` (campo prezzo con focus, toast con barra, nuovo `7-salvato-scheda-*`).
+
+---
+
+## 2026-10-12 · Sessione 2 · M2: interfaccia dei contributi (branch `m2-contrib`)
+
+**Fatto**
+- Segreti di staging impostati da Roberto (`TURNSTILE_SECRET`, `SESSION_HMAC_KEY`, `HASH_KEY`); site key e hostname Turnstile per ambiente in `wrangler.jsonc`.
+- **Segnalazioni** (M2-13) e **pulizia notturna** (M2-15, cron per ambiente).
+- **Interfaccia**: pulsante primario fisso "Aggiungi prezzo"; foglio a 3 passi (bar più vicini alla posizione o al centro della mappa, D-16 · griglia dei drink con formato preselezionato · prezzo con tastierino decimale, formato, Happy hour, Salva); toast "Prezzo salvato" con "Annulla" per 10 s; invio a scadenza o subito al passaggio in background con `keepalive` (D-15); errori (fuori limite, in verifica, quota, rete) con il foglio riaperto e il prezzo modificabile. Scheda bar: "Confermo", "È cambiato" (inserimento precompilato), "Segnala un errore" (motivi chiusi), "Aggiungi un prezzo qui", "Segnala un problema con il bar". Turnstile caricato solo al primo contributo; il client prova prima il cookie e fa Turnstile solo dopo un 401.
+- **Sicurezza** (revisioni automatiche sui commit): segnalazioni e conferme uniche per sessione **e per IP** (HMAC, IP rivendicato prima e in modo atomico), finestra delle segnalazioni dall'ultimo cambio di valore del prezzo, IPv6 ridotto al /64 per le quote; trovato con gli e2e: dopo un ricaricamento una sessione nuova poteva confermare di nuovo → ora una conferma per IP. Rischi residui in `SECURITY.md`.
+
+**Prove**
+- `npx vitest run` 73 verdi. `npx playwright test tests/e2e/contribute.spec.ts` 14/14 (Chromium e WebKit): M2-02 (nessuna richiesta a `challenges.cloudflare.com` prima di Salva), M2-05 (4 tocchi + cifre, prezzo nella scheda dopo i 10 s), M2-06 (Annulla → nessuna POST; background → POST con `keepalive: true`), M2-07 (5 più vicini con e senza posizione, calcolati sul fixture), M2-11, M2-12, M2-13.
+- In e2e Turnstile è uno stub; il Worker locale lo verifica con il siteverify vero e la chiave di prova pubblica.
+- Screenshot 390×844 chiaro/scuro in `docs/screenshots/m2/` (mappa, scelta bar, drink, prezzo, salvato, scheda): toast sopra le attribuzioni (fondo 652 px, attribuzioni da 665 px).
+
+---
+
+## 2026-10-12 · Sessione 2 · M1 unita, primo import completo, gate pre-push, M2 in corso (branch `m2-contrib`, PR #7)
+
+**M1 unita** (PR #5, `7727c0f`, CI 5/5). Correzione del deploy (PR #6, `4d2b300`): `italy-latest.osm.pbf` risponde 307 verso il file datato, la data va letta seguendo il redirect.
+
+**Primo deploy con l'import completo** (run 38226232203): `OSM import 20261011: 8124 files from 74459 features` · **bar 60.629**, file di cella 8.122, località 1.326 · totale 8.124 file (≤ 15.000), il più grande 49.209 byte (≤ 1 MB) · import **62 s** · upload 8.131 file in 7,4 s. Verifica diretta su staging: `/api/health` → `data_version 20261011`; `/data/20261011/v/u0nd9.json` 200 JSON con cache immutabile (757 bar); `places.json` 1.326 righe (Milano 1.968 bar, Roma 1.954, Torino 1.020). Lo smoke test del job era rosso per una corsa (interrogava `/api/health` prima che la nuova versione rispondesse): ora attende fino a 2 minuti il `data_version` nuovo. **M1-02** (job osmium verde in CI con le aree) e **M1-03** a `true`; **M0-07** al prossimo deploy verde.
+
+**Gate pre-push (richiesta di Roberto)**: `npm run verify` esegue in locale ciò che esegue la CI e si ferma al primo errore; `.githooks/pre-push` lo lancia a ogni push (attivato da `init.sh`). Primo uso: ha bloccato un e2e instabile su WebKit (etichette dei prezzi non aggiornate dopo `setData`), corretto e stabile su 3 esecuzioni; il push successivo è passato in 433 s.
+
+**M2 finora**: STRIDE in `SECURITY.md` (M2-01); sessione anonima con Turnstile (M2-03); controlli comuni delle POST (M2-04); `POST /api/prices` e `/api/prices/confirm` con catalogo e limiti, verifica del bar dal file statico, quarantena, stesso prezzo = conferma, quote per sessione e per IP con `Retry-After`, nessun dato personale (M2-08/09/10/14/16). Revisione di sicurezza automatica sui commit: autore riconosciuto anche per IP e per due giorni (niente auto-attivazione della quarantena), prezzi in `review`/`removed` mai sovrascritti; rischio residuo oltre 48 h registrato in `SECURITY.md`. 65 test unit+worker verdi.
+
+**Turnstile**: widget `dovebevo-staging` (Managed) creato da Roberto; site key pubblica in `wrangler.jsonc` (staging), hostname atteso per ambiente (`TURNSTILE_HOSTNAME`). In locale ed e2e le chiavi di prova pubbliche di Cloudflare (siteverify risponde `hostname: example.com`, senza `action`): il controllo di `action` si salta solo con il secret di prova. Secret `TURNSTILE_SECRET`, `SESSION_HMAC_KEY`, `HASH_KEY` di staging impostati da Roberto nella dashboard.
+
+---
+
 ## 2026-10-12 · Sessione 2 · M1: prestazioni (Lighthouse) e decisioni
 
 **Problema**: in CI il job Lighthouse falliva dopo l'arrivo della mappa (Performance 0,47, LCP 5,8 s) e il job `osm-import` falliva con "Permission denied" (bit di esecuzione mancante su `import.sh`).

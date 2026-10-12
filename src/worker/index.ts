@@ -1,9 +1,18 @@
 import { Hono } from "hono";
 import { routePath } from "hono/route";
 import { version } from "../../package.json";
-import { apiError } from "./lib/errors";
+import { ApiError, apiError } from "./lib/errors";
+import { requireOrigin, requireSession } from "./lib/guards";
+import { rateLimit } from "./lib/rate-limit";
 import { securityHeaders } from "./lib/security-headers";
+import { KEEP_DAYS } from "./config";
+import { romeDay } from "./lib/day";
+import { purgeOldKeys } from "./lib/db";
+import { requireAccess } from "./lib/access";
+import { admin } from "./routes/admin";
 import { prices } from "./routes/prices";
+import { reports } from "./routes/reports";
+import { session } from "./routes/session";
 import { venues } from "./routes/venues";
 import type { AppEnv } from "./types";
 
@@ -14,19 +23,51 @@ app.use(async (c, next) => {
   await next();
 });
 app.use(securityHeaders);
+app.use("/api/*", requireOrigin);
+// Burst limit on every write and on the per-bar history (SPEC 9.2, 13.3).
+app.on("POST", "/api/*", rateLimit);
+app.get("/api/venues/*", rateLimit);
+// Every write needs a session, except creating one (SPEC 9.1; /api/events is exempt by D-06).
+app.on(
+  "POST",
+  [
+    "/api/prices",
+    "/api/prices/*",
+    "/api/reports",
+    "/api/venues",
+    "/api/venues/*",
+    "/api/menu-extract",
+  ],
+  requireSession,
+);
 
 app.get("/api/health", (c) => c.json({ status: "ok", version, data_version: c.env.DATA_VERSION }));
 
+// Admin: Cloudflare Access JWT verified by the Worker too (D-19); Origin is checked above.
+app.use("/api/admin/*", requireAccess);
+app.route("/api/admin", admin);
+app.route("/api/session", session);
 app.route("/api/prices", prices);
 app.route("/api/venues", venues);
+app.route("/api/reports", reports);
 
 app.notFound((c) => apiError(c, "not_found"));
 
-app.onError((_err, c) => {
+app.onError((err, c) => {
+  if (err instanceof ApiError) return apiError(c, err.code, err.headers);
   // Log only code, route pattern and duration; never params, bodies or the error text (SPEC 13.8).
   const ms = Date.now() - c.get("start");
   console.error(JSON.stringify({ code: "internal", route: routePath(c), ms }));
   return apiError(c, "internal");
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  /** Hourly cron (one per environment): purge day-salted keys older than KEEP_DAYS (ADR 0016). */
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    // Calendar arithmetic on the Rome date, so DST days (23 or 25 h) do not shift the cut.
+    const today = Date.parse(`${romeDay()}T12:00:00Z`);
+    const oldestKept = new Date(today - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10);
+    await purgeOldKeys(env.DB, oldestKept);
+  },
+} satisfies ExportedHandler<Env>;

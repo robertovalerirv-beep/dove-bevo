@@ -88,14 +88,14 @@
     "milestone": "M1",
     "descrizione": "Import OSM in file statici",
     "verifica": "unit dello script su un PBF di test: formato D-11, `key` corrette, centroidi delle aree, `places.json` solo city/town, `LICENSE.txt` presente; lo script fallisce oltre 15.000 file o con un file > 1 MB",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-03",
     "milestone": "M1",
     "descrizione": "Import completo in CI",
     "verifica": "log del job: numero di bar e file, tutti i file ≤ 1 MB, totale ≤ 15.000, durata",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-04",
@@ -186,112 +186,112 @@
     "milestone": "M2",
     "descrizione": "STRIDE in `SECURITY.md`",
     "verifica": "documento con asset, attori, minacce e contromisure mappate ai test",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-02",
     "milestone": "M2",
     "descrizione": "Turnstile caricato solo al primo contributo",
     "verifica": "e2e: nessuna richiesta a `challenges.cloudflare.com` finché non si salva un prezzo",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-03",
     "milestone": "M2",
     "descrizione": "Sessione anonima",
     "verifica": "unit/sec: `POST /api/session` con token valido → cookie `__Host-sid` con attributi esatti e 30 min; token riusato → 403; firma alterata o scaduta → 401",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-04",
     "milestone": "M2",
     "descrizione": "Controlli comuni delle POST",
     "verifica": "sec: 401 senza sessione, 403 con `Origin` estraneo o assente, 415 senza JSON, 413 oltre 16 KB, 400 con campi extra",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-05",
     "milestone": "M2",
     "descrizione": "Inserimento in 4 tocchi più le cifre",
     "verifica": "e2e: dalla mappa `Aggiungi prezzo` → primo bar proposto → Spritz → \"7,50\" → `Salva`: esattamente 4 tocchi; dopo 10 s il prezzo compare nella scheda",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-06",
     "milestone": "M2",
     "descrizione": "Annulla senza scritture",
     "verifica": "e2e: `Salva` poi `Annulla` entro 10 s → nessuna `POST /api/prices`; passaggio in background entro 10 s → invio con `keepalive`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-07",
     "milestone": "M2",
     "descrizione": "Bar proposti per vicinanza",
     "verifica": "e2e: con posizione simulata i 5 bar proposti sono i più vicini secondo i dati fixture; senza posizione, i più vicini al centro mappa",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-08",
     "milestone": "M2",
     "descrizione": "Validazione prezzo e bar",
     "verifica": "sec: prezzo fuori limite → `rejected` con messaggio; bar inesistente nella cella → 400; drink o formato fuori catalogo → 400",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-09",
     "milestone": "M2",
     "descrizione": "Quarantena anti-frode",
     "verifica": "sec: con 5 prezzi attivi a ~5 €, un prezzo a 9 € → `quarantined`, non in mappa, presente in \"In verifica\"; conferma da altra sessione → `active`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-10",
     "milestone": "M2",
     "descrizione": "Stesso prezzo stesso giorno = conferma",
     "verifica": "unit: secondo inserimento identico da altra sessione → `confirmed`, `confirmations` +1, nessuna nuova riga corrente",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-11",
     "milestone": "M2",
     "descrizione": "\"Confermo\" in 1 tocco",
     "verifica": "e2e: un tocco su \"Confermo\" incrementa il contatore; secondo tocco della stessa sessione non incrementa",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-12",
     "milestone": "M2",
     "descrizione": "\"È cambiato\" precompilato",
     "verifica": "e2e: apre l'inserimento con bar, drink, formato e fascia già scelti; basta cifre e `Salva`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-13",
     "milestone": "M2",
     "descrizione": "Segnalazioni",
     "verifica": "e2e/unit: motivi chiusi; una per sessione per prezzo; alla quarta distinta il prezzo passa in `review` e sparisce",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-14",
     "milestone": "M2",
     "descrizione": "Quote e rate limit",
     "verifica": "sec: 31° prezzo manuale della giornata → 429 con `Retry-After`; stesso limite per IP con sessioni diverse",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-15",
     "milestone": "M2",
     "descrizione": "Pulizia giornaliera",
     "verifica": "unit: lo scheduled handler elimina `counters` e `dedup` più vecchi di 2 giorni e lascia gli altri",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-16",
     "milestone": "M2",
     "descrizione": "Nessun dato personale salvato",
     "verifica": "unit: dopo un flusso completo nessuna tabella contiene sid, IP o loro hash fuori da `counters`/`dedup`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-01",

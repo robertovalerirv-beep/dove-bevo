@@ -14,12 +14,13 @@
     "typecheck": "wrangler types --check --strict-vars=false && tsc -b",
     "types": "wrangler types --strict-vars=false",
     "test": "vitest run",
-    "test:e2e": "playwright test --project=chromium --project=webkit",
+    "test:e2e": "playwright test --project=chromium --project=webkit --project=chromium-writes --project=webkit-writes",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test:security": "playwright test --project=security",
+    "test:security": "vitest run --project worker && playwright test --project=security",
     "fixture": "node -e \"require('fs').cpSync('tests/fixtures/data','public/data/fixture',{recursive:true})\"",
-    "db:local": "wrangler d1 migrations apply DB --local && wrangler d1 execute DB --local --file tests/fixtures/seed.sql"
+    "db:local": "wrangler d1 migrations apply DB --local && wrangler d1 execute DB --local --file tests/fixtures/seed.sql",
+    "verify": "node scripts/verify.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

@@ -255,10 +255,17 @@ export class VenueMap {
 
   /** Price labels actually drawn after each render settles (exposed in the DOM for tests). */
   onRendered(listener: (labels: string[]) => void) {
+    this.renderedListener = listener;
     this.map.on("idle", () => {
-      const features = this.map.queryRenderedFeatures({ layers: ["venue-price"] });
-      listener([...new Set(features.map((f) => String(f.properties.label)))].sort());
+      this.reportRendered();
     });
+  }
+
+  private renderedListener: ((labels: string[]) => void) | null = null;
+
+  private reportRendered() {
+    const features = this.map.queryRenderedFeatures({ layers: ["venue-price"] });
+    this.renderedListener?.([...new Set(features.map((f) => String(f.properties.label)))].sort());
   }
 
   onIdle(listener: () => void) {
@@ -289,6 +296,12 @@ export class VenueMap {
     void this.map
       .getSource<GeoJSONSource>("prices")
       ?.setData(collection(points.filter((p) => p.label)));
+    // "idle" (sources loaded and drawn) does not always fire again after setData in WebKit:
+    // repaint, then report what is drawn.
+    this.map.once("idle", () => {
+      this.reportRendered();
+    });
+    this.map.triggerRepaint();
   }
 
   moveTo(lat: number, lon: number, zoom: number) {

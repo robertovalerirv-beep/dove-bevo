@@ -1,18 +1,64 @@
+import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
 import { MAP_CHIPS, type ChipId } from "../shared/catalog";
 import { APP_NAME } from "../shared/config";
 import { visibleCells } from "../shared/geohash";
-import { BarSheet } from "./components/BarSheet";
+import type { PriceRow } from "../shared/api-types";
+import { AddPriceSheet, type Draft, type Prefill } from "./components/AddPriceSheet";
+import { BarSheet, type BarActions } from "./components/BarSheet";
+import { ReportSheet, type Reason } from "./components/ReportSheet";
+import { Toast } from "./components/Toast";
 import { Icon } from "./components/Icon";
 import { ListSheet } from "./components/ListSheet";
 import { SearchSheet } from "./components/SearchSheet";
 import { it } from "./i18n/it";
-import { loadCell, shownPrice, type Venue } from "./lib/data";
+import { invalidateCell, loadCell, shownPrice, type Venue } from "./lib/data";
+import { ensureSession, postWithSession } from "./lib/session";
 import { formatPrice } from "./lib/format";
+import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
 
 const MIN_ZOOM_CELLS = 13;
+
+/** The topmost open sheet: while a modal sheet is open, everything outside it is inert. */
+function topLayer(): HTMLElement {
+  const open = document.querySelectorAll<HTMLElement>("dialog.sheet[open]");
+  return open[open.length - 1] ?? document.body;
+}
+
+/** Element living outside Preact's tree, so it can move into whichever sheet is on top. */
+function floating(className: string, role?: string): HTMLDivElement {
+  const element = document.createElement("div");
+  element.className = className;
+  if (role) element.setAttribute("role", role);
+  return element;
+}
+/** Centre of the start view (the Italy picture), used when nothing better is known (D-16). */
+const ITALY_CENTER = { lat: 41.85, lon: 12.6 };
+
+/** True when the user already granted the position: reading it then shows no prompt. */
+async function positionGranted(): Promise<boolean> {
+  try {
+    return (await navigator.permissions.query({ name: "geolocation" })).state === "granted";
+  } catch {
+    return false;
+  }
+}
+
+function currentPosition(): Promise<{ lat: number; lon: number } | null> {
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        resolve({ lat: coords.latitude, lon: coords.longitude });
+      },
+      () => {
+        resolve(null);
+      },
+      { timeout: 10_000, maximumAge: 60_000 },
+    );
+  });
+}
 const KEY = /^[nwru]\d{1,15}$/;
 const CELL = /^[0-9b-hjkmnp-z]{5}$/;
 
@@ -28,6 +74,12 @@ function parseRoute(): Route {
 
 type CellsState = "idle" | "too-many" | "loading" | "error" | "ready";
 
+interface PendingSave {
+  draft: Draft;
+  timer: HoldableTimer;
+  sent: boolean;
+}
+
 interface Props {
   loadMap: () => Promise<typeof import("./lib/maplibre-map")>;
 }
@@ -42,6 +94,16 @@ export function App({ loadMap }: Props) {
   const [view, setView] = useState<MapView | null>(null);
   const [route, setRoute] = useState<Route>(parseRoute);
   const [sheet, setSheet] = useState<"search" | "list" | null>(null);
+  const [adding, setAdding] = useState<{ prefill: Prefill | null } | null>(null);
+  const [addOrigin, setAddOrigin] = useState<{ lat: number; lon: number } | null>(null);
+  const [reporting, setReporting] = useState<{ venue: Venue; row: PriceRow | null } | null>(null);
+  const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null);
+  const [barVersion, setBarVersion] = useState(0); // reloads the bar page after a contribution
+  // Both stay in the page and follow the topmost sheet, so they are never under an inert backdrop.
+  const turnstileHost = useMemo(() => floating("turnstile-host"), []);
+  const toastRegion = useMemo(() => floating("toast-region", "status"), []);
+  const toastTimer = useRef<HoldableTimer | null>(null);
+  const pendingSave = useRef<PendingSave | null>(null);
   const [chip, setChip] = useState<ChipId>(MAP_CHIPS[0].id);
   const [venues, setVenues] = useState<Map<string, Venue>>(new Map());
   const [cellsState, setCellsState] = useState<CellsState>("idle");
@@ -86,6 +148,18 @@ export function App({ loadMap }: Props) {
     };
   }, [mapWanted]);
 
+  // Going to the background is not a cancellation: send the pending price now (D-15).
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden" && pendingSave.current)
+        void send(pendingSave.current);
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, []);
+
   useEffect(() => {
     const onPop = () => {
       setRoute(parseRoute());
@@ -118,11 +192,7 @@ export function App({ loadMap }: Props) {
     Promise.all(cells.map(loadCell))
       .then((lists) => {
         if (!current) return;
-        setVenues((previous) => {
-          const next = new Map(previous);
-          for (const venue of lists.flat()) next.set(venue.key, venue);
-          return next;
-        });
+        mergeVenues(lists.flat());
         setCellsState("ready");
       })
       .catch(() => {
@@ -187,6 +257,226 @@ export function App({ loadMap }: Props) {
     }
     history.replaceState(null, "", "/");
     setRoute(parseRoute());
+  }
+
+  function mergeVenues(list: Venue[]) {
+    setVenues((previous) => {
+      const next = new Map(previous);
+      for (const venue of list) next.set(venue.key, venue);
+      return next;
+    });
+  }
+
+  /**
+   * Opens "Aggiungi prezzo" (SPEC 7.3): the nearest bars come from the position if already granted,
+   * else the map centre (D-16); the cells around that point are downloaded if not loaded yet.
+   * Only cell ids leave the device (SPEC 14).
+   */
+  function openAdd(prefill: Prefill | null) {
+    setAdding({ prefill });
+    if (prefill?.venue) return;
+    void (async () => {
+      let origin =
+        position ?? (view && view.zoom >= MIN_ZOOM_CELLS ? { lat: view.lat, lon: view.lon } : null);
+      if (!position && (await positionGranted())) {
+        const found = await currentPosition();
+        if (found) {
+          setPosition(found);
+          origin = found;
+        }
+      }
+      origin ??= view ? { lat: view.lat, lon: view.lon } : ITALY_CENTER;
+      setAddOrigin(origin);
+      const around = visibleCells({
+        south: origin.lat - 0.03,
+        north: origin.lat + 0.03,
+        west: origin.lon - 0.04,
+        east: origin.lon + 0.04,
+      });
+      const lists = await Promise.all((around ?? []).map((c) => loadCell(c).catch(() => [])));
+      mergeVenues(lists.flat());
+    })();
+  }
+
+  const host = () => {
+    const layer = topLayer();
+    if (turnstileHost.parentElement !== layer) layer.append(turnstileHost);
+    return turnstileHost;
+  };
+
+  function showToast(text: string, undo?: () => void, ms = 4000) {
+    toastTimer.current?.clear();
+    setToast({ text, undo });
+    toastTimer.current = holdableTimeout(() => {
+      setToast(null);
+    }, ms);
+  }
+
+  /** While the toast is pointed at or focused, neither it nor the pending send times out. */
+  function holdToast(held: boolean) {
+    for (const timer of [toastTimer.current, pendingSave.current?.timer]) {
+      if (held) timer?.hold();
+      else timer?.release();
+    }
+  }
+
+  // The toast region follows the topmost sheet and sits just above the attribution (SPEC 2.8).
+  useEffect(() => {
+    const layer = topLayer();
+    if (toastRegion.parentElement !== layer) layer.append(toastRegion);
+    const attribution = document.querySelector(".map__attribution");
+    if (attribution) {
+      const above = window.innerHeight - attribution.getBoundingClientRect().top;
+      toastRegion.style.setProperty("--toast-bottom", `${String(Math.round(above) + 8)}px`);
+    }
+    const hadFocus = toastRegion.contains(document.activeElement);
+    render(
+      toast ? <Toast text={toast.text} onUndo={toast.undo} onHold={holdToast} /> : null,
+      toastRegion,
+    );
+    // "Annulla" just disappeared under the focus: give it back to a sensible place (WCAG 2.4.3).
+    if (hadFocus && !toastRegion.contains(document.activeElement)) {
+      const fallback =
+        layer === document.body
+          ? document.querySelector<HTMLElement>(".bottom__primary")
+          : layer.querySelector<HTMLElement>("h2");
+      fallback?.focus();
+    }
+  });
+
+  const drinkLabel = (code: string) => (it.drinks[code] ?? code).toLowerCase();
+
+  function reopen(draft: Draft, error: string) {
+    setAdding({
+      prefill: {
+        venue: draft.venue,
+        drink: draft.drink,
+        size: draft.size,
+        hh: draft.hh,
+        error,
+        text: (draft.cents / 100).toFixed(2).replace(".", ","),
+      },
+    });
+  }
+
+  /** Sends a saved price: after the 10 s of "Annulla" or when the page goes to the background (D-15). */
+  async function send(entry: PendingSave) {
+    if (entry.sent) return;
+    entry.sent = true;
+    entry.timer.clear();
+    if (pendingSave.current === entry) pendingSave.current = null;
+    const { venue, drink, size, hh, cents } = entry.draft;
+    try {
+      const response = await postWithSession(
+        host(),
+        "/api/prices",
+        {
+          venue: venue.key,
+          cell: venue.cell,
+          source: "manual",
+          items: [{ drink, size_ml: size, hh, price_cents: cents }],
+        },
+        true,
+      );
+      if (response.status === 429) {
+        reopen(entry.draft, it.add.quota);
+        return;
+      }
+      if (!response.ok) {
+        reopen(entry.draft, it.add.network);
+        return;
+      }
+      const { results } = (await response.json()) as {
+        results: { status: string; code?: string }[];
+      };
+      const result = results[0];
+      if (result?.status === "rejected") {
+        reopen(
+          entry.draft,
+          result.code === "under_review"
+            ? it.add.underReview
+            : it.add.outOfRange(drinkLabel(drink)),
+        );
+        return;
+      }
+      if (result?.status === "quarantined") showToast(it.add.quarantined);
+      if (result?.status === "confirmed") {
+        showToast(result.code === "already" ? it.add.alreadyThere : it.add.confirmedSame);
+      }
+      invalidateCell(venue.cell);
+      setAttempt((n) => n + 1);
+      setBarVersion((n) => n + 1);
+    } catch {
+      reopen(entry.draft, it.add.network);
+    }
+  }
+
+  function save(draft: Draft) {
+    setAdding(null);
+    const entry: PendingSave = {
+      draft,
+      timer: holdableTimeout(() => void send(entry), 10_000),
+      sent: false,
+    };
+    pendingSave.current = entry;
+    showToast(
+      it.add.saved,
+      () => {
+        entry.timer.clear();
+        entry.sent = true;
+        if (pendingSave.current === entry) pendingSave.current = null;
+        showToast(it.add.undone);
+      },
+      10_000,
+    );
+    // Turnstile only now, at the first contribution (M2-02), during the 10 s window; after the
+    // add sheet has closed, so its host lands in the layer that stays open.
+    setTimeout(() => {
+      ensureSession(host()).catch(() => undefined);
+    }, 0);
+  }
+
+  const barActions: BarActions = {
+    confirm: async (row) => {
+      const response = await postWithSession(host(), "/api/prices/confirm", {
+        venue: row[0],
+        drink: row[1],
+        size_ml: row[2],
+        hh: row[3],
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      const body = (await response.json()) as { status: string; confirmations: number };
+      return body.status === "confirmed" ? body.confirmations : null;
+    },
+    changed: (venue, row) => {
+      openAdd({ venue, drink: row[1], size: row[2], hh: row[3] });
+    },
+    report: (venue, row) => {
+      setReporting({ venue, row });
+    },
+    addHere: (venue) => {
+      openAdd({ venue });
+    },
+  };
+
+  async function sendReport(target: { venue: Venue; row: PriceRow | null }, reason: Reason) {
+    setReporting(null);
+    const price = target.row
+      ? { drink: target.row[1], size_ml: target.row[2], hh: target.row[3] }
+      : {};
+    try {
+      const response = await postWithSession(host(), "/api/reports", {
+        venue: target.venue.key,
+        cell: target.venue.cell,
+        reason,
+        ...price,
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      const body = (await response.json()) as { status: string };
+      showToast(body.status === "already" ? it.report.already : it.report.thanks);
+    } catch {
+      showToast(it.actions.failed);
+    }
   }
 
   function moveTo(lat: number, lon: number, zoom: number) {
@@ -310,6 +600,15 @@ export function App({ loadMap }: Props) {
       </main>
 
       <nav class="bottom" aria-label={it.map.actions}>
+        <button
+          type="button"
+          class="btn btn--primary bottom__primary"
+          onClick={() => {
+            openAdd(null);
+          }}
+        >
+          {it.add.open}
+        </button>
         <button type="button" class="btn btn--secondary" onClick={nearMe}>
           <Icon name="locate" />
           {it.map.nearMe}
@@ -354,13 +653,34 @@ export function App({ loadMap }: Props) {
       )}
       {route.name === "bar" && (
         <BarSheet
-          key={route.key}
+          key={`${route.key}:${String(barVersion)}`}
           venueKey={route.key}
           cell={route.cell}
+          actions={barActions}
           onVenue={(v) => {
             if (!view || view.zoom < MIN_ZOOM_CELLS) moveTo(v.lat, v.lon, 16);
           }}
           onClose={closeBar}
+        />
+      )}
+      {adding && (
+        <AddPriceSheet
+          venues={allVenues}
+          origin={addOrigin}
+          prefill={adding.prefill}
+          onSave={save}
+          onClose={() => {
+            setAdding(null);
+          }}
+        />
+      )}
+      {reporting && (
+        <ReportSheet
+          onPrice={reporting.row !== null}
+          onSend={(reason) => void sendReport(reporting, reason)}
+          onClose={() => {
+            setReporting(null);
+          }}
         />
       )}
     </div>

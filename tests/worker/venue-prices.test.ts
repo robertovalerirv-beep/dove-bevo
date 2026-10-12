@@ -24,7 +24,7 @@ beforeEach(async () => {
     env.DB.prepare(
       `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source) VALUES
        ('n1','spritz',0,0,'u0nd9',1,711,'2026-09-12',1,'active','manual'),
-       ('n1','beer_draft',400,0,'u0nd9',1,500,'2026-09-03',0,'review','manual')`,
+       ('n1','beer_draft',400,0,'u0nd9',1,550,'2026-09-03',0,'review','manual')`,
     ),
   ]);
 });

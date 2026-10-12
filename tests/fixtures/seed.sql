@@ -2,6 +2,9 @@
 DELETE FROM prices_current;
 DELETE FROM price_obs;
 DELETE FROM venues_user;
+DELETE FROM counters;
+DELETE FROM dedup;
+DELETE FROM reports;
 INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source) VALUES
   ('n2420779240',  'spritz',     0,   0, 'u0nd9', 62505581,  750, date('now', '-3 days'),  3, 'active',      'manual'),
   ('n2420779240',  'beer_draft', 400, 0, 'u0nd9', 62505581,  600, date('now', '-3 days'),  0, 'active',      'manual'),

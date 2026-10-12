@@ -11,9 +11,23 @@
     "run_worker_first": ["/api/*"],
   },
   // Invocation logs off: we log only what we write ourselves (SPEC 13.8).
+  // Nightly cleanup of counters and dedup (SPEC 8), 02:30 UTC.
+  "triggers": { "crons": ["0 * * * *"] },
   "observability": { "enabled": true, "logs": { "invocation_logs": false } },
   // Local and e2e use the fixture data; the deploy job sets the OSM import date (SPEC 5.3).
-  "vars": { "DATA_VERSION": "fixture" },
+  // Local and e2e only (environments do not inherit vars): Cloudflare's public Turnstile test keys,
+  // which always pass, and placeholder HMAC keys. Staging and production use real secrets.
+  "vars": {
+    "DATA_VERSION": "fixture",
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    "TURNSTILE_HOSTNAME": "example.com",
+    "TURNSTILE_SECRET": "1x0000000000000000000000000000000AA",
+    "SESSION_HMAC_KEY": "local-dev-only-session-key",
+    "HASH_KEY": "local-dev-only-hash-key",
+    // Cloudflare Access (D-19): empty = /api/admin/* always answers 403.
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+  },
   // Local D1 only: the id is a placeholder; staging and production have their own databases.
   "d1_databases": [
     {
@@ -31,7 +45,15 @@
   "env": {
     "staging": {
       "name": "dovebevo-staging",
-      "vars": { "DATA_VERSION": "none" },
+      "triggers": { "crons": ["0 * * * *"] },
+      "vars": {
+        "DATA_VERSION": "none",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAFUazHbuU79qVX5f",
+        "TURNSTILE_HOSTNAME": "dovebevo-staging.roberto-valeri-rv.workers.dev",
+        // Set by Roberto after creating the Access application (docs/guida-admin.md).
+        "ACCESS_TEAM_DOMAIN": "",
+        "ACCESS_AUD": "",
+      },
       "d1_databases": [
         {
           "binding": "DB",

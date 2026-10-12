@@ -38,21 +38,24 @@ async function getJson<T>(url: string, fallback: T): Promise<T> {
 async function fetchCell(cell: string): Promise<Venue[]> {
   const [file, prices] = await Promise.all([
     getJson<CellFile>(`/data/${DATA_VERSION}/v/${cell}.json`, { c: [], v: [] }),
-    getJson<CellPrices>(`/api/prices/${cell}`, { p: [], u: [], pend: [] }),
+    getJson<CellPrices>(`/api/prices/${cell}`, { p: [], u: [], pend: [], h: [] }),
   ]);
   const byKey = new Map<string, PriceRow[]>();
   for (const row of prices.p) byKey.set(row[0], [...(byKey.get(row[0]) ?? []), row]);
-  const osm = file.v.map(([key, name, kind, lat, lon, addr, ci]) => ({
-    key,
-    name,
-    kind,
-    lat,
-    lon,
-    addr,
-    city: file.c[ci]?.[1] ?? "",
-    cell,
-    prices: byKey.get(key) ?? [],
-  }));
+  const hidden = new Set(prices.h);
+  const osm = file.v
+    .filter(([key]) => !hidden.has(key)) // not a bar, or closed (admin, ADR 0017)
+    .map(([key, name, kind, lat, lon, addr, ci]) => ({
+      key,
+      name,
+      kind,
+      lat,
+      lon,
+      addr,
+      city: file.c[ci]?.[1] ?? "",
+      cell,
+      prices: byKey.get(key) ?? [],
+    }));
   const user = prices.u.map(([key, name, kind, lat, lon]) => ({
     key,
     name,
@@ -96,4 +99,9 @@ export const loadVenuePrices = (key: string) =>
 export function shownPrice(venue: Venue, drink: string, size: number): PriceRow | undefined {
   const rows = venue.prices.filter((p) => p[1] === drink && p[2] === size && p[7] === 0);
   return rows.find((p) => p[3] === 0) ?? rows.find((p) => p[3] === 1);
+}
+
+/** Drops a cell from the visit cache so its prices are read again after a contribution. */
+export function invalidateCell(cell: string): void {
+  cells.delete(cell);
 }

@@ -86,6 +86,8 @@ test("admin: find and hide a non-bar, add a missing bar, decide reviews", async 
     .poll(() => posts.find((p) => p.path === "/api/admin/venues")?.body)
     .toEqual({ name: "Bar Mancante", kind: 2, lat: 45.4651, lon: 9.1882 });
 
+  await expect(page.getByRole("status")).toContainText("Bar aggiunto");
+
   // Coordinates outside Italy are refused before any request.
   const before = posts.length;
   await page.getByLabel("Nome del bar").nth(1).fill("Bar Parigi");

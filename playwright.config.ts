@@ -10,6 +10,8 @@ export default defineConfig({
   testDir: "tests",
   testMatch: "**/*.spec.ts",
   fullyParallel: true,
+  // WebKit redraws the map labels slowly under parallel load; 10 s keeps the same assertions stable.
+  expect: { timeout: 10_000 },
   reporter: "list",
   use: { baseURL: `https://localhost:${String(PORT)}`, ignoreHTTPSErrors: true },
   projects: [

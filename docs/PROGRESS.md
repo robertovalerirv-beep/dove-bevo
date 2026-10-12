@@ -4,6 +4,18 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-12 · Sessione 2 · Prove di Roberto in staging: correzioni
+
+**Segnalato da Roberto** dopo i test sul sito: (1) "Confermo" sembrava funzionare ma dopo un altro inserimento o un ricaricamento il prezzo tornava "da confermare"; (2) la ricerca dell'admin non trovava un bar appena creato.
+
+**Cause e correzioni**
+- (1) Il server conta una conferma per persona e mai quella dell'autore (ADR 0015); l'interfaccia mostrava "Confermato" anche quando la conferma non contava e non lo ricordava al ricaricamento. Ora: "Confermato" solo se conta; altrimenti "Già confermato" con la spiegazione; lo stato resta per la visita (`sessionStorage` della scheda, mai inviato).
+- (2) La ricerca escludeva i bar aggiunti, riusava le celle in memoria e copriva ~3 km. Ora: bar OSM e aggiunti, celle rilette, ~7 km dal centro, oppure il link della scheda del bar; pulsante unico "Elimina dalla mappa" con conferma (nasconde un bar OSM, rimuove un bar aggiunto).
+
+**Prove**: e2e contribuzione e admin 66/66 Chromium e WebKit; nuovi test "autore che conferma il proprio prezzo" e "ricerca admin trova bar aggiunti e link", ripetuti 2 volte.
+
+---
+
 ## 2026-10-12 · Sessione 2 · Admin anticipata, guide, CI stabile
 
 **Richiesta di Roberto**: link funzionante, guida all'inserimento, pagina admin per controllare gli inserimenti e aggiungere o cancellare bar.

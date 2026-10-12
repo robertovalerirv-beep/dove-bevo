@@ -100,6 +100,9 @@ export const it = {
   actions: {
     confirm: "Confermo",
     confirmed: "Confermato",
+    alreadyConfirmed: "Già confermato",
+    alreadyHelp:
+      "Ogni persona conta una volta sola, e chi ha inserito il prezzo non può confermarlo: serve la conferma di qualcun altro.",
     changed: "È cambiato",
     report: "Segnala un errore",
     addHere: "Aggiungi un prezzo qui",
@@ -129,13 +132,18 @@ export const it = {
     backToMap: "Torna alla mappa",
     findTitle: "Trova un bar sulla mappa",
     findHelp:
-      "Scrivi la città e una parte del nome. Se un risultato non è un bar o è chiuso, nascondilo: sparisce dalla mappa e non riceve più prezzi.",
+      "Scrivi la città e una parte del nome (cerca fino a circa 7 km dal centro), oppure incolla il link della scheda del bar. Se un risultato non è un bar o non esiste più, eliminalo: sparisce dalla mappa e non riceve più prezzi.",
+    link: "Oppure il link della scheda del bar",
+    badLink: "Link non valido: apri il bar sulla mappa e copia l'indirizzo della pagina.",
+    needCityOrLink: "Scrivi città e nome, oppure incolla il link del bar.",
+    confirmDelete: (name: string) => `Eliminare «${name}» dalla mappa?`,
+    addedByAdmin: "Aggiunto da te",
     city: "Città",
     name: "Nome del bar",
     search: "Cerca",
     noResults: "Nessun bar trovato con questo nome.",
     cityNotFound: "Città non trovata.",
-    hide: "Nascondi",
+    hide: "Elimina dalla mappa",
     addTitle: "Aggiungi un bar che manca",
     addHelp:
       "Coordinate: su Google Maps tieni premuto sul punto e copia i due numeri (es. 45.4642, 9.1900).",

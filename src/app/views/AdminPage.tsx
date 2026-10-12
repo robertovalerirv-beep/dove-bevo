@@ -1,5 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
-import { CELL_PRECISION, encodeGeohash, visibleCells } from "../../shared/geohash";
+import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { it } from "../i18n/it";
 import { invalidateCell, loadCell, loadPlaces, type Venue } from "../lib/data";
 import { formatDate, formatPrice, formatSize, searchKey } from "../lib/format";
@@ -93,7 +93,13 @@ export function AdminPage() {
       )}
       {state === "ready" && data && (
         <>
-          <FindBars onHide={(v) => act("hide", { venue: v.key, cell: v.cell }, v.cell)} />
+          <FindBars
+            onDelete={(v) =>
+              v.key.startsWith("u")
+                ? act(`venues/${v.key.slice(1)}/status`, { status: "removed" }, v.cell)
+                : act("hide", { venue: v.key, cell: v.cell }, v.cell)
+            }
+          />
           <AddBar
             onAdd={async (body) => {
               const ok = await act("venues", body);
@@ -201,39 +207,66 @@ export function AdminPage() {
   );
 }
 
-/** City + part of the name → bars of the cells around the city centre. */
-function FindBars({ onHide }: { onHide: (venue: Venue) => Promise<boolean> }) {
+/** Cells around a point, about ±7 km: wide enough for a city, fetched fresh for the admin. */
+function cellsAround(lat: number, lon: number): string[] {
+  const cells = new Set<string>();
+  for (let dLat = -0.06; dLat <= 0.06001; dLat += 0.03)
+    for (let dLon = -0.08; dLon <= 0.08001; dLon += 0.03)
+      cells.add(encodeGeohash(lat + dLat, lon + dLon, CELL_PRECISION));
+  return [...cells];
+}
+
+async function freshCells(cells: string[]): Promise<Venue[]> {
+  for (const cell of cells) invalidateCell(cell); // a bar added a moment ago must show up
+  const lists = await Promise.all(cells.map((c) => loadCell(c).catch(() => [])));
+  return lists.flat();
+}
+
+/** "/bar/n123?c=u0nd9" or a full link to it → key and cell. */
+export function parseBarLink(text: string): { key: string; cell: string } | null {
+  const match = /\/bar\/([nwru]\d{1,15})\?c=([0-9b-hjkmnp-z]{5})/.exec(text);
+  return match?.[1] && match[2] ? { key: match[1], cell: match[2] } : null;
+}
+
+/** City + part of the name, or a bar link → OSM and added bars, each one deletable. */
+function FindBars({ onDelete }: { onDelete: (venue: Venue) => Promise<boolean> }) {
   const [city, setCity] = useState("");
   const [name, setName] = useState("");
+  const [link, setLink] = useState("");
   const [found, setFound] = useState<Venue[] | null>(null);
   const [note, setNote] = useState("");
 
   async function search(e: Event) {
     e.preventDefault();
     setNote("");
-    const places = await loadPlaces();
-    const wanted = searchKey(city);
-    const place =
-      places.find((p) => searchKey(p[1]) === wanted) ??
-      places.find((p) => searchKey(p[1]).startsWith(wanted));
-    if (!place) {
-      setFound(null);
-      setNote(it.admin.cityNotFound);
-      return;
+    setFound(null);
+    let result: Venue[];
+    if (link.trim()) {
+      const target = parseBarLink(link);
+      if (!target) {
+        setNote(it.admin.badLink);
+        return;
+      }
+      result = (await freshCells([target.cell])).filter((v) => v.key === target.key);
+    } else {
+      if (!city.trim() || name.trim().length < 2) {
+        setNote(it.admin.needCityOrLink);
+        return;
+      }
+      const places = await loadPlaces();
+      const wanted = searchKey(city);
+      const place =
+        places.find((p) => searchKey(p[1]) === wanted) ??
+        places.find((p) => searchKey(p[1]).startsWith(wanted));
+      if (!place) {
+        setNote(it.admin.cityNotFound);
+        return;
+      }
+      const key = searchKey(name);
+      result = (await freshCells(cellsAround(place[2], place[3])))
+        .filter((v) => searchKey(v.name).includes(key))
+        .slice(0, 30);
     }
-    const [, , lat, lon] = place;
-    const cells = visibleCells({
-      south: lat - 0.03,
-      north: lat + 0.03,
-      west: lon - 0.04,
-      east: lon + 0.04,
-    }) ?? [encodeGeohash(lat, lon, CELL_PRECISION)];
-    const lists = await Promise.all(cells.map((c) => loadCell(c).catch(() => [])));
-    const key = searchKey(name);
-    const result = lists
-      .flat()
-      .filter((v) => !v.key.startsWith("u") && searchKey(v.name).includes(key))
-      .slice(0, 30);
     setFound(result);
     if (result.length === 0) setNote(it.admin.noResults);
   }
@@ -248,7 +281,6 @@ function FindBars({ onHide }: { onHide: (venue: Venue) => Promise<boolean> }) {
           <input
             class="field"
             value={city}
-            required
             onInput={(e) => {
               setCity(e.currentTarget.value);
             }}
@@ -259,10 +291,20 @@ function FindBars({ onHide }: { onHide: (venue: Venue) => Promise<boolean> }) {
           <input
             class="field"
             value={name}
-            required
-            minLength={2}
             onInput={(e) => {
               setName(e.currentTarget.value);
+            }}
+          />
+        </label>
+        <label>
+          {it.admin.link}
+          <input
+            class="field"
+            value={link}
+            inputMode="url"
+            placeholder="https://…/bar/n123?c=u0nd9"
+            onInput={(e) => {
+              setLink(e.currentTarget.value);
             }}
           />
         </label>
@@ -275,16 +317,18 @@ function FindBars({ onHide }: { onHide: (venue: Venue) => Promise<boolean> }) {
         {found?.map((v) => (
           <li key={v.key}>
             <a href={`/bar/${v.key}?c=${v.cell}`}>{v.name}</a> · {it.kinds[v.kind]}
+            {v.key.startsWith("u") && ` · ${it.admin.addedByAdmin}`}
             {v.addr && ` · ${v.addr}`}
             <span class="admin__actions">
               <button
                 type="button"
                 class="btn btn--secondary"
-                onClick={() =>
-                  void onHide(v).then((ok) => {
+                onClick={() => {
+                  if (!window.confirm(it.admin.confirmDelete(v.name))) return;
+                  void onDelete(v).then((ok) => {
                     if (ok) setFound((list) => list?.filter((x) => x.key !== v.key) ?? null);
-                  })
-                }
+                  });
+                }}
               >
                 {it.admin.hide}
               </button>

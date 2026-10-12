@@ -188,11 +188,44 @@ test("M2-11 Confermo: one tap counts, a second tap of the same session does not"
   await row.getByRole("button", { name: "Confermo" }).click();
   await expect(row.getByRole("button", { name: "Confermato" })).toBeDisabled();
   expect(await countOf(row.textContent().then((t) => t ?? ""))).toBe(before + 1);
+  // After a reload the tab remembers it: still "Confermato", nothing to tap again.
+  await page.reload();
+  const kept = page.getByRole("listitem").filter({ hasText: target.row }).first();
+  await expect(kept.getByRole("button", { name: "Confermato" })).toBeDisabled();
+  // Even with the memory wiped, the server counts this person once: "Già confermato".
+  await page.evaluate(() => {
+    sessionStorage.clear();
+  });
   await page.reload();
   const again = page.getByRole("listitem").filter({ hasText: target.row }).first();
   await again.getByRole("button", { name: "Confermo" }).click();
-  await expect(again.getByRole("button", { name: "Confermato" })).toBeDisabled();
+  await expect(again.getByRole("button", { name: "Già confermato" })).toBeDisabled();
+  await expect(again.getByRole("status")).toContainText("una volta sola");
   expect(await countOf(again.textContent().then((t) => t ?? ""))).toBe(before + 1);
+});
+
+test("the author confirming their own price is told it needs someone else", async ({ page }) => {
+  test.slow(); // waits out the real 10 s undo window
+  await stubTurnstile(page);
+  await page.goto("/bar/w549495264?c=u0nd9"); // Motta
+  await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^Negroni/ })
+    .click();
+  await page.keyboard.type("8,00");
+  const sent = page.waitForResponse(
+    // The first try may get 401 (no session yet): the client runs Turnstile and sends again.
+    (r) => r.url().endsWith("/api/prices") && r.request().method() === "POST" && r.status() === 200,
+    { timeout: 30_000 },
+  );
+  await page.keyboard.press("Enter"); // sent when the 10 s of "Annulla" run out
+  await sent;
+  await page.goto("/bar/w549495264?c=u0nd9");
+  const row = page.getByRole("listitem").filter({ hasText: "Negroni" }).first();
+  await row.getByRole("button", { name: "Confermo" }).click();
+  await expect(row.getByRole("button", { name: "Già confermato" })).toBeDisabled();
+  await expect(row.getByRole("status")).toContainText("chi ha inserito il prezzo");
 });
 
 test("M2-12 È cambiato opens the price step with bar, drink, size and band already chosen", async ({

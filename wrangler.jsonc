@@ -12,7 +12,7 @@
   },
   // Invocation logs off: we log only what we write ourselves (SPEC 13.8).
   // Nightly cleanup of counters and dedup (SPEC 8), 02:30 UTC.
-  "triggers": { "crons": ["30 2 * * *"] },
+  "triggers": { "crons": ["0 * * * *"] },
   "observability": { "enabled": true, "logs": { "invocation_logs": false } },
   // Local and e2e use the fixture data; the deploy job sets the OSM import date (SPEC 5.3).
   // Local and e2e only (environments do not inherit vars): Cloudflare's public Turnstile test keys,
@@ -42,7 +42,7 @@
   "env": {
     "staging": {
       "name": "dovebevo-staging",
-      "triggers": { "crons": ["30 2 * * *"] },
+      "triggers": { "crons": ["0 * * * *"] },
       "vars": {
         "DATA_VERSION": "none",
         "TURNSTILE_SITE_KEY": "0x4AAAAAAFUazHbuU79qVX5f",

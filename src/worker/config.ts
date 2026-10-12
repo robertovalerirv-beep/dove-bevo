@@ -10,5 +10,5 @@ export const MAX_ITEMS = 80;
 
 /** More than 3 distinct reports move a price to review (SPEC 11). */
 export const REVIEW_AFTER_REPORTS = 3;
-/** counters and dedup older than this many days are deleted every night (SPEC 8). */
-export const KEEP_DAYS = 2;
+/** counters and dedup keep only today and yesterday: deleted within 48 h (SPEC 14, ADR 0016). */
+export const KEEP_DAYS = 1;

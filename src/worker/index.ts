@@ -58,8 +58,11 @@ app.onError((err, c) => {
 
 export default {
   fetch: app.fetch,
-  /** Nightly cron (one per environment): purge day-salted keys older than KEEP_DAYS (SPEC 8). */
+  /** Hourly cron (one per environment): purge day-salted keys older than KEEP_DAYS (ADR 0016). */
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    await purgeOldKeys(env.DB, romeDay(new Date(Date.now() - KEEP_DAYS * 86_400_000)));
+    // Calendar arithmetic on the Rome date, so DST days (23 or 25 h) do not shift the cut.
+    const today = Date.parse(`${romeDay()}T12:00:00Z`);
+    const oldestKept = new Date(today - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10);
+    await purgeOldKeys(env.DB, oldestKept);
   },
 } satisfies ExportedHandler<Env>;

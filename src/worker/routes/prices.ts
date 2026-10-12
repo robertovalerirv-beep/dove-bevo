@@ -87,7 +87,7 @@ async function authorKeys(env: Env, who: { sid: string; ip: string }, k: PriceKe
 
 /**
  * Confirms a price once per session. The author never counts, neither from a new session on the
- * same IP nor the next day (D-10, security review). dedup is purged after 48 h (SPEC 8).
+ * same IP nor the next day (D-10, security review). dedup is purged within 48 h (ADR 0016).
  */
 async function confirmOnce(
   env: Env,

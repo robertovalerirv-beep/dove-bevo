@@ -97,7 +97,7 @@ describe("POST /api/reports (M2-13)", () => {
 });
 
 describe("daily cleanup (M2-15)", () => {
-  it("deletes counters and dedup older than 2 days and keeps the others", async () => {
+  it("keeps only today and yesterday in counters and dedup (within 48 h, ADR 0016)", async () => {
     const day = (offset: number) => romeDay(new Date(Date.now() - offset * 86_400_000));
     await env.DB.batch(
       [0, 1, 2, 3, 10].flatMap((d) => [
@@ -111,8 +111,8 @@ describe("daily cleanup (M2-15)", () => {
     await worker.scheduled(createScheduledController(), env);
     const counters = await env.DB.prepare("SELECT k FROM counters ORDER BY k").all<{ k: string }>();
     const dedup = await env.DB.prepare("SELECT k FROM dedup ORDER BY k").all<{ k: string }>();
-    expect(counters.results.map((r) => r.k)).toEqual(["c0", "c1", "c2"]);
-    expect(dedup.results.map((r) => r.k)).toEqual(["d0", "d1", "d2"]);
+    expect(counters.results.map((r) => r.k)).toEqual(["c0", "c1"]);
+    expect(dedup.results.map((r) => r.k)).toEqual(["d0", "d1"]);
   });
 });
 

@@ -35,7 +35,7 @@ Bot e script automatici · spammer di prezzi · concorrenti di un locale · uten
 | T | Supply chain e CI | Lockfile e versioni esatte, `npm audit`, Dependabot, Actions fissate a SHA, niente `pull_request_target`, deploy solo da `main` con `workflow_run` filtrato, ruleset su `main` e sul tag `spec-approved` | M0-05, M0-08 |
 | **R**epudiation | Contributi non attribuibili | Accettato per scelta (anonimato, SPEC 14): si limita l'abuso con quote e conferme, non con l'identità. Log senza dati personali: codice, rotta, durata | M2-16 |
 | **I**nformation disclosure | Posizione dell'utente | Calcoli di distanza e "Vicino a me" sul dispositivo; al server solo celle geohash5; nessuna coordinata in URL, header o body | M1-14 |
-| I | Legame tra contributi della stessa persona | Nessun sid o IP salvato con i prezzi; solo HMAC con sale del giorno in `counters`/`dedup`, cancellati dopo 48 h | M2-15, M2-16 |
+| I | Legame tra contributi della stessa persona | Nessun sid o IP salvato con i prezzi; solo HMAC con sale del giorno in `counters`/`dedup`, cancellati entro 48 h (ADR 0016) | M2-15, M2-16 |
 | I | EXIF e posizione nelle foto | Ricodifica JPEG sul client (niente metadati); immagine mai salvata né loggata | M3-01 |
 | I | Segreti nel bundle o nel repo | Segreti solo come secret di Wrangler/CI; gitleaks e secret scanning; scansione di `dist/` | M0-09, M5-08 |
 | I | Prompt di sistema (LLM07) | Considerato pubblico: nessun segreto né regola di sicurezza nel prompt | M3 |

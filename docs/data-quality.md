@@ -16,14 +16,15 @@ Valori in `src/worker/config.ts` e `src/shared/catalog.ts`. Test: `tests/worker/
 | Segnalazioni | Motivi chiusi (D-07). Una per sessione e per IP per bersaglio. Più di 3 segnalazioni distinte **dall'ultimo cambio di prezzo** → `review`: fuori da mappa, scheda e storico finché Roberto non decide | M2-13 |
 | Prezzi in revisione | Un prezzo `review` o `removed` non si sovrascrive né si conferma dal pubblico (`rejected`, codice `under_review`; conferma → 404) | M2-13 |
 | Quote | Per sessione e per IP (IPv6 ridotto a /64), giorno `Europe/Rome`: 30 prezzi manuali, 50 conferme, 20 segnalazioni, 5 bar, 10 foto; oltre → 429 con `Retry-After` fino a mezzanotte | M2-14 |
-| Picchi | Binding Rate Limiting (20 richieste / 10 s per IP-HMAC) su tutte le POST e sullo storico | ADR 0011 |
+| Picchi | Binding Rate Limiting (20 richieste / 10 s per IP-HMAC) su tutte le POST e sullo storico | ADR 0010 |
 
 ## Note di interpretazione
 
 - **"Stesso prezzo nello stesso giorno"** (SPEC 11): la regola è applicata anche a giorni diversi. Ripetere
   un prezzo già noto è una conferma che ne rinnova la data, invece di azzerare le conferme con una "sostituzione"
-  identica. Da confermare con Roberto.
+  identica. Approvato da Roberto il 12/10/2026.
 - La quarantena usa solo prezzi `active`: i prezzi in quarantena non spostano la mediana.
+- Unicità per sessione **e per IP**: ADR 0015.
 - Nessun dato personale nelle tabelle dei prezzi: il legame con la sessione esiste solo nelle chiavi HMAC
-  con sale giornaliero di `counters` e `dedup` (SPEC 14), cancellate dal cron notturno.
+  con sale giornaliero di `counters` e `dedup` (SPEC 14), cancellate entro 48 ore (ADR 0016).
 - La moderazione (`review` → `active` o `removed`) arriva con `/admin` in M5.

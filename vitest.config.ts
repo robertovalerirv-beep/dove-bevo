@@ -65,6 +65,8 @@ export default defineConfig(async () => {
           ],
           test: {
             name: "worker",
+            // Files share the local D1 and the rate limiter: run them one after the other.
+            fileParallelism: false,
             include: ["tests/worker/**/*.test.ts"],
             setupFiles: ["tests/worker/apply-migrations.ts"],
           },

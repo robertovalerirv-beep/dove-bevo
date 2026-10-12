@@ -3,6 +3,7 @@ import { routePath } from "hono/route";
 import { version } from "../../package.json";
 import { ApiError, apiError } from "./lib/errors";
 import { requireOrigin, requireSession } from "./lib/guards";
+import { rateLimit } from "./lib/rate-limit";
 import { securityHeaders } from "./lib/security-headers";
 import { KEEP_DAYS } from "./config";
 import { romeDay } from "./lib/day";
@@ -21,6 +22,9 @@ app.use(async (c, next) => {
 });
 app.use(securityHeaders);
 app.use("/api/*", requireOrigin);
+// Burst limit on every write and on the per-bar history (SPEC 9.2, 13.3).
+app.on("POST", "/api/*", rateLimit);
+app.get("/api/venues/*", rateLimit);
 // Every write needs a session, except creating one (SPEC 9.1; /api/events is exempt by D-06).
 app.on(
   "POST",

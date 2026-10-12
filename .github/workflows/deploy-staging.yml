@@ -42,7 +42,8 @@ jobs:
         id: pbf
         run: |
           set -o pipefail # default bash -e has no pipefail: a failed request must fail here
-          modified="$(curl -fsSI "$PBF_URL" | grep -i "^last-modified:" | cut -d" " -f2- | tr -d '\r')"
+          # italy-latest answers 307 to the dated file: follow it and keep the last Last-Modified.
+          modified="$(curl -fsSIL "$PBF_URL" | grep -i "^last-modified:" | tail -1 | cut -d" " -f2- | tr -d '\r')"
           echo "key=osm-italy-$(date -u -d "$modified" +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

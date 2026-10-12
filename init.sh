@@ -36,6 +36,9 @@ if [[ ! -f package.json ]]; then
   exit 0
 fi
 
+echo "== Git hooks (pre-push = npm run verify)"
+git config core.hooksPath .githooks
+
 echo "== Install"
 npm ci
 

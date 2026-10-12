@@ -171,7 +171,8 @@ export async function writePrice(db: D1Database, k: PriceKey, p: NewPrice): Prom
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9, ?10)
          ON CONFLICT (venue_key, drink, size_ml, hh) DO UPDATE SET cell = excluded.cell, city = excluded.city,
            price_cents = excluded.price_cents, observed_on = excluded.observed_on, confirmations = 0,
-           status = excluded.status, source = excluded.source`,
+           status = excluded.status, source = excluded.source
+         WHERE prices_current.status NOT IN ('review', 'removed')`,
       )
       .bind(...pk(k), p.cell, p.city, p.price, p.day, p.status, p.source),
   ]);

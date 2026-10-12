@@ -37,7 +37,8 @@ describe("session cookie (SPEC 13.2)", () => {
     const { token } = await createSession(KEY, now);
     expect(await readSession(KEY, token, now + SESSION_TTL_S * 1000 + 1)).toBeNull();
     const [payload = "", sig = ""] = token.split(".");
-    const flipped = `${payload}.${sig.slice(0, -1)}${sig.endsWith("A") ? "B" : "A"}`;
+    // Change a middle character: the last one also carries padding bits and may decode the same.
+    const flipped = `${payload}.${sig.slice(0, 10)}${sig[10] === "A" ? "B" : "A"}${sig.slice(11)}`;
     expect(await readSession(KEY, flipped, now)).toBeNull();
     expect(await readSession("other-key", token, now)).toBeNull();
     expect(await readSession(KEY, "garbage", now)).toBeNull();

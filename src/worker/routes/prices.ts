@@ -97,16 +97,30 @@ const median = (values: number[]) => {
 
 const priceId = (k: PriceKey) => `${k.venue}|${k.drink}|${String(k.size)}|${String(k.hh)}`;
 
-/** Confirms a price once per session; the author of the price never counts (D-10). */
+/** Author markers of a price, by session and by IP (HMAC, day as salt): today and yesterday. */
+async function authorKeys(env: Env, who: { sid: string; ip: string }, k: PriceKey, day: string) {
+  const yesterday = romeDay(new Date(Date.now() - 86_400_000));
+  const keys: string[] = [];
+  for (const d of new Set([day, yesterday])) {
+    keys.push(await hmacHex(env.HASH_KEY, [d, "author", "sid", who.sid, priceId(k)]));
+    keys.push(await hmacHex(env.HASH_KEY, [d, "author", "ip", who.ip, priceId(k)]));
+  }
+  return keys;
+}
+
+/**
+ * Confirms a price once per session. The author never counts, neither from a new session on the
+ * same IP nor the next day (D-10, security review). dedup is purged after 48 h (SPEC 8).
+ */
 async function confirmOnce(
   env: Env,
-  sid: string,
+  who: { sid: string; ip: string },
   k: PriceKey,
   day: string,
 ): Promise<number | null> {
-  const author = await hmacHex(env.HASH_KEY, [day, "author", sid, priceId(k)]);
-  const claim = await hmacHex(env.HASH_KEY, [day, "confirm", sid, priceId(k)]);
-  if ((await hasKey(env.DB, author)) || !(await claimOnce(env.DB, claim, day))) return null;
+  for (const key of await authorKeys(env, who, k, day)) if (await hasKey(env.DB, key)) return null;
+  const claim = await hmacHex(env.HASH_KEY, [day, "confirm", who.sid, priceId(k)]);
+  if (!(await claimOnce(env.DB, claim, day))) return null;
   return confirmPrice(env.DB, k, day);
 }
 
@@ -118,7 +132,8 @@ prices.post("/", async (c) => {
   for (const item of body.items)
     if (!findSize(item.drink, item.size_ml)) throw new ApiError("bad_request");
   const where = await resolveVenue(c.env, body.venue, body.cell);
-  await consumeQuota(c.env, "price", c.var.sid, clientIp(c.req.raw), body.items.length);
+  const who = { sid: c.var.sid, ip: clientIp(c.req.raw) };
+  await consumeQuota(c.env, "price", who.sid, who.ip, body.items.length);
 
   const day = romeDay();
   const results: Result[] = [];
@@ -130,13 +145,14 @@ prices.post("/", async (c) => {
     }
     const k: PriceKey = { venue: body.venue, drink: item.drink, size: item.size_ml, hh: item.hh };
     const existing = await getCurrentPrice(c.env.DB, k);
-    if (
-      existing?.price_cents === item.price_cents &&
-      existing.status !== "review" &&
-      existing.status !== "removed"
-    ) {
+    if (existing?.status === "review" || existing?.status === "removed") {
+      // Under moderation: only the admin can change it (SPEC 11, security review).
+      results.push({ status: "rejected", code: "under_review" });
+      continue;
+    }
+    if (existing?.price_cents === item.price_cents) {
       // Same price again: a confirmation, not a new current row (SPEC 11).
-      await confirmOnce(c.env, c.var.sid, k, day);
+      await confirmOnce(c.env, who, k, day);
       results.push({ status: "confirmed" });
       continue;
     }
@@ -153,11 +169,8 @@ prices.post("/", async (c) => {
       status,
       source: body.source,
     });
-    await claimOnce(
-      c.env.DB,
-      await hmacHex(c.env.HASH_KEY, [day, "author", c.var.sid, priceId(k)]),
-      day,
-    );
+    const [bySid, byIp] = await authorKeys(c.env, who, k, day);
+    for (const key of [bySid, byIp]) if (key) await claimOnce(c.env.DB, key, day);
     results.push({ status });
   }
   return c.json({ results });
@@ -171,7 +184,7 @@ prices.post("/confirm", async (c) => {
   if (!existing || existing.status === "review" || existing.status === "removed")
     throw new ApiError("not_found");
   await consumeQuota(c.env, "confirm", c.var.sid, clientIp(c.req.raw));
-  const count = await confirmOnce(c.env, c.var.sid, k, romeDay());
+  const count = await confirmOnce(c.env, { sid: c.var.sid, ip: clientIp(c.req.raw) }, k, romeDay());
   return c.json(
     count === null
       ? { status: "already", confirmations: existing.confirmations }

@@ -238,3 +238,37 @@ describe("no personal data stored (M2-16)", () => {
     for (const { k } of counters.results) expect(k).toMatch(/^[0-9a-f]{32}$/);
   });
 });
+
+describe("moderation and author checks (security review)", () => {
+  it("the author cannot activate their own quarantined price from a new session on the same IP", async () => {
+    for (const [i, bar] of OTHER_BARS.entries()) {
+      await post(
+        "/api/prices",
+        priceBody([spritz(480 + i * 10)], bar),
+        await newSession(),
+        `198.51.100.${String(i)}`,
+      );
+    }
+    const ip = "203.0.113.99";
+    await post("/api/prices", priceBody([spritz(900)]), await newSession(), ip);
+    const confirm = { venue: BAR, drink: "spritz", size_ml: 0, hh: 0 };
+    expect(
+      await (await post("/api/prices/confirm", confirm, await newSession(), ip)).json(),
+    ).toMatchObject({
+      status: "already",
+    });
+    expect((await current())?.status).toBe("quarantined");
+  });
+
+  it("a price under review is not overwritten by a new submission", async () => {
+    await post("/api/prices", priceBody([spritz(750)]), await newSession());
+    await env.DB.prepare("UPDATE prices_current SET status = 'review' WHERE venue_key = ?")
+      .bind(BAR)
+      .run();
+    const body: Results = await (
+      await post("/api/prices", priceBody([spritz(800)]), await newSession(), "192.0.2.77")
+    ).json();
+    expect(body.results).toEqual([{ status: "rejected", code: "under_review" }]);
+    expect(await current()).toMatchObject({ price_cents: 750, status: "review" });
+  });
+});

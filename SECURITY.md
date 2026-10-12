@@ -51,3 +51,4 @@ Bot e script automatici · spammer di prezzi · concorrenti di un locale · uten
 - Un attaccante con molte reti diverse può superare le quote per IP: limitato da Turnstile, rate limit, quarantena e conferme. Da rivalutare con i dati reali.
 - Il binding Rate Limiting è per località ed eventualmente consistente (ADR 0010): non è un contatore esatto, le quote esatte stanno in D1.
 - L'immagine statica e i dati OSM sono pubblici per definizione.
+- L'autore di un prezzo è riconosciuto (per sessione e per IP, come HMAC) solo per 48 ore, la vita di `dedup` imposta da SPEC 8: dopo, da un IP diverso, potrebbe confermare il proprio prezzo in quarantena. Accettato: la quarantena serve a frenare valori anomali immediati, e i prezzi in `review` restano fermi finché non decide l'admin.

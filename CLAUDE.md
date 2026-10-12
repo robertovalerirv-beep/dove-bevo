@@ -31,6 +31,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - `npm run eval` — evals AI: **costano**, stima il costo e chiedi conferma prima
 - `npx wrangler d1 migrations apply DB --local`
 - `node scripts/check-feature-list.mjs`
+- `npm run verify` — esegue in locale tutto ciò che esegue la CI; lo lancia il hook `pre-push` (`.githooks/`, attivato da `init.sh`): un push con un controllo rosso viene bloccato
 
 ## Vietato a Claude Code
 - Deploy, `wrangler secret`, comandi D1 `--remote`, `npm run deploy`: solo Roberto o la CI.

@@ -132,8 +132,11 @@ prices.post("/", async (c) => {
     }
     if (existing?.price_cents === item.price_cents) {
       // Same price again: a confirmation, not a new current row (SPEC 11).
-      await confirmOnce(c.env, who, k, day);
-      results.push({ status: "confirmed" });
+      // "already": not counted (author, or this session/IP already confirmed it).
+      const counted = await confirmOnce(c.env, who, k, day);
+      results.push(
+        counted === null ? { status: "confirmed", code: "already" } : { status: "confirmed" },
+      );
       continue;
     }
     const peers = await activePrices(c.env.DB, where.cell, item.drink, item.size_ml, item.hh);

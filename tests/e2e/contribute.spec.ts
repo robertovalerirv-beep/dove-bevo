@@ -64,22 +64,21 @@ test.describe("with the position (Duomo)", () => {
     for (const [i, name] of expected.entries()) expect(names[i]).toContain(name);
   });
 
-  test("M2-02 + M2-05 four taps plus the digits; Turnstile only after Salva; price on the bar page", async ({
+  test("M2-02 + M2-05 from a cold start: four taps plus the digits; Turnstile only after Salva", async ({
     page,
   }) => {
     const turnstile = await stubTurnstile(page);
-    await page.goto("/");
-    await page.getByRole("button", { name: "Vicino a me" }).click();
-    await waitForBars(page);
-    expect(turnstile).toEqual([]);
+    await page.goto("/"); // no prior tap: the map is still the static picture
 
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click(); // 1
+    await expect(barChoices(page)).toHaveCount(5); // position already granted → nearest bars
     await barChoices(page).first().click(); // 2
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: /^Negroni/ })
+      .getByRole("button", { name: /^Spritz/ })
       .click(); // 3
-    await page.getByRole("textbox", { name: "Prezzo in euro" }).fill("9,00"); // the digits
+    await page.getByRole("textbox", { name: "Prezzo in euro" }).fill("7,50"); // the digits
+    expect(turnstile).toEqual([]); // nothing from Cloudflare until Salva
     const saved = page.waitForRequest(
       (r) => r.url().endsWith("/api/prices") && r.method() === "POST",
       {
@@ -92,10 +91,12 @@ test.describe("with the position (Duomo)", () => {
 
     const request = await saved; // after the 10 s of "Annulla"
     const body = request.postDataJSON() as { venue: string; cell: string; items: unknown[] };
-    expect(body.items).toEqual([{ drink: "negroni", size_ml: 0, hh: 0, price_cents: 900 }]);
+    expect(body.items).toEqual([{ drink: "spritz", size_ml: 0, hh: 0, price_cents: 750 }]);
     expect((await request.response())?.status()).toBe(200);
     await page.goto(`/bar/${body.venue}?c=${body.cell}`);
-    await expect(page.getByRole("listitem").filter({ hasText: "Negroni" })).toContainText("9,00 €");
+    await expect(page.getByRole("listitem").filter({ hasText: "Spritz" }).first()).toContainText(
+      "7,50 €",
+    );
   });
 });
 
@@ -160,7 +161,7 @@ test("M2-07 without the position, the nearest to the map centre", async ({ page 
 
 // Browsers share the local D1: each one works on its own seeded price.
 const CONFIRM_TARGET = {
-  chromium: { url: "/bar/n2420779240?c=u0nd9", row: "Spritz" }, // Bistrot Duomo
+  chromium: { url: "/bar/n5471678323?c=u0nd9", row: "Spritz" }, // Terrazza Aperol (HH)
   webkit: { url: "/bar/n13001337602?c=u0nd9", row: "Birra alla spina" }, // Camparino
 } as const;
 const countOf = async (text: Promise<string>) => {
@@ -203,7 +204,15 @@ test("M2-12 È cambiato opens the price step with bar, drink, size and band alre
     "false",
   );
   await sheet.getByRole("textbox", { name: "Prezzo in euro" }).fill("9,50");
-  await expect(sheet.getByRole("button", { name: "Salva" })).toBeEnabled();
+  const sent = page.waitForRequest((r) => r.url().endsWith("/api/prices") && r.method() === "POST");
+  await sheet.getByRole("button", { name: "Salva" }).click();
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  const body = (await sent).postDataJSON() as { venue: string; items: unknown[] };
+  expect(body.venue).toBe("n13001337602");
+  expect(body.items).toEqual([{ drink: "beer_draft", size_ml: 400, hh: 0, price_cents: 950 }]);
 });
 
 test("M2-13 reporting uses closed reasons", async ({ page, browserName }) => {
@@ -229,4 +238,25 @@ test("M2-13 reporting uses closed reasons", async ({ page, browserName }) => {
   await expect(
     page.getByRole("status").filter({ hasText: "Grazie per la segnalazione" }),
   ).toBeVisible();
+});
+
+test("M2-09 a quarantined price is shown in 'In verifica' and not on the map", async ({ page }) => {
+  await page.goto("/bar/w549495264?c=u0nd9"); // Motta: gin tonic 20,00 € quarantined (seed)
+  const sheet = page.getByRole("dialog", { name: "Motta" });
+  await expect(sheet.getByRole("heading", { name: "In verifica" })).toBeVisible();
+  await expect(sheet.getByRole("listitem").filter({ hasText: "Gin tonic" })).toContainText(
+    "20,00 €",
+  );
+  await sheet.getByRole("button", { name: "Chiudi" }).click();
+  await goToMilano(page);
+  await page
+    .getByRole("group", { name: "Drink" })
+    .getByRole("button", { name: "Gin tonic" })
+    .click();
+  await page.waitForTimeout(1500);
+  expect(
+    (await page
+      .getByRole("region", { name: "Mappa", exact: true })
+      .getAttribute("data-prices-shown")) ?? "",
+  ).not.toContain("20,00 €");
 });

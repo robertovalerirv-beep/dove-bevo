@@ -292,3 +292,29 @@ describe("confirmations per IP (new session after a reload)", () => {
     });
   });
 });
+
+describe("review effects and repeated prices (spec review)", () => {
+  it("the history of a bar hides the observations of a price under review", async () => {
+    await post("/api/prices", priceBody([spritz(750)]), await newSession(), "192.0.2.120");
+    await env.DB.prepare("UPDATE prices_current SET status = 'review' WHERE venue_key = ?")
+      .bind(BAR)
+      .run();
+    const body: { p: unknown[]; h: unknown[][] } = await (
+      await exports.default.fetch(`${ORIGIN}/api/venues/${BAR}/prices`, {
+        headers: { "CF-Connecting-IP": "192.0.2.121" },
+      })
+    ).json();
+    expect(body.p).toEqual([]);
+    expect(body.h.filter((h) => h[0] === "spritz" && h[3] === 750)).toEqual([]);
+  });
+
+  it("the same price again from the author is not a confirmation: code already", async () => {
+    const author = await newSession();
+    await post("/api/prices", priceBody([spritz(750)]), author, "192.0.2.130");
+    const again: Results = await (
+      await post("/api/prices", priceBody([spritz(750)]), author, "192.0.2.130")
+    ).json();
+    expect(again.results).toEqual([{ status: "confirmed", code: "already" }]);
+    expect((await current())?.confirmations).toBe(0);
+  });
+});

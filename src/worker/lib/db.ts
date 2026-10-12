@@ -86,7 +86,11 @@ export async function getVenuePrices(db: D1Database, key: string): Promise<Venue
         `SELECT drink, size_ml, hh, price_cents, observed_on FROM (
            SELECT drink, size_ml, hh, price_cents, observed_on, id,
              ROW_NUMBER() OVER (PARTITION BY drink, size_ml ORDER BY observed_on DESC, id DESC) AS n
-           FROM price_obs WHERE venue_key = ?1 AND status NOT IN ('review', 'removed'))
+           FROM price_obs WHERE venue_key = ?1 AND status NOT IN ('review', 'removed')
+             -- a price under review leaves the bar page, its history included (SPEC 11)
+             AND NOT EXISTS (SELECT 1 FROM prices_current pc WHERE pc.venue_key = price_obs.venue_key
+               AND pc.drink = price_obs.drink AND pc.size_ml = price_obs.size_ml AND pc.hh = price_obs.hh
+               AND pc.price_cents = price_obs.price_cents AND pc.status IN ('review', 'removed')))
          WHERE n <= 10 ORDER BY drink, size_ml, observed_on DESC, id DESC`,
       )
       .bind(key),

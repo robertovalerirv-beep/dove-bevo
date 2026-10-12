@@ -94,6 +94,7 @@ export const it = {
     undone: "Annullato",
     quarantined: "Salvato: comparirà quando qualcun altro lo conferma.",
     confirmedSame: "Grazie: hai confermato il prezzo che c'era già.",
+    alreadyThere: "Questo prezzo c'era già: niente da aggiungere.",
     verifying: "Un attimo, verifico che tu non sia un robot…",
   },
   actions: {

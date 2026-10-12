@@ -18,6 +18,31 @@ import { formatPrice } from "./lib/format";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
 
 const MIN_ZOOM_CELLS = 13;
+/** Centre of the start view (the Italy picture), used when nothing better is known (D-16). */
+const ITALY_CENTER = { lat: 41.85, lon: 12.6 };
+
+/** True when the user already granted the position: reading it then shows no prompt. */
+async function positionGranted(): Promise<boolean> {
+  try {
+    return (await navigator.permissions.query({ name: "geolocation" })).state === "granted";
+  } catch {
+    return false;
+  }
+}
+
+function currentPosition(): Promise<{ lat: number; lon: number } | null> {
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        resolve({ lat: coords.latitude, lon: coords.longitude });
+      },
+      () => {
+        resolve(null);
+      },
+      { timeout: 10_000, maximumAge: 60_000 },
+    );
+  });
+}
 const KEY = /^[nwru]\d{1,15}$/;
 const CELL = /^[0-9b-hjkmnp-z]{5}$/;
 
@@ -48,6 +73,7 @@ export function App({ loadMap }: Props) {
   const [route, setRoute] = useState<Route>(parseRoute);
   const [sheet, setSheet] = useState<"search" | "list" | null>(null);
   const [adding, setAdding] = useState<{ prefill: Prefill | null } | null>(null);
+  const [addOrigin, setAddOrigin] = useState<{ lat: number; lon: number } | null>(null);
   const [reporting, setReporting] = useState<{ venue: Venue; row: PriceRow | null } | null>(null);
   const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null);
   const [barVersion, setBarVersion] = useState(0); // reloads the bar page after a contribution
@@ -142,11 +168,7 @@ export function App({ loadMap }: Props) {
     Promise.all(cells.map(loadCell))
       .then((lists) => {
         if (!current) return;
-        setVenues((previous) => {
-          const next = new Map(previous);
-          for (const venue of lists.flat()) next.set(venue.key, venue);
-          return next;
-        });
+        mergeVenues(lists.flat());
         setCellsState("ready");
       })
       .catch(() => {
@@ -211,6 +233,45 @@ export function App({ loadMap }: Props) {
     }
     history.replaceState(null, "", "/");
     setRoute(parseRoute());
+  }
+
+  function mergeVenues(list: Venue[]) {
+    setVenues((previous) => {
+      const next = new Map(previous);
+      for (const venue of list) next.set(venue.key, venue);
+      return next;
+    });
+  }
+
+  /**
+   * Opens "Aggiungi prezzo" (SPEC 7.3): the nearest bars come from the position if already granted,
+   * else the map centre (D-16); the cells around that point are downloaded if not loaded yet.
+   * Only cell ids leave the device (SPEC 14).
+   */
+  function openAdd(prefill: Prefill | null) {
+    setAdding({ prefill });
+    if (prefill?.venue) return;
+    void (async () => {
+      let origin =
+        position ?? (view && view.zoom >= MIN_ZOOM_CELLS ? { lat: view.lat, lon: view.lon } : null);
+      if (!position && (await positionGranted())) {
+        const found = await currentPosition();
+        if (found) {
+          setPosition(found);
+          origin = found;
+        }
+      }
+      origin ??= view ? { lat: view.lat, lon: view.lon } : ITALY_CENTER;
+      setAddOrigin(origin);
+      const around = visibleCells({
+        south: origin.lat - 0.03,
+        north: origin.lat + 0.03,
+        west: origin.lon - 0.04,
+        east: origin.lon + 0.04,
+      });
+      const lists = await Promise.all((around ?? []).map((c) => loadCell(c).catch(() => [])));
+      mergeVenues(lists.flat());
+    })();
   }
 
   const host = () => {
@@ -282,7 +343,9 @@ export function App({ loadMap }: Props) {
         return;
       }
       if (result?.status === "quarantined") showToast(it.add.quarantined);
-      if (result?.status === "confirmed") showToast(it.add.confirmedSame);
+      if (result?.status === "confirmed") {
+        showToast(result.code === "already" ? it.add.alreadyThere : it.add.confirmedSame);
+      }
       invalidateCell(venue.cell);
       setAttempt((n) => n + 1);
       setBarVersion((n) => n + 1);
@@ -323,13 +386,13 @@ export function App({ loadMap }: Props) {
       return body.status === "confirmed" ? body.confirmations : null;
     },
     changed: (venue, row) => {
-      setAdding({ prefill: { venue, drink: row[1], size: row[2], hh: row[3] } });
+      openAdd({ venue, drink: row[1], size: row[2], hh: row[3] });
     },
     report: (venue, row) => {
       setReporting({ venue, row });
     },
     addHere: (venue) => {
-      setAdding({ prefill: { venue } });
+      openAdd({ venue });
     },
   };
 
@@ -480,7 +543,7 @@ export function App({ loadMap }: Props) {
           type="button"
           class="btn btn--primary bottom__primary"
           onClick={() => {
-            setAdding({ prefill: null });
+            openAdd(null);
           }}
         >
           {it.add.open}
@@ -542,10 +605,7 @@ export function App({ loadMap }: Props) {
       {adding && (
         <AddPriceSheet
           venues={allVenues}
-          origin={
-            position ??
-            (view && view.zoom >= MIN_ZOOM_CELLS ? { lat: view.lat, lon: view.lon } : null)
-          }
+          origin={addOrigin}
           prefill={adding.prefill}
           onSave={save}
           onClose={() => {

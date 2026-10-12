@@ -55,6 +55,7 @@ export default defineConfig(async () => {
                   SESSION_HMAC_KEY: "test-session-hmac-key",
                   HASH_KEY: "test-hash-key",
                   TURNSTILE_SECRET: "test-turnstile-secret",
+                  TURNSTILE_HOSTNAME: "dovebevo.example",
                 },
                 // Fake Turnstile siteverify: "ok-*" tokens pass once, anything else fails.
                 outboundService: fakeSiteverify,

@@ -88,14 +88,14 @@
     "milestone": "M1",
     "descrizione": "Import OSM in file statici",
     "verifica": "unit dello script su un PBF di test: formato D-11, `key` corrette, centroidi delle aree, `places.json` solo city/town, `LICENSE.txt` presente; lo script fallisce oltre 15.000 file o con un file > 1 MB",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-03",
     "milestone": "M1",
     "descrizione": "Import completo in CI",
     "verifica": "log del job: numero di bar e file, tutti i file ≤ 1 MB, totale ≤ 15.000, durata",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-04",

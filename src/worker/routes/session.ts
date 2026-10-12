@@ -9,6 +9,8 @@ import type { AppEnv } from "../types";
 
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 export const TURNSTILE_ACTION = "contribute";
+/** Cloudflare's public always-pass test secret (local and e2e only): its answers carry no action. */
+const TEST_SECRET = "1x0000000000000000000000000000000AA";
 
 const Body = z.strictObject({ token: z.string().min(1).max(2048) });
 const Verdict = z.object({
@@ -28,12 +30,12 @@ session.post("/", async (c) => {
   const verdict = Verdict.safeParse(
     await (await fetch(SITEVERIFY, { method: "POST", body: form })).json(),
   );
-  const host = new URL(c.req.url).hostname;
+  const testing = c.env.TURNSTILE_SECRET === TEST_SECRET;
   if (
     !verdict.success ||
     !verdict.data.success ||
-    verdict.data.hostname !== host ||
-    verdict.data.action !== TURNSTILE_ACTION
+    verdict.data.hostname !== c.env.TURNSTILE_HOSTNAME ||
+    (!testing && verdict.data.action !== TURNSTILE_ACTION)
   ) {
     throw new ApiError("forbidden");
   }
@@ -47,3 +49,6 @@ session.post("/", async (c) => {
   });
   return c.body(null, 204);
 });
+
+// GET /api/session — public Turnstile site key of this environment, read at the first contribution.
+session.get("/", (c) => c.json({ siteKey: c.env.TURNSTILE_SITE_KEY, action: TURNSTILE_ACTION }));

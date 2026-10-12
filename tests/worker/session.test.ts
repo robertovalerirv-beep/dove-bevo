@@ -92,3 +92,13 @@ describe("common POST checks (M2-04)", () => {
     expect((await post("/api/session", "{not json")).status).toBe(400);
   });
 });
+
+describe("GET /api/session", () => {
+  it("returns the public Turnstile site key and action of the environment", async () => {
+    const response = await exports.default.fetch(`${ORIGIN}/api/session`);
+    expect(await response.json()).toEqual({
+      siteKey: "1x00000000000000000000AA",
+      action: "contribute",
+    });
+  });
+});

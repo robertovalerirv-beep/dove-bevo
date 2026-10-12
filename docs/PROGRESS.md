@@ -4,6 +4,20 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-12 · Sessione 2 · M1 unita, primo import completo, gate pre-push, M2 in corso (branch `m2-contrib`, PR #7)
+
+**M1 unita** (PR #5, `7727c0f`, CI 5/5). Correzione del deploy (PR #6, `4d2b300`): `italy-latest.osm.pbf` risponde 307 verso il file datato, la data va letta seguendo il redirect.
+
+**Primo deploy con l'import completo** (run 38226232203): `OSM import 20261011: 8124 files from 74459 features` · **bar 60.629**, file di cella 8.122, località 1.326 · totale 8.124 file (≤ 15.000), il più grande 49.209 byte (≤ 1 MB) · import **62 s** · upload 8.131 file in 7,4 s. Verifica diretta su staging: `/api/health` → `data_version 20261011`; `/data/20261011/v/u0nd9.json` 200 JSON con cache immutabile (757 bar); `places.json` 1.326 righe (Milano 1.968 bar, Roma 1.954, Torino 1.020). Lo smoke test del job era rosso per una corsa (interrogava `/api/health` prima che la nuova versione rispondesse): ora attende fino a 2 minuti il `data_version` nuovo. **M1-02** (job osmium verde in CI con le aree) e **M1-03** a `true`; **M0-07** al prossimo deploy verde.
+
+**Gate pre-push (richiesta di Roberto)**: `npm run verify` esegue in locale ciò che esegue la CI e si ferma al primo errore; `.githooks/pre-push` lo lancia a ogni push (attivato da `init.sh`). Primo uso: ha bloccato un e2e instabile su WebKit (etichette dei prezzi non aggiornate dopo `setData`), corretto e stabile su 3 esecuzioni; il push successivo è passato in 433 s.
+
+**M2 finora**: STRIDE in `SECURITY.md` (M2-01); sessione anonima con Turnstile (M2-03); controlli comuni delle POST (M2-04); `POST /api/prices` e `/api/prices/confirm` con catalogo e limiti, verifica del bar dal file statico, quarantena, stesso prezzo = conferma, quote per sessione e per IP con `Retry-After`, nessun dato personale (M2-08/09/10/14/16). Revisione di sicurezza automatica sui commit: autore riconosciuto anche per IP e per due giorni (niente auto-attivazione della quarantena), prezzi in `review`/`removed` mai sovrascritti; rischio residuo oltre 48 h registrato in `SECURITY.md`. 65 test unit+worker verdi.
+
+**Turnstile**: widget `dovebevo-staging` (Managed) creato da Roberto; site key pubblica in `wrangler.jsonc` (staging), hostname atteso per ambiente (`TURNSTILE_HOSTNAME`). In locale ed e2e le chiavi di prova pubbliche di Cloudflare (siteverify risponde `hostname: example.com`, senza `action`): il controllo di `action` si salta solo con il secret di prova. Secret `TURNSTILE_SECRET`, `SESSION_HMAC_KEY`, `HASH_KEY` di staging impostati da Roberto nella dashboard.
+
+---
+
 ## 2026-10-12 · Sessione 2 · M1: prestazioni (Lighthouse) e decisioni
 
 **Problema**: in CI il job Lighthouse falliva dopo l'arrivo della mappa (Performance 0,47, LCP 5,8 s) e il job `osm-import` falliva con "Permission denied" (bit di esecuzione mancante su `import.sh`).

@@ -68,7 +68,7 @@ jobs:
       - run: osmium cat tests/fixtures/osm/sample.osm -o "$RUNNER_TEMP/sample.osm.pbf"
       - run: scripts/osm-import/import.sh "$RUNNER_TEMP/sample.osm.pbf" "$RUNNER_TEMP/data" fixture
       - name: Output matches the expected cell
-        run: diff <(cat "$RUNNER_TEMP/data/fixture/v/u0nd9.json") <(tr -d '\n' < tests/fixtures/osm/expected-u0nd9.json)
+        run: node scripts/osm-import/compare-cell.mjs "$RUNNER_TEMP/data/fixture/v/u0nd9.json" tests/fixtures/osm/expected-u0nd9.json
 
   lighthouse:
     name: Lighthouse CI
@@ -85,7 +85,12 @@ jobs:
       - run: npm run build
       - run: node scripts/check-bundle-size.mjs
       # Not in the lockfile: its transitive dependencies fail npm audit (ADR 0009).
-      - run: npx --yes @lhci/cli@0.15.1 autorun
+      - name: Lighthouse (median of 3 runs)
+        run: |
+          status=0
+          npx --yes @lhci/cli@0.15.1 autorun || status=$?
+          node scripts/lighthouse-summary.mjs
+          exit $status
 
   secrets:
     name: Secret scan (gitleaks)

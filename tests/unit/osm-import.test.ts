@@ -103,3 +103,18 @@ describe("OSM import (M1-02)", () => {
     expect(() => buildDataset([long], "x")).toThrow(/name/);
   });
 });
+
+describe("osmium area ids", () => {
+  it("maps area ids back to the OSM way or relation (a = 2·way, 2·relation + 1)", () => {
+    const files = buildDataset(
+      [
+        milano,
+        { ...square("x", { amenity: "cafe", name: "Area da via" }), id: "a200" },
+        { ...square("x", { amenity: "nightclub", name: "Area da relazione" }), id: "a401" },
+      ],
+      "20261010",
+    );
+    const cell = JSON.parse(files.get("v/u0nd9.json") ?? "{}") as CellFile;
+    expect(cell.v.map((v) => v[0])).toEqual(["r200", "w100"]);
+  });
+});

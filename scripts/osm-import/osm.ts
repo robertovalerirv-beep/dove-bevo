@@ -138,6 +138,14 @@ function nearestCity(grid: Map<string, City[]>, lat: number, lon: number): City 
   return best;
 }
 
+/** osmium exports areas as "a<n>": n = 2·way id, or 2·relation id + 1. Back to "w…"/"r…". */
+function osmKey(id: string): string {
+  const area = /^a(\d+)$/.exec(id);
+  if (!area?.[1]) return id;
+  const n = BigInt(area[1]);
+  return n % 2n === 0n ? `w${String(n / 2n)}` : `r${String((n - 1n) / 2n)}`;
+}
+
 export function licenseText(dataVersion: string): string {
   return [
     "Dove bevo — bar data",
@@ -164,7 +172,7 @@ export function buildDataset(
 
   for (const feature of features) {
     const tags = feature.properties ?? {};
-    const key = String(feature.id ?? "");
+    const key = osmKey(String(feature.id ?? ""));
     const name = text(tags, "name");
     if (!feature.geometry || !/^[nwr]\d+$/.test(key) || !name) continue;
     const point = centroid(feature.geometry); // null for open ways: not a place

@@ -43,9 +43,9 @@ const toPriceRow = (r: PriceDbRow): PriceRow => [
   r.source === "menu_photo" ? 1 : 0,
 ];
 
-/** Prices and user venues of a cell (SPEC 5.4, 9.2): two indexed reads in one round trip. */
+/** Prices, user venues and hidden OSM keys of a cell (SPEC 5.4, 9.2): indexed reads, one round trip. */
 export async function getCellPrices(db: D1Database, cell: string): Promise<CellPrices> {
-  const [prices, venues] = await db.batch([
+  const [prices, venues, hidden] = await db.batch([
     db
       .prepare(
         `SELECT venue_key, drink, size_ml, hh, price_cents, observed_on, confirmations, status, source
@@ -59,6 +59,7 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
          FROM venues_user WHERE cell = ?1 AND status IN ('approved', 'pending') ORDER BY id`,
       )
       .bind(cell),
+    db.prepare("SELECT venue_key FROM venues_hidden WHERE cell = ?1").bind(cell),
   ]);
   const p = ((prices?.results ?? []) as unknown as PriceDbRow[]).map(toPriceRow);
   const rows = (venues?.results ?? []) as unknown as VenueDbRow[];
@@ -68,7 +69,8 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
   const pend = rows
     .filter((r) => r.status === "pending")
     .map((r): PendingVenue => [`u${String(r.id)}`, r.name, r.kind, r.lat, r.lon, r.confirmations]);
-  return { p, u, pend };
+  const h = ((hidden?.results ?? []) as unknown as { venue_key: string }[]).map((r) => r.venue_key);
+  return { p, u, pend, h };
 }
 
 /** Current prices of a bar and its latest 10 observations per drink and size (D-26). */
@@ -297,4 +299,126 @@ export async function lastPriceChange(db: D1Database, k: PriceKey): Promise<stri
     .bind(...pk(k))
     .first<{ day: string | null }>();
   return row?.day ?? null;
+}
+
+// ---- Admin (D-19): hidden OSM entries, user bars, price review ----
+
+export function isHidden(db: D1Database, key: string): Promise<boolean> {
+  return db
+    .prepare("SELECT 1 FROM venues_hidden WHERE venue_key = ?1")
+    .bind(key)
+    .first()
+    .then((row) => row !== null);
+}
+
+export async function hideVenue(
+  db: D1Database,
+  v: { key: string; cell: string; name: string; day: string },
+): Promise<void> {
+  await db
+    .prepare(
+      "INSERT OR REPLACE INTO venues_hidden (venue_key, cell, name, day) VALUES (?1, ?2, ?3, ?4)",
+    )
+    .bind(v.key, v.cell, v.name, v.day)
+    .run();
+}
+
+export async function unhideVenue(db: D1Database, key: string): Promise<string | null> {
+  const row = await db
+    .prepare("DELETE FROM venues_hidden WHERE venue_key = ?1 RETURNING cell")
+    .bind(key)
+    .first<{ cell: string }>();
+  return row?.cell ?? null;
+}
+
+export async function listHidden(db: D1Database) {
+  const { results } = await db
+    .prepare("SELECT venue_key, cell, name, day FROM venues_hidden ORDER BY day DESC LIMIT 200")
+    .all<{ venue_key: string; cell: string; name: string; day: string }>();
+  return results;
+}
+
+export async function listUserVenues(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT id, name, kind, lat, lon, cell, status, confirmations FROM venues_user
+       WHERE status IN ('pending', 'approved') ORDER BY status DESC, id DESC LIMIT 200`,
+    )
+    .all<{
+      id: number;
+      name: string;
+      kind: number;
+      lat: number;
+      lon: number;
+      cell: string;
+      status: "pending" | "approved";
+      confirmations: number;
+    }>();
+  return results;
+}
+
+export async function addApprovedVenue(
+  db: D1Database,
+  v: { name: string; kind: number; lat: number; lon: number; cell: string },
+): Promise<number> {
+  const row = await db
+    .prepare(
+      `INSERT INTO venues_user (name, kind, lat, lon, cell, status) VALUES (?1, ?2, ?3, ?4, ?5, 'approved')
+       RETURNING id`,
+    )
+    .bind(v.name, v.kind, v.lat, v.lon, v.cell)
+    .first<{ id: number }>();
+  if (!row) throw new Error("insert");
+  return row.id;
+}
+
+export async function setUserVenueStatus(
+  db: D1Database,
+  id: number,
+  status: "approved" | "removed",
+): Promise<string | null> {
+  const row = await db
+    .prepare(
+      "UPDATE venues_user SET status = ?2 WHERE id = ?1 AND status != 'removed' RETURNING cell",
+    )
+    .bind(id, status)
+    .first<{ cell: string }>();
+  return row?.cell ?? null;
+}
+
+export async function listPricesToReview(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT venue_key, drink, size_ml, hh, cell, price_cents, observed_on, confirmations, status, source
+       FROM prices_current WHERE status IN ('review', 'quarantined') ORDER BY observed_on DESC LIMIT 200`,
+    )
+    .all<{
+      venue_key: string;
+      drink: string;
+      size_ml: number;
+      hh: 0 | 1;
+      cell: string;
+      price_cents: number;
+      observed_on: string;
+      confirmations: number;
+      status: "review" | "quarantined";
+      source: "manual" | "menu_photo";
+    }>();
+  return results;
+}
+
+/** Admin decision on a price under review or in quarantine. */
+export async function setPriceStatus(
+  db: D1Database,
+  k: PriceKey,
+  status: "active" | "removed",
+): Promise<string | null> {
+  const row = await db
+    .prepare(
+      `UPDATE prices_current SET status = ?5 WHERE ${PK} AND status IN ('review', 'quarantined')
+       RETURNING cell`,
+    )
+    .bind(...pk(k), status)
+    .first<{ cell: string }>();
+  return row?.cell ?? null;
 }

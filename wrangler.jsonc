@@ -24,6 +24,9 @@
     "TURNSTILE_SECRET": "1x0000000000000000000000000000000AA",
     "SESSION_HMAC_KEY": "local-dev-only-session-key",
     "HASH_KEY": "local-dev-only-hash-key",
+    // Cloudflare Access (D-19): empty = /api/admin/* always answers 403.
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
   },
   // Local D1 only: the id is a placeholder; staging and production have their own databases.
   "d1_databases": [
@@ -47,6 +50,9 @@
         "DATA_VERSION": "none",
         "TURNSTILE_SITE_KEY": "0x4AAAAAAFUazHbuU79qVX5f",
         "TURNSTILE_HOSTNAME": "dovebevo-staging.roberto-valeri-rv.workers.dev",
+        // Set by Roberto after creating the Access application (docs/guida-admin.md).
+        "ACCESS_TEAM_DOMAIN": "",
+        "ACCESS_AUD": "",
       },
       "d1_databases": [
         {

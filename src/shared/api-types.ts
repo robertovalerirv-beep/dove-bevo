@@ -28,6 +28,8 @@ export interface CellPrices {
   p: PriceRow[];
   u: UserVenue[];
   pend: PendingVenue[];
+  /** OSM keys of the cell hidden by the admin (not a bar, closed): never drawn (ADR 0017). */
+  h: string[];
 }
 
 /** History row: [drink, size_ml, hh, price_cents, observed_on (date only)] */

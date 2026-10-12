@@ -6,8 +6,27 @@ import { defineConfig } from "vitest/config";
 // under /data/fixture/, with or without a build (CI runs the tests before building).
 cpSync("tests/fixtures/data", "dist/client/data/fixture", { recursive: true });
 
+// Cloudflare Access in tests: a key pair made at start-up (never stored), public half served as the
+// team certs, private half given to the tests to sign JWTs.
+const ACCESS_TEAM = "test.cloudflareaccess.com";
+const accessKeys = await crypto.subtle.generateKey(
+  {
+    name: "RSASSA-PKCS1-v1_5",
+    modulusLength: 2048,
+    publicExponent: new Uint8Array([1, 0, 1]),
+    hash: "SHA-256",
+  },
+  true,
+  ["sign", "verify"],
+);
+const accessPublic = { ...(await crypto.subtle.exportKey("jwk", accessKeys.publicKey)), kid: "k1" };
+const accessPrivate = await crypto.subtle.exportKey("jwk", accessKeys.privateKey);
+
 const usedTokens = new Set<string>();
 async function fakeSiteverify(request: Request): Promise<Response> {
+  if (request.url === `https://${ACCESS_TEAM}/cdn-cgi/access/certs`) {
+    return Response.json({ keys: [accessPublic] });
+  }
   if (!request.url.startsWith("https://challenges.cloudflare.com/turnstile/v0/siteverify")) {
     return new Response("blocked in tests", { status: 502 });
   }
@@ -46,8 +65,11 @@ export default defineConfig(async () => {
                   HASH_KEY: "test-hash-key",
                   TURNSTILE_SECRET: "test-turnstile-secret",
                   TURNSTILE_HOSTNAME: "dovebevo.example",
+                  ACCESS_TEAM_DOMAIN: ACCESS_TEAM,
+                  ACCESS_AUD: "test-aud",
+                  TEST_ACCESS_PRIVATE_JWK: JSON.stringify(accessPrivate),
                 },
-                // Fake Turnstile siteverify: "ok-*" tokens pass once, anything else fails.
+                // Fake Turnstile siteverify ("ok-*" tokens pass once) and Access team certs.
                 outboundService: fakeSiteverify,
               },
             }),

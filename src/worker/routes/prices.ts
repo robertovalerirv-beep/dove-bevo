@@ -23,6 +23,12 @@ import type { AppEnv } from "../types";
 
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
 const EDGE_TTL = "public, max-age=60";
+const cellCacheKey = (url: string, cell: string) =>
+  new Request(new URL(`/api/prices/${cell}`, url));
+
+/** Drops a cell from the edge cache after an admin change, so the map shows it at once. */
+export const forgetCell = (url: string, cell: string) =>
+  caches.default.delete(cellCacheKey(url, cell));
 
 export const prices = new Hono<AppEnv>();
 
@@ -31,7 +37,7 @@ prices.get("/:cell", async (c) => {
   const cell = Cell.safeParse(c.req.param("cell"));
   if (!cell.success) return apiError(c, "bad_request");
 
-  const key = new Request(new URL(`/api/prices/${cell.data}`, c.req.url));
+  const key = cellCacheKey(c.req.url, cell.data);
   const hit = await caches.default.match(key);
   if (hit) return new Response(hit.body, hit); // mutable copy for the header middleware
 

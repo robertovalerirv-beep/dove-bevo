@@ -8,6 +8,8 @@ import { securityHeaders } from "./lib/security-headers";
 import { KEEP_DAYS } from "./config";
 import { romeDay } from "./lib/day";
 import { purgeOldKeys } from "./lib/db";
+import { requireAccess } from "./lib/access";
+import { admin } from "./routes/admin";
 import { prices } from "./routes/prices";
 import { reports } from "./routes/reports";
 import { session } from "./routes/session";
@@ -41,6 +43,9 @@ app.on(
 
 app.get("/api/health", (c) => c.json({ status: "ok", version, data_version: c.env.DATA_VERSION }));
 
+// Admin: Cloudflare Access JWT verified by the Worker too (D-19); Origin is checked above.
+app.use("/api/admin/*", requireAccess);
+app.route("/api/admin", admin);
 app.route("/api/session", session);
 app.route("/api/prices", prices);
 app.route("/api/venues", venues);

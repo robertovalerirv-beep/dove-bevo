@@ -9,4 +9,9 @@ let mapModule: Promise<typeof MapModule> | null = null;
 const loadMap = () => (mapModule ??= import("./lib/maplibre-map"));
 
 const root = document.getElementById("app");
-if (root) render(<App loadMap={loadMap} />, root);
+if (root && /^\/admin\/?$/.test(location.pathname)) {
+  // Admin page: its own chunk, never loaded by visitors (SPEC 15 shell budget).
+  void import("./views/AdminPage").then(({ AdminPage }) => {
+    render(<AdminPage />, root);
+  });
+} else if (root) render(<App loadMap={loadMap} />, root);

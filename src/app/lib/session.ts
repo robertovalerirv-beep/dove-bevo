@@ -17,7 +17,27 @@ interface Turnstile {
   remove(id: string): void;
 }
 
-let validUntil = 0;
+// When the HttpOnly cookie should expire, kept for this tab only so a reload does not run
+// Turnstile again (sessionStorage may be unavailable: then it is just memory).
+const KEY = "dovebevo.session-until";
+let validUntil = readUntil();
+
+function readUntil(): number {
+  try {
+    return Number(sessionStorage.getItem(KEY) ?? "0");
+  } catch {
+    return 0;
+  }
+}
+
+function writeUntil(value: number): void {
+  validUntil = value;
+  try {
+    sessionStorage.setItem(KEY, String(value));
+  } catch {
+    // memory only
+  }
+}
 let pending: Promise<void> | null = null;
 let script: Promise<Turnstile> | null = null;
 
@@ -67,7 +87,7 @@ async function start(host: HTMLElement): Promise<void> {
     body: JSON.stringify({ token }),
   });
   if (!response.ok) throw new Error(`session ${String(response.status)}`);
-  validUntil = Date.now() + SESSION_MS;
+  writeUntil(Date.now() + SESSION_MS);
 }
 
 /** Resolves when a session cookie is valid; at most one Turnstile check at a time. */
@@ -81,10 +101,10 @@ export function ensureSession(host: HTMLElement): Promise<void> {
 
 /** After a 401 the cookie expired: the next ensureSession() runs Turnstile again. */
 export function forgetSession(): void {
-  validUntil = 0;
+  writeUntil(0);
 }
 
-/** POST JSON with the session; one transparent retry after a 401. */
+/** POST JSON with the session cookie; on 401 a new session (Turnstile) and one retry. */
 export async function postWithSession(
   host: HTMLElement,
   path: string,
@@ -98,7 +118,7 @@ export async function postWithSession(
       body: JSON.stringify(body),
       keepalive,
     });
-  await ensureSession(host);
+  // Try the cookie we may already have; Turnstile only when the server says it is missing (401).
   let response = await send();
   if (response.status === 401) {
     forgetSession();

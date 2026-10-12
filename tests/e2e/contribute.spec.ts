@@ -75,8 +75,11 @@ test.describe("with the position (Duomo)", () => {
 
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click(); // 1
     await barChoices(page).first().click(); // 2
-    await page.getByRole("button", { name: /^Spritz/ }).click(); // 3
-    await page.getByRole("textbox", { name: "Prezzo in euro" }).fill("7,50"); // the digits
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /^Negroni/ })
+      .click(); // 3
+    await page.getByRole("textbox", { name: "Prezzo in euro" }).fill("9,00"); // the digits
     const saved = page.waitForRequest(
       (r) => r.url().endsWith("/api/prices") && r.method() === "POST",
       {
@@ -85,14 +88,14 @@ test.describe("with the position (Duomo)", () => {
     );
     await page.getByRole("button", { name: "Salva" }).click(); // 4
     await expect(page.getByRole("status").filter({ hasText: "Prezzo salvato" })).toBeVisible();
-    expect(turnstile.length).toBeGreaterThan(0); // loaded at the first contribution, not before
+    await expect.poll(() => turnstile.length).toBeGreaterThan(0); // loaded at the first contribution
 
     const request = await saved; // after the 10 s of "Annulla"
     const body = request.postDataJSON() as { venue: string; cell: string; items: unknown[] };
-    expect(body.items).toEqual([{ drink: "spritz", size_ml: 0, hh: 0, price_cents: 750 }]);
+    expect(body.items).toEqual([{ drink: "negroni", size_ml: 0, hh: 0, price_cents: 900 }]);
     expect((await request.response())?.status()).toBe(200);
     await page.goto(`/bar/${body.venue}?c=${body.cell}`);
-    await expect(page.getByRole("dialog")).toContainText("7,50 €");
+    await expect(page.getByRole("listitem").filter({ hasText: "Negroni" })).toContainText("9,00 €");
   });
 });
 
@@ -118,20 +121,23 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
   await page.goto("/");
   await goToMilano(page);
 
-  const addSpritz = async (price: string) => {
+  const addProsecco = async (price: string) => {
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
     await barChoices(page).nth(2).click();
-    await page.getByRole("button", { name: /^Spritz/ }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /^Calice di prosecco/ })
+      .click();
     await page.getByRole("textbox", { name: "Prezzo in euro" }).fill(price);
     await page.getByRole("button", { name: "Salva" }).click();
   };
 
-  await addSpritz("8,00");
+  await addProsecco("8,00");
   await page.getByRole("button", { name: "Annulla" }).click();
   await page.waitForTimeout(11_000);
   expect(posts).toEqual([]);
 
-  await addSpritz("8,20");
+  await addProsecco("8,20");
   await page.evaluate(() => {
     Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
@@ -152,20 +158,34 @@ test("M2-07 without the position, the nearest to the map centre", async ({ page 
   for (const [i, name] of expected.entries()) expect(names[i]).toContain(name);
 });
 
+// Browsers share the local D1: each one works on its own seeded price.
+const CONFIRM_TARGET = {
+  chromium: { url: "/bar/n2420779240?c=u0nd9", row: "Spritz" }, // Bistrot Duomo
+  webkit: { url: "/bar/n13001337602?c=u0nd9", row: "Birra alla spina" }, // Camparino
+} as const;
+const countOf = async (text: Promise<string>) => {
+  const match = /(\d+) conferm|Nessuna conferma/.exec(await text);
+  return match?.[1] ? Number(match[1]) : 0;
+};
+
 test("M2-11 Confermo: one tap counts, a second tap of the same session does not", async ({
   page,
+  browserName,
 }) => {
+  const target = CONFIRM_TARGET[browserName as keyof typeof CONFIRM_TARGET];
   await stubTurnstile(page);
-  await page.goto("/bar/n2420779240?c=u0nd9"); // Bistrot Duomo: spritz 7,50 € with 3 confirmations
-  const row = page.getByRole("listitem").filter({ hasText: "Spritz" }).first();
-  await expect(row).toContainText("3 conferme");
+  await page.goto(target.url);
+  const row = page.getByRole("listitem").filter({ hasText: target.row }).first();
+  await expect(row).toContainText(/conferm/);
+  const before = await countOf(row.textContent().then((t) => t ?? ""));
   await row.getByRole("button", { name: "Confermo" }).click();
-  await expect(row).toContainText("4 conferme");
   await expect(row.getByRole("button", { name: "Confermato" })).toBeDisabled();
+  expect(await countOf(row.textContent().then((t) => t ?? ""))).toBe(before + 1);
   await page.reload();
-  const again = page.getByRole("listitem").filter({ hasText: "Spritz" }).first();
+  const again = page.getByRole("listitem").filter({ hasText: target.row }).first();
   await again.getByRole("button", { name: "Confermo" }).click();
-  await expect(again).toContainText("4 conferme");
+  await expect(again.getByRole("button", { name: "Confermato" })).toBeDisabled();
+  expect(await countOf(again.textContent().then((t) => t ?? ""))).toBe(before + 1);
 });
 
 test("M2-12 È cambiato opens the price step with bar, drink, size and band already chosen", async ({
@@ -175,7 +195,7 @@ test("M2-12 È cambiato opens the price step with bar, drink, size and band alre
   await page.goto("/bar/n13001337602?c=u0nd9"); // Camparino: beer 0,4 l 9,00 €
   const row = page.getByRole("listitem").filter({ hasText: "Birra alla spina 0,4 l" });
   await row.getByRole("button", { name: "È cambiato" }).click();
-  const sheet = page.getByRole("dialog", { name: "Camparino in Galleria" });
+  const sheet = page.getByRole("dialog", { name: "Camparino in Galleria" }).last();
   await expect(sheet).toContainText("Birra alla spina");
   await expect(sheet.getByRole("radio", { name: "0,4 l" })).toBeChecked();
   await expect(sheet.getByRole("switch", { name: "Happy hour" })).toHaveAttribute(
@@ -186,9 +206,12 @@ test("M2-12 È cambiato opens the price step with bar, drink, size and band alre
   await expect(sheet.getByRole("button", { name: "Salva" })).toBeEnabled();
 });
 
-test("M2-13 reporting uses closed reasons", async ({ page }) => {
+test("M2-13 reporting uses closed reasons", async ({ page, browserName }) => {
   await stubTurnstile(page);
-  await page.goto("/bar/n5471678323?c=u0nd9"); // Terrazza Aperol
+  // One report per IP per target: each browser reports a different bar (Terrazza Aperol, Camparino).
+  await page.goto(
+    browserName === "webkit" ? "/bar/n13001337602?c=u0nd9" : "/bar/n5471678323?c=u0nd9",
+  );
   await page.getByRole("button", { name: "Segnala un errore" }).first().click();
   const dialog = page.getByRole("dialog", { name: "Segnala un errore" });
   for (const reason of [

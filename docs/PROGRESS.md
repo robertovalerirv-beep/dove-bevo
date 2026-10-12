@@ -4,6 +4,21 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-12 · Sessione 2 · M2: interfaccia dei contributi (branch `m2-contrib`)
+
+**Fatto**
+- Segreti di staging impostati da Roberto (`TURNSTILE_SECRET`, `SESSION_HMAC_KEY`, `HASH_KEY`); site key e hostname Turnstile per ambiente in `wrangler.jsonc`.
+- **Segnalazioni** (M2-13) e **pulizia notturna** (M2-15, cron per ambiente).
+- **Interfaccia**: pulsante primario fisso "Aggiungi prezzo"; foglio a 3 passi (bar più vicini alla posizione o al centro della mappa, D-16 · griglia dei drink con formato preselezionato · prezzo con tastierino decimale, formato, Happy hour, Salva); toast "Prezzo salvato" con "Annulla" per 10 s; invio a scadenza o subito al passaggio in background con `keepalive` (D-15); errori (fuori limite, in verifica, quota, rete) con il foglio riaperto e il prezzo modificabile. Scheda bar: "Confermo", "È cambiato" (inserimento precompilato), "Segnala un errore" (motivi chiusi), "Aggiungi un prezzo qui", "Segnala un problema con il bar". Turnstile caricato solo al primo contributo; il client prova prima il cookie e fa Turnstile solo dopo un 401.
+- **Sicurezza** (revisioni automatiche sui commit): segnalazioni e conferme uniche per sessione **e per IP** (HMAC, IP rivendicato prima e in modo atomico), finestra delle segnalazioni dall'ultimo cambio di valore del prezzo, IPv6 ridotto al /64 per le quote; trovato con gli e2e: dopo un ricaricamento una sessione nuova poteva confermare di nuovo → ora una conferma per IP. Rischi residui in `SECURITY.md`.
+
+**Prove**
+- `npx vitest run` 73 verdi. `npx playwright test tests/e2e/contribute.spec.ts` 14/14 (Chromium e WebKit): M2-02 (nessuna richiesta a `challenges.cloudflare.com` prima di Salva), M2-05 (4 tocchi + cifre, prezzo nella scheda dopo i 10 s), M2-06 (Annulla → nessuna POST; background → POST con `keepalive: true`), M2-07 (5 più vicini con e senza posizione, calcolati sul fixture), M2-11, M2-12, M2-13.
+- In e2e Turnstile è uno stub; il Worker locale lo verifica con il siteverify vero e la chiave di prova pubblica.
+- Screenshot 390×844 chiaro/scuro in `docs/screenshots/m2/` (mappa, scelta bar, drink, prezzo, salvato, scheda): toast sopra le attribuzioni (fondo 652 px, attribuzioni da 665 px).
+
+---
+
 ## 2026-10-12 · Sessione 2 · M1 unita, primo import completo, gate pre-push, M2 in corso (branch `m2-contrib`, PR #7)
 
 **M1 unita** (PR #5, `7727c0f`, CI 5/5). Correzione del deploy (PR #6, `4d2b300`): `italy-latest.osm.pbf` risponde 307 verso il file datato, la data va letta seguendo il redirect.

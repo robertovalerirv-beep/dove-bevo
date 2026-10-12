@@ -272,3 +272,23 @@ describe("moderation and author checks (security review)", () => {
     expect(await current()).toMatchObject({ price_cents: 750, status: "review" });
   });
 });
+
+describe("confirmations per IP (new session after a reload)", () => {
+  it("a second confirmation from the same IP with a new session does not count", async () => {
+    await post("/api/prices", priceBody([spritz(750)]), await newSession(), "192.0.2.100");
+    const confirm = { venue: BAR, drink: "spritz", size_ml: 0, hh: 0 };
+    const ip = "192.0.2.101";
+    expect(
+      await (await post("/api/prices/confirm", confirm, await newSession(), ip)).json(),
+    ).toMatchObject({
+      status: "confirmed",
+      confirmations: 1,
+    });
+    expect(
+      await (await post("/api/prices/confirm", confirm, await newSession(), ip)).json(),
+    ).toMatchObject({
+      status: "already",
+      confirmations: 1,
+    });
+  });
+});

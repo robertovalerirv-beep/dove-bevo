@@ -193,7 +193,7 @@
     "milestone": "M2",
     "descrizione": "Turnstile caricato solo al primo contributo",
     "verifica": "e2e: nessuna richiesta a `challenges.cloudflare.com` finché non si salva un prezzo",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-03",
@@ -214,21 +214,21 @@
     "milestone": "M2",
     "descrizione": "Inserimento in 4 tocchi più le cifre",
     "verifica": "e2e: dalla mappa `Aggiungi prezzo` → primo bar proposto → Spritz → \"7,50\" → `Salva`: esattamente 4 tocchi; dopo 10 s il prezzo compare nella scheda",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-06",
     "milestone": "M2",
     "descrizione": "Annulla senza scritture",
     "verifica": "e2e: `Salva` poi `Annulla` entro 10 s → nessuna `POST /api/prices`; passaggio in background entro 10 s → invio con `keepalive`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-07",
     "milestone": "M2",
     "descrizione": "Bar proposti per vicinanza",
     "verifica": "e2e: con posizione simulata i 5 bar proposti sono i più vicini secondo i dati fixture; senza posizione, i più vicini al centro mappa",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-08",
@@ -256,14 +256,14 @@
     "milestone": "M2",
     "descrizione": "\"Confermo\" in 1 tocco",
     "verifica": "e2e: un tocco su \"Confermo\" incrementa il contatore; secondo tocco della stessa sessione non incrementa",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-12",
     "milestone": "M2",
     "descrizione": "\"È cambiato\" precompilato",
     "verifica": "e2e: apre l'inserimento con bar, drink, formato e fascia già scelti; basta cifre e `Salva`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-13",

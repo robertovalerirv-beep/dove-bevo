@@ -323,3 +323,197 @@
   color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
+
+/* Primary action (MASTER: 56 px, full width at the bottom) */
+.btn--primary {
+  min-height: var(--target-primary);
+  border: 0;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--text-lg);
+}
+.btn--primary:disabled {
+  opacity: 0.5;
+}
+.bottom__primary {
+  grid-column: 1 / -1;
+}
+.btn:disabled {
+  cursor: default;
+}
+
+/* Add price: drink grid, size, price, happy hour */
+.drinks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+}
+.drink {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  min-height: 88px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: var(--weight-semibold) var(--text-md) var(--font-sans);
+}
+.drink__size {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+}
+.segmented {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.chip[aria-checked="true"] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.price-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+}
+.price-input input {
+  width: 100%;
+  min-height: var(--target-primary);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: var(--weight-bold) var(--text-2xl) var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+.error {
+  min-height: 1.5em;
+  margin: var(--space-2) 0;
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target);
+  margin-bottom: var(--space-4);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: var(--text-md) var(--font-sans);
+}
+.switch__track {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+}
+.switch__track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.switch[aria-checked="true"] .switch__track {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+.switch[aria-checked="true"] .switch__track::after {
+  background: var(--color-on-primary);
+  transform: translateX(20px);
+}
+.sheet .btn--primary {
+  width: 100%;
+}
+
+/* Bar page actions */
+.bar__actions,
+.price__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  grid-column: 1 / -1;
+  margin-top: var(--space-2);
+}
+.bar__actions .btn--primary {
+  width: auto;
+  font-size: var(--text-md);
+  min-height: var(--target);
+}
+
+/* Report reasons */
+.choices {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target);
+  border-bottom: 1px solid var(--color-border);
+}
+.choice input {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--color-primary);
+}
+
+/* Toast above the bottom bar; Turnstile appears there only if Cloudflare needs an interaction */
+.toast {
+  position: fixed;
+  left: var(--space-4);
+  right: var(--space-4);
+  /* Above the bottom bar AND the attribution line, which must stay visible (SPEC 2.8). */
+  bottom: calc(
+    var(--target-primary) + var(--target) + 4 * var(--space-2) + 56px + env(safe-area-inset-bottom)
+  );
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-text);
+  color: var(--color-bg);
+  box-shadow: var(--shadow-sheet);
+}
+.toast__action {
+  min-height: var(--target);
+  min-width: var(--target);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: var(--weight-bold) var(--text-md) var(--font-sans);
+  text-decoration: underline;
+}
+.turnstile-host {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--target-primary) + var(--target) + 4 * var(--space-2) + 64px);
+  transform: translateX(-50%);
+  z-index: 11;
+}

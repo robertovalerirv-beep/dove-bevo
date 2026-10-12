@@ -3,12 +3,17 @@ import type { Place } from "../shared/api-types";
 import { MAP_CHIPS, type ChipId } from "../shared/catalog";
 import { APP_NAME } from "../shared/config";
 import { visibleCells } from "../shared/geohash";
-import { BarSheet } from "./components/BarSheet";
+import type { PriceRow } from "../shared/api-types";
+import { AddPriceSheet, type Draft, type Prefill } from "./components/AddPriceSheet";
+import { BarSheet, type BarActions } from "./components/BarSheet";
+import { ReportSheet, type Reason } from "./components/ReportSheet";
+import { Toast } from "./components/Toast";
 import { Icon } from "./components/Icon";
 import { ListSheet } from "./components/ListSheet";
 import { SearchSheet } from "./components/SearchSheet";
 import { it } from "./i18n/it";
-import { loadCell, shownPrice, type Venue } from "./lib/data";
+import { invalidateCell, loadCell, shownPrice, type Venue } from "./lib/data";
+import { ensureSession, postWithSession } from "./lib/session";
 import { formatPrice } from "./lib/format";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
 
@@ -42,6 +47,13 @@ export function App({ loadMap }: Props) {
   const [view, setView] = useState<MapView | null>(null);
   const [route, setRoute] = useState<Route>(parseRoute);
   const [sheet, setSheet] = useState<"search" | "list" | null>(null);
+  const [adding, setAdding] = useState<{ prefill: Prefill | null } | null>(null);
+  const [reporting, setReporting] = useState<{ venue: Venue; row: PriceRow | null } | null>(null);
+  const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null);
+  const [barVersion, setBarVersion] = useState(0); // reloads the bar page after a contribution
+  const turnstileHost = useRef<HTMLDivElement>(null);
+  const toastTimer = useRef<number | undefined>(undefined);
+  const pendingSave = useRef<{ draft: Draft; timer: number; sent: boolean } | null>(null);
   const [chip, setChip] = useState<ChipId>(MAP_CHIPS[0].id);
   const [venues, setVenues] = useState<Map<string, Venue>>(new Map());
   const [cellsState, setCellsState] = useState<CellsState>("idle");
@@ -85,6 +97,18 @@ export function App({ loadMap }: Props) {
       cancelled = true;
     };
   }, [mapWanted]);
+
+  // Going to the background is not a cancellation: send the pending price now (D-15).
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden" && pendingSave.current)
+        void send(pendingSave.current);
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, []);
 
   useEffect(() => {
     const onPop = () => {
@@ -187,6 +211,146 @@ export function App({ loadMap }: Props) {
     }
     history.replaceState(null, "", "/");
     setRoute(parseRoute());
+  }
+
+  const host = () => {
+    if (!turnstileHost.current) throw new Error("turnstile host");
+    return turnstileHost.current;
+  };
+
+  function showToast(text: string, undo?: () => void, ms = 4000) {
+    window.clearTimeout(toastTimer.current);
+    setToast({ text, undo });
+    toastTimer.current = window.setTimeout(() => {
+      setToast(null);
+    }, ms);
+  }
+
+  const drinkLabel = (code: string) => (it.drinks[code] ?? code).toLowerCase();
+
+  function reopen(draft: Draft, error: string) {
+    setAdding({
+      prefill: {
+        venue: draft.venue,
+        drink: draft.drink,
+        size: draft.size,
+        hh: draft.hh,
+        error,
+        text: (draft.cents / 100).toFixed(2).replace(".", ","),
+      },
+    });
+  }
+
+  /** Sends a saved price: after the 10 s of "Annulla" or when the page goes to the background (D-15). */
+  async function send(entry: { draft: Draft; timer: number; sent: boolean }) {
+    if (entry.sent) return;
+    entry.sent = true;
+    window.clearTimeout(entry.timer);
+    if (pendingSave.current === entry) pendingSave.current = null;
+    const { venue, drink, size, hh, cents } = entry.draft;
+    try {
+      const response = await postWithSession(
+        host(),
+        "/api/prices",
+        {
+          venue: venue.key,
+          cell: venue.cell,
+          source: "manual",
+          items: [{ drink, size_ml: size, hh, price_cents: cents }],
+        },
+        true,
+      );
+      if (response.status === 429) {
+        reopen(entry.draft, it.add.quota);
+        return;
+      }
+      if (!response.ok) {
+        reopen(entry.draft, it.add.network);
+        return;
+      }
+      const { results } = (await response.json()) as {
+        results: { status: string; code?: string }[];
+      };
+      const result = results[0];
+      if (result?.status === "rejected") {
+        reopen(
+          entry.draft,
+          result.code === "under_review"
+            ? it.add.underReview
+            : it.add.outOfRange(drinkLabel(drink)),
+        );
+        return;
+      }
+      if (result?.status === "quarantined") showToast(it.add.quarantined);
+      if (result?.status === "confirmed") showToast(it.add.confirmedSame);
+      invalidateCell(venue.cell);
+      setAttempt((n) => n + 1);
+      setBarVersion((n) => n + 1);
+    } catch {
+      reopen(entry.draft, it.add.network);
+    }
+  }
+
+  function save(draft: Draft) {
+    setAdding(null);
+    const entry = { draft, timer: 0, sent: false };
+    entry.timer = window.setTimeout(() => void send(entry), 10_000);
+    pendingSave.current = entry;
+    showToast(
+      it.add.saved,
+      () => {
+        window.clearTimeout(entry.timer);
+        entry.sent = true;
+        if (pendingSave.current === entry) pendingSave.current = null;
+        showToast(it.add.undone);
+      },
+      10_000,
+    );
+    // Turnstile only now, at the first contribution (M2-02), during the 10 s window.
+    ensureSession(host()).catch(() => undefined);
+  }
+
+  const barActions: BarActions = {
+    confirm: async (row) => {
+      const response = await postWithSession(host(), "/api/prices/confirm", {
+        venue: row[0],
+        drink: row[1],
+        size_ml: row[2],
+        hh: row[3],
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      const body = (await response.json()) as { status: string; confirmations: number };
+      return body.status === "confirmed" ? body.confirmations : null;
+    },
+    changed: (venue, row) => {
+      setAdding({ prefill: { venue, drink: row[1], size: row[2], hh: row[3] } });
+    },
+    report: (venue, row) => {
+      setReporting({ venue, row });
+    },
+    addHere: (venue) => {
+      setAdding({ prefill: { venue } });
+    },
+  };
+
+  async function sendReport(target: { venue: Venue; row: PriceRow | null }, reason: Reason) {
+    setReporting(null);
+    const price = target.row
+      ? { drink: target.row[1], size_ml: target.row[2], hh: target.row[3] }
+      : {};
+    try {
+      const response = await postWithSession(host(), "/api/reports", {
+        venue: target.venue.key,
+        cell: target.venue.cell,
+        reason,
+        ...price,
+      });
+      if (!response.ok) throw new Error(String(response.status));
+      const body = (await response.json()) as { status: string };
+      showToast(body.status === "already" ? it.report.already : it.report.thanks);
+    } catch {
+      showToast(it.actions.failed);
+    }
   }
 
   function moveTo(lat: number, lon: number, zoom: number) {
@@ -309,7 +473,18 @@ export function App({ loadMap }: Props) {
         </section>
       </main>
 
+      <div ref={turnstileHost} class="turnstile-host" />
+      {toast && <Toast text={toast.text} onUndo={toast.undo} />}
       <nav class="bottom" aria-label={it.map.actions}>
+        <button
+          type="button"
+          class="btn btn--primary bottom__primary"
+          onClick={() => {
+            setAdding({ prefill: null });
+          }}
+        >
+          {it.add.open}
+        </button>
         <button type="button" class="btn btn--secondary" onClick={nearMe}>
           <Icon name="locate" />
           {it.map.nearMe}
@@ -354,13 +529,37 @@ export function App({ loadMap }: Props) {
       )}
       {route.name === "bar" && (
         <BarSheet
-          key={route.key}
+          key={`${route.key}:${String(barVersion)}`}
           venueKey={route.key}
           cell={route.cell}
+          actions={barActions}
           onVenue={(v) => {
             if (!view || view.zoom < MIN_ZOOM_CELLS) moveTo(v.lat, v.lon, 16);
           }}
           onClose={closeBar}
+        />
+      )}
+      {adding && (
+        <AddPriceSheet
+          venues={allVenues}
+          origin={
+            position ??
+            (view && view.zoom >= MIN_ZOOM_CELLS ? { lat: view.lat, lon: view.lon } : null)
+          }
+          prefill={adding.prefill}
+          onSave={save}
+          onClose={() => {
+            setAdding(null);
+          }}
+        />
+      )}
+      {reporting && (
+        <ReportSheet
+          onPrice={reporting.row !== null}
+          onSend={(reason) => void sendReport(reporting, reason)}
+          onClose={() => {
+            setReporting(null);
+          }}
         />
       )}
     </div>

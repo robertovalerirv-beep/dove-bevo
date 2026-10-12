@@ -96,8 +96,11 @@ async function confirmOnce(
   day: string,
 ): Promise<number | null> {
   for (const key of await authorKeys(env, who, k, day)) if (await hasKey(env.DB, key)) return null;
-  const claim = await hmacHex(env.HASH_KEY, [day, "confirm", who.sid, priceId(k)]);
-  if (!(await claimOnce(env.DB, claim, day))) return null;
+  // One confirmation per price per IP and per session: a reload that brings a new session does
+  // not count twice (IP first, atomic).
+  const byIp = await hmacHex(env.HASH_KEY, [day, "confirm", "ip", who.ip, priceId(k)]);
+  const bySid = await hmacHex(env.HASH_KEY, [day, "confirm", "sid", who.sid, priceId(k)]);
+  if (!(await claimOnce(env.DB, byIp, day)) || !(await claimOnce(env.DB, bySid, day))) return null;
   return confirmPrice(env.DB, k, day);
 }
 

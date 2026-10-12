@@ -97,3 +97,8 @@ export function shownPrice(venue: Venue, drink: string, size: number): PriceRow 
   const rows = venue.prices.filter((p) => p[1] === drink && p[2] === size && p[7] === 0);
   return rows.find((p) => p[3] === 0) ?? rows.find((p) => p[3] === 1);
 }
+
+/** Drops a cell from the visit cache so its prices are read again after a contribution. */
+export function invalidateCell(cell: string): void {
+  cells.delete(cell);
+}

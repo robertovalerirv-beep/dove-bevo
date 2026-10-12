@@ -102,6 +102,7 @@ export const it = {
     changed: "È cambiato",
     report: "Segnala un errore",
     addHere: "Aggiungi un prezzo qui",
+    reportBar: "Segnala un problema con il bar",
     failed: "Non sono riuscito a inviare: riprova.",
   },
   report: {

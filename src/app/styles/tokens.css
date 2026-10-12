@@ -30,6 +30,12 @@
   --price-neutral: #ffffff;
   --on-price-neutral: #0f172a;
 
+  /* Overlays on the map, which stays light in both themes (MASTER, map section). */
+  --map-pill-bg: #ffffff;
+  --map-pill-text: #0f172a;
+  --map-pill-border: #0f172a;
+  --map-focus: #c2410c; /* light-theme focus on the light map, 5.2:1 on white */
+
   --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
   --text-sm: 0.875rem;
   --text-md: 1rem;
@@ -48,6 +54,8 @@
   --radius-md: 12px;
   --radius-pill: 999px;
   --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.18);
+  --color-backdrop: rgb(15 23 42 / 0.45);
+  --sheet-max-width: 640px;
 
   --target: 48px;
   --target-primary: 56px;
@@ -86,6 +94,7 @@
     --price-neutral: #1e293b;
     --on-price-neutral: #f8fafc;
     --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.5);
+    --color-backdrop: rgb(0 0 0 / 0.6);
   }
 }
 

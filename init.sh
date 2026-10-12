@@ -62,7 +62,7 @@ done
 echo "== Smoke test"
 curl -fsS "http://localhost:$PORT/api/health" && echo
 curl -fsS -o /dev/null -w "shell: HTTP %{http_code}\n" "http://localhost:$PORT/"
-if [[ -d tests/fixtures/data ]]; then # the cell route and its fixture arrive in M1
+if [[ -d migrations ]]; then # the cell route needs D1 (M1-08)
   curl -fsS -o /dev/null -w "cell:  HTTP %{http_code}\n" "http://localhost:$PORT/api/prices/u0nd9"
 fi
 

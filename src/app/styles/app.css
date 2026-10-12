@@ -1,0 +1,325 @@
+/* App layout and components. Values come from tokens.css (design-system/MASTER.md). */
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr); /* chips scroll instead of widening the page */
+  height: 100dvh;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.icon {
+  width: var(--icon-md);
+  height: var(--icon-md);
+  flex: none;
+}
+
+/* Header: brand, search, drink chips */
+.top {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  padding-top: max(var(--space-2), env(safe-area-inset-top));
+}
+.top__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.brand {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.chips {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  /* Room for the focus ring, which overflow would otherwise clip. */
+  padding: 5px 0;
+  margin: calc(var(--space-2) - 5px) 0 -5px;
+  scrollbar-width: none;
+}
+.chip {
+  flex: none;
+  min-height: var(--target);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: var(--weight-semibold) var(--text-md) var(--font-sans);
+  transition: background-color var(--duration-fast) var(--ease-out);
+}
+.chip[aria-pressed="true"] {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
+  font: var(--weight-semibold) var(--text-md) var(--font-sans);
+  text-decoration: none;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+.btn:active {
+  opacity: 0.75;
+}
+.btn--secondary {
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+/* Search opens the search sheet; it looks like a field (pages/mappa.md). */
+.search-field {
+  flex: 1;
+  justify-content: flex-start;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-weight: var(--weight-regular);
+}
+.btn--ghost {
+  border: 0;
+  background: none;
+  color: var(--color-text);
+}
+
+/* Map: absolute inside a relative main, so its height never depends on grid stretching. */
+.main {
+  position: relative;
+  min-height: 0;
+}
+.map {
+  position: absolute;
+  inset: 0;
+}
+/* Beats .maplibregl-map { position: relative } from maplibre-gl.css, loaded later. */
+.map > .map__canvas {
+  position: absolute;
+  inset: 0;
+}
+.map__status {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 2 * var(--space-4));
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--map-pill-border);
+  background: var(--map-pill-bg);
+  color: var(--map-pill-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-align: center;
+  pointer-events: none;
+}
+/* Controls on the map (light in both themes): two-tone ring, ≥ 3:1 on any background (MASTER). */
+.map :focus-visible {
+  outline-color: var(--map-focus);
+  box-shadow: 0 0 0 var(--focus-offset) var(--map-pill-bg);
+}
+/* Static picture of the start view until MapLibre is wanted (ADR 0014). */
+.map__preview {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: var(--map-pill-bg);
+  cursor: pointer;
+}
+.map__preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* The canvas and the preview clip anything outside them: draw the ring inside. */
+.map__preview:focus-visible,
+.map .maplibregl-canvas:focus-visible {
+  outline: var(--focus-width) solid var(--map-focus);
+  outline-offset: calc(-1 * var(--focus-width));
+  box-shadow: inset 0 0 0 calc(var(--focus-width) + var(--focus-offset)) var(--map-pill-bg);
+}
+.map__retry {
+  position: absolute;
+  top: calc(var(--space-3) + var(--target));
+  left: 50%;
+  transform: translateX(-50%);
+}
+.map__attribution {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  line-height: 1.5;
+  font-size: var(--text-sm);
+  color: var(--map-pill-text);
+  background: color-mix(in srgb, var(--map-pill-bg) 90%, transparent);
+}
+.map__attribution a {
+  color: var(--map-pill-text);
+}
+
+/* Bottom bar */
+.bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Sheets */
+.sheet {
+  width: 100%;
+  max-width: var(--sheet-max-width);
+  max-height: 85dvh;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sheet);
+}
+.sheet::backdrop {
+  background: var(--color-backdrop);
+}
+.sheet__head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+.sheet__title {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.sheet__body {
+  padding: var(--space-3) var(--space-4) max(var(--space-6), env(safe-area-inset-bottom));
+}
+
+.field {
+  width: 100%;
+  min-height: var(--target);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: var(--text-md) var(--font-sans);
+}
+.hint {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.section-title {
+  margin: var(--space-6) 0 var(--space-2);
+  font-size: var(--text-md);
+}
+
+/* Rows (list, search results) */
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rows button.row {
+  width: 100%;
+  border-width: 0 0 1px;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 var(--space-3);
+  min-height: var(--target-primary);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  text-decoration: none;
+  cursor: pointer;
+}
+.row__name {
+  font-weight: var(--weight-semibold);
+}
+.row__price {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.row__price--none {
+  color: var(--color-text-muted);
+  font-weight: var(--weight-regular);
+}
+.row__meta {
+  grid-column: 1 / -1;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Bar page */
+.bar__kind,
+.bar__addr {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-muted);
+}
+.bar__kind {
+  font-size: var(--text-sm);
+}
+.prices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.price {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.price__name {
+  font-weight: var(--weight-semibold);
+}
+.price__value {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.price__meta,
+.price__ai {
+  grid-column: 1 / -1;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}

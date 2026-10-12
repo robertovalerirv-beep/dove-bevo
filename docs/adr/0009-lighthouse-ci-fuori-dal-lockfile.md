@@ -1,6 +1,6 @@
 # 0009 · Lighthouse CI eseguito con npx, fuori dal lockfile
 
-- **Stato:** accettata (M0-05) · **Data:** 2026-10-11
+- **Stato:** accettata (M0-05), deroga a SPEC 13.7 approvata da Roberto l'11/10/2026 · **Data:** 2026-10-11
 
 ## Contesto
 SPEC 4.1 ammette `@lhci/cli` e SPEC 16 chiede Lighthouse CI su ogni PR. La versione 0.15.1 installata come dipendenza porta pacchetti transitivi con vulnerabilità alte senza correzione compatibile (`basic-ftp`, `extract-zip`, via `proxy-agent` e `puppeteer-core`): `npm audit --audit-level=high`, anch'esso richiesto (M0-08), fallirebbe.

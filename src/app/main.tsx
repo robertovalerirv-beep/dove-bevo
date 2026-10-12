@@ -1,14 +1,12 @@
 import { render } from "preact";
 import "./styles/base.css";
-import { APP_NAME } from "../shared/config";
+import "./styles/app.css";
+import { App } from "./app";
+import type * as MapModule from "./lib/maplibre-map";
 
-function App() {
-  return (
-    <main>
-      <h1>{APP_NAME}</h1>
-    </main>
-  );
-}
+// MapLibre (~1 MB of JS) is loaded only when the map is wanted (ADR 0014).
+let mapModule: Promise<typeof MapModule> | null = null;
+const loadMap = () => (mapModule ??= import("./lib/maplibre-map"));
 
 const root = document.getElementById("app");
-if (root) render(<App />, root);
+if (root) render(<App loadMap={loadMap} />, root);

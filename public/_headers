@@ -7,3 +7,7 @@
   Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=(), usb=()
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Resource-Policy: same-origin
+
+# Bar data is versioned by DATA_VERSION in the path: never changes once deployed (SPEC 5.3).
+/data/*
+  Cache-Control: public, max-age=31536000, immutable

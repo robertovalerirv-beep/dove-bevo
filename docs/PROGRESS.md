@@ -4,6 +4,66 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-12 · Sessione 2 · M1: prestazioni (Lighthouse) e decisioni
+
+**Problema**: in CI il job Lighthouse falliva dopo l'arrivo della mappa (Performance 0,47, LCP 5,8 s) e il job `osm-import` falliva con "Permission denied" (bit di esecuzione mancante su `import.sh`).
+
+**Fatto**
+- Bit di esecuzione di `scripts/osm-import/import.sh` in git (`100755`).
+- LCP: l'elemento più grande era il testo delle attribuzioni disegnato da MapLibre dopo il caricamento → attribuzioni come testo della shell (LCP 5,1 s → 1,5 s).
+- TBT 1,7 s (esecuzione di MapLibre, CPU 4×) → **Roberto ha scelto la mappa al primo tocco** (ADR 0014): immagine statica dell'Italia, MapLibre al primo gesto o alla prima azione che lo richiede.
+- **Roberto ha approvato ADR 0012** (`@cloudflare/vitest-plugin`).
+
+**Prove**
+- Lighthouse mobile locale: Performance **0,99**, LCP 1,95 s, TBT 37 ms, CLS 0, Accessibility/Best Practices/SEO 1 (`npx @lhci/cli@0.15.1 autorun`, asserzioni verdi). Shell 15.700 B gzip.
+- `npx vitest run` 41 verdi; `npx playwright test --workers=2` **48 passati** (M1-06 ora verifica l'immagine statica senza alcuna richiesta MapLibre, poi la mappa interattiva al tocco; axe prima e dopo l'avvio della mappa).
+
+---
+
+## 2026-10-11 · Sessione 2 · M1 (branch `m1-map`, PR #5): interfaccia, prove e revisioni
+
+**Fatto (oltre a M1-01/02/04 e fixture, voce sotto)**
+- **M1-08** `GET /api/prices/:cell`: migrazione `0001_init.sql` (schema SPEC 8), `src/worker/lib/db.ts` (unico accesso a D1), zod sulla cella, Cache API 60 s. Test worker con `@cloudflare/vitest-plugin` (ADR 0012) e D1 migrato.
+- **M1-15** `GET /api/venues/:key/prices`: correnti + ≤ 10 osservazioni per drink e formato (window function), solo data. **Rate limit rinviato a M2-14**, dove nasce l'infrastruttura HMAC/quote (il binding `RATE_LIMITER` esiste già).
+- **Interfaccia** (Preact, MapLibre in un chunk separato con worker servito da noi, OpenFreeMap positron con attribuzioni esatte ed etichette italiane `name:it`): chip dei drink, celle da zoom 13 (≤ 12), "Vicino a me" (posizione solo in memoria), ricerca città/bar su `places.json`, scheda bar `/bar/<key>?c=<cell>` (dettagli, prezzi con data e conferme, HH, etichetta AI, "In verifica", Indicazioni), "Elenco" accessibile; fogli su `<dialog>` nativo con ritorno del focus.
+- **M1-03** nel deploy di staging: data Geofabrik come chiave di cache del PBF, import osmium con `pipefail` e controllo del formato `DATA_VERSION`, `DATA_VERSION` al client (build) e al Worker (`--var`), smoke test su `data_version`, cella JSON (non fallback HTML) con cache immutabile, `/api/prices`.
+- **M1-05** ADR 0013: quote D1 misurate (lettura di una cella: 601 righe per 300 prezzi; scrittura di un prezzo: 3 righe) con test di regressione `tests/worker/d1-reads.test.ts`. ADR 0003 (licenza) già presente.
+
+**Prove**
+- `npx vitest run` → 8 file, **41 test** verdi (unit: geohash, import OSM, guardie, config; worker: prezzi di cella, storico, letture/scritture D1).
+- `npx playwright test --workers=2` → **48 passati** (Chromium e WebKit a 390×844 + sicurezza): M1-06, 07, 09, 10 (concessa: zoom 15 e centro entro 0,0005° dal Duomo; negata), 11, 12 (anche dopo reload), 13 (solo tastiera da inizio pagina: Tab, Opzione+Tab in WebKit come Safari; axe 0 violazioni su elenco e scheda), 14 (nessuna richiesta con coordinate o arrotondamenti a 2+ decimali), axe sulla mappa, CSP senza violazioni anche con la mappa caricata su Milano (M0-04), celle senza file statico, prezzi disegnati a zoom 14 (`data-prices-shown` da `queryRenderedFeatures`: i segnaposto, non solo l'elenco).
+- **CPU di `/api/prices/:cell`** (M1-08): in workerd il timer non avanza senza I/O, quindi misurata la parte di CPU della rotta in Node: mappatura + JSON di una cella con 400 prezzi e 30 bar utente = **0,080 ms** per richiesta (2.000 iterazioni dopo riscaldamento). Le letture D1 sono I/O. Da confermare con le metriche CPU di staging dopo il deploy.
+- Shell 15.038 B gzip (budget 51.200, MapLibre esclusa). `npm audit` 0, `format:check`, lint, typecheck verdi.
+- **Screenshot 390×844 (Chromium)** in `docs/screenshots/m1/`: Italia, Milano a zoom 14 con prezzi sopra i cluster, zoom 16 con focus del canvas, elenco, scheda bar — chiaro e scuro; confrontati con `design-system/MASTER.md` e `pages/mappa.md`, `scheda-bar.md`, `ricerca.md`.
+
+**Errori trovati dai test e corretti**: spostamenti chiesti prima che la mappa fosse pronta (persi); `maplibre-gl.css` che azzerava l'altezza del contenitore (mappa vuota, in WebKit 0 celle); chip che allargavano la pagina; celle senza file statico (fallback HTML) che mandavano in errore tutta la vista; risposte servite dalla cache HTTP di WebKit (test con `page.route`).
+
+**Revisioni di chiusura M1**
+- `/code-review` (alto): 8 rilievi, tutti corretti (errori di caricamento visibili e senza promesse in cache, "Chiudi" che torna indietro nella cronologia, `visibleCells` con limiti non validi, `roundRect` per Safari < 16, stile e TileJSON in parallelo, attribuzioni in `it.ts`).
+- `/security-review` (subagent `security-reviewer`): nessuna vulnerabilità ≥ 8/10.
+- `spec-reviewer`: 4 bloccanti → corretti (celle senza file; import fallito che non bloccava il deploy; prove mancanti in PROGRESS → questa voce; ADR 0012 da approvare → chiesto a Roberto). Corretti anche: centro della mappa verificato in M1-10, M1-13 solo tastiera, segnaposto verificati sul canvas, rinvio del rate limit registrato qui.
+- `ux-a11y-reviewer`: 3 bloccanti → corretti (anello di focus interno sul canvas; anello a due toni `--map-focus` sopra la mappa anche in tema scuro; prezzi mai raggruppati nei cluster). Corretti anche: anello delle chip non tagliato, stato delle celle che prevale sul messaggio di posizione da zoom 13, ritorno del focus alla chiusura dei fogli, errori annunciati (`role="alert"`), "Riprova" sull'errore delle celle, ricerca come lista di pulsanti, testo della mappa a 14 px, area di tocco 48 px sui cluster, attribuzioni nel font del sistema con `line-height` 1,5, token per backdrop e larghezze, campo di ricerca come in `mappa.md`, tipo/città a `--text-sm`.
+- **Eccezioni registrate**: i link delle attribuzioni restano alti circa 21 px (eccezione "inline" di WCAG 2.5.8; MASTER chiede 48 px per i controlli, non per i link nel testo di attribuzione). `viewport-fit=cover` e aree sicure laterali arrivano con la PWA (M4). Il pulsante primario "Aggiungi prezzo" arriva in M2.
+
+**Checklist UI UX Pro Max (M1)**: nessuna emoji, una sola famiglia di icone SVG a 2 px — PASS · feedback al tocco senza spostamenti — PASS · target ≥ 48 px, focus coerente, etichette — PASS (eccezione attribuzioni sopra) · contrasto chiaro e scuro, anche sopra la mappa — PASS · reduced motion e testo al 200 % — PASS · 375/390 px e orizzontale — PASS (aree sicure in M4) · solo token semantici — PASS.
+
+---
+
+## 2026-10-11 · Sessione 2 · Chiusura M0 e inizio M1 (branch `m1-map`)
+
+**M0 unita** (PR #2, merge commit `408ef73`, CI 4/4 verde, revisioni chiuse; Roberto ha autorizzato Claude a unire le PR delle milestone con CI verde e revisioni chiuse).
+- Primo deploy di staging (run 38167216787): https://dovebevo-staging.roberto-valeri-rv.workers.dev — `/api/health` → `{"status":"ok","version":"0.0.0","data_version":"none"}`; `/`, `/bar/n1` 200 HTML; `/api/nonesiste` 404 JSON; CSP e HSTS presenti, nessun `Access-Control-*` (verificato anche da Claude con `fetch`).
+- **M0-11**: binding Rate Limiting accettato sul piano gratuito (ADR 0010 accettata). **M0-08**: `npm audit` verde su `main`, Dependabot attivo (prime esecuzioni npm e Actions completate, nessun aggiornamento), Actions a SHA, nessun `pull_request_target`.
+- Restano: M0-04 (mappa) e M0-07 (passa con il `data_version` dell'import, M1-03).
+
+**M1 finora**
+- **M1-01** `src/shared/geohash.ts`: encoder (~30 righe) e copertura delle celle visibili (≤ 12, altrimenti `null`). 6 test: `u0nd9`, `u4pruydqqvj`, bordi ±90/±180, celle senza duplicati.
+- **M1-02** `scripts/osm-import/`: `osm.ts` (logica pura: filtri, centroidi, città più vicina entro 15 km con griglia, file D-11, `places.json`, `LICENSE.txt`, limiti 15.000 file e 1 MB, riquadro Italia, nomi ≤ 120), `build.mjs` (streaming del GeoJSON-seq), `import.sh` (osmium), `check-output.mjs` (validazione e conteggi). 7 test unit; job CI `osm-import` con osmium vero su `tests/fixtures/osm/sample.osm` → PBF, confronto con l'output atteso. `passes` dopo il primo verde in CI.
+- **M1-04** `/data/*` con `Cache-Control: public, max-age=31536000, immutable` (test di sicurezza rosso → verde).
+- **Fixture reale** `tests/fixtures/data/`: 9 celle di Milano centro, 2.446 bar e 71 località, 185 KB, dati OSM via Overpass (mirror `overpass.private.coffee`, base 28/7/2026; l'istanza principale rispondeva 504), generati con lo stesso `build.mjs` (le vie hanno il centro di Overpass invece del centroide). `npm run fixture` lo copia in `public/data/fixture/`.
+
+---
+
 ## 2026-10-11 · Sessione 2 · M0 · M0-04/05/06/08/09/10/11 e deploy
 
 **Fatto**

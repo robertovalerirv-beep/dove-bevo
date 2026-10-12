@@ -25,7 +25,7 @@
     "milestone": "M0",
     "descrizione": "CSP senza violazioni",
     "verifica": "e2e: apertura della shell e della mappa senza messaggi CSP in console",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-05",
@@ -53,7 +53,7 @@
     "milestone": "M0",
     "descrizione": "Supply chain",
     "verifica": "`npm audit --audit-level=high` verde in CI; Dependabot attivo per npm e Actions; tutte le Actions di terzi fissate a SHA; nessun `pull_request_target` (grep in CI)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-09",
@@ -74,14 +74,14 @@
     "milestone": "M0",
     "descrizione": "Rate Limiting binding verificato",
     "verifica": "ADR con esito della verifica sul piano gratuito (D-22)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-01",
     "milestone": "M1",
     "descrizione": "Encoder geohash",
     "verifica": "unit: vettori noti (es. 45.4642, 9.19 → `u0nd9` a 5 caratteri), bordi ±90/±180, calcolo delle celle visibili ≤ 12",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-02",
@@ -102,84 +102,84 @@
     "milestone": "M1",
     "descrizione": "Cache immutabile dei dati",
     "verifica": "e2e/sec: `/data/<DATA_VERSION>/v/<cell>.json` ha `Cache-Control: public, max-age=31536000, immutable`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-05",
     "milestone": "M1",
     "descrizione": "ADR licenza e quote D1",
     "verifica": "`docs/adr/` contiene licenza ODbL (separazione prezzi) e stima quote con misure reali",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-06",
     "milestone": "M1",
     "descrizione": "Mappa iniziale sull'Italia con attribuzioni",
     "verifica": "e2e: all'apertura la mappa mostra l'Italia; attribuzioni OpenFreeMap, OpenMapTiles, OpenStreetMap visibili; screenshot 390×844",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-07",
     "milestone": "M1",
     "descrizione": "Invito sotto zoom 13 e caricamento celle da zoom 13",
     "verifica": "e2e: a zoom 12 nessuna richiesta `/api/prices` e invito visibile; a zoom 14 su Milano richieste per ≤ 12 celle e segnaposto visibili",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-08",
     "milestone": "M1",
     "descrizione": "`GET /api/prices/:cell`",
     "verifica": "unit: formato compatto 9.2, `review`/`removed` esclusi, cella non valida → 400; misura CPU < 2 ms riportata in PROGRESS",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-09",
     "milestone": "M1",
     "descrizione": "Chip dei drink",
     "verifica": "e2e: toccando \"Spritz\" i segnaposto mostrano il prezzo dello spritz; bar senza prezzo restano visibili e discreti",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-10",
     "milestone": "M1",
     "descrizione": "\"Vicino a me\"",
     "verifica": "e2e con geolocalizzazione simulata: la mappa si centra sulla posizione; con permesso negato appare l'invito alla ricerca e tutto resta usabile",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-11",
     "milestone": "M1",
     "descrizione": "Ricerca città",
     "verifica": "e2e: cerco \"milano\" → primo risultato Milano → la mappa si sposta e carica le celle",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-12",
     "milestone": "M1",
     "descrizione": "Scheda bar in lettura",
     "verifica": "e2e: apro un bar con prezzi fixture: nome, indirizzo, tipo, prezzi con data, conferme, link \"Indicazioni\"; URL `/bar/<key>` funziona anche ricaricando",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-13",
     "milestone": "M1",
     "descrizione": "Elenco accessibile dei bar visibili",
     "verifica": "e2e: \"Elenco\" mostra i bar visibili; navigazione solo da tastiera fino all'apertura di una scheda; axe senza violazioni",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-14",
     "milestone": "M1",
     "descrizione": "Nessuna coordinata dell'utente in rete",
     "verifica": "e2e con posizione simulata: nessuna richiesta (URL, header, body) contiene le coordinate simulate né loro arrotondamenti a 2+ decimali",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M1-15",
     "milestone": "M1",
     "descrizione": "Storico di un bar",
     "verifica": "unit: `GET /api/venues/:key/prices` restituisce correnti e ≤ 10 osservazioni per drink e formato, solo data",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-01",

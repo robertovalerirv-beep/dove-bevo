@@ -14,6 +14,15 @@
   "observability": { "enabled": true, "logs": { "invocation_logs": false } },
   // Local and e2e use the fixture data; the deploy job sets the OSM import date (SPEC 5.3).
   "vars": { "DATA_VERSION": "fixture" },
+  // Local D1 only: the id is a placeholder; staging and production have their own databases.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dovebevo-local",
+      "database_id": "00000000-0000-4000-8000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
   // Burst limit keyed by the HMAC of the IP (SPEC 13.3); free-plan availability: ADR 0010.
   "ratelimits": [
     { "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 10 } },
@@ -23,6 +32,14 @@
     "staging": {
       "name": "dovebevo-staging",
       "vars": { "DATA_VERSION": "none" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "dovebevo-staging",
+          "database_id": "d2d4f6d4-b2fb-435b-9f9e-a2961d9c9839",
+          "migrations_dir": "migrations",
+        },
+      ],
       "ratelimits": [
         { "name": "RATE_LIMITER", "namespace_id": "1002", "simple": { "limit": 20, "period": 10 } },
       ],

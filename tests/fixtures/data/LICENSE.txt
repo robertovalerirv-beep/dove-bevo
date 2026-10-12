@@ -1,0 +1,8 @@
+Dove bevo — bar data
+
+Derived from OpenStreetMap data (extract fixture).
+© OpenStreetMap contributors. Available under the Open Database License (ODbL) 1.0:
+https://opendatacommons.org/licenses/odbl/1-0/ — https://www.openstreetmap.org/copyright
+
+These files contain only OpenStreetMap data. Prices are a separate database and are never
+stored in these files (ADR 0003).

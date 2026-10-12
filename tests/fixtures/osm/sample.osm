@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Hand-made test extract for the OSM import pipeline (M1-02). Coordinates in Milano. -->
+<osm version="0.6" generator="dove-bevo-test">
+  <node id="1" version="1" lat="45.4642" lon="9.19">
+    <tag k="place" v="city"/><tag k="name" v="Milano"/>
+  </node>
+  <node id="2" version="1" lat="45.47" lon="9.2">
+    <tag k="place" v="village"/><tag k="name" v="Borgo"/>
+  </node>
+  <node id="10" version="1" lat="45.46421" lon="9.19001">
+    <tag k="amenity" v="bar"/><tag k="name" v="Bar Duomo"/>
+    <tag k="addr:street" v="Piazza del Duomo"/><tag k="addr:housenumber" v="1"/>
+  </node>
+  <node id="11" version="1" lat="45.4643" lon="9.1902">
+    <tag k="amenity" v="bar"/>
+  </node>
+  <node id="20" version="1" lat="45.464" lon="9.189"/>
+  <node id="21" version="1" lat="45.464" lon="9.191"/>
+  <node id="22" version="1" lat="45.466" lon="9.191"/>
+  <node id="23" version="1" lat="45.466" lon="9.189"/>
+  <node id="30" version="1" lat="45.468" lon="9.192"/>
+  <node id="31" version="1" lat="45.468" lon="9.194"/>
+  <node id="32" version="1" lat="45.470" lon="9.194"/>
+  <node id="33" version="1" lat="45.470" lon="9.192"/>
+  <way id="100" version="1">
+    <nd ref="20"/><nd ref="21"/><nd ref="22"/><nd ref="23"/><nd ref="20"/>
+    <tag k="amenity" v="cafe"/><tag k="name" v="Caffè Area"/>
+  </way>
+  <way id="101" version="1">
+    <nd ref="30"/><nd ref="31"/><nd ref="32"/><nd ref="33"/><nd ref="30"/>
+  </way>
+  <relation id="200" version="1">
+    <member type="way" ref="101" role="outer"/>
+    <tag k="type" v="multipolygon"/><tag k="amenity" v="nightclub"/><tag k="name" v="Club"/>
+  </relation>
+</osm>

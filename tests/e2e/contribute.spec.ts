@@ -67,6 +67,7 @@ test.describe("with the position (Duomo)", () => {
   test("M2-02 + M2-05 from a cold start: four taps plus the digits; Turnstile only after Salva", async ({
     page,
   }) => {
+    test.slow(); // waits out the real 10 s undo window
     const turnstile = await stubTurnstile(page);
     await page.goto("/"); // no prior tap: the map is still the static picture
 
@@ -105,6 +106,7 @@ test.describe("with the position (Duomo)", () => {
 test("M2-06 Annulla sends nothing; going to the background sends at once with keepalive", async ({
   page,
 }) => {
+  test.slow(); // waits out the real 10 s undo window
   await stubTurnstile(page);
   await page.addInitScript(() => {
     const original = window.fetch.bind(window);
@@ -266,6 +268,7 @@ test("M2-09 a quarantined price is shown in 'In verifica' and not on the map", a
 test("Annulla works over the bar page and holds the countdown while focused (WCAG 2.2.1)", async ({
   page,
 }) => {
+  test.slow(); // waits out the real 10 s undo window
   await stubTurnstile(page);
   const posts: string[] = [];
   page.on("request", (r) => {

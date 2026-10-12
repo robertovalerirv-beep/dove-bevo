@@ -4,6 +4,22 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-12 · Sessione 2 · Admin anticipata, guide, CI stabile
+
+**Richiesta di Roberto**: link funzionante, guida all'inserimento, pagina admin per controllare gli inserimenti e aggiungere o cancellare bar.
+
+**Fatto**
+- `/admin` (ADR 0017): trova e **nascondi** le voci OSM che non sono bar (tabella `venues_hidden`, migrazione 0002; campo `h` nella risposta della cella), **aggiungi** bar mancanti (approvati subito), approva/rimuovi bar aggiunti e prezzi in `review`/quarantena, ripristina i nascosti. Rotte `/api/admin/*` con verifica del JWT di Cloudflare Access nel Worker (RS256, `aud`, `iss`, scadenza; D-19). La cache della cella viene svuotata a ogni azione.
+- Guide: `docs/guida-inserimento.md`, `docs/guida-admin.md` (configurazione di Access passo per passo).
+- CI: i test del Worker dipendevano da una build locale (`dist/`); ora la config di Vitest copia il fixture nella cartella degli asset → verdi anche senza build. Test di scrittura (e2e) eseguiti dopo quelli di sola lettura; `test.slow()` sui test che aspettano i 10 s di Annulla.
+- Decisioni di Roberto: ADR 0015 (unicità per IP), ADR 0016 (chiavi cancellate entro 48 h, cron orario), stesso prezzo in un altro giorno = conferma.
+
+**Prove**: `npx vitest run` 86/86 (nuovo `admin.test.ts`: 403 senza JWT, firma falsa, `aud`/`iss` errati, scaduto; nascondi/ripristina, aggiungi/rimuovi, decisione su prezzo in review). e2e `admin.spec.ts` 4/4 Chromium e WebKit, axe 0 violazioni; screenshot `docs/screenshots/admin/admin.png`.
+
+**Da fare da Roberto**: configurare Access (guida) e mandarmi team domain e AUD.
+
+---
+
 ## 2026-10-12 · Sessione 2 · M2: revisioni di chiusura (spec e UX/a11y)
 
 **Revisione spec (NON OK, 3 bloccanti) → corretti**

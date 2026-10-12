@@ -50,9 +50,9 @@
         "DATA_VERSION": "none",
         "TURNSTILE_SITE_KEY": "0x4AAAAAAFUazHbuU79qVX5f",
         "TURNSTILE_HOSTNAME": "dovebevo-staging.roberto-valeri-rv.workers.dev",
-        // Set by Roberto after creating the Access application (docs/guida-admin.md).
-        "ACCESS_TEAM_DOMAIN": "",
-        "ACCESS_AUD": "",
+        // Cloudflare Access application "dovebevo-staging" (/admin, /api/admin/*): public identifiers.
+        "ACCESS_TEAM_DOMAIN": "broad-sunset-c81e.cloudflareaccess.com",
+        "ACCESS_AUD": "f5e9f3e8eaeacbf04b818344e936e612f70c2b46b73ca9be08fdab7a45d944ef", // gitleaks:allow (public audience id, not a secret)
       },
       "d1_databases": [
         {

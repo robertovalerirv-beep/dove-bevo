@@ -8,8 +8,8 @@ import { Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 
 export interface BarActions {
-  /** Resolves with the new count, or null when this session had already confirmed. */
-  confirm: (row: PriceRow) => Promise<number | null>;
+  /** New count; `counted` is false when this person had already confirmed or is the author. */
+  confirm: (row: PriceRow) => Promise<{ count: number; counted: boolean }>;
   changed: (venue: Venue, row: PriceRow) => void;
   report: (venue: Venue, row: PriceRow | null) => void;
   addHere: (venue: Venue) => void;
@@ -25,6 +25,26 @@ interface Props {
 
 const rowId = (row: PriceRow) => `${row[1]}|${String(row[2])}|${String(row[3])}`;
 
+// Prices this tab has already confirmed: the button stays "Confermato" across reloads of the
+// visit. Kept only in this tab (sessionStorage), never sent anywhere.
+const CONFIRMED_KEY = "dovebevo-confirmed";
+function confirmedHere(): Set<string> {
+  try {
+    return new Set(JSON.parse(sessionStorage.getItem(CONFIRMED_KEY) ?? "[]") as string[]);
+  } catch {
+    return new Set();
+  }
+}
+function rememberConfirmed(id: string, counted: boolean) {
+  try {
+    const all = confirmedHere();
+    all.add(`${id}|${counted ? "1" : "0"}`);
+    sessionStorage.setItem(CONFIRMED_KEY, JSON.stringify([...all].slice(-200)));
+  } catch {
+    // Private mode or storage off: the server still counts once.
+  }
+}
+
 function PriceItem({
   row,
   venue,
@@ -37,19 +57,24 @@ function PriceItem({
   inReview: boolean;
 }) {
   const [, drink, size, hh, cents, day, confirmations, , fromPhoto] = row;
+  const id = `${row[0]}|${rowId(row)}|${String(cents)}`;
   const [count, setCount] = useState(confirmations);
-  const [state, setState] = useState<"idle" | "busy" | "done" | "failed">("idle");
+  const [state, setState] = useState<"idle" | "busy" | "done" | "already" | "failed">(() => {
+    const seen = confirmedHere();
+    return seen.has(`${id}|1`) ? "done" : seen.has(`${id}|0`) ? "already" : "idle";
+  });
   const name = [it.drinks[drink] ?? drink, formatSize(size), hh ? it.bar.happyHour : ""]
     .filter(Boolean)
     .join(" ");
 
   async function confirm() {
-    if (state === "busy" || state === "done") return;
+    if (state === "busy" || state === "done" || state === "already") return;
     setState("busy");
     try {
-      const next = await actions.confirm(row);
-      if (next !== null) setCount(next);
-      setState("done");
+      const result = await actions.confirm(row);
+      setCount(result.count);
+      rememberConfirmed(id, result.counted);
+      setState(result.counted ? "done" : "already");
     } catch {
       setState("failed");
     }
@@ -68,10 +93,14 @@ function PriceItem({
           type="button"
           class="btn btn--secondary"
           // aria-disabled keeps the focus on the button (WCAG 2.4.3); clicks are ignored above.
-          aria-disabled={state === "busy" || state === "done" ? "true" : undefined}
+          aria-disabled={state === "idle" || state === "failed" ? undefined : "true"}
           onClick={() => void confirm()}
         >
-          {state === "done" ? it.actions.confirmed : it.actions.confirm}
+          {state === "done"
+            ? it.actions.confirmed
+            : state === "already"
+              ? it.actions.alreadyConfirmed
+              : it.actions.confirm}
         </button>
         {!inReview && (
           <button
@@ -94,6 +123,11 @@ function PriceItem({
           {it.actions.report}
         </button>
       </span>
+      {state === "already" && (
+        <span class="hint price__note" role="status">
+          {it.actions.alreadyHelp}
+        </span>
+      )}
       {state === "failed" && (
         <span class="error" role="alert">
           {it.actions.failed}

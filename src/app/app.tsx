@@ -446,7 +446,7 @@ export function App({ loadMap }: Props) {
       });
       if (!response.ok) throw new Error(String(response.status));
       const body = (await response.json()) as { status: string; confirmations: number };
-      return body.status === "confirmed" ? body.confirmations : null;
+      return { count: body.confirmations, counted: body.status === "confirmed" };
     },
     changed: (venue, row) => {
       openAdd({ venue, drink: row[1], size: row[2], hh: row[3] });

@@ -70,7 +70,8 @@ test("admin: find and hide a non-bar, add a missing bar, decide reviews", async 
   await page.getByLabel("Nome del bar").first().fill("camparino");
   await page.getByRole("button", { name: "Cerca" }).click();
   const found = page.getByRole("listitem").filter({ hasText: "Camparino in Galleria" });
-  await found.getByRole("button", { name: "Nascondi" }).click();
+  page.once("dialog", (d) => void d.accept()); // "Eliminare … dalla mappa?"
+  await found.getByRole("button", { name: "Elimina dalla mappa" }).click();
   await expect.poll(() => posts.map((p) => p.path)).toContain("/api/admin/hide");
   expect(posts.find((p) => p.path === "/api/admin/hide")?.body).toEqual({
     venue: "n13001337602",
@@ -120,4 +121,37 @@ test("admin: find and hide a non-bar, add a missing bar, decide reviews", async 
     .analyze();
   expect(axe.violations).toEqual([]);
   await page.screenshot({ path: "docs/screenshots/admin/admin.png", fullPage: true });
+});
+
+test("admin search also finds bars added by hand, fresh, and accepts a bar link", async ({
+  page,
+}) => {
+  const posts = await fakeAdmin(page);
+  // The cell now holds a bar added a moment ago (user bar "u9").
+  await page.route("**/api/prices/u0nd9", async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { u: unknown[] };
+    body.u = [...body.u, ["u9", "Bar Appena Creato", 1, 45.4643, 9.1901]];
+    await route.fulfill({ response, json: body });
+  });
+  await page.goto("/admin");
+  await page.getByLabel("Città").fill("Milano");
+  await page.getByLabel("Nome del bar").first().fill("appena creato");
+  await page.getByRole("button", { name: "Cerca" }).click();
+  const added = page.getByRole("listitem").filter({ hasText: "Bar Appena Creato" });
+  await expect(added).toContainText("Aggiunto da te");
+  page.once("dialog", (d) => void d.accept());
+  await added.getByRole("button", { name: "Elimina dalla mappa" }).click();
+  await expect
+    .poll(() => posts.find((p) => p.path === "/api/admin/venues/9/status")?.body)
+    .toEqual({ status: "removed" });
+
+  // A link copied from the bar page finds exactly that bar.
+  await page.getByLabel("Città").fill("");
+  await page.getByLabel("Nome del bar").first().fill("");
+  await page
+    .getByLabel("Oppure il link della scheda del bar")
+    .fill("https://dovebevo.example/bar/n2420779240?c=u0nd9");
+  await page.getByRole("button", { name: "Cerca" }).click();
+  await expect(page.getByRole("listitem").filter({ hasText: "Bistrot Duomo" })).toHaveCount(1);
 });

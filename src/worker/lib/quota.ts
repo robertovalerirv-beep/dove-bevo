@@ -18,8 +18,20 @@ export function secondsToRomeMidnight(at = new Date()): number {
   return Math.max(1, 86_400 - (get("hour") * 3600 + get("minute") * 60 + get("second")));
 }
 
+/** Client IP for quotas, IPv6 reduced to its /64 (one home or phone network), never stored in clear. */
 export function clientIp(request: Request): string {
-  return request.headers.get("CF-Connecting-IP") ?? "unknown";
+  const ip = request.headers.get("CF-Connecting-IP") ?? "unknown";
+  if (!ip.includes(":")) return ip;
+  const [head = "", tail = ""] = ip.split("::");
+  const left = head ? head.split(":") : [];
+  const right = tail ? tail.split(":") : [];
+  const groups = ip.includes("::")
+    ? [...left, ...Array<string>(8 - left.length - right.length).fill("0"), ...right]
+    : left;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => g.toLowerCase().replace(/^0+(?=.)/, ""))
+    .join(":")}::/64`;
 }
 
 export async function consumeQuota(

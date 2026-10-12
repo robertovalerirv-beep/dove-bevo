@@ -147,3 +147,15 @@ describe("report abuse (security review)", () => {
     expect(row?.status).toBe("active");
   });
 });
+
+describe("client IP for quotas", () => {
+  it("reduces IPv6 to its /64 and keeps IPv4", async () => {
+    const { clientIp } = await import("../../src/worker/lib/quota");
+    const at = (ip: string) =>
+      clientIp(new Request("https://x", { headers: { "CF-Connecting-IP": ip } }));
+    expect(at("2001:db8:abcd:12::1")).toBe("2001:db8:abcd:12::/64");
+    expect(at("2001:0db8:abcd:0012:ffff:1:2:3")).toBe("2001:db8:abcd:12::/64");
+    expect(at("2001:db8::7")).toBe("2001:db8:0:0::/64");
+    expect(at("203.0.113.7")).toBe("203.0.113.7");
+  });
+});

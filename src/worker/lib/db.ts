@@ -285,3 +285,12 @@ export async function purgeOldKeys(db: D1Database, before: string): Promise<void
     db.prepare("DELETE FROM dedup WHERE day < ?1").bind(before),
   ]);
 }
+
+/** Day of the latest observation of a price key: when its value last changed (same price = confirmation). */
+export async function lastPriceChange(db: D1Database, k: PriceKey): Promise<string | null> {
+  const row = await db
+    .prepare(`SELECT max(observed_on) AS day FROM price_obs WHERE ${PK}`)
+    .bind(...pk(k))
+    .first<{ day: string | null }>();
+  return row?.day ?? null;
+}

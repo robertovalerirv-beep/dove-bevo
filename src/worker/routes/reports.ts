@@ -7,7 +7,7 @@ import {
   addReport,
   claimOnce,
   getCurrentPrice,
-  hasKey,
+  lastPriceChange,
   sendToReview,
   type PriceKey,
 } from "../lib/db";
@@ -43,7 +43,8 @@ reports.post("/", async (c) => {
     const current = await getCurrentPrice(c.env.DB, k);
     if (!current || current.status === "review" || current.status === "removed")
       throw new ApiError("not_found");
-    since = current.observed_on; // reports on an older price do not count against this one
+    // Count from when the value last changed: confirmations refresh observed_on, not the value.
+    since = (await lastPriceChange(c.env.DB, k)) ?? current.observed_on;
   } else {
     await resolveVenue(c.env, body.venue, body.cell); // the bar must exist
   }
@@ -55,10 +56,10 @@ reports.post("/", async (c) => {
   const ip = clientIp(c.req.raw);
   const byIp = await hmacHex(c.env.HASH_KEY, [day, "report", "ip", ip, target]);
   const bySid = await hmacHex(c.env.HASH_KEY, [day, "report", "sid", c.var.sid, target]);
-  if ((await hasKey(c.env.DB, byIp)) || !(await claimOnce(c.env.DB, bySid, day))) {
+  // Claim atomically, IP first: two concurrent requests cannot both pass (security review).
+  if (!(await claimOnce(c.env.DB, byIp, day)) || !(await claimOnce(c.env.DB, bySid, day))) {
     return c.json({ status: "already" });
   }
-  await claimOnce(c.env.DB, byIp, day);
   const total = await addReport(
     c.env.DB,
     { venue: body.venue, drink: k?.drink ?? null, size: k?.size ?? null, hh: k?.hh ?? null },

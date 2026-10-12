@@ -29,10 +29,10 @@ function parseRoute(): Route {
 type CellsState = "idle" | "too-many" | "loading" | "error" | "ready";
 
 interface Props {
-  mapModule: Promise<typeof import("./lib/maplibre-map")>;
+  loadMap: () => Promise<typeof import("./lib/maplibre-map")>;
 }
 
-export function App({ mapModule }: Props) {
+export function App({ loadMap }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<VenueMap | null>(null);
   // A move asked before the map is ready (fast tap, slow network) is applied when it is.
@@ -49,12 +49,19 @@ export function App({ mapModule }: Props) {
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  // MapLibre starts on the first gesture or action that needs it (ADR 0014); until then a static
+  // picture of the same view keeps the first load light.
+  const [mapWanted, setMapWanted] = useState(false);
+  const ensureMap = () => {
+    setMapWanted(true);
+  };
   const selected = MAP_CHIPS.find((c) => c.id === chip) ?? MAP_CHIPS[0];
 
-  // Map: created once, as soon as the MapLibre chunk is loaded (started in main.tsx).
+  // Map: created once, when first wanted.
   useEffect(() => {
+    if (!mapWanted) return;
     let cancelled = false;
-    void mapModule
+    void loadMap()
       .then(({ VenueMap }) => (container.current ? VenueMap.create(container.current) : null))
       .then((created) => {
         if (!created || cancelled) return;
@@ -77,7 +84,7 @@ export function App({ mapModule }: Props) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mapWanted]);
 
   useEffect(() => {
     const onPop = () => {
@@ -160,15 +167,17 @@ export function App({ mapModule }: Props) {
   const status =
     (mapFailed ? it.map.mapError : null) ??
     shownMessage ??
-    (!zoomedIn
-      ? it.map.zoomIn
-      : cellsState === "too-many"
-        ? it.map.tooManyCells
-        : cellsState === "loading"
-          ? it.map.loading
-          : cellsState === "error"
-            ? it.map.loadError
-            : it.map.bars(inView.length));
+    (mapWanted && !ready
+      ? it.map.loadingMap
+      : !zoomedIn
+        ? it.map.zoomIn
+        : cellsState === "too-many"
+          ? it.map.tooManyCells
+          : cellsState === "loading"
+            ? it.map.loading
+            : cellsState === "error"
+              ? it.map.loadError
+              : it.map.bars(inView.length));
 
   /** Back to the map: a real "back" when we opened the bar, otherwise replace (MASTER: predictable back). */
   function closeBar() {
@@ -182,11 +191,15 @@ export function App({ mapModule }: Props) {
 
   function moveTo(lat: number, lon: number, zoom: number) {
     if (map) map.moveTo(lat, lon, zoom);
-    else pendingMove.current = [lat, lon, zoom];
+    else {
+      pendingMove.current = [lat, lon, zoom];
+      ensureMap();
+    }
   }
 
   function nearMe() {
     setMessage(it.map.locating);
+    ensureMap(); // load the map while the position is being found
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         // Kept in memory on the device only (SPEC 14).
@@ -217,6 +230,7 @@ export function App({ mapModule }: Props) {
             class="btn search-field"
             onClick={() => {
               setSheet("search");
+              ensureMap(); // warm the map up while the user types
             }}
           >
             <Icon name="search" />
@@ -250,6 +264,17 @@ export function App({ mapModule }: Props) {
           data-prices-shown={pricesShown.join("|")}
         >
           <div ref={container} class="map__canvas" />
+          {!ready && (
+            <button
+              type="button"
+              class="map__preview"
+              aria-label={it.map.explore}
+              onPointerDown={ensureMap}
+              onClick={ensureMap}
+            >
+              <img src="/map-italia.jpg" alt="" width={780} height={1308} />
+            </button>
+          )}
           <p class="map__status" data-testid="map-status" role="status">
             {status}
           </p>

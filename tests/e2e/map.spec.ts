@@ -3,7 +3,22 @@ import { expect, test, type Page } from "@playwright/test";
 import { DUOMO, goToMilano, mapRegion, mapStatus, waitForBars, zoomOf } from "./helpers";
 
 test("M1-06 opens on Italy with the attributions visible", async ({ page }, info) => {
+  const mapLibre: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("maplibre")) mapLibre.push(r.url());
+  });
   await page.goto("/");
+  // First a static picture of Italy (ADR 0014), no MapLibre download…
+  const preview = page.getByRole("button", { name: "Esplora la mappa" });
+  await expect(preview.locator("img")).toBeVisible();
+  expect(
+    await preview.locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth),
+  ).toBeGreaterThan(0);
+  await page.waitForLoadState("networkidle");
+  expect(mapLibre).toEqual([]);
+  await page.screenshot({ path: info.outputPath("m1-06-italia-statica.png") });
+  // …then the interactive map on the same view at the first touch.
+  await preview.click();
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
   expect(await zoomOf(page)).toBeLessThan(7);
   const attribution = page.locator(".map__attribution");
@@ -169,11 +184,15 @@ test("M1-13 the accessible list works with the keyboard only", async ({ page, br
   expect((await new AxeBuilder({ page }).include("dialog[open]").analyze()).violations).toEqual([]);
 });
 
-test("axe finds no violations on the map screen", async ({ page }) => {
+test("axe finds no violations on the map screen, before and after the map starts", async ({
+  page,
+}) => {
   await page.goto("/");
+  await expect(page.getByRole("button", { name: "Esplora la mappa" })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: "Esplora la mappa" }).click();
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
-  const results = await new AxeBuilder({ page }).analyze();
-  expect(results.violations).toEqual([]);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
 test.describe("cells without a static file (lakes, fields, sea)", () => {

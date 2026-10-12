@@ -4,6 +4,22 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-12 · Sessione 2 · M1: prestazioni (Lighthouse) e decisioni
+
+**Problema**: in CI il job Lighthouse falliva dopo l'arrivo della mappa (Performance 0,47, LCP 5,8 s) e il job `osm-import` falliva con "Permission denied" (bit di esecuzione mancante su `import.sh`).
+
+**Fatto**
+- Bit di esecuzione di `scripts/osm-import/import.sh` in git (`100755`).
+- LCP: l'elemento più grande era il testo delle attribuzioni disegnato da MapLibre dopo il caricamento → attribuzioni come testo della shell (LCP 5,1 s → 1,5 s).
+- TBT 1,7 s (esecuzione di MapLibre, CPU 4×) → **Roberto ha scelto la mappa al primo tocco** (ADR 0014): immagine statica dell'Italia, MapLibre al primo gesto o alla prima azione che lo richiede.
+- **Roberto ha approvato ADR 0012** (`@cloudflare/vitest-plugin`).
+
+**Prove**
+- Lighthouse mobile locale: Performance **0,99**, LCP 1,95 s, TBT 37 ms, CLS 0, Accessibility/Best Practices/SEO 1 (`npx @lhci/cli@0.15.1 autorun`, asserzioni verdi). Shell 15.700 B gzip.
+- `npx vitest run` 41 verdi; `npx playwright test --workers=2` **48 passati** (M1-06 ora verifica l'immagine statica senza alcuna richiesta MapLibre, poi la mappa interattiva al tocco; axe prima e dopo l'avvio della mappa).
+
+---
+
 ## 2026-10-11 · Sessione 2 · M1 (branch `m1-map`, PR #5): interfaccia, prove e revisioni
 
 **Fatto (oltre a M1-01/02/04 e fixture, voce sotto)**

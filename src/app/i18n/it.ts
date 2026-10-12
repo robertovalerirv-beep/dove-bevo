@@ -27,6 +27,8 @@ export const it = {
     list: "Elenco",
     actions: "Azioni della mappa",
     retry: "Riprova",
+    explore: "Esplora la mappa",
+    loadingMap: "Carico la mappa…",
     mapError: "La mappa non si carica: controlla la connessione e ricarica la pagina.",
     attribution: {
       openFreeMap: "OpenFreeMap",

@@ -137,7 +137,23 @@
   outline-color: var(--map-focus);
   box-shadow: 0 0 0 var(--focus-offset) var(--map-pill-bg);
 }
-/* The canvas clips anything outside it: draw the ring inside. */
+/* Static picture of the start view until MapLibre is wanted (ADR 0014). */
+.map__preview {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: var(--map-pill-bg);
+  cursor: pointer;
+}
+.map__preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* The canvas and the preview clip anything outside them: draw the ring inside. */
+.map__preview:focus-visible,
 .map .maplibregl-canvas:focus-visible {
   outline: var(--focus-width) solid var(--map-focus);
   outline-offset: calc(-1 * var(--focus-width));

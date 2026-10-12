@@ -1,6 +1,6 @@
 # 0012 · `@cloudflare/vitest-plugin` al posto di `@cloudflare/vitest-pool-workers`
 
-- **Stato:** accettata (M1-08), da confermare da Roberto (dipendenza rinominata rispetto a SPEC 4.1) · **Data:** 2026-10-11
+- **Stato:** accettata (M1-08), approvata da Roberto il 12/10/2026 (dipendenza rinominata rispetto a SPEC 4.1) · **Data:** 2026-10-11
 
 ## Contesto
 SPEC 4.1 ammette `@cloudflare/vitest-pool-workers`. La versione 0.23.0 si dichiara deprecata ("renamed to `@cloudflare/vitest-plugin`, will not receive future updates") e porta con sé copie vecchie di wrangler e miniflare con vulnerabilità alte (`sharp`, `undici`): `npm audit --audit-level=high` fallirebbe.

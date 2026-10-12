@@ -1,20 +1,10 @@
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
-import { readFile } from "node:fs/promises";
+import { cpSync } from "node:fs";
 import { defineConfig } from "vitest/config";
 
-/** ASSETS in tests: the versioned fixture under /data/fixture/ (the build output is not needed). */
-async function fixtureAssets(request: Request): Promise<Response> {
-  const path = new URL(request.url).pathname;
-  const match = /^\/data\/fixture\/(v\/[0-9b-hjkmnp-z]{5}\.json|places\.json)$/.exec(path);
-  if (!match?.[1])
-    return new Response("<!doctype html>", { headers: { "Content-Type": "text/html" } });
-  try {
-    const body = await readFile(`tests/fixtures/data/${match[1]}`);
-    return new Response(body, { headers: { "Content-Type": "application/json" } });
-  } catch {
-    return new Response("<!doctype html>", { headers: { "Content-Type": "text/html" } });
-  }
-}
+// ASSETS in tests: the wrangler.jsonc assets directory (dist/client) serves the versioned fixture
+// under /data/fixture/, with or without a build (CI runs the tests before building).
+cpSync("tests/fixtures/data", "dist/client/data/fixture", { recursive: true });
 
 const usedTokens = new Set<string>();
 async function fakeSiteverify(request: Request): Promise<Response> {
@@ -59,7 +49,6 @@ export default defineConfig(async () => {
                 },
                 // Fake Turnstile siteverify: "ok-*" tokens pass once, anything else fails.
                 outboundService: fakeSiteverify,
-                serviceBindings: { ASSETS: fixtureAssets },
               },
             }),
           ],

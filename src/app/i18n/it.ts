@@ -6,7 +6,13 @@ export const it = {
   },
   errors: {
     bad_request: "Richiesta non valida.",
+    unauthorized: "Sessione scaduta: riprova.",
+    forbidden: "Operazione non consentita.",
     not_found: "Risorsa non trovata.",
+    payload_too_large: "Il contenuto inviato è troppo grande.",
+    unsupported_media_type: "Formato non supportato.",
+    rate_limited: "Troppe richieste: riprova più tardi.",
+    ai_paused: "Lettura dei listini in pausa, puoi inserire i prezzi a mano.",
     internal: "Si è verificato un errore. Riprova tra poco.",
   },
   common: {

@@ -186,7 +186,7 @@
     "milestone": "M2",
     "descrizione": "STRIDE in `SECURITY.md`",
     "verifica": "documento con asset, attori, minacce e contromisure mappate ai test",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-02",
@@ -200,14 +200,14 @@
     "milestone": "M2",
     "descrizione": "Sessione anonima",
     "verifica": "unit/sec: `POST /api/session` con token valido → cookie `__Host-sid` con attributi esatti e 30 min; token riusato → 403; firma alterata o scaduta → 401",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-04",
     "milestone": "M2",
     "descrizione": "Controlli comuni delle POST",
     "verifica": "sec: 401 senza sessione, 403 con `Origin` estraneo o assente, 415 senza JSON, 413 oltre 16 KB, 400 con campi extra",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-05",

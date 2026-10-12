@@ -1,9 +1,11 @@
 import { Hono } from "hono";
 import { routePath } from "hono/route";
 import { version } from "../../package.json";
-import { apiError } from "./lib/errors";
+import { ApiError, apiError } from "./lib/errors";
+import { requireOrigin, requireSession } from "./lib/guards";
 import { securityHeaders } from "./lib/security-headers";
 import { prices } from "./routes/prices";
+import { session } from "./routes/session";
 import { venues } from "./routes/venues";
 import type { AppEnv } from "./types";
 
@@ -14,15 +16,31 @@ app.use(async (c, next) => {
   await next();
 });
 app.use(securityHeaders);
+app.use("/api/*", requireOrigin);
+// Every write needs a session, except creating one (SPEC 9.1; /api/events is exempt by D-06).
+app.on(
+  "POST",
+  [
+    "/api/prices",
+    "/api/prices/*",
+    "/api/reports",
+    "/api/venues",
+    "/api/venues/*",
+    "/api/menu-extract",
+  ],
+  requireSession,
+);
 
 app.get("/api/health", (c) => c.json({ status: "ok", version, data_version: c.env.DATA_VERSION }));
 
+app.route("/api/session", session);
 app.route("/api/prices", prices);
 app.route("/api/venues", venues);
 
 app.notFound((c) => apiError(c, "not_found"));
 
-app.onError((_err, c) => {
+app.onError((err, c) => {
+  if (err instanceof ApiError) return apiError(c, err.code, err.headers);
   // Log only code, route pattern and duration; never params, bodies or the error text (SPEC 13.8).
   const ms = Date.now() - c.get("start");
   console.error(JSON.stringify({ code: "internal", route: routePath(c), ms }));

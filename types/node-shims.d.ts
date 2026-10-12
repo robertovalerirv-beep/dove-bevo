@@ -2,3 +2,6 @@
 declare module "node:fs/promises" {
   export function readFile(path: string): Promise<Uint8Array<ArrayBuffer>>;
 }
+declare module "node:fs" {
+  export function readFileSync(path: string, encoding: "utf8"): string;
+}

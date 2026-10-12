@@ -245,12 +245,13 @@ export interface ReportTarget {
   hh: 0 | 1 | null;
 }
 
-/** Stores a report and returns how many reports that target has in total. */
+/** Stores a report and returns how many reports the target has since `since` (the current price's day). */
 export async function addReport(
   db: D1Database,
   t: ReportTarget,
   reason: string,
   day: string,
+  since: string | null,
 ): Promise<number> {
   const [, count] = await db.batch<{ n: number }>([
     db
@@ -260,9 +261,9 @@ export async function addReport(
       .bind(t.venue, t.drink, t.size, t.hh, reason, day),
     db
       .prepare(
-        "SELECT COUNT(*) AS n FROM reports WHERE venue_key = ?1 AND drink IS ?2 AND size_ml IS ?3 AND hh IS ?4",
+        "SELECT COUNT(*) AS n FROM reports WHERE venue_key = ?1 AND drink IS ?2 AND size_ml IS ?3 AND hh IS ?4 AND (?5 IS NULL OR day >= ?5)",
       )
-      .bind(t.venue, t.drink, t.size, t.hh),
+      .bind(t.venue, t.drink, t.size, t.hh, since),
   ]);
   return count?.results[0]?.n ?? 0;
 }

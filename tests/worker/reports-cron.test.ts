@@ -115,3 +115,35 @@ describe("daily cleanup (M2-15)", () => {
     expect(dedup.results.map((r) => r.k)).toEqual(["d0", "d1", "d2"]);
   });
 });
+
+describe("report abuse (security review)", () => {
+  it("one report per IP per target, even with new sessions", async () => {
+    const ip = "198.51.100.200";
+    await post("/api/reports", { ...price, reason: "wrong_price" }, await newSession(), ip);
+    expect(
+      await (
+        await post("/api/reports", { ...price, reason: "wrong_price" }, await newSession(), ip)
+      ).json(),
+    ).toEqual({
+      status: "already",
+    });
+  });
+
+  it("reports older than the current price do not count", async () => {
+    await env.DB.prepare(
+      "INSERT INTO reports (venue_key, drink, size_ml, hh, reason, day) VALUES (?, 'spritz', 0, 0, 'wrong_price', '2026-01-01'), (?, 'spritz', 0, 0, 'wrong_price', '2026-01-02'), (?, 'spritz', 0, 0, 'wrong_price', '2026-01-03')",
+    )
+      .bind(BAR, BAR, BAR)
+      .run();
+    await post(
+      "/api/reports",
+      { ...price, reason: "wrong_price" },
+      await newSession(),
+      "198.51.100.201",
+    );
+    const row = await env.DB.prepare("SELECT status FROM prices_current WHERE venue_key = ?")
+      .bind(BAR)
+      .first<{ status: string }>();
+    expect(row?.status).toBe("active");
+  });
+});

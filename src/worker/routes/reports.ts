@@ -3,7 +3,14 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { REVIEW_AFTER_REPORTS } from "../config";
 import { romeDay } from "../lib/day";
-import { addReport, claimOnce, getCurrentPrice, sendToReview, type PriceKey } from "../lib/db";
+import {
+  addReport,
+  claimOnce,
+  getCurrentPrice,
+  hasKey,
+  sendToReview,
+  type PriceKey,
+} from "../lib/db";
 import { ApiError } from "../lib/errors";
 import { readJson } from "../lib/guards";
 import { hmacHex } from "../lib/hmac";
@@ -31,30 +38,33 @@ reports.post("/", async (c) => {
   const k: PriceKey | null = onPrice
     ? { venue: body.venue, drink: body.drink ?? "", size: body.size_ml ?? 0, hh: body.hh ?? 0 }
     : null;
+  let since: string | null = null;
   if (k) {
     const current = await getCurrentPrice(c.env.DB, k);
     if (!current || current.status === "review" || current.status === "removed")
       throw new ApiError("not_found");
+    since = current.observed_on; // reports on an older price do not count against this one
   } else {
     await resolveVenue(c.env, body.venue, body.cell); // the bar must exist
   }
   await consumeQuota(c.env, "report", c.var.sid, clientIp(c.req.raw));
   const day = romeDay();
   const target = k ? `${k.venue}|${k.drink}|${String(k.size)}|${String(k.hh)}` : body.venue;
-  if (
-    !(await claimOnce(
-      c.env.DB,
-      await hmacHex(c.env.HASH_KEY, [day, "report", c.var.sid, target]),
-      day,
-    ))
-  ) {
+  // One report per target per session AND per IP (HMAC, day as salt): a single person cannot
+  // reach the review threshold alone with new sessions (security review).
+  const ip = clientIp(c.req.raw);
+  const byIp = await hmacHex(c.env.HASH_KEY, [day, "report", "ip", ip, target]);
+  const bySid = await hmacHex(c.env.HASH_KEY, [day, "report", "sid", c.var.sid, target]);
+  if ((await hasKey(c.env.DB, byIp)) || !(await claimOnce(c.env.DB, bySid, day))) {
     return c.json({ status: "already" });
   }
+  await claimOnce(c.env.DB, byIp, day);
   const total = await addReport(
     c.env.DB,
     { venue: body.venue, drink: k?.drink ?? null, size: k?.size ?? null, hh: k?.hh ?? null },
     body.reason,
     day,
+    since,
   );
   if (k && total > REVIEW_AFTER_REPORTS) await sendToReview(c.env.DB, k);
   return c.json({ status: "reported" });

@@ -253,6 +253,23 @@ export function App({ mapModule }: Props) {
           <p class="map__status" data-testid="map-status" role="status">
             {status}
           </p>
+          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}
+          <p class="map__attribution">
+            <a href="https://openfreemap.org" target="_blank" rel="noopener" tabIndex={0}>
+              {it.map.attribution.openFreeMap}
+            </a>{" "}
+            <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener" tabIndex={0}>
+              {it.map.attribution.openMapTiles}
+            </a>{" "}
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              target="_blank"
+              rel="noopener"
+              tabIndex={0}
+            >
+              {it.map.attribution.openStreetMap}
+            </a>
+          </p>
           {zoomedIn && cellsState === "error" && !message && (
             <button
               type="button"

@@ -6,7 +6,7 @@ test("M1-06 opens on Italy with the attributions visible", async ({ page }, info
   await page.goto("/");
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
   expect(await zoomOf(page)).toBeLessThan(7);
-  const attribution = page.locator(".maplibregl-ctrl-attrib");
+  const attribution = page.locator(".map__attribution");
   await expect(attribution).toBeVisible();
   await expect(attribution).toContainText("OpenFreeMap");
   await expect(attribution).toContainText("© OpenMapTiles");

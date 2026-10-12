@@ -1,6 +1,6 @@
 // MapLibre wrapper (SPEC 4, 7.1). Loaded with a dynamic import in parallel with the shell.
 // The worker is served by us (no blob: workers, CSP worker-src 'self').
-import { AttributionControl, Map as MapLibre, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
+import { Map as MapLibre, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import type { ExpressionSpecification, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
@@ -10,11 +10,7 @@ setWorkerUrl(workerUrl);
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 const TILEJSON_URL = "https://tiles.openfreemap.org/planet";
-const { openFreeMap, openMapTiles, openStreetMap } = it.map.attribution;
-const ATTRIBUTION =
-  `<a href="https://openfreemap.org" target="_blank" rel="noopener">${openFreeMap}</a> ` +
-  `<a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">${openMapTiles}</a> ` +
-  `<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${openStreetMap}</a>`;
+
 const ITALY: [[number, number], [number, number]] = [
   [6.6, 36.6],
   [18.6, 47.1],
@@ -48,7 +44,7 @@ const token = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 async function loadStyle(): Promise<StyleSpecification> {
-  // Style and TileJSON in parallel: the TileJSON is inlined so the attribution is exactly ours.
+  // Style and TileJSON in parallel (the attributions are rendered by the shell, see app.tsx).
   const [style, tileJson] = (await Promise.all(
     [STYLE_URL, TILEJSON_URL].map(
       async (url): Promise<unknown> => (await fetch(url)).json() as Promise<unknown>,
@@ -61,7 +57,6 @@ async function loadStyle(): Promise<StyleSpecification> {
         tiles: tileJson.tiles,
         minzoom: tileJson.minzoom ?? 0,
         maxzoom: tileJson.maxzoom ?? 14,
-        attribution: ATTRIBUTION,
       };
     }
   }
@@ -122,7 +117,6 @@ export class VenueMap {
       locale: { "Map.Title": it.map.canvas },
     });
     this.map.touchZoomRotate.disableRotation();
-    this.map.addControl(new AttributionControl({ compact: false }), "bottom-left");
     this.ready = new Promise((resolve) => {
       this.map.on("load", () => {
         this.addLayers();

@@ -149,14 +149,19 @@
   left: 50%;
   transform: translateX(-50%);
 }
-.map .maplibregl-ctrl-attrib {
-  font-family: inherit;
+.map__attribution {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
   line-height: 1.5;
   font-size: var(--text-sm);
   color: var(--map-pill-text);
   background: color-mix(in srgb, var(--map-pill-bg) 90%, transparent);
 }
-.map .maplibregl-ctrl-attrib a {
+.map__attribution a {
   color: var(--map-pill-text);
 }
 

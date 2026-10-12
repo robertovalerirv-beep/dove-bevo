@@ -270,7 +270,7 @@
     "milestone": "M2",
     "descrizione": "Segnalazioni",
     "verifica": "e2e/unit: motivi chiusi; una per sessione per prezzo; alla quarta distinta il prezzo passa in `review` e sparisce",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-14",
@@ -284,7 +284,7 @@
     "milestone": "M2",
     "descrizione": "Pulizia giornaliera",
     "verifica": "unit: lo scheduled handler elimina `counters` e `dedup` più vecchi di 2 giorni e lascia gli altri",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-16",

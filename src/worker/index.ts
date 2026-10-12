@@ -4,7 +4,11 @@ import { version } from "../../package.json";
 import { ApiError, apiError } from "./lib/errors";
 import { requireOrigin, requireSession } from "./lib/guards";
 import { securityHeaders } from "./lib/security-headers";
+import { KEEP_DAYS } from "./config";
+import { romeDay } from "./lib/day";
+import { purgeOldKeys } from "./lib/db";
 import { prices } from "./routes/prices";
+import { reports } from "./routes/reports";
 import { session } from "./routes/session";
 import { venues } from "./routes/venues";
 import type { AppEnv } from "./types";
@@ -36,6 +40,7 @@ app.get("/api/health", (c) => c.json({ status: "ok", version, data_version: c.en
 app.route("/api/session", session);
 app.route("/api/prices", prices);
 app.route("/api/venues", venues);
+app.route("/api/reports", reports);
 
 app.notFound((c) => apiError(c, "not_found"));
 
@@ -47,4 +52,10 @@ app.onError((err, c) => {
   return apiError(c, "internal");
 });
 
-export default app;
+export default {
+  fetch: app.fetch,
+  /** Nightly cron (one per environment): purge day-salted keys older than KEEP_DAYS (SPEC 8). */
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    await purgeOldKeys(env.DB, romeDay(new Date(Date.now() - KEEP_DAYS * 86_400_000)));
+  },
+} satisfies ExportedHandler<Env>;

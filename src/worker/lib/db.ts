@@ -235,3 +235,52 @@ export function getUserVenue(db: D1Database, id: number) {
     .bind(id)
     .first<{ cell: string; status: "pending" | "approved" }>();
 }
+
+// ---- Reports and cleanup (M2) ----
+
+export interface ReportTarget {
+  venue: string;
+  drink: string | null;
+  size: number | null;
+  hh: 0 | 1 | null;
+}
+
+/** Stores a report and returns how many reports that target has in total. */
+export async function addReport(
+  db: D1Database,
+  t: ReportTarget,
+  reason: string,
+  day: string,
+): Promise<number> {
+  const [, count] = await db.batch<{ n: number }>([
+    db
+      .prepare(
+        "INSERT INTO reports (venue_key, drink, size_ml, hh, reason, day) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+      )
+      .bind(t.venue, t.drink, t.size, t.hh, reason, day),
+    db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM reports WHERE venue_key = ?1 AND drink IS ?2 AND size_ml IS ?3 AND hh IS ?4",
+      )
+      .bind(t.venue, t.drink, t.size, t.hh),
+  ]);
+  return count?.results[0]?.n ?? 0;
+}
+
+/** Moves an active or quarantined price to review: off the map and the bar page (SPEC 11). */
+export async function sendToReview(db: D1Database, k: PriceKey): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE prices_current SET status = 'review' WHERE ${PK} AND status IN ('active', 'quarantined')`,
+    )
+    .bind(...pk(k))
+    .run();
+}
+
+/** Nightly cleanup of the day-salted keys (SPEC 8, 14): only the last days survive. */
+export async function purgeOldKeys(db: D1Database, before: string): Promise<void> {
+  await db.batch([
+    db.prepare("DELETE FROM counters WHERE day < ?1").bind(before),
+    db.prepare("DELETE FROM dedup WHERE day < ?1").bind(before),
+  ]);
+}

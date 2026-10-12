@@ -59,6 +59,14 @@
 
   --target: 48px;
   --target-primary: 56px;
+  --target-row: 64px;
+  --tile-min-h: 88px;
+  --control-sm: 24px;
+  --switch-w: 48px;
+  --switch-h: 28px;
+  --switch-knob: 20px;
+  --switch-inset: 2px;
+  --toast-duration: 10s;
   --icon-md: 24px;
 
   --duration-fast: 150ms;

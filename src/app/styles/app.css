@@ -43,8 +43,9 @@
   gap: var(--space-2);
   overflow-x: auto;
   /* Room for the focus ring, which overflow would otherwise clip. */
-  padding: 5px 0;
-  margin: calc(var(--space-2) - 5px) 0 -5px;
+  padding: calc(var(--focus-width) + var(--focus-offset)) 0;
+  margin: calc(var(--space-2) - var(--focus-width) - var(--focus-offset)) 0
+    calc(-1 * (var(--focus-width) + var(--focus-offset)));
   scrollbar-width: none;
 }
 .chip {
@@ -220,6 +221,8 @@
   border-bottom: 1px solid var(--color-border);
 }
 .sheet__title {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: var(--text-xl);
 }
@@ -251,6 +254,9 @@
   list-style: none;
   margin: 0;
   padding: 0;
+}
+.rows--bars button.row {
+  min-height: var(--target-row);
 }
 .rows button.row {
   width: 100%;
@@ -338,7 +344,8 @@
 .bottom__primary {
   grid-column: 1 / -1;
 }
-.btn:disabled {
+.btn:disabled,
+.btn[aria-disabled="true"] {
   cursor: default;
 }
 
@@ -356,7 +363,7 @@
   flex-direction: column;
   justify-content: center;
   width: 100%;
-  min-height: 88px;
+  min-height: var(--tile-min-h);
   padding: var(--space-2);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -372,8 +379,21 @@
 .segmented {
   display: flex;
   gap: var(--space-2);
-  margin-bottom: var(--space-4);
+  min-inline-size: 0;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
 }
+.segmented .chip {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.segmented .chip:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--color-focus);
+  outline-offset: var(--focus-offset);
+}
+.chip:has(input:checked),
 .chip[aria-checked="true"] {
   background: var(--color-primary);
   border-color: var(--color-primary);
@@ -418,19 +438,19 @@
 }
 .switch__track {
   position: relative;
-  width: 48px;
-  height: 28px;
-  border: 2px solid var(--color-border-strong);
+  width: var(--switch-w);
+  height: var(--switch-h);
+  border: var(--switch-inset) solid var(--color-border-strong);
   border-radius: var(--radius-pill);
   background: var(--color-surface);
 }
 .switch__track::after {
   content: "";
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
+  top: var(--switch-inset);
+  left: var(--switch-inset);
+  width: var(--switch-knob);
+  height: var(--switch-knob);
   border-radius: 50%;
   background: var(--color-border-strong);
   transition: transform var(--duration-fast) var(--ease-out);
@@ -441,7 +461,7 @@
 }
 .switch[aria-checked="true"] .switch__track::after {
   background: var(--color-on-primary);
-  transform: translateX(20px);
+  transform: translateX(calc(var(--switch-w) - var(--switch-knob) - 4 * var(--switch-inset)));
 }
 .sheet .btn--primary {
   width: 100%;
@@ -476,21 +496,26 @@
   border-bottom: 1px solid var(--color-border);
 }
 .choice input {
-  width: 24px;
-  height: 24px;
+  width: var(--control-sm);
+  height: var(--control-sm);
   accent-color: var(--color-primary);
 }
 
 /* Toast above the bottom bar; Turnstile appears there only if Cloudflare needs an interaction */
-.toast {
+/* The live region is always in the page; it moves into the open sheet so it stays usable. */
+.toast-region {
   position: fixed;
   left: var(--space-4);
   right: var(--space-4);
-  /* Above the bottom bar AND the attribution line, which must stay visible (SPEC 2.8). */
-  bottom: calc(
-    var(--target-primary) + var(--target) + 4 * var(--space-2) + 56px + env(safe-area-inset-bottom)
-  );
+  /* Above the attribution line, measured at run time (SPEC 2.8). */
+  bottom: var(--toast-bottom, calc(var(--target-primary) + var(--target) + 6 * var(--space-2)));
   z-index: 10;
+  margin: 0 auto;
+  max-width: var(--sheet-max-width);
+}
+.toast {
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -500,6 +525,33 @@
   background: var(--color-text);
   color: var(--color-bg);
   box-shadow: var(--shadow-sheet);
+}
+.toast :focus-visible {
+  outline-color: var(--color-bg);
+}
+.toast__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: var(--space-1);
+  width: 100%;
+  background: var(--color-primary);
+  transform-origin: left;
+  animation: toast-progress var(--toast-duration) linear forwards;
+}
+.toast:hover .toast__progress,
+.toast:focus-within .toast__progress {
+  animation-play-state: paused;
+}
+@keyframes toast-progress {
+  to {
+    transform: scaleX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast__progress {
+    display: none;
+  }
 }
 .toast__action {
   min-height: var(--target);
@@ -513,7 +565,7 @@
 .turnstile-host {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--target-primary) + var(--target) + 4 * var(--space-2) + 64px);
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 11;
 }

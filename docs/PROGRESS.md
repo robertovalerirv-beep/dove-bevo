@@ -4,6 +4,28 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-12 · Sessione 2 · M2: revisioni di chiusura (spec e UX/a11y)
+
+**Revisione spec (NON OK, 3 bloccanti) → corretti**
+- Rate limit sulle scritture e sullo storico (commit `4298525`).
+- Bar proposti a freddo: "Aggiungi prezzo" senza mappa caricata usa la posizione se già concessa, altrimenti il centro della vista, e scarica le celle intorno (D-16).
+- Storico: le osservazioni di un prezzo in `review`/`removed` non compaiono. Stesso prezzo ripetuto e non contato → codice `already` con messaggio dedicato.
+- e2e allineati al testo delle verifiche: M2-05 da avvio a freddo con Spritz "7,50"; M2-02 controlla l’assenza di Turnstile subito prima di Salva; M2-12 invia e controlla drink, formato e fascia nella richiesta; nuovo e2e M2-09 ("In verifica" in scheda, assente in mappa). `npm run test:security` esegue anche i test "sec" del Worker.
+- `docs/data-quality.md` (SPEC 11).
+
+**Revisione UX/a11y (NON OK, 3 bloccanti) → corretti**
+- Focus tra i passi: il campo prezzo riceve il focus nello stesso tocco del drink (tastiera aperta: 4 tocchi reali), il titolo "Scegli il drink" al cambio di passo; "Indietro" in alto a sinistra; Invio salva (form).
+- Toast e Turnstile vivono fuori dall’albero di Preact e seguono il foglio modale più in alto: "Annulla" funziona anche sopra la scheda bar. Regione `role="status"` sempre presente; posizione misurata sopra le attribuzioni (niente pixel fissi).
+- "Annulla" senza limite fisso: con focus o puntatore sul toast il conto alla rovescia (toast e invio) si ferma (WCAG 2.2.1); barra di avanzamento, assente con `prefers-reduced-motion`.
+- Inoltre: "Confermato" con `aria-disabled` (il focus resta), conteggio annunciato; formati come radio native; anello di focus leggibile sul toast scuro; righe dei bar 64 px; misure in token (`--switch-*`, `--tile-min-h`, `--control-sm`). Restano da fare: icone SVG dei drink (design system).
+
+**Prove**
+- `npx vitest run --project unit` 28/28 (nuovo `timer.test.ts`: pausa, ripresa, annullo).
+- `npx playwright test tests/e2e/contribute.spec.ts` 18/18 Chromium e WebKit, tra cui il nuovo e2e "Annulla sopra la scheda bar": focus su Annulla per 11,5 s → nessuna POST; Invio → "Annullato", focus sul titolo della scheda, nessuna POST.
+- Screenshot rigenerati dal flusso reale in `docs/screenshots/m2/` (campo prezzo con focus, toast con barra, nuovo `7-salvato-scheda-*`).
+
+---
+
 ## 2026-10-12 · Sessione 2 · M2: interfaccia dei contributi (branch `m2-contrib`)
 
 **Fatto**

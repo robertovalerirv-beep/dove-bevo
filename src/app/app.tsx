@@ -1,3 +1,4 @@
+import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
 import { MAP_CHIPS, type ChipId } from "../shared/catalog";
@@ -15,9 +16,24 @@ import { it } from "./i18n/it";
 import { invalidateCell, loadCell, shownPrice, type Venue } from "./lib/data";
 import { ensureSession, postWithSession } from "./lib/session";
 import { formatPrice } from "./lib/format";
+import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
 
 const MIN_ZOOM_CELLS = 13;
+
+/** The topmost open sheet: while a modal sheet is open, everything outside it is inert. */
+function topLayer(): HTMLElement {
+  const open = document.querySelectorAll<HTMLElement>("dialog.sheet[open]");
+  return open[open.length - 1] ?? document.body;
+}
+
+/** Element living outside Preact's tree, so it can move into whichever sheet is on top. */
+function floating(className: string, role?: string): HTMLDivElement {
+  const element = document.createElement("div");
+  element.className = className;
+  if (role) element.setAttribute("role", role);
+  return element;
+}
 /** Centre of the start view (the Italy picture), used when nothing better is known (D-16). */
 const ITALY_CENTER = { lat: 41.85, lon: 12.6 };
 
@@ -58,6 +74,12 @@ function parseRoute(): Route {
 
 type CellsState = "idle" | "too-many" | "loading" | "error" | "ready";
 
+interface PendingSave {
+  draft: Draft;
+  timer: HoldableTimer;
+  sent: boolean;
+}
+
 interface Props {
   loadMap: () => Promise<typeof import("./lib/maplibre-map")>;
 }
@@ -77,9 +99,11 @@ export function App({ loadMap }: Props) {
   const [reporting, setReporting] = useState<{ venue: Venue; row: PriceRow | null } | null>(null);
   const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null);
   const [barVersion, setBarVersion] = useState(0); // reloads the bar page after a contribution
-  const turnstileHost = useRef<HTMLDivElement>(null);
-  const toastTimer = useRef<number | undefined>(undefined);
-  const pendingSave = useRef<{ draft: Draft; timer: number; sent: boolean } | null>(null);
+  // Both stay in the page and follow the topmost sheet, so they are never under an inert backdrop.
+  const turnstileHost = useMemo(() => floating("turnstile-host"), []);
+  const toastRegion = useMemo(() => floating("toast-region", "status"), []);
+  const toastTimer = useRef<HoldableTimer | null>(null);
+  const pendingSave = useRef<PendingSave | null>(null);
   const [chip, setChip] = useState<ChipId>(MAP_CHIPS[0].id);
   const [venues, setVenues] = useState<Map<string, Venue>>(new Map());
   const [cellsState, setCellsState] = useState<CellsState>("idle");
@@ -275,17 +299,50 @@ export function App({ loadMap }: Props) {
   }
 
   const host = () => {
-    if (!turnstileHost.current) throw new Error("turnstile host");
-    return turnstileHost.current;
+    const layer = topLayer();
+    if (turnstileHost.parentElement !== layer) layer.append(turnstileHost);
+    return turnstileHost;
   };
 
   function showToast(text: string, undo?: () => void, ms = 4000) {
-    window.clearTimeout(toastTimer.current);
+    toastTimer.current?.clear();
     setToast({ text, undo });
-    toastTimer.current = window.setTimeout(() => {
+    toastTimer.current = holdableTimeout(() => {
       setToast(null);
     }, ms);
   }
+
+  /** While the toast is pointed at or focused, neither it nor the pending send times out. */
+  function holdToast(held: boolean) {
+    for (const timer of [toastTimer.current, pendingSave.current?.timer]) {
+      if (held) timer?.hold();
+      else timer?.release();
+    }
+  }
+
+  // The toast region follows the topmost sheet and sits just above the attribution (SPEC 2.8).
+  useEffect(() => {
+    const layer = topLayer();
+    if (toastRegion.parentElement !== layer) layer.append(toastRegion);
+    const attribution = document.querySelector(".map__attribution");
+    if (attribution) {
+      const above = window.innerHeight - attribution.getBoundingClientRect().top;
+      toastRegion.style.setProperty("--toast-bottom", `${String(Math.round(above) + 8)}px`);
+    }
+    const hadFocus = toastRegion.contains(document.activeElement);
+    render(
+      toast ? <Toast text={toast.text} onUndo={toast.undo} onHold={holdToast} /> : null,
+      toastRegion,
+    );
+    // "Annulla" just disappeared under the focus: give it back to a sensible place (WCAG 2.4.3).
+    if (hadFocus && !toastRegion.contains(document.activeElement)) {
+      const fallback =
+        layer === document.body
+          ? document.querySelector<HTMLElement>(".bottom__primary")
+          : layer.querySelector<HTMLElement>("h2");
+      fallback?.focus();
+    }
+  });
 
   const drinkLabel = (code: string) => (it.drinks[code] ?? code).toLowerCase();
 
@@ -303,10 +360,10 @@ export function App({ loadMap }: Props) {
   }
 
   /** Sends a saved price: after the 10 s of "Annulla" or when the page goes to the background (D-15). */
-  async function send(entry: { draft: Draft; timer: number; sent: boolean }) {
+  async function send(entry: PendingSave) {
     if (entry.sent) return;
     entry.sent = true;
-    window.clearTimeout(entry.timer);
+    entry.timer.clear();
     if (pendingSave.current === entry) pendingSave.current = null;
     const { venue, drink, size, hh, cents } = entry.draft;
     try {
@@ -356,21 +413,27 @@ export function App({ loadMap }: Props) {
 
   function save(draft: Draft) {
     setAdding(null);
-    const entry = { draft, timer: 0, sent: false };
-    entry.timer = window.setTimeout(() => void send(entry), 10_000);
+    const entry: PendingSave = {
+      draft,
+      timer: holdableTimeout(() => void send(entry), 10_000),
+      sent: false,
+    };
     pendingSave.current = entry;
     showToast(
       it.add.saved,
       () => {
-        window.clearTimeout(entry.timer);
+        entry.timer.clear();
         entry.sent = true;
         if (pendingSave.current === entry) pendingSave.current = null;
         showToast(it.add.undone);
       },
       10_000,
     );
-    // Turnstile only now, at the first contribution (M2-02), during the 10 s window.
-    ensureSession(host()).catch(() => undefined);
+    // Turnstile only now, at the first contribution (M2-02), during the 10 s window; after the
+    // add sheet has closed, so its host lands in the layer that stays open.
+    setTimeout(() => {
+      ensureSession(host()).catch(() => undefined);
+    }, 0);
   }
 
   const barActions: BarActions = {
@@ -536,8 +599,6 @@ export function App({ loadMap }: Props) {
         </section>
       </main>
 
-      <div ref={turnstileHost} class="turnstile-host" />
-      {toast && <Toast text={toast.text} onUndo={toast.undo} />}
       <nav class="bottom" aria-label={it.map.actions}>
         <button
           type="button"

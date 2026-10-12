@@ -77,7 +77,9 @@ test.describe("with the position (Duomo)", () => {
       .getByRole("dialog")
       .getByRole("button", { name: /^Spritz/ })
       .click(); // 3
-    await page.getByRole("textbox", { name: "Prezzo in euro" }).fill("7,50"); // the digits
+    // The field has the focus (the phone keyboard opens): typing the digits is enough.
+    await expect(page.getByRole("textbox", { name: "Prezzo in euro" })).toBeFocused();
+    await page.keyboard.type("7,50"); // the digits
     expect(turnstile).toEqual([]); // nothing from Cloudflare until Salva
     const saved = page.waitForRequest(
       (r) => r.url().endsWith("/api/prices") && r.method() === "POST",
@@ -259,4 +261,32 @@ test("M2-09 a quarantined price is shown in 'In verifica' and not on the map", a
       .getByRole("region", { name: "Mappa", exact: true })
       .getAttribute("data-prices-shown")) ?? "",
   ).not.toContain("20,00 €");
+});
+
+test("Annulla works over the bar page and holds the countdown while focused (WCAG 2.2.1)", async ({
+  page,
+}) => {
+  await stubTurnstile(page);
+  const posts: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/prices") && r.method() === "POST") posts.push(r.url());
+  });
+  await page.goto("/bar/w549495264?c=u0nd9"); // Motta
+  await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^Bibita/ })
+    .click();
+  await page.keyboard.type("3,00");
+  await page.keyboard.press("Enter"); // Enter saves, like Salva
+  const undo = page.getByRole("button", { name: "Annulla" });
+  await expect(undo).toBeVisible();
+  await undo.focus();
+  await page.waitForTimeout(11_500);
+  expect(posts).toEqual([]); // held while focused
+  await undo.press("Enter"); // reachable from the keyboard: not under the bar page backdrop
+  await expect(page.getByRole("status").filter({ hasText: "Annullato" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Motta" })).toBeFocused(); // not lost to <body>
+  await page.waitForTimeout(1_000);
+  expect(posts).toEqual([]);
 });

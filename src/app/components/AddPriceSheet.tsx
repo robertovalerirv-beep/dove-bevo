@@ -88,7 +88,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onClose }: Prop
 
   if (!venue) {
     return (
-      <Sheet title={it.add.chooseBar} onClose={onClose}>
+      <Sheet title={it.add.chooseBar} onClose={onClose} step="bar">
         <input
           type="search"
           class="field"
@@ -100,7 +100,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onClose }: Prop
           }}
         />
         {nearest.length === 0 && <p class="hint">{it.add.noBars}</p>}
-        <ul class="rows" aria-label={it.add.nearBars}>
+        <ul class="rows rows--bars" aria-label={it.add.nearBars}>
           {nearest.map((item) => {
             const v = "v" in item ? item.v : item;
             const meters = "m" in item ? item.m : null;
@@ -130,8 +130,21 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onClose }: Prop
 
   if (!drink) {
     return (
-      <Sheet title={venue.name} onClose={onClose}>
-        <h3 class="section-title">{it.add.chooseDrink}</h3>
+      <Sheet
+        title={venue.name}
+        onClose={onClose}
+        step="drink"
+        onBack={
+          prefill?.venue
+            ? undefined
+            : () => {
+                setVenue(null);
+              }
+        }
+      >
+        <h3 class="section-title" tabIndex={-1} autofocus>
+          {it.add.chooseDrink}
+        </h3>
         <ul class="drinks">
           {CATALOG.map((d) => (
             <li key={d.code}>
@@ -149,91 +162,88 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onClose }: Prop
             </li>
           ))}
         </ul>
-        {!prefill?.venue && (
-          <button
-            type="button"
-            class="btn btn--ghost"
-            onClick={() => {
-              setVenue(null);
-            }}
-          >
-            {it.add.back}
-          </button>
-        )}
       </Sheet>
     );
   }
 
   const sizes = CATALOG.find((d) => d.code === drink)?.sizes ?? [];
   return (
-    <Sheet title={venue.name} onClose={onClose}>
-      <h3 class="section-title">{drinkName(drink)}</h3>
-      {sizes.length > 1 && (
-        <div class="segmented" role="radiogroup" aria-label={it.add.size}>
-          {sizes.map((s) => (
-            <button
-              key={s.ml}
-              type="button"
-              role="radio"
-              aria-checked={s.ml === size}
-              class="chip"
-              onClick={() => {
-                setSize(s.ml);
-              }}
-            >
-              {formatSize(s.ml)}
-            </button>
-          ))}
-        </div>
-      )}
-      <label class="price-input">
-        <span class="sr-only">{it.add.price}</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          autocomplete="off"
-          aria-label={it.add.price}
-          aria-invalid={error ? "true" : "false"}
-          aria-describedby="price-error"
-          placeholder="0,00"
-          value={text}
-          autofocus
-          onInput={(e) => {
-            setText(e.currentTarget.value);
-            setError("");
-          }}
-        />
-        <span aria-hidden="true">€</span>
-      </label>
-      <p id="price-error" class="error" role="alert">
-        {error}
-      </p>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={hh === 1}
-        class="switch"
-        onClick={() => {
-          setHh(hh ? 0 : 1);
+    <Sheet
+      title={venue.name}
+      onClose={onClose}
+      step="price"
+      onBack={
+        prefill?.drink
+          ? undefined
+          : () => {
+              setDrink(null);
+            }
+      }
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
         }}
       >
-        <span class="switch__track" aria-hidden="true" />
-        {it.add.happyHour}
-      </button>
-      <button type="button" class="btn btn--primary" disabled={!text.trim()} onClick={save}>
-        {it.add.save}
-      </button>
-      {!prefill?.drink && (
+        <h3 class="section-title">{drinkName(drink)}</h3>
+        {sizes.length > 1 && (
+          <fieldset class="segmented">
+            <legend class="sr-only">{it.add.size}</legend>
+            {sizes.map((s) => (
+              <label key={s.ml} class="chip">
+                <input
+                  type="radio"
+                  name="size"
+                  class="sr-only"
+                  checked={s.ml === size}
+                  onChange={() => {
+                    setSize(s.ml);
+                  }}
+                />
+                {formatSize(s.ml)}
+              </label>
+            ))}
+          </fieldset>
+        )}
+        <label class="price-input">
+          <span class="sr-only">{it.add.price}</span>
+          <input
+            type="text"
+            inputMode="decimal"
+            autocomplete="off"
+            aria-label={it.add.price}
+            aria-invalid={error ? "true" : "false"}
+            aria-describedby="price-error"
+            placeholder="0,00"
+            value={text}
+            autofocus
+            onInput={(e) => {
+              setText(e.currentTarget.value);
+              setError("");
+            }}
+          />
+          <span aria-hidden="true">€</span>
+        </label>
+        <p id="price-error" class="error" role="alert">
+          {error}
+        </p>
         <button
           type="button"
-          class="btn btn--ghost"
+          role="switch"
+          aria-checked={hh === 1}
+          class="switch"
           onClick={() => {
-            setDrink(null);
+            setHh(hh ? 0 : 1);
           }}
         >
-          {it.add.back}
+          <span class="switch__track" aria-hidden="true" />
+          {it.add.happyHour}
         </button>
-      )}
+        <button type="submit" class="btn btn--primary" disabled={!text.trim()}>
+          {it.add.save}
+        </button>
+      </form>
     </Sheet>
   );
 }

@@ -44,6 +44,7 @@ function PriceItem({
     .join(" ");
 
   async function confirm() {
+    if (state === "busy" || state === "done") return;
     setState("busy");
     try {
       const next = await actions.confirm(row);
@@ -58,7 +59,7 @@ function PriceItem({
     <li class="price">
       <span class="price__name">{name}</span>
       <span class="price__value">{formatPrice(cents)}</span>
-      <span class="price__meta">
+      <span class="price__meta" aria-live="polite">
         {formatDate(day)} · {it.bar.confirmations(count)}
       </span>
       {fromPhoto === 1 && <span class="price__ai">{it.bar.aiLabel}</span>}
@@ -66,7 +67,8 @@ function PriceItem({
         <button
           type="button"
           class="btn btn--secondary"
-          disabled={state === "busy" || state === "done"}
+          // aria-disabled keeps the focus on the button (WCAG 2.4.3); clicks are ignored above.
+          aria-disabled={state === "busy" || state === "done" ? "true" : undefined}
           onClick={() => void confirm()}
         >
           {state === "done" ? it.actions.confirmed : it.actions.confirm}

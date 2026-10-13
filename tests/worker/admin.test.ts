@@ -63,9 +63,15 @@ const cell = async (id: string) =>
 
 beforeEach(async () => {
   await env.DB.batch(
-    ["venues_hidden", "venues_user", "prices_current", "price_obs", "counters", "dedup"].map((t) =>
-      env.DB.prepare(`DELETE FROM ${t}`),
-    ),
+    [
+      "venues_hidden",
+      "venues_user",
+      "prices_current",
+      "price_obs",
+      "counters",
+      "dedup",
+      "reports",
+    ].map((t) => env.DB.prepare(`DELETE FROM ${t}`)),
   );
 });
 
@@ -91,7 +97,7 @@ describe("admin protection (M5-02, D-19)", () => {
   it("200 with a valid JWT", async () => {
     const response = await call("overview", await accessJwt());
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ venues: [], hidden: [], prices: [] });
+    expect(await response.json()).toEqual({ venues: [], hidden: [], prices: [], reports: [] });
   });
 
   it("admin writes still need the service Origin", async () => {
@@ -109,6 +115,44 @@ describe("admin protection (M5-02, D-19)", () => {
 });
 
 describe("admin bar corrections", () => {
+  it("bar reports wait for the admin: listed with their cell, closed by delete or dismiss", async () => {
+    const report = async (venue: string, reason: string, ip: string) => {
+      const { token } = await createSession("test-session-hmac-key");
+      return exports.default.fetch(`${ORIGIN}/api/reports`, {
+        method: "POST",
+        headers: {
+          Origin: ORIGIN,
+          "Content-Type": "application/json",
+          Cookie: `__Host-sid=${token}`,
+          "CF-Connecting-IP": ip,
+        },
+        body: JSON.stringify({ venue, cell: "u0nd9", reason }),
+      });
+    };
+    expect((await report("n2420779240", "not_exists", "198.51.100.1")).status).toBe(200);
+    expect((await report("n2420779240", "closed", "198.51.100.2")).status).toBe(200);
+    expect((await report("n13001337602", "wrong_info", "198.51.100.3")).status).toBe(200);
+    const jwt = await accessJwt();
+    const overview = async () =>
+      (
+        await (
+          await call("overview", jwt)
+        ).json<{
+          reports: { venue_key: string; cell: string; reasons: string; n: number }[];
+        }>()
+      ).reports;
+    const first = await overview();
+    expect(first).toHaveLength(2);
+    expect(first[0]).toMatchObject({ venue_key: "n2420779240", cell: "u0nd9", n: 2 });
+    expect(first[0]?.reasons.split(",").sort()).toEqual(["closed", "not_exists"]);
+    // Nothing is hidden by the reports alone.
+    expect((await cell("u0nd9")).h).toEqual([]);
+
+    expect((await call("hide", jwt, { venue: "n2420779240", cell: "u0nd9" })).status).toBe(200);
+    expect((await call("reports/dismiss", jwt, { venue: "n13001337602" })).status).toBe(200);
+    expect(await overview()).toEqual([]);
+  });
+
   it("hides an OSM entry that is not a bar: listed in the cell as hidden, no new prices, restorable", async () => {
     const jwt = await accessJwt();
     expect((await call("hide", jwt, { venue: "n2420779240", cell: "u0nd9" })).status).toBe(200);

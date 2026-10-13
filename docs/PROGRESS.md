@@ -4,6 +4,16 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-13 · Sessione 3 · Segnalazioni sui bar approvate dall'admin
+
+**Richiesta di Roberto**: "Bar inesistente" e "Chiuso definitivamente" dicevano grazie ma non cancellavano nulla; le cancellazioni devono passare dal suo ok nella pagina admin.
+
+**Fatto**: le segnalazioni sui bar (chiuso, inesistente, dati errati) compaiono in /admin, sezione "Bar segnalati dagli utenti", raggruppate per bar con motivi, numero e data. Azioni: **Elimina dalla mappa** (con conferma; nasconde un bar OSM o rimuove un bar aggiunto) oppure **Ignora**. Nessuna cancellazione automatica. Migrazione `0003` (cella nella segnalazione, indice). Messaggio all'utente: "Grazie: la verifichiamo prima di togliere il bar dalla mappa."
+
+**Prove**: `npx vitest run` 87/87 (nuovo test: segnalazioni elencate con cella, nessun bar nascosto da sole, chiuse da elimina o ignora); e2e admin e contribuzione 68/68 Chromium e WebKit.
+
+---
+
 ## 2026-10-12 · Sessione 2 · Prove di Roberto in staging: correzioni
 
 **Segnalato da Roberto** dopo i test sul sito: (1) "Confermo" sembrava funzionare ma dopo un altro inserimento o un ricaricamento il prezzo tornava "da confermare"; (2) la ricerca dell'admin non trovava un bar appena creato.

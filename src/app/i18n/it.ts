@@ -120,6 +120,7 @@ export const it = {
     },
     send: "Invia",
     thanks: "Grazie per la segnalazione",
+    thanksBar: "Grazie: la verifichiamo prima di togliere il bar dalla mappa.",
     already: "Avevi già segnalato questo errore.",
   },
   admin: {
@@ -144,6 +145,11 @@ export const it = {
     noResults: "Nessun bar trovato con questo nome.",
     cityNotFound: "Città non trovata.",
     hide: "Elimina dalla mappa",
+    ignore: "Ignora",
+    reportsTitle: "Bar segnalati dagli utenti",
+    reportsHelp:
+      "Segnalazioni di bar chiusi, inesistenti o con dati sbagliati. Niente sparisce da solo: elimina il bar dalla mappa oppure ignora le segnalazioni.",
+    reportCount: (n: number) => (n === 1 ? "1 segnalazione" : `${String(n)} segnalazioni`),
     addTitle: "Aggiungi un bar che manca",
     addHelp:
       "Coordinate: su Google Maps tieni premuto sul punto e copia i due numeri (es. 45.4642, 9.1900).",

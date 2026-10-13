@@ -473,7 +473,13 @@ export function App({ loadMap }: Props) {
       });
       if (!response.ok) throw new Error(String(response.status));
       const body = (await response.json()) as { status: string };
-      showToast(body.status === "already" ? it.report.already : it.report.thanks);
+      showToast(
+        body.status === "already"
+          ? it.report.already
+          : target.row
+            ? it.report.thanks
+            : it.report.thanksBar,
+      );
     } catch {
       showToast(it.actions.failed);
     }

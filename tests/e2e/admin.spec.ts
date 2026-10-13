@@ -5,6 +5,16 @@ import { expect, test, type Page } from "@playwright/test";
 // Here the admin API is simulated: locally there is no Cloudflare Access in front of it.
 
 const OVERVIEW = {
+  reports: [
+    {
+      venue_key: "n5471678323",
+      cell: "u0nd9",
+      reasons: "not_exists,closed",
+      n: 2,
+      day: "2026-10-12",
+    },
+    { venue_key: "w549495264", cell: "u0nd9", reasons: "wrong_info", n: 1, day: "2026-10-11" },
+  ],
   venues: [
     {
       id: 3,
@@ -154,4 +164,26 @@ test("admin search also finds bars added by hand, fresh, and accepts a bar link"
     .fill("https://dovebevo.example/bar/n2420779240?c=u0nd9");
   await page.getByRole("button", { name: "Cerca" }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "Bistrot Duomo" })).toHaveCount(1);
+});
+
+test("admin decides on bar reports: delete or ignore, never automatic", async ({ page }) => {
+  const posts = await fakeAdmin(page);
+  await page.goto("/admin");
+  const reported = page.getByRole("listitem").filter({ hasText: "Terrazza Aperol" });
+  await expect(reported).toContainText("Bar inesistente, Bar chiuso definitivamente");
+  await expect(reported).toContainText("2 segnalazioni");
+  page.once("dialog", (d) => void d.accept());
+  await reported.getByRole("button", { name: "Elimina dalla mappa" }).click();
+  await expect
+    .poll(() => posts.find((p) => p.path === "/api/admin/hide")?.body)
+    .toEqual({ venue: "n5471678323", cell: "u0nd9" });
+  await page
+    .getByRole("listitem")
+    .filter({ hasText: "Motta" })
+    .filter({ hasText: "Nome o indirizzo errato" })
+    .getByRole("button", { name: "Ignora" })
+    .click();
+  await expect
+    .poll(() => posts.find((p) => p.path === "/api/admin/reports/dismiss")?.body)
+    .toEqual({ venue: "w549495264" });
 });

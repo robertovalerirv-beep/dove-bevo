@@ -7,6 +7,7 @@ import { formatDate, formatPrice, formatSize, searchKey } from "../lib/format";
 // /admin (SPEC 7.9, D-19): behind Cloudflare Access; the Worker verifies the JWT on /api/admin/*.
 
 interface Overview {
+  reports: { venue_key: string; cell: string | null; reasons: string; n: number; day: string }[];
   venues: {
     id: number;
     name: string;
@@ -93,6 +94,15 @@ export function AdminPage() {
       )}
       {state === "ready" && data && (
         <>
+          <BarReports
+            reports={data.reports}
+            onDelete={(key, cell) =>
+              key.startsWith("u")
+                ? act(`venues/${key.slice(1)}/status`, { status: "removed" }, cell)
+                : act("hide", { venue: key, cell }, cell)
+            }
+            onIgnore={(key) => act("reports/dismiss", { venue: key })}
+          />
           <FindBars
             onDelete={(v) =>
               v.key.startsWith("u")
@@ -204,6 +214,68 @@ export function AdminPage() {
         </>
       )}
     </main>
+  );
+}
+
+/** Bar reports from users: the admin deletes the bar or dismisses the reports (nothing is automatic). */
+function BarReports({
+  reports,
+  onDelete,
+  onIgnore,
+}: {
+  reports: Overview["reports"];
+  onDelete: (key: string, cell: string) => Promise<boolean>;
+  onIgnore: (key: string) => Promise<boolean>;
+}) {
+  const [names, setNames] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    const cells = [...new Set(reports.map((r) => r.cell).filter((c): c is string => c !== null))];
+    void Promise.all(cells.map((c) => loadCell(c).catch(() => []))).then((lists) => {
+      setNames(new Map(lists.flat().map((v) => [v.key, v.name])));
+    });
+  }, [reports]);
+  const reasonText = (code: string) =>
+    (it.report.reasons as Record<string, string | undefined>)[code] ?? code;
+
+  return (
+    <section>
+      <h2 class="section-title">{it.admin.reportsTitle}</h2>
+      <p class="hint">{it.admin.reportsHelp}</p>
+      {reports.length === 0 && <p class="hint">{it.admin.none}</p>}
+      <ul class="admin__list">
+        {reports.map((r) => {
+          const name = names.get(r.venue_key) ?? r.venue_key;
+          return (
+            <li key={r.venue_key}>
+              {r.cell ? <a href={`/bar/${r.venue_key}?c=${r.cell}`}>{name}</a> : name} ·{" "}
+              {r.reasons.split(",").map(reasonText).join(", ")} · {it.admin.reportCount(r.n)} ·{" "}
+              {formatDate(r.day)}
+              <span class="admin__actions">
+                {r.cell && (
+                  <button
+                    type="button"
+                    class="btn btn--secondary"
+                    onClick={() => {
+                      if (r.cell && window.confirm(it.admin.confirmDelete(name)))
+                        void onDelete(r.venue_key, r.cell);
+                    }}
+                  >
+                    {it.admin.hide}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  onClick={() => void onIgnore(r.venue_key)}
+                >
+                  {it.admin.ignore}
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

@@ -62,7 +62,13 @@ reports.post("/", async (c) => {
   }
   const total = await addReport(
     c.env.DB,
-    { venue: body.venue, drink: k?.drink ?? null, size: k?.size ?? null, hh: k?.hh ?? null },
+    {
+      venue: body.venue,
+      cell: body.cell,
+      drink: k?.drink ?? null,
+      size: k?.size ?? null,
+      hh: k?.hh ?? null,
+    },
     body.reason,
     day,
     since,

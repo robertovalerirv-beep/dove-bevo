@@ -10,6 +10,8 @@ import {
   hideVenue,
   listHidden,
   listPricesToReview,
+  clearBarReports,
+  listBarReports,
   listUserVenues,
   setPriceStatus,
   setUserVenueStatus,
@@ -49,12 +51,13 @@ export const admin = new Hono<AppEnv>();
 
 // Everything the admin page shows, in one request.
 admin.get("/overview", async (c) => {
-  const [venues, hidden, prices] = await Promise.all([
+  const [venues, hidden, prices, reports] = await Promise.all([
     listUserVenues(c.env.DB),
     listHidden(c.env.DB),
     listPricesToReview(c.env.DB),
+    listBarReports(c.env.DB),
   ]);
-  return c.json({ venues, hidden, prices });
+  return c.json({ venues, hidden, prices, reports });
 });
 
 // A bar missing from OpenStreetMap, added directly as approved (key "u<id>").
@@ -78,6 +81,7 @@ admin.post("/venues/:id/status", async (c) => {
   const body = await readJson(c, VenueStatus);
   const cell = await setUserVenueStatus(c.env.DB, id.data, body.status);
   if (!cell) throw new ApiError("not_found");
+  if (body.status === "removed") await clearBarReports(c.env.DB, `u${String(id.data)}`);
   await forgetCell(c.req.url, cell);
   return c.json({ status: body.status });
 });
@@ -88,6 +92,7 @@ admin.post("/hide", async (c) => {
   const found = await osmVenue(c.env, body.venue, body.cell);
   if (!found) throw new ApiError("not_found");
   await hideVenue(c.env.DB, { key: body.venue, cell: body.cell, name: found.name, day: romeDay() });
+  await clearBarReports(c.env.DB, body.venue);
   await forgetCell(c.req.url, body.cell);
   return c.json({ status: "hidden" });
 });
@@ -97,6 +102,13 @@ admin.post("/unhide", async (c) => {
   const cell = await unhideVenue(c.env.DB, body.venue);
   if (cell) await forgetCell(c.req.url, cell);
   return c.json({ status: "visible" });
+});
+
+// Reports on a bar judged unfounded: the bar stays, its reports are closed.
+admin.post("/reports/dismiss", async (c) => {
+  const body = await readJson(c, z.strictObject({ venue: VenueKey }));
+  await clearBarReports(c.env.DB, body.venue);
+  return c.json({ status: "dismissed" });
 });
 
 // Decide on a price in review or in quarantine (SPEC 11).

@@ -246,6 +246,8 @@ export function getUserVenue(db: D1Database, id: number) {
 
 export interface ReportTarget {
   venue: string;
+  /** Cell of the bar, kept so the admin can hide it (migration 0003). */
+  cell: string;
   drink: string | null;
   size: number | null;
   hh: 0 | 1 | null;
@@ -262,9 +264,9 @@ export async function addReport(
   const [, count] = await db.batch<{ n: number }>([
     db
       .prepare(
-        "INSERT INTO reports (venue_key, drink, size_ml, hh, reason, day) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO reports (venue_key, drink, size_ml, hh, reason, day, cell) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
       )
-      .bind(t.venue, t.drink, t.size, t.hh, reason, day),
+      .bind(t.venue, t.drink, t.size, t.hh, reason, day, t.cell),
     db
       .prepare(
         "SELECT COUNT(*) AS n FROM reports WHERE venue_key = ?1 AND drink IS ?2 AND size_ml IS ?3 AND hh IS ?4 AND (?5 IS NULL OR day >= ?5)",
@@ -421,4 +423,21 @@ export async function setPriceStatus(
     .bind(...pk(k), status)
     .first<{ cell: string }>();
   return row?.cell ?? null;
+}
+
+/** Open reports on bars (closed, not existing, wrong info), one row per bar: the admin decides. */
+export async function listBarReports(db: D1Database) {
+  const { results } = await db
+    .prepare(
+      `SELECT venue_key, max(cell) AS cell, group_concat(DISTINCT reason) AS reasons, COUNT(*) AS n,
+         max(day) AS day
+       FROM reports WHERE drink IS NULL GROUP BY venue_key ORDER BY n DESC, day DESC LIMIT 200`,
+    )
+    .all<{ venue_key: string; cell: string | null; reasons: string; n: number; day: string }>();
+  return results;
+}
+
+/** Closes the reports on a bar: after a delete, or when the admin judges them unfounded. */
+export async function clearBarReports(db: D1Database, key: string): Promise<void> {
+  await db.prepare("DELETE FROM reports WHERE venue_key = ?1 AND drink IS NULL").bind(key).run();
 }

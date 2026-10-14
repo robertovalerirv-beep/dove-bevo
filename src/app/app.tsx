@@ -614,7 +614,7 @@ export function App({ loadMap }: Props) {
       showToast(
         body.status === "already"
           ? it.report.already
-          : target.row
+          : target.row && (reason === "wrong_price" || reason === "offensive")
             ? it.report.thanks
             : it.report.thanksBar,
       );

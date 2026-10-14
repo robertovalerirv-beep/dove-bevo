@@ -96,6 +96,31 @@ describe("POST /api/reports (M2-13)", () => {
   });
 });
 
+describe("bar reasons sent from a price row", () => {
+  it("land in the bar queue of the admin and never count against the price", async () => {
+    // The price sheet offers "Bar chiuso definitivamente" too: that is a report on the bar.
+    for (const [i, reason] of (["closed", "not_exists", "wrong_info"] as const).entries())
+      await post(
+        "/api/reports",
+        { ...price, reason },
+        await newSession(),
+        `198.51.100.${String(i)}`,
+      );
+    const bar = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM reports WHERE venue_key = ? AND drink IS NULL",
+    )
+      .bind(BAR)
+      .first<{ n: number }>();
+    expect(bar?.n).toBe(3);
+    const onPrice = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM reports WHERE drink IS NOT NULL",
+    ).first<{
+      n: number;
+    }>();
+    expect(onPrice?.n).toBe(0);
+  });
+});
+
 describe("daily cleanup (M2-15)", () => {
   it("keeps only today and yesterday in counters and dedup (within 48 h, ADR 0016)", async () => {
     const day = (offset: number) => romeDay(new Date(Date.now() - offset * 86_400_000));

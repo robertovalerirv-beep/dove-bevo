@@ -300,6 +300,42 @@ test("M2-09 a quarantined price is shown in 'In verifica' and not on the map", a
   ).not.toContain("20,00 €");
 });
 
+test("M3-16 'Aggiungi un altro drink qui': two drinks of the same bar leave in one request", async ({
+  page,
+}) => {
+  test.slow(); // waits out the real 10 s undo window
+  await stubTurnstile(page);
+  const posts: { items: unknown[]; venue: string }[] = [];
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/prices") && r.method() === "POST")
+      posts.push(r.postDataJSON() as { items: unknown[]; venue: string });
+  });
+  await page.goto("/bar/n13001316579?c=u0nd9");
+  await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^Bibita/ })
+    .click();
+  await page.keyboard.type("3,00");
+  await page.keyboard.press("Enter");
+  await page.getByRole("button", { name: "Aggiungi un altro drink qui" }).click();
+  // The bar stays selected: straight to the drinks.
+  await expect(page.getByRole("heading", { name: "Che cosa hai preso?" })).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^Analcolico/ })
+    .click();
+  await page.keyboard.type("4,50");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => posts.length, { timeout: 25_000 }).toBe(1);
+  expect(posts[0]?.items).toEqual([
+    { drink: "soft_drink", size_ml: 330, hh: 0, price_cents: 300 },
+    { drink: "alcohol_free", size_ml: 0, hh: 0, price_cents: 450 },
+  ]);
+  await page.waitForTimeout(1_000);
+  expect(posts).toHaveLength(1); // one request, not two
+});
+
 test("Annulla works over the bar page and holds the countdown while focused (WCAG 2.2.1)", async ({
   page,
 }) => {

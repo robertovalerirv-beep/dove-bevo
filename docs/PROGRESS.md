@@ -4,6 +4,16 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-14 · Sessione 6 · Correzioni dell'audit di sicurezza (branch `fix-stress-test-hardening`)
+
+**Contesto**: l'audit "da attaccante" della sessione del 14/10 mattina elencava correzioni da fare prima di diffondere il link; nessuna era in `main` (verificato: `GET /api/prices/:cell` senza limite, `VenueKey` con zeri iniziali, pin valido con un tocco, nessun tetto per cella). Access e Turnstile sul nuovo sottodominio verificati dal vivo: `/admin` e `/api/admin/*` rispondono 302 al login di Access; il flusso reale «Salva» crea la sessione (`POST /api/session` 200) e con «Annulla» entro 10 s non scrive nulla.
+
+**Fatto** (ADR 0021): limite sulle letture delle celle (`READ_LIMITER`, 100/60 s in staging); chiavi di bar canoniche; tetto di 15 proposte in attesa per cella; il pin deve essere spostato di almeno 10 m da dove la mappa è partita (`placed` al posto di `touched` in `PinPanel`).
+
+**Prove**: 3 test nuovi in `tests/worker/stress-test-hardening.test.ts`, rossi senza le correzioni (3 su 3) e verdi con; `npx vitest run` 106/106; e2e `propose.spec.ts` aggiornato (tocco e spostamento di 12 px non bastano, 60 px sì). Resta aperto ciò che l'ADR elenca come non corretto; il rimedio vero al consumo delle quote è il dominio con WAF (M6).
+
+---
+
 ## 2026-10-14 · Sessione 5 · Filtri e inserimento uniformati (branch `v3-chips-from-catalog`)
 
 **Richiesta di Roberto**: le categorie dei filtri sopra la mappa devono essere le stesse dei prezzi inseribili (filtro ⇒ inseribile e viceversa).

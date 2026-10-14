@@ -260,21 +260,23 @@ export async function venuesInCell(db: D1Database, cell: string) {
 }
 
 /**
- * Stores a proposal as pending, unless 200 are already waiting (one atomic statement, index
- * vu_status). Returns the new id, or null when full. `confirmations` counts independent proposers.
+ * Stores a proposal as pending, unless 200 are already waiting overall or `maxPerCell` in its cell
+ * (one atomic statement, indexes vu_status and vu_cell). Returns the new id, or null when full. `confirmations` counts independent proposers.
  */
 export async function proposeVenue(
   db: D1Database,
   v: { name: string; kind: number; lat: number; lon: number; cell: string; day: string },
   maxPending: number,
+  maxPerCell: number,
 ): Promise<number | null> {
   const row = await db
     .prepare(
       `INSERT INTO venues_user (name, kind, lat, lon, cell, status, confirmations, day)
        SELECT ?1, ?2, ?3, ?4, ?5, 'pending', 1, ?6
-       WHERE (SELECT COUNT(*) FROM venues_user WHERE status = 'pending') < ?7 RETURNING id`,
+       WHERE (SELECT COUNT(*) FROM venues_user WHERE status = 'pending') < ?7
+         AND (SELECT COUNT(*) FROM venues_user WHERE cell = ?5 AND status = 'pending') < ?8 RETURNING id`,
     )
-    .bind(v.name, v.kind, v.lat, v.lon, v.cell, v.day, maxPending)
+    .bind(v.name, v.kind, v.lat, v.lon, v.cell, v.day, maxPending, maxPerCell)
     .first<{ id: number }>();
   return row?.id ?? null;
 }

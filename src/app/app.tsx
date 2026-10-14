@@ -49,6 +49,8 @@ const ITALY_CENTER = { lat: 41.85, lon: 12.6 };
 
 /** Pin placement: the map must be this close to point at one building. */
 const PIN_MIN_ZOOM = 16;
+/** The pin must be moved at least this far from where the map started (that may be the device's position). */
+const PIN_MIN_MOVE_M = 10;
 /** Known bars this close to the pin, with a similar name, are offered as "È uno di questi?". */
 const SIMILAR_METERS = 150;
 const SIMILAR_MAX = 3;
@@ -75,7 +77,13 @@ interface PendingSave {
 }
 
 type Proposing =
-  { step: "form" } | ({ step: "pin"; sending: boolean; touched: boolean } & Proposal);
+  | { step: "form" }
+  | ({
+      step: "pin";
+      sending: boolean;
+      touched: boolean;
+      start: { lat: number; lon: number } | null;
+    } & Proposal);
 
 interface Props {
   loadMap: () => Promise<typeof import("./lib/maplibre-map")>;
@@ -492,14 +500,23 @@ export function App({ loadMap }: Props) {
   }
 
   function startPin(proposal: Proposal) {
-    setProposing({ step: "pin", sending: false, touched: false, ...proposal });
     // Where the bar list was centred: the position if known, else the map centre (D-16).
     const at = position ?? (view && view.zoom >= MIN_ZOOM_CELLS ? view : null);
+    const start = at ? { lat: at.lat, lon: at.lon } : null;
+    setProposing({ step: "pin", sending: false, touched: false, start, ...proposal });
     if (at) moveTo(at.lat, at.lon, 17);
     else ensureMap();
   }
 
   const pinning = proposing?.step === "pin" ? proposing : null;
+  // The pin is the user's own once the map has been moved away from where it started; without a
+  // known start (no position, map far out) any touch of the map counts.
+  const pinPlaced = !pinning
+    ? false
+    : pinning.start
+      ? view !== null &&
+        distanceMeters(view.lat, view.lon, pinning.start.lat, pinning.start.lon) >= PIN_MIN_MOVE_M
+      : pinning.touched;
   const similar = useMemo(() => {
     if (!pinning || !view) return [];
     const wanted = searchKey(pinning.name);
@@ -516,9 +533,9 @@ export function App({ loadMap }: Props) {
 
   /** Sends the confirmed pin (the bar's position, never the device's) and goes on to its price. */
   async function sendProposal() {
-    // The pin must be placed by the user: the map starts on the device position, so a tap or a
-    // drag on the map is required before sending (SPEC 14: the bar's position, not the user's).
-    if (!pinning?.touched || !view || view.zoom < PIN_MIN_ZOOM) return;
+    // The pin must be placed by the user: the map starts on the device position, so it has to be
+    // moved away from it before sending (SPEC 14: the bar's position, not the user's).
+    if (!pinning || !pinPlaced || !view || view.zoom < PIN_MIN_ZOOM) return;
     const { name, kind } = pinning;
     const lat = Math.round(view.lat * 1e5) / 1e5;
     const lon = Math.round(view.lon * 1e5) / 1e5;
@@ -757,7 +774,7 @@ export function App({ loadMap }: Props) {
         <PinPanel
           name={pinning.name}
           close={view !== null && view.zoom >= PIN_MIN_ZOOM}
-          touched={pinning.touched}
+          placed={pinPlaced}
           sending={pinning.sending}
           similar={similar}
           onPick={(venue) => {

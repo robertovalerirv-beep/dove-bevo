@@ -3,7 +3,7 @@ import { z } from "zod";
 import { it } from "../../app/i18n/it";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { ITALY, validVenueName } from "../../shared/venue";
-import { MAX_PENDING_VENUES, REJECTION_TRACE_DAYS } from "../config";
+import { MAX_PENDING_PER_CELL, MAX_PENDING_VENUES, REJECTION_TRACE_DAYS } from "../config";
 import { romeDay } from "../lib/day";
 import { bumpProposal, claimOnce, getVenuePrices, proposeVenue } from "../lib/db";
 import { ApiError, apiError } from "../lib/errors";
@@ -13,8 +13,11 @@ import { clientIp, consumeQuota } from "../lib/quota";
 import { findDuplicate } from "../lib/venues";
 import type { AppEnv } from "../types";
 
-/** OSM bar ("n123", "w456", "r789") or user bar ("u12"). */
-export const VenueKey = z.string().regex(/^[nwru]\d{1,15}$/);
+/**
+ * OSM bar ("n123", "w456", "r789") or user bar ("u12"). Canonical only: "u007" must not alias "u7"
+ * (it would be a hidden price row that still counts in the median).
+ */
+export const VenueKey = z.string().regex(/^[nwru][1-9]\d{0,14}$/);
 
 export const Lat = z.number().min(ITALY.south).max(ITALY.north);
 export const Lon = z.number().min(ITALY.west).max(ITALY.east);
@@ -81,6 +84,7 @@ venues.post("/", async (c) => {
     c.env.DB,
     { name: body.name, kind: body.kind, lat, lon, cell, day },
     MAX_PENDING_VENUES,
+    MAX_PENDING_PER_CELL,
   );
   if (id === null) throw new ApiError("busy");
   const key = `u${String(id)}`;

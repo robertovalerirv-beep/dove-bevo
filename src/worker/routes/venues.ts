@@ -51,6 +51,13 @@ venues.post("/", async (c) => {
   const who = { sid: c.var.sid, ip: clientIp(c.req.raw) };
 
   const day = romeDay();
+  // One marker per person (IP and session, HMAC with the day as salt) and per bar: the proposer
+  // and anyone repeating the same proposal count once.
+  const marks = (key: string) =>
+    Promise.all([
+      hmacHex(c.env.HASH_KEY, [day, "propose-ip", who.ip, key]),
+      hmacHex(c.env.HASH_KEY, [day, "propose-sid", who.sid, key]),
+    ]);
   const known = await findDuplicate(
     c.env,
     { name: body.name, lat, lon, cell },
@@ -59,10 +66,7 @@ venues.post("/", async (c) => {
   if (known) {
     // Another independent person asking for the same pending bar only moves it up the queue.
     if (known.pending && known.key) {
-      const salted = (kind: string, id: string) =>
-        hmacHex(c.env.HASH_KEY, [day, kind, id, known.key ?? ""]);
-      const ipKey = await salted("propose-ip", who.ip);
-      const sidKey = await salted("propose-sid", who.sid);
+      const [ipKey, sidKey] = await marks(known.key);
       if ((await claimOnce(c.env.DB, ipKey, day)) && (await claimOnce(c.env.DB, sidKey, day)))
         await bumpProposal(c.env.DB, Number(known.key.slice(1)));
     }
@@ -79,5 +83,7 @@ venues.post("/", async (c) => {
     MAX_PENDING_VENUES,
   );
   if (id === null) throw new ApiError("busy");
-  return c.json({ key: `u${String(id)}`, cell });
+  const key = `u${String(id)}`;
+  for (const mark of await marks(key)) await claimOnce(c.env.DB, mark, day); // the proposer is counted
+  return c.json({ key, cell });
 });

@@ -12,6 +12,18 @@ const TURNSTILE_STUB = `window.turnstile = {
 const uniqueName = () =>
   `Bar Prova ${Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("")}`;
 
+/** A touch on the map: the user places the pin (a drag of a few pixels, or none for a tap). */
+async function dragMap(page: Page, pixels = 12) {
+  const box = await mapRegion(page).boundingBox();
+  if (!box) throw new Error("no map");
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 3;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + pixels, y + pixels, { steps: 4 });
+  await page.mouse.up();
+}
+
 async function startProposal(page: Page, name: string) {
   await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
   await page.getByRole("button", { name: "Non trovi il bar?" }).click();
@@ -38,7 +50,11 @@ test("M3-11 a proposed bar: pin, send, then its price can be added at once", asy
   await expect(pin).toBeVisible();
   await expect(page.getByTestId("pin-mark")).toBeVisible();
   const confirm = pin.getByRole("button", { name: "Conferma e invia" });
-  await expect(confirm).not.toHaveAttribute("aria-disabled", "true", { timeout: 20_000 });
+  await expect(mapRegion(page)).toHaveAttribute("data-zoom", /^1[6-9]|^2/, { timeout: 20_000 });
+  // Untouched, the pin would be the device's position: the button waits for the user (SPEC 14).
+  await expect(confirm).toHaveAttribute("aria-disabled", "true");
+  await dragMap(page);
+  await expect(confirm).not.toHaveAttribute("aria-disabled", "true");
   const center = (await mapRegion(page).getAttribute("data-center")) ?? "";
   await confirm.click();
 
@@ -87,7 +103,9 @@ test("M3-12 the same bar proposed twice leads to the existing one (409)", async 
     );
     await startProposal(page, name);
     const confirm = page.getByRole("button", { name: "Conferma e invia" });
-    await expect(confirm).not.toHaveAttribute("aria-disabled", "true", { timeout: 20_000 });
+    await expect(mapRegion(page)).toHaveAttribute("data-zoom", /^1[6-9]|^2/, { timeout: 20_000 });
+    await dragMap(page, 0);
+    await expect(confirm).not.toHaveAttribute("aria-disabled", "true");
     await confirm.click();
     expect((await answered).status()).toBe(attempt === 1 ? 200 : 409);
     await expect(page.getByRole("dialog").getByRole("heading", { name })).toBeVisible();

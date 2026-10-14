@@ -186,6 +186,17 @@ describe("POST /api/venues (M3-11, M3-12)", () => {
     expect(status?.status).toBe("pending");
   });
 
+  it("the proposer repeating the proposal does not count as another person", async () => {
+    const cookie = await newSession();
+    const ip = nextIp();
+    const first = await (await propose(bar("Solo Io"), cookie, ip)).json<{ key: string }>();
+    expect((await propose(bar("Solo Io"), cookie, ip)).status).toBe(409);
+    const row = await env.DB.prepare("SELECT confirmations FROM venues_user WHERE id = ?")
+      .bind(Number(first.key.slice(1)))
+      .first<{ confirmations: number }>();
+    expect(row?.confirmations).toBe(1);
+  });
+
   it("a recently rejected proposal blocks the same name at the same spot (no key)", async () => {
     const made = await (
       await propose(bar("Non Un Bar"), await newSession())

@@ -344,14 +344,16 @@ function NewBar({
       <span class="admin__actions">
         <button
           type="button"
-          class="btn btn--primary"
+          class="btn btn--secondary"
+          aria-label={`${it.admin.approve} ${v.name}`}
           onClick={() => void onDecide("approved", edit)}
         >
           {it.admin.approve}
         </button>
         <button
           type="button"
-          class="btn btn--secondary"
+          class="btn btn--ghost"
+          aria-label={`${it.admin.reject} ${v.name}`}
           onClick={() => {
             if (window.confirm(it.admin.confirmReject(v.name))) void onDecide("removed", {});
           }}

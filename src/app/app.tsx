@@ -68,7 +68,8 @@ interface PendingSave {
   sent: boolean;
 }
 
-type Proposing = { step: "form" } | ({ step: "pin"; sending: boolean } & Proposal);
+type Proposing =
+  { step: "form" } | ({ step: "pin"; sending: boolean; touched: boolean } & Proposal);
 
 interface Props {
   loadMap: () => Promise<typeof import("./lib/maplibre-map")>;
@@ -198,6 +199,11 @@ export function App({ loadMap }: Props) {
     };
   }, [view, attempt]);
 
+  // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.
+  useEffect(() => {
+    setMessage((current) => (current === it.map.locating ? current : null));
+  }, [view?.lat, view?.lon, view?.zoom]);
+
   // Proposed bars (pending) are offered only when choosing the bar of a price (D-05).
   const everyVenue = useMemo(() => [...venues.values()], [venues]);
   const allVenues = useMemo(() => everyVenue.filter((v) => !v.pending), [everyVenue]);
@@ -228,9 +234,9 @@ export function App({ loadMap }: Props) {
   }, [map, allVenues, selected]);
 
   const zoomedIn = view !== null && view.zoom >= MIN_ZOOM_CELLS;
-  // From zoom 13 the cell status wins, so loading, errors and counts are always announced;
-  // only "searching your position" is shown over it.
-  const shownMessage = message && (!zoomedIn || message === it.map.locating) ? message : null;
+  // The message of "Vicino a me" (searching, not found, denied) is shown at any zoom: it ends as
+  // soon as the map moves (see the effect above), then the cell status is back.
+  const shownMessage = message;
   const status =
     (mapFailed ? it.map.mapError : null) ??
     shownMessage ??
@@ -466,13 +472,20 @@ export function App({ loadMap }: Props) {
 
   // ---- "Non trovi il bar?" (SPEC 7.5): name and kind, then a pin on the map ----
 
+  /** The panel that held the focus is gone: the main action is the natural place to land (WCAG 2.4.3). */
+  function focusPrimary() {
+    setTimeout(() => {
+      document.querySelector<HTMLElement>(".bottom__primary")?.focus();
+    }, 0);
+  }
+
   function startProposal() {
     setAdding(null);
     setProposing({ step: "form" });
   }
 
   function startPin(proposal: Proposal) {
-    setProposing({ step: "pin", sending: false, ...proposal });
+    setProposing({ step: "pin", sending: false, touched: false, ...proposal });
     // Where the bar list was centred: the position if known, else the map centre (D-16).
     const at = position ?? (view && view.zoom >= MIN_ZOOM_CELLS ? view : null);
     if (at) moveTo(at.lat, at.lon, 17);
@@ -496,7 +509,9 @@ export function App({ loadMap }: Props) {
 
   /** Sends the confirmed pin (the bar's position, never the device's) and goes on to its price. */
   async function sendProposal() {
-    if (!pinning || !view || view.zoom < PIN_MIN_ZOOM) return;
+    // The pin must be placed by the user: the map starts on the device position, so a tap or a
+    // drag on the map is required before sending (SPEC 14: the bar's position, not the user's).
+    if (!pinning?.touched || !view || view.zoom < PIN_MIN_ZOOM) return;
     const { name, kind } = pinning;
     const lat = Math.round(view.lat * 1e5) / 1e5;
     const lon = Math.round(view.lon * 1e5) / 1e5;
@@ -532,13 +547,16 @@ export function App({ loadMap }: Props) {
         if (known) {
           showToast(it.propose.exists);
           openAdd({ venue: known });
-        } else showToast(key ? it.propose.exists : it.propose.rejected);
+        } else {
+          showToast(key ? it.propose.exists : it.propose.rejected);
+          focusPrimary();
+        }
       } else {
         showToast(
           response.status === 429
             ? it.propose.quota
             : response.status === 503
-              ? it.propose.busy
+              ? it.errors.busy
               : it.propose.failed,
         );
         retry();
@@ -669,6 +687,12 @@ export function App({ loadMap }: Props) {
           data-center={view ? `${view.lat.toFixed(5)},${view.lon.toFixed(5)}` : ""}
           data-ready={ready ? "true" : "false"}
           data-prices-shown={pricesShown.join("|")}
+          onPointerDown={() => {
+            if (pinning && !pinning.touched) setProposing({ ...pinning, touched: true });
+          }}
+          onKeyDown={() => {
+            if (pinning && !pinning.touched) setProposing({ ...pinning, touched: true });
+          }}
         >
           <div ref={container} class="map__canvas" />
           {!ready && (
@@ -721,6 +745,7 @@ export function App({ loadMap }: Props) {
         <PinPanel
           name={pinning.name}
           close={view !== null && view.zoom >= PIN_MIN_ZOOM}
+          touched={pinning.touched}
           sending={pinning.sending}
           similar={similar}
           onPick={(venue) => {
@@ -730,6 +755,7 @@ export function App({ loadMap }: Props) {
           onConfirm={() => void sendProposal()}
           onCancel={() => {
             setProposing(null);
+            focusPrimary();
           }}
         />
       ) : (

@@ -45,13 +45,16 @@ export function ProposeSheet({ onNext, onClose }: Props) {
           maxLength={80}
           autofocus
           aria-invalid={error ? "true" : "false"}
-          aria-describedby="venue-name-error"
+          aria-describedby="venue-name-hint venue-name-error"
           value={name}
           onInput={(e) => {
             setName(e.currentTarget.value);
             setError("");
           }}
         />
+        <p id="venue-name-hint" class="hint">
+          {it.propose.nameHelp}
+        </p>
         <p id="venue-name-error" class="error" role="alert">
           {error || " "}
         </p>

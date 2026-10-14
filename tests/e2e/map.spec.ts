@@ -259,3 +259,17 @@ test("the status follows the cells after a denied position", async ({ page, cont
   );
   await goToMilano(page);
 });
+
+test("M3-15 a denied position is told also when the map is already zoomed in", async ({
+  page,
+  context,
+}) => {
+  await context.clearPermissions();
+  await page.goto("/");
+  await goToMilano(page);
+  await page.getByRole("button", { name: "Vicino a me" }).click();
+  await expect(mapStatus(page)).toHaveText(
+    "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città.",
+    { timeout: 15_000 },
+  );
+});

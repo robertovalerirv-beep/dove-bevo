@@ -125,9 +125,7 @@ export const it = {
     exists: "Questo bar c'è già: aggiungi il prezzo qui.",
     rejected: "Questo bar è già stato controllato: non risulta tra i locali.",
     quota: "Hai proposto molti bar oggi: riprova domani.",
-    busy: "Troppe richieste in verifica: riprova più tardi.",
     failed: "Non sono riuscito a inviare: controlla la connessione e riprova.",
-    mark: "Punto scelto",
   },
   actions: {
     confirm: "Confermo",

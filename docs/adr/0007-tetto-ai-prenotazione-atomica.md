@@ -1,6 +1,6 @@
 # 0007 · Tetto di spesa AI con prenotazione atomica
 
-- **Stato:** accettata (M-1, approvata con SPEC 1.0) · **Data:** 2026-10-11 · **Riferimenti:** SPEC 13.5, D-17
+- **Stato:** sostituita dall'ADR 0018 (niente AI) — era: accettata (M-1, approvata con SPEC 1.0) · **Data:** 2026-10-11 · **Riferimenti:** SPEC 13.5, D-17
 
 ## Contesto
 L'API Anthropic è l'unica spesa variabile. Richieste concorrenti non devono poter superare il tetto.

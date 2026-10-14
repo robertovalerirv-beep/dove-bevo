@@ -75,6 +75,10 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
   return { p, u, pend, h };
 }
 
+/** The bar of `?1` is public: an OSM bar, or a user bar the admin approved (ADR 0019). */
+const BAR_IS_PUBLIC = `(?1 NOT LIKE 'u%' OR EXISTS (SELECT 1 FROM venues_user
+  WHERE id = CAST(substr(?1, 2) AS INTEGER) AND status = 'approved'))`;
+
 /** Current prices of a bar and its latest 10 observations per drink and size (D-26). */
 export async function getVenuePrices(db: D1Database, key: string): Promise<VenuePrices> {
   const [current, history] = await db.batch([
@@ -82,6 +86,7 @@ export async function getVenuePrices(db: D1Database, key: string): Promise<Venue
       .prepare(
         `SELECT venue_key, drink, size_ml, hh, price_cents, observed_on, confirmations, status
          FROM prices_current WHERE venue_key = ?1 AND status IN ('active', 'quarantined')
+           AND ${BAR_IS_PUBLIC}
          ORDER BY drink, size_ml, hh`,
       )
       .bind(key),
@@ -91,6 +96,7 @@ export async function getVenuePrices(db: D1Database, key: string): Promise<Venue
            SELECT drink, size_ml, hh, price_cents, observed_on, id,
              ROW_NUMBER() OVER (PARTITION BY drink, size_ml ORDER BY observed_on DESC, id DESC) AS n
            FROM price_obs WHERE venue_key = ?1 AND status NOT IN ('review', 'removed')
+             AND ${BAR_IS_PUBLIC}
              -- a price under review leaves the bar page, its history included (SPEC 11)
              AND NOT EXISTS (SELECT 1 FROM prices_current pc WHERE pc.venue_key = price_obs.venue_key
                AND pc.drink = price_obs.drink AND pc.size_ml = price_obs.size_ml AND pc.hh = price_obs.hh
@@ -149,7 +155,10 @@ export async function activePrices(
 ) {
   const { results } = await db
     .prepare(
-      "SELECT price_cents FROM prices_current WHERE cell = ?1 AND drink = ?2 AND size_ml = ?3 AND hh = ?4 AND status = 'active'",
+      // Prices of proposed bars the admin has not approved never move the median (ADR 0019).
+      `SELECT price_cents FROM prices_current WHERE cell = ?1 AND drink = ?2 AND size_ml = ?3 AND hh = ?4
+         AND status = 'active' AND (venue_key NOT LIKE 'u%'
+           OR CAST(substr(venue_key, 2) AS INTEGER) IN (SELECT id FROM venues_user WHERE status = 'approved'))`,
     )
     .bind(cell, drink, size, hh)
     .all<{ price_cents: number }>();

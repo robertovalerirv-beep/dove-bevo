@@ -1,6 +1,7 @@
 import { env, exports } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { CellPrices } from "../../src/shared/api-types";
+import { activePrices } from "../../src/worker/lib/db";
 import { createSession } from "../../src/worker/lib/session";
 
 // M3-11…M3-13 (v1.1, ADR 0019): a proposed bar is pending until the admin approves it.
@@ -38,7 +39,7 @@ async function cell(): Promise<CellPrices> {
 
 beforeEach(async () => {
   await env.DB.batch(
-    ["venues_user", "prices_current", "counters", "dedup"].map((t) =>
+    ["venues_user", "prices_current", "price_obs", "counters", "dedup"].map((t) =>
       env.DB.prepare(`DELETE FROM ${t}`),
     ),
   );
@@ -93,6 +94,37 @@ describe("POST /api/venues (M3-11, M3-12)", () => {
     const gone = await cell();
     expect(gone.u).toEqual([]);
     expect(gone.p).toEqual([]);
+  });
+
+  it("the prices of a pending bar are not on its bar page and never move the median (security review)", async () => {
+    const cookie = await newSession();
+    const { key } = await (await propose(bar("Bar Invisibile"), cookie)).json<{ key: string }>();
+    await env.DB.prepare(
+      `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+       VALUES (?, 'spritz', 0, 0, 'u0nd9', NULL, 700, '2026-10-10', 0, 'active', 'manual')`,
+    )
+      .bind(key)
+      .run();
+    await env.DB.prepare(
+      `INSERT INTO price_obs (venue_key, drink, size_ml, hh, price_cents, observed_on, source, status)
+       VALUES (?, 'spritz', 0, 0, 700, '2026-10-10', 'manual', 'active')`,
+    )
+      .bind(key)
+      .run();
+    const page = await exports.default.fetch(`${ORIGIN}/api/venues/${key}/prices`, {
+      headers: { "CF-Connecting-IP": nextIp() },
+    });
+    expect(await page.json()).toEqual({ p: [], h: [] });
+    expect(await activePrices(env.DB, "u0nd9", "spritz", 0, 0)).toEqual([]);
+
+    const id = Number(key.slice(1));
+    await env.DB.prepare("UPDATE venues_user SET status = 'approved' WHERE id = ?").bind(id).run();
+    expect(await activePrices(env.DB, "u0nd9", "spritz", 0, 0)).toEqual([700]);
+    const open = await exports.default.fetch(`${ORIGIN}/api/venues/${key}/prices`, {
+      headers: { "CF-Connecting-IP": nextIp() },
+    });
+    const { p, h } = await open.json<{ p: unknown[]; h: unknown[] }>();
+    expect([p.length, h.length]).toEqual([1, 1]);
   });
 
   it("rejects names with links, e-mail addresses, phone numbers and control characters", async () => {

@@ -4,6 +4,24 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-14 · Sessione 4 · Prompt v3.2: niente AI, bar proposti, admin a tre code (branch `v3-no-ai-venue-proposals`)
+
+**Passo 0 (misure, nessuna modifica)**: stato reale 41/77 voci `passes: true` (M0 10/11, M1 15/15, M2 16/16, M3–M6 a zero). Misure D1 e capacità in **ADR 0020**: una cella costa ~2 righe per prezzo (603 righe a 300 prezzi), un contributo 8 righe scritte (~12 con la pulizia), una vista mappa 1–6 richieste; capacità ~9.800 utenti/giorno con 30 prezzi per cella, ~3.500 con 100, ~1.260 con 300. Obiettivi (≤ 5 righe per cella, ≥ 5.000 utenti) **non raggiunti a regime**: proposta di una riga istantanea per cella, da decidere prima di M4.
+
+**Fatto in codice** (richiesta di Roberto: «avanti fino ad avere un bel prodotto», link agli amici):
+- **Cambio A** (ADR 0018): tolti etichetta AI, `ai_usage` (migrazione `0004`), codice `ai_paused`, `source` solo `manual` nell'API; tag `pre-ai-removal` in locale. Il codice AI vero non era mai stato scritto (M3 AI a zero).
+- **Cambio B** (ADR 0019): `POST /api/venues` (nome validato da `validVenueName`, duplicati → 409 con la chiave, quota 5/giorno, tetto 200 in attesa → 503 `busy`); bar `pending` e loro prezzi mai pubblici; flusso «Non trovi il bar?» (nome → tipo → pin sulla mappa a zoom ≥ 16, «È uno di questi?» entro 150 m); admin a tre code con contatori (`Queue`, `NewBar`), nome e tipo correggibili prima di approvare, link «Cerca su Google Maps».
+- **Vicino a me**: un solo `locate()` (`src/app/lib/locate.ts`) con esito tipizzato; messaggi distinti (negato / non trovo) e focus sulla ricerca; il permesso già negato risponde subito. La causa del difetto sul telefono di Roberto **non è nota**: serve cosa vede (dispositivo, browser o app installata, messaggio) e il codice d'errore dalla console.
+- **Aggiungi un altro drink qui**: stesso bar, un'unica `POST /api/prices`, un solo «Annulla».
+- **Degrado gentile**: risposta non JSON da `/api/*` → «Il servizio è molto richiesto».
+- Funzioni condivise in un posto solo: `src/shared/venue.ts` (distanza, chiave di ricerca, validazione del nome).
+
+**Non fatto (in attesa di conferma esplicita di Roberto)**: SPEC 1.1 e `docs/feature_list.json` (rimozione M3-01…M3-10, M4-01/M4-02, nuove voci M3-11…M3-20) e nuovo tag `spec-approved-2` con adeguamento della guardia; inserimento da listino in `/admin`; riga istantanea per cella (ADR 0020); pagine Notion.
+
+**Prove**: vedere sotto, dopo `npm run verify`.
+
+---
+
 ## 2026-10-13 · Sessione 3 · Segnalazioni sui bar approvate dall'admin
 
 **Richiesta di Roberto**: "Bar inesistente" e "Chiuso definitivamente" dicevano grazie ma non cancellavano nulla; le cancellazioni devono passare dal suo ok nella pagina admin.

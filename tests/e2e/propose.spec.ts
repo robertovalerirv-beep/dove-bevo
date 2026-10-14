@@ -60,10 +60,10 @@ test("M3-11 a proposed bar: pin, send, then its price can be added at once", asy
   await expect(page.getByRole("dialog").getByRole("heading", { name })).toBeVisible();
 
   // Pending: never on the map nor in the bar list of the map (D-05).
-  await page.getByRole("button", { name: "Chiudi" }).click();
+  await page.keyboard.press("Escape"); // closes the add sheet
   await page.getByRole("button", { name: "Elenco" }).click();
   await expect(page.getByRole("dialog").getByText(name)).toHaveCount(0);
-  await page.getByRole("button", { name: "Chiudi" }).click();
+  await page.keyboard.press("Escape"); // closes the list
 
   // In the bar choice of "Aggiungi prezzo" it appears as new, to be confirmed.
   await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
@@ -91,7 +91,7 @@ test("M3-12 the same bar proposed twice leads to the existing one (409)", async 
     await confirm.click();
     expect((await answered).status()).toBe(attempt === 1 ? 200 : 409);
     await expect(page.getByRole("dialog").getByRole("heading", { name })).toBeVisible();
-    await page.getByRole("button", { name: "Chiudi" }).click();
+    await page.keyboard.press("Escape");
   }
 });
 

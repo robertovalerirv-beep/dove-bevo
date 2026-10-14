@@ -294,87 +294,73 @@
     "passes": true
   },
   {
-    "id": "M3-01",
+    "id": "M3-11",
     "milestone": "M3",
-    "descrizione": "Elaborazione foto sul client",
-    "verifica": "unit (browser): una foto con EXIF GPS e orientamento 6 → JPEG ≤ 1568 px di lato e ≤ 1,15 MP, orientata, senza segmenti APP1/EXIF nei byte",
+    "descrizione": "Proposta di un bar mancante",
+    "verifica": "e2e Chromium e WebKit 390×844: `Aggiungi prezzo` → \"Non trovi il bar?\" → nome → tipo → pin sulla mappa → `Invia`, con tocchi e tempo contati; messaggio \"Grazie: Roberto controlla che esista e poi compare sulla mappa\"; prima dell'invio, fino a 3 bar noti entro 150 m con nome simile (\"È uno di questi?\")",
     "passes": false
   },
   {
-    "id": "M3-02",
+    "id": "M3-12",
     "milestone": "M3",
-    "descrizione": "Fotocamera senza permessi",
-    "verifica": "e2e: l'input ha `accept=\"image/*\"` e `capture=\"environment\"`; nessuna richiesta di permesso camera",
+    "descrizione": "Validazione, duplicati e abusi delle proposte",
+    "verifica": "sec/unit: nome con URL, email, telefono o caratteri di controllo → 400; nome con HTML reso come testo; stesso nome normalizzato entro 50 m da un bar OSM, proposto o approvato → 409 con la chiave esistente; sesta proposta del giorno → 429; oltre 200 in attesa → risposta gentile; coordinate fuori dall'Italia → 400",
     "passes": false
   },
   {
-    "id": "M3-03",
+    "id": "M3-13",
     "milestone": "M3",
-    "descrizione": "`POST /api/menu-extract` protezioni",
-    "verifica": "sec: 413 oltre 1,5 MB (anche senza `Content-Length`), 415 senza magic bytes JPEG, 401 senza sessione, 429 all'11ª foto",
+    "descrizione": "Un bar proposto è pubblico solo se lo approva l'admin",
+    "verifica": "unit/e2e: un bar `pending` e i suoi prezzi non compaiono sulla mappa né tra i prezzi della cella, né nella sua scheda; compare solo nella scelta del bar con \"Nuovo, da confermare\"; conferme e prezzi non lo approvano mai e non muovono la mediana; dopo l'approvazione bar e prezzi sono pubblici; dopo il rifiuto no",
     "passes": false
   },
   {
-    "id": "M3-04",
+    "id": "M3-14",
     "milestone": "M3",
-    "descrizione": "Chiamata AI e validazione",
-    "verifica": "unit con API simulata: structured output, troncamento a 80 voci e 60 caratteri, drink fuori catalogo → `null`, `refusal` → 422, `max_tokens` → voci parziali",
+    "descrizione": "Pannello admin a tre code",
+    "verifica": "e2e con JWT di test: tre code con contatori e badge (nuovi bar, bar da cancellare, prezzi da rivedere); Approva/Rifiuta un bar; \"Togli dalla mappa\" nasconde un bar OSM ed elimina un bar utente approvato; \"Tieni\" archivia le segnalazioni; nessuna cancellazione senza azione dell'admin; axe senza violazioni",
     "passes": false
   },
   {
-    "id": "M3-05",
+    "id": "M3-15",
     "milestone": "M3",
-    "descrizione": "Output del modello reso come testo",
-    "verifica": "e2e: una voce `<img src=x onerror=alert(1)>` appare come testo nella revisione, nessun elemento creato, nessun dialog",
+    "descrizione": "\"Vicino a me\" diagnosticabile",
+    "verifica": "e2e Chromium e WebKit: permesso concesso, negato e timeout danno messaggi distinti e il focus passa alla ricerca; un solo modulo `locate()` per il pulsante e per `Aggiungi prezzo`; la posizione non compare nelle richieste di rete. La prova su iPhone e Android è di Roberto",
     "passes": false
   },
   {
-    "id": "M3-06",
+    "id": "M3-16",
     "milestone": "M3",
-    "descrizione": "Revisione obbligatoria con etichetta AI",
-    "verifica": "e2e: tabella modificabile, voci incerte evidenziate e escluse di default, etichetta \"Letti dall'intelligenza artificiale, controllati da te\"; solo le voci confermate partono in un'unica `POST /api/prices`",
+    "descrizione": "Aggiungi un altro drink qui",
+    "verifica": "e2e: dopo `Salva` il messaggio offre \"Aggiungi un altro drink qui\"; il bar resta selezionato; più drink partono in un'unica `POST /api/prices` con l'Annulla di 10 s",
     "passes": false
   },
   {
-    "id": "M3-07",
+    "id": "M3-17",
     "milestone": "M3",
-    "descrizione": "Token di estrazione",
-    "verifica": "sec: `menu_photo` senza token → 403; token riusato → 403; più voci di quelle estratte → 400; prezzi da foto non consumano la quota manuale",
+    "descrizione": "Inserimento da listino in admin",
+    "verifica": "unit/e2e con JWT di test: in `/admin` si sceglie un bar, si compila una tabella di drink e prezzi con la data di osservazione; data futura o oltre 90 giorni → 400; i prezzi passano gli stessi controlli di catalogo e limiti dell'inserimento manuale",
     "passes": false
   },
   {
-    "id": "M3-08",
+    "id": "M3-18",
     "milestone": "M3",
-    "descrizione": "Tetto di spesa",
-    "verifica": "sec: a tetto raggiunto → 503 `ai_paused` con messaggio; 20 richieste concorrenti con budget per 3 → al massimo 3 chiamate all'API simulata; `AI_ENABLED=false` → 503",
+    "descrizione": "Nessun pagamento e nessuna AI",
+    "verifica": "sec: nessun riferimento a processori di pagamento (`paddle`, `stripe`, `checkout`) né ad `anthropic` nel codice, nelle dipendenze e in `dist/`",
     "passes": false
   },
   {
-    "id": "M3-09",
+    "id": "M3-19",
     "milestone": "M3",
-    "descrizione": "Etichetta AI nella scheda bar",
-    "verifica": "e2e: un prezzo da foto mostra l'etichetta \"Letto dall'AI…\"",
+    "descrizione": "Degrado gentile",
+    "verifica": "e2e: se `/api/*` risponde con HTML e stato 200 il client mostra \"Il servizio è molto richiesto, riprova più tardi\", mantiene i dati già caricati e non scrive errori in console",
     "passes": false
   },
   {
-    "id": "M3-10",
+    "id": "M3-20",
     "milestone": "M3",
-    "descrizione": "Prima esecuzione evals",
-    "verifica": "`docs/evals.md` con metriche, costo e tempo per foto; costo stimato approvato da Roberto prima del lancio",
-    "passes": false
-  },
-  {
-    "id": "M4-01",
-    "milestone": "M4",
-    "descrizione": "Bar mancante",
-    "verifica": "e2e: \"Non trovi il bar?\" → nome, tipo, punto sulla mappa → `pending`; non compare sulla mappa",
-    "passes": false
-  },
-  {
-    "id": "M4-02",
-    "milestone": "M4",
-    "descrizione": "Conferma dei bar pending",
-    "verifica": "e2e/unit: il pending compare nella scelta del bar per altre sessioni; la sessione creatrice non può confermarlo; dopo 2 conferme distinte (o un prezzo + una conferma) diventa `approved` e compare sulla mappa con i suoi prezzi",
+    "descrizione": "Lettura di una cella a costo costante",
+    "verifica": "unit worker: `GET /api/prices/:cell` legge al massimo 5 righe D1 con 300 prezzi nella cella; un contributo scrive al massimo 10 righe (test di regressione, ADR 0020)",
     "passes": false
   },
   {
@@ -451,7 +437,7 @@
     "id": "M5-03",
     "milestone": "M5",
     "descrizione": "Admin: revisione e metriche",
-    "verifica": "e2e con JWT di test: code `review`/`quarantined`/`pending` con Approva/Rimuovi; metriche giornaliere; copertura per città; stato budget AI",
+    "verifica": "e2e con JWT di test: code `review`/`quarantined`/`pending` con Approva/Rimuovi; metriche giornaliere; copertura per città",
     "passes": false
   },
   {

@@ -5,12 +5,12 @@ Scrivi all'indirizzo in `/.well-known/security.txt` (RFC 9116, in arrivo con M5)
 
 ## Modello di minaccia (STRIDE) — M2-01
 
-Riferimenti: SPEC 13–14, ADR 0005 (sessione e quote), 0006 (eventi), 0007 (tetto AI). Standard: OWASP ASVS 5.0 livello 1 (`docs/security/asvs-l1.md`, M5) e OWASP Top 10 LLM 2025 (LLM01, 02, 05, 07, 09, 10).
+Riferimenti: SPEC 13–14, ADR 0005 (sessione e quote), 0006 (eventi), 0018 (niente AI), 0019 (bar proposti). Standard: OWASP ASVS 5.0 livello 1 (`docs/security/asvs-l1.md`, M5). OWASP Top 10 LLM 2025: non applicabile, nessun LLM.
 
 ### Asset
 | Asset | Perché conta |
 |---|---|
-| Chiave API Anthropic e budget AI | spesa reale; unica voce di costo variabile (SPEC 2.4) |
+| Quote dei piani gratuiti | nessuna spesa variabile: se si esauriscono il servizio rallenta, non si paga (ADR 0018, 0020) |
 | Privacy degli utenti | posizione, abitudini; nessun dato personale deve esistere (SPEC 14) |
 | Integrità dei prezzi | il valore del prodotto; prezzi falsi danneggiano utenti e locali |
 | Reputazione dei locali | segnalazioni o prezzi falsi possono colpire un bar specifico |
@@ -18,7 +18,7 @@ Riferimenti: SPEC 13–14, ADR 0005 (sessione e quote), 0006 (eventi), 0007 (tet
 | Segreti (`SESSION_HMAC_KEY`, `HASH_KEY`, `TURNSTILE_SECRET`, token Cloudflare) | permettono di falsificare sessioni o di deployare |
 
 ### Attori
-Bot e script automatici · spammer di prezzi · concorrenti di un locale · utente curioso che manipola le richieste · autore di un listino con istruzioni nascoste (prompt injection nelle foto) · attaccante XSS tramite nomi OSM o output del modello · contributore malevolo di OpenStreetMap · fork e PR malevole sul repository pubblico.
+Bot e script automatici · spammer di prezzi · concorrenti di un locale · utente curioso che manipola le richieste · chi propone bar inesistenti o con nomi pubblicitari · attaccante XSS tramite nomi OSM o nomi di bar proposti · contributore malevolo di OpenStreetMap · fork e PR malevole sul repository pubblico.
 
 ### Minacce e contromisure
 | STRIDE | Minaccia | Contromisure | Verifica |
@@ -30,24 +30,25 @@ Bot e script automatici · spammer di prezzi · concorrenti di un locale · uten
 | **T**ampering | Prezzi falsi o fuori scala | Catalogo e limiti per drink/formato; quarantena oltre ±50 % dalla mediana con ≥ 5 prezzi; conferme da sessioni diverse | M2-08, M2-09 |
 | T | Bar inesistente o cella falsa nella richiesta | Il Worker legge il file della cella da `ASSETS` e verifica il bar; il client non è mai fonte di verità | M2-08 |
 | T | Campi extra o tipi sbagliati | zod `strict` su ogni ingresso; body ≤ 16 KB letto con limite anche senza `Content-Length` | M2-04 |
-| T | Prompt injection nel listino (LLM01) | Il testo dell'immagine è dato, mai istruzione; structured output con schema; zod tronca e valida; revisione obbligatoria dell'utente; nessuna azione automatica dall'output | M3-04, M3-06 |
+| T | Prompt injection (LLM01) | Non applicabile: nessun LLM (ADR 0018) | — |
+| T | Bar falsi o spam di proposte | Un bar proposto è `pending` e diventa pubblico solo con l'approvazione dell'admin, mai in automatico; nome validato (2–80, NFC, niente URL, email, telefoni, caratteri di controllo); duplicati bloccati (nome uguale entro 50 m → 409); 5 proposte al giorno per sessione e per IP; massimo 200 in attesa; prezzi di bar non approvati mai pubblici (ADR 0019) | M3-11, M3-12, M3-13 |
 | T | Dati OSM manipolati | Validazione dell'import (riquadro Italia, nomi ≤ 120); deploy fallisce se l'import fallisce | M1-02, M1-03 |
 | T | Supply chain e CI | Lockfile e versioni esatte, `npm audit`, Dependabot, Actions fissate a SHA, niente `pull_request_target`, deploy solo da `main` con `workflow_run` filtrato, ruleset su `main` e sul tag `spec-approved` | M0-05, M0-08 |
 | **R**epudiation | Contributi non attribuibili | Accettato per scelta (anonimato, SPEC 14): si limita l'abuso con quote e conferme, non con l'identità. Log senza dati personali: codice, rotta, durata | M2-16 |
 | **I**nformation disclosure | Posizione dell'utente | Calcoli di distanza e "Vicino a me" sul dispositivo; al server solo celle geohash5; nessuna coordinata in URL, header o body | M1-14 |
 | I | Legame tra contributi della stessa persona | Nessun sid o IP salvato con i prezzi; solo HMAC con sale del giorno in `counters`/`dedup`, cancellati entro 48 h (ADR 0016) | M2-15, M2-16 |
-| I | EXIF e posizione nelle foto | Ricodifica JPEG sul client (niente metadati); immagine mai salvata né loggata | M3-01 |
+| I | Posizione nella proposta di un bar | Il punto inviato è il pin confermato dall'utente (la posizione del bar, 5 decimali), mai la posizione del dispositivo; nessun sid salvato con la proposta | M3-11 |
 | I | Segreti nel bundle o nel repo | Segreti solo come secret di Wrangler/CI; gitleaks e secret scanning; scansione di `dist/` | M0-09, M5-08 |
-| I | Prompt di sistema (LLM07) | Considerato pubblico: nessun segreto né regola di sicurezza nel prompt | M3 |
 | I | Errori con dettagli interni | Formato `{ error: { code, message } }` in italiano, mai stack o testo dell'errore | M0-02 |
 | **D**enial of service | Quote D1 esaurite, spam di scritture | Quote giornaliere per sessione e per IP; binding Rate Limiting per i picchi (ADR 0010); Cache API sulle celle; misure in ADR 0013 | M2-14 |
-| D | Budget AI consumato (LLM10) | Prenotazione atomica del costo massimo prima della chiamata; tetti giornaliero e mensile per ambiente; `AI_ENABLED=false`; limite di spesa in Console Anthropic | M3-08 |
-| D | Upload enormi | Limite 1,5 MB su `Content-Length` e sullo stream; magic bytes JPEG | M3-03 |
+| D | Budget AI consumato (LLM10) | Non applicabile: nessuna AI, nessuna spesa variabile (ADR 0018) | — |
+| D | Quote gratuite esaurite dal traffico | Con il limite del giorno raggiunto `/api/*` può rispondere con la pagina dell'app: il client lo riconosce e mostra «Il servizio è molto richiesto» senza perdere i dati già caricati (ADR 0020) | M3-19 |
 | **E**levation of privilege | XSS da nomi OSM, input utente o output del modello (LLM05) | Preact rende solo testo; `dangerouslySetInnerHTML` vietato dal lint; CSP senza `unsafe-inline`; nessun CORS | M0-03, M0-04, M3-05 |
-| E | Azioni del modello oltre il previsto (LLM06/09) | Il modello non ha strumenti né accesso a dati: legge un'immagine e restituisce JSON validato; l'utente conferma ogni voce | M3-04, M3-06 |
+| E | Azioni del modello oltre il previsto (LLM06/09) | Non applicabile: nessun LLM (ADR 0018) | — |
 | E | SQL injection | Solo query con parametri in `src/worker/lib/db.ts`; chiavi e celle validate con regex | M1-08, M1-15 |
 
 ### Rischi accettati
+- Duplicato futuro: quando OpenStreetMap aggiungerà un bar già proposto e approvato, compariranno due bar. Si risolve a mano da `/admin` (strumento «Trova un bar sulla mappa»), segnalando il duplicato per prossimità. Il controllo dei duplicati lato server guarda solo la cella del punto: un duplicato a cavallo del confine tra due celle può passare e lo vede l'admin tra i «bar noti vicini».
 - Un attaccante con molte reti diverse può superare le quote per IP: limitato da Turnstile, rate limit, quarantena e conferme. Da rivalutare con i dati reali.
 - Il binding Rate Limiting è per località ed eventualmente consistente (ADR 0010): non è un contatore esatto, le quote esatte stanno in D1.
 - L'immagine statica e i dati OSM sono pubblici per definizione.

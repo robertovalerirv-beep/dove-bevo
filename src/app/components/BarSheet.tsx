@@ -56,7 +56,7 @@ function PriceItem({
   actions: BarActions;
   inReview: boolean;
 }) {
-  const [, drink, size, hh, cents, day, confirmations, , fromPhoto] = row;
+  const [, drink, size, hh, cents, day, confirmations] = row;
   const id = `${row[0]}|${rowId(row)}|${String(cents)}`;
   const [count, setCount] = useState(confirmations);
   const [state, setState] = useState<"idle" | "busy" | "done" | "already" | "failed">(() => {
@@ -87,7 +87,6 @@ function PriceItem({
       <span class="price__meta" aria-live="polite">
         {formatDate(day)} · {it.bar.confirmations(count)}
       </span>
-      {fromPhoto === 1 && <span class="price__ai">{it.bar.aiLabel}</span>}
       <span class="price__actions">
         <button
           type="button"

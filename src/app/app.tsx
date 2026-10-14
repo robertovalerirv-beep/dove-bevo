@@ -5,15 +5,19 @@ import { MAP_CHIPS, type ChipId } from "../shared/catalog";
 import { APP_NAME } from "../shared/config";
 import { visibleCells } from "../shared/geohash";
 import type { PriceRow } from "../shared/api-types";
+import { distanceMeters, searchKey } from "../shared/venue";
 import { AddPriceSheet, type Draft, type Prefill } from "./components/AddPriceSheet";
 import { BarSheet, type BarActions } from "./components/BarSheet";
+import { PinPanel } from "./components/PinPanel";
+import { ProposeSheet, type Proposal } from "./components/ProposeSheet";
 import { ReportSheet, type Reason } from "./components/ReportSheet";
 import { Toast } from "./components/Toast";
 import { Icon } from "./components/Icon";
 import { ListSheet } from "./components/ListSheet";
 import { SearchSheet } from "./components/SearchSheet";
 import { it } from "./i18n/it";
-import { invalidateCell, loadCell, shownPrice, type Venue } from "./lib/data";
+import { invalidateCell, loadCell, ServiceBusy, shownPrice, type Venue } from "./lib/data";
+import { locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
 import { formatPrice } from "./lib/format";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
@@ -37,28 +41,11 @@ function floating(className: string, role?: string): HTMLDivElement {
 /** Centre of the start view (the Italy picture), used when nothing better is known (D-16). */
 const ITALY_CENTER = { lat: 41.85, lon: 12.6 };
 
-/** True when the user already granted the position: reading it then shows no prompt. */
-async function positionGranted(): Promise<boolean> {
-  try {
-    return (await navigator.permissions.query({ name: "geolocation" })).state === "granted";
-  } catch {
-    return false;
-  }
-}
-
-function currentPosition(): Promise<{ lat: number; lon: number } | null> {
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        resolve({ lat: coords.latitude, lon: coords.longitude });
-      },
-      () => {
-        resolve(null);
-      },
-      { timeout: 10_000, maximumAge: 60_000 },
-    );
-  });
-}
+/** Pin placement: the map must be this close to point at one building. */
+const PIN_MIN_ZOOM = 16;
+/** Known bars this close to the pin, with a similar name, are offered as "È uno di questi?". */
+const SIMILAR_METERS = 150;
+const SIMILAR_MAX = 3;
 const KEY = /^[nwru]\d{1,15}$/;
 const CELL = /^[0-9b-hjkmnp-z]{5}$/;
 
@@ -72,13 +59,16 @@ function parseRoute(): Route {
   return { name: "map" };
 }
 
-type CellsState = "idle" | "too-many" | "loading" | "error" | "ready";
+type CellsState = "idle" | "too-many" | "loading" | "error" | "busy" | "ready";
 
+/** Prices saved for one bar, sent together as one request after the 10 s of "Annulla" (D-15). */
 interface PendingSave {
-  draft: Draft;
+  drafts: Draft[];
   timer: HoldableTimer;
   sent: boolean;
 }
+
+type Proposing = { step: "form" } | ({ step: "pin"; sending: boolean } & Proposal);
 
 interface Props {
   loadMap: () => Promise<typeof import("./lib/maplibre-map")>;
@@ -96,8 +86,13 @@ export function App({ loadMap }: Props) {
   const [sheet, setSheet] = useState<"search" | "list" | null>(null);
   const [adding, setAdding] = useState<{ prefill: Prefill | null } | null>(null);
   const [addOrigin, setAddOrigin] = useState<{ lat: number; lon: number } | null>(null);
+  const [proposing, setProposing] = useState<Proposing | null>(null);
   const [reporting, setReporting] = useState<{ venue: Venue; row: PriceRow | null } | null>(null);
-  const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null);
+  const [toast, setToast] = useState<{
+    text: string;
+    undo?: () => void;
+    more?: { label: string; run: () => void };
+  } | null>(null);
   const [barVersion, setBarVersion] = useState(0); // reloads the bar page after a contribution
   // Both stay in the page and follow the topmost sheet, so they are never under an inert backdrop.
   const turnstileHost = useMemo(() => floating("turnstile-host"), []);
@@ -195,15 +190,17 @@ export function App({ loadMap }: Props) {
         mergeVenues(lists.flat());
         setCellsState("ready");
       })
-      .catch(() => {
-        if (current) setCellsState("error");
+      .catch((error: unknown) => {
+        if (current) setCellsState(error instanceof ServiceBusy ? "busy" : "error");
       });
     return () => {
       current = false;
     };
   }, [view, attempt]);
 
-  const allVenues = useMemo(() => [...venues.values()], [venues]);
+  // Proposed bars (pending) are offered only when choosing the bar of a price (D-05).
+  const everyVenue = useMemo(() => [...venues.values()], [venues]);
+  const allVenues = useMemo(() => everyVenue.filter((v) => !v.pending), [everyVenue]);
   const inView = useMemo(
     () =>
       view && view.zoom >= MIN_ZOOM_CELLS
@@ -245,9 +242,11 @@ export function App({ loadMap }: Props) {
           ? it.map.tooManyCells
           : cellsState === "loading"
             ? it.map.loading
-            : cellsState === "error"
-              ? it.map.loadError
-              : it.map.bars(inView.length));
+            : cellsState === "busy"
+              ? it.map.busy
+              : cellsState === "error"
+                ? it.map.loadError
+                : it.map.bars(inView.length));
 
   /** Back to the map: a real "back" when we opened the bar, otherwise replace (MASTER: predictable back). */
   function closeBar() {
@@ -279,10 +278,10 @@ export function App({ loadMap }: Props) {
       let origin =
         position ?? (view && view.zoom >= MIN_ZOOM_CELLS ? { lat: view.lat, lon: view.lon } : null);
       if (!position && (await positionGranted())) {
-        const found = await currentPosition();
-        if (found) {
-          setPosition(found);
-          origin = found;
+        const found = await locate();
+        if (found.ok) {
+          origin = { lat: found.lat, lon: found.lon };
+          setPosition(origin);
         }
       }
       origin ??= view ? { lat: view.lat, lon: view.lon } : ITALY_CENTER;
@@ -304,9 +303,14 @@ export function App({ loadMap }: Props) {
     return turnstileHost;
   };
 
-  function showToast(text: string, undo?: () => void, ms = 4000) {
+  function showToast(
+    text: string,
+    undo?: () => void,
+    ms = 4000,
+    more?: { label: string; run: () => void },
+  ) {
     toastTimer.current?.clear();
-    setToast({ text, undo });
+    setToast({ text, undo, more });
     toastTimer.current = holdableTimeout(() => {
       setToast(null);
     }, ms);
@@ -331,7 +335,9 @@ export function App({ loadMap }: Props) {
     }
     const hadFocus = toastRegion.contains(document.activeElement);
     render(
-      toast ? <Toast text={toast.text} onUndo={toast.undo} onHold={holdToast} /> : null,
+      toast ? (
+        <Toast text={toast.text} onUndo={toast.undo} more={toast.more} onHold={holdToast} />
+      ) : null,
       toastRegion,
     );
     // "Annulla" just disappeared under the focus: give it back to a sensible place (WCAG 2.4.3).
@@ -365,7 +371,9 @@ export function App({ loadMap }: Props) {
     entry.sent = true;
     entry.timer.clear();
     if (pendingSave.current === entry) pendingSave.current = null;
-    const { venue, drink, size, hh, cents } = entry.draft;
+    const [first] = entry.drafts;
+    if (!first) return;
+    const { venue } = first;
     try {
       const response = await postWithSession(
         host(),
@@ -374,47 +382,60 @@ export function App({ loadMap }: Props) {
           venue: venue.key,
           cell: venue.cell,
           source: "manual",
-          items: [{ drink, size_ml: size, hh, price_cents: cents }],
+          items: entry.drafts.map((d) => ({
+            drink: d.drink,
+            size_ml: d.size,
+            hh: d.hh,
+            price_cents: d.cents,
+          })),
         },
         true,
       );
       if (response.status === 429) {
-        reopen(entry.draft, it.add.quota);
+        reopen(first, it.add.quota);
         return;
       }
       if (!response.ok) {
-        reopen(entry.draft, it.add.network);
+        reopen(first, it.add.network);
         return;
       }
       const { results } = (await response.json()) as {
         results: { status: string; code?: string }[];
       };
-      const result = results[0];
-      if (result?.status === "rejected") {
+      const rejected = results.findIndex((r) => r.status === "rejected");
+      const bad = entry.drafts[rejected];
+      if (bad) {
         reopen(
-          entry.draft,
-          result.code === "under_review"
+          bad,
+          results[rejected]?.code === "under_review"
             ? it.add.underReview
-            : it.add.outOfRange(drinkLabel(drink)),
+            : it.add.outOfRange(drinkLabel(bad.drink)),
         );
         return;
       }
-      if (result?.status === "quarantined") showToast(it.add.quarantined);
-      if (result?.status === "confirmed") {
-        showToast(result.code === "already" ? it.add.alreadyThere : it.add.confirmedSame);
+      if (results.some((r) => r.status === "quarantined")) showToast(it.add.quarantined);
+      else if (results.some((r) => r.status === "confirmed")) {
+        showToast(
+          results.every((r) => r.code === "already") ? it.add.alreadyThere : it.add.confirmedSame,
+        );
       }
       invalidateCell(venue.cell);
       setAttempt((n) => n + 1);
       setBarVersion((n) => n + 1);
     } catch {
-      reopen(entry.draft, it.add.network);
+      reopen(first, it.add.network);
     }
   }
 
+  /** Saves a price; more drinks for the same bar join the same request (one POST, one "Annulla"). */
   function save(draft: Draft) {
     setAdding(null);
+    const previous = pendingSave.current;
+    const joins = previous && !previous.sent && previous.drafts[0]?.venue.key === draft.venue.key;
+    if (previous && !joins) void send(previous); // another bar: the earlier prices go now
+    previous?.timer.clear();
     const entry: PendingSave = {
-      draft,
+      drafts: joins ? [...previous.drafts, draft] : [draft],
       timer: holdableTimeout(() => void send(entry), 10_000),
       sent: false,
     };
@@ -428,12 +449,104 @@ export function App({ loadMap }: Props) {
         showToast(it.add.undone);
       },
       10_000,
+      {
+        label: it.add.another,
+        run: () => {
+          entry.timer.hold(); // the batch waits while the next drink is typed
+          openAdd({ venue: draft.venue });
+        },
+      },
     );
     // Turnstile only now, at the first contribution (M2-02), during the 10 s window; after the
     // add sheet has closed, so its host lands in the layer that stays open.
     setTimeout(() => {
       ensureSession(host()).catch(() => undefined);
     }, 0);
+  }
+
+  // ---- "Non trovi il bar?" (SPEC 7.5): name and kind, then a pin on the map ----
+
+  function startProposal() {
+    setAdding(null);
+    setProposing({ step: "form" });
+  }
+
+  function startPin(proposal: Proposal) {
+    setProposing({ step: "pin", sending: false, ...proposal });
+    // Where the bar list was centred: the position if known, else the map centre (D-16).
+    const at = position ?? (view && view.zoom >= MIN_ZOOM_CELLS ? view : null);
+    if (at) moveTo(at.lat, at.lon, 17);
+    else ensureMap();
+  }
+
+  const pinning = proposing?.step === "pin" ? proposing : null;
+  const similar = useMemo(() => {
+    if (!pinning || !view) return [];
+    const wanted = searchKey(pinning.name);
+    return everyVenue
+      .filter((v) => {
+        const known = searchKey(v.name);
+        return (
+          distanceMeters(view.lat, view.lon, v.lat, v.lon) <= SIMILAR_METERS &&
+          (known.includes(wanted) || wanted.includes(known))
+        );
+      })
+      .slice(0, SIMILAR_MAX);
+  }, [pinning?.name, view, everyVenue]);
+
+  /** Sends the confirmed pin (the bar's position, never the device's) and goes on to its price. */
+  async function sendProposal() {
+    if (!pinning || !view || view.zoom < PIN_MIN_ZOOM) return;
+    const { name, kind } = pinning;
+    const lat = Math.round(view.lat * 1e5) / 1e5;
+    const lon = Math.round(view.lon * 1e5) / 1e5;
+    setProposing({ ...pinning, sending: true });
+    const retry = () => {
+      setProposing({ ...pinning, sending: false });
+    };
+    try {
+      const response = await postWithSession(host(), "/api/venues", { name, kind, lat, lon });
+      if (response.ok) {
+        const { key, cell } = (await response.json()) as { key: string; cell: string };
+        const venue: Venue = {
+          key,
+          name,
+          kind,
+          lat,
+          lon,
+          addr: "",
+          city: "",
+          cell,
+          prices: [],
+          pending: true,
+        };
+        mergeVenues([venue]);
+        invalidateCell(cell);
+        setProposing(null);
+        showToast(it.propose.thanks, undefined, 8000);
+        openAdd({ venue });
+      } else if (response.status === 409) {
+        const { key } = (await response.json()) as { key: string | null };
+        const known = everyVenue.find((v) => v.key === key);
+        setProposing(null);
+        if (known) {
+          showToast(it.propose.exists);
+          openAdd({ venue: known });
+        } else showToast(key ? it.propose.exists : it.propose.rejected);
+      } else {
+        showToast(
+          response.status === 429
+            ? it.propose.quota
+            : response.status === 503
+              ? it.propose.busy
+              : it.propose.failed,
+        );
+        retry();
+      }
+    } catch {
+      showToast(it.propose.failed);
+      retry();
+    }
   }
 
   const barActions: BarActions = {
@@ -493,21 +606,19 @@ export function App({ loadMap }: Props) {
     }
   }
 
-  function nearMe() {
+  async function nearMe() {
     setMessage(it.map.locating);
     ensureMap(); // load the map while the position is being found
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        // Kept in memory on the device only (SPEC 14).
-        setPosition({ lat: coords.latitude, lon: coords.longitude });
-        setMessage(null);
-        moveTo(coords.latitude, coords.longitude, 15);
-      },
-      () => {
-        setMessage(it.map.noPosition);
-      },
-      { timeout: 10_000, maximumAge: 60_000 },
-    );
+    const found = await locate();
+    if (found.ok) {
+      // Kept in memory on the device only (SPEC 14).
+      setPosition({ lat: found.lat, lon: found.lon });
+      setMessage(null);
+      moveTo(found.lat, found.lon, 15);
+    } else {
+      setMessage(it.map.position[found.reason]);
+      document.querySelector<HTMLElement>(".search-field")?.focus(); // the way out: search a city
+    }
   }
 
   function goToPlace(place: Place) {
@@ -571,6 +682,7 @@ export function App({ loadMap }: Props) {
               <img src="/map-italia.jpg" alt="" width={780} height={1308} />
             </button>
           )}
+          {pinning && <div class="map__cross" aria-hidden="true" data-testid="pin-mark" />}
           <p class="map__status" data-testid="map-status" role="status">
             {status}
           </p>
@@ -605,31 +717,48 @@ export function App({ loadMap }: Props) {
         </section>
       </main>
 
-      <nav class="bottom" aria-label={it.map.actions}>
-        <button
-          type="button"
-          class="btn btn--primary bottom__primary"
-          onClick={() => {
-            openAdd(null);
+      {pinning ? (
+        <PinPanel
+          name={pinning.name}
+          close={view !== null && view.zoom >= PIN_MIN_ZOOM}
+          sending={pinning.sending}
+          similar={similar}
+          onPick={(venue) => {
+            setProposing(null);
+            openAdd({ venue });
           }}
-        >
-          {it.add.open}
-        </button>
-        <button type="button" class="btn btn--secondary" onClick={nearMe}>
-          <Icon name="locate" />
-          {it.map.nearMe}
-        </button>
-        <button
-          type="button"
-          class="btn btn--secondary"
-          onClick={() => {
-            setSheet("list");
+          onConfirm={() => void sendProposal()}
+          onCancel={() => {
+            setProposing(null);
           }}
-        >
-          <Icon name="list" />
-          {it.map.list}
-        </button>
-      </nav>
+        />
+      ) : (
+        <nav class="bottom" aria-label={it.map.actions}>
+          <button
+            type="button"
+            class="btn btn--primary bottom__primary"
+            onClick={() => {
+              openAdd(null);
+            }}
+          >
+            {it.add.open}
+          </button>
+          <button type="button" class="btn btn--secondary" onClick={() => void nearMe()}>
+            <Icon name="locate" />
+            {it.map.nearMe}
+          </button>
+          <button
+            type="button"
+            class="btn btn--secondary"
+            onClick={() => {
+              setSheet("list");
+            }}
+          >
+            <Icon name="list" />
+            {it.map.list}
+          </button>
+        </nav>
+      )}
 
       {sheet === "search" && (
         <SearchSheet
@@ -671,12 +800,22 @@ export function App({ loadMap }: Props) {
       )}
       {adding && (
         <AddPriceSheet
-          venues={allVenues}
+          venues={everyVenue}
           origin={addOrigin}
           prefill={adding.prefill}
           onSave={save}
+          onPropose={startProposal}
           onClose={() => {
             setAdding(null);
+            pendingSave.current?.timer.release(); // a held batch (another drink) goes on
+          }}
+        />
+      )}
+      {proposing?.step === "form" && (
+        <ProposeSheet
+          onNext={startPin}
+          onClose={() => {
+            setProposing(null);
           }}
         />
       )}

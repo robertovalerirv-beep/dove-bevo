@@ -1,6 +1,11 @@
 // Worker configuration (SPEC 11, 13.3). Values, not logic.
-export const QUOTAS = { price: 30, photo: 10, confirm: 50, venue: 5, report: 20 } as const;
+export const QUOTAS = { price: 30, confirm: 50, venue: 5, report: 20 } as const;
 export type QuotaKind = keyof typeof QUOTAS;
+
+/** Proposed bars waiting for the admin: beyond this, proposals are refused politely (SPEC 7.5). */
+export const MAX_PENDING_VENUES = 200;
+/** A rejected proposal blocks the same name at the same spot for this many days. */
+export const REJECTION_TRACE_DAYS = 30;
 
 /** Quarantine: more than ±50 % from the cell median, with at least 5 active prices (SPEC 11). */
 export const QUARANTINE_MIN_PRICES = 5;

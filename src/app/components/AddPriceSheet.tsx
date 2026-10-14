@@ -2,8 +2,8 @@ import { useMemo, useState } from "preact/hooks";
 import { CATALOG, findSize } from "../../shared/catalog";
 import { it } from "../i18n/it";
 import type { Venue } from "../lib/data";
-import { formatDistance, formatSize, searchKey } from "../lib/format";
-import { distanceMeters } from "../lib/geo";
+import { distanceMeters, searchKey } from "../../shared/venue";
+import { formatDistance, formatSize } from "../lib/format";
 import { Sheet } from "./Sheet";
 
 export interface Draft {
@@ -30,6 +30,8 @@ interface Props {
   origin: { lat: number; lon: number } | null;
   prefill: Prefill | null;
   onSave: (draft: Draft) => void;
+  /** "Non trovi il bar?": leaves for the proposal of a new bar. */
+  onPropose: () => void;
   onClose: () => void;
 }
 
@@ -48,7 +50,7 @@ const defaultSize = (drink: string) => {
 };
 
 /** "Aggiungi prezzo" (SPEC 7.3): bar → drink → price, 4 taps plus the digits. */
-export function AddPriceSheet({ venues, origin, prefill, onSave, onClose }: Props) {
+export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onClose }: Props) {
   const [venue, setVenue] = useState<Venue | null>(prefill?.venue ?? null);
   const [drink, setDrink] = useState<string | null>(prefill?.drink ?? null);
   const [size, setSize] = useState<number>(
@@ -115,7 +117,10 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onClose }: Prop
                 >
                   <span class="row__name">{v.name}</span>
                   <span class="row__meta">
-                    {[v.addr || it.kinds[v.kind], meters === null ? "" : formatDistance(meters)]
+                    {[
+                      v.pending ? it.add.pendingBar : v.addr || it.kinds[v.kind],
+                      meters === null ? "" : formatDistance(meters),
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
@@ -124,6 +129,9 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onClose }: Prop
             );
           })}
         </ul>
+        <button type="button" class="btn btn--secondary" onClick={onPropose}>
+          {it.add.missingBar}
+        </button>
       </Sheet>
     );
   }

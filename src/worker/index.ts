@@ -30,14 +30,7 @@ app.get("/api/venues/*", rateLimit);
 // Every write needs a session, except creating one (SPEC 9.1; /api/events is exempt by D-06).
 app.on(
   "POST",
-  [
-    "/api/prices",
-    "/api/prices/*",
-    "/api/reports",
-    "/api/venues",
-    "/api/venues/*",
-    "/api/menu-extract",
-  ],
+  ["/api/prices", "/api/prices/*", "/api/reports", "/api/venues", "/api/venues/*"],
   requireSession,
 );
 

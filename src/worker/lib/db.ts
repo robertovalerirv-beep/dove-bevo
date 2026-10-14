@@ -18,7 +18,6 @@ interface PriceDbRow {
   observed_on: string;
   confirmations: number;
   status: "active" | "quarantined";
-  source: "manual" | "menu_photo";
 }
 
 interface VenueDbRow {
@@ -40,7 +39,6 @@ const toPriceRow = (r: PriceDbRow): PriceRow => [
   r.observed_on,
   r.confirmations,
   r.status === "quarantined" ? 1 : 0,
-  r.source === "menu_photo" ? 1 : 0,
 ];
 
 /** Prices, user venues and hidden OSM keys of a cell (SPEC 5.4, 9.2): indexed reads, one round trip. */
@@ -48,7 +46,7 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
   const [prices, venues, hidden] = await db.batch([
     db
       .prepare(
-        `SELECT venue_key, drink, size_ml, hh, price_cents, observed_on, confirmations, status, source
+        `SELECT venue_key, drink, size_ml, hh, price_cents, observed_on, confirmations, status
          FROM prices_current WHERE cell = ?1 AND status IN ('active', 'quarantined')
          ORDER BY venue_key, drink, size_ml, hh`,
       )
@@ -61,11 +59,15 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
       .bind(cell),
     db.prepare("SELECT venue_key FROM venues_hidden WHERE cell = ?1").bind(cell),
   ]);
-  const p = ((prices?.results ?? []) as unknown as PriceDbRow[]).map(toPriceRow);
   const rows = (venues?.results ?? []) as unknown as VenueDbRow[];
   const u = rows
     .filter((r) => r.status === "approved")
     .map((r): UserVenue => [`u${String(r.id)}`, r.name, r.kind, r.lat, r.lon]);
+  // Prices of a user bar are public only once the admin approved it (SPEC 7.5, ADR 0019).
+  const approved = new Set(u.map((v) => v[0]));
+  const p = ((prices?.results ?? []) as unknown as PriceDbRow[])
+    .filter((r) => !r.venue_key.startsWith("u") || approved.has(r.venue_key))
+    .map(toPriceRow);
   const pend = rows
     .filter((r) => r.status === "pending")
     .map((r): PendingVenue => [`u${String(r.id)}`, r.name, r.kind, r.lat, r.lon, r.confirmations]);
@@ -78,7 +80,7 @@ export async function getVenuePrices(db: D1Database, key: string): Promise<Venue
   const [current, history] = await db.batch([
     db
       .prepare(
-        `SELECT venue_key, drink, size_ml, hh, price_cents, observed_on, confirmations, status, source
+        `SELECT venue_key, drink, size_ml, hh, price_cents, observed_on, confirmations, status
          FROM prices_current WHERE venue_key = ?1 AND status IN ('active', 'quarantined')
          ORDER BY drink, size_ml, hh`,
       )
@@ -160,7 +162,6 @@ export interface NewPrice {
   price: number;
   day: string;
   status: "active" | "quarantined";
-  source: "manual" | "menu_photo";
 }
 
 /** History row + current price in one batch (SPEC 8); a different price resets confirmations. */
@@ -170,7 +171,7 @@ export async function writePrice(db: D1Database, k: PriceKey, p: NewPrice): Prom
       .prepare(
         "INSERT INTO price_obs (venue_key, drink, size_ml, hh, price_cents, observed_on, source, status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
       )
-      .bind(...pk(k), p.price, p.day, p.source, p.status),
+      .bind(...pk(k), p.price, p.day, "manual", p.status),
     db
       .prepare(
         `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
@@ -180,7 +181,7 @@ export async function writePrice(db: D1Database, k: PriceKey, p: NewPrice): Prom
            status = excluded.status, source = excluded.source
          WHERE prices_current.status NOT IN ('review', 'removed')`,
       )
-      .bind(...pk(k), p.cell, p.city, p.price, p.day, p.status, p.source),
+      .bind(...pk(k), p.cell, p.city, p.price, p.day, p.status, "manual"),
   ]);
 }
 
@@ -231,6 +232,52 @@ export async function addToCounter(
     .bind(key, day, amount, limit)
     .first<{ n: number }>();
   return row !== null;
+}
+
+/** Every user bar of a cell, for the duplicate check (index vu_cell). */
+export async function venuesInCell(db: D1Database, cell: string) {
+  const { results } = await db
+    .prepare("SELECT id, name, lat, lon, status, day FROM venues_user WHERE cell = ?1")
+    .bind(cell)
+    .all<{
+      id: number;
+      name: string;
+      lat: number;
+      lon: number;
+      status: "pending" | "approved" | "removed";
+      day: string | null;
+    }>();
+  return results;
+}
+
+/**
+ * Stores a proposal as pending, unless 200 are already waiting (one atomic statement, index
+ * vu_status). Returns the new id, or null when full. `confirmations` counts independent proposers.
+ */
+export async function proposeVenue(
+  db: D1Database,
+  v: { name: string; kind: number; lat: number; lon: number; cell: string; day: string },
+  maxPending: number,
+): Promise<number | null> {
+  const row = await db
+    .prepare(
+      `INSERT INTO venues_user (name, kind, lat, lon, cell, status, confirmations, day)
+       SELECT ?1, ?2, ?3, ?4, ?5, 'pending', 1, ?6
+       WHERE (SELECT COUNT(*) FROM venues_user WHERE status = 'pending') < ?7 RETURNING id`,
+    )
+    .bind(v.name, v.kind, v.lat, v.lon, v.cell, v.day, maxPending)
+    .first<{ id: number }>();
+  return row?.id ?? null;
+}
+
+/** Another independent person proposed the same pending bar: only orders the admin's queue. */
+export async function bumpProposal(db: D1Database, id: number): Promise<void> {
+  await db
+    .prepare(
+      "UPDATE venues_user SET confirmations = confirmations + 1 WHERE id = ?1 AND status = 'pending'",
+    )
+    .bind(id)
+    .run();
 }
 
 export function getUserVenue(db: D1Database, id: number) {
@@ -343,10 +390,14 @@ export async function listHidden(db: D1Database) {
 export async function listUserVenues(db: D1Database) {
   const { results } = await db
     .prepare(
-      `SELECT id, name, kind, lat, lon, cell, status, confirmations FROM venues_user
-       WHERE status IN ('pending', 'approved') ORDER BY status DESC, id DESC LIMIT 200`,
+      `SELECT id, name, kind, lat, lon, cell, status, confirmations, day,
+         (SELECT COUNT(*) FROM prices_current p WHERE p.venue_key = 'u' || venues_user.id) AS prices
+       FROM venues_user WHERE status IN ('pending', 'approved')
+       ORDER BY status DESC, confirmations DESC, id DESC LIMIT 200`,
     )
     .all<{
+      day: string | null;
+      prices: number;
       id: number;
       name: string;
       kind: number;
@@ -374,16 +425,20 @@ export async function addApprovedVenue(
   return row.id;
 }
 
+/** Admin decision on a user bar; a rejection stamps the day, which starts its 30-day trace. */
 export async function setUserVenueStatus(
   db: D1Database,
   id: number,
   status: "approved" | "removed",
+  day: string,
+  edit: { name?: string; kind?: number } = {},
 ): Promise<string | null> {
   const row = await db
     .prepare(
-      "UPDATE venues_user SET status = ?2 WHERE id = ?1 AND status != 'removed' RETURNING cell",
+      `UPDATE venues_user SET status = ?2, name = COALESCE(?3, name), kind = COALESCE(?4, kind),
+         day = ?5 WHERE id = ?1 AND status != 'removed' RETURNING cell`,
     )
-    .bind(id, status)
+    .bind(id, status, edit.name ?? null, edit.kind ?? null, day)
     .first<{ cell: string }>();
   return row?.cell ?? null;
 }
@@ -391,7 +446,7 @@ export async function setUserVenueStatus(
 export async function listPricesToReview(db: D1Database) {
   const { results } = await db
     .prepare(
-      `SELECT venue_key, drink, size_ml, hh, cell, price_cents, observed_on, confirmations, status, source
+      `SELECT venue_key, drink, size_ml, hh, cell, price_cents, observed_on, confirmations, status
        FROM prices_current WHERE status IN ('review', 'quarantined') ORDER BY observed_on DESC LIMIT 200`,
     )
     .all<{
@@ -404,7 +459,6 @@ export async function listPricesToReview(db: D1Database) {
       observed_on: string;
       confirmations: number;
       status: "review" | "quarantined";
-      source: "manual" | "menu_photo";
     }>();
   return results;
 }

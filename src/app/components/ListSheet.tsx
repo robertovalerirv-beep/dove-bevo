@@ -1,7 +1,7 @@
 import { it } from "../i18n/it";
 import { shownPrice, type Venue } from "../lib/data";
 import { formatDistance, formatPrice } from "../lib/format";
-import { distanceMeters } from "../lib/geo";
+import { distanceMeters } from "../../shared/venue";
 import { Sheet } from "./Sheet";
 
 interface Props {

@@ -24,7 +24,9 @@ const OVERVIEW = {
       lon: 9.19,
       cell: "u0nd9",
       status: "pending",
-      confirmations: 1,
+      confirmations: 2,
+      day: "2026-10-13",
+      prices: 1,
     },
   ],
   hidden: [
@@ -77,7 +79,7 @@ test("admin: find and hide a non-bar, add a missing bar, decide reviews", async 
 
   // Find a bar of the fixture by city and name, then hide it.
   await page.getByLabel("Città").fill("milano");
-  await page.getByLabel("Nome del bar").first().fill("camparino");
+  await page.getByLabel("Nome del bar").nth(1).fill("camparino");
   await page.getByRole("button", { name: "Cerca" }).click();
   const found = page.getByRole("listitem").filter({ hasText: "Camparino in Galleria" });
   page.once("dialog", (d) => void d.accept()); // "Eliminare … dalla mappa?"
@@ -89,8 +91,8 @@ test("admin: find and hide a non-bar, add a missing bar, decide reviews", async 
   });
 
   // Add a missing bar from pasted coordinates.
-  await page.getByLabel("Nome del bar").nth(1).fill("Bar Mancante");
-  await page.getByLabel("Tipo").selectOption({ label: "Pub" });
+  await page.getByLabel("Nome del bar").nth(2).fill("Bar Mancante");
+  await page.getByLabel("Tipo").nth(1).selectOption({ label: "Pub" });
   await page.getByLabel("Coordinate (latitudine, longitudine)").fill("45.4651, 9.1882");
   await page.getByRole("button", { name: "Aggiungi" }).click();
   await expect
@@ -101,7 +103,7 @@ test("admin: find and hide a non-bar, add a missing bar, decide reviews", async 
 
   // Coordinates outside Italy are refused before any request.
   const before = posts.length;
-  await page.getByLabel("Nome del bar").nth(1).fill("Bar Parigi");
+  await page.getByLabel("Nome del bar").nth(2).fill("Bar Parigi");
   await page.getByLabel("Coordinate (latitudine, longitudine)").fill("48.85, 2.35");
   await page.getByRole("button", { name: "Aggiungi" }).click();
   await expect(page.getByRole("status")).toContainText("fuori dall'Italia");
@@ -113,11 +115,7 @@ test("admin: find and hide a non-bar, add a missing bar, decide reviews", async 
   await expect
     .poll(() => posts.find((p) => p.path === "/api/admin/prices/status")?.body)
     .toEqual({ venue: "n2420779240", drink: "spritz", size_ml: 0, hh: 0, status: "removed" });
-  await page
-    .getByRole("listitem")
-    .filter({ hasText: "Bar Nuovo" })
-    .getByRole("button", { name: "Approva" })
-    .click();
+  await page.locator("#new-bars").getByRole("button", { name: "Approva" }).click();
   await expect.poll(() => posts.map((p) => p.path)).toContain("/api/admin/venues/3/status");
   await page
     .getByRole("listitem")
@@ -146,9 +144,12 @@ test("admin search also finds bars added by hand, fresh, and accepts a bar link"
   });
   await page.goto("/admin");
   await page.getByLabel("Città").fill("Milano");
-  await page.getByLabel("Nome del bar").first().fill("appena creato");
+  await page.getByLabel("Nome del bar").nth(1).fill("appena creato");
   await page.getByRole("button", { name: "Cerca" }).click();
-  const added = page.getByRole("listitem").filter({ hasText: "Bar Appena Creato" });
+  const added = page
+    .getByRole("listitem")
+    .filter({ hasText: "Bar Appena Creato" })
+    .filter({ hasText: "Aggiunto da te" });
   await expect(added).toContainText("Aggiunto da te");
   page.once("dialog", (d) => void d.accept());
   await added.getByRole("button", { name: "Elimina dalla mappa" }).click();
@@ -158,7 +159,7 @@ test("admin search also finds bars added by hand, fresh, and accepts a bar link"
 
   // A link copied from the bar page finds exactly that bar.
   await page.getByLabel("Città").fill("");
-  await page.getByLabel("Nome del bar").first().fill("");
+  await page.getByLabel("Nome del bar").nth(1).fill("");
   await page
     .getByLabel("Oppure il link della scheda del bar")
     .fill("https://dovebevo.example/bar/n2420779240?c=u0nd9");
@@ -186,4 +187,41 @@ test("admin decides on bar reports: delete or ignore, never automatic", async ({
   await expect
     .poll(() => posts.find((p) => p.path === "/api/admin/reports/dismiss")?.body)
     .toEqual({ venue: "w549495264" });
+});
+
+test("M3-14 three queues with counters; a proposed bar is public only if the admin approves", async ({
+  page,
+}) => {
+  const posts = await fakeAdmin(page);
+  await page.goto("/admin");
+  await expect(page.getByTestId("admin-total")).toHaveText("4 da fare"); // 1 new + 2 reports + 1 price
+  await expect(page.getByTestId("count-new-bars")).toHaveText("1");
+  await expect(page.getByTestId("count-bar-reports")).toHaveText("2");
+  await expect(page.getByTestId("count-price-review")).toHaveText("1");
+
+  const proposed = page.locator("#new-bars");
+  await expect(proposed).toContainText("Proposto da 2 persone");
+  await expect(proposed).toContainText("1 prezzo in attesa");
+  await expect(proposed.getByRole("link", { name: "Cerca su Google Maps" })).toHaveAttribute(
+    "href",
+    /google\.com\/maps\/search\/\?api=1&query=Bar%20Nuovo/,
+  );
+
+  // Fix the name, then approve: the fix travels with the decision.
+  await proposed.getByLabel("Nome del bar").fill("Bar Nuovo Giusto");
+  await proposed.getByRole("button", { name: "Approva" }).click();
+  await expect
+    .poll(() => posts.find((p) => p.path === "/api/admin/venues/3/status")?.body)
+    .toEqual({ status: "approved", name: "Bar Nuovo Giusto" });
+
+  // Reject asks first; nothing happens if the admin says no.
+  const before = posts.length;
+  page.once("dialog", (d) => void d.dismiss());
+  await proposed.getByRole("button", { name: "Rifiuta" }).click();
+  expect(posts.length).toBe(before);
+  page.once("dialog", (d) => void d.accept());
+  await proposed.getByRole("button", { name: "Rifiuta" }).click();
+  await expect
+    .poll(() => posts.filter((p) => p.path === "/api/admin/venues/3/status").at(-1)?.body)
+    .toEqual({ status: "removed" });
 });

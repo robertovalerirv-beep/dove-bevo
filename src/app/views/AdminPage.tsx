@@ -1,8 +1,10 @@
+import type { ComponentChildren } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { it } from "../i18n/it";
 import { invalidateCell, loadCell, loadPlaces, type Venue } from "../lib/data";
-import { formatDate, formatPrice, formatSize, searchKey } from "../lib/format";
+import { distanceMeters, searchKey } from "../../shared/venue";
+import { formatDate, formatDistance, formatPrice, formatSize } from "../lib/format";
 
 // /admin (SPEC 7.9, D-19): behind Cloudflare Access; the Worker verifies the JWT on /api/admin/*.
 
@@ -12,9 +14,15 @@ interface Overview {
     id: number;
     name: string;
     kind: number;
+    lat: number;
+    lon: number;
     cell: string;
     status: "pending" | "approved";
+    /** Independent proposals of the same pending bar: it only orders the queue. */
     confirmations: number;
+    day: string | null;
+    /** Prices waiting for the bar to be approved. */
+    prices: number;
   }[];
   hidden: { venue_key: string; cell: string; name: string; day: string }[];
   prices: {
@@ -94,6 +102,35 @@ export function AdminPage() {
       )}
       {state === "ready" && data && (
         <>
+          <Todo
+            counts={[
+              [
+                "new-bars",
+                it.admin.queueNew,
+                data.venues.filter((v) => v.status === "pending").length,
+              ],
+              ["bar-reports", it.admin.reportsTitle, data.reports.length],
+              ["price-review", it.admin.pricesTitle, data.prices.length],
+            ]}
+          />
+          <Queue
+            id="new-bars"
+            title={it.admin.queueNew}
+            help={it.admin.queueNewHelp}
+            count={data.venues.filter((v) => v.status === "pending").length}
+          >
+            {data.venues
+              .filter((v) => v.status === "pending")
+              .map((v) => (
+                <NewBar
+                  key={v.id}
+                  venue={v}
+                  onDecide={(status, edit) =>
+                    act(`venues/${String(v.id)}/status`, { status, ...edit }, v.cell)
+                  }
+                />
+              ))}
+          </Queue>
           <BarReports
             reports={data.reports}
             onDelete={(key, cell) =>
@@ -103,6 +140,8 @@ export function AdminPage() {
             }
             onIgnore={(key) => act("reports/dismiss", { venue: key })}
           />
+          <PriceQueue prices={data.prices} act={act} />
+          <h2 class="admin__tools">{it.admin.toolsTitle}</h2>
           <FindBars
             onDelete={(v) =>
               v.key.startsWith("u")
@@ -119,76 +158,34 @@ export function AdminPage() {
             onError={setMessage}
           />
           <section>
-            <h2 class="section-title">{it.admin.pricesTitle}</h2>
-            {data.prices.length === 0 && <p class="hint">{it.admin.none}</p>}
+            <h2 class="section-title">{it.admin.userTitle}</h2>
+            {data.venues.every((v) => v.status === "pending") && (
+              <p class="hint">{it.admin.none}</p>
+            )}
             <ul class="admin__list">
-              {data.prices.map((p) => {
-                const key = { venue: p.venue_key, drink: p.drink, size_ml: p.size_ml, hh: p.hh };
-                return (
-                  <li key={`${p.venue_key}|${p.drink}|${String(p.size_ml)}|${String(p.hh)}`}>
-                    <a href={`/bar/${p.venue_key}?c=${p.cell}`}>{p.venue_key}</a>{" "}
-                    {[it.drinks[p.drink] ?? p.drink, formatSize(p.size_ml), p.hh ? "HH" : ""]
-                      .filter(Boolean)
-                      .join(" ")}{" "}
-                    · {formatPrice(p.price_cents)} · {formatDate(p.observed_on)} ·{" "}
-                    {p.status === "review" ? it.admin.review : it.admin.quarantined}
+              {data.venues
+                .filter((v) => v.status === "approved")
+                .map((v) => (
+                  <li key={v.id}>
+                    <a href={`/bar/u${String(v.id)}?c=${v.cell}`}>{v.name}</a> · {it.kinds[v.kind]}
                     <span class="admin__actions">
                       <button
                         type="button"
-                        class="btn btn--secondary"
-                        onClick={() =>
-                          void act("prices/status", { ...key, status: "active" }, p.cell)
-                        }
-                      >
-                        {it.admin.approve}
-                      </button>
-                      <button
-                        type="button"
                         class="btn btn--ghost"
-                        onClick={() =>
-                          void act("prices/status", { ...key, status: "removed" }, p.cell)
-                        }
+                        onClick={() => {
+                          if (window.confirm(it.admin.confirmDelete(v.name)))
+                            void act(
+                              `venues/${String(v.id)}/status`,
+                              { status: "removed" },
+                              v.cell,
+                            );
+                        }}
                       >
                         {it.admin.remove}
                       </button>
                     </span>
                   </li>
-                );
-              })}
-            </ul>
-          </section>
-          <section>
-            <h2 class="section-title">{it.admin.userTitle}</h2>
-            {data.venues.length === 0 && <p class="hint">{it.admin.none}</p>}
-            <ul class="admin__list">
-              {data.venues.map((v) => (
-                <li key={v.id}>
-                  <a href={`/bar/u${String(v.id)}?c=${v.cell}`}>{v.name}</a> · {it.kinds[v.kind]}
-                  {v.status === "pending" && ` · ${it.admin.pending}`}
-                  <span class="admin__actions">
-                    {v.status === "pending" && (
-                      <button
-                        type="button"
-                        class="btn btn--secondary"
-                        onClick={() =>
-                          void act(`venues/${String(v.id)}/status`, { status: "approved" }, v.cell)
-                        }
-                      >
-                        {it.admin.approve}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      class="btn btn--ghost"
-                      onClick={() =>
-                        void act(`venues/${String(v.id)}/status`, { status: "removed" }, v.cell)
-                      }
-                    >
-                      {it.admin.remove}
-                    </button>
-                  </span>
-                </li>
-              ))}
+                ))}
             </ul>
           </section>
           <section>
@@ -217,6 +214,203 @@ export function AdminPage() {
   );
 }
 
+/** What is waiting for a decision: a count per queue and a total badge (no notifications). */
+function Todo({ counts }: { counts: [id: string, title: string, n: number][] }) {
+  const total = counts.reduce((sum, [, , n]) => sum + n, 0);
+  return (
+    <nav class="admin__todo" aria-label={it.admin.todo}>
+      <p class="admin__badge" data-testid="admin-total">
+        {it.admin.total(total)}
+      </p>
+      <ul>
+        {counts.map(([id, title, n]) => (
+          <li key={id}>
+            <a href={`#${id}`}>
+              {title}: <strong data-testid={`count-${id}`}>{n}</strong>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+/** One queue of the admin: same look, same list, only the items differ. */
+function Queue({
+  id,
+  title,
+  help,
+  count,
+  children,
+}: {
+  id: string;
+  title: string;
+  help: string;
+  count: number;
+  children: ComponentChildren;
+}) {
+  return (
+    <section id={id} aria-labelledby={`${id}-title`}>
+      <h2 class="section-title" id={`${id}-title`}>
+        {title} ({count})
+      </h2>
+      <p class="hint">{help}</p>
+      {count === 0 ? <p class="hint">{it.admin.none}</p> : <ul class="admin__list">{children}</ul>}
+    </section>
+  );
+}
+
+const googleMaps = (name: string, lat: number, lon: number) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${String(lat)},${String(lon)}`)}`;
+const osmPoint = (lat: number, lon: number) =>
+  `https://www.openstreetmap.org/?mlat=${String(lat)}&mlon=${String(lon)}#map=19/${String(lat)}/${String(lon)}`;
+
+/** A bar proposed by a user: only the admin makes it public (name and kind can be fixed first). */
+function NewBar({
+  venue: v,
+  onDecide,
+}: {
+  venue: Overview["venues"][number];
+  onDecide: (
+    status: "approved" | "removed",
+    edit: { name?: string; kind?: number },
+  ) => Promise<boolean>;
+}) {
+  const [name, setName] = useState(v.name);
+  const [kind, setKind] = useState(v.kind);
+  const [near, setNear] = useState<{ name: string; meters: number }[]>([]);
+  useEffect(() => {
+    void loadCell(v.cell)
+      .catch(() => [])
+      .then((list) => {
+        setNear(
+          list
+            .map((x) => ({ name: x.name, meters: distanceMeters(v.lat, v.lon, x.lat, x.lon) }))
+            .filter((x) => x.meters <= 200)
+            .sort((a, b) => a.meters - b.meters)
+            .slice(0, 3),
+        );
+      });
+  }, [v.cell, v.lat, v.lon]);
+  const edit = { ...(name !== v.name && { name }), ...(kind !== v.kind && { kind }) };
+
+  return (
+    <li>
+      <label>
+        {it.admin.name}
+        <input
+          class="field"
+          value={name}
+          maxLength={80}
+          onInput={(e) => {
+            setName(e.currentTarget.value);
+          }}
+        />
+      </label>
+      <label>
+        {it.admin.kind}
+        <select
+          class="field"
+          value={String(kind)}
+          onChange={(e) => {
+            setKind(Number(e.currentTarget.value));
+          }}
+        >
+          {it.kinds.map((label, i) => (
+            <option key={label} value={String(i)}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p class="hint">
+        {it.admin.proposedBy(v.confirmations)} · {it.admin.waitingPrices(v.prices)}
+        {v.day && ` · ${formatDate(v.day)}`}
+      </p>
+      <p class="hint">
+        <a href={osmPoint(v.lat, v.lon)} target="_blank" rel="noopener">
+          {it.admin.onMap}
+        </a>{" "}
+        ·{" "}
+        <a href={googleMaps(v.name, v.lat, v.lon)} target="_blank" rel="noopener">
+          {it.admin.searchGoogle}
+        </a>
+      </p>
+      {near.length > 0 && (
+        <p class="hint">
+          {it.admin.nearby}: {near.map((x) => `${x.name} (${formatDistance(x.meters)})`).join(", ")}
+        </p>
+      )}
+      <span class="admin__actions">
+        <button
+          type="button"
+          class="btn btn--primary"
+          onClick={() => void onDecide("approved", edit)}
+        >
+          {it.admin.approve}
+        </button>
+        <button
+          type="button"
+          class="btn btn--secondary"
+          onClick={() => {
+            if (window.confirm(it.admin.confirmReject(v.name))) void onDecide("removed", {});
+          }}
+        >
+          {it.admin.reject}
+        </button>
+      </span>
+    </li>
+  );
+}
+
+/** Quarantined prices and prices reported by users, to approve or remove. */
+function PriceQueue({
+  prices,
+  act,
+}: {
+  prices: Overview["prices"];
+  act: (path: string, body: unknown, cell?: string) => Promise<boolean>;
+}) {
+  return (
+    <Queue
+      id="price-review"
+      title={it.admin.pricesTitle}
+      help={it.admin.pricesHelp}
+      count={prices.length}
+    >
+      {prices.map((p) => {
+        const key = { venue: p.venue_key, drink: p.drink, size_ml: p.size_ml, hh: p.hh };
+        return (
+          <li key={`${p.venue_key}|${p.drink}|${String(p.size_ml)}|${String(p.hh)}`}>
+            <a href={`/bar/${p.venue_key}?c=${p.cell}`}>{p.venue_key}</a>{" "}
+            {[it.drinks[p.drink] ?? p.drink, formatSize(p.size_ml), p.hh ? "HH" : ""]
+              .filter(Boolean)
+              .join(" ")}{" "}
+            · {formatPrice(p.price_cents)} · {formatDate(p.observed_on)} ·{" "}
+            {p.status === "review" ? it.admin.review : it.admin.quarantined}
+            <span class="admin__actions">
+              <button
+                type="button"
+                class="btn btn--secondary"
+                onClick={() => void act("prices/status", { ...key, status: "active" }, p.cell)}
+              >
+                {it.admin.approve}
+              </button>
+              <button
+                type="button"
+                class="btn btn--ghost"
+                onClick={() => void act("prices/status", { ...key, status: "removed" }, p.cell)}
+              >
+                {it.admin.remove}
+              </button>
+            </span>
+          </li>
+        );
+      })}
+    </Queue>
+  );
+}
+
 /** Bar reports from users: the admin deletes the bar or dismisses the reports (nothing is automatic). */
 function BarReports({
   reports,
@@ -238,44 +432,44 @@ function BarReports({
     (it.report.reasons as Record<string, string | undefined>)[code] ?? code;
 
   return (
-    <section>
-      <h2 class="section-title">{it.admin.reportsTitle}</h2>
-      <p class="hint">{it.admin.reportsHelp}</p>
-      {reports.length === 0 && <p class="hint">{it.admin.none}</p>}
-      <ul class="admin__list">
-        {reports.map((r) => {
-          const name = names.get(r.venue_key) ?? r.venue_key;
-          return (
-            <li key={r.venue_key}>
-              {r.cell ? <a href={`/bar/${r.venue_key}?c=${r.cell}`}>{name}</a> : name} ·{" "}
-              {r.reasons.split(",").map(reasonText).join(", ")} · {it.admin.reportCount(r.n)} ·{" "}
-              {formatDate(r.day)}
-              <span class="admin__actions">
-                {r.cell && (
-                  <button
-                    type="button"
-                    class="btn btn--secondary"
-                    onClick={() => {
-                      if (r.cell && window.confirm(it.admin.confirmDelete(name)))
-                        void onDelete(r.venue_key, r.cell);
-                    }}
-                  >
-                    {it.admin.hide}
-                  </button>
-                )}
+    <Queue
+      id="bar-reports"
+      title={it.admin.reportsTitle}
+      help={it.admin.reportsHelp}
+      count={reports.length}
+    >
+      {reports.map((r) => {
+        const name = names.get(r.venue_key) ?? r.venue_key;
+        return (
+          <li key={r.venue_key}>
+            {r.cell ? <a href={`/bar/${r.venue_key}?c=${r.cell}`}>{name}</a> : name} ·{" "}
+            {r.reasons.split(",").map(reasonText).join(", ")} · {it.admin.reportCount(r.n)} ·{" "}
+            {formatDate(r.day)}
+            <span class="admin__actions">
+              {r.cell && (
                 <button
                   type="button"
-                  class="btn btn--ghost"
-                  onClick={() => void onIgnore(r.venue_key)}
+                  class="btn btn--secondary"
+                  onClick={() => {
+                    if (r.cell && window.confirm(it.admin.confirmDelete(name)))
+                      void onDelete(r.venue_key, r.cell);
+                  }}
                 >
-                  {it.admin.ignore}
+                  {it.admin.hide}
                 </button>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+              )}
+              <button
+                type="button"
+                class="btn btn--ghost"
+                onClick={() => void onIgnore(r.venue_key)}
+              >
+                {it.admin.ignore}
+              </button>
+            </span>
+          </li>
+        );
+      })}
+    </Queue>
   );
 }
 

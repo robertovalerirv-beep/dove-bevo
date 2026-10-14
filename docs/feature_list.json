@@ -298,42 +298,42 @@
     "milestone": "M3",
     "descrizione": "Proposta di un bar mancante",
     "verifica": "e2e Chromium e WebKit 390×844: `Aggiungi prezzo` → \"Non trovi il bar?\" → nome → tipo → pin sulla mappa → `Invia`, con tocchi e tempo contati; messaggio \"Grazie: Roberto controlla che esista e poi compare sulla mappa\"; prima dell'invio, fino a 3 bar noti entro 150 m con nome simile (\"È uno di questi?\")",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-12",
     "milestone": "M3",
     "descrizione": "Validazione, duplicati e abusi delle proposte",
     "verifica": "sec/unit: nome con URL, email, telefono o caratteri di controllo → 400; nome con HTML reso come testo; stesso nome normalizzato entro 50 m da un bar OSM, proposto o approvato → 409 con la chiave esistente; sesta proposta del giorno → 429; oltre 200 in attesa → risposta gentile; coordinate fuori dall'Italia → 400",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-13",
     "milestone": "M3",
     "descrizione": "Un bar proposto è pubblico solo se lo approva l'admin",
     "verifica": "unit/e2e: un bar `pending` e i suoi prezzi non compaiono sulla mappa né tra i prezzi della cella, né nella sua scheda; compare solo nella scelta del bar con \"Nuovo, da confermare\"; conferme e prezzi non lo approvano mai e non muovono la mediana; dopo l'approvazione bar e prezzi sono pubblici; dopo il rifiuto no",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-14",
     "milestone": "M3",
     "descrizione": "Pannello admin a tre code",
     "verifica": "e2e con JWT di test: tre code con contatori e badge (nuovi bar, bar da cancellare, prezzi da rivedere); Approva/Rifiuta un bar; \"Togli dalla mappa\" nasconde un bar OSM ed elimina un bar utente approvato; \"Tieni\" archivia le segnalazioni; nessuna cancellazione senza azione dell'admin; axe senza violazioni",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-15",
     "milestone": "M3",
     "descrizione": "\"Vicino a me\" diagnosticabile",
     "verifica": "e2e Chromium e WebKit: permesso concesso, negato e timeout danno messaggi distinti e il focus passa alla ricerca; un solo modulo `locate()` per il pulsante e per `Aggiungi prezzo`; la posizione non compare nelle richieste di rete. La prova su iPhone e Android è di Roberto",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-16",
     "milestone": "M3",
     "descrizione": "Aggiungi un altro drink qui",
     "verifica": "e2e: dopo `Salva` il messaggio offre \"Aggiungi un altro drink qui\"; il bar resta selezionato; più drink partono in un'unica `POST /api/prices` con l'Annulla di 10 s",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-17",
@@ -347,14 +347,14 @@
     "milestone": "M3",
     "descrizione": "Nessun pagamento e nessuna AI",
     "verifica": "sec: nessun riferimento a processori di pagamento (`paddle`, `stripe`, `checkout`) né ad `anthropic` nel codice, nelle dipendenze e in `dist/`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-19",
     "milestone": "M3",
     "descrizione": "Degrado gentile",
     "verifica": "e2e: se `/api/*` risponde con HTML e stato 200 il client mostra \"Il servizio è molto richiesto, riprova più tardi\", mantiene i dati già caricati e non scrive errori in console",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-20",

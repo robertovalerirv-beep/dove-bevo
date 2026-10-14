@@ -492,7 +492,7 @@ async function freshCells(cells: string[]): Promise<Venue[]> {
 
 /** "/bar/n123?c=u0nd9" or a full link to it → key and cell. */
 export function parseBarLink(text: string): { key: string; cell: string } | null {
-  const match = /\/bar\/([nwru]\d{1,15})\?c=([0-9b-hjkmnp-z]{5})/.exec(text);
+  const match = /\/bar\/([nwru][1-9]\d{0,14})\?c=([0-9b-hjkmnp-z]{5})/.exec(text);
   return match?.[1] && match[2] ? { key: match[1], cell: match[2] } : null;
 }
 

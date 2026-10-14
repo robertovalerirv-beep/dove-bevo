@@ -54,7 +54,7 @@ const PIN_MIN_MOVE_M = 10;
 /** Known bars this close to the pin, with a similar name, are offered as "È uno di questi?". */
 const SIMILAR_METERS = 150;
 const SIMILAR_MAX = 3;
-const KEY = /^[nwru]\d{1,15}$/;
+const KEY = /^[nwru][1-9]\d{0,14}$/;
 const CELL = /^[0-9b-hjkmnp-z]{5}$/;
 
 type Route = { name: "map" } | { name: "bar"; key: string; cell: string };
@@ -511,12 +511,19 @@ export function App({ loadMap }: Props) {
   const pinning = proposing?.step === "pin" ? proposing : null;
   // The pin is the user's own once the map has been moved away from where it started; without a
   // known start (no position, map far out) any touch of the map counts.
+  // A fix that arrives after the pin step began moves the map onto the device: the current position
+  // is checked too, not only the one the pin step started from.
+  const awayFromDevice =
+    !position ||
+    view === null ||
+    distanceMeters(view.lat, view.lon, position.lat, position.lon) >= PIN_MIN_MOVE_M;
   const pinPlaced = !pinning
     ? false
-    : pinning.start
-      ? view !== null &&
-        distanceMeters(view.lat, view.lon, pinning.start.lat, pinning.start.lon) >= PIN_MIN_MOVE_M
-      : pinning.touched;
+    : awayFromDevice &&
+      (pinning.start
+        ? view !== null &&
+          distanceMeters(view.lat, view.lon, pinning.start.lat, pinning.start.lon) >= PIN_MIN_MOVE_M
+        : pinning.touched);
   const similar = useMemo(() => {
     if (!pinning || !view) return [];
     const wanted = searchKey(pinning.name);

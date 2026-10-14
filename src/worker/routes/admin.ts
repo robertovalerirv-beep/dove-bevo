@@ -25,7 +25,7 @@ import type { AppEnv } from "../types";
 import { Lat, Lon, VenueKey, VenueName } from "./venues";
 
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
-const OsmKey = z.string().regex(/^[nwr]\d{1,15}$/);
+const OsmKey = z.string().regex(/^[nwr][1-9]\d{0,14}$/);
 
 const Kind = z.number().int().min(0).max(4);
 const NewVenue = z.strictObject({ name: VenueName, kind: Kind, lat: Lat, lon: Lon });

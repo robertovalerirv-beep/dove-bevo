@@ -23,3 +23,11 @@ Un audit "da attaccante" del codice (subagent, sessione del 14/10) ha trovato ne
 ## Conseguenze
 - Un utente dietro la stessa rete che carica più di 100 celle in un minuto vede «Riprova» sulle celle rifiutate.
 - Non corretti in questa passata (rischio basso, nel backlog dell'audit): filtro dei nomi in attesa (`bit.ly/…`, caratteri Unicode di separazione), pulizia dei bar `removed` vecchi, `/64` IPv6 per le quote, soglia delle 4 segnalazioni distinte, ricarica del JWKS di Access senza cache negativa, valori di sviluppo nel `wrangler.jsonc` di livello alto (usati solo in locale; staging e produzione hanno blocchi propri).
+
+## Seconda revisione (security-reviewer, 14/10, nessun punto bloccante)
+Corretti: il pin non può coincidere con la posizione del dispositivo nemmeno se «Vicino a me» risponde dopo l'inizio del passo (si controlla anche `position` corrente); le chiavi di bar in admin e nel client usano la stessa regola canonica del Worker.
+Accettati e annotati:
+- La regola dei 10 m è solo sul client: il server non può distinguere un pin da una posizione, è una protezione di buon senso (la posizione non è mai un campo a parte).
+- Una risposta `busy` consuma comunque una delle 5 proposte giornaliere della sessione.
+- Il limitatore non è fail-open: se il binding manca, le celle rispondono 500. Quando M6 aggiunge `env.production`, **deve ripetere entrambi i blocchi `ratelimits`** (i binding non si ereditano) e un controllo di CI lo verificherà.
+- Durante il `flyTo` iniziale `view` è ancora quella vecchia: il pulsante di conferma può essere attivo per 800 ms (qualità del dato, non privacy).

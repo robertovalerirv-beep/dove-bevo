@@ -4,6 +4,14 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-14 · Sessione 7 · Allineamento feature list e revisione di sicurezza (branch `chore-align-feature-list-and-review-fixes`)
+
+**Fatto**: le correzioni dell'audit (PR #22) sono in `main` e in staging (CI e deploy verdi; `/api/venues/u007/prices` → 400 dal vivo). Revisione `security-reviewer` sul diff: nessun punto bloccante; corretti il pin con «Vicino a me» lento (si controlla anche la posizione corrente) e le regex non canoniche di admin e client (ADR 0021, seconda revisione). `passes: true` per M3-11…M3-16, M3-18, M3-19: i test sono già in `main` (le voci erano a true solo sul vecchio branch `v3-spec-1-1`, ora superato); su `main` 49/75. Restano a false M3-17 (inserimento da listino in admin) e M3-20 (riga istantanea per cella). `docs/materiali/` è in `.gitignore` (repo pubblico, contiene ipotesi finanziarie).
+
+**Prove**: `node scripts/check-feature-list.mjs` → «only passes changed (49/75 passing)»; `npm run verify` sul codice di `main` verde in 422 s prima di queste modifiche; vedere sotto per il gate su questo branch.
+
+---
+
 ## 2026-10-14 · Sessione 6 · Correzioni dell'audit di sicurezza (branch `fix-stress-test-hardening`)
 
 **Contesto**: l'audit "da attaccante" della sessione del 14/10 mattina elencava correzioni da fare prima di diffondere il link; nessuna era in `main` (verificato: `GET /api/prices/:cell` senza limite, `VenueKey` con zeri iniziali, pin valido con un tocco, nessun tetto per cella). Access e Turnstile sul nuovo sottodominio verificati dal vivo: `/admin` e `/api/admin/*` rispondono 302 al login di Access; il flusso reale «Salva» crea la sessione (`POST /api/session` 200) e con «Annulla» entro 10 s non scrive nulla.

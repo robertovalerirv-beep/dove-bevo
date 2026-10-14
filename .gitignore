@@ -13,3 +13,6 @@ playwright-report/
 test-results/
 .lighthouseci/
 .claude/settings.local.json
+
+# private business materials (public repo): never committed
+docs/materiali/

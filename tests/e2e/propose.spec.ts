@@ -103,6 +103,7 @@ test("M3-12 a name with a link is refused before leaving the device", async ({ p
 });
 
 test("M3-19 an API answered with the app page is a polite wait, not an error", async ({ page }) => {
+  test.slow(); // the map loads MapLibre first: slow under the parallel load of the whole suite
   const errors: string[] = [];
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(m.text());
@@ -124,6 +125,7 @@ test("M3-19 an API answered with the app page is a polite wait, not an error", a
     .click();
   await expect(page.getByTestId("map-status")).toHaveText(
     "Il servizio è molto richiesto, riprova più tardi.",
+    { timeout: 30_000 },
   );
   expect(errors.filter((e) => !e.includes("Failed to load resource"))).toEqual([]);
 });

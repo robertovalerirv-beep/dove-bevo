@@ -137,10 +137,14 @@ test("admin search also finds bars added by hand, fresh, and accepts a bar link"
   const posts = await fakeAdmin(page);
   // The cell now holds a bar added a moment ago (user bar "u9").
   await page.route("**/api/prices/u0nd9", async (route) => {
-    const response = await route.fetch();
-    const body = (await response.json()) as { u: unknown[] };
-    body.u = [...body.u, ["u9", "Bar Appena Creato", 1, 45.4643, 9.1901]];
-    await route.fulfill({ response, json: body });
+    try {
+      const response = await route.fetch();
+      const body = (await response.json()) as { u: unknown[] };
+      body.u = [...body.u, ["u9", "Bar Appena Creato", 1, 45.4643, 9.1901]];
+      await route.fulfill({ response, json: body });
+    } catch {
+      // The test ended and closed the page while this request was still in flight.
+    }
   });
   await page.goto("/admin");
   await page.getByLabel("Città").fill("Milano");

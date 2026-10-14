@@ -394,8 +394,13 @@
 .btn--primary[aria-disabled="true"] {
   opacity: 0.5;
 }
+/* The two ways to add something sit side by side, same height; the label may take two lines. */
+.bottom__primary,
+.bottom__missing {
+  min-height: var(--target-primary);
+}
 .bottom__primary {
-  grid-column: 1 / -1;
+  font-size: var(--text-md);
 }
 .btn:disabled,
 .btn[aria-disabled="true"] {

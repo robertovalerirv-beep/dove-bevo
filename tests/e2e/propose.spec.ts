@@ -25,8 +25,8 @@ async function dragMap(page: Page, pixels = 12) {
 }
 
 async function startProposal(page: Page, name: string) {
-  await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
-  await page.getByRole("button", { name: "Non trovi il bar?" }).click();
+  // One tap from the main screen, next to "Aggiungi prezzo" (the way in for a missing bar).
+  await page.getByRole("button", { name: "Aggiungi locale mancante" }).click();
   await page.getByRole("textbox", { name: "Nome del bar" }).fill(name);
   await page.getByRole("button", { name: "Avanti" }).click();
 }
@@ -146,4 +146,15 @@ test("M3-19 an API answered with the app page is a polite wait, not an error", a
     { timeout: 30_000 },
   );
   expect(errors.filter((e) => !e.includes("Failed to load resource"))).toEqual([]);
+});
+
+test("M3-11 the same proposal is reachable from Aggiungi prezzo (Non trovi il bar?)", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Aggiungi locale mancante" })).toBeVisible();
+  await page.screenshot({ path: "docs/screenshots/m3/home-390.png" });
+  await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+  await page.getByRole("button", { name: "Non trovi il bar?" }).click();
+  await expect(page.getByRole("textbox", { name: "Nome del bar" })).toBeFocused();
 });

@@ -769,6 +769,9 @@ export function App({ loadMap }: Props) {
           >
             {it.add.open}
           </button>
+          <button type="button" class="btn btn--secondary bottom__missing" onClick={startProposal}>
+            {it.add.addMissing}
+          </button>
           <button type="button" class="btn btn--secondary" onClick={() => void nearMe()}>
             <Icon name="locate" />
             {it.map.nearMe}

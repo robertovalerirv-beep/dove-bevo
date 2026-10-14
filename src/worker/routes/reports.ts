@@ -33,7 +33,12 @@ export const reports = new Hono<AppEnv>();
 
 reports.post("/", async (c) => {
   const body = await readJson(c, Body);
-  const onPrice = body.drink !== undefined && body.size_ml !== undefined && body.hh !== undefined;
+  // "Closed", "not existing" and "wrong name" are about the bar even when sent from a price row:
+  // they go to the admin's bar queue and never count against the price.
+  const aboutBar =
+    body.reason === "closed" || body.reason === "not_exists" || body.reason === "wrong_info";
+  const onPrice =
+    !aboutBar && body.drink !== undefined && body.size_ml !== undefined && body.hh !== undefined;
   if (body.reason === "wrong_price" && !onPrice) throw new ApiError("bad_request");
   const k: PriceKey | null = onPrice
     ? { venue: body.venue, drink: body.drink ?? "", size: body.size_ml ?? 0, hh: body.hh ?? 0 }

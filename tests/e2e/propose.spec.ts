@@ -12,8 +12,8 @@ const TURNSTILE_STUB = `window.turnstile = {
 const uniqueName = () =>
   `Bar Prova ${Array.from({ length: 8 }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("")}`;
 
-/** A touch on the map: the user places the pin (a drag of a few pixels, or none for a tap). */
-async function dragMap(page: Page, pixels = 12) {
+/** The user moves the map under the cross: 60 px at zoom 17 is about 25 m, a nudge of 12 px about 5 m. */
+async function dragMap(page: Page, pixels = 60) {
   const box = await mapRegion(page).boundingBox();
   if (!box) throw new Error("no map");
   const x = box.x + box.width / 2;
@@ -51,7 +51,11 @@ test("M3-11 a proposed bar: pin, send, then its price can be added at once", asy
   await expect(page.getByTestId("pin-mark")).toBeVisible();
   const confirm = pin.getByRole("button", { name: "Conferma e invia" });
   await expect(mapRegion(page)).toHaveAttribute("data-zoom", /^1[6-9]|^2/, { timeout: 20_000 });
-  // Untouched, the pin would be the device's position: the button waits for the user (SPEC 14).
+  // Where the map started could be the device's position: the pin must be moved away from it
+  // (more than 10 m, not a tap or a nudge) before it can be sent (SPEC 14, ADR 0021).
+  await expect(confirm).toHaveAttribute("aria-disabled", "true");
+  await dragMap(page, 0);
+  await dragMap(page, 12);
   await expect(confirm).toHaveAttribute("aria-disabled", "true");
   await dragMap(page);
   await expect(confirm).not.toHaveAttribute("aria-disabled", "true");
@@ -104,7 +108,7 @@ test("M3-12 the same bar proposed twice leads to the existing one (409)", async 
     await startProposal(page, name);
     const confirm = page.getByRole("button", { name: "Conferma e invia" });
     await expect(mapRegion(page)).toHaveAttribute("data-zoom", /^1[6-9]|^2/, { timeout: 20_000 });
-    await dragMap(page, 0);
+    await dragMap(page);
     await expect(confirm).not.toHaveAttribute("aria-disabled", "true");
     await confirm.click();
     expect((await answered).status()).toBe(attempt === 1 ? 200 : 409);

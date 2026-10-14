@@ -6,8 +6,8 @@ interface Props {
   name: string;
   /** False while the map is too far out to point at one building. */
   close: boolean;
-  /** True once the user has touched the map: the pin is theirs, not the device's position. */
-  touched: boolean;
+  /** True once the user has moved the map away from where it started: the pin is theirs, not the device's position. */
+  placed: boolean;
   sending: boolean;
   /** Known bars within 150 m with a similar name: maybe the bar already exists. */
   similar: Venue[];
@@ -20,7 +20,7 @@ interface Props {
 export function PinPanel({
   name,
   close,
-  touched,
+  placed,
   sending,
   similar,
   onPick,
@@ -31,7 +31,7 @@ export function PinPanel({
   useEffect(() => {
     title.current?.focus();
   }, []);
-  const ready = close && touched && !sending;
+  const ready = close && placed && !sending;
   return (
     <section class="pin" aria-labelledby="pin-title">
       <h2 id="pin-title" class="pin__title" tabIndex={-1} ref={title}>

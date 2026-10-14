@@ -4,6 +4,8 @@ export type QuotaKind = keyof typeof QUOTAS;
 
 /** Proposed bars waiting for the admin: beyond this, proposals are refused politely (SPEC 7.5). */
 export const MAX_PENDING_VENUES = 200;
+/** Pending proposals waiting in one geohash cell: one actor cannot fill the whole queue there (ADR 0021). */
+export const MAX_PENDING_PER_CELL = 15;
 /** A rejected proposal blocks the same name at the same spot for this many days. */
 export const REJECTION_TRACE_DAYS = 30;
 

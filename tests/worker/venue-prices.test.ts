@@ -34,7 +34,7 @@ describe("GET /api/venues/:key/prices (M1-15)", () => {
     const response = await get("/api/venues/n1/prices");
     expect(response.status).toBe(200);
     const body: VenuePrices = await response.json();
-    expect(body.p).toEqual([["n1", "spritz", 0, 0, 711, "2026-09-12", 1, 0, 0]]);
+    expect(body.p).toEqual([["n1", "spritz", 0, 0, 711, "2026-09-12", 1, 0]]);
     const spritz = body.h.filter(([drink]) => drink === "spritz");
     expect(spritz).toHaveLength(10);
     expect(spritz[0]).toEqual(["spritz", 0, 0, 711, "2026-09-12"]);

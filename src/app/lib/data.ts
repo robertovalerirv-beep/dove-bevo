@@ -22,14 +22,20 @@ export interface Venue {
   city: string;
   cell: string;
   prices: PriceRow[];
+  /** Proposed by a user, not yet approved: only offered when choosing the bar of a price. */
+  pending: boolean;
 }
 
 const cells = new Map<string, Promise<Venue[]>>();
+
+/** The API answered with the SPA page instead of JSON: the free daily limit is over (SPEC 5.3). */
+export class ServiceBusy extends Error {}
 
 async function getJson<T>(url: string, fallback: T): Promise<T> {
   const response = await fetch(url);
   // A missing static file (no bars in that cell) comes back as the SPA fallback HTML, not a 404.
   const isJson = response.headers.get("content-type")?.includes("application/json") ?? false;
+  if (response.ok && !isJson && url.startsWith("/api/")) throw new ServiceBusy();
   if (response.status === 404 || (response.ok && !isJson)) return fallback;
   if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
   return (await response.json()) as T;
@@ -55,8 +61,9 @@ async function fetchCell(cell: string): Promise<Venue[]> {
       city: file.c[ci]?.[1] ?? "",
       cell,
       prices: byKey.get(key) ?? [],
+      pending: false,
     }));
-  const user = prices.u.map(([key, name, kind, lat, lon]) => ({
+  const user = [...prices.u, ...prices.pend].map(([key, name, kind, lat, lon], i) => ({
     key,
     name,
     kind,
@@ -66,6 +73,7 @@ async function fetchCell(cell: string): Promise<Venue[]> {
     city: "",
     cell,
     prices: byKey.get(key) ?? [],
+    pending: i >= prices.u.length,
   }));
   return [...osm, ...user];
 }

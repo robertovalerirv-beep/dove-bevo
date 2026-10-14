@@ -25,11 +25,3 @@ export function formatDistance(meters: number): string {
   if (meters < 1000) return `${String(Math.round(meters / 10) * 10)} m`;
   return `${liters.format(Math.round(meters / 100) / 10)} km`;
 }
-
-/** Accent- and case-insensitive key for search (SPEC 7.6). */
-export const searchKey = (text: string) =>
-  text
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .trim();

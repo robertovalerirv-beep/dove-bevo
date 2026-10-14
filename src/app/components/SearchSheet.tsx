@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "preact/hooks";
 import type { Place } from "../../shared/api-types";
 import { it } from "../i18n/it";
 import { loadPlaces, type Venue } from "../lib/data";
-import { searchKey } from "../lib/format";
+import { searchKey } from "../../shared/venue";
 import { Sheet } from "./Sheet";
 
 interface Props {

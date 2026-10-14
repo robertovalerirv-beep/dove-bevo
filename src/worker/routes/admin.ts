@@ -22,21 +22,19 @@ import { readJson } from "../lib/guards";
 import { osmVenue } from "../lib/venues";
 import { forgetCell } from "./prices";
 import type { AppEnv } from "../types";
-import { VenueKey } from "./venues";
+import { Lat, Lon, VenueKey, VenueName } from "./venues";
 
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
 const OsmKey = z.string().regex(/^[nwr]\d{1,15}$/);
-/** Same box as the OSM import (scripts/osm-import): Italy, San Marino, Vatican. */
-const Lat = z.number().min(35.2).max(47.2);
-const Lon = z.number().min(6.5).max(18.6);
 
-const NewVenue = z.strictObject({
-  name: z.string().trim().min(2).max(80),
-  kind: z.number().int().min(0).max(4),
-  lat: Lat,
-  lon: Lon,
+const Kind = z.number().int().min(0).max(4);
+const NewVenue = z.strictObject({ name: VenueName, kind: Kind, lat: Lat, lon: Lon });
+/** Approve (optionally fixing name and kind) or reject a user bar. */
+const VenueStatus = z.strictObject({
+  status: z.enum(["approved", "removed"]),
+  name: VenueName.optional(),
+  kind: Kind.optional(),
 });
-const VenueStatus = z.strictObject({ status: z.enum(["approved", "removed"]) });
 const Hide = z.strictObject({ venue: OsmKey, cell: Cell });
 const Unhide = z.strictObject({ venue: OsmKey });
 const PriceStatus = z.strictObject({
@@ -79,7 +77,7 @@ admin.post("/venues/:id/status", async (c) => {
   const id = z.coerce.number().int().positive().safeParse(c.req.param("id"));
   if (!id.success) throw new ApiError("bad_request");
   const body = await readJson(c, VenueStatus);
-  const cell = await setUserVenueStatus(c.env.DB, id.data, body.status);
+  const cell = await setUserVenueStatus(c.env.DB, id.data, body.status, romeDay(), body);
   if (!cell) throw new ApiError("not_found");
   if (body.status === "removed") await clearBarReports(c.env.DB, `u${String(id.data)}`);
   await forgetCell(c.req.url, cell);

@@ -106,9 +106,38 @@ test.describe("M1-10 with the position denied", () => {
     await context.clearPermissions();
     await page.goto("/");
     await page.getByRole("button", { name: "Vicino a me" }).click();
-    await expect(mapStatus(page)).toHaveText("Posizione non disponibile: cerca una città.", {
-      timeout: 15_000,
+    await expect(mapStatus(page)).toHaveText(
+      "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città.",
+      { timeout: 15_000 },
+    );
+    await expect(page.getByRole("button", { name: "Cerca città o bar" })).toBeFocused();
+    await goToMilano(page);
+  });
+});
+
+test.describe("M3-15 with a position that never answers", () => {
+  test.use({ permissions: ["geolocation"] });
+  test("says it cannot find the user and points to the search", async ({ page }) => {
+    await page.addInitScript(() => {
+      navigator.geolocation.getCurrentPosition = (_ok, fail) => {
+        // The browser gives up: GeolocationPositionError.TIMEOUT
+        setTimeout(
+          () =>
+            fail?.({
+              code: 3,
+              message: "",
+              PERMISSION_DENIED: 1,
+              POSITION_UNAVAILABLE: 2,
+              TIMEOUT: 3,
+            }),
+          50,
+        );
+      };
     });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Vicino a me" }).click();
+    await expect(mapStatus(page)).toHaveText("Non riesco a trovarti. Cerca una città.");
+    await expect(page.getByRole("button", { name: "Cerca città o bar" })).toBeFocused();
     await goToMilano(page);
   });
 });
@@ -225,6 +254,8 @@ test("the status follows the cells after a denied position", async ({ page, cont
   await context.clearPermissions();
   await page.goto("/");
   await page.getByRole("button", { name: "Vicino a me" }).click();
-  await expect(mapStatus(page)).toHaveText("Posizione non disponibile: cerca una città.");
+  await expect(mapStatus(page)).toHaveText(
+    "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città.",
+  );
   await goToMilano(page);
 });

@@ -96,9 +96,9 @@ describe("POST /api/prices validation (M2-08)", () => {
     expect((await post("/api/prices", priceBody([pint]), cookie)).status).toBe(400);
   });
 
-  it("menu_photo without an extraction token → 403 (D-09)", async () => {
+  it("only manual prices are accepted (no AI, ADR 0018)", async () => {
     const body = { ...priceBody([spritz(750)]), source: "menu_photo" };
-    expect((await post("/api/prices", body, await newSession())).status).toBe(403);
+    expect((await post("/api/prices", body, await newSession())).status).toBe(400);
   });
 });
 
@@ -219,14 +219,7 @@ describe("no personal data stored (M2-16)", () => {
       ip,
     );
     const sid = cookie.slice("__Host-sid=".length);
-    const tables = [
-      "prices_current",
-      "price_obs",
-      "venues_user",
-      "reports",
-      "ai_usage",
-      "metrics_daily",
-    ];
+    const tables = ["prices_current", "price_obs", "venues_user", "reports", "metrics_daily"];
     for (const table of tables) {
       const { results } = await env.DB.prepare(`SELECT * FROM ${table}`).all();
       const dump = JSON.stringify(results);

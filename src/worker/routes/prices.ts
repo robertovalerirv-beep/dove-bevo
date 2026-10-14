@@ -59,8 +59,7 @@ const Item = z.strictObject({
 const PriceBody = z.strictObject({
   venue: VenueKey,
   cell: Cell,
-  source: z.enum(["manual", "menu_photo"]),
-  token: z.string().max(512).optional(),
+  source: z.literal("manual"),
   items: z.array(Item).min(1).max(MAX_ITEMS),
 });
 const ConfirmBody = z.strictObject({
@@ -113,8 +112,6 @@ async function confirmOnce(
 // POST /api/prices — 1–80 prices for one bar (SPEC 9.2, 11).
 prices.post("/", async (c) => {
   const body = await readJson(c, PriceBody);
-  // Prices read from a photo need an extraction token (D-09): issued only by menu-extract (M3).
-  if (body.source === "menu_photo") throw new ApiError("forbidden");
   for (const item of body.items)
     if (!findSize(item.drink, item.size_ml)) throw new ApiError("bad_request");
   const where = await resolveVenue(c.env, body.venue, body.cell);
@@ -156,7 +153,6 @@ prices.post("/", async (c) => {
       price: item.price_cents,
       day,
       status,
-      source: body.source,
     });
     const [bySid, byIp] = await authorKeys(c.env, who, k, day);
     for (const key of [bySid, byIp]) if (key) await claimOnce(c.env.DB, key, day);

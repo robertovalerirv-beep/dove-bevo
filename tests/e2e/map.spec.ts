@@ -1,6 +1,14 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { DUOMO, goToMilano, mapRegion, mapStatus, waitForBars, zoomOf } from "./helpers";
+import {
+  DUOMO,
+  goToMilano,
+  milanoFromOpenSearch,
+  mapRegion,
+  mapStatus,
+  waitForBars,
+  zoomOf,
+} from "./helpers";
 
 test("M1-06 opens on Italy with the attributions visible", async ({ page }, info) => {
   const mapLibre: string[] = [];
@@ -102,16 +110,20 @@ test.describe("M1-10 with the position granted", () => {
 
 test.describe("M1-10 with the position denied", () => {
   test.use({ permissions: [] });
-  test("invites to search and stays usable", async ({ page, context }) => {
+  test("invites to search and stays usable", async ({ page, context }, info) => {
     await context.clearPermissions();
     await page.goto("/");
     await page.getByRole("button", { name: "Vicino a me" }).click();
-    await expect(mapStatus(page)).toHaveText(
-      "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città.",
-      { timeout: 15_000 },
-    );
-    await expect(page.getByRole("button", { name: "Cerca città o bar" })).toBeFocused();
-    await goToMilano(page);
+    // The way out opens by itself: the city search, with what to do on this device (desktop: Chrome-like).
+    const search = page.getByRole("dialog", { name: "Cerca" });
+    await expect(search.getByText(/tocca il lucchetto accanto all'indirizzo/)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(search.getByRole("searchbox")).toBeFocused();
+    if (info.project.name === "chromium") {
+      await page.screenshot({ path: "docs/screenshots/m3/locate-denied-390.png" });
+    }
+    await milanoFromOpenSearch(page);
   });
 });
 
@@ -136,9 +148,10 @@ test.describe("M3-15 with a position that never answers", () => {
     });
     await page.goto("/");
     await page.getByRole("button", { name: "Vicino a me" }).click();
-    await expect(mapStatus(page)).toHaveText("Non riesco a trovarti. Cerca una città.");
-    await expect(page.getByRole("button", { name: "Cerca città o bar" })).toBeFocused();
-    await goToMilano(page);
+    const search = page.getByRole("dialog", { name: "Cerca" });
+    await expect(search.getByRole("searchbox")).toBeFocused();
+    await expect(search.getByText("Non riesco a trovarti")).toHaveCount(0); // no permission hint: only a timeout
+    await milanoFromOpenSearch(page);
   });
 });
 
@@ -254,10 +267,10 @@ test("the status follows the cells after a denied position", async ({ page, cont
   await context.clearPermissions();
   await page.goto("/");
   await page.getByRole("button", { name: "Vicino a me" }).click();
-  await expect(mapStatus(page)).toHaveText(
-    "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città.",
-  );
-  await goToMilano(page);
+  const search = page.getByRole("dialog", { name: "Cerca" });
+  await expect(search.getByText(/Per usare la posizione/)).toBeVisible();
+  await milanoFromOpenSearch(page);
+  await expect(mapStatus(page)).not.toHaveText(/posizione/i);
 });
 
 test("M3-15 a denied position is told also when the map is already zoomed in", async ({
@@ -268,8 +281,7 @@ test("M3-15 a denied position is told also when the map is already zoomed in", a
   await page.goto("/");
   await goToMilano(page);
   await page.getByRole("button", { name: "Vicino a me" }).click();
-  await expect(mapStatus(page)).toHaveText(
-    "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città.",
-    { timeout: 15_000 },
-  );
+  await expect(
+    page.getByRole("dialog", { name: "Cerca" }).getByText(/Per usare la posizione/),
+  ).toBeVisible({ timeout: 15_000 });
 });

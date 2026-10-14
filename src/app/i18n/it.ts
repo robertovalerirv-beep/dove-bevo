@@ -32,7 +32,13 @@ export const it = {
     nearMe: "Vicino a me",
     locating: "Cerco la tua posizione…",
     position: {
-      denied: "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città.",
+      denied: "Posizione non disponibile: cerca una città qui sotto.",
+      deniedHelp: {
+        app: "La posizione non funziona in questa app. Apri il link in Chrome o Safari, oppure cerca una città.",
+        ios: "Per usare la posizione: tocca aA nella barra dell'indirizzo, poi Impostazioni sito web, Posizione, Consenti. Oppure cerca una città.",
+        other:
+          "Per usare la posizione: tocca il lucchetto accanto all'indirizzo, poi Autorizzazioni, Posizione, Consenti. Oppure cerca una città.",
+      },
       unavailable: "Non riesco a trovarti. Cerca una città.",
       timeout: "Non riesco a trovarti. Cerca una città.",
     },

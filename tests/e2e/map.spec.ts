@@ -73,7 +73,7 @@ test("M1-09 the drink chips switch the prices shown", async ({ page }) => {
   await page.goto("/");
   await goToMilano(page);
   const chips = page.getByRole("group", { name: "Drink" });
-  await expect(chips.getByRole("button", { name: "Birra media" })).toHaveAttribute(
+  await expect(chips.getByRole("button", { name: "Birra alla spina 0,4 l" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );

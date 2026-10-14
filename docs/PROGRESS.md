@@ -4,6 +4,16 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-14 · Sessione 5 · Filtri e inserimento uniformati (branch `v3-chips-from-catalog`)
+
+**Richiesta di Roberto**: le categorie dei filtri sopra la mappa devono essere le stesse dei prezzi inseribili (filtro ⇒ inseribile e viceversa).
+
+**Fatto**: le chip della mappa derivano dal catalogo (`MAP_CHIPS` in `src/shared/catalog.ts`): una per ogni drink e formato inseribile (11: birra alla spina 0,2 / 0,4 / 0,5 l, bottiglia, spritz, gin tonic, negroni, vino, prosecco, analcolico, bibita), con gli stessi nomi della griglia di "Aggiungi prezzo". Prima erano 5 con nomi propri ("Birra media"…). Predefinita: birra alla spina 0,4 l. SPEC 6 e D-04 aggiornate (erano "sottoinsieme"). Tolto `it.chips`.
+
+**Prove**: unit `tests/unit/catalog.test.ts` (chip = voci del catalogo, nessuna in più o in meno); e2e "the map chips and the drinks to enter are the same list" (Chromium e WebKit); M1-09 aggiornato al nuovo nome; screenshot `docs/screenshots/m3/chips-390.png`.
+
+---
+
 ## 2026-10-14 · Sessione 5 · Nuovo sottodominio di staging (branch `v3-new-subdomain`)
 
 **Richiesta di Roberto**: il suo nome non deve comparire nell'indirizzo. Il sottodominio `workers.dev` dell'account è stato cambiato da Roberto in `dovebevo` (gratis): staging è ora `dovebevo-staging.dovebevo.workers.dev`. Gli altri progetti (Pages, `*.pages.dev`) non sono toccati.

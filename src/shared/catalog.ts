@@ -32,16 +32,15 @@ export const CATALOG: readonly Drink[] = [
   { code: "soft_drink", sizes: [{ ml: 330, min: 100, max: 800 }], defaultSize: 0 },
 ];
 
-/** Map chips, in this order (SPEC 6). The first is the default. */
-export const MAP_CHIPS = [
-  { id: "beer_draft@400", drink: "beer_draft", size: 400 },
-  { id: "spritz@0", drink: "spritz", size: 0 },
-  { id: "gin_tonic@0", drink: "gin_tonic", size: 0 },
-  { id: "wine_glass@150", drink: "wine_glass", size: 150 },
-  { id: "alcohol_free@0", drink: "alcohol_free", size: 0 },
-] as const;
+/** Map chips: one per drink and size that can be entered, in catalog order (SPEC 6), so filter and entry always match. */
+export const MAP_CHIPS = CATALOG.flatMap((d) =>
+  d.sizes.map((s) => ({ id: `${d.code}@${String(s.ml)}`, drink: d.code, size: s.ml })),
+);
 
-export type ChipId = (typeof MAP_CHIPS)[number]["id"];
+export type ChipId = string;
+
+/** Chip selected at the start of a visit: a 0,4 l draught beer. */
+export const DEFAULT_CHIP = { id: "beer_draft@400", drink: "beer_draft", size: 400 };
 
 export function findSize(drink: string, ml: number): DrinkSize | undefined {
   return CATALOG.find((d) => d.code === drink)?.sizes.find((s) => s.ml === ml);

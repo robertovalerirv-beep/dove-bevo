@@ -1,7 +1,7 @@
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
-import { MAP_CHIPS, type ChipId } from "../shared/catalog";
+import { DEFAULT_CHIP, MAP_CHIPS, type ChipId } from "../shared/catalog";
 import { APP_NAME } from "../shared/config";
 import { visibleCells } from "../shared/geohash";
 import type { PriceRow } from "../shared/api-types";
@@ -19,13 +19,19 @@ import { it } from "./i18n/it";
 import { invalidateCell, loadCell, ServiceBusy, shownPrice, type Venue } from "./lib/data";
 import { blockedHelp, locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
-import { formatPrice } from "./lib/format";
+import { formatPrice, formatSize } from "./lib/format";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
 
 const MIN_ZOOM_CELLS = 13;
 
 /** The topmost open sheet: while a modal sheet is open, everything outside it is inert. */
+/** Same names as the drink grid of "Aggiungi prezzo"; the size only where the drink has several. */
+function chipLabel(c: (typeof MAP_CHIPS)[number]): string {
+  const several = MAP_CHIPS.filter((o) => o.drink === c.drink).length > 1;
+  return [it.drinks[c.drink] ?? c.drink, several ? formatSize(c.size) : ""].join(" ").trim();
+}
+
 function topLayer(): HTMLElement {
   const open = document.querySelectorAll<HTMLElement>("dialog.sheet[open]");
   return open[open.length - 1] ?? document.body;
@@ -101,7 +107,7 @@ export function App({ loadMap }: Props) {
   const toastRegion = useMemo(() => floating("toast-region", "status"), []);
   const toastTimer = useRef<HoldableTimer | null>(null);
   const pendingSave = useRef<PendingSave | null>(null);
-  const [chip, setChip] = useState<ChipId>(MAP_CHIPS[0].id);
+  const [chip, setChip] = useState<ChipId>(DEFAULT_CHIP.id);
   const [venues, setVenues] = useState<Map<string, Venue>>(new Map());
   const [cellsState, setCellsState] = useState<CellsState>("idle");
   const [attempt, setAttempt] = useState(0); // "Riprova" after a cell error
@@ -114,7 +120,7 @@ export function App({ loadMap }: Props) {
   const ensureMap = () => {
     setMapWanted(true);
   };
-  const selected = MAP_CHIPS.find((c) => c.id === chip) ?? MAP_CHIPS[0];
+  const selected = MAP_CHIPS.find((c) => c.id === chip) ?? DEFAULT_CHIP;
 
   // Map: created once, when first wanted.
   useEffect(() => {
@@ -679,7 +685,7 @@ export function App({ loadMap }: Props) {
                 setChip(c.id);
               }}
             >
-              {it.chips[c.id]}
+              {chipLabel(c)}
             </button>
           ))}
         </div>

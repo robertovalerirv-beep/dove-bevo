@@ -65,6 +65,29 @@ test.describe("with the position (Duomo)", () => {
     for (const [i, name] of expected.entries()) expect(names[i]).toContain(name);
   });
 
+  test("the map chips and the drinks to enter are the same list", async ({ page }, info) => {
+    await page.goto("/");
+    if (info.project.name.startsWith("chromium")) {
+      await page.screenshot({
+        path: "docs/screenshots/m3/chips-390.png",
+        clip: { x: 0, y: 0, width: 390, height: 130 },
+      });
+    }
+    const chipNames = await page
+      .getByRole("group", { name: "Drink" })
+      .getByRole("button")
+      .allTextContents();
+    await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+    await expect(barChoices(page)).toHaveCount(5);
+    await barChoices(page).first().click();
+    const entered = await page.getByRole("dialog").locator(".drink__name").allTextContents();
+    expect(entered.length).toBeGreaterThan(0);
+    // A drink with several sizes has one chip per size, so a chip is its drink's name, plus the size.
+    const same = (chip: string, name: string) => chip === name || chip.startsWith(`${name} `);
+    for (const name of entered) expect(chipNames.some((c) => same(c, name))).toBe(true);
+    for (const chip of chipNames) expect(entered.some((name) => same(chip, name))).toBe(true);
+  });
+
   test("M2-02 + M2-05 from a cold start: four taps plus the digits; Turnstile only after Salva", async ({
     page,
   }) => {

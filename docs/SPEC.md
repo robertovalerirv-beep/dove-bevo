@@ -37,7 +37,7 @@ Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → ac
 | D-01 | Dominio | Segnaposto `dovebevo.example` in `APP_DOMAIN`; il dominio vero arriva in M6. Cache API inattiva su `workers.dev` (accettato). |
 | D-02 | Repository | GitHub **pubblico**: Actions, Dependabot e secret scanning gratuiti. |
 | D-03 | Dati OSM | I file dei bar sono **generati a ogni deploy** dal job CI (sezione 5.3). Il PBF scaricato è messo in cache di Actions con chiave = data del file Geofabrik, così più deploy nello stesso giorno non lo riscaricano. In locale e negli e2e si usa un **fixture versionato** (alcune celle di Milano) in `tests/fixtures/data/`. |
-| D-04 | Catalogo | 9 drink, formati e limiti della sezione 6. Le 5 chip della mappa sono un sottoinsieme. |
+| D-04 | Catalogo | 9 drink, formati e limiti della sezione 6. Le chip della mappa sono le stesse voci che si possono inserire (sezione 6). |
 | D-05 | Bar pending | Visibili **solo nella scelta del bar di "Aggiungi prezzo"**, con etichetta "Nuovo, da confermare". Mai sulla mappa finché l'admin non li approva (v1.1: conferme e prezzi non approvano più, ADR 0019). |
 | D-06 | Eventi | `POST /api/events` è **esente da sessione e da `Content-Type: application/json`** (`sendBeacon` invia `text/plain`). Protezioni: `Origin`, body ≤ 2 KB, schema chiuso zod, ≤ 10 eventi, rate limit per IP-HMAC. Scrive solo contatori aggregati. |
 | D-07 | Segnalazioni | Solo motivi a scelta chiusa, nessun testo libero (sezione 7.2). |
@@ -131,7 +131,7 @@ I prezzi sono dati nostri collegati agli ID OSM e **non vengono mai scritti negl
 | `alcohol_free` | Analcolico | **0\*** | 2–12 |
 | `soft_drink` | Bibita | **330\*** | 1–8 |
 
-Chip della mappa, in quest'ordine: **Birra media** (`beer_draft`@400), **Spritz**, **Gin tonic**, **Calice di vino** (`wine_glass`@150), **Analcolico**. La chip predefinita è Birra media; l'ultima scelta resta in memoria per la visita.
+Chip della mappa (v1.1): una per ogni drink e formato inseribile, nell'ordine della tabella (birra alla spina 0,2 / 0,4 / 0,5 l, bottiglia, spritz, gin tonic, negroni, calice di vino, prosecco, analcolico, bibita), con gli stessi nomi della griglia di "Aggiungi prezzo": ciò che si filtra si può inserire e viceversa. La chip predefinita è la birra alla spina 0,4 l; l'ultima scelta resta in memoria per la visita.
 
 ## 7. Funzionalità
 

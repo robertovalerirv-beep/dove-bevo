@@ -236,11 +236,4 @@ export const it = {
     alcohol_free: "Analcolico",
     soft_drink: "Bibita",
   } as Record<string, string>,
-  chips: {
-    "beer_draft@400": "Birra media",
-    "spritz@0": "Spritz",
-    "gin_tonic@0": "Gin tonic",
-    "wine_glass@150": "Calice di vino",
-    "alcohol_free@0": "Analcolico",
-  },
 } as const;

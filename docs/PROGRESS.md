@@ -4,6 +4,18 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-14 · Sessione 5 · "Vicino a me" con posizione bloccata (branch `v3-locate-blocked`)
+
+**Segnalato da Roberto**: sul telefono "Vicino a me" dice "Attiva la posizione per questo sito nelle impostazioni", ma un utente comune non sa dove sono. Un permesso già negato non si può richiedere di nuovo: l'app non può fare altro che guidare.
+
+**Fatto**: se la posizione non arriva si apre da sola la ricerca di una città (la via d'uscita), con sopra un testo adatto al dispositivo: iPhone (aA → Impostazioni sito web → Posizione), Android/altri (lucchetto → Autorizzazioni → Posizione), browser interno di app (Instagram, Facebook, TikTok…: "Apri il link in Chrome o Safari"). Timeout e "non trovo" aprono la ricerca senza testo sui permessi. `blockedHelp()` in `src/app/lib/locate.ts`.
+
+**Prove**: e2e M1-10 / M3-15 (4 test) Chromium e WebKit verdi; screenshot `docs/screenshots/m3/locate-denied-390.png`.
+
+**Da verificare a mano**: sul telefono di Roberto, quale dei tre testi compare e se i passaggi coincidono con il suo browser. Idea non fatta (tocca SPEC 14): posizione approssimativa dall'IP lato Cloudflare, senza permesso.
+
+---
+
 ## 2026-10-14 · Sessione 4 · Prompt v3.2: niente AI, bar proposti, admin a tre code (branch `v3-no-ai-venue-proposals`)
 
 **Passo 0 (misure, nessuna modifica)**: stato reale 41/77 voci `passes: true` (M0 10/11, M1 15/15, M2 16/16, M3–M6 a zero). Misure D1 e capacità in **ADR 0020**: una cella costa ~2 righe per prezzo (603 righe a 300 prezzi), un contributo 8 righe scritte (~12 con la pulizia), una vista mappa 1–6 richieste; capacità ~9.800 utenti/giorno con 30 prezzi per cella, ~3.500 con 100, ~1.260 con 300. Obiettivi (≤ 5 righe per cella, ≥ 5.000 utenti) **non raggiunti a regime**: proposta di una riga istantanea per cella, da decidere prima di M4.

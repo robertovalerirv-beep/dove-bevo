@@ -7,6 +7,7 @@ import { Sheet } from "./Sheet";
 
 interface Props {
   venues: Venue[];
+  hint?: string;
   onPlace: (place: Place) => void;
   onVenue: (venue: Venue) => void;
   onClose: () => void;
@@ -47,7 +48,7 @@ function Result({
   );
 }
 
-export function SearchSheet({ venues, onPlace, onVenue, onClose }: Props) {
+export function SearchSheet({ venues, hint, onPlace, onVenue, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [places, setPlaces] = useState<Place[]>([]);
   const [failed, setFailed] = useState(false);
@@ -65,6 +66,7 @@ export function SearchSheet({ venues, onPlace, onVenue, onClose }: Props) {
 
   return (
     <Sheet title={it.search.title} onClose={onClose}>
+      {hint && <p class="hint">{hint}</p>}
       <input
         type="search"
         class="field"

@@ -17,6 +17,11 @@ export async function waitForBars(page: Page) {
 /** Opens the city search and moves the map to Milano. */
 export async function goToMilano(page: Page) {
   await page.getByRole("button", { name: "Cerca" }).click();
+  await milanoFromOpenSearch(page);
+}
+
+/** The city search is already open (e.g. after a failed "Vicino a me"). */
+export async function milanoFromOpenSearch(page: Page) {
   await page.getByRole("searchbox", { name: "Cerca una città o un bar" }).fill("milano");
   await page
     .getByRole("list", { name: "Città e paesi" })

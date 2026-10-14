@@ -17,7 +17,7 @@ import { ListSheet } from "./components/ListSheet";
 import { SearchSheet } from "./components/SearchSheet";
 import { it } from "./i18n/it";
 import { invalidateCell, loadCell, ServiceBusy, shownPrice, type Venue } from "./lib/data";
-import { locate, positionGranted } from "./lib/locate";
+import { blockedHelp, locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
 import { formatPrice } from "./lib/format";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
@@ -85,6 +85,7 @@ export function App({ loadMap }: Props) {
   const [view, setView] = useState<MapView | null>(null);
   const [route, setRoute] = useState<Route>(parseRoute);
   const [sheet, setSheet] = useState<"search" | "list" | null>(null);
+  const [searchHint, setSearchHint] = useState<string | undefined>();
   const [adding, setAdding] = useState<{ prefill: Prefill | null } | null>(null);
   const [addOrigin, setAddOrigin] = useState<{ lat: number; lon: number } | null>(null);
   const [proposing, setProposing] = useState<Proposing | null>(null);
@@ -634,8 +635,12 @@ export function App({ loadMap }: Props) {
       setMessage(null);
       moveTo(found.lat, found.lon, 15);
     } else {
+      // The way out is the city search, opened for the user with what can be done on this device.
       setMessage(it.map.position[found.reason]);
-      document.querySelector<HTMLElement>(".search-field")?.focus(); // the way out: search a city
+      setSearchHint(
+        found.reason === "denied" ? it.map.position.deniedHelp[blockedHelp()] : undefined,
+      );
+      setSheet("search");
     }
   }
 
@@ -654,6 +659,7 @@ export function App({ loadMap }: Props) {
             type="button"
             class="btn search-field"
             onClick={() => {
+              setSearchHint(undefined);
               setSheet("search");
               ensureMap(); // warm the map up while the user types
             }}
@@ -792,6 +798,7 @@ export function App({ loadMap }: Props) {
       {sheet === "search" && (
         <SearchSheet
           venues={allVenues}
+          hint={searchHint}
           onPlace={goToPlace}
           onVenue={(v) => {
             navigate(`/bar/${v.key}?c=${v.cell}`);

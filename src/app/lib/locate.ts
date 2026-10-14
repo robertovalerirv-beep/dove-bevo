@@ -38,3 +38,13 @@ export async function locate(): Promise<Located> {
     );
   });
 }
+
+/**
+ * Where a blocked position can be fixed: inside an app's own browser (Instagram, Facebook…) the
+ * answer is always "denied" and no setting exists; on iPhone and Android the steps differ.
+ */
+export function blockedHelp(): "app" | "ios" | "other" {
+  const ua = navigator.userAgent;
+  if (/FBAN|FBAV|Instagram|TikTok|Snapchat|Line\/|; wv\)/.test(ua)) return "app";
+  return /iPhone|iPad|iPod/.test(ua) ? "ios" : "other";
+}

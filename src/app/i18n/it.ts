@@ -79,6 +79,7 @@ export const it = {
   },
   add: {
     open: "Aggiungi prezzo",
+    addMissing: "Aggiungi locale mancante",
     back: "Indietro",
     chooseBar: "Scegli il bar",
     nearBars: "Bar vicini",

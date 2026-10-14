@@ -4,6 +4,14 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-14 · Sessione 5 · Nuovo sottodominio di staging (branch `v3-new-subdomain`)
+
+**Richiesta di Roberto**: il suo nome non deve comparire nell'indirizzo. Il sottodominio `workers.dev` dell'account è stato cambiato da Roberto in `dovebevo` (gratis): staging è ora `dovebevo-staging.dovebevo.workers.dev`. Gli altri progetti (Pages, `*.pages.dev`) non sono toccati.
+
+**Fatto**: `TURNSTILE_HOSTNAME` in `wrangler.jsonc` e gli indirizzi nelle guide. **A carico di Roberto**: Access (destinazioni `/admin` e `/api/admin/*`) e hostname del widget Turnstile con il nuovo indirizzo.
+
+---
+
 ## 2026-10-14 · Sessione 5 · "Vicino a me" con posizione bloccata (branch `v3-locate-blocked`)
 
 **Segnalato da Roberto**: sul telefono "Vicino a me" dice "Attiva la posizione per questo sito nelle impostazioni", ma un utente comune non sa dove sono. Un permesso già negato non si può richiedere di nuovo: l'app non può fare altro che guidare.
@@ -171,7 +179,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 ## 2026-10-11 · Sessione 2 · Chiusura M0 e inizio M1 (branch `m1-map`)
 
 **M0 unita** (PR #2, merge commit `408ef73`, CI 4/4 verde, revisioni chiuse; Roberto ha autorizzato Claude a unire le PR delle milestone con CI verde e revisioni chiuse).
-- Primo deploy di staging (run 38167216787): https://dovebevo-staging.roberto-valeri-rv.workers.dev — `/api/health` → `{"status":"ok","version":"0.0.0","data_version":"none"}`; `/`, `/bar/n1` 200 HTML; `/api/nonesiste` 404 JSON; CSP e HSTS presenti, nessun `Access-Control-*` (verificato anche da Claude con `fetch`).
+- Primo deploy di staging (run 38167216787): https://dovebevo-staging.dovebevo.workers.dev — `/api/health` → `{"status":"ok","version":"0.0.0","data_version":"none"}`; `/`, `/bar/n1` 200 HTML; `/api/nonesiste` 404 JSON; CSP e HSTS presenti, nessun `Access-Control-*` (verificato anche da Claude con `fetch`).
 - **M0-11**: binding Rate Limiting accettato sul piano gratuito (ADR 0010 accettata). **M0-08**: `npm audit` verde su `main`, Dependabot attivo (prime esecuzioni npm e Actions completate, nessun aggiornamento), Actions a SHA, nessun `pull_request_target`.
 - Restano: M0-04 (mappa) e M0-07 (passa con il `data_version` dell'import, M1-03).
 

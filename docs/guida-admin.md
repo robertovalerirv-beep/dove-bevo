@@ -18,8 +18,8 @@ mostra "Accesso riservato" e le API rispondono 403.
    - **Application name**: `Dove bevo admin (staging)`.
    - **Session duration**: 24 hours.
    - **Public hostname** (aggiungi due righe, stesso dominio):
-     - Domain `dovebevo-staging.roberto-valeri-rv.workers.dev`, Path `admin`
-     - Domain `dovebevo-staging.roberto-valeri-rv.workers.dev`, Path `api/admin/*`
+     - Domain `dovebevo-staging.dovebevo.workers.dev`, Path `admin`
+     - Domain `dovebevo-staging.dovebevo.workers.dev`, Path `api/admin/*`
 3. **Policies → Add a policy**: nome `Solo Roberto`, Action **Allow**, Include → **Emails** →
    `roberto.valeri.rv@gmail.com`. Salva.
 4. **Login methods**: lascia **One-time PIN** (codice via email).
@@ -38,7 +38,7 @@ prossimo deploy automatico. Sono identificativi pubblici, non password: senza la
 
 ## 3. Usare la pagina
 
-Apri <https://dovebevo-staging.roberto-valeri-rv.workers.dev/admin>, inserisci la tua email, poi il codice
+Apri <https://dovebevo-staging.dovebevo.workers.dev/admin>, inserisci la tua email, poi il codice
 ricevuto.
 
 - **Trova un bar sulla mappa**: città + parte del nome → **Nascondi** sulle voci che non sono bar.

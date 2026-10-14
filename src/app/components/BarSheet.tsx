@@ -144,7 +144,8 @@ export function BarSheet({ venueKey, cell, actions, onVenue, onClose }: Props) {
   useEffect(() => {
     void loadCell(cell)
       .then((venues) => {
-        const found = venues.find((v) => v.key === venueKey) ?? null;
+        // A proposed bar is public only once the admin approved it (ADR 0019): not here by its link.
+        const found = venues.find((v) => v.key === venueKey && !v.pending) ?? null;
         setVenue(found);
         if (found) onVenue(found);
       })

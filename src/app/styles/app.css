@@ -376,7 +376,12 @@
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
 }
-.price__meta,
+.price__meta {
+  grid-column: 1 / -1;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
 /* Primary action (MASTER: 56 px, full width at the bottom) */
 .btn--primary {
   min-height: var(--target-primary);
@@ -385,7 +390,8 @@
   color: var(--color-on-primary);
   font-size: var(--text-lg);
 }
-.btn--primary:disabled {
+.btn--primary:disabled,
+.btn--primary[aria-disabled="true"] {
   opacity: 0.5;
 }
 .bottom__primary {
@@ -564,6 +570,7 @@
   position: relative;
   overflow: hidden;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
@@ -653,7 +660,7 @@
 }
 .admin__todo ul {
   margin: 0;
-  padding-left: var(--space-5);
+  padding-left: var(--space-6);
 }
 .admin__badge {
   display: inline-block;

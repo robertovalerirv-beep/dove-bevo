@@ -6,6 +6,8 @@ interface Props {
   name: string;
   /** False while the map is too far out to point at one building. */
   close: boolean;
+  /** True once the user has touched the map: the pin is theirs, not the device's position. */
+  touched: boolean;
   sending: boolean;
   /** Known bars within 150 m with a similar name: maybe the bar already exists. */
   similar: Venue[];
@@ -15,17 +17,29 @@ interface Props {
 }
 
 /** Placing the pin of a proposed bar: the map stays usable, a cross marks the centre (SPEC 7.5). */
-export function PinPanel({ name, close, sending, similar, onPick, onConfirm, onCancel }: Props) {
+export function PinPanel({
+  name,
+  close,
+  touched,
+  sending,
+  similar,
+  onPick,
+  onConfirm,
+  onCancel,
+}: Props) {
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     title.current?.focus();
   }, []);
+  const ready = close && touched && !sending;
   return (
     <section class="pin" aria-labelledby="pin-title">
       <h2 id="pin-title" class="pin__title" tabIndex={-1} ref={title}>
         {it.propose.pinTitle(name)}
       </h2>
-      <p class="hint">{close ? it.propose.pinHelp : it.propose.pinCloser}</p>
+      <p id="pin-hint" class="hint">
+        {close ? it.propose.pinHelp : it.propose.pinCloser}
+      </p>
       {similar.length > 0 && (
         <>
           <p class="pin__similar">{it.propose.similar}</p>
@@ -48,15 +62,23 @@ export function PinPanel({ name, close, sending, similar, onPick, onConfirm, onC
         </>
       )}
       <div class="pin__actions">
-        <button type="button" class="btn btn--secondary" onClick={onCancel}>
+        <button
+          type="button"
+          class="btn btn--secondary"
+          aria-disabled={sending ? "true" : undefined}
+          onClick={() => {
+            if (!sending) onCancel();
+          }}
+        >
           {it.propose.cancel}
         </button>
         <button
           type="button"
           class="btn btn--primary"
-          aria-disabled={!close || sending ? "true" : undefined}
+          aria-disabled={ready ? undefined : "true"}
+          aria-describedby="pin-hint"
           onClick={() => {
-            if (close && !sending) onConfirm();
+            if (ready) onConfirm();
           }}
         >
           {sending ? it.propose.sending : it.propose.confirm}

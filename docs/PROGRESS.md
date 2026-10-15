@@ -18,6 +18,8 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 **Prossimo passo**: ADR (soglia, piano oltre soglia, limite di 10 s, chiave città, bar utente senza città) e ok di Roberto al passo 1. Il prompt è stato salvato in `docs/PROMPT-DASHBOARD.md`; `docs/PROMPT-V3.md` citato dal prompt non esiste nel repo.
 
+**Passo 3 · Worker (stesso branch `m5-coverage-dashboard`)**: ADR 0022 approvata; SPEC 1.2 con M5-11…M5-16 e guardia su `spec-approved-3` (tag creato in locale, lo pubblica Roberto). Test prima: `tests/worker/coverage.test.ts` 8/8 rossi (moduli mancanti), poi codice: `GET /api/admin/coverage` (`no-store`, 10 s tra due calcoli in memoria, 429 con `Retry-After`), `isPublicBar` come unica definizione di bar pubblico (usata anche da `getCellPrices`, che ora toglie i prezzi dei bar nascosti), `getCoverage` con `COVERAGE_SQL` (`GROUP BY venue_key`). Helper JWT dei test estratto in `tests/worker/access-jwt.ts`. **Prove**: `npx vitest run` → 19 file, 114 test verdi (include `d1-reads`: scritture per contributo invariate); `npm run lint`, `typecheck`, `format:check` verdi; il test di costo con 5.000 righe verifica `SCAN prices_current` senza `TEMP B-TREE` e `rows_read` ≤ 5.010. Non ancora eseguiti: e2e, `test:security`, `npm run verify`. Resta: interfaccia (passo 4).
+
 ---
 
 ## 2026-10-14 · Sessione 7 · Allineamento feature list e revisione di sicurezza (branch `chore-align-feature-list-and-review-fixes`)

@@ -1,6 +1,7 @@
 // The only module that talks to D1 (CLAUDE.md).
 import type {
   CellPrices,
+  Coverage,
   HistoryRow,
   PendingVenue,
   PriceRow,
@@ -63,16 +64,83 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
   const u = rows
     .filter((r) => r.status === "approved")
     .map((r): UserVenue => [`u${String(r.id)}`, r.name, r.kind, r.lat, r.lon]);
-  // Prices of a user bar are public only once the admin approved it (SPEC 7.5, ADR 0019).
+  const h = ((hidden?.results ?? []) as unknown as { venue_key: string }[]).map((r) => r.venue_key);
   const approved = new Set(u.map((v) => v[0]));
   const p = ((prices?.results ?? []) as unknown as PriceDbRow[])
-    .filter((r) => !r.venue_key.startsWith("u") || approved.has(r.venue_key))
+    .filter((r) => isPublicBar(r.venue_key, approved, new Set(h)))
     .map(toPriceRow);
   const pend = rows
     .filter((r) => r.status === "pending")
     .map((r): PendingVenue => [`u${String(r.id)}`, r.name, r.kind, r.lat, r.lon, r.confirmations]);
-  const h = ((hidden?.results ?? []) as unknown as { venue_key: string }[]).map((r) => r.venue_key);
   return { p, u, pend, h };
+}
+
+/**
+ * The one definition of a public bar (SPEC 7.5, ADR 0017, 0019, 0022): an OSM bar the admin did not
+ * hide, or a user bar the admin approved. The map and the coverage dashboard both use it.
+ */
+export function isPublicBar(
+  key: string,
+  approvedUserKeys: ReadonlySet<string>,
+  hiddenKeys: ReadonlySet<string>,
+): boolean {
+  return key.startsWith("u") ? approvedUserKeys.has(key) : !hiddenKeys.has(key);
+}
+
+/**
+ * One row per bar with an active price. Grouping on the primary key's first column keeps the scan in
+ * key order, so SQLite builds no temporary B-tree and reads each row once (ADR 0022); the city is the
+ * same on every price of a bar.
+ */
+export const COVERAGE_SQL = `SELECT max(city) AS city, venue_key, COUNT(*) AS n, MAX(observed_on) AS d
+  FROM prices_current WHERE status = 'active' GROUP BY venue_key`;
+
+/** Public bars with an active price per city (SPEC 7.9, ADR 0022). */
+export async function getCoverage(db: D1Database): Promise<Coverage> {
+  const [rows, hiddenRows, userRows] = await db.batch([
+    db.prepare(COVERAGE_SQL),
+    db.prepare("SELECT venue_key FROM venues_hidden"),
+    db.prepare("SELECT id FROM venues_user WHERE status = 'approved'"),
+  ]);
+  const hidden = new Set(
+    (hiddenRows?.results as unknown as { venue_key: string }[]).map((r) => r.venue_key),
+  );
+  const approved = new Set(
+    (userRows?.results as unknown as { id: number }[]).map((r) => `u${String(r.id)}`),
+  );
+  const byCity = new Map<number | null, [bars: number, prices: number, day: string]>();
+  let active = 0;
+  for (const r of (rows?.results ?? []) as unknown as {
+    city: number | null;
+    venue_key: string;
+    n: number;
+    d: string;
+  }[]) {
+    active += r.n;
+    if (!isPublicBar(r.venue_key, approved, hidden)) continue;
+    const c = byCity.get(r.city) ?? [0, 0, ""];
+    c[0] += 1;
+    c[1] += r.n;
+    if (r.d > c[2]) c[2] = r.d;
+    byCity.set(r.city, c);
+  }
+  const none = byCity.get(null) ?? [0, 0, ""];
+  byCity.delete(null);
+  const cities = [...byCity].map(([id, c]): [number, number, number, string] => [
+    id as number,
+    c[0],
+    c[1],
+    c[2],
+  ]);
+  cities.sort((a, b) => b[1] - a[1] || b[2] - a[2] || a[0] - b[0]);
+  return {
+    at: new Date().toISOString(),
+    active,
+    bars: none[0] + cities.reduce((s, c) => s + c[1], 0),
+    prices: none[1] + cities.reduce((s, c) => s + c[2], 0),
+    cities,
+    none,
+  };
 }
 
 /** The bar of `?1` is public: an OSM bar, or a user bar the admin approved (ADR 0019). */

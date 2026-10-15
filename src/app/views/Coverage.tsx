@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Coverage, Place } from "../../shared/api-types";
 import { COVERAGE_WARN_ROWS, LAUNCH_CITY_ID, LAUNCH_TARGET } from "../../shared/config";
 import { searchKey } from "../../shared/venue";
 import { it } from "../i18n/it";
 import { loadPlaces } from "../lib/data";
 import { formatDate } from "../lib/format";
+import { CityBars } from "./CityBars";
 
 // Coverage of the map for the admin (SPEC 7.9, ADR 0022): calculated only when "Aggiorna" is
 // pressed. City names and bar totals come from places.json (static), prices from the Worker.
@@ -63,6 +64,27 @@ export function CoverageSection() {
   });
   // A double tap must not start two calculations: state alone is too slow to say "already running".
   const running = useRef(false);
+  // The city whose bars are listed (id 0: bars without a city) and the button to give the focus back to.
+  const [open, setOpen] = useState<{
+    id: number;
+    name: string;
+    at: [number, number] | null;
+  } | null>(null);
+  const opener = useRef("");
+  useEffect(() => {
+    if (!open && opener.current) document.getElementById(opener.current)?.focus();
+  }, [open]);
+  const members = useMemo(
+    () =>
+      data && open
+        ? data.members.filter((m) => m[0] === open.id).map((m): [string, string] => [m[1], m[2]])
+        : [],
+    [data, open],
+  );
+  const openCity = (id: number, name: string, at: [number, number] | null) => {
+    opener.current = `cov-city-${String(id)}`;
+    setOpen({ id, name, at });
+  };
 
   async function refresh() {
     if (running.current) return;
@@ -189,114 +211,145 @@ export function CoverageSection() {
             />
           </div>
           {data.active > COVERAGE_WARN_ROWS && <p class="hint">{it.admin.coverage.warn}</p>}
-          <div class="cov__tools">
-            <input
-              type="search"
-              class="field"
-              aria-label={it.admin.coverage.filter}
-              placeholder={it.admin.coverage.filter}
-              value={query}
-              onInput={(e) => {
-                setQuery(e.currentTarget.value);
+          {open && (
+            <CityBars
+              name={open.name}
+              at={open.at}
+              members={members}
+              onBack={() => {
+                setOpen(null);
               }}
             />
-            <select
-              class="field"
-              aria-label={it.admin.coverage.sort}
-              value={sort.column}
-              onChange={(e) => {
-                const column = e.currentTarget.value as Column;
-                setSort({ column, desc: column !== "name" });
-              }}
-            >
-              {COLUMNS.map((c) => (
-                <option key={c} value={c}>
-                  {LABEL[c]}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              class="btn btn--secondary"
-              aria-label={it.admin.coverage.reverse(sort.desc)}
-              onClick={() => {
-                setSort({ ...sort, desc: !sort.desc });
-              }}
-            >
-              {sort.desc ? it.admin.coverage.descending : it.admin.coverage.ascending}
-            </button>
-          </div>
-          <label class="cov__toggle">
-            <input
-              type="checkbox"
-              checked={showEmpty}
-              onChange={(e) => {
-                setShowEmpty(e.currentTarget.checked);
-              }}
-            />
-            {it.admin.coverage.showEmpty}
-          </label>
-          <table class="cov__table">
-            <caption class="sr-only">{it.admin.coverage.tableLabel}</caption>
-            <thead>
-              <tr>
-                {COLUMNS.map((c) => (
-                  <th
-                    key={c}
-                    scope="col"
-                    class={c === "total" || c === "prices" || c === "day" ? "cov__minor" : ""}
-                    aria-sort={
-                      sort.column === c ? (sort.desc ? "descending" : "ascending") : undefined
-                    }
-                  >
-                    {LABEL[c]}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.slice(0, SHOWN_ROWS).map((r) => (
-                <tr key={r.id}>
-                  <th scope="row">
-                    {r.lat === 0 ? (
-                      r.name
-                    ) : (
-                      <a href={`/?at=${String(r.lat)},${String(r.lon)}`}>{r.name}</a>
-                    )}
-                    <span class="cov__sub">
-                      {it.admin.coverage.subLine(
-                        number.format(r.total),
-                        r.prices,
-                        r.day ? formatDate(r.day) : "",
-                      )}
-                    </span>
-                  </th>
-                  <td>{number.format(r.bars)}</td>
-                  <td class="cov__minor">{number.format(r.total)}</td>
-                  <td>{r.total > 0 ? `${percent.format((r.bars / r.total) * 100)} %` : "—"}</td>
-                  <td class="cov__minor">{number.format(r.prices)}</td>
-                  <td class="cov__minor">{r.day ? formatDate(r.day) : "—"}</td>
-                </tr>
-              ))}
-              {showNone && (
-                <tr>
-                  <th scope="row">
-                    {it.admin.coverage.noCity}
-                    <span class="cov__sub">{it.admin.coverage.noCityHelp}</span>
-                  </th>
-                  <td>{number.format(none[0])}</td>
-                  <td class="cov__minor">—</td>
-                  <td>—</td>
-                  <td class="cov__minor">{number.format(none[1])}</td>
-                  <td class="cov__minor">{none[2] ? formatDate(none[2]) : "—"}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-          {rows.length === 0 && !showNone && <p class="hint">{it.admin.coverage.nothing}</p>}
-          {rows.length > SHOWN_ROWS && (
-            <p class="hint">{it.admin.coverage.truncated(SHOWN_ROWS)}</p>
           )}
+          {/* Hidden, not removed: the filter, the sort and the switch are as they were on return. */}
+          <div hidden={open !== null}>
+            <div class="cov__tools">
+              <input
+                type="search"
+                class="field"
+                aria-label={it.admin.coverage.filter}
+                placeholder={it.admin.coverage.filter}
+                value={query}
+                onInput={(e) => {
+                  setQuery(e.currentTarget.value);
+                }}
+              />
+              <select
+                class="field"
+                aria-label={it.admin.coverage.sort}
+                value={sort.column}
+                onChange={(e) => {
+                  const column = e.currentTarget.value as Column;
+                  setSort({ column, desc: column !== "name" });
+                }}
+              >
+                {COLUMNS.map((c) => (
+                  <option key={c} value={c}>
+                    {LABEL[c]}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                class="btn btn--secondary"
+                aria-label={it.admin.coverage.reverse(sort.desc)}
+                onClick={() => {
+                  setSort({ ...sort, desc: !sort.desc });
+                }}
+              >
+                {sort.desc ? it.admin.coverage.descending : it.admin.coverage.ascending}
+              </button>
+            </div>
+            <label class="cov__toggle">
+              <input
+                type="checkbox"
+                checked={showEmpty}
+                onChange={(e) => {
+                  setShowEmpty(e.currentTarget.checked);
+                }}
+              />
+              {it.admin.coverage.showEmpty}
+            </label>
+            <table class="cov__table">
+              <caption class="sr-only">{it.admin.coverage.tableLabel}</caption>
+              <thead>
+                <tr>
+                  {COLUMNS.map((c) => (
+                    <th
+                      key={c}
+                      scope="col"
+                      class={c === "total" || c === "prices" || c === "day" ? "cov__minor" : ""}
+                      aria-sort={
+                        sort.column === c ? (sort.desc ? "descending" : "ascending") : undefined
+                      }
+                    >
+                      {LABEL[c]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.slice(0, SHOWN_ROWS).map((r) => (
+                  <tr key={r.id}>
+                    <th scope="row">
+                      {r.bars > 0 ? (
+                        <button
+                          type="button"
+                          class="cov__city"
+                          id={`cov-city-${String(r.id)}`}
+                          onClick={() => {
+                            openCity(r.id, r.name, r.lat === 0 ? null : [r.lat, r.lon]);
+                          }}
+                        >
+                          {r.name}
+                        </button>
+                      ) : (
+                        r.name
+                      )}
+                      <span class="cov__sub">
+                        {it.admin.coverage.subLine(
+                          number.format(r.total),
+                          r.prices,
+                          r.day ? formatDate(r.day) : "",
+                        )}
+                      </span>
+                    </th>
+                    <td>{number.format(r.bars)}</td>
+                    <td class="cov__minor">{number.format(r.total)}</td>
+                    <td>{r.total > 0 ? `${percent.format((r.bars / r.total) * 100)} %` : "—"}</td>
+                    <td class="cov__minor">{number.format(r.prices)}</td>
+                    <td class="cov__minor">{r.day ? formatDate(r.day) : "—"}</td>
+                  </tr>
+                ))}
+                {showNone && (
+                  <tr>
+                    <th scope="row">
+                      <button
+                        type="button"
+                        class="cov__city"
+                        id="cov-city-0"
+                        onClick={() => {
+                          openCity(0, it.admin.coverage.noCity, null);
+                        }}
+                      >
+                        {it.admin.coverage.noCity}
+                      </button>
+                      <span class="cov__sub">{it.admin.coverage.noCityHelp}</span>
+                    </th>
+                    <td>{number.format(none[0])}</td>
+                    <td class="cov__minor">—</td>
+                    <td>—</td>
+                    <td class="cov__minor">{number.format(none[1])}</td>
+                    <td class="cov__minor">{none[2] ? formatDate(none[2]) : "—"}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            {rows.length === 0 && !showNone && <p class="hint">{it.admin.coverage.nothing}</p>}
+            {rows.length > SHOWN_ROWS && (
+              <p class="hint">{it.admin.coverage.truncated(SHOWN_ROWS)}</p>
+            )}
+          </div>
         </>
       )}
     </section>

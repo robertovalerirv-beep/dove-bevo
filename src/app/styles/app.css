@@ -819,3 +819,47 @@
   color: var(--color-text-muted);
   opacity: 1;
 }
+
+/* City list of the coverage dashboard (ADR 0022) */
+.cov__city {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+  min-width: var(--target);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  font: var(--weight-semibold) var(--text-md) var(--font-sans);
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.cov__city-bars {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+.cov__city-bars h3 {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xl);
+}
+.cov__bars {
+  width: 100%;
+  margin: var(--space-2) 0;
+  padding: 0;
+  list-style: none;
+}
+.cov__bars li {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.cov__price {
+  margin: 0;
+}
+.cov__sub--always {
+  display: block;
+}

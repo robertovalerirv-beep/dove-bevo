@@ -38,6 +38,7 @@ export async function buildCoverage(env: Env): Promise<Coverage> {
     return bar ? { lat: bar[3], lon: bar[4] } : null;
   };
 
+  const members: Coverage["members"] = [];
   const byCity = new Map<number | null, [bars: number, prices: number, day: string]>();
   let active = 0;
   for (const r of rows) {
@@ -48,6 +49,7 @@ export async function buildCoverage(env: Env): Promise<Coverage> {
       const at = await position(r.venue_key, r.cell);
       city = at ? await nearest(at.lat, at.lon) : null;
     }
+    members.push([city ?? 0, r.venue_key, r.cell]);
     const c = byCity.get(city) ?? [0, 0, ""];
     c[0] += 1;
     c[1] += r.n;
@@ -78,5 +80,6 @@ export async function buildCoverage(env: Env): Promise<Coverage> {
     cities,
     none,
     users: [...perCity].sort((a, b) => a[0] - b[0]),
+    members,
   };
 }

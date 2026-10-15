@@ -19,6 +19,19 @@ const COVERAGE = {
   ],
   none: [0, 0, ""],
   users: [[MILANO, 20]], // approved user bars of the city: they join the total
+  members: [],
+};
+// Milano as the list tests need it: the three bars of the e2e seed that have a public price.
+const LIST = {
+  ...COVERAGE,
+  bars: 3,
+  prices: 5,
+  cities: [[MILANO, 3, 5, "2026-10-12"]],
+  members: [
+    [MILANO, "n2420779240", "u0nd9"],
+    [MILANO, "n13001337602", "u0nd9"],
+    [MILANO, "n5471678323", "u0nd9"],
+  ],
 };
 const EMPTY_OVERVIEW = { reports: [], venues: [], hidden: [], prices: [] };
 
@@ -166,16 +179,100 @@ test("the cost warning appears above 80 % of the threshold (ADR 0022)", async ({
   await expect(page.getByText("si avvicina al limite di costo")).toBeVisible();
 });
 
-test("a city row opens the map on that city", async ({ page }) => {
-  await fakeAdmin(page);
+test("a city opens the list of its bars with their prices, not the map (M5-15)", async ({
+  page,
+}) => {
+  const admin = await fakeAdmin(page);
+  admin.next = () => ({ body: LIST });
   await page.goto("/admin");
   await refresh(page).click();
-  await rowOf(page, "Milano")
-    .getByRole("link", { name: /Milano/ })
-    .click();
+  await page.getByRole("searchbox", { name: "Filtra l'elenco" }).fill("mil");
+  const before = admin.requests;
+  await page.getByRole("button", { name: /^Milano/ }).click();
+
+  await expect(page.getByRole("heading", { name: "Milano", level: 3 })).toBeVisible();
+  await expect(page.getByText("3 locali con prezzo")).toBeVisible();
+  const bars = page.getByTestId("coverage-bars").getByRole("listitem");
+  await expect(bars).toHaveCount(3);
+  // The names and prices come from the map data, not from the admin API.
+  const duomo = bars.filter({ hasText: "Bistrot Duomo" });
+  await expect(duomo).toContainText("Spritz");
+  await expect(duomo).toContainText("7,50 €");
+  await expect(duomo).toContainText("Birra alla spina 0,4 l");
+  await expect(duomo).toContainText("6,00 €");
+  await expect(bars.filter({ hasText: "Camparino in Galleria" })).toContainText("12,00 €");
+  const aperol = bars.filter({ hasText: "Terrazza Aperol" });
+  await expect(aperol).toContainText("10,00 €");
+  await expect(aperol).toContainText("HH"); // only a happy-hour price
+  // Nothing that is not public: the quarantined and the reviewed prices of the seed stay out.
+  await expect(page.getByTestId("coverage-bars")).not.toContainText("20,00 €");
+  await expect(duomo.getByRole("link", { name: "Apri la scheda" })).toHaveAttribute(
+    "href",
+    "/bar/n2420779240?c=u0nd9",
+  );
+  expect(admin.requests).toBe(before); // the tap asks nothing of the admin API
+
+  // The map is still one tap away, as a secondary link.
+  await expect(page.getByRole("link", { name: "Vedi sulla mappa" })).toHaveAttribute(
+    "href",
+    /\/\?at=45\.46\d+,9\.18\d+/,
+  );
+
+  // Back: the table is as it was left, and the focus returns to the city.
+  await page.getByRole("button", { name: /Tutte le città/ }).click();
+  await expect(page.getByRole("searchbox", { name: "Filtra l'elenco" })).toHaveValue("mil");
+  await expect(page.getByRole("button", { name: /^Milano/ })).toBeFocused();
+});
+
+test("the map link of a city still opens the map on it", async ({ page }) => {
+  const admin = await fakeAdmin(page);
+  admin.next = () => ({ body: LIST });
+  await page.goto("/admin");
+  await refresh(page).click();
+  await page.getByRole("button", { name: /^Milano/ }).click();
+  await page.getByRole("link", { name: "Vedi sulla mappa" }).click();
   await expect(page).toHaveURL(/\/\?at=45\.46\d+,9\.18\d+/);
   await waitForBars(page);
   expect(await zoomOf(page)).toBeGreaterThanOrEqual(13);
+});
+
+test("a failed load of the bars says so and can be retried", async ({ page }) => {
+  const admin = await fakeAdmin(page);
+  admin.next = () => ({ body: LIST });
+  await page.route("**/api/prices/u0nd9", (route) => route.abort());
+  await page.goto("/admin");
+  await refresh(page).click();
+  await page.getByRole("button", { name: /^Milano/ }).click();
+  await expect(page.getByRole("alert")).toContainText("Non riesco a caricare i locali");
+  await page.unroute("**/api/prices/u0nd9");
+  await page.getByRole("button", { name: "Riprova" }).click();
+  await expect(page.getByRole("heading", { name: "Milano", level: 3 })).toBeFocused();
+  await expect(page.getByTestId("coverage-bars").getByRole("listitem")).toHaveCount(3);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("the list on a phone: targets, no sideways scroll, axe (M5-15)", async ({ page }) => {
+  const admin = await fakeAdmin(page);
+  admin.next = () => ({ body: LIST });
+  await page.goto("/admin");
+  await refresh(page).click();
+  await page.getByRole("button", { name: /^Milano/ }).click();
+  await expect(page.getByTestId("coverage-bars").getByRole("listitem")).toHaveCount(3);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  for (const control of await page
+    .getByTestId("coverage-section")
+    .locator("button:visible, a:visible")
+    .all()) {
+    const size = await control.boundingBox();
+    expect(size?.height).toBeGreaterThanOrEqual(48);
+  }
+  const result = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(result.violations).toEqual([]);
+  await page.screenshot({ path: "docs/screenshots/admin/coverage-city-list.png", fullPage: true });
 });
 
 test("phone layout, targets and accessibility in every state (M5-15)", async ({ page }) => {
@@ -211,10 +308,14 @@ test("phone layout, targets and accessibility in every state (M5-15)", async ({ 
   // Every control of the section is a 48 px target (WCAG 2.2 and the design system).
   const controls = page
     .getByTestId("coverage-section")
-    .locator("button, input[type=search], label:has(input[type=checkbox]), th a, td a");
+    .locator("button, input[type=search], label:has(input[type=checkbox]), th a, td a, th button");
   for (const control of await controls.all()) {
     const size = await control.boundingBox();
     expect(size?.height).toBeGreaterThanOrEqual(48);
+  }
+  // A short city name is still a 48 px wide target.
+  for (const city of await page.locator(".cov__city").all()) {
+    expect((await city.boundingBox())?.width).toBeGreaterThanOrEqual(48);
   }
   await axe();
   await page.screenshot({ path: "docs/screenshots/admin/coverage-data.png", fullPage: true });
@@ -250,4 +351,33 @@ test("a bar the Worker could not place stays visible in 'Senza città' (degraded
   await page.goto("/admin");
   await refresh(page).click();
   await expect(rowOf(page, "Senza città")).toContainText("2");
+});
+
+test("the bars without a city open as a list too, and a new calculation refreshes an open list", async ({
+  page,
+}) => {
+  const admin = await fakeAdmin(page);
+  admin.next = () => ({
+    body: {
+      ...LIST,
+      none: [1, 2, "2026-10-10"],
+      members: [...LIST.members, [0, "w549495264", "u0nd9"]],
+    },
+  });
+  await page.goto("/admin");
+  await refresh(page).click();
+  await page.getByRole("button", { name: "Senza città" }).click();
+  await expect(page.getByText("1 locale con prezzo")).toBeVisible();
+  await expect(page.getByTestId("coverage-bars").getByRole("listitem")).toHaveCount(1);
+  await expect(page.getByRole("link", { name: "Vedi sulla mappa" })).toHaveCount(0); // no city, no map
+
+  // Back to the table, into Milano, then a new calculation while the list is open.
+  await page.getByRole("button", { name: /Tutte le città/ }).click();
+  await expect(page.getByRole("button", { name: "Senza città" })).toBeFocused();
+  await page.getByRole("button", { name: /^Milano/ }).click();
+  await expect(page.getByText("3 locali con prezzo")).toBeVisible();
+  admin.next = () => ({ body: { ...LIST, members: LIST.members.slice(0, 2) } });
+  await refresh(page).click();
+  await expect(page.getByText("2 locali con prezzo")).toBeVisible();
+  await expect(page.getByTestId("coverage-bars").getByRole("listitem")).toHaveCount(2);
 });

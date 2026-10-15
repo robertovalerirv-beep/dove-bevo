@@ -255,6 +255,16 @@ export const it = {
       nothing: "Nessuna città con questo nome.",
       warn: "La dashboard si avvicina al limite di costo previsto (docs/adr/0022).",
       tableLabel: "Copertura per città",
+      back: "← Tutte le città",
+      barsCount: (n: number) =>
+        n === 1 ? "1 locale con prezzo" : `${String(n)} locali con prezzo`,
+      loadingBars: "Carico i locali…",
+      barsFailed: "Non riesco a caricare i locali.",
+      retry: "Riprova",
+      openBar: "Apri la scheda",
+      showMap: "Vedi sulla mappa",
+      addedByUser: "Aggiunto da un utente",
+      notInMap: "non trovato nei dati della mappa",
       subLine: (total: string, prices: number, day: string) =>
         `${total} bar totali · ${String(prices)} prezzi${day ? ` · ultimo ${day}` : ""}`,
     },

@@ -1,7 +1,6 @@
 // The only module that talks to D1 (CLAUDE.md).
 import type {
   CellPrices,
-  Coverage,
   HistoryRow,
   PendingVenue,
   PriceRow,
@@ -91,57 +90,36 @@ export function isPublicBar(
 /**
  * One row per bar with an active price. Grouping on the primary key's first column keeps the scan in
  * key order, so SQLite builds no temporary B-tree and reads each row once (ADR 0022). The one MAX()
- * makes the bare `city` come from the bar's latest price (SQLite rule), so after an import that
- * moved the bar to another place the newest attribution wins, not an arbitrary one.
+ * makes the bare `city` and `cell` come from the bar's latest price (SQLite rule), so after an
+ * import that moved the bar to another place the newest attribution wins, not an arbitrary one.
  */
-export const COVERAGE_SQL = `SELECT city, venue_key, COUNT(*) AS n, MAX(observed_on) AS d
+export const COVERAGE_SQL = `SELECT city, cell, venue_key, COUNT(*) AS n, MAX(observed_on) AS d
   FROM prices_current WHERE status = 'active' GROUP BY venue_key`;
 
-/** Public bars with an active price per city (SPEC 7.9, ADR 0022). */
-export async function getCoverage(db: D1Database): Promise<Coverage> {
+export interface CoverageRows {
+  rows: { city: number | null; cell: string; venue_key: string; n: number; d: string }[];
+  hidden: Set<string>;
+  /** Approved user bars by key ("u12"), with the position the admin or the proposer placed. */
+  users: Map<string, { lat: number; lon: number }>;
+}
+
+/** The three reads behind the coverage dashboard, in one round trip (ADR 0022). */
+export async function getCoverageRows(db: D1Database): Promise<CoverageRows> {
   const [rows, hiddenRows, userRows] = await db.batch([
     db.prepare(COVERAGE_SQL),
     db.prepare("SELECT venue_key FROM venues_hidden"),
-    db.prepare("SELECT id FROM venues_user WHERE status = 'approved'"),
+    db.prepare("SELECT id, lat, lon FROM venues_user WHERE status = 'approved'"),
   ]);
-  const hidden = new Set(
-    ((hiddenRows?.results ?? []) as unknown as { venue_key: string }[]).map((r) => r.venue_key),
-  );
-  const approved = new Set(
-    ((userRows?.results ?? []) as unknown as { id: number }[]).map((r) => `u${String(r.id)}`),
-  );
-  const byCity = new Map<number | null, [bars: number, prices: number, day: string]>();
-  let active = 0;
-  for (const r of (rows?.results ?? []) as unknown as {
-    city: number | null;
-    venue_key: string;
-    n: number;
-    d: string;
-  }[]) {
-    active += r.n;
-    if (!isPublicBar(r.venue_key, approved, hidden)) continue;
-    const c = byCity.get(r.city) ?? [0, 0, ""];
-    c[0] += 1;
-    c[1] += r.n;
-    if (r.d > c[2]) c[2] = r.d;
-    byCity.set(r.city, c);
-  }
-  const none = byCity.get(null) ?? [0, 0, ""];
-  byCity.delete(null);
-  const cities = [...byCity].map(([id, c]): [number, number, number, string] => [
-    id as number,
-    c[0],
-    c[1],
-    c[2],
-  ]);
-  cities.sort((a, b) => b[1] - a[1] || b[2] - a[2] || a[0] - b[0]);
   return {
-    at: new Date().toISOString(),
-    active,
-    bars: none[0] + cities.reduce((s, c) => s + c[1], 0),
-    prices: none[1] + cities.reduce((s, c) => s + c[2], 0),
-    cities,
-    none,
+    rows: (rows?.results ?? []) as unknown as CoverageRows["rows"],
+    hidden: new Set(
+      ((hiddenRows?.results ?? []) as unknown as { venue_key: string }[]).map((r) => r.venue_key),
+    ),
+    users: new Map(
+      ((userRows?.results ?? []) as unknown as { id: number; lat: number; lon: number }[]).map(
+        (r) => [`u${String(r.id)}`, { lat: r.lat, lon: r.lon }],
+      ),
+    ),
   };
 }
 

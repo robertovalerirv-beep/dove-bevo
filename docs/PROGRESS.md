@@ -37,6 +37,18 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-15 · Sessione 8 (seguito) · Dashboard: nessun bar «Senza città» (branch `m5-coverage-no-orphans`)
+
+**Richiesta di Roberto** dopo la prova in staging (la dashboard «funziona clamorosamente bene»): la riga «Senza città» (2 bar, 7 prezzi) non deve poter succedere.
+
+**Causa**: i bar utente sono salvati con `city = NULL` e i bar OSM a più di 15 km da un luogo hanno `ci = -1`.
+
+**Fatto**: `src/worker/lib/coverage.ts` assegna a ogni bar senza città il luogo più vicino di `places.json` (a qualunque distanza), calcolandolo a ogni pressione: nessuna migrazione né scrittura in più, vale anche per i dati già salvati. I bar utente approvati sono contati per città (`users`) e il client li somma ai bar OSM nel totale. «Senza città» resta solo come ripiego per un bar la cui posizione non si trova. ADR 0022 e SPEC 7.9 aggiornate.
+
+**Prove**: test worker scritti prima (3 rossi), poi 118/118 verdi (bar utente e bar OSM senza città piazzati per coordinate, bar lontano da ogni luogo, bar utente senza prezzi nel totale); e2e della dashboard aggiornati (totale = OSM + bar a mano, nessuna riga «Senza città», ripiego ancora visibile); lint, typecheck, format verdi.
+
+---
+
 ## 2026-10-14 · Sessione 7 · Allineamento feature list e revisione di sicurezza (branch `chore-align-feature-list-and-review-fixes`)
 
 **Fatto**: le correzioni dell'audit (PR #22) sono in `main` e in staging (CI e deploy verdi; `/api/venues/u007/prices` → 400 dal vivo). Revisione `security-reviewer` sul diff: nessun punto bloccante; corretti il pin con «Vicino a me» lento (si controlla anche la posizione corrente) e le regex non canoniche di admin e client (ADR 0021, seconda revisione). `passes: true` per M3-11…M3-16, M3-18, M3-19: i test sono già in `main` (le voci erano a true solo sul vecchio branch `v3-spec-1-1`, ora superato); su `main` 49/75. Restano a false M3-17 (inserimento da listino in admin) e M3-20 (riga istantanea per cella). `docs/materiali/` è in `.gitignore` (repo pubblico, contiene ipotesi finanziarie).

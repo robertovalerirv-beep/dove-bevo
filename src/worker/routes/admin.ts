@@ -5,6 +5,7 @@ import { z } from "zod";
 import { CATALOG } from "../../shared/catalog";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { COVERAGE_MIN_INTERVAL_MS } from "../config";
+import { buildCoverage } from "../lib/coverage";
 import { romeDay } from "../lib/day";
 import {
   addApprovedVenue,
@@ -12,7 +13,6 @@ import {
   listHidden,
   listPricesToReview,
   clearBarReports,
-  getCoverage,
   listBarReports,
   listUserVenues,
   setPriceStatus,
@@ -74,7 +74,7 @@ admin.get("/coverage", async (c) => {
     throw new ApiError("rate_limited", { "Retry-After": String(Math.ceil(wait / 1000)) });
   lastCoverageAt = Date.now();
   try {
-    const coverage = await getCoverage(c.env.DB);
+    const coverage = await buildCoverage(c.env);
     c.header("Cache-Control", "no-store");
     return c.json(coverage);
   } catch (error) {

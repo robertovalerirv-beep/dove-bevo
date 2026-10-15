@@ -31,10 +31,10 @@ function price(
   ).bind(key, drink, city, day, status);
 }
 
-const user = (id: number, status: string) =>
+const user = (id: number, status: string, lat = 45.46, lon = 9.19) =>
   env.DB.prepare(
-    "INSERT INTO venues_user (id, name, kind, lat, lon, cell, status) VALUES (?1, 'Bar', 1, 45.46, 9.19, 'u0nd9', ?2)",
-  ).bind(id, status);
+    "INSERT INTO venues_user (id, name, kind, lat, lon, cell, status) VALUES (?1, 'Bar', 1, ?3, ?4, 'u0nd9', ?2)",
+  ).bind(id, status, lat, lon);
 
 async function coverage(): Promise<Coverage> {
   resetCoverageLimit();
@@ -64,6 +64,7 @@ describe("GET /api/admin/coverage: access, headers, limit (M5-11)", () => {
       prices: 0,
       cities: [],
       none: [0, 0, ""],
+      users: [],
     });
   });
 
@@ -102,10 +103,11 @@ describe("what counts as a bar with a price (M5-12)", () => {
       price("n2", MILANO, "removed", "2026-10-10", "prosecco"),
       price("n3", COMO), // hidden by the admin
       price("n4", COMO, "active", "2026-10-11"),
-      price("u1", null), // approved user bar: no city
+      price("u1", null), // approved user bar: stored without a city, placed by its coordinates
+      price("n13001337602", null), // OSM bar of the fixture whose row has no city: placed by its coordinates
       price("u2", null), // pending: not public
       price("u3", null), // rejected: not public
-      price("n5", null), // OSM bar with no city within 15 km
+      price("n5", null), // a key that is in no static file: nothing to place it by
       user(1, "approved"),
       user(2, "pending"),
       user(3, "removed"),
@@ -115,17 +117,35 @@ describe("what counts as a bar with a price (M5-12)", () => {
     ]);
     const body = await coverage();
     expect(body.cities).toEqual([
-      [MILANO, 1, 2, "2026-10-12"],
+      [MILANO, 3, 4, "2026-10-12"],
       [COMO, 1, 1, "2026-10-11"],
     ]);
-    expect(body.none).toEqual([2, 2, "2026-10-10"]);
-    expect(body.bars).toBe(4);
-    expect(body.prices).toBe(5);
+    expect(body.none).toEqual([1, 1, "2026-10-10"]);
+    // Approved user bars count in the total of their city (the client adds them to places.json).
+    expect(body.users).toEqual([[MILANO, 1]]);
+    expect(body.bars).toBe(5);
+    expect(body.prices).toBe(6);
     // Every active row is read whatever its bar: this is the number the cost warning uses.
-    expect(body.active).toBe(8);
+    expect(body.active).toBe(9);
     // Invariant: bars and prices per city plus "no city" add up to the national totals.
     expect(body.cities.reduce((s, c) => s + c[1], body.none[0])).toBe(body.bars);
     expect(body.cities.reduce((s, c) => s + c[2], body.none[1])).toBe(body.prices);
+  });
+
+  it("a bar can never be left without a city: even one far from every place gets the nearest", async () => {
+    await env.DB.batch([user(10, "approved", 41.9, 12.5), price("u10", null)]); // Rome, fixture is Milano only
+    const body = await coverage();
+    expect(body.none).toEqual([0, 0, ""]);
+    expect(body.bars).toBe(1);
+    expect(body.cities).toHaveLength(1);
+    expect(body.cities[0]?.[1]).toBe(1);
+  });
+
+  it("a user bar without prices is counted in its city, still as a bar of the total", async () => {
+    await env.DB.batch([user(11, "approved"), user(12, "pending")]);
+    const body = await coverage();
+    expect(body.users).toEqual([[MILANO, 1]]);
+    expect(body.bars).toBe(0); // no price yet: not a bar with a price
   });
 
   it("a second price on a covered bar adds a price, not a bar", async () => {

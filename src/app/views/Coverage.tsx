@@ -93,6 +93,8 @@ export function CoverageSection() {
   const rows = useMemo(() => {
     if (!data) return [];
     const byId = new Map(data.cities.map((c) => [c[0], c]));
+    // Bars added by hand are not in places.json: they join the total of their city.
+    const added = new Map(data.users);
     const known = new Set(places.map((p) => p[0]));
     const make = (id: number, name: string, lat: number, lon: number, total: number): Row => {
       const c = byId.get(id);
@@ -102,7 +104,7 @@ export function CoverageSection() {
         key: searchKey(name),
         lat,
         lon,
-        total,
+        total: total + (added.get(id) ?? 0),
         bars: c?.[1] ?? 0,
         prices: c?.[2] ?? 0,
         day: c?.[3] ?? "",

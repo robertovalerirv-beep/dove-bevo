@@ -17,7 +17,8 @@ const COVERAGE = {
     [MILANO, 12, 40, "2026-10-12"],
     [SESTO, 3, 5, "2026-10-11"],
   ],
-  none: [2, 3, "2026-10-10"],
+  none: [0, 0, ""],
+  users: [[MILANO, 20]], // approved user bars of the city: they join the total
 };
 const EMPTY_OVERVIEW = { reports: [], venues: [], hidden: [], prices: [] };
 
@@ -102,10 +103,11 @@ test("indicators, gate and the table per city (M5-15)", async ({ page }) => {
 
   const milano = rowOf(page, "Milano");
   await expect(milano).toContainText("12");
-  await expect(milano).toContainText("1.947"); // all the OSM bars of the city
+  await expect(milano).toContainText("1.967"); // the 1947 OSM bars of the city plus 20 added by hand
   await expect(milano).toContainText("0,6 %");
   await expect(milano).toContainText("12 ott 2026");
-  await expect(rowOf(page, "Senza città")).toContainText("2");
+  // No orphan row: every bar belongs to a city.
+  await expect(rowOf(page, "Senza città")).toHaveCount(0);
 
   // Search and sort work on the data already downloaded: no new request.
   await page.getByRole("searchbox", { name: "Filtra l'elenco" }).fill("sesto");
@@ -238,4 +240,14 @@ test("keyboard focus stays on the button while and after it calculates (WCAG 2.4
   await expect(refresh(page)).toBeFocused();
   await expect(rowOf(page, "Milano")).toBeVisible();
   await expect(refresh(page)).toBeFocused();
+});
+
+test("a bar the Worker could not place stays visible in 'Senza città' (degraded case)", async ({
+  page,
+}) => {
+  const admin = await fakeAdmin(page);
+  admin.next = () => ({ body: { ...COVERAGE, none: [2, 3, "2026-10-10"] } });
+  await page.goto("/admin");
+  await refresh(page).click();
+  await expect(rowOf(page, "Senza città")).toContainText("2");
 });

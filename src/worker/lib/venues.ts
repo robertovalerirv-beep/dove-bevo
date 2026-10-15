@@ -1,14 +1,23 @@
-import type { CellFile } from "../../shared/api-types";
+import type { CellFile, Place } from "../../shared/api-types";
 import { distanceMeters, DUPLICATE_METERS, sameName } from "../../shared/venue";
 import { getUserVenue, isHidden, venuesInCell } from "./db";
 import { ApiError } from "./errors";
 
 /** The static file of a cell, or null when the cell has no bars (the SPA fallback is HTML). */
-async function cellFile(env: Env, cell: string): Promise<CellFile | null> {
+export async function cellFile(env: Env, cell: string): Promise<CellFile | null> {
   const response = await env.ASSETS.fetch(
     `https://assets.local/data/${env.DATA_VERSION}/v/${cell}.json`,
   );
   if (!response.headers.get("content-type")?.includes("application/json")) return null;
+  return await response.json();
+}
+
+/** places.json of the deployed data (cities and towns by OSM id), or [] if it is missing. */
+export async function placesFile(env: Env): Promise<Place[]> {
+  const response = await env.ASSETS.fetch(
+    `https://assets.local/data/${env.DATA_VERSION}/places.json`,
+  );
+  if (!response.headers.get("content-type")?.includes("application/json")) return [];
   return await response.json();
 }
 

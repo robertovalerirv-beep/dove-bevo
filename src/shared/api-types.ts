@@ -55,6 +55,8 @@ export interface Coverage {
   prices: number;
   /** [OSM id of the city, bars with a price, public prices, day of the latest price] */
   cities: [number, number, number, string][];
-  /** The same for bars without a city (user bars, OSM bars far from any place): [bars, prices, day]. */
+  /** Bars the Worker could not place at all (their position is unknown): [bars, prices, day]. */
   none: [number, number, string];
+  /** Approved user bars per city, with or without prices: they join the city's total. [city, n] */
+  users: [number, number][];
 }

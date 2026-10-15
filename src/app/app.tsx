@@ -57,6 +57,16 @@ const SIMILAR_MAX = 3;
 const KEY = /^[nwru][1-9]\d{0,14}$/;
 const CELL = /^[0-9b-hjkmnp-z]{5}$/;
 
+/** `/?at=lat,lon`: the admin's city rows open the map there (a view only, nothing is sent). */
+function parseAt(): [number, number, number] | null {
+  const m = /^(-?\d{1,2}(?:\.\d{1,5})?),(-?\d{1,3}(?:\.\d{1,5})?)$/.exec(
+    new URLSearchParams(location.search).get("at") ?? "",
+  );
+  const lat = Number(m?.[1]);
+  const lon = Number(m?.[2]);
+  return m && lat >= 35 && lat <= 48 && lon >= 6 && lon <= 19 ? [lat, lon, 14] : null;
+}
+
 type Route = { name: "map" } | { name: "bar"; key: string; cell: string };
 
 function parseRoute(): Route {
@@ -93,7 +103,7 @@ export function App({ loadMap }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<VenueMap | null>(null);
   // A move asked before the map is ready (fast tap, slow network) is applied when it is.
-  const pendingMove = useRef<[number, number, number] | null>(null);
+  const pendingMove = useRef<[number, number, number] | null>(parseAt());
   const [ready, setReady] = useState(false);
   const [pricesShown, setPricesShown] = useState<string[]>([]);
   const [view, setView] = useState<MapView | null>(null);
@@ -124,7 +134,7 @@ export function App({ loadMap }: Props) {
   const [mapFailed, setMapFailed] = useState(false);
   // MapLibre starts on the first gesture or action that needs it (ADR 0014); until then a static
   // picture of the same view keeps the first load light.
-  const [mapWanted, setMapWanted] = useState(false);
+  const [mapWanted, setMapWanted] = useState(() => parseAt() !== null);
   const ensureMap = () => {
     setMapWanted(true);
   };

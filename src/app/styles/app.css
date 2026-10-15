@@ -705,3 +705,111 @@
   grid-column: 1 / -1;
   margin: var(--space-1) 0 0;
 }
+
+/* Coverage dashboard of /admin (ADR 0022) */
+.cov {
+  margin: var(--space-4) 0;
+}
+.cov__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.cov__bar .hint {
+  margin: 0;
+}
+.cov__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: var(--space-4) 0 var(--space-3);
+}
+.cov__stats div {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.cov__stats dt {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.cov__stats dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+}
+.cov__gate p {
+  margin: 0 0 var(--space-1);
+}
+.cov__gate progress {
+  width: 100%;
+  height: var(--space-3);
+  accent-color: var(--color-primary);
+}
+.cov__tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.cov__tools input {
+  grid-column: 1 / -1;
+}
+.cov__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target);
+}
+.cov__toggle input {
+  width: var(--target);
+  height: var(--control-sm);
+  accent-color: var(--color-primary);
+}
+.cov__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.cov__table th,
+.cov__table td {
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  vertical-align: top;
+}
+.cov__table thead th {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.cov__table th[scope="row"],
+.cov__table th:first-child {
+  text-align: left;
+}
+.cov__table th[scope="row"] {
+  font-weight: var(--weight-regular);
+}
+.cov__table a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+}
+.cov__sub {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.cov__minor {
+  display: none;
+}
+@media (min-width: 600px) {
+  .cov__minor {
+    display: table-cell;
+  }
+  .cov__sub {
+    display: none;
+  }
+}

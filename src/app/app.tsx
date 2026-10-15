@@ -103,7 +103,8 @@ export function App({ loadMap }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<VenueMap | null>(null);
   // A move asked before the map is ready (fast tap, slow network) is applied when it is.
-  const pendingMove = useRef<[number, number, number] | null>(parseAt());
+  const [initialAt] = useState(parseAt);
+  const pendingMove = useRef<[number, number, number] | null>(initialAt);
   const [ready, setReady] = useState(false);
   const [pricesShown, setPricesShown] = useState<string[]>([]);
   const [view, setView] = useState<MapView | null>(null);
@@ -134,7 +135,7 @@ export function App({ loadMap }: Props) {
   const [mapFailed, setMapFailed] = useState(false);
   // MapLibre starts on the first gesture or action that needs it (ADR 0014); until then a static
   // picture of the same view keeps the first load light.
-  const [mapWanted, setMapWanted] = useState(() => parseAt() !== null);
+  const [mapWanted, setMapWanted] = useState(initialAt !== null);
   const ensureMap = () => {
     setMapWanted(true);
   };

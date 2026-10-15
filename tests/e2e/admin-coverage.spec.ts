@@ -25,7 +25,9 @@ const EMPTY_OVERVIEW = { reports: [], venues: [], hidden: [], prices: [] };
 async function fakeAdmin(page: Page, options: { delayMs?: number } = {}) {
   const state = {
     requests: 0,
-    next: (): { status?: number; body?: unknown; html?: boolean } => ({ body: COVERAGE }),
+    next: (): { status?: number; body?: unknown; html?: boolean; abort?: boolean } => ({
+      body: COVERAGE,
+    }),
   };
   await page.route("**/api/admin/**", async (route) => {
     const url = new URL(route.request().url());
@@ -36,6 +38,10 @@ async function fakeAdmin(page: Page, options: { delayMs?: number } = {}) {
     state.requests += 1;
     if (options.delayMs) await new Promise((resolve) => setTimeout(resolve, options.delayMs));
     const answer = state.next();
+    if (answer.abort) {
+      await route.abort();
+      return;
+    }
     if (answer.html) {
       await route.fulfill({ status: 200, contentType: "text/html", body: "<html></html>" });
       return;
@@ -113,7 +119,7 @@ test("indicators, gate and the table per city (M5-15)", async ({ page }) => {
   await expect(page.locator("th[aria-sort]")).toHaveText(/Prezzi pubblici/);
   await expect(page.locator("th[aria-sort]")).toHaveAttribute("aria-sort", "descending");
   await expect(page.locator("tbody tr").first()).toContainText("Milano");
-  await page.getByRole("button", { name: "Decrescente" }).click();
+  await page.getByRole("button", { name: /Inverti l'ordine, ora decrescente/ }).click();
   await expect(page.locator("th[aria-sort]")).toHaveAttribute("aria-sort", "ascending");
   await expect(page.locator("tbody tr").first()).toContainText("Sesto San Giovanni");
   await expect(rowOf(page, "Rozzano")).toHaveCount(0); // no price there: hidden by default
@@ -136,6 +142,11 @@ test("a failed or non-JSON answer keeps the previous data (M5-15)", async ({ pag
   admin.next = () => ({ status: 429, body: { error: { code: "rate_limited", message: "x" } } });
   await refresh(page).click();
   await expect(page.getByRole("alert")).toContainText("Hai appena aggiornato");
+  await expect(rowOf(page, "Milano")).toBeVisible();
+
+  admin.next = () => ({ abort: true }); // the network fails
+  await refresh(page).click();
+  await expect(page.getByRole("alert")).toContainText("Aggiornamento non riuscito, riprova");
   await expect(rowOf(page, "Milano")).toBeVisible();
 
   admin.next = () => ({ body: COVERAGE });
@@ -190,7 +201,7 @@ test("phone layout, targets and accessibility in every state (M5-15)", async ({ 
 
   await refresh(page).click();
   await expect(refresh(page)).toBeDisabled();
-  await expect(page.getByTestId("coverage-section")).toHaveAttribute("aria-busy", "true");
+  await expect(page.getByText("Calcolo in corso")).toBeVisible();
   await page.screenshot({ path: "docs/screenshots/admin/coverage-loading.png" });
 
   await expect(rowOf(page, "Milano")).toBeVisible();
@@ -214,4 +225,17 @@ test("the error state, as a screenshot", async ({ page }) => {
   await refresh(page).click();
   await expect(page.getByRole("alert")).toContainText("Aggiornamento non riuscito");
   await page.screenshot({ path: "docs/screenshots/admin/coverage-error.png" });
+});
+
+test("keyboard focus stays on the button while and after it calculates (WCAG 2.4.3)", async ({
+  page,
+}) => {
+  await fakeAdmin(page, { delayMs: 300 });
+  await page.goto("/admin");
+  await refresh(page).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("Calcolo in corso")).toBeVisible();
+  await expect(refresh(page)).toBeFocused();
+  await expect(rowOf(page, "Milano")).toBeVisible();
+  await expect(refresh(page)).toBeFocused();
 });

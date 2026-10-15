@@ -7,4 +7,4 @@ export const LAUNCH_CITY_ID = 62505581;
 export const LAUNCH_TARGET = 150;
 /** The coverage dashboard reads every price once: past this many rows it costs too much D1 quota. */
 export const COVERAGE_MAX_ROWS = 5000;
-export const COVERAGE_WARN_ROWS = 4000;
+export const COVERAGE_WARN_ROWS = COVERAGE_MAX_ROWS * 0.8;

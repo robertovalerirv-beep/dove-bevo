@@ -16,6 +16,8 @@ const percent = new Intl.NumberFormat("it-IT", { maximumFractionDigits: 1 });
 interface Row {
   id: number;
   name: string;
+  /** searchKey(name), computed once: sorting and filtering would repeat it thousands of times. */
+  key: string;
   lat: number;
   lon: number;
   total: number;
@@ -36,7 +38,7 @@ const LABEL: Record<Column, string> = {
 };
 const share = (r: Row) => (r.total > 0 ? r.bars / r.total : 0);
 const VALUE: Record<Column, (r: Row) => number | string> = {
-  name: (r) => searchKey(r.name),
+  name: (r) => r.key,
   bars: (r) => r.bars,
   total: (r) => r.total,
   share,
@@ -96,6 +98,7 @@ export function CoverageSection() {
       return {
         id,
         name,
+        key: searchKey(name),
         lat,
         lon,
         total,
@@ -113,7 +116,7 @@ export function CoverageSection() {
     const wanted = searchKey(query);
     const value = VALUE[sort.column];
     return all
-      .filter((r) => searchKey(r.name).includes(wanted))
+      .filter((r) => r.key.includes(wanted))
       .sort((a, b) => {
         const x = value(a);
         const y = value(b);
@@ -128,12 +131,7 @@ export function CoverageSection() {
     none && none[0] > 0 && searchKey(it.admin.coverage.noCity).includes(searchKey(query));
 
   return (
-    <section
-      class="cov"
-      aria-labelledby="cov-title"
-      aria-busy={loading}
-      data-testid="coverage-section"
-    >
+    <section class="cov" aria-labelledby="cov-title" data-testid="coverage-section">
       <h2 class="section-title" id="cov-title">
         {it.admin.coverage.title}
       </h2>
@@ -141,7 +139,7 @@ export function CoverageSection() {
         <button
           type="button"
           class="btn btn--primary"
-          disabled={loading}
+          aria-disabled={loading}
           onClick={() => void refresh()}
         >
           {it.admin.coverage.refresh}
@@ -217,6 +215,7 @@ export function CoverageSection() {
             <button
               type="button"
               class="btn btn--secondary"
+              aria-label={it.admin.coverage.reverse(sort.desc)}
               onClick={() => {
                 setSort({ ...sort, desc: !sort.desc });
               }}
@@ -256,7 +255,11 @@ export function CoverageSection() {
               {rows.slice(0, SHOWN_ROWS).map((r) => (
                 <tr key={r.id}>
                   <th scope="row">
-                    <a href={`/?at=${String(r.lat)},${String(r.lon)}`}>{r.name}</a>
+                    {r.lat === 0 ? (
+                      r.name
+                    ) : (
+                      <a href={`/?at=${String(r.lat)},${String(r.lon)}`}>{r.name}</a>
+                    )}
                     <span class="cov__sub">
                       {it.admin.coverage.subLine(
                         number.format(r.total),

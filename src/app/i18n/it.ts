@@ -250,6 +250,7 @@ export const it = {
       sort: "Ordina per",
       descending: "Decrescente",
       ascending: "Crescente",
+      reverse: (desc: boolean) => `Inverti l'ordine, ora ${desc ? "decrescente" : "crescente"}`,
       truncated: (n: number) => `Mostrate le prime ${String(n)}: restringi con il filtro.`,
       nothing: "Nessuna città con questo nome.",
       warn: "La dashboard si avvicina al limite di costo previsto (docs/adr/0022).",

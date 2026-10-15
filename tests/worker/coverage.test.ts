@@ -1,9 +1,9 @@
-import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, it } from "vitest";
-import type { Coverage } from "../../src/shared/api-types";
+import { env, exports } from "cloudflare:workers";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { CellPrices, Coverage } from "../../src/shared/api-types";
 import { COVERAGE_SQL } from "../../src/worker/lib/db";
 import { resetCoverageLimit } from "../../src/worker/routes/admin";
-import { accessJwt, call } from "./access-jwt";
+import { accessJwt, call, ORIGIN } from "./access-jwt";
 
 // M5-11…M5-13: admin coverage dashboard (ADR 0022).
 const MILANO = 62505581;
@@ -75,6 +75,18 @@ describe("GET /api/admin/coverage: access, headers, limit (M5-11)", () => {
     expect(Number(again.headers.get("Retry-After"))).toBeGreaterThan(0);
     expect(Number(again.headers.get("Retry-After"))).toBeLessThanOrEqual(10);
     expect(await again.json()).toMatchObject({ error: { code: "rate_limited" } });
+    // The refusal comes before any D1 access (M5-11).
+    const batch = vi.spyOn(env.DB, "batch");
+    const prepare = vi.spyOn(env.DB, "prepare");
+    expect((await call("coverage", jwt)).status).toBe(429);
+    expect(batch).not.toHaveBeenCalled();
+    expect(prepare).not.toHaveBeenCalled();
+    // Not vacuous: the same spy does see the D1 access of an allowed calculation.
+    resetCoverageLimit();
+    expect((await call("coverage", jwt)).status).toBe(200);
+    expect(batch).toHaveBeenCalled();
+    batch.mockRestore();
+    prepare.mockRestore();
     resetCoverageLimit();
     expect((await call("coverage", jwt)).status).toBe(200);
   });
@@ -157,10 +169,35 @@ describe("what counts as a bar with a price (M5-12)", () => {
     expect((await coverage()).bars).toBe(1); // restored
   });
 
-  it("cities are told apart by the stored OSM id, not by their position in places.json", async () => {
+  it("a city is the stored OSM id of the place: the Worker never reads an index into places.json", async () => {
     await env.DB.batch([price("n1", MILANO), price("n9", COMO)]);
     const ids = (await coverage()).cities.map((c) => c[0]).sort((a, b) => a - b);
     expect(ids).toEqual([MILANO, COMO]);
+  });
+});
+
+describe("city of a bar and the public cell read (ADR 0022)", () => {
+  it("a bar moved to another place by a new import counts for the newest attribution", async () => {
+    await env.DB.batch([
+      price("n1", COMO, "active", "2026-09-01", "spritz"),
+      price("n1", MILANO, "active", "2026-10-12", "negroni"),
+    ]);
+    const body = await coverage();
+    expect(body.cities).toEqual([[MILANO, 1, 2, "2026-10-12"]]);
+  });
+
+  it("GET /api/prices/:cell leaves out the prices of hidden bars and still lists them in h", async () => {
+    await env.DB.batch([
+      price("n1", MILANO),
+      price("n2", MILANO),
+      env.DB.prepare(
+        "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n2', 'u0nd9', 'Not a bar', '2026-10-10')",
+      ),
+    ]);
+    const response = await exports.default.fetch(`${ORIGIN}/api/prices/u0nd9`);
+    const body = await response.json<CellPrices>();
+    expect(body.p.map((row) => row[0])).toEqual(["n1"]);
+    expect(body.h).toEqual(["n2"]);
   });
 });
 

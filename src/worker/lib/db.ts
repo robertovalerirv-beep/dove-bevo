@@ -66,8 +66,9 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
     .map((r): UserVenue => [`u${String(r.id)}`, r.name, r.kind, r.lat, r.lon]);
   const h = ((hidden?.results ?? []) as unknown as { venue_key: string }[]).map((r) => r.venue_key);
   const approved = new Set(u.map((v) => v[0]));
+  const hiddenKeys = new Set(h);
   const p = ((prices?.results ?? []) as unknown as PriceDbRow[])
-    .filter((r) => isPublicBar(r.venue_key, approved, new Set(h)))
+    .filter((r) => isPublicBar(r.venue_key, approved, hiddenKeys))
     .map(toPriceRow);
   const pend = rows
     .filter((r) => r.status === "pending")
@@ -89,10 +90,11 @@ export function isPublicBar(
 
 /**
  * One row per bar with an active price. Grouping on the primary key's first column keeps the scan in
- * key order, so SQLite builds no temporary B-tree and reads each row once (ADR 0022); the city is the
- * same on every price of a bar.
+ * key order, so SQLite builds no temporary B-tree and reads each row once (ADR 0022). The one MAX()
+ * makes the bare `city` come from the bar's latest price (SQLite rule), so after an import that
+ * moved the bar to another place the newest attribution wins, not an arbitrary one.
  */
-export const COVERAGE_SQL = `SELECT max(city) AS city, venue_key, COUNT(*) AS n, MAX(observed_on) AS d
+export const COVERAGE_SQL = `SELECT city, venue_key, COUNT(*) AS n, MAX(observed_on) AS d
   FROM prices_current WHERE status = 'active' GROUP BY venue_key`;
 
 /** Public bars with an active price per city (SPEC 7.9, ADR 0022). */
@@ -103,10 +105,10 @@ export async function getCoverage(db: D1Database): Promise<Coverage> {
     db.prepare("SELECT id FROM venues_user WHERE status = 'approved'"),
   ]);
   const hidden = new Set(
-    (hiddenRows?.results as unknown as { venue_key: string }[]).map((r) => r.venue_key),
+    ((hiddenRows?.results ?? []) as unknown as { venue_key: string }[]).map((r) => r.venue_key),
   );
   const approved = new Set(
-    (userRows?.results as unknown as { id: number }[]).map((r) => `u${String(r.id)}`),
+    ((userRows?.results ?? []) as unknown as { id: number }[]).map((r) => `u${String(r.id)}`),
   );
   const byCity = new Map<number | null, [bars: number, prices: number, day: string]>();
   let active = 0;

@@ -1,5 +1,4 @@
-import type { ComponentChildren } from "preact";
-import type { ComponentType } from "preact";
+import type { ComponentChildren, ComponentType } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { it } from "../i18n/it";
@@ -64,10 +63,11 @@ export function AdminPage() {
   // The coverage dashboard is its own chunk, fetched once the page is ready (ADR 0022).
   const [Coverage, setCoverage] = useState<ComponentType | null>(null);
   useEffect(() => {
+    if (state !== "ready") return;
     void import("./Coverage").then((m) => {
       setCoverage(() => m.CoverageSection);
     });
-  }, []);
+  }, [state]);
 
   useEffect(() => {
     void fetch("/api/admin/overview")

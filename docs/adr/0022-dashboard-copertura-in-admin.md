@@ -1,6 +1,6 @@
 # 0022 · Dashboard di copertura in `/admin`: calcolo a richiesta, soglia di costo, chiave città
 
-- **Stato:** proposta (in attesa dell'ok di Roberto) · **Data:** 2026-10-15
+- **Stato:** accettata (approvata da Roberto il 2026-10-15) · **Data:** 2026-10-15
 
 ## Contesto
 Roberto vuole aprire `/admin`, premere **Aggiorna** e vedere quanti bar con almeno un prezzo pubblico ci sono per città e quanto manca al gate (150 bar a Milano). Il piano gratuito di D1 concede 5 milioni di righe lette al giorno, condivise con la mappa pubblica (ADR 0013, 0020). Prompt: `docs/PROMPT-DASHBOARD.md`.
@@ -15,10 +15,10 @@ Rotta `GET /api/admin/coverage` (JWT Access come le altre, `Cache-Control: no-st
 
 ### 3. Query: diretta, senza indice, `GROUP BY venue_key`
 ```sql
-SELECT max(city) AS city, venue_key, COUNT(*) AS n, MAX(observed_on) AS d
+SELECT city, venue_key, COUNT(*) AS n, MAX(observed_on) AS d
 FROM prices_current WHERE status = 'active' GROUP BY venue_key
 ```
-più `SELECT venue_key FROM venues_hidden` e `SELECT id FROM venues_user WHERE status = 'approved'` (liste piccole); il Worker filtra con `isPublicBar` e somma per città. La città è costante per bar, quindi `max(city)`.
+più `SELECT venue_key FROM venues_hidden` e `SELECT id FROM venues_user WHERE status = 'approved'` (liste piccole); il Worker filtra con `isPublicBar` e somma per città. Con un solo `MAX()` nella query SQLite prende la `city` dalla riga del prezzo più recente: se un import ha spostato il bar in un altro `place`, vale l'attribuzione più recente (le righe vecchie non vengono riscritte dalle conferme).
 
 Misure (D1 locale in workerd, 5.000 righe, ~3% non attive; vedi PROGRESS 15/10):
 | Query | Piano | `rows_read` |

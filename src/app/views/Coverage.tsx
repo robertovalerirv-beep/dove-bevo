@@ -10,7 +10,8 @@ import { formatDate } from "../lib/format";
 // pressed. City names and bar totals come from places.json (static), prices from the Worker.
 
 const SHOWN_ROWS = 200;
-const number = new Intl.NumberFormat("it-IT");
+// "always": Italian groups four-digit numbers only in some engines (1947 vs 1.947); this is the same everywhere.
+const number = new Intl.NumberFormat("it-IT", { useGrouping: "always" });
 const percent = new Intl.NumberFormat("it-IT", { maximumFractionDigits: 1 });
 
 interface Row {

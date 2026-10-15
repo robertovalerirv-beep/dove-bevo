@@ -102,7 +102,7 @@ test("indicators, gate and the table per city (M5-15)", async ({ page }) => {
 
   const milano = rowOf(page, "Milano");
   await expect(milano).toContainText("12");
-  await expect(milano).toContainText("1947"); // all the OSM bars of the city
+  await expect(milano).toContainText("1.947"); // all the OSM bars of the city
   await expect(milano).toContainText("0,6 %");
   await expect(milano).toContainText("12 ott 2026");
   await expect(rowOf(page, "Senza città")).toContainText("2");

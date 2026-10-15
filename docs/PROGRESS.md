@@ -4,6 +4,22 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-15 · Sessione 8 · Dashboard di copertura in `/admin` · passo 0 (misure, nessuna modifica al codice)
+
+**Stato reale**: in `/admin` esiste solo `GET /api/admin/overview` (code); nessun codice di copertura o metriche. `metrics_daily` esiste nello schema ma **nessuno la scrive** (`/api/events` non c'è, M5-01 a false): gli indicatori «prezzi oggi / 7 giorni» vanno omessi. La chiave città è già stabile (D-11: `prices_current.city` = ID del nodo OSM del `place`, non un indice), nessuna correzione. I bar utente hanno `city = NULL` (`resolveVenue`): finiscono in «Senza città» e non sommano a «Bar totali» (= `nBars` di `places.json`). Zona del gate (risposta di Roberto): solo Comune di Milano.
+
+**Misure** (D1 locale in workerd, `prices_current` con ~3% di righe non attive, test usa e getta poi rimosso):
+- Query naive `GROUP BY city, venue_key`: piano `SCAN prices_current | USE TEMP B-TREE FOR GROUP BY`, `rows_read` = **9.833** con 5.000 righe (e 983 con 500, 19.666 con 10.000): il B-tree temporaneo raddoppia le letture.
+- `SELECT max(city), venue_key, COUNT(*), MAX(observed_on) … WHERE status='active' GROUP BY venue_key` (la città è costante per bar): piano `SCAN prices_current` senza B-tree, `rows_read` = **5.000** con 5.000 righe, cioè 1 per riga della tabella (anche non attive). `GROUP BY venue_key, city` non basta: ricade nel B-tree (9.833).
+- Letture accessorie (nascosti, bar utente approvati): trascurabili (1 e 0 con i dati di prova).
+- Nessun indice nuovo né migrazione: scritture di un contributo invariate.
+
+**Soglia** (20 pressioni al giorno, obiettivo ≤ 100.000 righe = 2% di 5 M): 100.000 ÷ 20 = **5.000 righe in `prices_current`** (attive e non). Con la query naive sarebbe 2.500. Avviso in `/admin` all'80%: 4.000 prezzi attivi. **Non misurato**: prezzi attivi in staging (`--remote` vietato a Claude Code): serve il conteggio di Roberto.
+
+**Prossimo passo**: ADR (soglia, piano oltre soglia, limite di 10 s, chiave città, bar utente senza città) e ok di Roberto al passo 1. Il prompt è stato salvato in `docs/PROMPT-DASHBOARD.md`; `docs/PROMPT-V3.md` citato dal prompt non esiste nel repo.
+
+---
+
 ## 2026-10-14 · Sessione 7 · Allineamento feature list e revisione di sicurezza (branch `chore-align-feature-list-and-review-fixes`)
 
 **Fatto**: le correzioni dell'audit (PR #22) sono in `main` e in staging (CI e deploy verdi; `/api/venues/u007/prices` → 400 dal vivo). Revisione `security-reviewer` sul diff: nessun punto bloccante; corretti il pin con «Vicino a me» lento (si controlla anche la posizione corrente) e le regex non canoniche di admin e client (ADR 0021, seconda revisione). `passes: true` per M3-11…M3-16, M3-18, M3-19: i test sono già in `main` (le voci erano a true solo sul vecchio branch `v3-spec-1-1`, ora superato); su `main` 49/75. Restano a false M3-17 (inserimento da listino in admin) e M3-20 (riga istantanea per cella). `docs/materiali/` è in `.gitignore` (repo pubblico, contiene ipotesi finanziarie).

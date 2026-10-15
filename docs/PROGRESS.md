@@ -37,6 +37,18 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-15 · Sessione 8 (seguito 2) · Dashboard: elenco dei locali per città (branch `m5-coverage-city-list`)
+
+**Richiesta di Roberto**: toccando una città con almeno un locale con prezzo, invece della mappa vuole l'elenco di quei locali (decisioni: link secondario «Vedi sulla mappa»; nome, indirizzo, prezzi e link alla scheda; nessuna voce nuova in feature list).
+
+**Fatto**: `/api/admin/coverage` restituisce anche `members` (città o 0, chiave, cella dei bar pubblici con prezzo), senza query in più; `src/app/views/CityBars.tsx` carica le sole celle interessate con `loadCell` e mostra nome, indirizzo, prezzi (senza quarantena) e «Apri la scheda»; tabella, filtro e ordinamento restano nel DOM (`hidden`) mentre l'elenco è aperto; il focus passa al titolo e torna al nome della città con «← Tutte le città»; stati di caricamento ed errore con «Riprova». ADR 0022 (punto 9) e SPEC 7.9 aggiornate.
+
+**Prove**: test prima (worker 2 rossi, e2e 4 nuovi), poi unit 118/118 e e2e `admin-coverage` + `admin` 26/26 su Chromium e WebKit (elenco con i 3 locali del seed e i loro prezzi, nessuna richiesta all'admin API al tocco, ritorno con filtro intatto e focus, errore di rete e «Riprova», link alla mappa, target ≥ 48 px, niente scroll orizzontale, axe). Screenshot: `docs/screenshots/admin/coverage-city-list.png`.
+
+**Revisioni**: `/code-review` (6 rilievi): corrette la cache che mostrava prezzi vecchi dopo «Aggiorna» (le celle si rileggono a ogni apertura), le richieste di celle in parallelo contro il limite di lettura (6 alla volta), la stringa «HH» duplicata, il test mancante («Senza città» e «Aggiorna» con l'elenco aperto); non toccati: peso di `members` (decine di KB al massimo, documentato) e l'etichetta del prezzo simile a quella della scheda bar. `ux-a11y-reviewer`: nessun blocco; corretti il focus perso dopo «Riprova» (torna al titolo), la larghezza del pulsante di una città corta (≥ 48 px, con test) e l'annuncio del caricamento (un'unica area `aria-live`). Dopo le correzioni: unit 118/118, e2e `admin-coverage` + `admin` 38/38 su Chromium e WebKit, lint, typecheck, format verdi.
+
+---
+
 ## 2026-10-15 · Sessione 8 (seguito) · Dashboard: nessun bar «Senza città» (branch `m5-coverage-no-orphans`)
 
 **Richiesta di Roberto** dopo la prova in staging (la dashboard «funziona clamorosamente bene»): la riga «Senza città» (2 bar, 7 prezzi) non deve poter succedere.

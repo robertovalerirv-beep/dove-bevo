@@ -45,6 +45,9 @@ Timestamp a livello di modulo nel Worker (per isolate, **best-effort**): entro 1
 - **Prezzi oggi / ultimi 7 giorni** omessi: nessun codice scrive `metrics_daily` (manca `/api/events`, M5-01). Nessuna tabella nuova.
 - Il gate usa `LAUNCH_CITY_ID = 62505581` (Comune di Milano) e `LAUNCH_TARGET = 150` in `src/shared/config.ts`.
 
+### 9. Elenco dei locali di una città (15/10/2026)
+Il nome di una città (e la riga «Senza città») apre l'elenco dei suoi locali con almeno un prezzo pubblico. La risposta di `/api/admin/coverage` porta `members`: per ogni bar pubblico con prezzo `[città o 0, chiave, cella]`, riempito nello stesso ciclo che aggrega (stessi `rows_read`, nessuna query nuova). Nomi, indirizzi e prezzi li legge il client dai dati che usa già la mappa (`loadCell`: file statico della cella e `/api/prices/:cell`, solo per le celle che contengono quei locali); i prezzi in quarantena non si mostrano. Alternativa scartata: una rotta admin per città, che rifarebbe la scansione di `prices_current` a ogni tocco e romperebbe l'ipotesi delle 20 pressioni al giorno della soglia. Il vecchio link alla mappa resta come «Vedi sulla mappa» dentro l'elenco (`/?at=lat,lon`).
+
 ## Conseguenze
 - Nessuna modifica a schema, migrazioni e scritture; test di regressione sulle righe lette e scritte.
 - La dashboard può togliere quota agli utenti oltre 5.000 righe: l'avviso a 4.000 serve a saperlo in tempo, poi si applica il piano del punto 5.

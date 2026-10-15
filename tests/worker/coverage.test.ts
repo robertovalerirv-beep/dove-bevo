@@ -65,6 +65,7 @@ describe("GET /api/admin/coverage: access, headers, limit (M5-11)", () => {
       cities: [],
       none: [0, 0, ""],
       users: [],
+      members: [],
     });
   });
 
@@ -127,6 +128,16 @@ describe("what counts as a bar with a price (M5-12)", () => {
     expect(body.prices).toBe(6);
     // Every active row is read whatever its bar: this is the number the cost warning uses.
     expect(body.active).toBe(9);
+    // The bars behind the counts, for the admin's city list: [city or 0, key, cell], public ones only.
+    expect([...body.members].sort((a, b) => a[1].localeCompare(b[1]))).toEqual([
+      [MILANO, "n1", "u0nd9"],
+      [MILANO, "n13001337602", "u0nd9"],
+      [COMO, "n4", "u0nd9"],
+      [0, "n5", "u0nd9"],
+      [MILANO, "u1", "u0nd9"],
+    ]);
+    for (const [id, bars] of body.cities.map((c) => [c[0], c[1]] as const))
+      expect(body.members.filter((m) => m[0] === id)).toHaveLength(bars);
     // Invariant: bars and prices per city plus "no city" add up to the national totals.
     expect(body.cities.reduce((s, c) => s + c[1], body.none[0])).toBe(body.bars);
     expect(body.cities.reduce((s, c) => s + c[2], body.none[1])).toBe(body.prices);

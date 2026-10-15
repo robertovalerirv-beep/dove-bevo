@@ -59,4 +59,6 @@ export interface Coverage {
   none: [number, number, string];
   /** Approved user bars per city, with or without prices: they join the city's total. [city, n] */
   users: [number, number][];
+  /** The public bars behind the counts, for the admin's city list: [city or 0 for none, key, cell]. */
+  members: [number, string, string][];
 }

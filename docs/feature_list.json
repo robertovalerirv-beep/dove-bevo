@@ -490,6 +490,48 @@
     "passes": false
   },
   {
+    "id": "M5-11",
+    "milestone": "M5",
+    "descrizione": "Rotta di copertura protetta e a richiesta",
+    "verifica": "unit/sec: `GET /api/admin/coverage` senza JWT Access valido → 403; con JWT → 200, `Cache-Control: no-store`, formato compatto; secondo calcolo entro 10 s → 429 `rate_limited` con `Retry-After`, senza letture D1",
+    "passes": true
+  },
+  {
+    "id": "M5-12",
+    "milestone": "M5",
+    "descrizione": "Definizione di «bar con almeno un prezzo»",
+    "verifica": "unit worker: conta solo i bar con ≥ 1 prezzo `active`; quarantena, `review`, `removed`, bar utente `pending` o rifiutato, bar OSM nascosto non contano; secondo prezzo sullo stesso bar → bar invariati, prezzi +1; approvazione e ripristino → conta; somma per città + «Senza città» = totale; stessa attribuzione con `places.json` riordinato (chiave = ID nodo OSM)",
+    "passes": true
+  },
+  {
+    "id": "M5-13",
+    "milestone": "M5",
+    "descrizione": "Costo in righe D1 della dashboard",
+    "verifica": "unit worker con 5.000 prezzi: piano `SCAN prices_current` senza `TEMP B-TREE`, `rows_read` ≤ righe della tabella + 10; righe scritte per un contributo invariate (≤ 6); avviso quando i prezzi attivi superano 4.000 (ADR 0022)",
+    "passes": true
+  },
+  {
+    "id": "M5-14",
+    "milestone": "M5",
+    "descrizione": "Aggiornamento solo con il pulsante",
+    "verifica": "e2e: all'apertura di `/admin` nessuna richiesta a `/api/admin/coverage`; nessuna dopo 5 minuti, dopo un cambio di scheda e al ritorno; «Aggiorna» → una richiesta; doppio tocco rapido → una sola",
+    "passes": true
+  },
+  {
+    "id": "M5-15",
+    "milestone": "M5",
+    "descrizione": "Interfaccia della dashboard",
+    "verifica": "e2e Chromium e WebKit 390×844: stato iniziale, caricamento, dati, errore (rete o risposta HTML: restano i dati precedenti + «Aggiornamento non riuscito, riprova»); indicatori e gate Milano X/150; tabella con ricerca, ordinamento (`aria-sort`) e interruttore «città senza prezzi» senza nuove richieste; riga «Senza città»; «Aggiorna» visibile senza scorrere, nessuno scroll orizzontale, target ≥ 48 px; axe senza violazioni",
+    "passes": true
+  },
+  {
+    "id": "M5-16",
+    "milestone": "M5",
+    "descrizione": "Nessun peso sulla shell pubblica",
+    "verifica": "build: la dashboard è in un chunk caricato a richiesta; shell ≤ 50 KB gzip, misura prima e dopo in PROGRESS",
+    "passes": true
+  },
+  {
     "id": "M6-01",
     "milestone": "M6",
     "descrizione": "Dominio di produzione",

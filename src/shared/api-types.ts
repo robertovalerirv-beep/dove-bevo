@@ -40,3 +40,21 @@ export interface VenuePrices {
   p: PriceRow[];
   h: HistoryRow[];
 }
+
+/**
+ * `GET /api/admin/coverage` (ADR 0022): public bars with at least one active price, per city.
+ * City names and totals are not here: the client joins them with places.json by OSM id.
+ */
+export interface Coverage {
+  /** When the figures were computed (ISO time). */
+  at: string;
+  /** Active prices of every bar, public or not: the rows the calculation read (cost warning). */
+  active: number;
+  /** Public bars with an active price, and their active prices, in all of Italy. */
+  bars: number;
+  prices: number;
+  /** [OSM id of the city, bars with a price, public prices, day of the latest price] */
+  cities: [number, number, number, string][];
+  /** The same for bars without a city (user bars, OSM bars far from any place): [bars, prices, day]. */
+  none: [number, number, string];
+}

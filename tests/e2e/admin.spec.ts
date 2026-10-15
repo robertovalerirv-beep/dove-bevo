@@ -78,7 +78,7 @@ test("admin: find and hide a non-bar, add a missing bar, decide reviews", async 
   await expect(page.getByRole("heading", { name: "Amministrazione" })).toBeVisible();
 
   // Find a bar of the fixture by city and name, then hide it.
-  await page.getByLabel("Città").fill("milano");
+  await page.getByLabel("Città", { exact: true }).fill("milano");
   await page.getByLabel("Nome del bar").nth(1).fill("camparino");
   await page.getByRole("button", { name: "Cerca" }).click();
   const found = page.getByRole("listitem").filter({ hasText: "Camparino in Galleria" });
@@ -147,7 +147,7 @@ test("admin search also finds bars added by hand, fresh, and accepts a bar link"
     }
   });
   await page.goto("/admin");
-  await page.getByLabel("Città").fill("Milano");
+  await page.getByLabel("Città", { exact: true }).fill("Milano");
   await page.getByLabel("Nome del bar").nth(1).fill("appena creato");
   await page.getByRole("button", { name: "Cerca" }).click();
   const added = page
@@ -162,7 +162,7 @@ test("admin search also finds bars added by hand, fresh, and accepts a bar link"
     .toEqual({ status: "removed" });
 
   // A link copied from the bar page finds exactly that bar.
-  await page.getByLabel("Città").fill("");
+  await page.getByLabel("Città", { exact: true }).fill("");
   await page.getByLabel("Nome del bar").nth(1).fill("");
   await page
     .getByLabel("Oppure il link della scheda del bar")

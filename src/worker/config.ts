@@ -19,3 +19,6 @@ export const MAX_ITEMS = 80;
 export const REVIEW_AFTER_REPORTS = 3;
 /** counters and dedup keep only today and yesterday: deleted within 48 h (SPEC 14, ADR 0016). */
 export const KEEP_DAYS = 1;
+
+/** Minimum time between two coverage calculations: protects the D1 read quota (ADR 0022). */
+export const COVERAGE_MIN_INTERVAL_MS = 10_000;

@@ -1,6 +1,8 @@
 # Dove bevo — Specifica della Fase 0
 
-> **Versione 1.1 · 14/10/2026 · la 1.0 è approvata da Roberto l'11/10/2026 (tag `spec-approved`); la 1.1 è autorizzata da Roberto il 13/10/2026 (prompt v3.2) e il 14/10/2026 in chat, e vale con il tag `spec-approved-2`.**
+> **Versione 1.2 · 15/10/2026 · la 1.2 aggiunge la dashboard di copertura in `/admin` (ADR 0022, M5-11…M5-16) ed è autorizzata da Roberto il 15/10/2026 in chat, e vale con il tag `spec-approved-3`. Storico: versione 1.1 · 14/10/2026 · la 1.0 è approvata da Roberto l'11/10/2026 (tag `spec-approved`); la 1.1 è autorizzata da Roberto il 13/10/2026 (prompt v3.2) e il 14/10/2026 in chat, e valeva con il tag `spec-approved-2`.**
+>
+> **Registro delle modifiche 1.2:** nuova dashboard di copertura in `/admin` (7.9), calcolata solo con il pulsante «Aggiorna»: bar con almeno un prezzo pubblico per città e avanzamento verso il gate (150 bar nel Comune di Milano); sei nuove voci M5-11…M5-16 nella sezione 18; nessuna modifica a schema, migrazioni e scritture.
 >
 > **Registro delle modifiche 1.1:** (1) tolta la lettura dei listini con AI: sezioni 7.4, 10, 13.4–13.5, D-09, D-17, D-25 e M3-01…M3-10 (ADR 0018); (2) bar proposti dagli utenti, li rende pubblici solo l'admin: 7.5, 7.9, D-05, M4-01/M4-02 sostituite da M3-11…M3-14 (ADR 0019); (3) nuovi vincoli: l'utente non paga mai, nessuna AI (2.7); (4) nuove funzionalità M3-15…M3-20: "Vicino a me" diagnosticabile, "Aggiungi un altro drink qui", inserimento da listino, degrado gentile, lettura delle celle a costo costante (ADR 0020); (5) codici di errore: aggiunti `conflict` 409 e `busy` 503, tolto `ai_paused`.
 > Fonte: `docs/BRIEF.md` v2 più l'intervista dell'11/10/2026 (decisioni in sezione 3). Questo documento è autosufficiente: in caso di conflitto **prevale SPEC sul BRIEF**. Le funzionalità e le loro verifiche (sezione 18) sono copiate in `docs/feature_list.json`; dopo l'approvazione cambia solo il campo `passes`.
@@ -188,6 +190,7 @@ Rimossa con l'ADR 0018. Compenso: dopo `Salva`, "Aggiungi un altro drink qui" (s
 
 ### 7.9 Admin — M5
 - `/admin` dietro Cloudflare Access (D-19): tre code con contatori e totale: **nuovi bar da confermare** (approva o rifiuta l'admin, mai in automatico; nome e tipo correggibili), **bar da cancellare da confermare** ("Elimina dalla mappa" o "Ignora"), **prezzi da rivedere** (`review` e `quarantined`); strumenti: ricerca e nascondi voci che non sono bar, aggiungi un bar, inserimento da listino con data di osservazione; metriche giornaliere (sezione 12); copertura per città = bar con almeno un prezzo attivo (D1) / bar totali (`places.json`).
+- **Dashboard di copertura (v1.2, ADR 0022):** sezione in cima a `/admin`, calcolata **solo** quando si preme «Aggiorna» (nessun timer, polling o calcolo all'apertura); `GET /api/admin/coverage`, senza cache, con un minimo di 10 s tra due calcoli. «Bar con almeno un prezzo» = bar visibile sulla mappa con almeno un prezzo `active` (non contano quarantena, `review`, `removed`, bar utente non approvati, bar OSM nascosti). Mostra bar coperti, città coperte, prezzi pubblici, avanzamento verso il gate (Comune di Milano, 150 bar) e una tabella per città (bar con prezzo, bar totali da `places.json`, copertura, prezzi pubblici, ultimo inserimento); i bar senza città, compresi i bar utente, sono nella riga «Senza città». Costo: una scansione di `prices_current` (soglia 5.000 righe, avviso a 4.000 prezzi attivi).
 
 ## 8. Dati in D1
 
@@ -462,6 +465,12 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | M5-08 | Nessun segreto nel bundle | sec: scansione di `dist/` per i nomi e i formati dei segreti |
 | M5-09 | security.txt e robots.txt | e2e: `/.well-known/security.txt` conforme a RFC 9116 (Contact, Expires); `robots.txt` presente |
 | M5-10 | Traccia del test con 5 persone | `docs/user-test.md` con compiti, domande e criteri di successo |
+| M5-11 | Rotta di copertura protetta e a richiesta | unit/sec: `GET /api/admin/coverage` senza JWT Access valido → 403; con JWT → 200, `Cache-Control: no-store`, formato compatto; secondo calcolo entro 10 s → 429 `rate_limited` con `Retry-After`, senza letture D1 |
+| M5-12 | Definizione di «bar con almeno un prezzo» | unit worker: conta solo i bar con ≥ 1 prezzo `active`; quarantena, `review`, `removed`, bar utente `pending` o rifiutato, bar OSM nascosto non contano; secondo prezzo sullo stesso bar → bar invariati, prezzi +1; approvazione e ripristino → conta; somma per città + «Senza città» = totale; stessa attribuzione con `places.json` riordinato (chiave = ID nodo OSM) |
+| M5-13 | Costo in righe D1 della dashboard | unit worker con 5.000 prezzi: piano `SCAN prices_current` senza `TEMP B-TREE`, `rows_read` ≤ righe della tabella + 10; righe scritte per un contributo invariate (≤ 6); avviso quando i prezzi attivi superano 4.000 (ADR 0022) |
+| M5-14 | Aggiornamento solo con il pulsante | e2e: all'apertura di `/admin` nessuna richiesta a `/api/admin/coverage`; nessuna dopo 5 minuti, dopo un cambio di scheda e al ritorno; «Aggiorna» → una richiesta; doppio tocco rapido → una sola |
+| M5-15 | Interfaccia della dashboard | e2e Chromium e WebKit 390×844: stato iniziale, caricamento, dati, errore (rete o risposta HTML: restano i dati precedenti + «Aggiornamento non riuscito, riprova»); indicatori e gate Milano X/150; tabella con ricerca, ordinamento (`aria-sort`) e interruttore «città senza prezzi» senza nuove richieste; riga «Senza città»; «Aggiorna» visibile senza scorrere, nessuno scroll orizzontale, target ≥ 48 px; axe senza violazioni |
+| M5-16 | Nessun peso sulla shell pubblica | build: la dashboard è in un chunk caricato a richiesta; shell ≤ 50 KB gzip, misura prima e dopo in PROGRESS |
 
 ### M6
 | ID | Funzionalità | Verifica |
@@ -482,7 +491,7 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | **M2** | STRIDE, Turnstile e sessione, inserimento, conferme, segnalazioni, anti-frode, quote | M2-01…M2-16 |
 | **M3** | Bar proposti dagli utenti (li approva solo l'admin), pannello admin a tre code, "Vicino a me", "Aggiungi un altro drink qui", inserimento da listino, lettura delle celle a costo costante | M3-11…M3-20 |
 | **M4** | Colori sulla mediana, "più economici qui", freschezza, PWA, happy hour | M4-03…M4-10 |
-| **M5** | Eventi e `/admin`, pagine legali, a11y e performance, ASVS L1, test con 5 persone | M5-01…M5-10 |
+| **M5** | Eventi e `/admin`, dashboard di copertura, pagine legali, a11y e performance, ASVS L1, test con 5 persone | M5-01…M5-16 |
 | **M6** | Dominio, segreti di produzione, rollback, `v0.1.0`, smoke test | M6-01…M6-05 |
 
 Ciclo di ogni milestone: plan mode e ok di Roberto → una funzionalità alla volta (test prima, poi codice, poi verifica con prove) → `/code-review`, `/security-review`, subagent `spec-reviewer` (solo correttezza, sicurezza, requisiti mancanti) → test verdi, PROGRESS, commit, PR verso `main`, riepilogo → stop. Se lo stesso errore si ripete due volte: stop e proposta di `/clear` con istruzione migliore.

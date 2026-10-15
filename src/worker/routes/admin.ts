@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { CATALOG } from "../../shared/catalog";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
+import { COVERAGE_MIN_INTERVAL_MS } from "../config";
 import { romeDay } from "../lib/day";
 import {
   addApprovedVenue,
@@ -11,6 +12,7 @@ import {
   listHidden,
   listPricesToReview,
   clearBarReports,
+  getCoverage,
   listBarReports,
   listUserVenues,
   setPriceStatus,
@@ -56,6 +58,29 @@ admin.get("/overview", async (c) => {
     listBarReports(c.env.DB),
   ]);
   return c.json({ venues, hidden, prices, reports });
+});
+
+// Coverage of the map, computed only when the admin asks (ADR 0022). Best-effort minimum interval
+// between two calculations, kept in memory: it needs no D1 read, and a new isolate resets it.
+let lastCoverageAt = 0;
+/** Test hook: forgets the last calculation. */
+export const resetCoverageLimit = () => {
+  lastCoverageAt = 0;
+};
+
+admin.get("/coverage", async (c) => {
+  const wait = lastCoverageAt + COVERAGE_MIN_INTERVAL_MS - Date.now();
+  if (wait > 0)
+    throw new ApiError("rate_limited", { "Retry-After": String(Math.ceil(wait / 1000)) });
+  lastCoverageAt = Date.now();
+  try {
+    const coverage = await getCoverage(c.env.DB);
+    c.header("Cache-Control", "no-store");
+    return c.json(coverage);
+  } catch (error) {
+    lastCoverageAt = 0;
+    throw error;
+  }
 });
 
 // A bar missing from OpenStreetMap, added directly as approved (key "u<id>").

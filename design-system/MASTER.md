@@ -1,76 +1,67 @@
 # Dove bevo — Design system (MASTER)
 
-> Vale ovunque; il file di pagina in `pages/` prevale. Token implementati in `src/app/styles/tokens.css`. Stato: **approvato da Roberto l'11/10/2026 con la palette C "Blu e arancio"** (M0-10).
+> Vale ovunque; il file di pagina in `pages/` prevale. **Dalla SPEC 1.3 (ADR 0023) l'identità visiva viene da `docs/brand/`**: i valori stanno solo in `docs/brand/tokens.json`, che genera `src/app/styles/tokens.css` (`scripts/build-tokens.mjs`). Questo file è la sintesi operativa; in caso di dubbio prevale il kit. UI UX Pro Max resta la fonte delle regole UX, accessibilità e interazione e della checklist pre-consegna. Il design system di M0 (palette blu "C", Plus Jakarta Sans, ADR 0011) è superato per i valori visivi.
 
-## Fonte e scelte
-Generato con UI UX Pro Max 2.13 (SPEC 15.1). La query di SPEC (in italiano) e una riformulazione in inglese ("nightlife bar drink prices map mobile app") hanno restituito un risultato fuori tema (landing di documentazione, font accademici): **non** è stato salvato. Il catalogo non ha la categoria "nightlife"; la più vicina è **Food Delivery / On-Demand** (mobile, mappa, uso rapido, prezzi):
-- stile **Vibrant & Block-based**: blocchi netti, alto contrasto, energico, giovane;
-- palette di partenza **arancio caldo + blu fiducia** (`--domain color "food delivery restaurant warm"`); Roberto ha scelto fra tre varianti la **C: blu come colore principale, arancio per focus e dettagli** (verde e rosso esclusi come principali perché indicano i prezzi);
-- tipografia: la coppia suggerita (Playfair Display SC + Karla) è scartata perché richiederebbe più di 2 file woff2 (SPEC 15.1.4); si usa **Plus Jakarta Sans** variabile (`--domain typography`, "Friendly SaaS"/"Mobile"), un solo file.
+Priorità in conflitto: vincoli SPEC → sicurezza e privacy → WCAG 2.2 AA → codice minimo → `docs/brand/` → skill.
 
-Correzioni per i vincoli (prevalgono su skill): colori scuriti finché ogni coppia testo/sfondo ≥ 4,5:1 nei due temi (calcolo in PROGRESS); motion al minimo (dial 3/10) e nessuna libreria di animazione; niente hero né landing: l'app apre direttamente sulla mappa.
+## Idea
+Quattro oggetti del bar, usati come sistema e non come decorazione: **tappo a corona** = il posto (simbolo, pin selezionato) · **pillola col prezzo** = il dato · **scontrino** = la prova (scheda bar) · **timbro** = il grazie (dopo `Salva`). Ogni scelta deve risolvere un punto della critica (`docs/brand/01-strategia.md`): anonima, statica, affollata, indistinta dai concorrenti.
 
-## Principi (SPEC 15)
-Una schermata, un'azione primaria. Uso con una mano, al bancone, con poca luce: comandi principali nella metà bassa dello schermo, target ≥ 48×48 px, testo ≥ 16 px nei controlli. Il prezzo è il contenuto: sempre scritto in cifre, mai solo colore. Italiano semplice. Nessuna emoji come icona.
+## Principi (SPEC 15, invariati)
+Una schermata, un'azione primaria. Una mano, poca luce: comandi nella metà bassa, target ≥ 48×48 px, testo ≥ 16 px. Il prezzo è il contenuto: sempre in cifre, mai solo colore. Italiano semplice (`docs/brand/02-voce.md`). Nessuna emoji.
 
-## Colore (token semantici; nei componenti mai valori grezzi)
-| Token | Chiaro | Scuro | Uso |
-|---|---|---|---|
-| `--color-bg` | `#F8FAFC` | `#0F172A` | sfondo app |
-| `--color-surface` | `#FFFFFF` | `#1E293B` | fogli, schede, liste |
-| `--color-text` | `#0F172A` | `#F8FAFC` | testo |
-| `--color-text-muted` | `#475569` | `#CBD5E1` | testo secondario, date |
-| `--color-primary` | `#1D4ED8` | `#93C5FD` | azione primaria ("Aggiungi prezzo", "Salva") |
-| `--color-on-primary` | `#FFFFFF` | `#0F172A` | testo su primario |
-| `--color-focus` | `#C2410C` | `#FDBA74` | anello di focus, dettagli |
-| `--color-border` | `#E2E8F0` | `#334155` | separatori decorativi |
-| `--color-border-strong` | `#64748B` | `#94A3B8` | bordi di campi e controlli (≥ 3:1) |
-| `--color-error` | `#B91C1C` | `#FCA5A5` | errori (sempre con testo) |
-| `--price-cheap` / `--on-price-cheap` | `#15803D` / `#FFFFFF` | `#4ADE80` / `#052E16` | più economico della mediana (D-12) |
-| `--price-avg` / `--on-price-avg` | `#A16207` / `#FFFFFF` | `#FACC15` / `#422006` | nella media |
-| `--price-high` / `--on-price-high` | `#B91C1C` / `#FFFFFF` | `#F87171` / `#450A0A` | più caro |
-| `--price-neutral` / `--on-price-neutral` | `#FFFFFF` / `#0F172A` | `#1E293B` / `#F8FAFC` | < 5 prezzi o bar senza prezzo (con bordo `--color-border-strong`) |
-
-Il tema segue `prefers-color-scheme`; nessun interruttore (niente onboarding/impostazioni in Fase 0). Il colore della mediana è sempre accompagnato dal valore e, nell'elenco accessibile, da un testo ("più economico", "nella media", "più caro").
+## Colore
+- Temi **Bancone** (chiaro, principale) e **Fuori orario** (scuro, progettato, non invertito), da `prefers-color-scheme`, nessun interruttore. La mappa cambia stile con il tema (D-27).
+- Token (nomi del kit): `bg`, `surface`, `surface-2`, `ink`, `ink-muted`, `line-soft`, `spritz`, `on-spritz`, `spritz-text`, `affare`/`on-affare`, `giusto`/`on-giusto`, `salato`/`on-salato`, `focus`, `map-land`, `map-water`, `map-park`, `map-road`, `map-label`. Valori e usi in `tokens.json`.
+- `spritz` è l'unico colore di marca: azione primaria, logo, selezione. **Un solo bottone `spritz` per schermata.** Mai come testo su `bg` (usa `spritz-text`).
+- Gradini sulla mediana (D-12): **Affare** `↓` (lime), **Giusto** `=` (carta), **Salato** `↑` (vino). Sempre glifo + numero + bordo `ink` 2 px; sotto 5 prezzi pillola `surface` neutra senza glifo.
+- Coppie testo/fondo **solo** quelle delle note di `tokens.json`; un test le ricalcola nei due temi (≥ 4,5:1 testo, ≥ 3:1 bordi, pin, focus).
+- Vietati: gradienti, viola-blu, `#000` o bianco puro come sfondo, colori esadecimali fuori dai file generati.
 
 ## Tipografia
-- Famiglia unica: `"Plus Jakarta Sans", system-ui, sans-serif`, variabile 200–800, file `public/fonts/plus-jakarta-sans-latin-wght.woff2` (27 KB, latin con accenti e €), licenza OFL in `public/fonts/OFL.txt`, `font-display: swap`.
-- Scala (rem, base 16 px): `--text-sm` 0,875 · `--text-md` 1 · `--text-lg` 1,25 · `--text-xl` 1,5 · `--text-2xl` 2. Interlinea 1,5 (titoli 1,2). Pesi: 400 testo, 600 etichette e prezzi, 800 titoli.
-- Prezzi in cifre tabellari (`font-variant-numeric: tabular-nums`), formato `7,50 €`.
-- Nessun testo sotto 14 px (0,875 rem); rispettare lo zoom del browser (nessun `maximum-scale`).
+- **Bricolage Grotesque** (`sans`, variabile 200–800) per tutto il testo; **Geist Mono** (`mono`) solo per `price-xl`, `price`, `meta`. Due woff2 del kit, self-hosted, ≤ 70 KB in tutto, `font-display: swap`, preload del solo Bricolage, fallback con metriche misurate.
+- Stili: `display` (una volta per schermata), `title`, `subtitle`, `body` (mai sotto 16 px), `label`, `caption`, `price-xl`, `price`, `meta` (maiuscolo solo qui). Cifre tabellari negli elenchi.
+- Prezzi in formato italiano: `6,50 €` nelle schede, `6,50` nei pin.
 
-## Spaziatura, forma, elevazione
-- Spazi multipli di 4: `--space-1` 4 · `--space-2` 8 · `--space-3` 12 · `--space-4` 16 · `--space-6` 24 · `--space-8` 32 px.
-- Raggi: `--radius-sm` 8 (campi, chip), `--radius-md` 12 (schede), `--radius-pill` 999 (segnaposto prezzo, chip).
-- Blocchi pieni con bordo netto invece di ombre sfumate; un'unica ombra `--shadow-sheet` per i fogli sopra la mappa.
-- Target: `--target` 48 px minimo, spazio ≥ 8 px tra target adiacenti.
+## Forme, spazi, ombre
+- Ogni controllo: bordo `ink` `border-strong` (2 px) e ombra `shadow-stampa` (piena, spostata, niente sfocature); `:active` trasla di 3 px e passa a `shadow-premuto`.
+- Raggi: `radius-pill` chip, pin, contatori · `radius-md` bottoni e schede · `radius-lg` fogli dal basso · `radius-sm` campi.
+- Spazi `space-1…8` (4–32 px), margine di pagina `space-4`. Separatori `line-soft` 1 px, mai come bordo di un controllo.
+- Token nostri non definiti dal kit (restano nello stesso file generato): `--target` 48, `--target-primary` 56, `--target-row` 64, switch, durata del toast 10 s, larghezza massima dei fogli.
+
+## Focus
+Anello `focus` pieno da 3 px con 2 px di distanza, così cade su `bg` o `surface`; mai dentro un bottone `spritz`. Sopra la mappa resta l'anello a due toni se il contrasto lo richiede.
 
 ## Movimento
-`--duration-fast` 150 ms (feedback al tocco), `--duration-base` 200 ms (fogli, toast); easing `ease-out`. Con `prefers-reduced-motion: reduce` tutte le durate vanno a 0 e la mappa non anima gli spostamenti. Nessuna animazione decorativa.
+120 ms tocchi · 180 ms fogli · 260 ms timbro. Entrata `cubic-bezier(.2,.8,.2,1)`; rimbalzo `cubic-bezier(.3,1.6,.5,1)` solo per timbro e tappo. Pin che compaiono: scala 0,6→1 sfalsata di 20 ms, al massimo 12. Solo CSS e Web Animations API. `prefers-reduced-motion: reduce` → dissolvenza di 120 ms o nulla, anche per la camera di MapLibre.
 
-## Componenti di base
-- **Pulsante primario**: pieno `--color-primary`, testo `--color-on-primary` 600, altezza 56 px, larghezza piena nei fogli; fisso in basso sulla mappa ("Aggiungi prezzo").
-- **Pulsante secondario**: superficie con bordo `--color-border-strong`, altezza 48 px.
-- **Chip** (drink): pill 48 px di altezza, selezionata = piena primario con `aria-pressed="true"`.
-- **Segnaposto prezzo**: pill con prezzo in 600 tabellare, colore secondo D-12; bar senza prezzo = punto neutro piccolo ma con area di tocco 48 px.
-- **Foglio (bottom sheet)**: superficie, raggio 12 in alto, maniglia visiva, chiudibile con Esc e pulsante "Chiudi".
-- **Toast** ("Prezzo salvato" + "Annulla"): in basso sopra il pulsante primario, `role="status"`, 10 s.
-- **Focus**: anello 3 px `--color-focus` con offset 2 px su ogni elemento interattivo, mai rimosso.
-- **Icone**: SVG inline a tratto 2 px, 24 px (`--icon-md`), decorative con `aria-hidden="true"`; solo icona → `aria-label`.
+## Componenti (uno per tipo, si estendono quelli esistenti)
+| Componente | Da | Note |
+|---|---|---|
+| `Button` | classi `.btn` | primario `spritz` 56 px, secondario `surface` 48 px, tutti con bordo `ink` e ombra stampa |
+| `DrinkChips` | `.chips` | una chip per drink e formato inseribile (SPEC 6), icona del drink; selezionata con `aria-pressed` |
+| `PricePill` | `.row__price` | stessa geometria dei pin su canvas |
+| `ReceiptSheet` | `BarSheet` | scontrino: bordo inferiore seghettato (`mask-image` SVG `data:` nel CSS), max 5 righe poi "Vedi tutti" |
+| `StampToast` | `Toast` | timbro con la data, Annulla 10 s invariato, `role="status"` |
+| `CoverageMeter` | pillola "N bar nella zona" | "X bar su N qui hanno un prezzo" |
+| `LoyaltyCard` | nuovo | Tessera (D-29) |
+Icone: 24 px, tratto 2 px, inline con `currentColor`, decorative con `aria-hidden`; i 9 drink da `docs/brand/assets/Icone/`.
 
 ## Mappa
-Stile OpenFreeMap **positron** (neutro e chiaro: fa risaltare i segnaposto colorati) in entrambi i temi; uno stile scuro richiederebbe una deroga a SPEC 4 (solo `liberty` o `positron`), da decidere con Roberto. Attribuzioni sempre visibili in basso a sinistra, sopra il pulsante primario, contrasto AA.
+Vedi `docs/brand/03-mappa.md` e `pages/mappa.md`. Stili derivati da Positron (Bancone) e Dark (Fuori orario) con i token `map-*`, senza punti di interesse né etichette delle strade minori. I pin sono un livello `symbol` con immagini disegnate su canvas. Attribuzioni sempre visibili.
 
-**Elementi sopra la mappa** (la mappa resta chiara anche in tema scuro; revisione UX di M0): i segnaposto usano sempre i token prezzo del tema chiaro, con bordo 2 px `#0F172A`, così il contrasto non testuale verso la mappa resta ≥ 3:1 (WCAG 1.4.11); il focus sui controlli sopra la mappa è un anello a due toni (anello `--color-focus` più un bordo interno del colore opposto). I movimenti di camera di MapLibre rispettano `prefers-reduced-motion` anche in JavaScript.
+## Logo
+Simbolo sulla mappa; logo orizzontale in `/privacy`, `/regole` e nelle condivisioni; negativo su fondo scuro; mono sotto 24 px. Icona dell'app: simbolo crema su `spritz`.
 
 ## Anti-pattern
-Colori spenti e testo grigio su grigio; emoji come icone; prezzo comunicato solo dal colore; hero o splash; animazioni in ingresso; testo dentro immagini; target piccoli vicini; stili inline (vietati anche dalla CSP).
+Promuovere il bere (D-31); nero freddo con neon; scontrino come muro di testo; più di un bottone `spritz` per schermata; prezzo comunicato solo dal colore; emoji; animazioni decorative; stili inline nell'HTML statico (CSP); target piccoli vicini.
 
-## Checklist pre-consegna (da UI UX Pro Max, a ogni milestone con interfaccia)
+## Checklist pre-consegna (UI UX Pro Max, a ogni milestone con interfaccia)
 - [ ] Nessuna emoji come icona; icone SVG di un'unica famiglia e tratto
 - [ ] Feedback visivo al tocco senza spostamenti di layout
 - [ ] Target ≥ 48×48 px, ordine di focus uguale all'ordine visivo, etichette descrittive
-- [ ] Contrasto testo ≥ 4,5:1 e controlli ≥ 3:1 verificati **separatamente** in chiaro e scuro
+- [ ] Contrasto testo ≥ 4,5:1 e controlli ≥ 3:1 verificati **separatamente** in Bancone e Fuori orario
 - [ ] `prefers-reduced-motion` rispettato; zoom testo 200% senza perdita di contenuto
 - [ ] Provato a 375 e 390 px e in orizzontale; nessun contenuto sotto le aree sicure (`env(safe-area-inset-*)`)
-- [ ] Solo token semantici, nessun colore grezzo nei componenti
+- [ ] Solo token generati da `tokens.json`, nessun colore grezzo nei componenti
+- [ ] Un solo bottone `spritz` per schermata; testi da `02-voce.md`, nessuna parola vietata

@@ -1,8 +1,9 @@
 # Pagina: Scheda bar — override di MASTER
 
-- **Forma**: foglio sopra la mappa su telefono (altezza 85%, trascinabile solo come scorciatoia: si chiude anche con "Chiudi" ed Esc); URL proprio `/bar/<key>` che funziona anche a freddo.
-- **Intestazione**: nome (`--text-xl` 800), tipo e città (`--text-sm` muted), indirizzo; link "Indicazioni" come pulsante secondario con icona.
-- **Prezzi**: una riga per drink e formato: nome drink a sinistra, prezzo grande (`--text-lg` 600 tabellare) a destra, sotto data (solo giorno) e "N conferme"; etichette testuali "HH", "da confermare", "Letto dall'AI da una foto del listino, controllato da chi l'ha inserito" (testo intero, `--text-sm`, icona decorativa).
-- **Azioni per prezzo**: "Confermo" (secondario, 48 px), "È cambiato" (secondario), "Segnala un errore" (link testuale 48 px di area); dopo "Confermo" il contatore si aggiorna e il pulsante diventa disabilitato con testo "Confermato".
-- **In verifica** (D-10): sezione separata in fondo con titolo e spiegazione di una riga; stesse righe con solo "Confermo".
-- Piè di pagina con link a Privacy e Regole.
+Riferimento: `docs/brand/mockup/2-scheda-bar.png`, `docs/brand/components/Scontrino/`.
+
+- **Forma**: foglio dal basso (`radius-lg`) con dentro lo **scontrino** (`ReceiptSheet`): fondo `surface`, bordo inferiore seghettato con `mask-image` SVG `data:` nel CSS. Il bar selezionato sulla mappa diventa un tappo. URL `/bar/<key>` invariato, anche a freddo; si chiude con "Chiudi" ed Esc.
+- **Intestazione**: nome in `title`, tipo e città in `caption` `ink-muted`, indirizzo.
+- **Righe di prezzo**: icona del drink, nome e formato, `PricePill` a destra; sotto in `meta` la data (solo giorno) e le conferme ("12 OTT · 3 CONFERME"); "HH" e "DA CONFERMARE" in `meta`. Al massimo 5 righe, poi "Vedi tutti".
+- **In verifica** (D-10): sezione separata con titolo e una riga di spiegazione, righe con solo "Confermo".
+- **Azioni**: "Confermo" (secondario), primario `spritz` "Aggiungi un prezzo qui" (uno solo per schermata); link "È cambiato", "Indicazioni", "Segnala un errore". Piè con Privacy e Regole.

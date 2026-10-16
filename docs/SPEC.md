@@ -1,6 +1,8 @@
 # Dove bevo — Specifica della Fase 0
 
-> **Versione 1.2 · 15/10/2026 · la 1.2 aggiunge la dashboard di copertura in `/admin` (ADR 0022, M5-11…M5-16) ed è autorizzata da Roberto il 15/10/2026 in chat, e vale con il tag `spec-approved-3`. Storico: versione 1.1 · 14/10/2026 · la 1.0 è approvata da Roberto l'11/10/2026 (tag `spec-approved`); la 1.1 è autorizzata da Roberto il 13/10/2026 (prompt v3.2) e il 14/10/2026 in chat, e valeva con il tag `spec-approved-2`.**
+> **Versione 1.3 · 16/10/2026 · la 1.3 aggiunge la brand identity v1 (ADR 0023) e la ricerca dei bar per nome in tutta Italia (ADR 0024); è proposta a Roberto il 16/10/2026, con le decisioni prese in chat lo stesso giorno, e vale con il tag `spec-approved-4`. Storico: versione 1.2 · 15/10/2026 · la 1.2 aggiunge la dashboard di copertura in `/admin` (ADR 0022, M5-11…M5-16) ed è autorizzata da Roberto il 15/10/2026 in chat, e valeva con il tag `spec-approved-3`; versione 1.1 · 14/10/2026 · la 1.0 è approvata da Roberto l'11/10/2026 (tag `spec-approved`); la 1.1 è autorizzata da Roberto il 13/10/2026 (prompt v3.2) e il 14/10/2026 in chat, e valeva con il tag `spec-approved-2`.**
+>
+> **Registro delle modifiche 1.3:** (1) brand identity v1 da `docs/brand/` (ADR 0023, sostituisce l'ADR 0011 per i valori visivi): temi Bancone e Fuori orario, token generati da `docs/brand/tokens.json`, Bricolage Grotesque e Geist Mono, gradini Affare/Giusto/Salato con glifo, pin su canvas, scontrino, timbro, copertura e Tessera, nuovo vincolo 2.10; (2) mappa scura in Fuori orario (D-27, deroga a 4 e al MASTER di M0); (3) "Aggiungi locale mancante" esce dalla mappa (D-28); (4) Tessera (D-29); (5) ricerca dei bar per nome in tutta Italia con indice statico a frammenti, senza server (D-30, ADR 0024): M4-06 sostituita da M4-11…M4-16; (6) parole vietate nei testi (D-31); (7) limiti della ricerca (D-32); (8) budget font ≤ 70 KB (15); (9) nuove voci MB-01…MB-17 (sezione 18) e milestone MB (19). Il bottone primario resta "Aggiungi prezzo"; nessuna modifica a schema, migrazioni, API e scritture.
 >
 > **Registro delle modifiche 1.2:** nuova dashboard di copertura in `/admin` (7.9), calcolata solo con il pulsante «Aggiorna»: bar con almeno un prezzo pubblico per città e avanzamento verso il gate (150 bar nel Comune di Milano); sei nuove voci M5-11…M5-16 nella sezione 18; nessuna modifica a schema, migrazioni e scritture.
 >
@@ -29,6 +31,7 @@
 7. **Nessuna AI e nessun pagamento** (v1.1, ADR 0018): l'app non usa modelli linguistici (AI Act art. 50 non applicabile) e l'utente non paga mai, in nessuna forma: niente abbonamenti, paywall, donazioni obbligatorie, account, pubblicità profilata, codice di pagamento.
 8. **Attribuzioni sempre visibili** sulla mappa: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors (ODbL).
 9. **Codice minimo**: meno codice e meno dipendenze sono un requisito. Prima di aggiungere un modulo si verifica se browser, Workers o SQLite fanno già il lavoro.
+10. **Identità visiva da una sola fonte** (v1.3, ADR 0023): colori, tipografia, spazi, raggi, ombre e bordi vengono solo da `docs/brand/tokens.json`, che genera `src/app/styles/tokens.css` e i colori del manifest; nessun esadecimale fuori dai file generati. Il colore non è mai l'unico segnale (glifo, numero e bordo `ink`). Movimento solo con CSS e Web Animations API, spento da `prefers-reduced-motion`. Nessun dato nuovo: copertura, prezzi suggeriti e Tessera si calcolano sul dispositivo da dati già scaricati o già conservati (12), senza richieste a `/api/*`, righe D1 o chiavi `localStorage` in più. CSP invariata.
 
 Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → accessibilità → codice minimo → design system.
 
@@ -47,7 +50,7 @@ Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → ac
 | D-09 | Quota foto | Rimosso in 1.1 (ADR 0018). |
 | D-10 | Prezzi in quarantena | Non compaiono sulla mappa; nella scheda bar compaiono nella sezione "In verifica" con "Confermo". Una conferma da un'altra sessione (o lo stesso prezzo inserito da un'altra sessione) li attiva. |
 | D-11 | Formato dei file cella | Oggetto `{ "c": [[cityId, "Nome"]], "v": [[key, name, kind, lat, lon, addr, ci]] }`: `ci` indicizza la tabella città **del file**, `cityId` è l'ID del nodo OSM del luogo. Motivo: i dati si rigenerano a ogni deploy, quindi un indice in `places.json` non sarebbe stabile tra versioni. |
-| D-12 | Colori sulla mediana | Solo con ≥ 5 prezzi attivi dello stesso drink e formato nella cella, fascia normale. Più economico < 0,9 × mediana, più caro > 1,1 × mediana, altrimenti nella media. Sotto 5 prezzi: colore neutro. Soglie in configurazione. Il valore è sempre scritto. |
+| D-12 | Colori sulla mediana | Solo con ≥ 5 prezzi attivi dello stesso drink e formato nella cella, fascia normale. Più economico (**Affare**, `↓`) < 0,9 × mediana, più caro (**Salato**, `↑`) > 1,1 × mediana, altrimenti nella media (**Giusto**, `=`; nomi e glifi dalla v1.3). Sotto 5 prezzi: colore neutro. Soglie in configurazione. Il valore è sempre scritto. |
 | D-13 | Happy hour | La mappa mostra il prezzo normale; se esiste solo quello in happy hour lo mostra con l'etichetta "HH". La scheda bar mostra entrambi. |
 | D-14 | Fuso orario | Ogni "giorno" (data del prezzo, quote, sale giornaliero, budget AI) è calcolato in `Europe/Rome`. |
 | D-15 | Annulla | Il prezzo parte allo scadere dei 10 s **oppure** quando la pagina passa in background (`visibilitychange` → `hidden`), con `fetch(..., { keepalive: true })`: chiudere l'app non è un annullamento. |
@@ -62,6 +65,12 @@ Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → ac
 | D-24 | Ambiente di sviluppo | Windows con Git Bash: script npm multipiattaforma (niente `rm -rf`, si usa Node), `init.sh` eseguito con Git Bash. L'import OSM completo gira solo in CI (Linux); in locale opzionale via WSL. |
 | D-25 | Foto per le evals | Rimosso in 1.1 (ADR 0018). |
 | D-26 | Storico di un bar | `GET /api/venues/:key/prices` restituisce al massimo le ultime 10 osservazioni per drink e formato, solo data. |
+| D-27 | Mappa scura (v1.3) | In Fuori orario la mappa usa uno stile derivato da OpenFreeMap Dark; in Bancone uno derivato da Positron. Entrambi generati da `scripts/build-map-styles.mjs` con i token `map-*` e serviti da `public/map/` con cache immutabile; tessere, glifi e sprite restano su `tiles.openfreemap.org`. Decisione di Roberto del 16/10/2026 (deroga a 4 e al MASTER di M0). |
+| D-28 | Bar mancante (v1.3) | "Aggiungi locale mancante" non è più sulla mappa: si raggiunge dal passo Bar di "Aggiungi prezzo" (7.5), dalla ricerca senza risultati (7.6) e dalla zona senza prezzi (7.1). |
+| D-29 | Tessera (v1.3) | Timbri a 1, 5, 10, 25 e 50 prezzi inseriti, dal contatore già in `localStorage` (12). Nessun dato sul server, nessuna chiave nuova, nessuna classifica. |
+| D-30 | Ricerca per nome (v1.3) | Qualunque bar OSM d'Italia si trova per nome dalla casella di ricerca, con un indice statico a frammenti per prefisso di parola generato all'import (5.1, ADR 0024). Zero richieste a `/api/*` e zero letture D1 per ricerca. Nessuna ricerca per quartiere. |
+| D-31 | Parole vietate (v1.3) | Un test fallisce se `it.ts` contiene, senza accenti e per radice: «sbronz», «ubriac», «sballo», «shot», «chupito», «brindis», «brinda», «bevi di più», «bere di più», «a volontà», «open bar», «senza limiti», «tracanna», «alcolic» (escluso «analcolico»). Elenco approvato da Roberto il 16/10/2026; si aggiorna solo con il suo ok. Si parla di prezzi e posti, mai di bere tanto (L. 125/2001, art. 13). |
+| D-32 | Limiti della ricerca (v1.3) | Non si trovano per nome: i bar utente approvati (non sono nei file statici), i 997 bar con nomi fatti solo di parole vuote («Bar», «Caffè»). I bar nascosti dall'admin restano nei frammenti: dopo la scelta la cella li segnala (`h`, ADR 0017) e compare «Questo locale non è più sulla mappa». Decisioni di Roberto del 16/10/2026. |
 
 ## 4. Stack e architettura
 
@@ -77,7 +86,7 @@ Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → ac
 - **Ambienti:** `staging` e `production`, ciascuno con Worker, D1 e segreti propri. Un Cron Trigger giornaliero per ambiente.
 - **Binding e variabili:** `ASSETS`, `DB` (D1), `RATE_LIMITER` (se disponibile), vars `DATA_VERSION`, `TURNSTILE_SITE_KEY`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`; segreti `TURNSTILE_SECRET`, `SESSION_HMAC_KEY`, `HASH_KEY`.
 - **Frontend:** Vite + Preact + TypeScript strict, CSS con custom properties, niente Tailwind. Nessun router di terze parti: le viste (mappa, scheda bar, aggiungi prezzo, revisione listino, ricerca, privacy, regole, admin) sono gestite con `history` nativa.
-- **Mappa:** MapLibre GL JS, stile OpenFreeMap (`liberty` o `positron`, scelto dal design system). Import dinamico avviato subito in parallelo alla shell; worker di MapLibre servito da noi con `setWorkerUrl` (niente `blob:`). Clustering nativo della sorgente GeoJSON.
+- **Mappa:** MapLibre GL JS, stili derivati da OpenFreeMap `positron` (Bancone) e `dark` (Fuori orario), D-27. Import dinamico avviato subito in parallelo alla shell; worker di MapLibre servito da noi con `setWorkerUrl` (niente `blob:`). Clustering nativo della sorgente GeoJSON.
 - **Backend:** Hono su `/api/*`; **zod solo nel Worker** (nel client bastano i tipi condivisi).
 - **Codice condiviso** in `src/shared/`: `config.ts`, `catalog.ts`, `geohash.ts` (encoder scritto da noi, ~30 righe), `api-types.ts` (tipi e formati compatti).
 - **Database:** D1 per prezzi, conferme, segnalazioni, bar utente, contatori. Catalogo nel codice. Accesso ai dati in un modulo unico (`src/worker/lib/db.ts`).
@@ -99,6 +108,7 @@ Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → ac
      - `key`: `n123` / `w456` / `r789` (tipo e ID OSM). `kind`: 0 cafe, 1 bar, 2 pub, 3 biergarten, 4 nightclub. Coordinate a 5 decimali. `addr`: via e civico da `addr:*`, stringa vuota se assente. `ci`: indice in `c`, `-1` se nessuna città entro 15 km. `cityId`: ID del nodo OSM del `place` più vicino.
      - Bar senza `name` esclusi.
    - `places.json`: `[[cityId, name, lat, lon, nBars], ...]` ordinato per `nBars` decrescente, caricato al primo uso della ricerca.
+   - `s/<prefisso>.json` (v1.3, ADR 0024): `[[key, name, lat, lon, cityId], ...]`, i bar con una parola del nome che inizia col prefisso di 2 caratteri (3 se il frammento supera 40 KB gzip); `s/index.json` elenca i prefissi divisi. Stessa normalizzazione del client (`src/shared/venue.ts`). Lo script fallisce se un frammento supera 40 KB gzip.
    - `LICENSE.txt`: database derivato da OpenStreetMap, ODbL 1.0, con attribuzione.
 4. `DATA_VERSION` = data del PBF (`YYYYMMDD`, dal timestamp di replica del file).
 5. Lo script **fallisce** se i file totali superano 15.000 (limite piattaforma 20.000) o se un file supera 1 MB, e se un bar o una città non validano (coordinate fuori dal riquadro Italia, nome > 120 caratteri).
@@ -144,7 +154,8 @@ Ogni funzionalità ha una verifica end-to-end nella sezione 18 (ID tra parentesi
 - Chip per drink (sezione 6). I segnaposto mostrano il prezzo del drink scelto; i bar senza prezzo restano visibili e discreti. Clustering nativo.
 - Colore rispetto alla mediana della cella (D-12), sempre con il valore scritto. Calcolato sul client dai dati della cella.
 - Prezzi con `observed_on` oltre 90 giorni marcati "da confermare".
-- Pulsante primario fisso **"Aggiungi prezzo"**.
+- Pulsante primario fisso **"Aggiungi prezzo"**, con "Elenco" come secondario; "Aggiungi locale mancante" non è sulla mappa (D-28).
+- **Copertura** (v1.3): "X bar su N qui hanno un prezzo", dai dati già caricati. **Legenda** "↓ Affare · = Giusto · ↑ Salato" solo quando la zona ha i colori attivi (D-12). **Zona senza prezzi** (copertura sotto il 5%): foglio "Qui nessuno ha ancora segnato un prezzo." con il primario.
 - Attribuzioni sempre visibili.
 - **Alternativa accessibile**: pulsante "Elenco" con la lista dei bar visibili (nome, prezzo del drink scelto, distanza se nota), navigabile da tastiera e screen reader; ogni voce apre la scheda bar.
 
@@ -160,7 +171,8 @@ Ogni funzionalità ha una verifica end-to-end nella sezione 18 (ID tra parentesi
 3. **Drink**: griglia del catalogo con il formato più comune preselezionato (cambiarlo è facoltativo).
 4. **Prezzo**: tastierino numerico (`inputmode="decimal"`), formato euro con virgola, interruttore "Happy hour", `Salva`.
 - Conteggio: dalla mappa, `Aggiungi prezzo` (1) → bar (2) → drink (3) → cifre → `Salva` (4).
-- Dopo `Salva`: messaggio breve "Prezzo salvato" con **Annulla** per 10 s; l'invio parte allo scadere o al passaggio in background (D-15). Annullare non genera richieste.
+- Nel passo Prezzo (v1.3): i **prezzi già visti in zona** per lo stesso drink e formato, toccabili al posto delle cifre (dati della cella già caricati); con almeno 5 prezzi la riga "In zona va da X a Y €, mediana Z €".
+- Dopo `Salva`: messaggio breve "Prezzo salvato" con **Annulla** per 10 s, nella forma del **Timbro** con la data del giorno, la Copertura con "+1" e la Tessera (D-29); l'invio parte allo scadere o al passaggio in background (D-15). Annullare non genera richieste.
 - Al primo contributo della visita: Turnstile e sessione (13.2), in modo trasparente se possibile.
 - Errori (fuori limite, quota, rete) annunciati con `aria-live` e con il prezzo ancora modificabile.
 
@@ -174,9 +186,9 @@ Rimossa con l'ADR 0018. Compenso: dopo `Salva`, "Aggiungi un altro drink qui" (s
 
 ### 7.6 Ricerca — M1, M4
 - Città e paesi da `places.json` (D-08), confronto senza accenti e maiuscole, per prefisso e poi per sottostringa, al massimo 8 risultati ordinati per numero di bar.
-- Bar per nome tra quelli delle celle caricate.
+- Bar per nome **in tutta Italia** (v1.3, D-30, ADR 0024): da 3 caratteri, frammento statico della prima parola significativa; ogni parola digitata è prefisso di una parola del nome; al massimo 8 bar insieme alle città; ordine: nome esatto, inizio del nome, distanza dal centro mappa o dalla posizione (solo se il permesso è già concesso, mai chiesto), alfabetico. La scelta porta la mappa a zoom 17 e apre la scheda. Nessun risultato: "Non trovo questo locale" e "Non trovi il bar?" col nome già scritto. Limiti in D-32.
 - Lista **"I più economici qui"** per il drink scelto nell'area visibile (prezzi attivi, al massimo 10, prezzo crescente, poi data più recente). M4.
-- Nessuna ricerca lato server.
+- Nessuna ricerca lato server: zero richieste a `/api/*` e zero letture D1 per ricerca.
 
 ### 7.7 PWA — M4
 - Manifest, icone, installabile. Service worker scritto a mano: precache della shell (HTML, JS, CSS, font, icone) con nome versionato, nessuna cache di `/api/*` né di `/data/*` né delle tessere.
@@ -320,6 +332,7 @@ Header presenti e CSP senza violazioni · 401 senza sessione · token Turnstile 
 ## 14. Privacy (GDPR) — riflessa in `PRIVACY-NOTES.md`
 
 - **Posizione:** usata solo sul dispositivo. Al server e alla CDN arrivano solo richieste di celle geohash5 (~5 km), che indicano dove si guarda la mappa, non dove si è. Mai coordinate, mai salvate, mai nei log. Le coordinate dei bar nuovi sono quelle toccate sulla mappa, non la posizione dell'utente.
+- **Ricerca per nome** (v1.3): al CDN arriva il nome del frammento, cioè i primi 2 o 3 caratteri di una parola digitata, mai la posizione; la ricerca non chiede il permesso di posizione.
 - **Contributi:** bar, drink, prezzo e **solo la data**. Nessun autore pubblico, nessun ID di sessione salvato con il prezzo. Il legame tra contributi della stessa sessione esiste solo in `counters` e `dedup` con sale giornaliero, cancellati entro 48 ore.
 - **Foto:** l'app non invia né conserva foto.
 - **Sub-responsabili:** Cloudflare (hosting, Turnstile, Access), OpenFreeMap (riceve dal browser le richieste delle tessere), GitHub (codice, nessun dato utente).
@@ -329,7 +342,7 @@ Header presenti e CSP senza violazioni · 401 senza sessione · token Turnstile 
 
 **Principi:** una schermata, un'azione primaria, default intelligenti, nessun vicolo cieco, italiano semplice. Uso con una mano e poca luce: target ≥ 48×48 px, contrasto alto, tema chiaro e scuro, `prefers-reduced-motion`. Annunci `aria-live` per caricamenti ed errori; test con axe. Tutti i testi per l'utente in `src/app/i18n/it.ts`.
 
-**Budget bloccanti in CI (profilo mobile):** shell iniziale ≤ 50 KB gzip esclusa MapLibre · LCP ≤ 2,5 s · INP ≤ 200 ms · CLS ≤ 0,05 · Lighthouse ≥ 90 Performance e ≥ 95 Accessibility, Best Practices, SEO.
+**Budget bloccanti in CI (profilo mobile):** shell iniziale ≤ 50 KB gzip esclusa MapLibre · LCP ≤ 2,5 s · INP ≤ 200 ms · CLS ≤ 0,05 · font ≤ 70 KB in tutto (v1.3) · Lighthouse ≥ 90 Performance e ≥ 95 Accessibility, Best Practices, SEO.
 
 ### 15.1 Design system con UI UX Pro Max
 1. La skill è installata (plugin `ui-ux-pro-max`); Python 3.13 presente.
@@ -339,7 +352,7 @@ Header presenti e CSP senza violazioni · 401 senza sessione · token Turnstile 
    ```
    poi override `--page` per mappa, scheda bar, aggiungi prezzo, ricerca. Output in `design-system/`.
 3. Il design system va mostrato a Roberto e approvato prima di M1.
-4. `MASTER.md` vale ovunque, il file di pagina prevale; linee guida React (compatibili con Preact); token in custom properties; **font self-hosted**, al massimo 2 file woff2; stile OpenFreeMap coerente con la palette. In conflitto prevalgono vincoli, sicurezza, accessibilità, poi la skill.
+4. **Dalla v1.3** l'identità visiva arriva da `docs/brand/` (ADR 0023) e `design-system/` ne è la sintesi; la skill resta la fonte delle regole UX e della checklist. `MASTER.md` vale ovunque, il file di pagina prevale; linee guida React (compatibili con Preact); token in custom properties; **font self-hosted**, al massimo 2 file woff2; stile OpenFreeMap coerente con la palette. In conflitto prevalgono vincoli, sicurezza, accessibilità, poi la skill.
 5. A ogni milestone con interfaccia: checklist pre-consegna della skill con esito riportato in PROGRESS, screenshot Playwright a 390×844.
 
 ## 16. CI/CD
@@ -446,11 +459,37 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | M4-03 | Colori sulla mediana | unit + e2e: con ≥ 5 prezzi colori più economico/media/più caro secondo D-12 con valore scritto; con < 5 colore neutro; contrasto AA in entrambi i temi |
 | M4-04 | "I più economici qui" | e2e: lista ordinata per prezzo del drink scelto nell'area visibile, al massimo 10, esclusi quarantena e `review` |
 | M4-05 | Freschezza | e2e: un prezzo con data > 90 giorni mostra "da confermare" in mappa e scheda |
-| M4-06 | Ricerca bar per nome | e2e: cerco il nome di un bar fixture tra le celle caricate e apro la scheda |
 | M4-07 | PWA installabile | Lighthouse/manifest valido; e2e: service worker registrato, precache della shell, nessuna voce `/api/*` o `/data/*` in cache |
 | M4-08 | Shell offline | e2e: dopo una visita, offline la shell si apre e mostra il messaggio offline |
 | M4-09 | Invito all'installazione | e2e: invito assente dopo il primo prezzo, presente dopo il secondo, una volta sola |
 | M4-10 | Happy hour | e2e: con solo prezzo HH la mappa mostra "HH"; la scheda mostra entrambe le fasce |
+| M4-11 | Indice di ricerca a frammenti nell'import (ADR 0024) | unit dello script: `s/<prefisso>.json` e `s/index.json` nel formato di 5.1, voci con `cityId` del nodo OSM, prefissi divisi a 3 caratteri sopra 40 KB gzip; lo script fallisce con un frammento > 40 KB gzip, oltre 15.000 file o con un file > 1 MB; import e client usano la stessa normalizzazione di `src/shared/venue.ts` (casi `Caffè`, `l'Osteria`, `Bar Sport`, `Più`, `Trattoria da Mario`); riga in `PRIVACY-NOTES.md` |
+| M4-12 | Ricerca dei bar per nome in tutta Italia (sostituisce M4-06) | e2e Chromium e WebKit 390×844: scrivo 3 caratteri di un bar fixture fuori dalle celle caricate → compare; lo scelgo → la mappa va a zoom 17 e si apre la scheda, con tocchi e tempo contati; nessuna richiesta a `/api/*` durante la ricerca; `Caffè Roma` si trova con `caffe roma`, `roma caf` e `CAFFÈ`; `bar sport` richiede entrambe le parole e l'ordine delle parole non cambia i risultati |
+| M4-13 | Ordine dei risultati della ricerca | e2e: con la mappa su Milano, "Bar Sport" mostra prima quelli di Milano; nome esatto prima dell'inizio del nome; il permesso di posizione non viene mai chiesto dalla ricerca |
+| M4-14 | Ricerca: nessun risultato, errori, bar nascosti | e2e: nessun risultato → "Non trovo questo locale" e "Non trovi il bar?" col nome già scritto; frammento non scaricabile → messaggio gentile, la ricerca per città funziona, nessun errore in console; bar nascosto dall'admin → dopo la scelta "Questo locale non è più sulla mappa" (D-32) |
+| M4-15 | Accessibilità della ricerca | e2e: schema ARIA `combobox` con frecce, Invio ed Esc; numero di risultati in `aria-live`; parte corrispondente in `<mark>`; target ≥ 48×48 px; volo della mappa rispettoso di `prefers-reduced-motion`; axe senza violazioni nei due temi; screenshot di campo vuoto, digitazione, risultati, nessun risultato, errore |
+| M4-16 | Peso e velocità della ricerca | build: codice di ricerca in un chunk a richiesta, shell ≤ 50 KB gzip; e2e: una ricerca tipica scarica ≤ 60 KB, risultati ≤ 150 ms con il frammento in memoria; misure in PROGRESS |
+
+### MB (v1.3, brand identity v1, ADR 0023)
+| ID | Funzionalità | Verifica |
+|---|---|---|
+| MB-01 | Token da una sola fonte | unit: `scripts/build-tokens.mjs` genera da `docs/brand/tokens.json` un CSS identico a `src/app/styles/tokens.css` committato (il test fallisce se diverso); CI: nessun colore esadecimale fuori dai file generati; `theme_color` e `background_color` del manifest dallo stesso script |
+| MB-02 | Font del kit | build/e2e: 2 file woff2 (Bricolage Grotesque, Geist Mono) self-hosted, ≤ 70 KB in tutto, `font-display: swap`, `preload` del solo Bricolage, fallback con metriche misurate; Lighthouse CLS ≤ 0,05 |
+| MB-03 | Contrasti verificati nei due temi | unit: per ogni coppia ammessa nelle note di `tokens.json`, rapporto ≥ 4,5:1 per il testo e ≥ 3:1 per bordi, pin e focus, in Bancone e in Fuori orario |
+| MB-04 | Controlli del kit | e2e: bottoni, chip e campi con bordo `ink` 2 px e ombra `shadow-stampa`, premuti scendono di 3 px; focus a 3 px con 2 px di distanza su ogni elemento interattivo; con `prefers-reduced-motion` nessuna animazione; screenshot 390×844 nei due temi |
+| MB-05 | Icone dei drink | unit: ogni codice del catalogo (SPEC 6) ha un'icona inline con `currentColor` in un modulo unico; i tre formati della spina usano la stessa; nessuna emoji |
+| MB-06 | Stili della mappa Bancone e Fuori orario (D-27) | build/e2e: stili generati da `scripts/build-map-styles.mjs` in `public/map/` con cache immutabile, senza punti di interesse né etichette delle strade minori; glifi, sprite e tessere solo da `tiles.openfreemap.org`; attribuzioni visibili; al cambio di tema prezzi e bar tornano senza nuove richieste a `/api/*` o `/data/*`, tempo misurato |
+| MB-07 | Pin e legenda | unit + e2e: gradino, glifo e prezzo corretti rispetto alla mediana (D-12); neutro sotto 5 prezzi; bordo tratteggiato oltre 90 giorni; tappo quando selezionato; HH come D-13; legenda solo con colori attivi; interazione peggiore ≤ 200 ms con 300 pin (misura in PROGRESS) |
+| MB-08 | Copertura della zona | e2e: "X bar su N qui hanno un prezzo" uguale al calcolo a mano su un caso fixture; nessuna richiesta di rete in più all'apertura e al movimento della mappa |
+| MB-09 | Scheda bar come scontrino | e2e: righe per drink con icona, data e conferme in `meta`, al massimo 5 righe poi "Vedi tutti"; "In verifica" (D-10), "Confermo", "È cambiato", "Indicazioni", "Segnala un errore" invariati; nessun attributo `style` nell'HTML servito |
+| MB-10 | Prezzi già visti in zona | e2e: nel passo Prezzo compaiono i prezzi della cella per lo stesso drink e formato; un tocco su uno sostituisce le cifre: esattamente 4 tocchi senza cifre; la riga con intervallo e mediana solo con ≥ 5 prezzi; nessuna richiesta in più |
+| MB-11 | Timbro dopo `Salva` | e2e: timbro con la data del giorno; `Annulla` entro 10 s → nessuna `POST /api/prices`; dopo 10 s una sola; passaggio in background → invio con `keepalive` (D-15 invariato); "Aggiungi un altro drink qui" (M3-16) presente |
+| MB-12 | Tessera (D-29) | e2e: timbri a 1, 5, 10, 25, 50 prezzi dal contatore esistente; nessuna chiave nuova in `localStorage`; nessuna richiesta in più |
+| MB-13 | Zona senza prezzi e bar mancante fuori dalla mappa (D-28) | e2e: con copertura sotto il 5% compare il foglio con il primario; "Aggiungi locale mancante" non è sulla mappa ed è raggiungibile dal passo Bar, dalla ricerca senza risultati e dalla zona senza prezzi |
+| MB-14 | Tema Fuori orario | e2e Chromium e WebKit: ogni vista nel tema scuro progettato (non invertito); axe senza violazioni in entrambi i temi; nessuna violazione CSP su ogni vista nuova |
+| MB-15 | Voce e parole vietate (D-31) | unit: le frasi di `docs/brand/02-voce.md` sono in `it.ts` (escluso il bottone primario, che resta "Aggiungi prezzo"); il test fallisce se `it.ts` contiene una parola dell'elenco D-31 |
+| MB-16 | Logo e icone dell'app | build: PNG 192, 512 e maskable generati da `dovebevo-icona-app.svg` con uno script Playwright; favicon SVG dal simbolo; simbolo sulla mappa e logo orizzontale in `/privacy` e `/regole` |
+| MB-17 | Budget brand | Lighthouse CI mobile: Performance ≥ 90, altre ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip; font ≤ 70 KB; righe D1 e richieste per vista e per contributo invariate (M3-20); misure prima e dopo in PROGRESS |
 
 ### M5
 | ID | Funzionalità | Verifica |
@@ -490,7 +529,8 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | **M1** | Import OSM, mappa, celle, ricerca città, scheda bar in lettura | M1-01…M1-15 |
 | **M2** | STRIDE, Turnstile e sessione, inserimento, conferme, segnalazioni, anti-frode, quote | M2-01…M2-16 |
 | **M3** | Bar proposti dagli utenti (li approva solo l'admin), pannello admin a tre code, "Vicino a me", "Aggiungi un altro drink qui", inserimento da listino, lettura delle celle a costo costante | M3-11…M3-20 |
-| **M4** | Colori sulla mediana, "più economici qui", freschezza, PWA, happy hour | M4-03…M4-10 |
+| **M4** | Colori sulla mediana, "più economici qui", freschezza, PWA, happy hour, ricerca dei bar per nome in tutta Italia (v1.3) | M4-03…M4-05, M4-07…M4-16 |
+| **MB** | Brand identity v1 (v1.3, ADR 0023), insieme alla ricerca per nome | MB-01…MB-17 |
 | **M5** | Eventi e `/admin`, dashboard di copertura, pagine legali, a11y e performance, ASVS L1, test con 5 persone | M5-01…M5-16 |
 | **M6** | Dominio, segreti di produzione, rollback, `v0.1.0`, smoke test | M6-01…M6-05 |
 

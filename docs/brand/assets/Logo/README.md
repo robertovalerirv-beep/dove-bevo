@@ -1,0 +1,1 @@
+Simbolo, logo e icona di Dove bevo. Inchiostro `#1B1611` (token `ink`), arancio `#FF5A1F` (token `spritz`), crema `#FFF4E4`; nel negativo arancio `#FF6A33` e crema. La scritta "dove bevo" è Bricolage Grotesque 800 vettorializzata. Il simbolo mono è solo inchiostro e serve sotto i 24px. L'icona dell'app va esportata in PNG 192 e 512 e in versione maskable.

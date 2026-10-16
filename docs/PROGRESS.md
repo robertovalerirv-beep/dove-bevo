@@ -4,6 +4,32 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-16 · Sessione 9 · Brand identity v1 + ricerca per nome · passo 0 (misure, nessuna modifica al codice)
+
+**Contesto**: `docs/PROMPT-BRAND-RICERCA.md`, kit estratto da `dovebevo-brand-kit.zip` in `docs/brand/`. Branch `brand-v1-search` da `main` (7549eda).
+
+**Screenshot "prima"**: 60 file in `docs/brand/prima/` (15 viste × Chromium/WebKit × chiaro/scuro, 390×844, fixture), script usa e getta. Inventario in `docs/brand/prima/INVENTARIO.md`.
+
+**Misure prima** (build locale, fixture):
+- Shell (`check-bundle-size`): **33.129 B gzip** (budget 51.200); JS principale 21.964 B, CSS 4.038 B.
+- Font: Plus Jakarta Sans 27.348 B. Kit: Bricolage 41.344 + Geist Mono 23.128 = **64.472 B** (budget brand 70 KB, +37 KB).
+- Lighthouse mobile ×3 (`lhci autorun`): Performance 0,99 · A11y/BP/SEO 1 · LCP 1.968–1.974 ms · TBT 35–79 ms · CLS 0.
+- INP con 300 prezzi spritz temporanei in D1 locale (127 bar nella vista), Chromium CPU 4×, 5 cambi di chip + 4 trascinamenti + 1 tocco, 3 giri: interazione peggiore **96 / 88 / 128 ms** (budget 200). Prezzi temporanei rimossi dopo la misura.
+- CPU di `/api/prices/:cell`: non rimisurata, ultima misura 0,080 ms (M1-08); la rotta non è toccata da questo lavoro.
+
+**Ricerca, dati reali** (staging `DATA_VERSION` 20261014):
+- Log del deploy: 74.494 feature → **60.667 bar**, 1.326 luoghi, **8.127 file** (margine 6.873 sotto 15.000), file più grande 49.209 B. Esclusi dall'import (senza nome o non validi): **12.501**, il log non li distingue.
+- Simulazione dei frammenti su 59.974 bar (98,9%) ricostruiti dai file statici di staging (19.522 GET di asset, nessuna `/api/*`, nessun D1): normalizzazione `searchKey` + parole + stopword, prefissi di 2 caratteri → 510 frammenti, 2.085 KB gzip in tutto. I 10 più grandi: `ca` 96,5 KB · `pa` 68,1 · `ma` 64,3 · `co` 58,1 · `bi` 44,2 · `ba` 41,2 · `pi` 40,3 · `sa` 39,5 · `ro` 37,4 · `mo` 32,8. Sopra 40 KB: 7 divisi a 3 caratteri → **661 file** (con l'indice), totale 8.788; il più grande diventa `caf` con 39,3 KB. Ricerche tipiche: `bar sport` → `sp` 21,5 KB · `caffè roma` → `ro` 37,4 KB · `osteria` → `os` 10,3 KB. **997 bar non hanno parole indicizzabili** (nome fatto solo di stopword, es. «Bar», «Caffè»): restano introvabili per nome, da decidere in ADR 0024.
+- `searchKey` non separa le parole; lo script di import oggi non normalizza nulla.
+
+**Critica A1 sul codice e sugli screenshot**: regge su palette e font (blu `#1d4ed8`, grigio-blu, Plus Jakarta), sul toast «Prezzo salvato» senza ricompensa e sui quattro bottoni di pari peso. Non regge, o va precisata: (1) i pin sono già un livello simbolo su canvas che legge i token con `getComputedStyle`, e non ci sono esadecimali fuori da `tokens.css`; (2) il focus è arancio, non blu; (3) i pin sono bianchi perché i colori sulla mediana (D-12, M4-03) **non esistono ancora**, e il problema maggiore sulla mappa sono i cerchi dei cluster (numeri) più evidenti dei prezzi; (4) lo stile della mappa si legge già da OpenFreeMap e si modifica a runtime (`loadStyle`): un patch dei colori a runtime eviterebbe `build-map-styles.mjs` e i file in `public/map/`; (5) il manifest PWA non esiste (M4-07 a false), quindi A5.5 lo crea.
+
+**Passo 1 · Piano e documenti (stesso branch)**. Decisioni di Roberto (AskUserQuestion, 16/10): Tessera sì · "Aggiungi locale mancante" fuori dalla mappa sì · mappa scura da Dark sì · bottone **resta "Aggiungi prezzo"** (verifiche congelate invariate) · niente spritz a orario · elenco delle parole vietate approvato · bar nascosti: filtro alla scelta con il messaggio · 997 bar con nomi di sole parole vuote: limite documentato · bar utente approvati: limite documentato (default del prompt).
+Scritti: ADR 0023 (brand, sostituisce la 0011 per i valori visivi) e 0024 (indice a frammenti), SPEC 1.3 (vincolo 2.10, D-12 con i nomi dei gradini, D-27…D-32, 4, 5.1, 7.1, 7.3, 7.6, 14, 15, 18, 19), `design-system/MASTER.md` e `pages/*.md` dal kit. Feature list: tolta M4-06, aggiunte M4-11…M4-16 e MB-01…MB-17 (testo identico alle tabelle di SPEC 18, tutte `passes: false`): 103 voci, 55 a true. Guardia e CI puntano a `spec-approved-4` (tag ancora da creare: fino ad allora `check-feature-list` fallisce).
+**Da fare per Roberto**: approvare SPEC 1.3 e le ADR, creare e pubblicare il tag `spec-approved-4` sul commit `chore(spec)`, aggiornare la riga del tag in `CLAUDE.md` (sue modifiche non committate) e in `SECURITY.md`. `design-system/preview*.png` e `preview.html` mostrano ancora la palette di M0.
+
+---
+
 ## 2026-10-15 · Sessione 8 · Dashboard di copertura in `/admin` · passo 0 (misure, nessuna modifica al codice)
 
 **Stato reale**: in `/admin` esiste solo `GET /api/admin/overview` (code); nessun codice di copertura o metriche. `metrics_daily` esiste nello schema ma **nessuno la scrive** (`/api/events` non c'è, M5-01 a false): gli indicatori «prezzi oggi / 7 giorni» vanno omessi. La chiave città è già stabile (D-11: `prices_current.city` = ID del nodo OSM del `place`, non un indice), nessuna correzione. I bar utente hanno `city = NULL` (`resolveVenue`): finiscono in «Senza città» e non sommano a «Bar totali» (= `nBars` di `places.json`). Zona del gate (risposta di Roberto): solo Comune di Milano.

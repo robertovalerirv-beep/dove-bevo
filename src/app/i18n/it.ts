@@ -27,7 +27,10 @@ export const it = {
     loading: "Carico i prezzi della zona…",
     loadError: "Non riesco a caricare i prezzi della zona. Controlla la connessione.",
     busy: "Il servizio è molto richiesto, riprova più tardi.",
-    bars: (n: number) => `${String(n)} bar nella zona`,
+    coverage: (withPrice: number, total: number) =>
+      `${String(withPrice)} bar su ${String(total)} qui hanno un prezzo`,
+    legend: "Legenda dei prezzi",
+    tiers: { affare: "Affare", giusto: "Giusto", salato: "Salato" },
     drinks: "Drink",
     nearMe: "Vicino a me",
     locating: "Cerco la tua posizione…",

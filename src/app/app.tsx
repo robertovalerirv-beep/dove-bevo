@@ -19,7 +19,8 @@ import { it } from "./i18n/it";
 import { invalidateCell, loadCell, ServiceBusy, shownPrice, type Venue } from "./lib/data";
 import { blockedHelp, locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
-import { formatPrice, formatSize } from "./lib/format";
+import { formatPrice, formatSize, todayRome } from "./lib/format";
+import { cellMedian, coverage, isStale, tierOf } from "./lib/tiers";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
 
@@ -247,14 +248,42 @@ export function App({ loadMap }: Props) {
     [allVenues, view],
   );
 
+  // Tier of every priced bar against the median of its cell (D-12); colours only with 5+ prices.
+  const zoneCoverage = useMemo(
+    () => coverage(inView, selected.drink, selected.size),
+    [inView, selected],
+  );
+  const tiersActive = useMemo(
+    () =>
+      inView.some((v) => {
+        const price = shownPrice(v, selected.drink, selected.size);
+        return price && cellMedian(allVenues, v.cell, selected.drink, selected.size) !== null;
+      }),
+    [inView, allVenues, selected],
+  );
+
   useEffect(() => {
+    const today = todayRome();
+    const medians = new Map<string, number | null>();
     map?.setVenues(
       allVenues.map((v) => {
         const price = shownPrice(v, selected.drink, selected.size);
         const label = price
           ? `${formatPrice(price[4])}${price[3] === 1 ? ` ${it.bar.happyHour}` : ""}`
           : "";
-        return { key: v.key, cell: v.cell, lat: v.lat, lon: v.lon, label };
+        if (!medians.has(v.cell)) {
+          medians.set(v.cell, cellMedian(allVenues, v.cell, selected.drink, selected.size));
+        }
+        return {
+          key: v.key,
+          cell: v.cell,
+          lat: v.lat,
+          lon: v.lon,
+          label,
+          // The median is of normal-hours prices: a happy-hour-only price stays neutral (D-13).
+          tier: price && price[3] === 0 ? tierOf(price[4], medians.get(v.cell) ?? null) : "neutro",
+          stale: price ? isStale(price[5], today) : false,
+        };
       }),
     );
   }, [map, allVenues, selected]);
@@ -278,7 +307,7 @@ export function App({ loadMap }: Props) {
               ? it.map.busy
               : cellsState === "error"
                 ? it.map.loadError
-                : it.map.bars(inView.length));
+                : it.map.coverage(zoneCoverage.withPrice, zoneCoverage.total));
 
   /** Back to the map: a real "back" when we opened the bar, otherwise replace (MASTER: predictable back). */
   function closeBar() {
@@ -756,6 +785,18 @@ export function App({ loadMap }: Props) {
             >
               <img src="/map-italia.jpg" alt="" width={780} height={1308} />
             </button>
+          )}
+          {zoomedIn && tiersActive && !pinning && (
+            <ul class="legend" aria-label={it.map.legend}>
+              {(["affare", "giusto", "salato"] as const).map((t) => (
+                <li key={t} class={`legend__item legend__item--${t}`}>
+                  <span aria-hidden="true">
+                    {t === "affare" ? "↓" : t === "giusto" ? "=" : "↑"}
+                  </span>{" "}
+                  {it.map.tiers[t]}
+                </li>
+              ))}
+            </ul>
           )}
           {pinning && <div class="map__cross" aria-hidden="true" data-testid="pin-mark" />}
           <p class="map__status" data-testid="map-status" role="status">

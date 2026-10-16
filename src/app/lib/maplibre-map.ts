@@ -5,6 +5,7 @@ import type { ExpressionSpecification, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { it } from "../i18n/it";
+import type { Tier } from "./tiers";
 
 setWorkerUrl(workerUrl);
 
@@ -35,6 +36,10 @@ export interface VenuePoint {
   lon: number;
   /** Price text, "" when the bar has no price for the chosen drink. */
   label: string;
+  /** Tier against the cell median (D-12): decides colour and glyph of the pin. */
+  tier: Tier;
+  /** Observed more than 90 days ago: dashed border, italic price, no shadow. */
+  stale: boolean;
 }
 
 const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -75,29 +80,67 @@ async function loadStyle(): Promise<StyleSpecification> {
   return style;
 }
 
-/** Stretchable pill image for price labels (icon-text-fit). */
-function pillImage(): ImageData {
-  const [w, h, r] = [64, 48, 22];
+const GLYPH: Record<Tier, string> = { affare: "↓", giusto: "=", salato: "↑", neutro: "" };
+const PIN_RATIO = 2;
+const PIN_HEIGHT = 32;
+const PIN_FONT_SIZE = 14;
+
+/** Pin image names carry everything they depend on: `pin-<tier>-<stale 0|1>-<theme>-<label>`. */
+function pinName(tier: Tier, stale: boolean, label: string): string {
+  return `pin-${tier}-${stale ? "1" : "0"}-${theme()}-${label}`;
+}
+
+const theme = () => (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+/** Draws a price pill (glyph + price in Geist Mono) on a canvas, once per distinct pin (MASTER). */
+function pinImage(tier: Tier, stale: boolean, label: string): ImageData {
+  const text = `${GLYPH[tier]}${GLYPH[tier] ? " " : ""}${label}`;
+  const font = `${stale ? "italic " : ""}600 ${String(PIN_FONT_SIZE)}px ${token("--font-mono")}`;
+  const probe = document.createElement("canvas").getContext("2d");
+  if (probe) probe.font = font;
+  const textWidth = probe ? probe.measureText(text).width : text.length * 9;
+  const shadow = stale ? 0 : 2;
+  const w = Math.ceil(textWidth + 24 + shadow);
+  const h = PIN_HEIGHT + shadow;
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = w * PIN_RATIO;
+  canvas.height = h * PIN_RATIO;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return new ImageData(w, h);
-  ctx.beginPath();
-  // Rounded rectangle by arcs: roundRect() is missing before Safari 16.
-  const [x0, y0, x1, y1] = [2, 2, w - 2, h - 2];
-  ctx.moveTo(x0 + r, y0);
-  ctx.arcTo(x1, y0, x1, y1, r);
-  ctx.arcTo(x1, y1, x0, y1, r);
-  ctx.arcTo(x0, y1, x0, y0, r);
-  ctx.arcTo(x0, y0, x1, y0, r);
-  ctx.closePath();
-  ctx.fillStyle = token("--map-pill-bg");
+  if (!ctx) return new ImageData(canvas.width, canvas.height);
+  ctx.scale(PIN_RATIO, PIN_RATIO);
+  const ink = token("--ink");
+  const fill = tier === "neutro" ? token("--map-pill-bg") : token(`--${tier}`);
+  const on = tier === "neutro" ? token("--map-pill-text") : token(`--on-${tier}`);
+  const pill = (x: number, y: number) => {
+    const [x0, y0, x1, y1] = [x + 1, y + 1, x + w - shadow - 1, y + PIN_HEIGHT - 1];
+    const r = (y1 - y0) / 2;
+    ctx.beginPath();
+    // Arcs instead of roundRect(): missing before Safari 16.
+    ctx.moveTo(x0 + r, y0);
+    ctx.arcTo(x1, y0, x1, y1, r);
+    ctx.arcTo(x1, y1, x0, y1, r);
+    ctx.arcTo(x0, y1, x0, y0, r);
+    ctx.arcTo(x0, y0, x1, y0, r);
+    ctx.closePath();
+  };
+  if (shadow) {
+    pill(shadow, shadow);
+    ctx.fillStyle = ink;
+    ctx.fill();
+  }
+  pill(0, 0);
+  ctx.fillStyle = fill;
   ctx.fill();
-  ctx.lineWidth = 4;
-  ctx.strokeStyle = token("--map-pill-border");
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = ink;
+  ctx.setLineDash(stale ? [4, 3] : []);
   ctx.stroke();
-  return ctx.getImageData(0, 0, w, h);
+  ctx.font = font;
+  ctx.fillStyle = on;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, (w - shadow) / 2, PIN_HEIGHT / 2 + 1);
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
 export class VenueMap {
@@ -126,6 +169,10 @@ export class VenueMap {
   }
 
   static async create(container: HTMLElement): Promise<VenueMap> {
+    // The pins are drawn on canvas: the mono font must be ready or they would use the fallback.
+    await document.fonts
+      .load(`600 ${String(PIN_FONT_SIZE)}px ${token("--font-mono")}`)
+      .catch(() => []);
     const map = new VenueMap(container, await loadStyle());
     await map.ready;
     return map;
@@ -133,14 +180,19 @@ export class VenueMap {
 
   private addLayers() {
     const map = this.map;
-    const text = token("--map-pill-text");
+    const ink = token("--ink");
+    const bg = token("--bg");
     const border = token("--map-pill-border");
-    const bg = token("--map-pill-bg");
-    map.addImage("pill", pillImage(), {
-      pixelRatio: 2,
-      stretchX: [[22, 42]],
-      stretchY: [[22, 26]],
-      content: [14, 8, 50, 40],
+    const dotFill = token("--map-pill-bg");
+    // Pin images are drawn when the style asks for a name it does not have yet.
+    map.on("styleimagemissing", (e) => {
+      const m = /^pin-(affare|giusto|salato|neutro)-([01])-(?:light|dark)-(.*)$/s.exec(e.id);
+      if (!m || map.hasImage(e.id)) return;
+      const image = pinImage(m[1] as Tier, m[2] === "1", m[3] ?? "");
+      map.addImage(e.id, image, { pixelRatio: PIN_RATIO });
+    });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      this.redrawPins();
     });
     const empty = { type: "FeatureCollection" as const, features: [] };
     // Bars without a price are clustered; priced bars never are, so prices stay readable at any
@@ -161,7 +213,7 @@ export class VenueMap {
       source: "venues",
       filter: isCluster,
       paint: {
-        "circle-color": bg,
+        "circle-color": ink,
         "circle-stroke-color": border,
         "circle-stroke-width": 2,
         "circle-radius": ["step", ["get", "point_count"], 16, 20, 20, 100, 24],
@@ -180,7 +232,7 @@ export class VenueMap {
         "text-allow-overlap": true,
         "text-ignore-placement": true,
       },
-      paint: { "text-color": text },
+      paint: { "text-color": bg },
     });
     map.addLayer({
       id: "venue-dot",
@@ -189,7 +241,7 @@ export class VenueMap {
       filter: isVenue,
       paint: {
         "circle-radius": 5,
-        "circle-color": bg,
+        "circle-color": dotFill,
         "circle-stroke-color": border,
         "circle-stroke-width": 2,
       },
@@ -198,14 +250,7 @@ export class VenueMap {
       id: "venue-price",
       type: "symbol",
       source: "prices",
-      layout: {
-        "icon-image": "pill",
-        "icon-text-fit": "both",
-        "text-field": ["get", "label"],
-        "text-font": FONT,
-        "text-size": TEXT_SIZE,
-      },
-      paint: { "text-color": text },
+      layout: { "icon-image": ["get", "pin"] },
     });
     // Invisible 48 px touch targets for bars and clusters (MASTER: target ≥ 48 px).
     for (const [id, source, filter] of [
@@ -281,13 +326,27 @@ export class VenueMap {
     }
   }
 
+  private points: VenuePoint[] = [];
+
+  /** After a theme change the pins are drawn again with the new tokens (no network involved). */
+  private redrawPins() {
+    for (const id of this.map.listImages()) if (id.startsWith("pin-")) this.map.removeImage(id);
+    this.setVenues(this.points);
+  }
+
   setVenues(points: VenuePoint[]) {
+    this.points = points;
     const collection = (list: VenuePoint[]) => ({
       type: "FeatureCollection" as const,
       features: list.map((p) => ({
         type: "Feature" as const,
         geometry: { type: "Point" as const, coordinates: [p.lon, p.lat] },
-        properties: { key: p.key, cell: p.cell, label: p.label },
+        properties: {
+          key: p.key,
+          cell: p.cell,
+          label: p.label,
+          pin: p.label ? pinName(p.tier, p.stale, p.label) : "",
+        },
       })),
     });
     void this.map

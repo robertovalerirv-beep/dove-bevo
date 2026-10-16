@@ -25,3 +25,8 @@ export function formatDistance(meters: number): string {
   if (meters < 1000) return `${String(Math.round(meters / 10) * 10)} m`;
   return `${liters.format(Math.round(meters / 100) / 10)} km`;
 }
+
+const romeDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" });
+
+/** Today as "YYYY-MM-DD" in Europe/Rome (D-14). */
+export const todayRome = (): string => romeDay.format(new Date());

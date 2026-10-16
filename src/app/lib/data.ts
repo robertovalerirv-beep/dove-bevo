@@ -103,11 +103,7 @@ export function loadPlaces(): Promise<Place[]> {
 export const loadVenuePrices = (key: string) =>
   getJson<VenuePrices>(`/api/venues/${encodeURIComponent(key)}/prices`, { p: [], h: [] });
 
-/** Price shown for a drink and size: the normal one, else the happy-hour one (D-13). Active only. */
-export function shownPrice(venue: Venue, drink: string, size: number): PriceRow | undefined {
-  const rows = venue.prices.filter((p) => p[1] === drink && p[2] === size && p[7] === 0);
-  return rows.find((p) => p[3] === 0) ?? rows.find((p) => p[3] === 1);
-}
+export { shownPrice } from "../../shared/prices";
 
 /** Drops a cell from the visit cache so its prices are read again after a contribution. */
 export function invalidateCell(cell: string): void {

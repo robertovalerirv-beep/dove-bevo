@@ -11,7 +11,9 @@ export async function zoomOf(page: Page): Promise<number> {
 }
 
 export async function waitForBars(page: Page) {
-  await expect(mapStatus(page)).toHaveText(/[1-9]\d* bar nella zona/, { timeout: 30_000 });
+  await expect(mapStatus(page)).toHaveText(/\d+ bar su [1-9]\d* qui hanno un prezzo/, {
+    timeout: 30_000,
+  });
 }
 
 /** Opens the city search and moves the map to Milano. */

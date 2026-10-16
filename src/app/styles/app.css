@@ -904,3 +904,35 @@
 .cov__sub--always {
   display: block;
 }
+
+/* Price legend (D-12): shown only when the zone has colours; glyph + word, never colour alone */
+.legend {
+  position: absolute;
+  left: var(--space-3);
+  bottom: var(--space-8);
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.legend__item {
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-strong) solid var(--ink);
+  border-radius: var(--radius-pill);
+  font: var(--type-caption);
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+}
+.legend__item--affare {
+  background: var(--affare);
+  color: var(--on-affare);
+}
+.legend__item--giusto {
+  background: var(--giusto);
+  color: var(--on-giusto);
+}
+.legend__item--salato {
+  background: var(--salato);
+  color: var(--on-salato);
+}

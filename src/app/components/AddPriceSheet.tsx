@@ -4,6 +4,7 @@ import { it } from "../i18n/it";
 import type { Venue } from "../lib/data";
 import { distanceMeters, searchKey } from "../../shared/venue";
 import { formatDistance, formatSize } from "../lib/format";
+import { drinkIcon, Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 
 export interface Draft {
@@ -164,6 +165,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
                   setSize(defaultSize(d.code));
                 }}
               >
+                <Icon name={drinkIcon(d.code)} />
                 <span class="drink__name">{drinkName(d.code)}</span>
                 <span class="drink__size">{formatSize(defaultSize(d.code))}</span>
               </button>

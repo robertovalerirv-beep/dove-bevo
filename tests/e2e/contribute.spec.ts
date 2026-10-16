@@ -237,6 +237,8 @@ test("the author confirming their own price is told it needs someone else", asyn
     .getByRole("button", { name: /^Negroni/ })
     .click();
   await page.keyboard.type("8,00");
+  // The toast lands where the pointer last clicked; a hovered toast holds its countdown (WCAG 2.2.1).
+  await page.mouse.move(0, 0);
   const sent = page.waitForResponse(
     // The first try may get 401 (no session yet): the client runs Turnstile and sends again.
     (r) => r.url().endsWith("/api/prices") && r.request().method() === "POST" && r.status() === 200,

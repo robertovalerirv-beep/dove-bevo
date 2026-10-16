@@ -473,7 +473,7 @@
     "milestone": "MB",
     "descrizione": "Contrasti verificati nei due temi",
     "verifica": "unit: per ogni coppia ammessa nelle note di `tokens.json`, rapporto ≥ 4,5:1 per il testo e ≥ 3:1 per bordi, pin e focus, in Bancone e in Fuori orario",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-04",
@@ -487,7 +487,7 @@
     "milestone": "MB",
     "descrizione": "Icone dei drink",
     "verifica": "unit: ogni codice del catalogo (SPEC 6) ha un'icona inline con `currentColor` in un modulo unico; i tre formati della spina usano la stessa; nessuna emoji",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-06",

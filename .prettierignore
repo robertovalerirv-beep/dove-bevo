@@ -12,3 +12,7 @@ test-results/
 worker-configuration.d.ts
 design-system/preview.html
 tests/fixtures/data/
+
+# Brand kit delivered as-is (ADR 0023); the generated tokens.css is formatted by build-tokens
+docs/brand/
+brand/

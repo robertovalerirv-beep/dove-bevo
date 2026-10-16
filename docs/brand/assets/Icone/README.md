@@ -1,0 +1,1 @@
+Icone dei drink disegnate per Dove bevo, una per voce del catalogo nell'ordine di SPEC 6: birra alla spina (boccale, per tutti i formati), birra in bottiglia, spritz, gin tonic, negroni, calice di vino, prosecco, analcolico, bibita. Griglia 24px, tratto 2px, estremità arrotondate. Inchiostro `#1B1611` nei file; nel codice inline con `stroke="currentColor"`.

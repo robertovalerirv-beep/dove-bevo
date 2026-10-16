@@ -12,7 +12,7 @@ import { PinPanel } from "./components/PinPanel";
 import { ProposeSheet, type Proposal } from "./components/ProposeSheet";
 import { ReportSheet, type Reason } from "./components/ReportSheet";
 import { Toast } from "./components/Toast";
-import { Icon } from "./components/Icon";
+import { drinkIcon, Icon } from "./components/Icon";
 import { ListSheet } from "./components/ListSheet";
 import { SearchSheet } from "./components/SearchSheet";
 import { it } from "./i18n/it";
@@ -695,7 +695,10 @@ export function App({ loadMap }: Props) {
     <div class="app">
       <header class="top">
         <div class="top__row">
-          <h1 class="brand">{APP_NAME}</h1>
+          <h1 class="brand">
+            <img class="brand__mark" src="/brand/simbolo.svg" alt="" width="28" height="34" />
+            {APP_NAME}
+          </h1>
           <button
             type="button"
             class="btn search-field"
@@ -720,6 +723,7 @@ export function App({ loadMap }: Props) {
                 setChip(c.id);
               }}
             >
+              <Icon name={drinkIcon(c.drink)} />
               {chipLabel(c)}
             </button>
           ))}

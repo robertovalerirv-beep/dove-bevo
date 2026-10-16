@@ -1,6 +1,6 @@
 # 0024 · Ricerca dei bar per nome con un indice statico a frammenti
 
-- **Stato:** proposta (decisioni B4 di Roberto del 2026-10-16, in attesa dell'ok al passo 1) · **Data:** 2026-10-16
+- **Stato:** accettata (approvata da Roberto il 2026-10-16, decisioni B4 dello stesso giorno) · **Data:** 2026-10-16
 
 ## Contesto
 Oggi `SearchSheet` trova le città in `places.json` e i bar solo tra le celle già caricate (M4-06). Roberto ha verificato che per gli utenti è più naturale cercare il nome del locale. Vincoli: nessuna ricerca lato server (SPEC 7.6, 20), zero richieste a `/api/*` e zero letture D1 per ricerca, nessuna dipendenza, file statici ≤ 15.000 e ≤ 1 MB ciascuno, al CDN solo i primi caratteri digitati. La ricerca per quartiere è esclusa (dati OSM incompleti).

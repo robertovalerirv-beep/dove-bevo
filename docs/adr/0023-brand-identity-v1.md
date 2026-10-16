@@ -1,6 +1,6 @@
 # 0023 · Brand identity v1 (Bancone e Fuori orario)
 
-- **Stato:** proposta (decisioni A7 di Roberto del 2026-10-16, in attesa dell'ok al passo 1) · **Data:** 2026-10-16
+- **Stato:** accettata (approvata da Roberto il 2026-10-16, decisioni A7 dello stesso giorno) · **Data:** 2026-10-16
 - **Sostituisce** l'ADR 0011 per i valori visivi (colori, font, forme, movimento). UI UX Pro Max resta la fonte delle regole di UX, accessibilità e interazione e della checklist pre-consegna.
 
 ## Contesto

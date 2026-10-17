@@ -78,7 +78,7 @@ test("MB-07 interactions stay under 200 ms with many pins (INP)", async ({ page 
     w.slowest = 0;
     new PerformanceObserver((list) => {
       for (const e of list.getEntries()) w.slowest = Math.max(w.slowest, e.duration);
-    }).observe({ type: "event", durationThreshold: 16, buffered: true });
+    }).observe({ type: "event", durationThreshold: 16, buffered: true } as PerformanceObserverInit);
   });
   await page.reload();
   await goToMilano(page);

@@ -3,7 +3,8 @@ import { CATALOG, findSize } from "../../shared/catalog";
 import { it } from "../i18n/it";
 import type { Venue } from "../lib/data";
 import { distanceMeters, searchKey } from "../../shared/venue";
-import { formatDistance, formatSize } from "../lib/format";
+import { formatDistance, formatPrice, formatSize } from "../lib/format";
+import { cellRange, seenPrices } from "../lib/tiers";
 import { drinkIcon, Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 
@@ -177,6 +178,10 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
   }
 
   const sizes = CATALOG.find((d) => d.code === drink)?.sizes ?? [];
+  // Prices already seen in this zone for the same drink and size (MB-10): one tap saves one.
+  const seen = seenPrices(venues, venue.cell, drink, size);
+  const range = cellRange(venues, venue.cell, drink, size);
+  const bare = (cents: number) => formatPrice(cents).replace(" €", "");
   return (
     <Sheet
       title={venue.name}
@@ -197,6 +202,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
         }}
       >
         <h3 class="section-title">{drinkName(drink)}</h3>
+        <p class="question">{it.add.question}</p>
         {sizes.length > 1 && (
           <fieldset class="segmented">
             <legend class="sr-only">{it.add.size}</legend>
@@ -215,6 +221,31 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
               </label>
             ))}
           </fieldset>
+        )}
+        {range && (
+          <p class="hint zone-range">
+            {it.add.zoneRange(bare(range.min), bare(range.max), bare(range.median))}
+          </p>
+        )}
+        {seen.length > 0 && (
+          <>
+            <ul class="seen" aria-label={it.add.seenHere}>
+              {seen.map((cents) => (
+                <li key={cents}>
+                  <button
+                    type="button"
+                    class="chip"
+                    onClick={() => {
+                      onSave({ venue, drink, size, hh, cents });
+                    }}
+                  >
+                    {formatPrice(cents)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p class="hint">{it.add.seenHelp}</p>
+          </>
         )}
         <label class="price-input">
           <span class="sr-only">{it.add.price}</span>

@@ -2,9 +2,10 @@ import { useEffect, useState } from "preact/hooks";
 import type { PriceRow, VenuePrices } from "../../shared/api-types";
 import { it } from "../i18n/it";
 import { loadCell, loadVenuePrices, type Venue } from "../lib/data";
-import { formatDate, formatPrice, formatSize } from "../lib/format";
+import { formatDate, formatPrice, formatSize, todayRome } from "../lib/format";
+import { isStale } from "../lib/tiers";
 import { directionsUrl } from "../lib/geo";
-import { Icon } from "./Icon";
+import { drinkIcon, Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 
 export interface BarActions {
@@ -19,9 +20,14 @@ interface Props {
   venueKey: string;
   cell: string;
   actions: BarActions;
+  /** The drink chosen on the map comes first on the receipt. */
+  focus: { drink: string; size: number };
   onVenue: (venue: Venue) => void;
   onClose: () => void;
 }
+
+/** Rows visible on the receipt before "Vedi tutti" (brand, Scontrino). */
+const VISIBLE_ROWS = 5;
 
 const rowId = (row: PriceRow) => `${row[1]}|${String(row[2])}|${String(row[3])}`;
 
@@ -82,10 +88,14 @@ function PriceItem({
 
   return (
     <li class="price">
+      <span class="price__icon">
+        <Icon name={drinkIcon(drink)} />
+      </span>
       <span class="price__name">{name}</span>
       <span class="price__value">{formatPrice(cents)}</span>
       <span class="price__meta" aria-live="polite">
         {formatDate(day)} · {it.bar.confirmations(count)}
+        {isStale(day, todayRome()) && <span class="price__stale"> · {it.bar.toConfirm}</span>}
       </span>
       <span class="price__actions">
         <button
@@ -137,10 +147,11 @@ function PriceItem({
 }
 
 /** Bar page `/bar/<key>?c=<cell>` (SPEC 7.2). */
-export function BarSheet({ venueKey, cell, actions, onVenue, onClose }: Props) {
+export function BarSheet({ venueKey, cell, actions, focus, onVenue, onClose }: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   useEffect(() => {
     void loadCell(cell)
       .then((venues) => {
@@ -175,65 +186,89 @@ export function BarSheet({ venueKey, cell, actions, onVenue, onClose }: Props) {
       </Sheet>
     );
   }
-  const active = prices?.p.filter((p) => p[7] === 0) ?? [];
+  const isFocus = (p: PriceRow) => p[1] === focus.drink && p[2] === focus.size;
+  const active = [...(prices?.p.filter((p) => p[7] === 0) ?? [])].sort(
+    (a, b) => Number(isFocus(b)) - Number(isFocus(a)),
+  );
+  const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[7] === 1) ?? [];
   return (
     <Sheet title={venue.name} onClose={onClose}>
-      <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
-      {venue.addr && <p class="bar__addr">{venue.addr}</p>}
-      <div class="bar__actions">
-        <a
-          class="btn btn--secondary"
-          tabIndex={0}
-          href={directionsUrl(venue.lat, venue.lon)}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Icon name="directions" />
-          {it.bar.directions}
-        </a>
+      <div class="scontrino">
+        <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
+        {venue.addr && <p class="bar__addr">{venue.addr}</p>}
+        <div class="bar__actions">
+          <a
+            class="btn btn--secondary"
+            tabIndex={0}
+            href={directionsUrl(venue.lat, venue.lon)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon name="directions" />
+            {it.bar.directions}
+          </a>
+          <button
+            type="button"
+            class="btn btn--primary"
+            onClick={() => {
+              actions.addHere(venue);
+            }}
+          >
+            {it.actions.addHere}
+          </button>
+        </div>
+        <h3 class="section-title">{it.bar.prices}</h3>
+        {pricesFailed && (
+          <p class="hint" role="alert">
+            {it.bar.pricesError}
+          </p>
+        )}
+        {prices && active.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
+        <ul class="prices">
+          {shown.map((row) => (
+            <PriceItem
+              key={rowId(row)}
+              row={row}
+              venue={venue}
+              actions={actions}
+              inReview={false}
+            />
+          ))}
+        </ul>
+        {active.length > VISIBLE_ROWS && (
+          <button
+            type="button"
+            class="btn btn--ghost"
+            aria-expanded={showAll}
+            onClick={() => {
+              setShowAll(!showAll);
+            }}
+          >
+            {showAll ? it.bar.seeLess : it.bar.seeAll(active.length)}
+          </button>
+        )}
+        {review.length > 0 && (
+          <>
+            <h3 class="section-title">{it.bar.inReview}</h3>
+            <p class="hint">{it.bar.inReviewHelp}</p>
+            <ul class="prices">
+              {review.map((row) => (
+                <PriceItem key={rowId(row)} row={row} venue={venue} actions={actions} inReview />
+              ))}
+            </ul>
+          </>
+        )}
         <button
           type="button"
-          class="btn btn--primary"
+          class="btn btn--ghost"
           onClick={() => {
-            actions.addHere(venue);
+            actions.report(venue, null);
           }}
         >
-          {it.actions.addHere}
+          {it.actions.reportBar}
         </button>
       </div>
-      <h3 class="section-title">{it.bar.prices}</h3>
-      {pricesFailed && (
-        <p class="hint" role="alert">
-          {it.bar.pricesError}
-        </p>
-      )}
-      {prices && active.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
-      <ul class="prices">
-        {active.map((row) => (
-          <PriceItem key={rowId(row)} row={row} venue={venue} actions={actions} inReview={false} />
-        ))}
-      </ul>
-      {review.length > 0 && (
-        <>
-          <h3 class="section-title">{it.bar.inReview}</h3>
-          <p class="hint">{it.bar.inReviewHelp}</p>
-          <ul class="prices">
-            {review.map((row) => (
-              <PriceItem key={rowId(row)} row={row} venue={venue} actions={actions} inReview />
-            ))}
-          </ul>
-        </>
-      )}
-      <button
-        type="button"
-        class="btn btn--ghost"
-        onClick={() => {
-          actions.report(venue, null);
-        }}
-      >
-        {it.actions.reportBar}
-      </button>
     </Sheet>
   );
 }

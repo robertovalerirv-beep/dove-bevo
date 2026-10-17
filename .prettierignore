@@ -16,3 +16,6 @@ tests/fixtures/data/
 # Brand kit delivered as-is (ADR 0023); the generated tokens.css is formatted by build-tokens
 docs/brand/
 brand/
+
+# Map styles are named by the hash of their exact bytes (scripts/build-map-styles.mjs)
+public/map/

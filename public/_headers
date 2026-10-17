@@ -11,3 +11,13 @@
 # Bar data is versioned by DATA_VERSION in the path: never changes once deployed (SPEC 5.3).
 /data/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Map styles carry the content hash in their name (scripts/build-map-styles.mjs): immutable (SPEC D-27).
+/map/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The service worker must be fetched fresh at every visit (SPEC 7.7); the manifest has its own type.
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Content-Type: application/manifest+json

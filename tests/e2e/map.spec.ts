@@ -45,7 +45,7 @@ test("M1-07 loads at most 12 cells from zoom 13 and nothing below", async ({ pag
     void route.continue();
   });
   await page.goto("/");
-  await expect(mapStatus(page)).toHaveText("Avvicinati o cerca una città");
+  await expect(mapStatus(page)).toHaveText("Avvicinati per vedere i prezzi, o cerca una città.");
   expect(priceRequests).toEqual([]);
 
   await goToMilano(page);
@@ -61,7 +61,7 @@ test("M1-07 loads at most 12 cells from zoom 13 and nothing below", async ({ pag
     await expect.poll(() => zoomOf(page)).toBeLessThan(zoom);
   }
   expect(await zoomOf(page)).toBeLessThan(13);
-  await expect(mapStatus(page)).toHaveText("Avvicinati o cerca una città");
+  await expect(mapStatus(page)).toHaveText("Avvicinati per vedere i prezzi, o cerca una città.");
   const before = priceRequests.length;
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");
@@ -119,7 +119,7 @@ test.describe("M1-10 with the position denied", () => {
     await expect(search.getByText(/tocca il lucchetto accanto all'indirizzo/)).toBeVisible({
       timeout: 15_000,
     });
-    await expect(search.getByRole("searchbox")).toBeFocused();
+    await expect(search.getByRole("combobox")).toBeFocused();
     if (info.project.name === "chromium") {
       await page.screenshot({ path: "docs/screenshots/m3/locate-denied-390.png" });
     }
@@ -149,7 +149,7 @@ test.describe("M3-15 with a position that never answers", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Vicino a me" }).click();
     const search = page.getByRole("dialog", { name: "Cerca" });
-    await expect(search.getByRole("searchbox")).toBeFocused();
+    await expect(search.getByRole("combobox")).toBeFocused();
     await expect(search.getByText("Non riesco a trovarti")).toHaveCount(0); // no permission hint: only a timeout
     await milanoFromOpenSearch(page);
   });
@@ -158,8 +158,8 @@ test.describe("M3-15 with a position that never answers", () => {
 test("M1-11 the city search moves the map and loads the cells", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Cerca" }).click();
-  await page.getByRole("searchbox", { name: "Cerca una città o un bar" }).fill("milano");
-  const first = page.getByRole("list", { name: "Città e paesi" }).getByRole("button").first();
+  await page.getByRole("combobox", { name: "Cerca una città o un bar" }).fill("milano");
+  const first = page.getByRole("listbox", { name: "Risultati" }).getByRole("option").first();
   await expect(first).toContainText("Milano");
   const request = page.waitForRequest((r) => r.url().includes("/api/prices/"));
   await first.click();
@@ -203,12 +203,12 @@ test("M1-13 the accessible list works with the keyboard only", async ({ page, br
   await page.goto("/");
   await tabTo(page, key, "Cerca città o bar");
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("searchbox", { name: "Cerca una città o un bar" })).toBeFocused();
+  await expect(page.getByRole("combobox", { name: "Cerca una città o un bar" })).toBeFocused();
   await page.keyboard.type("milano");
   await expect(
-    page.getByRole("list", { name: "Città e paesi" }).getByRole("button").first(),
+    page.getByRole("listbox", { name: "Risultati" }).getByRole("option").first(),
   ).toContainText("Milano");
-  await page.keyboard.press("Tab");
+  await page.keyboard.press("ArrowDown"); // the options are reached with the arrows, focus stays in the field
   await page.keyboard.press("Enter");
   await waitForBars(page);
 

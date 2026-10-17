@@ -368,14 +368,14 @@
     "milestone": "M4",
     "descrizione": "Colori sulla mediana",
     "verifica": "unit + e2e: con ≥ 5 prezzi colori più economico/media/più caro secondo D-12 con valore scritto; con < 5 colore neutro; contrasto AA in entrambi i temi",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-04",
     "milestone": "M4",
     "descrizione": "\"I più economici qui\"",
     "verifica": "e2e: lista ordinata per prezzo del drink scelto nell'area visibile, al massimo 10, esclusi quarantena e `review`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-05",
@@ -389,42 +389,42 @@
     "milestone": "M4",
     "descrizione": "PWA installabile",
     "verifica": "Lighthouse/manifest valido; e2e: service worker registrato, precache della shell, nessuna voce `/api/*` o `/data/*` in cache",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-08",
     "milestone": "M4",
     "descrizione": "Shell offline",
     "verifica": "e2e: dopo una visita, offline la shell si apre e mostra il messaggio offline",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-09",
     "milestone": "M4",
     "descrizione": "Invito all'installazione",
     "verifica": "e2e: invito assente dopo il primo prezzo, presente dopo il secondo, una volta sola",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-10",
     "milestone": "M4",
     "descrizione": "Happy hour",
     "verifica": "e2e: con solo prezzo HH la mappa mostra \"HH\"; la scheda mostra entrambe le fasce",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-11",
     "milestone": "M4",
     "descrizione": "Indice di ricerca a frammenti nell'import (ADR 0024)",
     "verifica": "unit dello script: `s/<prefisso>.json` e `s/index.json` nel formato di 5.1, voci con `cityId` del nodo OSM, prefissi divisi a 3 caratteri sopra 40 KB gzip; lo script fallisce con un frammento > 40 KB gzip, oltre 15.000 file o con un file > 1 MB; import e client usano la stessa normalizzazione di `src/shared/venue.ts` (casi `Caffè`, `l'Osteria`, `Bar Sport`, `Più`, `Trattoria da Mario`); riga in `PRIVACY-NOTES.md`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-12",
     "milestone": "M4",
     "descrizione": "Ricerca dei bar per nome in tutta Italia (sostituisce M4-06)",
     "verifica": "e2e Chromium e WebKit 390×844: scrivo 3 caratteri di un bar fixture fuori dalle celle caricate → compare; lo scelgo → la mappa va a zoom 17 e si apre la scheda, con tocchi e tempo contati; nessuna richiesta a `/api/*` durante la ricerca; `Caffè Roma` si trova con `caffe roma`, `roma caf` e `CAFFÈ`; `bar sport` richiede entrambe le parole e l'ordine delle parole non cambia i risultati",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-13",
@@ -438,35 +438,35 @@
     "milestone": "M4",
     "descrizione": "Ricerca: nessun risultato, errori, bar nascosti",
     "verifica": "e2e: nessun risultato → \"Non trovo questo locale\" e \"Non trovi il bar?\" col nome già scritto; frammento non scaricabile → messaggio gentile, la ricerca per città funziona, nessun errore in console; bar nascosto dall'admin → dopo la scelta \"Questo locale non è più sulla mappa\" (D-32)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-15",
     "milestone": "M4",
     "descrizione": "Accessibilità della ricerca",
     "verifica": "e2e: schema ARIA `combobox` con frecce, Invio ed Esc; numero di risultati in `aria-live`; parte corrispondente in `<mark>`; target ≥ 48×48 px; volo della mappa rispettoso di `prefers-reduced-motion`; axe senza violazioni nei due temi; screenshot di campo vuoto, digitazione, risultati, nessun risultato, errore",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-16",
     "milestone": "M4",
     "descrizione": "Peso e velocità della ricerca",
     "verifica": "build: codice di ricerca in un chunk a richiesta, shell ≤ 50 KB gzip; e2e: una ricerca tipica scarica ≤ 60 KB, risultati ≤ 150 ms con il frammento in memoria; misure in PROGRESS",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-01",
     "milestone": "MB",
     "descrizione": "Token da una sola fonte",
     "verifica": "unit: `scripts/build-tokens.mjs` genera da `docs/brand/tokens.json` un CSS identico a `src/app/styles/tokens.css` committato (il test fallisce se diverso); CI: nessun colore esadecimale fuori dai file generati; `theme_color` e `background_color` del manifest dallo stesso script",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-02",
     "milestone": "MB",
     "descrizione": "Font del kit",
     "verifica": "build/e2e: 2 file woff2 (Bricolage Grotesque, Geist Mono) self-hosted, ≤ 70 KB in tutto, `font-display: swap`, `preload` del solo Bricolage, fallback con metriche misurate; Lighthouse CLS ≤ 0,05",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-03",
@@ -494,7 +494,7 @@
     "milestone": "MB",
     "descrizione": "Stili della mappa Bancone e Fuori orario (D-27)",
     "verifica": "build/e2e: stili generati da `scripts/build-map-styles.mjs` in `public/map/` con cache immutabile, senza punti di interesse né etichette delle strade minori; glifi, sprite e tessere solo da `tiles.openfreemap.org`; attribuzioni visibili; al cambio di tema prezzi e bar tornano senza nuove richieste a `/api/*` o `/data/*`, tempo misurato",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-07",
@@ -515,35 +515,35 @@
     "milestone": "MB",
     "descrizione": "Scheda bar come scontrino",
     "verifica": "e2e: righe per drink con icona, data e conferme in `meta`, al massimo 5 righe poi \"Vedi tutti\"; \"In verifica\" (D-10), \"Confermo\", \"È cambiato\", \"Indicazioni\", \"Segnala un errore\" invariati; nessun attributo `style` nell'HTML servito",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-10",
     "milestone": "MB",
     "descrizione": "Prezzi già visti in zona",
     "verifica": "e2e: nel passo Prezzo compaiono i prezzi della cella per lo stesso drink e formato; un tocco su uno sostituisce le cifre: esattamente 4 tocchi senza cifre; la riga con intervallo e mediana solo con ≥ 5 prezzi; nessuna richiesta in più",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-11",
     "milestone": "MB",
     "descrizione": "Timbro dopo `Salva`",
     "verifica": "e2e: timbro con la data del giorno; `Annulla` entro 10 s → nessuna `POST /api/prices`; dopo 10 s una sola; passaggio in background → invio con `keepalive` (D-15 invariato); \"Aggiungi un altro drink qui\" (M3-16) presente",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-12",
     "milestone": "MB",
     "descrizione": "Tessera (D-29)",
     "verifica": "e2e: timbri a 1, 5, 10, 25, 50 prezzi dal contatore esistente; nessuna chiave nuova in `localStorage`; nessuna richiesta in più",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-13",
     "milestone": "MB",
     "descrizione": "Zona senza prezzi e bar mancante fuori dalla mappa (D-28)",
     "verifica": "e2e: con copertura sotto il 5% compare il foglio con il primario; \"Aggiungi locale mancante\" non è sulla mappa ed è raggiungibile dal passo Bar, dalla ricerca senza risultati e dalla zona senza prezzi",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-14",
@@ -557,7 +557,7 @@
     "milestone": "MB",
     "descrizione": "Voce e parole vietate (D-31)",
     "verifica": "unit: le frasi di `docs/brand/02-voce.md` sono in `it.ts` (escluso il bottone primario, che resta \"Aggiungi prezzo\"); il test fallisce se `it.ts` contiene una parola dell'elenco D-31",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-16",
@@ -571,7 +571,7 @@
     "milestone": "MB",
     "descrizione": "Budget brand",
     "verifica": "Lighthouse CI mobile: Performance ≥ 90, altre ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip; font ≤ 70 KB; righe D1 e richieste per vista e per contributo invariate (M3-20); misure prima e dopo in PROGRESS",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-01",

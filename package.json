@@ -20,7 +20,8 @@
     "test:security": "vitest run --project worker && playwright test --project=security",
     "fixture": "node -e \"require('fs').cpSync('tests/fixtures/data','public/data/fixture',{recursive:true})\"",
     "db:local": "wrangler d1 migrations apply DB --local && wrangler d1 execute DB --local --file tests/fixtures/seed.sql",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "icons": "node scripts/build-icons.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

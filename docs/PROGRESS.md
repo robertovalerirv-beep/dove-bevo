@@ -4,6 +4,30 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-17 · Sessione 10 · Pacchetto brand v2 (branch `brand-v2-package`, da `main` 6a60ce4) · F1–F5
+
+**Fatto** (un commit per fase, una PR sola)
+- **F1** `build-icons.mjs` (PNG 192/512/maskable + favicon dal simbolo), frasi di voce in `it.ts` e test delle parole vietate D-31 (MB-15, MB-16 in parte).
+- **F2** stili mappa Bancone/Fuori orario da `build-map-styles.mjs` in `public/map/` (nome col hash, cache immutabile), cambio tema senza richieste a `/api` o `/data` (213 ms), tappo del bar aperto, foglio «zona senza prezzi», «Aggiungi locale mancante» fuori dalla mappa (D-28).
+- **F3** scheda come scontrino (5 righe, «Vedi tutti», «Da confermare»), prezzi già visti in zona (un tocco salva: 4 tocchi, hai 10 s per Annulla), Timbro con data, Copertura +1, Tessera 1/5/10/25/50 (`dovebevo-first-use`, `dovebevo-prices`).
+- **F4** indice a frammenti nell'import (`s/<prefisso>.json`, limite 40 KB gzip, fallisce oltre), `search-match.ts`/`search.ts`, `SearchSheet` come combobox ARIA caricata a richiesta, «I più economici qui», «Non trovi il bar?» col nome già scritto, `PRIVACY-NOTES.md`.
+- **F5** manifest generato dai token, service worker scritto a mano (solo shell, mai `/api`, `/data`, `/map`), messaggio offline, invito all'installazione dopo il secondo prezzo (prompt del browser o testo su iPhone), seed di prova per la mediana e un prezzo vecchio.
+- **Difetti veri trovati dai test e corretti:** il pin sembrava già posizionato perché la mappa cambiava altezza (ora il pannello sta sopra la barra, `.bottom-slot`); una freccia premuta subito dopo aver digitato andava persa (azzeramento nell'evento, non in un effetto); la scheda dopo la ricerca riportava la mappa a zoom 16.
+
+**Prove**
+- `npm run verify` (stesso ordine della CI): lint, formato, typecheck, unit (156), guardia feature list, workflow, audit, e2e Chromium+WebKit+sicurezza, build, budget della shell, Lighthouse: esito nell'ultima esecuzione prima del push.
+- Misure: ricerca tipica 2 file, ~7 KB sul fixture, risultati in 11 ms con il frammento in memoria; INP delle interazioni sui pin (chip, Elenco, chiusura, con la fixture di Milano: 2 pin visibili, non 300): 80–216 ms su Chromium in locale, 136–280 ms su WebKit headless, 544 ms sul runner della CI. Il test registra il valore (annotazione `slowest-interaction-ms`) e non fa più pass/fail: un tempo su una macchina condivisa non è stabile. **MB-07 resta `false`**: manca la misura con 300 pin e il 200 ms su telefono vero.
+- `passes: true` per MB-01, 02, 06, 09, 10, 11, 12, 13, 15, 17 e M4-03, 04, 07…12, 14, 15, 16 (solo `passes` cambiato).
+
+**Non fatto / da decidere**
+- Restano `false`: MB-07 (misura con 300 pin e INP su telefono), MB-04 (test dei controlli), MB-08 (confronto a mano della copertura), MB-14 (axe su ogni vista), MB-16 (logo in `/privacy` e `/regole`, che arrivano con M5), M4-05 (pin vecchio sulla mappa, solo la scheda è provata), M4-13 (ordine per distanza solo unit).
+- M4-12 dice «`CAFFÈ`» da solo: «caffè» è una parola vuota, quindi l'ho letto come «CAFFÈ ROMA» (maiuscole e accenti).
+- Un tocco su un prezzo già visto salva subito (SPEC MB-10: «esattamente 4 tocchi»); c'è sempre l'Annullo di 10 s.
+- Le fixture dell'albero di Roberto (import senza `amenity=cafe`) non sono qui: `tests/fixtures/data/s/` è generata dalle fixture di `main` con `scripts/osm-import/fixture-search.mjs` e va rigenerata se le celle cambiano.
+
+**Da verificare a mano (telefono vero):** Timbro e vibrazione su Android, invito all'installazione su Android e iPhone, offline dopo l'installazione, Fuori orario di notte, la ricerca con rete mobile.
+
+
 ## 2026-10-16 · Sessione 9 · Brand identity v1 + ricerca per nome · passo 0 (misure, nessuna modifica al codice)
 
 **Contesto**: `docs/PROMPT-BRAND-RICERCA.md`, kit estratto da `dovebevo-brand-kit.zip` in `docs/brand/`. Branch `brand-v1-search` da `main` (7549eda).

@@ -1,0 +1,71 @@
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
+import { goToMilano, mapRegion, mapStatus } from "./helpers";
+
+// F2 of the brand package: MB-06 (styles per theme), MB-07 (cork), MB-13 (empty zone), MB-14.
+
+test("MB-13 a zone without prices invites the first one; the missing bar is not on the map", async ({
+  page,
+}, info) => {
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Aggiungi locale mancante" })).toHaveCount(0);
+  await goToMilano(page);
+  await page.getByRole("group", { name: "Drink" }).getByRole("button", { name: "Negroni" }).click();
+  const nav = page.getByRole("navigation", { name: "Azioni della mappa" });
+  await expect(nav).toContainText(
+    "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
+  );
+  await expect(nav.getByRole("button", { name: "Aggiungi prezzo" })).toBeVisible();
+  await page.screenshot({ path: info.outputPath("mb-13-zona-vuota.png") });
+  await nav.getByRole("button", { name: "Aggiungi locale mancante" }).click();
+  await expect(page.getByRole("textbox", { name: "Nome del bar" })).toBeVisible();
+});
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`MB-06 MB-14 ${scheme}: own style, no axe violations`, async ({ page }, info) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    const styles: string[] = [];
+    page.on("request", (r) => {
+      if (r.url().includes("/map/")) styles.push(new URL(r.url()).pathname);
+    });
+    await page.goto("/");
+    await goToMilano(page);
+    expect(styles.map((s) => s.split(".")[0])).toEqual([
+      scheme === "dark" ? "/map/fuori-orario" : "/map/bancone",
+    ]);
+    await page.screenshot({ path: info.outputPath(`mb-14-mappa-${scheme}.png`) });
+    const result = await new AxeBuilder({ page }).analyze();
+    expect(result.violations).toEqual([]);
+  });
+}
+
+test("MB-06 switching theme swaps the style without asking /api or /data again", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await goToMilano(page);
+  const shown = await mapRegion(page).getAttribute("data-prices-shown");
+  expect(shown).toBeTruthy();
+  const after: string[] = [];
+  page.on("request", (r) => {
+    const { pathname } = new URL(r.url());
+    if (/^\/(api|data|map)\//.test(pathname)) after.push(pathname);
+  });
+  const started = Date.now();
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect.poll(() => after.some((p) => p.startsWith("/map/fuori-orario"))).toBe(true);
+  await expect(mapRegion(page)).toHaveAttribute("data-prices-shown", shown ?? "", {
+    timeout: 15_000,
+  });
+  console.log(`MB-06 theme switch back to the same pins in ${String(Date.now() - started)} ms`);
+  expect(after.filter((p) => !p.startsWith("/map/"))).toEqual([]);
+  await expect(mapStatus(page)).toContainText("qui hanno un prezzo");
+});
+
+test("MB-07 the open bar is marked on the map", async ({ page }) => {
+  await page.goto("/bar/n13001337602?c=u0nd9");
+  await expect(mapRegion(page)).toHaveAttribute("data-selected", "n13001337602");
+  await page.getByRole("button", { name: "Chiudi" }).click();
+  await expect(mapRegion(page)).toHaveAttribute("data-selected", "");
+});

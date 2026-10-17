@@ -5,11 +5,11 @@ import type { ExpressionSpecification, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { it } from "../i18n/it";
+import { MAP_STYLES } from "./map-styles.generated";
 import type { Tier } from "./tiers";
 
 setWorkerUrl(workerUrl);
 
-const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 const TILEJSON_URL = "https://tiles.openfreemap.org/planet";
 
 const ITALY: [[number, number], [number, number]] = [
@@ -49,9 +49,10 @@ const token = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 async function loadStyle(): Promise<StyleSpecification> {
-  // Style and TileJSON in parallel (the attributions are rendered by the shell, see app.tsx).
+  // Our own recoloured style (SPEC D-27) and the TileJSON in parallel; the attributions are
+  // rendered by the shell, see app.tsx.
   const [style, tileJson] = (await Promise.all(
-    [STYLE_URL, TILEJSON_URL].map(
+    [MAP_STYLES[theme()], TILEJSON_URL].map(
       async (url): Promise<unknown> => (await fetch(url)).json() as Promise<unknown>,
     ),
   )) as [StyleSpecification, { tiles: string[]; minzoom?: number; maxzoom?: number }];
@@ -143,6 +144,71 @@ function pinImage(tier: Tier, stale: boolean, label: string): ImageData {
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
+const CORK = 40;
+const CORK_TEETH = 12;
+
+/** Crown cork (spritz, ink outline) with the price in a small pill under it; cork centre = image top + CORK/2. */
+function corkImage(label: string): ImageData {
+  const font = `600 ${String(PIN_FONT_SIZE)}px ${token("--font-mono")}`;
+  const probe = document.createElement("canvas").getContext("2d");
+  if (probe) probe.font = font;
+  const textWidth = label && probe ? probe.measureText(label).width : 0;
+  const pillW = label ? Math.ceil(textWidth + 20) : 0;
+  const w = Math.max(CORK + 4, pillW + 4);
+  const h = CORK + 4 + (label ? 26 : 0);
+  const canvas = document.createElement("canvas");
+  canvas.width = w * PIN_RATIO;
+  canvas.height = h * PIN_RATIO;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return new ImageData(canvas.width, canvas.height);
+  ctx.scale(PIN_RATIO, PIN_RATIO);
+  const ink = token("--ink");
+  const spritz = token("--spritz");
+  const cx = w / 2;
+  const cy = 2 + CORK / 2;
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = spritz;
+  ctx.beginPath();
+  for (let i = 0; i < CORK_TEETH * 2; i++) {
+    const r = CORK / 2 - 1 - (i % 2 ? 3 : 0);
+    const a = (Math.PI * i) / CORK_TEETH - Math.PI / 2;
+    const [x, y] = [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = ink;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  if (label) {
+    const [x0, y0, ph] = [cx - pillW / 2, CORK + 4, 22];
+    ctx.fillStyle = spritz;
+    ctx.beginPath();
+    ctx.moveTo(x0 + ph / 2, y0);
+    ctx.arcTo(x0 + pillW, y0, x0 + pillW, y0 + ph, ph / 2);
+    ctx.arcTo(x0 + pillW, y0 + ph, x0, y0 + ph, ph / 2);
+    ctx.arcTo(x0, y0 + ph, x0, y0, ph / 2);
+    ctx.arcTo(x0, y0, x0 + pillW, y0, ph / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = font;
+    ctx.fillStyle = token("--on-spritz");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, cx, y0 + ph / 2 + 1);
+  }
+  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+}
+
 export class VenueMap {
   private readonly map: MapLibre;
   private readonly ready: Promise<void>;
@@ -163,8 +229,14 @@ export class VenueMap {
     this.ready = new Promise((resolve) => {
       this.map.on("load", () => {
         this.addLayers();
+        this.bindEvents();
         resolve();
       });
+    });
+    // Bancone and Fuori orario follow the system (D-27): the style is swapped, layers and pins are
+    // put back from memory, nothing is requested from /api or /data.
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      void this.switchTheme();
     });
   }
 
@@ -184,9 +256,6 @@ export class VenueMap {
     const bg = token("--bg");
     const border = token("--map-pill-border");
     const dotFill = token("--map-pill-bg");
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-      this.redrawPins();
-    });
     const empty = { type: "FeatureCollection" as const, features: [] };
     // Bars without a price are clustered; priced bars never are, so prices stay readable at any
     // zoom (SPEC 1: the map must not look empty) and are drawn above the clusters.
@@ -245,6 +314,20 @@ export class VenueMap {
       source: "prices",
       layout: { "icon-image": ["get", "pin"] },
     });
+    // The selected bar becomes a crown cork with its price under it (brand, 03-mappa.md).
+    map.addSource("selected", { type: "geojson", data: empty });
+    map.addLayer({
+      id: "venue-selected",
+      type: "symbol",
+      source: "selected",
+      layout: {
+        "icon-image": ["get", "pin"],
+        "icon-anchor": "top",
+        "icon-offset": [0, -CORK / 2],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    });
     // Invisible 48 px touch targets for bars and clusters (MASTER: target ≥ 48 px).
     for (const [id, source, filter] of [
       ["venue-hit", "venues", isVenue],
@@ -258,6 +341,13 @@ export class VenueMap {
         ...(filter ? { filter } : {}),
         paint: { "circle-radius": 24, "circle-opacity": 0 },
       });
+    }
+  }
+
+  /** Listeners keyed by layer id survive a style swap, so they are bound once. */
+  private bindEvents() {
+    const map = this.map;
+    for (const id of ["venue-hit", "price-hit", "cluster-hit"]) {
       map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
       map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
     }
@@ -321,10 +411,52 @@ export class VenueMap {
 
   private points: VenuePoint[] = [];
 
-  /** After a theme change the pins are drawn again with the new tokens (no network involved). */
-  private redrawPins() {
-    for (const id of this.map.listImages()) if (id.startsWith("pin-")) this.map.removeImage(id);
-    this.setVenues(this.points);
+  private selectedKey: string | null = null;
+
+  /** Swaps the style for the other theme and puts layers and pins back from memory (MB-06). */
+  private async switchTheme() {
+    const style = await loadStyle();
+    this.map.once("style.load", () => {
+      this.addLayers();
+      this.setVenues(this.points);
+    });
+    this.map.setStyle(style);
+  }
+
+  /** The bar whose sheet is open becomes a crown cork; null puts its pin back. */
+  setSelected(key: string | null) {
+    this.selectedKey = key;
+    this.applySelected();
+  }
+
+  private applySelected() {
+    const map = this.map;
+    if (!map.getLayer("venue-selected")) return;
+    const key = this.selectedKey;
+    const point = key ? this.points.find((p) => p.key === key) : undefined;
+    const keyIs: ExpressionSpecification = ["==", ["get", "key"], key ?? ""];
+    map.setFilter("venue-price", point ? ["!", keyIs] : null);
+    map.setFilter(
+      "venue-dot",
+      point ? ["all", ["!", ["has", "point_count"]], ["!", keyIs]] : ["!", ["has", "point_count"]],
+    );
+    let pin = "";
+    if (point) {
+      pin = `cork-${theme()}-${point.label}`;
+      if (!map.hasImage(pin)) map.addImage(pin, corkImage(point.label), { pixelRatio: PIN_RATIO });
+    }
+    void map.getSource<GeoJSONSource>("selected")?.setData({
+      type: "FeatureCollection",
+      features: point
+        ? [
+            {
+              type: "Feature",
+              geometry: { type: "Point", coordinates: [point.lon, point.lat] },
+              properties: { pin },
+            },
+          ]
+        : [],
+    });
   }
 
   /** Draws the pin images a set of points needs, before the layer asks for them. */
@@ -361,6 +493,7 @@ export class VenueMap {
       ?.setData(collection(points.filter((p) => p.label)));
     // "idle" (sources loaded and drawn) does not always fire again after setData in WebKit:
     // repaint, then report what is drawn.
+    this.applySelected();
     this.map.once("idle", () => {
       this.reportRendered();
     });

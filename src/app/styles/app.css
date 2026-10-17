@@ -429,12 +429,17 @@
   opacity: 0.5;
 }
 /* The two ways to add something sit side by side, same height; the label may take two lines. */
-.bottom__primary,
-.bottom__missing {
-  min-height: var(--target-primary);
-}
 .bottom__primary {
+  grid-column: 1 / -1;
+  min-height: var(--target-primary);
   font-size: var(--size-label);
+}
+/* Zone without prices (MB-13): the invitation sits above the primary action */
+.bottom__empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  font: var(--type-body);
+  color: var(--ink);
 }
 .btn:disabled,
 .btn[aria-disabled="true"] {

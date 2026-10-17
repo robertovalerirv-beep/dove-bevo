@@ -23,6 +23,7 @@ export const it = {
     region: "Mappa",
     canvas: "Mappa interattiva dei bar",
     zoomIn: "Avvicinati per vedere i prezzi, o cerca una città.",
+    shareMap: "Manda la mappa a un amico",
     emptyZone: "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
     tooManyCells: "Avvicinati per vedere i prezzi della zona",
     loading: "Carico i prezzi della zona…",

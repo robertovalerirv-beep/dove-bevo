@@ -11,3 +11,7 @@
 # Bar data is versioned by DATA_VERSION in the path: never changes once deployed (SPEC 5.3).
 /data/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Map styles carry the content hash in their name (scripts/build-map-styles.mjs): immutable (SPEC D-27).
+/map/*
+  Cache-Control: public, max-age=31536000, immutable

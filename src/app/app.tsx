@@ -289,6 +289,12 @@ export function App({ loadMap }: Props) {
   }, [map, allVenues, selected]);
 
   const zoomedIn = view !== null && view.zoom >= MIN_ZOOM_CELLS;
+  // The bar whose sheet is open is the crown cork on the map (brand, MB-07).
+  useEffect(() => {
+    map?.setSelected(route.name === "bar" ? route.key : null);
+  }, [map, route, allVenues]);
+  // A zone where almost nobody has a price yet invites the first one (D-28, MB-13).
+  const emptyZone = zoomedIn && cellsState === "ready" && zoneCoverage.empty;
   // The message of "Vicino a me" (searching, not found, denied) is shown at any zoom: it ends as
   // soon as the map moves (see the effect above), then the cell status is back.
   const shownMessage = message;
@@ -766,6 +772,7 @@ export function App({ loadMap }: Props) {
           data-zoom={view ? view.zoom.toFixed(1) : ""}
           data-center={view ? `${view.lat.toFixed(5)},${view.lon.toFixed(5)}` : ""}
           data-ready={ready ? "true" : "false"}
+          data-selected={route.name === "bar" ? route.key : ""}
           data-prices-shown={pricesShown.join("|")}
           onPointerDown={() => {
             if (pinning && !pinning.touched) setProposing({ ...pinning, touched: true });
@@ -852,6 +859,7 @@ export function App({ loadMap }: Props) {
         />
       ) : (
         <nav class="bottom" aria-label={it.map.actions}>
+          {emptyZone && <p class="bottom__empty">{it.map.emptyZone}</p>}
           <button
             type="button"
             class="btn btn--primary bottom__primary"
@@ -861,9 +869,26 @@ export function App({ loadMap }: Props) {
           >
             {it.add.open}
           </button>
-          <button type="button" class="btn btn--secondary bottom__missing" onClick={startProposal}>
-            {it.add.addMissing}
-          </button>
+          {emptyZone && (
+            <>
+              <button type="button" class="btn btn--secondary" onClick={startProposal}>
+                {it.add.addMissing}
+              </button>
+              {"share" in navigator && (
+                <button
+                  type="button"
+                  class="btn btn--secondary"
+                  onClick={() => {
+                    navigator
+                      .share({ title: APP_NAME, url: location.origin })
+                      .catch(() => undefined);
+                  }}
+                >
+                  {it.map.shareMap}
+                </button>
+              )}
+            </>
+          )}
           <button type="button" class="btn btn--secondary" onClick={() => void nearMe()}>
             <Icon name="locate" />
             {it.map.nearMe}

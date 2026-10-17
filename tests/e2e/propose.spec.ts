@@ -26,8 +26,9 @@ async function dragMap(page: Page, pixels = 60) {
 }
 
 async function startProposal(page: Page, name: string) {
-  // One tap from the main screen, next to "Aggiungi prezzo" (the way in for a missing bar).
-  await page.getByRole("button", { name: "Aggiungi locale mancante" }).click();
+  // D-28: the missing bar is reached from the Bar step of "Aggiungi prezzo".
+  await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+  await page.getByRole("button", { name: "Non trovi il bar?" }).click();
   await page.getByRole("textbox", { name: "Nome del bar" }).fill(name);
   await page.getByRole("button", { name: "Avanti" }).click();
 }
@@ -157,7 +158,7 @@ test("M3-11 the same proposal is reachable from Aggiungi prezzo (Non trovi il ba
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Aggiungi locale mancante" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Aggiungi locale mancante" })).toHaveCount(0);
   await page.screenshot({ path: "docs/screenshots/m3/home-390.png" });
   await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
   await page.getByRole("button", { name: "Non trovi il bar?" }).click();

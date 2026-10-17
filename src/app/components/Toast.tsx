@@ -1,10 +1,19 @@
 import { useRef } from "preact/hooks";
 import { it } from "../i18n/it";
+import { TESSERA_STEPS } from "../lib/usage";
+
+/** After "Salva": the Timbro with the day, the lines under it and the Tessera (MB-11, MB-12). */
+export interface StampInfo {
+  day: string;
+  lines: string[];
+  /** Prices entered on this device (D-29) and the sentence of the Tessera. */
+  count: number;
+  tessera: string;
+}
 
 interface Props {
   text: string;
-  /** After "Salva": the Timbro with the day, and the lines of Copertura and Tessera (MB-11). */
-  stamp?: { day: string; lines: string[] };
+  stamp?: StampInfo;
   onUndo?: () => void;
   /** A second action next to "Annulla", e.g. "Aggiungi un altro drink qui". */
   more?: { label: string; run: () => void };
@@ -19,39 +28,64 @@ export function Toast({ text, stamp, onUndo, more, onHold }: Props) {
     held.current[key] = value;
     onHold?.(held.current.pointer || held.current.focus);
   };
-  return (
-    <div
-      class={stamp ? "toast toast--stamp" : "toast"}
-      onPointerEnter={() => {
-        update("pointer", true);
-      }}
-      onPointerLeave={() => {
-        update("pointer", false);
-      }}
-      onFocusIn={() => {
-        update("focus", true);
-      }}
-      onFocusOut={() => {
-        update("focus", false);
-      }}
-    >
-      {stamp ? (
-        <div class="stamp">
-          <span class="stamp__mark" aria-hidden="true">
-            {stamp.day}
-          </span>
-          <span class="stamp__text">
-            <strong>{text}</strong>
-            {stamp.lines.map((line) => (
-              <span key={line} class="stamp__line">
-                {line}
-              </span>
-            ))}
-          </span>
+  const handlers = {
+    onPointerEnter: () => {
+      update("pointer", true);
+    },
+    onPointerLeave: () => {
+      update("pointer", false);
+    },
+    onFocusIn: () => {
+      update("focus", true);
+    },
+    onFocusOut: () => {
+      update("focus", false);
+    },
+  };
+  if (stamp)
+    return (
+      <div class="toast toast--stamp" {...handlers}>
+        <div class="stamp-card">
+          <div class="stamp">
+            <span class="stamp__mark" aria-hidden="true">
+              {stamp.day}
+            </span>
+            <span class="stamp__text">
+              <strong>{text}</strong>
+              {stamp.lines.map((line) => (
+                <span key={line} class="stamp__line">
+                  {line}
+                </span>
+              ))}
+            </span>
+          </div>
+          {onUndo && (
+            <button type="button" class="btn stamp__undo" onClick={onUndo}>
+              {it.add.undo}
+            </button>
+          )}
         </div>
-      ) : (
-        <span>{text}</span>
-      )}
+        <div class="tessera">
+          <p class="tessera__title">{stamp.tessera}</p>
+          <ol class="tessera__steps" aria-hidden="true">
+            {TESSERA_STEPS.map((step) => (
+              <li key={step} class={stamp.count >= step ? "tessera__step--on" : undefined}>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+        {onUndo && more && (
+          <button type="button" class="btn btn--primary stamp__more" onClick={more.run}>
+            {more.label}
+          </button>
+        )}
+        {onUndo && <span class="toast__progress" aria-hidden="true" />}
+      </div>
+    );
+  return (
+    <div class="toast" {...handlers}>
+      <span>{text}</span>
       {onUndo && (
         <>
           <button type="button" class="toast__action" onClick={onUndo}>

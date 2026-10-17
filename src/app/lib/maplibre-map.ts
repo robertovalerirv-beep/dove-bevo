@@ -84,7 +84,7 @@ async function loadStyle(): Promise<StyleSpecification> {
 const GLYPH: Record<Tier, string> = { affare: "↓", giusto: "=", salato: "↑", neutro: "" };
 const PIN_RATIO = 2;
 const PIN_HEIGHT = 32;
-const PIN_FONT_SIZE = 14;
+const PIN_FONT_SIZE = 15;
 
 /** Pin image names carry everything they depend on: `pin-<tier>-<stale 0|1>-<theme>-<label>`. */
 function pinName(tier: Tier, stale: boolean, label: string): string {
@@ -96,12 +96,12 @@ const theme = () => (window.matchMedia("(prefers-color-scheme: dark)").matches ?
 /** Draws a price pill (glyph + price in Geist Mono) on a canvas, once per distinct pin (MASTER). */
 function pinImage(tier: Tier, stale: boolean, label: string): ImageData {
   const text = `${GLYPH[tier]}${GLYPH[tier] ? " " : ""}${label}`;
-  const font = `${stale ? "italic " : ""}600 ${String(PIN_FONT_SIZE)}px ${token("--font-mono")}`;
+  const font = `${stale ? "italic " : ""}700 ${String(PIN_FONT_SIZE)}px ${token("--font-mono")}`;
   const probe = document.createElement("canvas").getContext("2d");
   if (probe) probe.font = font;
   const textWidth = probe ? probe.measureText(text).width : text.length * 9;
-  const shadow = stale ? 0 : 2;
-  const w = Math.ceil(textWidth + 24 + shadow);
+  const shadow = stale ? 0 : 3; // --shadow-stampa
+  const w = Math.ceil(textWidth + 28 + shadow);
   const h = PIN_HEIGHT + shadow;
   const canvas = document.createElement("canvas");
   canvas.width = w * PIN_RATIO;

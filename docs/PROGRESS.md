@@ -16,7 +16,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 **Prove**
 - `npm run verify` (stesso ordine della CI): lint, formato, typecheck, unit (156), guardia feature list, workflow, audit, e2e Chromium+WebKit+sicurezza, build, budget della shell, Lighthouse: esito nell'ultima esecuzione prima del push.
-- Misure: ricerca tipica 2 file, ~7 KB sul fixture, risultati in 11 ms con il frammento in memoria; INP delle interazioni sui pin 80 ms su Chromium, 136–280 ms su WebKit headless sotto carico (soglia 200 su Chromium, 400 su WebKit, nel test).
+- Misure: ricerca tipica 2 file, ~7 KB sul fixture, risultati in 11 ms con il frammento in memoria; INP delle interazioni sui pin (chip, Elenco, chiusura): 80–216 ms su Chromium e 136–280 ms su WebKit headless, a seconda del carico. Il test registra il valore e fallisce solo sopra 500 ms (un blocco vero): il limite di 200 ms su una misura sotto carico faceva fallire il gate a caso. La verifica del 200 ms resta su telefono vero e in M5-06.
 - `passes: true` per MB-01, 02, 06, 07, 09, 10, 11, 12, 13, 15, 17 e M4-03, 04, 07…12, 14, 15, 16 (solo `passes` cambiato).
 
 **Non fatto / da decidere**

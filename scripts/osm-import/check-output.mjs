@@ -43,11 +43,36 @@ for (const name of cells) {
 const places = JSON.parse(readFileSync(join(dir, "places.json"), "utf8"));
 if (!Array.isArray(places) || places.some((p) => p.length !== 5)) fail("places.json: bad rows");
 if (!readFileSync(join(dir, "LICENSE.txt"), "utf8").includes("ODbL")) fail("LICENSE.txt: no ODbL");
-const total = cells.length + 2;
+// Search fragments (ADR 0024): [key, name, lat, lon, cityId] rows, names of [a-z0-9_] only.
+const fragments = readdirSync(join(dir, "s")).filter((f) => f.endsWith(".json"));
+for (const name of fragments) {
+  const path = join(dir, "s", name);
+  largest = Math.max(largest, statSync(path).size);
+  if (!/^(index|[a-z0-9_]{2,3})\.json$/.test(name)) fail(`s/${name}: bad file name`);
+  const rows = JSON.parse(readFileSync(path, "utf8"));
+  if (!Array.isArray(rows)) fail(`s/${name}: not an array`);
+  else if (name !== "index.json") {
+    for (const row of rows) {
+      const [key, label, lat, lon, city] = row;
+      const ok =
+        row.length === 5 &&
+        /^[nwr]\d+$/.test(key) &&
+        typeof label === "string" &&
+        typeof lat === "number" &&
+        typeof lon === "number" &&
+        Number.isInteger(city) &&
+        city >= 0;
+      if (!ok) fail(`s/${name}: bad row ${JSON.stringify(row)}`);
+    }
+  }
+}
+const total = cells.length + fragments.length + 2;
 if (total > MAX_FILES) fail(`${total} files, more than ${MAX_FILES}`);
 if (largest > MAX_BYTES) fail(`largest file ${largest} bytes, more than ${MAX_BYTES}`);
 
-console.log(`bars: ${bars} · cell files: ${cells.length} · places: ${places.length}`);
+console.log(
+  `bars: ${bars} · cell files: ${cells.length} · search files: ${fragments.length} · places: ${places.length}`,
+);
 console.log(`files: ${total} (max ${MAX_FILES}) · largest: ${largest} bytes (max ${MAX_BYTES})`);
 if (problems.length > 0) {
   console.error(problems.slice(0, 20).join("\n"));

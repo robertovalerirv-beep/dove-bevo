@@ -24,10 +24,10 @@ export async function goToMilano(page: Page) {
 
 /** The city search is already open (e.g. after a failed "Vicino a me"). */
 export async function milanoFromOpenSearch(page: Page) {
-  await page.getByRole("searchbox", { name: "Cerca una città o un bar" }).fill("milano");
+  await page.getByRole("combobox", { name: "Cerca una città o un bar" }).fill("milano");
   await page
-    .getByRole("list", { name: "Città e paesi" })
-    .getByRole("button", { name: /^Milano/ })
+    .getByRole("listbox", { name: "Risultati" })
+    .getByRole("option", { name: /^Milano/ })
     .first()
     .click();
   await waitForBars(page);

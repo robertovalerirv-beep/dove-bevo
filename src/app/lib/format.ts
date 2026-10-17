@@ -26,6 +26,16 @@ export function formatDistance(meters: number): string {
   return `${liters.format(Math.round(meters / 100) / 10)} km`;
 }
 
+const stampDay = new Intl.DateTimeFormat("it-IT", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Europe/Rome",
+});
+
+/** The date of the Timbro, like a postmark: "17 OTT" (day and month only, never the time). */
+export const formatStampDay = (date = new Date()): string =>
+  stampDay.format(date).replace(".", "").toUpperCase();
+
 const romeDay = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" });
 
 /** Today as "YYYY-MM-DD" in Europe/Rome (D-14). */

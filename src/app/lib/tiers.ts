@@ -24,6 +24,17 @@ export function medianOf(values: number[]): number {
   return sorted.length % 2 ? (sorted[mid] ?? 0) : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
 }
 
+/** Active normal-hours prices (cents) of a drink and size in a cell, one per bar. */
+export function cellPrices(venues: Venue[], cell: string, drink: string, size: number): number[] {
+  const cents: number[] = [];
+  for (const v of venues) {
+    if (v.cell !== cell || v.pending) continue;
+    const p = v.prices.find((r) => r[1] === drink && r[2] === size && r[3] === 0 && r[7] === 0);
+    if (p) cents.push(p[4]);
+  }
+  return cents;
+}
+
 /** Median of the active normal-hours prices of a drink and size in a cell, null under 5 (D-12). */
 export function cellMedian(
   venues: Venue[],
@@ -31,13 +42,37 @@ export function cellMedian(
   drink: string,
   size: number,
 ): number | null {
-  const cents: number[] = [];
-  for (const v of venues) {
-    if (v.cell !== cell || v.pending) continue;
-    const p = v.prices.find((r) => r[1] === drink && r[2] === size && r[3] === 0 && r[7] === 0);
-    if (p) cents.push(p[4]);
-  }
+  const cents = cellPrices(venues, cell, drink, size);
   return cents.length >= TIER_MIN_PRICES ? medianOf(cents) : null;
+}
+
+/** "In zona va da X a Y": min, max and median, only with at least 5 prices (MB-10). */
+export function cellRange(
+  venues: Venue[],
+  cell: string,
+  drink: string,
+  size: number,
+): { min: number; max: number; median: number } | null {
+  const cents = cellPrices(venues, cell, drink, size);
+  if (cents.length < TIER_MIN_PRICES) return null;
+  return { min: Math.min(...cents), max: Math.max(...cents), median: medianOf(cents) };
+}
+
+/** Distinct prices already seen in a cell, most common first (then cheaper), at most `limit`. */
+export function seenPrices(
+  venues: Venue[],
+  cell: string,
+  drink: string,
+  size: number,
+  limit = 6,
+): number[] {
+  const counts = new Map<number, number>();
+  for (const c of cellPrices(venues, cell, drink, size)) counts.set(c, (counts.get(c) ?? 0) + 1);
+  return [...counts]
+    .sort((a, b) => b[1] - a[1] || a[0] - b[0])
+    .slice(0, limit)
+    .map(([c]) => c)
+    .sort((a, b) => a - b);
 }
 
 export function tierOf(cents: number, median: number | null): Tier {

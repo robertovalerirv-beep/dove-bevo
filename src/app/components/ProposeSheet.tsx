@@ -12,13 +12,15 @@ export interface Proposal {
 const KINDS: ProposedKind[] = [1, 2, 4];
 
 interface Props {
+  /** A name already typed in the search: it is written here, the person only confirms it. */
+  initialName?: string;
   onNext: (proposal: Proposal) => void;
   onClose: () => void;
 }
 
 /** "Non trovi il bar?" (SPEC 7.5): name and kind; the pin on the map comes next. */
-export function ProposeSheet({ onNext, onClose }: Props) {
-  const [name, setName] = useState("");
+export function ProposeSheet({ initialName = "", onNext, onClose }: Props) {
+  const [name, setName] = useState(initialName);
   const [kind, setKind] = useState<ProposedKind>(1);
   const [error, setError] = useState("");
 

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
 import { DEFAULT_CHIP, MAP_CHIPS, type ChipId } from "../shared/catalog";
 import { APP_NAME } from "../shared/config";
-import { visibleCells } from "../shared/geohash";
+import { encodeGeohash, visibleCells } from "../shared/geohash";
 import type { PriceRow } from "../shared/api-types";
 import { distanceMeters, searchKey } from "../shared/venue";
 import { AddPriceSheet, type Draft, type Prefill } from "./components/AddPriceSheet";
@@ -14,12 +14,14 @@ import { ReportSheet, type Reason } from "./components/ReportSheet";
 import { Toast } from "./components/Toast";
 import { drinkIcon, Icon } from "./components/Icon";
 import { ListSheet } from "./components/ListSheet";
-import { SearchSheet } from "./components/SearchSheet";
+import type { Cheap, SearchSheet as SearchSheetType } from "./components/SearchSheet";
 import { it } from "./i18n/it";
 import { invalidateCell, loadCell, ServiceBusy, shownPrice, type Venue } from "./lib/data";
 import { blockedHelp, locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
-import { formatPrice, formatSize, todayRome } from "./lib/format";
+import { formatPrice, formatSize, formatStampDay, todayRome } from "./lib/format";
+import { installMode, promptInstall } from "./lib/install";
+import { addPrices, priceCount, stampReached } from "./lib/usage";
 import { cellMedian, coverage, isStale, tierOf } from "./lib/tiers";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
@@ -88,7 +90,7 @@ interface PendingSave {
 }
 
 type Proposing =
-  | { step: "form" }
+  | { step: "form"; name: string }
   | ({
       step: "pin";
       sending: boolean;
@@ -118,6 +120,7 @@ export function App({ loadMap }: Props) {
   const [reporting, setReporting] = useState<{ venue: Venue; row: PriceRow | null } | null>(null);
   const [toast, setToast] = useState<{
     text: string;
+    stamp?: { day: string; lines: string[] };
     undo?: () => void;
     more?: { label: string; run: () => void };
   } | null>(null);
@@ -127,6 +130,7 @@ export function App({ loadMap }: Props) {
   const toastRegion = useMemo(() => floating("toast-region", "status"), []);
   const toastTimer = useRef<HoldableTimer | null>(null);
   const pendingSave = useRef<PendingSave | null>(null);
+  const flewToBar = useRef(false);
   const [chip, setChip] = useState<ChipId>(DEFAULT_CHIP.id);
   const [venues, setVenues] = useState<Map<string, Venue>>(new Map());
   const [cellsState, setCellsState] = useState<CellsState>("idle");
@@ -134,6 +138,19 @@ export function App({ loadMap }: Props) {
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
+  const [invite, setInvite] = useState<"prompt" | "ios" | null>(null);
+  useEffect(() => {
+    const update = () => {
+      setOnline(navigator.onLine);
+    };
+    addEventListener("online", update);
+    addEventListener("offline", update);
+    return () => {
+      removeEventListener("online", update);
+      removeEventListener("offline", update);
+    };
+  }, []);
   // MapLibre starts on the first gesture or action that needs it (ADR 0014); until then a static
   // picture of the same view keeps the first load light.
   const [mapWanted, setMapWanted] = useState(initialAt !== null);
@@ -288,11 +305,40 @@ export function App({ loadMap }: Props) {
     );
   }, [map, allVenues, selected]);
 
+  // The search code is its own chunk, downloaded when the sheet is first opened (M4-16).
+  const [SearchComponent, setSearchComponent] = useState<typeof SearchSheetType | null>(null);
+  useEffect(() => {
+    if (sheet !== "search" || SearchComponent) return;
+    void import("./components/SearchSheet").then((m) => {
+      setSearchComponent(() => m.SearchSheet);
+    });
+  }, [sheet, SearchComponent]);
+
+  // «I più economici qui»: the cheapest prices of the chosen drink in the visible area (M4-04).
+  const cheapest = useMemo<Cheap[]>(
+    () =>
+      inView
+        .flatMap((venue) => {
+          const row = shownPrice(venue, selected.drink, selected.size);
+          return row ? [{ venue, cents: row[4], day: row[5] }] : [];
+        })
+        .sort((a, b) => a.cents - b.cents || (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
+        .slice(0, 10),
+    [inView, selected],
+  );
+
   const zoomedIn = view !== null && view.zoom >= MIN_ZOOM_CELLS;
+  // The bar whose sheet is open is the crown cork on the map (brand, MB-07).
+  useEffect(() => {
+    map?.setSelected(route.name === "bar" ? route.key : null);
+  }, [map, route, allVenues]);
+  // A zone where almost nobody has a price yet invites the first one (D-28, MB-13).
+  const emptyZone = zoomedIn && cellsState === "ready" && zoneCoverage.empty;
   // The message of "Vicino a me" (searching, not found, denied) is shown at any zoom: it ends as
   // soon as the map moves (see the effect above), then the cell status is back.
   const shownMessage = message;
   const status =
+    (online ? null : it.map.offline) ??
     (mapFailed ? it.map.mapError : null) ??
     shownMessage ??
     (mapWanted && !ready
@@ -369,9 +415,10 @@ export function App({ loadMap }: Props) {
     undo?: () => void,
     ms = 4000,
     more?: { label: string; run: () => void },
+    stamp?: { day: string; lines: string[] },
   ) {
     toastTimer.current?.clear();
-    setToast({ text, undo, more });
+    setToast({ text, undo, more, stamp });
     toastTimer.current = holdableTimeout(() => {
       setToast(null);
     }, ms);
@@ -397,7 +444,13 @@ export function App({ loadMap }: Props) {
     const hadFocus = toastRegion.contains(document.activeElement);
     render(
       toast ? (
-        <Toast text={toast.text} onUndo={toast.undo} more={toast.more} onHold={holdToast} />
+        <Toast
+          text={toast.text}
+          stamp={toast.stamp}
+          onUndo={toast.undo}
+          more={toast.more}
+          onHold={holdToast}
+        />
       ) : null,
       toastRegion,
     );
@@ -501,11 +554,27 @@ export function App({ loadMap }: Props) {
       sent: false,
     };
     pendingSave.current = entry;
+    // The Timbro: today's date, the stamp line, Copertura +1 when this bar had no price for the
+    // chosen drink in the zone, and the Tessera when a stamp is reached (MB-11, MB-12).
+    const today = todayRome();
+    const before = priceCount();
+    const after = addPrices(1, today);
+    const lines: string[] = [it.add.stamp];
+    const hadPrice = Boolean(shownPrice(draft.venue, selected.drink, selected.size));
+    if (!hadPrice && inView.some((v) => v.key === draft.venue.key))
+      lines.push(it.add.coverageUp(zoneCoverage.withPrice + 1, zoneCoverage.total));
+    // The second price, once: the moment someone shows they will come back (M4-09).
+    if (before === 1 && after === 2) setInvite(installMode());
+    const step = stampReached(before, after);
+    if (step) lines.push(it.tessera.messages[step] ?? "");
+    // Android only; Safari has no vibrate().
+    (navigator as { vibrate?: (ms: number) => boolean }).vibrate?.(20);
     showToast(
       it.add.saved,
       () => {
         entry.timer.clear();
         entry.sent = true;
+        addPrices(-1, today);
         if (pendingSave.current === entry) pendingSave.current = null;
         showToast(it.add.undone);
       },
@@ -517,6 +586,7 @@ export function App({ loadMap }: Props) {
           openAdd({ venue: draft.venue });
         },
       },
+      { day: formatStampDay(), lines },
     );
     // Turnstile only now, at the first contribution (M2-02), during the 10 s window; after the
     // add sheet has closed, so its host lands in the layer that stays open.
@@ -534,9 +604,9 @@ export function App({ loadMap }: Props) {
     }, 0);
   }
 
-  function startProposal() {
+  function startProposal(name = "") {
     setAdding(null);
-    setProposing({ step: "form" });
+    setProposing({ step: "form", name });
   }
 
   function startPin(proposal: Proposal) {
@@ -766,6 +836,7 @@ export function App({ loadMap }: Props) {
           data-zoom={view ? view.zoom.toFixed(1) : ""}
           data-center={view ? `${view.lat.toFixed(5)},${view.lon.toFixed(5)}` : ""}
           data-ready={ready ? "true" : "false"}
+          data-selected={route.name === "bar" ? route.key : ""}
           data-prices-shown={pricesShown.join("|")}
           onPointerDown={() => {
             if (pinning && !pinning.touched) setProposing({ ...pinning, touched: true });
@@ -833,25 +904,39 @@ export function App({ loadMap }: Props) {
         </section>
       </main>
 
-      {pinning ? (
-        <PinPanel
-          name={pinning.name}
-          close={view !== null && view.zoom >= PIN_MIN_ZOOM}
-          placed={pinPlaced}
-          sending={pinning.sending}
-          similar={similar}
-          onPick={(venue) => {
-            setProposing(null);
-            openAdd({ venue });
-          }}
-          onConfirm={() => void sendProposal()}
-          onCancel={() => {
-            setProposing(null);
-            focusPrimary();
-          }}
-        />
-      ) : (
-        <nav class="bottom" aria-label={it.map.actions}>
+      {/* While the pin is placed the bar stays in the layout (hidden, inert) and the panel lies over
+          it: the map must not change height, or its centre moves and the pin looks already placed. */}
+      <div class="bottom-slot">
+        <nav class="bottom" aria-label={it.map.actions} inert={pinning ? true : undefined}>
+          {invite && (
+            <div class="bottom__invite" role="region" aria-label={it.install.action}>
+              <p>{invite === "ios" ? it.install.ios : it.install.prompt}</p>
+              <div class="bottom__invite-actions">
+                {invite === "prompt" && (
+                  <button
+                    type="button"
+                    class="btn btn--secondary"
+                    onClick={() => {
+                      setInvite(null);
+                      void promptInstall();
+                    }}
+                  >
+                    {it.install.action}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  onClick={() => {
+                    setInvite(null);
+                  }}
+                >
+                  {invite === "ios" ? it.install.ok : it.install.dismiss}
+                </button>
+              </div>
+            </div>
+          )}
+          {emptyZone && <p class="bottom__empty">{it.map.emptyZone}</p>}
           <button
             type="button"
             class="btn btn--primary bottom__primary"
@@ -861,9 +946,32 @@ export function App({ loadMap }: Props) {
           >
             {it.add.open}
           </button>
-          <button type="button" class="btn btn--secondary bottom__missing" onClick={startProposal}>
-            {it.add.addMissing}
-          </button>
+          {emptyZone && (
+            <>
+              <button
+                type="button"
+                class="btn btn--secondary"
+                onClick={() => {
+                  startProposal();
+                }}
+              >
+                {it.add.addMissing}
+              </button>
+              {"share" in navigator && (
+                <button
+                  type="button"
+                  class="btn btn--secondary"
+                  onClick={() => {
+                    navigator
+                      .share({ title: APP_NAME, url: location.origin })
+                      .catch(() => undefined);
+                  }}
+                >
+                  {it.map.shareMap}
+                </button>
+              )}
+            </>
+          )}
           <button type="button" class="btn btn--secondary" onClick={() => void nearMe()}>
             <Icon name="locate" />
             {it.map.nearMe}
@@ -879,15 +987,44 @@ export function App({ loadMap }: Props) {
             {it.map.list}
           </button>
         </nav>
-      )}
-
-      {sheet === "search" && (
-        <SearchSheet
-          venues={allVenues}
+        {pinning && (
+          <PinPanel
+            name={pinning.name}
+            close={view !== null && view.zoom >= PIN_MIN_ZOOM}
+            placed={pinPlaced}
+            sending={pinning.sending}
+            similar={similar}
+            onPick={(venue) => {
+              setProposing(null);
+              openAdd({ venue });
+            }}
+            onConfirm={() => void sendProposal()}
+            onCancel={() => {
+              setProposing(null);
+              focusPrimary();
+            }}
+          />
+        )}
+      </div>
+      {sheet === "search" && SearchComponent && (
+        <SearchComponent
+          origin={position ?? (view ? { lat: view.lat, lon: view.lon } : null)}
+          cheapest={cheapest}
+          drink={chipLabel(selected)}
           hint={searchHint}
           onPlace={goToPlace}
-          onVenue={(v) => {
+          onBar={(hit) => {
+            // The static fragment knows the bar; the cell is where it lies (ADR 0024).
+            moveTo(hit[2], hit[3], 17);
+            flewToBar.current = true;
+            navigate(`/bar/${hit[0]}?c=${encodeGeohash(hit[2], hit[3], 5)}`);
+          }}
+          onCheap={(v) => {
             navigate(`/bar/${v.key}?c=${v.cell}`);
+          }}
+          onPropose={(name) => {
+            setSheet(null);
+            startProposal(name);
           }}
           onClose={() => {
             setSheet(null);
@@ -914,8 +1051,11 @@ export function App({ loadMap }: Props) {
           venueKey={route.key}
           cell={route.cell}
           actions={barActions}
+          focus={{ drink: selected.drink, size: selected.size }}
           onVenue={(v) => {
-            if (!view || view.zoom < MIN_ZOOM_CELLS) moveTo(v.lat, v.lon, 16);
+            // A search already flew to the bar (zoom 17): the page must not move the map again.
+            if (flewToBar.current) flewToBar.current = false;
+            else if (!view || view.zoom < MIN_ZOOM_CELLS) moveTo(v.lat, v.lon, 16);
           }}
           onClose={closeBar}
         />
@@ -926,7 +1066,9 @@ export function App({ loadMap }: Props) {
           origin={addOrigin}
           prefill={adding.prefill}
           onSave={save}
-          onPropose={startProposal}
+          onPropose={() => {
+            startProposal();
+          }}
           onClose={() => {
             setAdding(null);
             pendingSave.current?.timer.release(); // a held batch (another drink) goes on
@@ -935,6 +1077,7 @@ export function App({ loadMap }: Props) {
       )}
       {proposing?.step === "form" && (
         <ProposeSheet
+          initialName={proposing.name}
           onNext={startPin}
           onClose={() => {
             setProposing(null);

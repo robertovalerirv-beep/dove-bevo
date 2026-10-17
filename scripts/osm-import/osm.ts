@@ -2,6 +2,8 @@
 // "n123"/"w456"/"r789") → static files. Pure: the CLI (build.mjs) does the I/O.
 import type { CellFile, CellVenue, Place, VenueKind } from "../../src/shared/api-types.ts";
 import { CELL_PRECISION, encodeGeohash } from "../../src/shared/geohash.ts";
+import { fragmentName, significantWords } from "../../src/shared/venue.ts";
+import { gzipSync } from "node:zlib";
 
 export interface OsmFeature {
   type: "Feature";
@@ -13,9 +15,15 @@ export interface OsmFeature {
 export interface Limits {
   maxFiles: number;
   maxFileBytes: number;
+  /** Largest search fragment, gzipped (ADR 0024). */
+  maxFragmentGzip: number;
 }
 
-const DEFAULT_LIMITS: Limits = { maxFiles: 15_000, maxFileBytes: 1_000_000 };
+const DEFAULT_LIMITS: Limits = {
+  maxFiles: 15_000,
+  maxFileBytes: 1_000_000,
+  maxFragmentGzip: 40 * 1024,
+};
 // Index = kind code (api-types). "cafe" keeps code 0 but is not imported (too many, little value).
 const KINDS = ["cafe", "bar", "pub", "biergarten", "nightclub"];
 const SKIPPED_KINDS = 1;
@@ -162,13 +170,75 @@ export function licenseText(dataVersion: string): string {
   ].join("\n");
 }
 
+/** A bar in a search fragment: [key, name, lat, lon, OSM id of its city, 0 when none]. */
+export type SearchEntry = [string, string, number, number, number];
+
+/**
+ * Search index (SPEC 5.1, ADR 0024): `s/<prefix>.json`, the bars that have a word starting with the
+ * 2-character prefix; prefixes whose fragment is over the limit are split in 3 characters and listed
+ * in `s/index.json`. Words and normalisation come from src/shared/venue.ts, like in the client.
+ */
+export function buildSearchIndex(
+  entries: SearchEntry[],
+  maxFragmentGzip = DEFAULT_LIMITS.maxFragmentGzip,
+): Map<string, string> {
+  const groups = new Map<string, Map<string, SearchEntry>>();
+  const add = (prefix: string, entry: SearchEntry) => {
+    const group = groups.get(prefix) ?? new Map<string, SearchEntry>();
+    group.set(entry[0], entry);
+    groups.set(prefix, group);
+  };
+  const words = new Map<string, Set<string>>();
+  for (const entry of entries) {
+    for (const word of significantWords(entry[1])) {
+      const p2 = fragmentName(word.slice(0, 2));
+      add(p2, entry);
+      const list = words.get(p2) ?? new Set<string>();
+      list.add(word);
+      words.set(p2, list);
+    }
+  }
+  const size = (rows: Map<string, SearchEntry>) =>
+    gzipSync(JSON.stringify([...rows.values()])).length;
+  const files = new Map<string, string>();
+  const split: string[] = [];
+  const write = (name: string, rows: Map<string, SearchEntry>) => {
+    const sorted = [...rows.values()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    const content = JSON.stringify(sorted);
+    const gz = gzipSync(content).length;
+    if (gz > maxFragmentGzip)
+      throw new ImportError(`s/${name}.json too large: ${String(gz)} bytes gzip`);
+    files.set(`s/${name}.json`, content);
+  };
+  for (const [p2, rows] of [...groups].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    if (size(rows) <= maxFragmentGzip) {
+      write(p2, rows);
+      continue;
+    }
+    split.push(p2);
+    const by3 = new Map<string, Map<string, SearchEntry>>();
+    for (const entry of rows.values()) {
+      for (const word of significantWords(entry[1])) {
+        if (fragmentName(word.slice(0, 2)) !== p2) continue;
+        const p3 = fragmentName(word.slice(0, 3));
+        const group = by3.get(p3) ?? new Map<string, SearchEntry>();
+        group.set(entry[0], entry);
+        by3.set(p3, group);
+      }
+    }
+    for (const [p3, group] of by3) write(p3, group);
+  }
+  files.set("s/index.json", JSON.stringify(split));
+  return files;
+}
+
 /** Builds every output file, keyed by path relative to `data/<DATA_VERSION>/`. */
 export function buildDataset(
   features: Iterable<OsmFeature>,
   dataVersion: string,
   limits: Partial<Limits> = {},
 ): Map<string, string> {
-  const { maxFiles, maxFileBytes } = { ...DEFAULT_LIMITS, ...limits };
+  const { maxFiles, maxFileBytes, maxFragmentGzip } = { ...DEFAULT_LIMITS, ...limits };
   const venues: Venue[] = [];
   const cities: City[] = [];
 
@@ -231,6 +301,11 @@ export function buildDataset(
     .sort((a, b) => b.bars - a.bars || a.name.localeCompare(b.name, "it"))
     .map((c) => [c.id, c.name, c.lat, c.lon, c.bars]);
   files.set("places.json", JSON.stringify(places));
+  const searchEntries: SearchEntry[] = [];
+  for (const { rows } of cells.values())
+    for (const [v, c] of rows) searchEntries.push([v.key, v.name, v.lat, v.lon, c ? c.id : 0]);
+  for (const [path, content] of buildSearchIndex(searchEntries, maxFragmentGzip))
+    files.set(path, content);
   files.set("LICENSE.txt", licenseText(dataVersion));
 
   if (files.size > maxFiles) {

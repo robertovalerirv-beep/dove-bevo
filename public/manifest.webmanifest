@@ -1,0 +1,30 @@
+{
+  "name": "Dove bevo",
+  "short_name": "Dove bevo",
+  "description": "Dove si beve e a quale prezzo: la mappa gratuita dei bar con i prezzi reali di birre e drink.",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#FF5A1F",
+  "background_color": "#FFF4E4",
+  "icons": [
+    {
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

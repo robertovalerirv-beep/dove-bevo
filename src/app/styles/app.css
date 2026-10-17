@@ -1042,3 +1042,27 @@
     animation: none;
   }
 }
+
+/* Search (M4-12…15): combobox options, the matched part of a name, "no result" */
+.option {
+  min-height: var(--target-row);
+  align-content: center;
+}
+.option[aria-selected="true"] {
+  background: var(--surface-2);
+  box-shadow: inset 4px 0 0 var(--spritz);
+}
+.option mark {
+  background: none;
+  color: inherit;
+  font-weight: var(--weight-bold);
+  text-decoration: underline;
+  text-decoration-color: var(--spritz);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 3px;
+}
+.search-none {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}

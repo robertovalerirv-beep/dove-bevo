@@ -141,10 +141,10 @@ test("M3-19 an API answered with the app page is a polite wait, not an error", a
   });
   await page.goto("/");
   await page.getByRole("button", { name: "Cerca" }).click();
-  await page.getByRole("searchbox", { name: "Cerca una città o un bar" }).fill("milano");
+  await page.getByRole("combobox", { name: "Cerca una città o un bar" }).fill("milano");
   await page
-    .getByRole("list", { name: "Città e paesi" })
-    .getByRole("button", { name: /^Milano/ })
+    .getByRole("listbox", { name: "Risultati" })
+    .getByRole("option", { name: /^Milano/ })
     .first()
     .click();
   await expect(page.getByTestId("map-status")).toHaveText(

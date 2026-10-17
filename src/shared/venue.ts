@@ -16,6 +16,47 @@ export const searchKey = (text: string) =>
     .toLowerCase()
     .trim();
 
+/** Words that say nothing about which bar it is: never indexed, never a search fragment (ADR 0024). */
+export const STOP_WORDS: ReadonlySet<string> = new Set([
+  "bar",
+  "caffe",
+  "cafe",
+  "pub",
+  "di",
+  "da",
+  "del",
+  "della",
+  "dei",
+  "delle",
+  "dal",
+  "la",
+  "il",
+  "lo",
+  "le",
+  "gli",
+  "the",
+  "and",
+  "e",
+  "al",
+  "alla",
+  "ai",
+  "in",
+  "con",
+]);
+
+/** The words of a text, normalised like `searchKey`, split on anything that is not a letter or digit. */
+export const searchWords = (text: string): string[] =>
+  searchKey(text)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+
+/** Words worth indexing: at least 3 characters and not a stop word (ADR 0024). */
+export const significantWords = (text: string): string[] =>
+  searchWords(text).filter((w) => w.length >= 3 && !STOP_WORDS.has(w));
+
+/** File name of a search fragment: only [a-z0-9] in file names, anything else becomes "_". */
+export const fragmentName = (prefix: string): string => prefix.replace(/[^a-z0-9]/g, "_");
+
 /** Great-circle distance in metres. */
 export function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const rad = Math.PI / 180;

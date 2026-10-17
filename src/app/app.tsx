@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
 import { DEFAULT_CHIP, MAP_CHIPS, type ChipId } from "../shared/catalog";
 import { APP_NAME } from "../shared/config";
-import { visibleCells } from "../shared/geohash";
+import { encodeGeohash, visibleCells } from "../shared/geohash";
 import type { PriceRow } from "../shared/api-types";
 import { distanceMeters, searchKey } from "../shared/venue";
 import { AddPriceSheet, type Draft, type Prefill } from "./components/AddPriceSheet";
@@ -14,7 +14,7 @@ import { ReportSheet, type Reason } from "./components/ReportSheet";
 import { Toast } from "./components/Toast";
 import { drinkIcon, Icon } from "./components/Icon";
 import { ListSheet } from "./components/ListSheet";
-import { SearchSheet } from "./components/SearchSheet";
+import type { Cheap, SearchSheet as SearchSheetType } from "./components/SearchSheet";
 import { it } from "./i18n/it";
 import { invalidateCell, loadCell, ServiceBusy, shownPrice, type Venue } from "./lib/data";
 import { blockedHelp, locate, positionGranted } from "./lib/locate";
@@ -89,7 +89,7 @@ interface PendingSave {
 }
 
 type Proposing =
-  | { step: "form" }
+  | { step: "form"; name: string }
   | ({
       step: "pin";
       sending: boolean;
@@ -129,6 +129,7 @@ export function App({ loadMap }: Props) {
   const toastRegion = useMemo(() => floating("toast-region", "status"), []);
   const toastTimer = useRef<HoldableTimer | null>(null);
   const pendingSave = useRef<PendingSave | null>(null);
+  const flewToBar = useRef(false);
   const [chip, setChip] = useState<ChipId>(DEFAULT_CHIP.id);
   const [venues, setVenues] = useState<Map<string, Venue>>(new Map());
   const [cellsState, setCellsState] = useState<CellsState>("idle");
@@ -289,6 +290,28 @@ export function App({ loadMap }: Props) {
       }),
     );
   }, [map, allVenues, selected]);
+
+  // The search code is its own chunk, downloaded when the sheet is first opened (M4-16).
+  const [SearchComponent, setSearchComponent] = useState<typeof SearchSheetType | null>(null);
+  useEffect(() => {
+    if (sheet !== "search" || SearchComponent) return;
+    void import("./components/SearchSheet").then((m) => {
+      setSearchComponent(() => m.SearchSheet);
+    });
+  }, [sheet, SearchComponent]);
+
+  // «I più economici qui»: the cheapest prices of the chosen drink in the visible area (M4-04).
+  const cheapest = useMemo<Cheap[]>(
+    () =>
+      inView
+        .flatMap((venue) => {
+          const row = shownPrice(venue, selected.drink, selected.size);
+          return row ? [{ venue, cents: row[4], day: row[5] }] : [];
+        })
+        .sort((a, b) => a.cents - b.cents || (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
+        .slice(0, 10),
+    [inView, selected],
+  );
 
   const zoomedIn = view !== null && view.zoom >= MIN_ZOOM_CELLS;
   // The bar whose sheet is open is the crown cork on the map (brand, MB-07).
@@ -564,9 +587,9 @@ export function App({ loadMap }: Props) {
     }, 0);
   }
 
-  function startProposal() {
+  function startProposal(name = "") {
     setAdding(null);
-    setProposing({ step: "form" });
+    setProposing({ step: "form", name });
   }
 
   function startPin(proposal: Proposal) {
@@ -895,7 +918,13 @@ export function App({ loadMap }: Props) {
           </button>
           {emptyZone && (
             <>
-              <button type="button" class="btn btn--secondary" onClick={startProposal}>
+              <button
+                type="button"
+                class="btn btn--secondary"
+                onClick={() => {
+                  startProposal();
+                }}
+              >
                 {it.add.addMissing}
               </button>
               {"share" in navigator && (
@@ -930,13 +959,25 @@ export function App({ loadMap }: Props) {
         </nav>
       )}
 
-      {sheet === "search" && (
-        <SearchSheet
-          venues={allVenues}
+      {sheet === "search" && SearchComponent && (
+        <SearchComponent
+          origin={position ?? (view ? { lat: view.lat, lon: view.lon } : null)}
+          cheapest={cheapest}
+          drink={chipLabel(selected)}
           hint={searchHint}
           onPlace={goToPlace}
-          onVenue={(v) => {
+          onBar={(hit) => {
+            // The static fragment knows the bar; the cell is where it lies (ADR 0024).
+            moveTo(hit[2], hit[3], 17);
+            flewToBar.current = true;
+            navigate(`/bar/${hit[0]}?c=${encodeGeohash(hit[2], hit[3], 5)}`);
+          }}
+          onCheap={(v) => {
             navigate(`/bar/${v.key}?c=${v.cell}`);
+          }}
+          onPropose={(name) => {
+            setSheet(null);
+            startProposal(name);
           }}
           onClose={() => {
             setSheet(null);
@@ -965,7 +1006,9 @@ export function App({ loadMap }: Props) {
           actions={barActions}
           focus={{ drink: selected.drink, size: selected.size }}
           onVenue={(v) => {
-            if (!view || view.zoom < MIN_ZOOM_CELLS) moveTo(v.lat, v.lon, 16);
+            // A search already flew to the bar (zoom 17): the page must not move the map again.
+            if (flewToBar.current) flewToBar.current = false;
+            else if (!view || view.zoom < MIN_ZOOM_CELLS) moveTo(v.lat, v.lon, 16);
           }}
           onClose={closeBar}
         />
@@ -976,7 +1019,9 @@ export function App({ loadMap }: Props) {
           origin={addOrigin}
           prefill={adding.prefill}
           onSave={save}
-          onPropose={startProposal}
+          onPropose={() => {
+            startProposal();
+          }}
           onClose={() => {
             setAdding(null);
             pendingSave.current?.timer.release(); // a held batch (another drink) goes on
@@ -985,6 +1030,7 @@ export function App({ loadMap }: Props) {
       )}
       {proposing?.step === "form" && (
         <ProposeSheet
+          initialName={proposing.name}
           onNext={startPin}
           onClose={() => {
             setProposing(null);

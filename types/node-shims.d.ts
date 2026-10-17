@@ -11,3 +11,6 @@ declare module "node:path" {
 }
 
 declare const process: { env: Record<string, string | undefined> };
+declare module "node:zlib" {
+  export function gzipSync(data: string): { length: number };
+}

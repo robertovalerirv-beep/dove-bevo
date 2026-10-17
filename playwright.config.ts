@@ -17,7 +17,12 @@ export default defineConfig({
   // WebKit redraws the map labels slowly under parallel load; 10 s keeps the same assertions stable.
   expect: { timeout: 10_000 },
   reporter: "list",
-  use: { baseURL: `https://localhost:${String(PORT)}`, ignoreHTTPSErrors: true },
+  use: {
+    baseURL: `https://localhost:${String(PORT)}`,
+    ignoreHTTPSErrors: true,
+    // A controlling service worker hides requests from page.route(): only tests/e2e/pwa.spec.ts allows it.
+    serviceWorkers: "block",
+  },
   projects: [
     // Tests that write prices (contribute.spec.ts) run after the read-only ones, which see the
     // seed untouched: browsers share one local D1 and a new label can hide a seeded one. Then the

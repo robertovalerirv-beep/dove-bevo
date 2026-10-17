@@ -155,6 +155,7 @@ test("M4-15 combobox: arrows, Enter, Esc, announced count, 48 px targets", async
   await expect(page.getByRole("dialog", { name: "Cerca" })).toHaveCount(0);
   await openSearch(page);
   await box(page).fill("milano");
+  await expect(options(page).first()).toBeVisible(); // the results come asynchronously
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog", { name: "Cerca" })).toHaveCount(0);
@@ -207,6 +208,7 @@ test("M4-16 a typical search downloads little and answers fast once the fragment
   );
   expect(total).toBeLessThanOrEqual(60 * 1024);
   // The same fragment again: no download, and the list changes within 150 ms.
+  await expect.poll(() => downloads.length).toBeGreaterThanOrEqual(2); // index + fragment, both counted
   const before = downloads.length;
   const ms = await page.evaluate(
     () =>

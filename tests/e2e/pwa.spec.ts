@@ -3,6 +3,8 @@ import { mapStatus } from "./helpers";
 
 // M4-07 / M4-08: the shell is installable and works offline. Needs the production build (preview).
 
+test.use({ serviceWorkers: "allow" });
+
 test("M4-07 the service worker keeps the shell only, never /api or /data", async ({ page }) => {
   await page.goto("/");
   await page.evaluate(() => navigator.serviceWorker.ready);

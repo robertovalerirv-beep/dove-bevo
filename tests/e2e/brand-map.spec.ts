@@ -45,8 +45,9 @@ test("MB-06 switching theme swaps the style without asking /api or /data again",
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
   await goToMilano(page);
+  // WebKit reports the drawn pins a little later than the status line: wait for them.
+  await expect(mapRegion(page)).not.toHaveAttribute("data-prices-shown", "", { timeout: 20_000 });
   const shown = await mapRegion(page).getAttribute("data-prices-shown");
-  expect(shown).toBeTruthy();
   const after: string[] = [];
   page.on("request", (r) => {
     const { pathname } = new URL(r.url());

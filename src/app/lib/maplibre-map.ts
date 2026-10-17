@@ -184,13 +184,6 @@ export class VenueMap {
     const bg = token("--bg");
     const border = token("--map-pill-border");
     const dotFill = token("--map-pill-bg");
-    // Pin images are drawn when the style asks for a name it does not have yet.
-    map.on("styleimagemissing", (e) => {
-      const m = /^pin-(affare|giusto|salato|neutro)-([01])-(?:light|dark)-(.*)$/s.exec(e.id);
-      if (!m || map.hasImage(e.id)) return;
-      const image = pinImage(m[1] as Tier, m[2] === "1", m[3] ?? "");
-      map.addImage(e.id, image, { pixelRatio: PIN_RATIO });
-    });
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
       this.redrawPins();
     });
@@ -334,8 +327,19 @@ export class VenueMap {
     this.setVenues(this.points);
   }
 
+  /** Draws the pin images a set of points needs, before the layer asks for them. */
+  private ensurePins(points: VenuePoint[]) {
+    for (const p of points) {
+      if (!p.label) continue;
+      const name = pinName(p.tier, p.stale, p.label);
+      if (this.map.hasImage(name)) continue;
+      this.map.addImage(name, pinImage(p.tier, p.stale, p.label), { pixelRatio: PIN_RATIO });
+    }
+  }
+
   setVenues(points: VenuePoint[]) {
     this.points = points;
+    this.ensurePins(points);
     const collection = (list: VenuePoint[]) => ({
       type: "FeatureCollection" as const,
       features: list.map((p) => ({

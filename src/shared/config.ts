@@ -8,3 +8,12 @@ export const LAUNCH_TARGET = 150;
 /** The coverage dashboard reads every price once: past this many rows it costs too much D1 quota. */
 export const COVERAGE_MAX_ROWS = 5000;
 export const COVERAGE_WARN_ROWS = COVERAGE_MAX_ROWS * 0.8;
+
+/** Price tiers against the cell median (D-12): thresholds and minimum sample, in one place. */
+export const TIER_MIN_PRICES = 5;
+export const TIER_CHEAP_BELOW = 0.9;
+export const TIER_PRICEY_ABOVE = 1.1;
+/** Prices observed more than this many days ago are marked "da confermare" (SPEC 7.1). */
+export const STALE_DAYS = 90;
+/** Under this share of bars with a price the zone counts as empty (SPEC 7.1). */
+export const EMPTY_ZONE_SHARE = 0.05;

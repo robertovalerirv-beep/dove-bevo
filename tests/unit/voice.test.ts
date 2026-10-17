@@ -58,7 +58,7 @@ describe("MB-15 voice", () => {
       it.bar.stale("3 mesi fa"),
       it.add.quota,
       it.map.position.denied,
-      it.tessera.five,
+      it.tessera.messages[5],
     ];
     expect(phrases).toEqual([
       "Quanto l'hai pagato?",

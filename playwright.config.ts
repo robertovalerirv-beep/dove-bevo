@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const PORT = 4173;
+const PORT = Number(process.env.E2E_PORT ?? 4173); // another checkout may hold 4173
 const viewport = { width: 390, height: 844 };
 const WRITES = "**/contribute.spec.ts";
 // Proposed bars stay in the shared local D1 and would join the "5 nearest bars" of the writes above.

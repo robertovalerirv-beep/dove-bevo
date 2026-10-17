@@ -19,7 +19,8 @@ import { it } from "./i18n/it";
 import { invalidateCell, loadCell, ServiceBusy, shownPrice, type Venue } from "./lib/data";
 import { blockedHelp, locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
-import { formatPrice, formatSize, todayRome } from "./lib/format";
+import { formatPrice, formatSize, formatStampDay, todayRome } from "./lib/format";
+import { addPrices, priceCount, stampReached } from "./lib/usage";
 import { cellMedian, coverage, isStale, tierOf } from "./lib/tiers";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
@@ -118,6 +119,7 @@ export function App({ loadMap }: Props) {
   const [reporting, setReporting] = useState<{ venue: Venue; row: PriceRow | null } | null>(null);
   const [toast, setToast] = useState<{
     text: string;
+    stamp?: { day: string; lines: string[] };
     undo?: () => void;
     more?: { label: string; run: () => void };
   } | null>(null);
@@ -375,9 +377,10 @@ export function App({ loadMap }: Props) {
     undo?: () => void,
     ms = 4000,
     more?: { label: string; run: () => void },
+    stamp?: { day: string; lines: string[] },
   ) {
     toastTimer.current?.clear();
-    setToast({ text, undo, more });
+    setToast({ text, undo, more, stamp });
     toastTimer.current = holdableTimeout(() => {
       setToast(null);
     }, ms);
@@ -403,7 +406,13 @@ export function App({ loadMap }: Props) {
     const hadFocus = toastRegion.contains(document.activeElement);
     render(
       toast ? (
-        <Toast text={toast.text} onUndo={toast.undo} more={toast.more} onHold={holdToast} />
+        <Toast
+          text={toast.text}
+          stamp={toast.stamp}
+          onUndo={toast.undo}
+          more={toast.more}
+          onHold={holdToast}
+        />
       ) : null,
       toastRegion,
     );
@@ -507,11 +516,25 @@ export function App({ loadMap }: Props) {
       sent: false,
     };
     pendingSave.current = entry;
+    // The Timbro: today's date, the stamp line, Copertura +1 when this bar had no price for the
+    // chosen drink in the zone, and the Tessera when a stamp is reached (MB-11, MB-12).
+    const today = todayRome();
+    const before = priceCount();
+    const after = addPrices(1, today);
+    const lines: string[] = [it.add.stamp];
+    const hadPrice = Boolean(shownPrice(draft.venue, selected.drink, selected.size));
+    if (!hadPrice && inView.some((v) => v.key === draft.venue.key))
+      lines.push(it.add.coverageUp(zoneCoverage.withPrice + 1, zoneCoverage.total));
+    const step = stampReached(before, after);
+    if (step) lines.push(it.tessera.messages[step] ?? "");
+    // Android only; Safari has no vibrate().
+    (navigator as { vibrate?: (ms: number) => boolean }).vibrate?.(20);
     showToast(
       it.add.saved,
       () => {
         entry.timer.clear();
         entry.sent = true;
+        addPrices(-1, today);
         if (pendingSave.current === entry) pendingSave.current = null;
         showToast(it.add.undone);
       },
@@ -523,6 +546,7 @@ export function App({ loadMap }: Props) {
           openAdd({ venue: draft.venue });
         },
       },
+      { day: formatStampDay(), lines },
     );
     // Turnstile only now, at the first contribution (M2-02), during the 10 s window; after the
     // add sheet has closed, so its host lands in the layer that stays open.
@@ -939,6 +963,7 @@ export function App({ loadMap }: Props) {
           venueKey={route.key}
           cell={route.cell}
           actions={barActions}
+          focus={{ drink: selected.drink, size: selected.size }}
           onVenue={(v) => {
             if (!view || view.zoom < MIN_ZOOM_CELLS) moveTo(v.lat, v.lon, 16);
           }}

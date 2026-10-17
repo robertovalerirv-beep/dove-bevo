@@ -88,9 +88,18 @@ export const it = {
     loading: "Carico il bar…",
     pricesError: "Non riesco a caricare i prezzi. Controlla la connessione.",
     stale: (ago: string) => `Visto ${ago}. Ci sei passato? Confermalo.`,
+    toConfirm: "Da confermare",
+    seeAll: (n: number) => `Vedi tutti (${String(n)})`,
+    seeLess: "Mostra meno",
   },
   tessera: {
-    five: "5 prezzi segnati. Sei di casa.",
+    messages: {
+      1: "Primo prezzo segnato.",
+      5: "5 prezzi segnati. Sei di casa.",
+      10: "10 prezzi segnati. Il bancone ti conosce.",
+      25: "25 prezzi segnati. Ormai guidi tu la zona.",
+      50: "50 prezzi segnati. La mappa è anche tua.",
+    } as Record<number, string>,
   },
   add: {
     open: "Aggiungi prezzo",
@@ -113,6 +122,13 @@ export const it = {
     network: "Non sono riuscito a salvare: controlla la connessione e riprova.",
     saved: "Prezzo salvato",
     stamp: "Segnato. Il prossimo che passa sa già quanto spende.",
+    stampDay: (day: string) => `Timbro del ${day}`,
+    coverageUp: (withPrice: number, total: number) =>
+      `Copertura +1: ${String(withPrice)} bar su ${String(total)} qui hanno un prezzo`,
+    seenHere: "Prezzi già visti qui",
+    seenHelp: "Tocca un prezzo per segnarlo subito: hai 10 secondi per annullare.",
+    zoneRange: (min: string, max: string, median: string) =>
+      `In zona va da ${min} a ${max} €, mediana ${median} €`,
     undo: "Annulla",
     undone: "Annullato",
     quarantined: "Salvato: comparirà quando qualcun altro lo conferma.",

@@ -389,3 +389,88 @@ test("Annulla works over the bar page and holds the countdown while focused (WCA
   await page.waitForTimeout(1_000);
   expect(posts).toEqual([]);
 });
+
+// F3 of the brand package. These write a price, so they live with the other writes.
+test.describe("MB-10 MB-11 MB-12 with the position (Duomo)", () => {
+  test.use({ geolocation: DUOMO, permissions: ["geolocation"] });
+
+  test("a price already seen in the zone saves in four taps; the Timbro, Copertura and Tessera appear", async ({
+    page,
+  }, info) => {
+    test.slow(); // waits out the real 10 s undo window
+    await stubTurnstile(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Vicino a me" }).click();
+    await waitForBars(page);
+    const posts: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && r.url().includes("/api/")) posts.push(r.url());
+    });
+    let taps = 0;
+    const tap = async (click: Promise<void>) => {
+      await click;
+      taps++;
+    };
+
+    await tap(page.getByRole("button", { name: "Aggiungi prezzo" }).click());
+    await page.getByRole("searchbox", { name: "Cerca il bar per nome" }).fill("Prima classe");
+    await tap(barChoices(page).filter({ hasText: "Prima classe" }).first().click());
+    await tap(
+      page
+        .getByRole("dialog")
+        .getByRole("button", { name: /^Spritz/ })
+        .click(),
+    );
+    const seen = page.getByRole("list", { name: "Prezzi già visti qui" });
+    await expect(seen.getByRole("button")).toHaveText(["7,50 €", "12,00 €"]);
+    await expect(page.getByText("In zona va da")).toHaveCount(0); // fewer than 5 prices: no range
+    await page.screenshot({ path: info.outputPath("mb-10-prezzi-visti.png") });
+    const saved = page.waitForRequest(
+      (r) => r.url().endsWith("/api/prices") && r.method() === "POST",
+      { timeout: 40_000 },
+    );
+    await tap(seen.getByRole("button", { name: "7,50 €" }).click());
+    expect(taps).toBe(4);
+    await page.mouse.move(0, 0); // a pointer resting on the toast holds the 10 s (WCAG 2.2.1)
+
+    const stamp = page.getByRole("status").filter({ hasText: "Prezzo salvato" });
+    await expect(stamp).toBeVisible();
+    await expect(stamp).toContainText("Segnato. Il prossimo che passa sa già quanto spende.");
+    await expect(stamp).toContainText("Primo prezzo segnato.");
+    await expect(stamp.locator(".stamp__mark")).toHaveText(/^\d{1,2} [A-Z]{3}$/);
+    await expect(stamp).toContainText(/Copertura \+1: \d+ bar su \d+ qui hanno un prezzo/);
+    await page.screenshot({ path: info.outputPath("mb-11-timbro.png") });
+    expect(
+      await page.evaluate(() =>
+        Object.keys(localStorage)
+          .sort()
+          .map((k) => k),
+      ),
+    ).toEqual(["dovebevo-first-use", "dovebevo-prices"]);
+
+    const request = await saved;
+    const body = request.postDataJSON() as { items: { price_cents: number }[] };
+    expect(body.items.map((i) => i.price_cents)).toEqual([750]);
+    // Only the contribution itself (and the session that comes with it) leaves the device.
+    expect(posts.every((u) => /\/api\/(prices|session)$/.test(u))).toBe(true);
+  });
+
+  test("Annulla takes the price back from the Tessera count", async ({ page }) => {
+    await stubTurnstile(page);
+    await page.goto("/");
+    await page.getByRole("button", { name: "Vicino a me" }).click();
+    await waitForBars(page);
+    await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+    await page.getByRole("searchbox", { name: "Cerca il bar per nome" }).fill("Prima classe");
+    await barChoices(page).filter({ hasText: "Prima classe" }).first().click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /^Spritz/ })
+      .click();
+    await page.getByRole("textbox", { name: "Prezzo in euro" }).fill("7,00");
+    await page.getByRole("button", { name: "Salva" }).click();
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("dovebevo-prices"))).toBe("1");
+    await page.getByRole("button", { name: "Annulla" }).click();
+    await expect.poll(() => page.evaluate(() => localStorage.getItem("dovebevo-prices"))).toBe("0");
+  });
+});

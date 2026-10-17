@@ -3,6 +3,8 @@ import { it } from "../i18n/it";
 
 interface Props {
   text: string;
+  /** After "Salva": the Timbro with the day, and the lines of Copertura and Tessera (MB-11). */
+  stamp?: { day: string; lines: string[] };
   onUndo?: () => void;
   /** A second action next to "Annulla", e.g. "Aggiungi un altro drink qui". */
   more?: { label: string; run: () => void };
@@ -11,7 +13,7 @@ interface Props {
 }
 
 /** Short message above the attribution; optional "Annulla" with a progress bar (SPEC 7.3). */
-export function Toast({ text, onUndo, more, onHold }: Props) {
+export function Toast({ text, stamp, onUndo, more, onHold }: Props) {
   const held = useRef({ pointer: false, focus: false });
   const update = (key: "pointer" | "focus", value: boolean) => {
     held.current[key] = value;
@@ -19,7 +21,7 @@ export function Toast({ text, onUndo, more, onHold }: Props) {
   };
   return (
     <div
-      class="toast"
+      class={stamp ? "toast toast--stamp" : "toast"}
       onPointerEnter={() => {
         update("pointer", true);
       }}
@@ -33,7 +35,23 @@ export function Toast({ text, onUndo, more, onHold }: Props) {
         update("focus", false);
       }}
     >
-      <span>{text}</span>
+      {stamp ? (
+        <div class="stamp">
+          <span class="stamp__mark" aria-hidden="true">
+            {stamp.day}
+          </span>
+          <span class="stamp__text">
+            <strong>{text}</strong>
+            {stamp.lines.map((line) => (
+              <span key={line} class="stamp__line">
+                {line}
+              </span>
+            ))}
+          </span>
+        </div>
+      ) : (
+        <span>{text}</span>
+      )}
       {onUndo && (
         <>
           <button type="button" class="toast__action" onClick={onUndo}>

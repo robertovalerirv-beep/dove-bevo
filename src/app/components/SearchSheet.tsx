@@ -93,7 +93,6 @@ export function SearchSheet({
   const key = searchKey(query);
   const typed = useMemo(() => searchWords(query), [query]);
   useEffect(() => {
-    setActive(-1);
     if (key.length < MIN_CHARS || leadWord(query) === null) {
       setBars([]);
       setBarsState("idle");
@@ -186,6 +185,7 @@ export function SearchSheet({
         enterkeyhint="search"
         onInput={(e) => {
           setQuery(e.currentTarget.value);
+          setActive(-1); // here, not in an effect: an arrow pressed right after typing must count
         }}
         onKeyDown={onKeyDown}
       />

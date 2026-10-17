@@ -22,7 +22,8 @@ export const it = {
   map: {
     region: "Mappa",
     canvas: "Mappa interattiva dei bar",
-    zoomIn: "Avvicinati o cerca una città",
+    zoomIn: "Avvicinati per vedere i prezzi, o cerca una città.",
+    emptyZone: "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
     tooManyCells: "Avvicinati per vedere i prezzi della zona",
     loading: "Carico i prezzi della zona…",
     loadError: "Non riesco a caricare i prezzi della zona. Controlla la connessione.",
@@ -35,7 +36,7 @@ export const it = {
     nearMe: "Vicino a me",
     locating: "Cerco la tua posizione…",
     position: {
-      denied: "Posizione non disponibile: cerca una città qui sotto.",
+      denied: "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città.",
       deniedHelp: {
         app: "La posizione non funziona in questa app. Apri il link in Chrome o Safari, oppure cerca una città.",
         ios: "Per usare la posizione: tocca aA nella barra dell'indirizzo, poi Impostazioni sito web, Posizione, Consenti. Oppure cerca una città.",
@@ -85,6 +86,10 @@ export const it = {
     notFound: "Questo bar non è più nei nostri dati.",
     loading: "Carico il bar…",
     pricesError: "Non riesco a caricare i prezzi. Controlla la connessione.",
+    stale: (ago: string) => `Visto ${ago}. Ci sei passato? Confermalo.`,
+  },
+  tessera: {
+    five: "5 prezzi segnati. Sei di casa.",
   },
   add: {
     open: "Aggiungi prezzo",
@@ -94,6 +99,7 @@ export const it = {
     nearBars: "Bar vicini",
     searchBar: "Cerca il bar per nome",
     noBars: "Avvicinati sulla mappa o usa «Vicino a me» per vedere i bar qui intorno.",
+    question: "Quanto l'hai pagato?",
     chooseDrink: "Che cosa hai preso?",
     price: "Prezzo in euro",
     size: "Formato",
@@ -102,9 +108,10 @@ export const it = {
     badFormat: "Scrivi il prezzo in euro, per esempio 7,50.",
     outOfRange: (drink: string) => `Ci sembra un prezzo insolito per ${drink}: controlla le cifre.`,
     underReview: "Questo prezzo è in verifica: per ora non si può cambiare.",
-    quota: "Hai inserito molti prezzi oggi: riprova domani.",
+    quota: "Per oggi hai segnato tanto. Riprova dopo mezzanotte.",
     network: "Non sono riuscito a salvare: controlla la connessione e riprova.",
     saved: "Prezzo salvato",
+    stamp: "Segnato. Il prossimo che passa sa già quanto spende.",
     undo: "Annulla",
     undone: "Annullato",
     quarantined: "Salvato: comparirà quando qualcun altro lo conferma.",

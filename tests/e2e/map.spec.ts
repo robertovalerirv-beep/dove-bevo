@@ -45,7 +45,7 @@ test("M1-07 loads at most 12 cells from zoom 13 and nothing below", async ({ pag
     void route.continue();
   });
   await page.goto("/");
-  await expect(mapStatus(page)).toHaveText("Avvicinati o cerca una città");
+  await expect(mapStatus(page)).toHaveText("Avvicinati per vedere i prezzi, o cerca una città.");
   expect(priceRequests).toEqual([]);
 
   await goToMilano(page);
@@ -61,7 +61,7 @@ test("M1-07 loads at most 12 cells from zoom 13 and nothing below", async ({ pag
     await expect.poll(() => zoomOf(page)).toBeLessThan(zoom);
   }
   expect(await zoomOf(page)).toBeLessThan(13);
-  await expect(mapStatus(page)).toHaveText("Avvicinati o cerca una città");
+  await expect(mapStatus(page)).toHaveText("Avvicinati per vedere i prezzi, o cerca una città.");
   const before = priceRequests.length;
   await page.keyboard.press("ArrowRight");
   await page.keyboard.press("ArrowRight");

@@ -1083,3 +1083,16 @@
 .price__actions .btn--ghost {
   padding-inline: 0;
 }
+
+/* Placing a pin: the panel lies over the hidden bar so the map keeps its height (SPEC 7.5, 14) */
+.bottom-slot {
+  position: relative;
+}
+.bottom[inert] {
+  visibility: hidden;
+}
+.bottom-slot > .pin {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+}

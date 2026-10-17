@@ -904,25 +904,10 @@ export function App({ loadMap }: Props) {
         </section>
       </main>
 
-      {pinning ? (
-        <PinPanel
-          name={pinning.name}
-          close={view !== null && view.zoom >= PIN_MIN_ZOOM}
-          placed={pinPlaced}
-          sending={pinning.sending}
-          similar={similar}
-          onPick={(venue) => {
-            setProposing(null);
-            openAdd({ venue });
-          }}
-          onConfirm={() => void sendProposal()}
-          onCancel={() => {
-            setProposing(null);
-            focusPrimary();
-          }}
-        />
-      ) : (
-        <nav class="bottom" aria-label={it.map.actions}>
+      {/* While the pin is placed the bar stays in the layout (hidden, inert) and the panel lies over
+          it: the map must not change height, or its centre moves and the pin looks already placed. */}
+      <div class="bottom-slot">
+        <nav class="bottom" aria-label={it.map.actions} inert={pinning ? true : undefined}>
           {invite && (
             <div class="bottom__invite" role="region" aria-label={it.install.action}>
               <p>{invite === "ios" ? it.install.ios : it.install.prompt}</p>
@@ -1002,8 +987,25 @@ export function App({ loadMap }: Props) {
             {it.map.list}
           </button>
         </nav>
-      )}
-
+        {pinning && (
+          <PinPanel
+            name={pinning.name}
+            close={view !== null && view.zoom >= PIN_MIN_ZOOM}
+            placed={pinPlaced}
+            sending={pinning.sending}
+            similar={similar}
+            onPick={(venue) => {
+              setProposing(null);
+              openAdd({ venue });
+            }}
+            onConfirm={() => void sendProposal()}
+            onCancel={() => {
+              setProposing(null);
+              focusPrimary();
+            }}
+          />
+        )}
+      </div>
       {sheet === "search" && SearchComponent && (
         <SearchComponent
           origin={position ?? (view ? { lat: view.lat, lon: view.lon } : null)}

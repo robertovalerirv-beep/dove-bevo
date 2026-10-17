@@ -16,7 +16,9 @@ export interface Limits {
 }
 
 const DEFAULT_LIMITS: Limits = { maxFiles: 15_000, maxFileBytes: 1_000_000 };
+// Index = kind code (api-types). "cafe" keeps code 0 but is not imported (too many, little value).
 const KINDS = ["cafe", "bar", "pub", "biergarten", "nightclub"];
+const SKIPPED_KINDS = 1;
 const PLACES = ["city", "town"];
 const MAX_NAME = 120;
 const CITY_RADIUS_KM = 15;
@@ -183,7 +185,7 @@ export function buildDataset(
     if (key.startsWith("n") && PLACES.includes(place)) {
       validate("place", key, name, lat, lon);
       cities.push({ id: Number(key.slice(1)), name, lat: round5(lat), lon: round5(lon), bars: 0 });
-    } else if (kind >= 0) {
+    } else if (kind >= SKIPPED_KINDS) {
       validate("bar", key, name, lat, lon);
       const street = text(tags, "addr:street");
       const addr = street ? `${street} ${text(tags, "addr:housenumber")}`.trim() : "";

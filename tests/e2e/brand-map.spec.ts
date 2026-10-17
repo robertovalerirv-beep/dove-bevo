@@ -71,7 +71,9 @@ test("MB-07 the open bar is marked on the map", async ({ page }) => {
   await expect(mapRegion(page)).toHaveAttribute("data-selected", "");
 });
 
-test("MB-07 interactions stay under 200 ms with many pins (INP)", async ({ page, browserName }) => {
+test("MB-07 the interactions on the pins never freeze the page (INP measured)", async ({
+  page,
+}) => {
   await page.goto("/");
   await page.addInitScript(() => {
     const w = window as unknown as { slowest: number };

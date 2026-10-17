@@ -501,7 +501,7 @@
     "milestone": "MB",
     "descrizione": "Pin e legenda",
     "verifica": "unit + e2e: gradino, glifo e prezzo corretti rispetto alla mediana (D-12); neutro sotto 5 prezzi; bordo tratteggiato oltre 90 giorni; tappo quando selezionato; HH come D-13; legenda solo con colori attivi; interazione peggiore ≤ 200 ms con 300 pin (misura in PROGRESS)",
-    "passes": true
+    "passes": false
   },
   {
     "id": "MB-08",

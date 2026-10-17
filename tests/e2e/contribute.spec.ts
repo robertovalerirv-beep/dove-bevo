@@ -97,7 +97,7 @@ test.describe("with the position (Duomo)", () => {
 
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click(); // 1
     await expect(barChoices(page)).toHaveCount(5); // position already granted → nearest bars
-    await barChoices(page).first().click(); // 2
+    await barChoices(page).filter({ hasText: "The View Milano" }).click(); // 2 (the nearest one, Terrazza Duomo 21, has a price under review in the seed)
     await page
       .getByRole("dialog")
       .getByRole("button", { name: /^Spritz/ })

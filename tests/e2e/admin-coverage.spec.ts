@@ -116,8 +116,8 @@ test("indicators, gate and the table per city (M5-15)", async ({ page }) => {
 
   const milano = rowOf(page, "Milano");
   await expect(milano).toContainText("12");
-  await expect(milano).toContainText("1.967"); // the 1947 OSM bars of the city plus 20 added by hand
-  await expect(milano).toContainText("0,6 %");
+  await expect(milano).toContainText("728"); // the 708 OSM bars of the fixture (cafes are not imported) plus 20 added by hand
+  await expect(milano).toContainText("1,6 %");
   await expect(milano).toContainText("12 ott 2026");
   // No orphan row: every bar belongs to a city.
   await expect(rowOf(page, "Senza città")).toHaveCount(0);

@@ -91,7 +91,7 @@ test("M1-09 the drink chips switch the prices shown", async ({ page }) => {
   await page.getByRole("button", { name: "Elenco" }).click();
   await expect(list.getByRole("link", { name: /Bistrot Duomo/ })).toContainText("7,50 €");
   await expect(list.getByRole("link", { name: /Terrazza Aperol/ })).toContainText("10,00 € HH");
-  await expect(list.getByRole("link", { name: /^Prima classe/ })).toContainText("Nessun prezzo");
+  await expect(list.getByRole("link", { name: /^The Dome/ })).toContainText("Nessun prezzo");
 });
 
 test.describe("M1-10 with the position granted", () => {

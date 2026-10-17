@@ -1066,3 +1066,20 @@
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
+
+/* Invitation to install, after the second price (M4-09) */
+.bottom__invite {
+  grid-column: 1 / -1;
+}
+.bottom__invite p {
+  margin: 0 0 var(--space-2);
+}
+.bottom__invite-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* "Segnala un errore" is a link-like button: flush with the receipt column, not indented */
+.price__actions .btn--ghost {
+  padding-inline: 0;
+}

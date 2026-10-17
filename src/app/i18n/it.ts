@@ -24,6 +24,7 @@ export const it = {
     canvas: "Mappa interattiva dei bar",
     zoomIn: "Avvicinati per vedere i prezzi, o cerca una città.",
     shareMap: "Manda la mappa a un amico",
+    offline: "Sei offline: la mappa e i prezzi tornano con la connessione",
     emptyZone: "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
     tooManyCells: "Avvicinati per vedere i prezzi della zona",
     loading: "Carico i prezzi della zona…",
@@ -95,6 +96,13 @@ export const it = {
     toConfirm: "Da confermare",
     seeAll: (n: number) => `Vedi tutti (${String(n)})`,
     seeLess: "Mostra meno",
+  },
+  install: {
+    prompt: "Metti Dove bevo sulla schermata Home: si apre più in fretta.",
+    ios: "Su iPhone: tocca Condividi, poi «Aggiungi alla schermata Home».",
+    action: "Installa",
+    dismiss: "Non ora",
+    ok: "Ho capito",
   },
   tessera: {
     messages: {

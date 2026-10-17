@@ -474,3 +474,74 @@ test.describe("MB-10 MB-11 MB-12 with the position (Duomo)", () => {
     await expect.poll(() => page.evaluate(() => localStorage.getItem("dovebevo-prices"))).toBe("0");
   });
 });
+
+// M4-09: the invitation to install appears after the second price, once.
+async function saveSpritz(page: Page, price: string) {
+  await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+  await expect(barChoices(page)).toHaveCount(5);
+  await barChoices(page).first().click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^Spritz/ })
+    .click();
+  await page.getByRole("textbox", { name: "Prezzo in euro" }).fill(price);
+  await page.getByRole("button", { name: "Salva" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Prezzo salvato" })).toBeVisible();
+}
+
+test.describe("M4-09 install invitation", () => {
+  test.use({ geolocation: DUOMO, permissions: ["geolocation"] });
+
+  test("with the browser's prompt: absent after the first price, there after the second, not again", async ({
+    page,
+  }, info) => {
+    await stubTurnstile(page);
+    await page.goto("/");
+    await page.evaluate(() => {
+      // What Chrome sends when the app can be installed.
+      window.dispatchEvent(
+        Object.assign(new Event("beforeinstallprompt", { cancelable: true }), {
+          prompt: () => {
+            (window as unknown as { prompted: boolean }).prompted = true;
+            return Promise.resolve();
+          },
+        }),
+      );
+    });
+    const invite = page.getByRole("region", { name: "Installa" });
+    await saveSpritz(page, "6,10");
+    await expect(invite).toHaveCount(0);
+    await saveSpritz(page, "6,20");
+    await expect(invite).toBeVisible();
+    await expect(invite).toContainText("Metti Dove bevo sulla schermata Home");
+    await page.screenshot({ path: info.outputPath("m4-09-invito.png") });
+    await invite.getByRole("button", { name: "Installa" }).click();
+    expect(await page.evaluate(() => (window as unknown as { prompted?: boolean }).prompted)).toBe(
+      true,
+    );
+    await expect(invite).toHaveCount(0);
+    await saveSpritz(page, "6,30");
+    await expect(invite).toHaveCount(0);
+  });
+});
+
+test.describe("M4-09 install hint on iPhone", () => {
+  test.use({
+    geolocation: DUOMO,
+    permissions: ["geolocation"],
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+  });
+
+  test("a written hint after the second price", async ({ page }) => {
+    await stubTurnstile(page);
+    await page.goto("/");
+    const invite = page.getByRole("region", { name: "Installa" });
+    await saveSpritz(page, "6,40");
+    await expect(invite).toHaveCount(0);
+    await saveSpritz(page, "6,50");
+    await expect(invite).toContainText("Aggiungi alla schermata Home");
+    await invite.getByRole("button", { name: "Ho capito" }).click();
+    await expect(invite).toHaveCount(0);
+  });
+});

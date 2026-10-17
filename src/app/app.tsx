@@ -20,6 +20,7 @@ import { invalidateCell, loadCell, ServiceBusy, shownPrice, type Venue } from ".
 import { blockedHelp, locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
 import { formatPrice, formatSize, formatStampDay, todayRome } from "./lib/format";
+import { installMode, promptInstall } from "./lib/install";
 import { addPrices, priceCount, stampReached } from "./lib/usage";
 import { cellMedian, coverage, isStale, tierOf } from "./lib/tiers";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
@@ -137,6 +138,19 @@ export function App({ loadMap }: Props) {
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
+  const [online, setOnline] = useState(navigator.onLine);
+  const [invite, setInvite] = useState<"prompt" | "ios" | null>(null);
+  useEffect(() => {
+    const update = () => {
+      setOnline(navigator.onLine);
+    };
+    addEventListener("online", update);
+    addEventListener("offline", update);
+    return () => {
+      removeEventListener("online", update);
+      removeEventListener("offline", update);
+    };
+  }, []);
   // MapLibre starts on the first gesture or action that needs it (ADR 0014); until then a static
   // picture of the same view keeps the first load light.
   const [mapWanted, setMapWanted] = useState(initialAt !== null);
@@ -324,6 +338,7 @@ export function App({ loadMap }: Props) {
   // soon as the map moves (see the effect above), then the cell status is back.
   const shownMessage = message;
   const status =
+    (online ? null : it.map.offline) ??
     (mapFailed ? it.map.mapError : null) ??
     shownMessage ??
     (mapWanted && !ready
@@ -548,6 +563,8 @@ export function App({ loadMap }: Props) {
     const hadPrice = Boolean(shownPrice(draft.venue, selected.drink, selected.size));
     if (!hadPrice && inView.some((v) => v.key === draft.venue.key))
       lines.push(it.add.coverageUp(zoneCoverage.withPrice + 1, zoneCoverage.total));
+    // The second price, once: the moment someone shows they will come back (M4-09).
+    if (before === 1 && after === 2) setInvite(installMode());
     const step = stampReached(before, after);
     if (step) lines.push(it.tessera.messages[step] ?? "");
     // Android only; Safari has no vibrate().
@@ -906,6 +923,34 @@ export function App({ loadMap }: Props) {
         />
       ) : (
         <nav class="bottom" aria-label={it.map.actions}>
+          {invite && (
+            <div class="bottom__invite" role="region" aria-label={it.install.action}>
+              <p>{invite === "ios" ? it.install.ios : it.install.prompt}</p>
+              <div class="bottom__invite-actions">
+                {invite === "prompt" && (
+                  <button
+                    type="button"
+                    class="btn btn--secondary"
+                    onClick={() => {
+                      setInvite(null);
+                      void promptInstall();
+                    }}
+                  >
+                    {it.install.action}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  onClick={() => {
+                    setInvite(null);
+                  }}
+                >
+                  {invite === "ios" ? it.install.ok : it.install.dismiss}
+                </button>
+              </div>
+            </div>
+          )}
           {emptyZone && <p class="bottom__empty">{it.map.emptyZone}</p>}
           <button
             type="button"

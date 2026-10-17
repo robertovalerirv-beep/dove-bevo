@@ -14,3 +14,8 @@ declare const process: { env: Record<string, string | undefined> };
 declare module "node:zlib" {
   export function gzipSync(data: string): { length: number };
 }
+declare module "node:crypto" {
+  export function createHash(algorithm: "sha256"): {
+    update(data: string): { digest(encoding: "hex"): string };
+  };
+}

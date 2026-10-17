@@ -2,6 +2,7 @@ import { render } from "preact";
 import "./styles/base.css";
 import "./styles/app.css";
 import { App } from "./app";
+import { listenForInstall } from "./lib/install";
 import type * as MapModule from "./lib/maplibre-map";
 
 // MapLibre (~1 MB of JS) is loaded only when the map is wanted (ADR 0014).
@@ -14,4 +15,13 @@ if (root && /^\/admin\/?$/.test(location.pathname)) {
   void import("./views/AdminPage").then(({ AdminPage }) => {
     render(<AdminPage />, root);
   });
-} else if (root) render(<App loadMap={loadMap} />, root);
+} else if (root) {
+  listenForInstall();
+  render(<App loadMap={loadMap} />, root);
+  // The shell works offline (SPEC 7.7); only in the real build, never under the dev server.
+  if (import.meta.env.PROD && "serviceWorker" in navigator) {
+    addEventListener("load", () => {
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    });
+  }
+}

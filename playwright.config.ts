@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 const PORT = Number(process.env.E2E_PORT ?? 4173); // another checkout may hold 4173
 const viewport = { width: 390, height: 844 };
+// Chromium refuses a service worker behind a self-signed certificate unless told otherwise (PWA e2e).
+const CHROMIUM_LAUNCH = { args: ["--ignore-certificate-errors"] };
 const WRITES = "**/contribute.spec.ts";
 // Proposed bars stay in the shared local D1 and would join the "5 nearest bars" of the writes above.
 const PROPOSALS = "**/propose.spec.ts";
@@ -24,7 +26,7 @@ export default defineConfig({
       name: "chromium",
       testDir: "tests/e2e",
       testIgnore: [WRITES, PROPOSALS],
-      use: { ...devices["Desktop Chrome"], viewport },
+      use: { ...devices["Desktop Chrome"], viewport, launchOptions: CHROMIUM_LAUNCH },
     },
     {
       name: "webkit",
@@ -37,7 +39,7 @@ export default defineConfig({
       testDir: "tests/e2e",
       testMatch: WRITES,
       dependencies: ["chromium", "webkit"],
-      use: { ...devices["Desktop Chrome"], viewport },
+      use: { ...devices["Desktop Chrome"], viewport, launchOptions: CHROMIUM_LAUNCH },
     },
     {
       name: "webkit-writes",
@@ -51,7 +53,7 @@ export default defineConfig({
       testDir: "tests/e2e",
       testMatch: PROPOSALS,
       dependencies: ["chromium-writes", "webkit-writes"],
-      use: { ...devices["Desktop Chrome"], viewport },
+      use: { ...devices["Desktop Chrome"], viewport, launchOptions: CHROMIUM_LAUNCH },
     },
     {
       name: "webkit-proposals",

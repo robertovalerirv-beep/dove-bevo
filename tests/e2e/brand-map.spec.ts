@@ -70,3 +70,25 @@ test("MB-07 the open bar is marked on the map", async ({ page }) => {
   await page.getByRole("button", { name: "Chiudi" }).click();
   await expect(mapRegion(page)).toHaveAttribute("data-selected", "");
 });
+
+test("MB-07 interactions stay under 200 ms with many pins (INP)", async ({ page }) => {
+  await page.goto("/");
+  await page.addInitScript(() => {
+    const w = window as unknown as { slowest: number };
+    w.slowest = 0;
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) w.slowest = Math.max(w.slowest, e.duration);
+    }).observe({ type: "event", durationThreshold: 16, buffered: true });
+  });
+  await page.reload();
+  await goToMilano(page);
+  const chips = page.getByRole("group", { name: "Drink" });
+  for (const name of ["Calice di vino", "Spritz", "Birra alla spina 0,4 l", "Calice di vino"])
+    await chips.getByRole("button", { name }).click();
+  await page.getByRole("button", { name: "Elenco" }).click();
+  await page.getByRole("button", { name: "Chiudi" }).click();
+  const pins = await page.locator("[data-prices-shown]").getAttribute("data-prices-shown");
+  const slowest = await page.evaluate(() => (window as unknown as { slowest: number }).slowest);
+  console.log(`MB-07 slowest interaction ${String(Math.round(slowest))} ms, pins "${pins ?? ""}"`);
+  expect(slowest).toBeLessThanOrEqual(200);
+});

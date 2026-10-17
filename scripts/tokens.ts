@@ -204,3 +204,39 @@ export function contrast(a: string, b: string): number {
   const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m) as [number, number];
   return (x + 0.05) / (y + 0.05);
 }
+
+/** Web app manifest (SPEC 7.7, MB-01): colours from the same tokens, icons from build-icons. */
+export function renderManifest(tokens: BrandTokens, name: string, description: string): string {
+  const color = (token: string, theme: "light" | "dark") => {
+    const found = tokens.color.tokens.find((t) => t.name === token);
+    if (!found) throw new Error(`token ${token} missing`);
+    return found.value[theme];
+  };
+  return `${JSON.stringify(
+    {
+      name,
+      short_name: name,
+      description,
+      lang: "it",
+      start_url: "/",
+      scope: "/",
+      display: "standalone",
+      orientation: "portrait",
+      theme_color: color("spritz", "light"),
+      background_color: color("bg", "light"),
+      icons: [
+        { src: "/brand/icon-192.png", sizes: "192x192", type: "image/png" },
+        { src: "/brand/icon-512.png", sizes: "512x512", type: "image/png" },
+        {
+          src: "/brand/icon-maskable-512.png",
+          sizes: "512x512",
+          type: "image/png",
+          purpose: "maskable",
+        },
+      ],
+    },
+    null,
+    2,
+  )}
+`;
+}

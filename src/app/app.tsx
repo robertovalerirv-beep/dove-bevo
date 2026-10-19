@@ -388,6 +388,12 @@ export function App({ loadMap }: Props) {
    * Only cell ids leave the device (SPEC 14).
    */
   function openAdd(prefill: Prefill | null) {
+    // A plain notice («Annullato», an error) must not stay over the bars of the new sheet; a toast with
+    // «Annulla» or «Aggiungi un altro drink» belongs to a price still waiting and stays.
+    if (toast && !toast.undo && !toast.more) {
+      toastTimer.current?.clear();
+      setToast(null);
+    }
     setAdding({ prefill });
     if (prefill?.venue) return;
     void (async () => {

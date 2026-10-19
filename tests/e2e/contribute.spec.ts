@@ -151,7 +151,9 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
   await page.goto("/");
   await goToMilano(page);
 
+  let call = 0;
   const addProsecco = async (price: string) => {
+    call++;
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
     try {
       await barChoices(page).nth(2).click({ timeout: 25_000 });
@@ -179,6 +181,7 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
           mutationsIn1800ms: mutations,
           mapMoved: before !== (map?.getAttribute("data-center") ?? ""),
           disabled: button instanceof HTMLButtonElement ? button.disabled : "no button",
+          toasts: [...document.querySelectorAll(".toast")].map((el) => el.textContent),
           topAtCentre: (() => {
             const r = button?.getBoundingClientRect();
             const top = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
@@ -189,7 +192,7 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
           dialogs: document.querySelectorAll("dialog[open]").length,
         };
       });
-      console.log("M2-06 DIAG " + JSON.stringify(state));
+      console.log("M2-06 DIAG call " + String(call) + " " + JSON.stringify(state));
       throw error;
     }
     await page
@@ -207,6 +210,10 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
   await page.mouse.move(0, 0);
   await page.waitForTimeout(11_000);
   expect(posts).toEqual([]);
+  console.log(
+    "M2-06 toasts 11 s after Annulla: " +
+      JSON.stringify(await page.locator(".toast").allTextContents()),
+  );
 
   await addProsecco("8,20");
   await page.evaluate(() => {

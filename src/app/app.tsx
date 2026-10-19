@@ -998,7 +998,11 @@ export function App({ loadMap }: Props) {
           )}
           <button
             type="button"
-            class="btn btn--secondary"
+            class={
+              emptyZone && !("share" in navigator)
+                ? "btn btn--secondary bottom__wide"
+                : "btn btn--secondary"
+            }
             onClick={() => {
               setSheet("list");
             }}

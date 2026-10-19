@@ -397,7 +397,9 @@ export class VenueMap {
   }
 
   onIdle(listener: () => void) {
-    this.map.once("idle", listener);
+    // The map may already be idle: "idle" fired between "load" and this call, and would not come again.
+    if (this.map.loaded()) listener();
+    else this.map.once("idle", listener);
   }
 
   onVenueClick(listener: (key: string, cell: string) => void) {

@@ -16,6 +16,19 @@ test("MB-13 a zone without prices invites the first one; the missing bar is not 
     "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
   );
   await expect(nav.getByRole("button", { name: "Aggiungi prezzo" })).toBeVisible();
+  // Four buttons in two rows of two, each at least 48 px, and the map keeps 60% of the screen.
+  const boxes = await Promise.all(
+    ["Aggiungi prezzo", "Aggiungi locale mancante", "Elenco"].map((name) =>
+      nav.getByRole("button", { name }).boundingBox(),
+    ),
+  );
+  for (const box of boxes) expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+  const share = nav.getByRole("button", { name: "Manda la mappa a un amico" });
+  const rows = new Set(boxes.map((b) => Math.round(b?.y ?? 0)));
+  if (await share.count()) rows.add(Math.round((await share.boundingBox())?.y ?? 0));
+  expect(rows.size).toBeLessThanOrEqual(2);
+  const viewport = page.viewportSize()?.height ?? 844;
+  expect((await mapRegion(page).boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(viewport * 0.6);
   await page.screenshot({ path: info.outputPath("mb-13-zona-vuota.png") });
   await nav.getByRole("button", { name: "Aggiungi locale mancante" }).click();
   await expect(page.getByRole("textbox", { name: "Nome del bar" })).toBeVisible();

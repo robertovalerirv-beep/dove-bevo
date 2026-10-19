@@ -153,34 +153,39 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
   const addProsecco = async (price: string) => {
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
     try {
-      await expect(barChoices(page).nth(2)).toBeVisible({ timeout: 25_000 });
+      await barChoices(page).nth(2).click({ timeout: 25_000 });
     } catch (error) {
-      // CI-only hang (WebKit): print what the page looks like, then fail with the original error.
-      const state = await page.evaluate(async () => ({
-        visibility: document.visibilityState,
-        dialogs: document.querySelectorAll("dialog[open]").length,
-        animations: document.getAnimations().length,
-        frames: await Promise.race([
-          new Promise((resolve) =>
-            requestAnimationFrame(() => {
-              resolve("rAF ok");
-            }),
-          ),
-          new Promise((resolve) =>
-            setTimeout(() => {
-              resolve("rAF stuck");
-            }, 1500),
-          ),
-        ]),
-        list:
-          document.querySelector('[aria-label="Bar vicini"]')?.outerHTML.slice(0, 700) ?? "no list",
-        toast: document.querySelector('[role="status"]')?.textContent ?? "",
-        dialog: (document.querySelector("dialog[open]")?.textContent ?? "no dialog").slice(0, 200),
-      }));
+      // CI-only WebKit hang: print what moves on the page, then fail with the original error.
+      const state = await page.evaluate(async () => {
+        const button = document.querySelectorAll('[aria-label="Bar vicini"] button')[2];
+        const rects: string[] = [];
+        let mutations = 0;
+        const observer = new MutationObserver((list) => {
+          mutations += list.length;
+        });
+        observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+        const map = document.querySelector('[aria-label="Mappa"]');
+        const before = map?.getAttribute("data-center") ?? "";
+        for (let i = 0; i < 6; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          const r = button?.getBoundingClientRect();
+          rects.push(r ? [r.x, r.y, r.width, r.height].map(Math.round).join(",") : "none");
+        }
+        observer.disconnect();
+        return {
+          visibility: document.visibilityState,
+          rects,
+          mutationsIn1800ms: mutations,
+          mapMoved: before !== (map?.getAttribute("data-center") ?? ""),
+          disabled: button instanceof HTMLButtonElement ? button.disabled : "no button",
+          animations: document.getAnimations().map((a) => `${a.constructor.name}:${a.playState}`),
+          buttons: document.querySelectorAll('[aria-label="Bar vicini"] button').length,
+          dialogs: document.querySelectorAll("dialog[open]").length,
+        };
+      });
       console.log("M2-06 DIAG " + JSON.stringify(state));
       throw error;
     }
-    await barChoices(page).nth(2).click();
     await page
       .getByRole("dialog")
       .getByRole("button", { name: /^Calice di prosecco/ })

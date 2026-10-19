@@ -87,8 +87,8 @@ const OWN = `  /* Ours, not in the kit (ADR 0023): targets, controls, motion, la
   --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.18);
   --color-backdrop: rgb(27 22 17 / 0.45);`;
 
-const OWN_DARK = `    --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.5);
-    --color-backdrop: rgb(0 0 0 / 0.6);`;
+const OWN_DARK = `  --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.5);
+  --color-backdrop: rgb(0 0 0 / 0.6);`;
 
 const varName = (family: string) => `--font-${family}`;
 
@@ -150,7 +150,7 @@ ${faces}
 ${fallbacks}
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
 ${colors("light", "  ")}
 ${shadows("light", "  ")}
 
@@ -173,12 +173,12 @@ ${plain(t.border.tokens)}
 ${OWN}
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-${colors("dark", "    ")}
-${shadows("dark", "    ")}
+/* Fuori orario: chosen by the hour, not by the system setting (src/shared/theme.ts, ADR 0025). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+${colors("dark", "  ")}
+${shadows("dark", "  ")}
 ${OWN_DARK}
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

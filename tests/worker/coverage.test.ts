@@ -1,7 +1,9 @@
 import { env, exports } from "cloudflare:workers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CellPrices, Coverage } from "../../src/shared/api-types";
+import { coverageSnapshot, forgetCoverage } from "../../src/worker/lib/coverage";
 import { COVERAGE_SQL } from "../../src/worker/lib/db";
+import { forgetCell } from "../../src/worker/routes/prices";
 import { resetCoverageLimit } from "../../src/worker/routes/admin";
 import { accessJwt, call, ORIGIN } from "./access-jwt";
 
@@ -261,4 +263,26 @@ describe("cost of one calculation (M5-13, ADR 0022)", () => {
     const result = await env.DB.prepare(COVERAGE_SQL).all();
     expect(result.meta.rows_read).toBeLessThanOrEqual(rows + 10);
   }, 60_000);
+});
+
+describe("the figures are kept for a minute (ADR 0025)", () => {
+  it("a second read within the minute costs no D1 access; an admin change drops the figures", async () => {
+    await env.DB.batch([price("n1", MILANO)]);
+    const first = await coverageSnapshot(env);
+    expect(first.bars).toBe(1);
+
+    await env.DB.batch([price("n2", MILANO)]);
+    const batch = vi.spyOn(env.DB, "batch");
+    expect(await coverageSnapshot(env)).toBe(first); // same figures, nothing read
+    expect(batch).not.toHaveBeenCalled();
+
+    await forgetCell("https://dovebevo.example/api/admin/hide", "u0nd9"); // what every admin change calls
+    expect((await coverageSnapshot(env)).bars).toBe(2);
+    expect(batch).toHaveBeenCalled();
+    batch.mockRestore();
+
+    forgetCoverage();
+    await env.DB.batch([price("n3", MILANO)]);
+    expect((await coverageSnapshot(env)).bars).toBe(3);
+  });
 });

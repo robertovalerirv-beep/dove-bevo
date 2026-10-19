@@ -6,6 +6,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { it } from "../i18n/it";
 import { MAP_STYLES } from "./map-styles.generated";
+import { currentTheme, THEME_EVENT } from "./theme";
 import type { Tier } from "./tiers";
 
 setWorkerUrl(workerUrl);
@@ -103,7 +104,7 @@ function pinName(tier: Tier, stale: boolean, label: string): string {
   return `pin-${tier}-${stale ? "1" : "0"}-${theme()}-${label}`;
 }
 
-const theme = () => (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+const theme = currentTheme;
 
 /** Draws a price pill (glyph + price in Geist Mono) on a canvas, once per distinct pin (MASTER). */
 function pinImage(tier: Tier, stale: boolean, label: string): ImageData {
@@ -252,9 +253,9 @@ export class VenueMap {
         resolve();
       });
     });
-    // Bancone and Fuori orario follow the system (D-27): the style is swapped, layers and pins are
+    // Bancone and Fuori orario follow the hour (D-27, ADR 0025): the style is swapped, layers and pins are
     // put back from memory, nothing is requested from /api or /data.
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    window.addEventListener(THEME_EVENT, () => {
       void this.switchTheme();
     });
   }

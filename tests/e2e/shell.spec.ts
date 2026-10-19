@@ -7,7 +7,8 @@ for (const path of ["/", "/bar/n1"]) {
     const response = await page.goto(path);
     expect(response?.status()).toBe(200);
     expect(response?.headers()["content-type"]).toContain("text/html");
-    await expect(page).toHaveTitle("Dove bevo");
+    // The home carries the title for search engines (ADR 0025): it starts with the name.
+    await expect(page).toHaveTitle(/^Dove bevo/);
     await expect(page.getByRole("heading", { level: 1, name: "Dove bevo" })).toBeVisible();
   });
 }

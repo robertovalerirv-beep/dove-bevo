@@ -5,7 +5,7 @@ import { z } from "zod";
 import { CATALOG } from "../../shared/catalog";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { COVERAGE_MIN_INTERVAL_MS } from "../config";
-import { buildCoverage } from "../lib/coverage";
+import { coverageSnapshot, forgetCoverage } from "../lib/coverage";
 import { romeDay } from "../lib/day";
 import {
   addApprovedVenue,
@@ -61,11 +61,13 @@ admin.get("/overview", async (c) => {
 });
 
 // Coverage of the map, computed only when the admin asks (ADR 0022). Best-effort minimum interval
-// between two calculations, kept in memory: it needs no D1 read, and a new isolate resets it.
+// between two calls, kept in memory: it needs no D1 read, and a new isolate resets it. The figures
+// themselves are reused for a minute and dropped at every admin change (ADR 0025).
 let lastCoverageAt = 0;
 /** Test hook: forgets the last calculation. */
 export const resetCoverageLimit = () => {
   lastCoverageAt = 0;
+  forgetCoverage();
 };
 
 admin.get("/coverage", async (c) => {
@@ -74,7 +76,7 @@ admin.get("/coverage", async (c) => {
     throw new ApiError("rate_limited", { "Retry-After": String(Math.ceil(wait / 1000)) });
   lastCoverageAt = Date.now();
   try {
-    const coverage = await buildCoverage(c.env);
+    const coverage = await coverageSnapshot(c.env);
     c.header("Cache-Control", "no-store");
     return c.json(coverage);
   } catch (error) {

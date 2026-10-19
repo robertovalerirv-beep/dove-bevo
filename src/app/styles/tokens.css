@@ -31,7 +31,7 @@
 }
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --bg: #fff4e4;
   --surface: #fffbf4;
   --surface-2: #f6e9d6;
@@ -134,34 +134,34 @@
   --color-backdrop: rgb(27 22 17 / 0.45);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #15110d;
-    --surface: #221b15;
-    --surface-2: #2e251d;
-    --ink: #fff4e4;
-    --ink-muted: #bdb2a5;
-    --line-soft: #3a3027;
-    --spritz: #ff6a33;
-    --on-spritz: #15110d;
-    --spritz-text: #ff8a5c;
-    --affare: #c5f23e;
-    --on-affare: #15110d;
-    --giusto: #2e251d;
-    --on-giusto: #fff4e4;
-    --salato: #9b2f72;
-    --on-salato: #fff4e4;
-    --focus: #8faeff;
-    --map-land: #1e1813;
-    --map-water: #1b2a33;
-    --map-park: #1f2a1c;
-    --map-road: #2c241d;
-    --map-label: #a89c8e;
-    --shadow-stampa: 3px 3px 0 #000000;
-    --shadow-premuto: 0 0 0 #000000;
-    --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.5);
-    --color-backdrop: rgb(0 0 0 / 0.6);
-  }
+/* Fuori orario: chosen by the hour, not by the system setting (src/shared/theme.ts, ADR 0025). */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #15110d;
+  --surface: #221b15;
+  --surface-2: #2e251d;
+  --ink: #fff4e4;
+  --ink-muted: #bdb2a5;
+  --line-soft: #3a3027;
+  --spritz: #ff6a33;
+  --on-spritz: #15110d;
+  --spritz-text: #ff8a5c;
+  --affare: #c5f23e;
+  --on-affare: #15110d;
+  --giusto: #2e251d;
+  --on-giusto: #fff4e4;
+  --salato: #9b2f72;
+  --on-salato: #fff4e4;
+  --focus: #8faeff;
+  --map-land: #1e1813;
+  --map-water: #1b2a33;
+  --map-park: #1f2a1c;
+  --map-road: #2c241d;
+  --map-label: #a89c8e;
+  --shadow-stampa: 3px 3px 0 #000000;
+  --shadow-premuto: 0 0 0 #000000;
+  --shadow-sheet: 0 -2px 16px rgb(0 0 0 / 0.5);
+  --color-backdrop: rgb(0 0 0 / 0.6);
 }
 
 @media (prefers-reduced-motion: reduce) {

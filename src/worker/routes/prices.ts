@@ -2,16 +2,19 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { findSize } from "../../shared/catalog";
 import { MAX_ITEMS, QUARANTINE_MIN_PRICES, QUARANTINE_RATIO } from "../config";
+import { forgetCoverage } from "../lib/coverage";
 import { romeDay } from "../lib/day";
 import {
-  activePrices,
-  claimOnce,
-  confirmPrice,
-  getCellPrices,
+  claimStatement,
+  confirmStatements,
   getCurrentPrice,
-  hasKey,
+  getCellPrices,
+  loadPriceContext,
+  type PriceContext,
   type PriceKey,
-  writePrice,
+  runStatements,
+  tripleId,
+  writePriceStatements,
 } from "../lib/db";
 import { ApiError, apiError } from "../lib/errors";
 import { readJson } from "../lib/guards";
@@ -26,9 +29,14 @@ const EDGE_TTL = "public, max-age=60";
 const cellCacheKey = (url: string, cell: string) =>
   new Request(new URL(`/api/prices/${cell}`, url));
 
-/** Drops a cell from the edge cache after an admin change, so the map shows it at once. */
-export const forgetCell = (url: string, cell: string) =>
-  caches.default.delete(cellCacheKey(url, cell));
+/**
+ * Drops a cell from the edge cache after an admin change, so the map shows it at once; the coverage
+ * figures of the dashboard are dropped too (ADR 0025).
+ */
+export const forgetCell = (url: string, cell: string) => {
+  forgetCoverage();
+  return caches.default.delete(cellCacheKey(url, cell));
+};
 
 export const prices = new Hono<AppEnv>();
 
@@ -91,25 +99,32 @@ async function authorKeys(env: Env, who: { sid: string; ip: string }, k: PriceKe
 }
 
 /**
- * Confirms a price once per session. The author never counts, neither from a new session on the
- * same IP nor the next day (D-10, security review). dedup is purged within 48 h (ADR 0016).
+ * The statements that confirm a price once per session (D-10, security review): the author never
+ * counts, neither from a new session on the same IP nor the next day, and a person counts once per
+ * price whatever the session. The count and the markers are one batch (see confirmStatements), so
+ * the checks cost no round trip of their own. dedup is purged within 48 h (ADR 0016).
  */
-async function confirmOnce(
+async function confirmStatementsFor(
   env: Env,
   who: { sid: string; ip: string },
   k: PriceKey,
   day: string,
-): Promise<number | null> {
-  for (const key of await authorKeys(env, who, k, day)) if (await hasKey(env.DB, key)) return null;
-  // One confirmation per price per IP and per session: a reload that brings a new session does
-  // not count twice (IP first, atomic).
+) {
+  const authors = await authorKeys(env, who, k, day);
   const byIp = await hmacHex(env.HASH_KEY, [day, "confirm", "ip", who.ip, priceId(k)]);
   const bySid = await hmacHex(env.HASH_KEY, [day, "confirm", "sid", who.sid, priceId(k)]);
-  if (!(await claimOnce(env.DB, byIp, day)) || !(await claimOnce(env.DB, bySid, day))) return null;
-  return confirmPrice(env.DB, k, day);
+  return confirmStatements(env.DB, k, day, [...authors, byIp, bySid], [byIp, bySid]);
 }
 
-// POST /api/prices — 1–80 prices for one bar (SPEC 9.2, 11).
+/** The new count when the confirmation counted, null when this person already had their say. */
+const countedBy = (result: D1Result | undefined): number | null =>
+  (result?.results[0] as { confirmations: number } | undefined)?.confirmations ?? null;
+
+type Planned = Result | { confirmAt: number };
+
+// POST /api/prices — 1–80 prices for one bar (SPEC 9.2, 11). One read batch for the bar's rows and
+// the cell's peers, the items decided in memory in order (a repeated drink sees the one before), one
+// write batch: a few D1 round trips instead of up to six per item (ADR 0025).
 prices.post("/", async (c) => {
   const body = await readJson(c, PriceBody);
   for (const item of body.items)
@@ -119,45 +134,64 @@ prices.post("/", async (c) => {
   await consumeQuota(c.env, "price", who.sid, who.ip, body.items.length);
 
   const day = romeDay();
-  const results: Result[] = [];
-  for (const item of body.items) {
+  const inRange = (item: (typeof body.items)[number]) => {
     const size = findSize(item.drink, item.size_ml);
-    if (!size || item.price_cents < size.min || item.price_cents > size.max) {
-      results.push({ status: "rejected", code: "out_of_range" });
+    return !!size && item.price_cents >= size.min && item.price_cents <= size.max;
+  };
+  const drinks = [...new Set(body.items.filter(inRange).map((item) => item.drink))];
+  const { own, peers }: PriceContext =
+    drinks.length > 0
+      ? await loadPriceContext(c.env.DB, body.venue, where.cell, drinks)
+      : { own: new Map(), peers: new Map() };
+
+  const statements: D1PreparedStatement[] = [];
+  const planned: Planned[] = [];
+  for (const item of body.items) {
+    if (!inRange(item)) {
+      planned.push({ status: "rejected", code: "out_of_range" });
       continue;
     }
     const k: PriceKey = { venue: body.venue, drink: item.drink, size: item.size_ml, hh: item.hh };
-    const existing = await getCurrentPrice(c.env.DB, k);
+    const id = tripleId(item.drink, item.size_ml, item.hh);
+    const existing = own.get(id);
     if (existing?.status === "review" || existing?.status === "removed") {
       // Under moderation: only the admin can change it (SPEC 11, security review).
-      results.push({ status: "rejected", code: "under_review" });
+      planned.push({ status: "rejected", code: "under_review" });
       continue;
     }
-    if (existing?.price_cents === item.price_cents) {
+    if (existing?.price === item.price_cents) {
       // Same price again: a confirmation, not a new current row (SPEC 11).
-      // "already": not counted (author, or this session/IP already confirmed it).
-      const counted = await confirmOnce(c.env, who, k, day);
-      results.push(
-        counted === null ? { status: "confirmed", code: "already" } : { status: "confirmed" },
-      );
+      planned.push({ confirmAt: statements.length });
+      statements.push(...(await confirmStatementsFor(c.env, who, k, day)));
       continue;
     }
-    const peers = await activePrices(c.env.DB, where.cell, item.drink, item.size_ml, item.hh);
-    const m = median(peers);
+    // Peers: the other public bars of the cell, plus this bar's own active price if it is public.
+    const others = peers.get(id) ?? [];
+    const ownCounts =
+      existing?.status === "active" && where.isPublic && existing.cell === where.cell;
+    const all = ownCounts ? [...others, existing.price] : others;
+    const m = median(all);
     const status =
-      peers.length >= QUARANTINE_MIN_PRICES && Math.abs(item.price_cents - m) > QUARANTINE_RATIO * m
+      all.length >= QUARANTINE_MIN_PRICES && Math.abs(item.price_cents - m) > QUARANTINE_RATIO * m
         ? "quarantined"
         : "active";
-    await writePrice(c.env.DB, k, {
-      ...where,
-      price: item.price_cents,
-      day,
-      status,
-    });
+    statements.push(
+      ...writePriceStatements(c.env.DB, k, { ...where, price: item.price_cents, day, status }),
+    );
     const [bySid, byIp] = await authorKeys(c.env, who, k, day);
-    for (const key of [bySid, byIp]) if (key) await claimOnce(c.env.DB, key, day);
-    results.push({ status });
+    for (const key of [bySid, byIp]) if (key) statements.push(claimStatement(c.env.DB, key, day));
+    own.set(id, { price: item.price_cents, status, cell: where.cell });
+    planned.push({ status });
   }
+
+  const done = await runStatements(c.env.DB, statements);
+  const results = planned.map((p): Result => {
+    if (!("confirmAt" in p)) return p;
+    // "already": not counted (author, or this session/IP already confirmed it).
+    return countedBy(done[p.confirmAt]) === null
+      ? { status: "confirmed", code: "already" }
+      : { status: "confirmed" };
+  });
   return c.json({ results });
 });
 
@@ -169,7 +203,12 @@ prices.post("/confirm", async (c) => {
   if (!existing || existing.status === "review" || existing.status === "removed")
     throw new ApiError("not_found");
   await consumeQuota(c.env, "confirm", c.var.sid, clientIp(c.req.raw));
-  const count = await confirmOnce(c.env, { sid: c.var.sid, ip: clientIp(c.req.raw) }, k, romeDay());
+  const who = { sid: c.var.sid, ip: clientIp(c.req.raw) };
+  const [update] = await runStatements(
+    c.env.DB,
+    await confirmStatementsFor(c.env, who, k, romeDay()),
+  );
+  const count = countedBy(update);
   return c.json(
     count === null
       ? { status: "already", confirmations: existing.confirmations }

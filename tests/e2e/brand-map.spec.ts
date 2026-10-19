@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect } from "@playwright/test";
 import { test } from "./fixtures";
-import { goToMilano, mapRegion, mapStatus } from "./helpers";
+import { goToMilano, mapRegion, mapStatus, atHour, THEME_HOURS } from "./helpers";
 
 // F2 of the brand package: MB-06 (styles per theme), MB-07 (cork), MB-13 (empty zone), MB-14.
 
@@ -37,7 +37,7 @@ test("MB-13 a zone without prices invites the first one; the missing bar is not 
 
 for (const scheme of ["light", "dark"] as const) {
   test(`MB-06 MB-14 ${scheme}: own style, no axe violations`, async ({ page }, info) => {
-    await page.emulateMedia({ colorScheme: scheme });
+    await atHour(page, THEME_HOURS[scheme]);
     const styles: string[] = [];
     page.on("request", (r) => {
       if (r.url().includes("/map/")) styles.push(new URL(r.url()).pathname);
@@ -53,10 +53,35 @@ for (const scheme of ["light", "dark"] as const) {
   });
 }
 
-test("MB-06 switching theme swaps the style without asking /api or /data again", async ({
+test("ADR 0025 the theme follows the hour, never the phone setting", async ({ page }) => {
+  const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  // A phone in dark mode at noon: still Bancone (light).
+  await page.emulateMedia({ colorScheme: "dark" });
+  await atHour(page, 12);
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  const day = await bg();
+  // A phone in light mode at 21:30 sharp: Fuori orario (dark); and 21:29 is still light.
+  await page.emulateMedia({ colorScheme: "light" });
+  await atHour(page, 21, 30);
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(await bg()).not.toBe(day);
+  await atHour(page, 21, 29);
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await atHour(page, 5, 59);
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await atHour(page, 6, 0);
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+});
+
+test("MB-06 the hour switching to Fuori orario swaps the style without asking /api or /data again", async ({
   page,
 }) => {
-  await page.emulateMedia({ colorScheme: "light" });
+  await atHour(page, THEME_HOURS.light);
   await page.goto("/");
   await goToMilano(page);
   // WebKit reports the drawn pins a little later than the status line: wait for them.
@@ -68,7 +93,11 @@ test("MB-06 switching theme swaps the style without asking /api or /data again",
     if (/^\/(api|data|map)\//.test(pathname)) after.push(pathname);
   });
   const started = Date.now();
-  await page.emulateMedia({ colorScheme: "dark" });
+  // The clock passes 21:30: the page notices when it comes back to the foreground (or at the minute).
+  await atHour(page, THEME_HOURS.dark);
+  await page.evaluate(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
   await expect.poll(() => after.some((p) => p.startsWith("/map/fuori-orario"))).toBe(true);
   await expect(mapRegion(page)).toHaveAttribute("data-prices-shown", shown ?? "", {
     timeout: 15_000,

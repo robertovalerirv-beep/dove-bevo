@@ -1,5 +1,6 @@
 import { describe, expect, it as test } from "vitest";
 import { it } from "../../src/app/i18n/it";
+import { seoText } from "../../src/worker/seo-texts";
 
 // MB-15 (SPEC D-31): brand phrases from docs/brand/02-voce.md are in it.ts and no forbidden word is.
 const FORBIDDEN = [
@@ -39,8 +40,8 @@ const plain = (text: string) =>
   text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replaceAll("analcolic", "");
 
 describe("MB-15 voice", () => {
-  const texts = collect(it);
-  test("no forbidden word in it.ts", () => {
+  const texts = [...collect(it), ...collect(seoText)]; // the pages for crawlers follow the same rule
+  test("no forbidden word in it.ts or in the texts for crawlers", () => {
     const hits = texts.flatMap((t) =>
       FORBIDDEN.filter((w) => plain(t).includes(w)).map((w) => `${w}: ${t}`),
     );

@@ -3,17 +3,41 @@
   "name": "dovebevo",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
   // Assets never run the Worker; only /api/* does (SPEC 4).
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"],
+    // The API, and the pages the Worker enriches for search engines (src/worker/routes/seo.ts, ADR 0025);
+    // every other asset (JS, CSS, fonts, data) is served without running the Worker. The city slugs
+    // are SEO_CITIES (tests/unit/seo-config.test.ts keeps the two lists equal).
+    "run_worker_first": [
+      "/api/*",
+      "/",
+      "/copertura",
+      "/bar/*",
+      "/robots.txt",
+      "/llms.txt",
+      "/sitemap.xml",
+      "/milano",
+      "/roma",
+      "/torino",
+      "/bologna",
+      "/firenze",
+      "/napoli",
+    ],
   },
   // Invocation logs off: we log only what we write ourselves (SPEC 13.8).
   // Nightly cleanup of counters and dedup (SPEC 8), 02:30 UTC.
   "triggers": { "crons": ["0 * * * *"] },
-  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+  // 10 % sampling is enough to debug; query strings (geohash cells) never reach the logs.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "redact_query_string": true,
+    "logs": { "invocation_logs": false },
+  },
   // Local and e2e use the fixture data; the deploy job sets the OSM import date (SPEC 5.3).
   // Local and e2e only (environments do not inherit vars): Cloudflare's public Turnstile test keys,
   // which always pass, and placeholder HMAC keys. Staging and production use real secrets.
@@ -64,6 +88,11 @@
           "migrations_dir": "migrations",
         },
       ],
+      // Async tasks: the queue already exists on Cloudflare; this Worker is producer and consumer.
+      "queues": {
+        "producers": [{ "binding": "TASKS_QUEUE", "queue": "dovebevo-tasks" }],
+        "consumers": [{ "queue": "dovebevo-tasks", "max_batch_size": 10, "max_batch_timeout": 5 }],
+      },
       "ratelimits": [
         { "name": "RATE_LIMITER", "namespace_id": "1002", "simple": { "limit": 20, "period": 10 } },
         {

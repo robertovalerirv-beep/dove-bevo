@@ -75,6 +75,16 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
   return { p, u, pend, h };
 }
 
+/** Every approved user bar (index vu_status), for the name search; the admin keeps the list short. */
+export async function listApprovedVenues(db: D1Database): Promise<UserVenue[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT id, name, kind, lat, lon FROM venues_user WHERE status = 'approved' ORDER BY id LIMIT 2000",
+    )
+    .all<Omit<VenueDbRow, "status" | "confirmations">>();
+  return results.map((r): UserVenue => [`u${String(r.id)}`, r.name, r.kind, r.lat, r.lon]);
+}
+
 /**
  * The one definition of a public bar (SPEC 7.5, ADR 0017, 0019, 0022): an OSM bar the admin did not
  * hide, or a user bar the admin approved. The map and the coverage dashboard both use it.
@@ -221,9 +231,13 @@ export interface NewPrice {
   status: "active" | "quarantined";
 }
 
-/** History row + current price in one batch (SPEC 8); a different price resets confirmations. */
-export async function writePrice(db: D1Database, k: PriceKey, p: NewPrice): Promise<void> {
-  await db.batch([
+/** History row + current price (SPEC 8); a different price resets confirmations. Run in one batch. */
+export function writePriceStatements(
+  db: D1Database,
+  k: PriceKey,
+  p: NewPrice,
+): D1PreparedStatement[] {
+  return [
     db
       .prepare(
         "INSERT INTO price_obs (venue_key, drink, size_ml, hh, price_cents, observed_on, source, status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -239,24 +253,113 @@ export async function writePrice(db: D1Database, k: PriceKey, p: NewPrice): Prom
          WHERE prices_current.status NOT IN ('review', 'removed')`,
       )
       .bind(...pk(k), p.cell, p.city, p.price, p.day, p.status, "manual"),
-  ]);
+  ];
 }
 
-/** +1 confirmation; a quarantined price becomes active (D-10). Returns the new count. */
-export async function confirmPrice(
+/**
+ * +1 confirmation (a quarantined price becomes active, D-10), counted only if none of the `blockers`
+ * (author, IP and session markers) is in dedup yet; then the `claims` are stored. Two statements for
+ * one batch: D1 runs a batch as one transaction, so the check and the claim cannot be split by another
+ * request. The UPDATE returns the new count when it counted, no row otherwise.
+ */
+export function confirmStatements(
   db: D1Database,
   k: PriceKey,
   day: string,
-): Promise<number | null> {
-  const row = await db
-    .prepare(
-      `UPDATE prices_current SET confirmations = confirmations + 1, observed_on = max(observed_on, ?5),
-         status = CASE WHEN status = 'quarantined' THEN 'active' ELSE status END
-       WHERE ${PK} AND status IN ('active', 'quarantined') RETURNING confirmations`,
-    )
-    .bind(...pk(k), day)
-    .first<{ confirmations: number }>();
-  return row?.confirmations ?? null;
+  blockers: string[],
+  claims: string[],
+): D1PreparedStatement[] {
+  const marks = blockers.map((_, i) => `?${String(i + 6)}`).join(", ");
+  return [
+    db
+      .prepare(
+        `UPDATE prices_current SET confirmations = confirmations + 1, observed_on = max(observed_on, ?5),
+           status = CASE WHEN status = 'quarantined' THEN 'active' ELSE status END
+         WHERE ${PK} AND status IN ('active', 'quarantined')
+           AND NOT EXISTS (SELECT 1 FROM dedup WHERE k IN (${marks})) RETURNING confirmations`,
+      )
+      .bind(...pk(k), day, ...blockers),
+    ...claims.map((key) => claimStatement(db, key, day)),
+  ];
+}
+
+/** What a contribution needs to decide, read in one round trip (SPEC 11). */
+export interface PriceContext {
+  /** The bar's own rows, by `drink|size|hh`. */
+  own: Map<string, { price: number; status: CurrentPrice["status"]; cell: string }>;
+  /** Active prices of the same cell from other public bars, by `drink|size|hh` (the median's peers). */
+  peers: Map<string, number[]>;
+}
+
+export const tripleId = (drink: string, size: number, hh: number) =>
+  `${drink}|${String(size)}|${String(hh)}`;
+
+/**
+ * The bar's current rows and the cell's peer prices for the given drinks, in one batch (index
+ * pc_cell reads only those drinks). Prices of proposed bars the admin has not approved never move
+ * the median (ADR 0019).
+ */
+export async function loadPriceContext(
+  db: D1Database,
+  venue: string,
+  cell: string,
+  drinks: string[],
+): Promise<PriceContext> {
+  const marks = drinks.map((_, i) => `?${String(i + 3)}`).join(", ");
+  const [own, peers] = await db.batch([
+    db
+      .prepare(
+        "SELECT drink, size_ml, hh, price_cents, status, cell FROM prices_current WHERE venue_key = ?1",
+      )
+      .bind(venue),
+    db
+      .prepare(
+        `SELECT drink, size_ml, hh, price_cents FROM prices_current
+         WHERE cell = ?2 AND status = 'active' AND venue_key != ?1 AND drink IN (${marks})
+           AND (venue_key NOT LIKE 'u%'
+             OR CAST(substr(venue_key, 2) AS INTEGER) IN (SELECT id FROM venues_user WHERE status = 'approved'))`,
+      )
+      .bind(venue, cell, ...drinks),
+  ]);
+  const ownRows = (own?.results ?? []) as unknown as {
+    drink: string;
+    size_ml: number;
+    hh: number;
+    price_cents: number;
+    status: CurrentPrice["status"];
+    cell: string;
+  }[];
+  const peerRows = (peers?.results ?? []) as unknown as {
+    drink: string;
+    size_ml: number;
+    hh: number;
+    price_cents: number;
+  }[];
+  const peerMap = new Map<string, number[]>();
+  for (const r of peerRows) {
+    const id = tripleId(r.drink, r.size_ml, r.hh);
+    peerMap.set(id, [...(peerMap.get(id) ?? []), r.price_cents]);
+  }
+  return {
+    own: new Map(
+      ownRows.map((r) => [
+        tripleId(r.drink, r.size_ml, r.hh),
+        { price: r.price_cents, status: r.status, cell: r.cell },
+      ]),
+    ),
+    peers: peerMap,
+  };
+}
+
+/** D1 batches in slices of 100 statements, in order; results come back flattened in the same order. */
+export async function runStatements(
+  db: D1Database,
+  statements: D1PreparedStatement[],
+): Promise<D1Result[]> {
+  const out: D1Result[] = [];
+  for (let i = 0; i < statements.length; i += 100)
+    out.push(...(await db.batch(statements.slice(i, i + 100))));
+  return out;
 }
 
 /** One-time keys (confirmations, reports, tokens). True when the key is new. */
@@ -268,9 +371,9 @@ export async function claimOnce(db: D1Database, key: string, day: string): Promi
   return result.meta.changes === 1;
 }
 
-export async function hasKey(db: D1Database, key: string): Promise<boolean> {
-  return (await db.prepare("SELECT 1 FROM dedup WHERE k = ?1").bind(key).first()) !== null;
-}
+/** The statement behind `claimOnce`, for a batch. */
+export const claimStatement = (db: D1Database, key: string, day: string): D1PreparedStatement =>
+  db.prepare("INSERT OR IGNORE INTO dedup (k, day) VALUES (?1, ?2)").bind(key, day);
 
 /** Atomically adds `amount` to a daily counter if it stays within `limit`. */
 export async function addToCounter(
@@ -553,4 +656,139 @@ export async function listBarReports(db: D1Database) {
 /** Closes the reports on a bar: after a delete, or when the admin judges them unfounded. */
 export async function clearBarReports(db: D1Database, key: string): Promise<void> {
   await db.prepare("DELETE FROM reports WHERE venue_key = ?1 AND drink IS NULL").bind(key).run();
+}
+
+// ---- Pages for search engines and the open API (ADR 0025): public bars only ----
+
+/** The bar of column `venue_key` is public: the SQL twin of `isPublicBar` (ADR 0017, 0019). */
+const PUBLIC_BAR = `((venue_key NOT LIKE 'u%' AND venue_key NOT IN (SELECT venue_key FROM venues_hidden))
+  OR (venue_key LIKE 'u%' AND CAST(substr(venue_key, 2) AS INTEGER) IN (SELECT id FROM venues_user WHERE status = 'approved')))`;
+
+export interface SeoPriceRow {
+  venue_key: string;
+  cell: string;
+  drink: string;
+  size_ml: number;
+  hh: 0 | 1;
+  price_cents: number;
+  observed_on: string;
+}
+
+const SEO_COLUMNS = "venue_key, cell, drink, size_ml, hh, price_cents, observed_on";
+
+/** The active prices of one public bar, and the name of an approved user bar (an OSM name is in its cell file). */
+export async function getSeoVenue(
+  db: D1Database,
+  key: string,
+  limit: number,
+): Promise<{ rows: SeoPriceRow[]; userName: string | null }> {
+  const [rows, user] = await db.batch([
+    db
+      .prepare(
+        `SELECT ${SEO_COLUMNS} FROM prices_current WHERE venue_key = ?1 AND status = 'active' AND ${PUBLIC_BAR}
+         ORDER BY drink, size_ml, hh LIMIT ?2`,
+      )
+      .bind(key, limit),
+    db
+      .prepare(
+        "SELECT name FROM venues_user WHERE ?1 LIKE 'u%' AND id = CAST(substr(?1, 2) AS INTEGER) AND status = 'approved'",
+      )
+      .bind(key),
+  ]);
+  return {
+    rows: (rows?.results ?? []) as unknown as SeoPriceRow[],
+    userName: ((user?.results ?? []) as unknown as { name: string }[])[0]?.name ?? null,
+  };
+}
+
+/** Counts and the full-price rows (hh = 0) of the public bars of some places, cheapest first. */
+export async function getSeoCity(db: D1Database, cityIds: number[], limit: number) {
+  const marks = cityIds.map((_, i) => `?${String(i + 1)}`).join(", ");
+  const [count, rows] = await db.batch([
+    db
+      .prepare(
+        `SELECT COUNT(DISTINCT venue_key) AS bars, COUNT(*) AS prices FROM prices_current
+         WHERE city IN (${marks}) AND status = 'active' AND ${PUBLIC_BAR}`,
+      )
+      .bind(...cityIds),
+    db
+      .prepare(
+        `SELECT ${SEO_COLUMNS} FROM prices_current
+         WHERE city IN (${marks}) AND status = 'active' AND hh = 0 AND ${PUBLIC_BAR}
+         ORDER BY price_cents LIMIT ${String(limit)}`,
+      )
+      .bind(...cityIds),
+  ]);
+  const total = ((count?.results ?? []) as unknown as { bars: number; prices: number }[])[0];
+  return {
+    bars: total?.bars ?? 0,
+    prices: total?.prices ?? 0,
+    rows: (rows?.results ?? []) as unknown as SeoPriceRow[],
+  };
+}
+
+/** Bars and prices per place, for the coverage page. */
+export async function getSeoCoverage(db: D1Database, limit: number) {
+  const { results } = await db
+    .prepare(
+      `SELECT city, COUNT(DISTINCT venue_key) AS bars, COUNT(*) AS prices FROM prices_current
+       WHERE status = 'active' AND city IS NOT NULL AND ${PUBLIC_BAR}
+       GROUP BY city ORDER BY bars DESC, city LIMIT ?1`,
+    )
+    .bind(limit)
+    .all<{ city: number; bars: number; prices: number }>();
+  return results;
+}
+
+/** One entry per public bar with an active price, for the sitemap; and which places have prices. */
+export async function getSitemapRows(db: D1Database, limit: number, cityIds: number[]) {
+  const marks = cityIds.map((_, i) => `?${String(i + 1)}`).join(", ");
+  const [bars, cities] = await db.batch([
+    db
+      .prepare(
+        `SELECT venue_key, MAX(cell) AS cell FROM prices_current WHERE status = 'active' AND ${PUBLIC_BAR}
+         GROUP BY venue_key ORDER BY venue_key LIMIT ?1`,
+      )
+      .bind(limit),
+    db
+      .prepare(
+        `SELECT DISTINCT city FROM prices_current WHERE status = 'active' AND city IN (${marks || "NULL"})`,
+      )
+      .bind(...cityIds),
+  ]);
+  return {
+    bars: (bars?.results ?? []) as unknown as { venue_key: string; cell: string }[],
+    cities: ((cities?.results ?? []) as unknown as { city: number }[]).map((r) => r.city),
+  };
+}
+
+/** A page of the open API: public active prices, cheapest first, optionally of some places only. */
+export async function getAiRows(
+  db: D1Database,
+  cityIds: number[] | null,
+  limit: number,
+  offset: number,
+): Promise<SeoPriceRow[]> {
+  const where = cityIds
+    ? `city IN (${cityIds.map((_, i) => `?${String(i + 3)}`).join(", ")}) AND `
+    : "";
+  const { results } = await db
+    .prepare(
+      `SELECT ${SEO_COLUMNS} FROM prices_current WHERE ${where}status = 'active' AND ${PUBLIC_BAR}
+       ORDER BY price_cents, venue_key, drink, size_ml, hh LIMIT ?1 OFFSET ?2`,
+    )
+    .bind(limit, offset, ...(cityIds ?? []))
+    .all<SeoPriceRow>();
+  return results;
+}
+
+/** Names of approved user bars by id. */
+export async function getUserVenueNames(db: D1Database, ids: number[]) {
+  if (ids.length === 0) return new Map<string, string>();
+  const marks = ids.map((_, i) => `?${String(i + 1)}`).join(", ");
+  const { results } = await db
+    .prepare(`SELECT id, name FROM venues_user WHERE id IN (${marks}) AND status = 'approved'`)
+    .bind(...ids)
+    .all<{ id: number; name: string }>();
+  return new Map(results.map((r) => [`u${String(r.id)}`, r.name]));
 }

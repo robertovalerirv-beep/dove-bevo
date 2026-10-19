@@ -2,6 +2,12 @@ import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../types";
 import { ApiError } from "./errors";
 
+// SECURITY: This Worker MUST be deployed behind a Cloudflare Access application
+// on its route. The Cf-Access-Jwt-Assertion header is set by Cloudflare Access
+// at the edge and must not be forgeable by clients. If Access is not configured,
+// the ACCESS_TEAM_DOMAIN and ACCESS_AUD bindings will be empty and this guard
+// will reject all admin requests with 403.
+//
 // Cloudflare Access protects /admin* and /api/admin/*; the Worker verifies the JWT anyway (D-19):
 // RS256 signature with the team's public keys, audience, issuer and expiry.
 
@@ -11,6 +17,8 @@ interface Jwk extends JsonWebKey {
 
 const keyCache = new Map<string, { at: number; keys: Jwk[] }>();
 const KEYS_TTL_MS = 10 * 60_000;
+/** One team in practice; a few more are tolerated, the oldest entry goes first. */
+const KEY_CACHE_MAX = 4;
 
 async function teamKeys(team: string, refresh: boolean): Promise<Jwk[]> {
   const cached = keyCache.get(team);
@@ -18,6 +26,11 @@ async function teamKeys(team: string, refresh: boolean): Promise<Jwk[]> {
   const response = await fetch(`https://${team}/cdn-cgi/access/certs`);
   if (!response.ok) throw new ApiError("forbidden");
   const { keys } = await response.json<{ keys: Jwk[] }>();
+  keyCache.delete(team); // a refreshed team goes to the back of the insertion order
+  if (keyCache.size >= KEY_CACHE_MAX) {
+    const oldest = keyCache.keys().next().value;
+    if (oldest) keyCache.delete(oldest);
+  }
   keyCache.set(team, { at: Date.now(), keys });
   return keys;
 }
@@ -68,6 +81,10 @@ export async function verifyAccessJwt(token: string, team: string, aud: string):
 
 /** Every /api/admin/* request needs a valid Access JWT, else 403 (SPEC 9.2, M5-02). */
 export const requireAccess: MiddlewareHandler<AppEnv> = async (c, next) => {
+  // Defense in depth: without an Access application configured nothing here can be trusted.
+  if (!c.env.ACCESS_TEAM_DOMAIN || !c.env.ACCESS_AUD) {
+    throw new ApiError("forbidden");
+  }
   const token = c.req.header("Cf-Access-Jwt-Assertion") ?? "";
   const ok = await verifyAccessJwt(token, c.env.ACCESS_TEAM_DOMAIN, c.env.ACCESS_AUD).catch(
     () => false,

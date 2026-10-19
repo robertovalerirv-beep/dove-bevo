@@ -22,6 +22,7 @@ const THEME_COLOR = tokens.color.tokens.find((t) => t.name === "spritz")?.value.
 const PUBLIC_SHELL = [
   "/",
   "/manifest.webmanifest",
+  "/theme.js",
   "/map-italia-light.jpg",
   "/map-italia-dark.jpg",
   "/brand/favicon.svg",

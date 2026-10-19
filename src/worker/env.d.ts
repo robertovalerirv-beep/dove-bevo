@@ -4,11 +4,13 @@ interface Env {
   SESSION_HMAC_KEY: string;
   HASH_KEY: string;
   TURNSTILE_SECRET: string;
+  TASKS_QUEUE: Queue<Record<string, unknown>>;
 }
 declare namespace Cloudflare {
   interface Env {
     SESSION_HMAC_KEY: string;
     HASH_KEY: string;
     TURNSTILE_SECRET: string;
+    TASKS_QUEUE: Queue<Record<string, unknown>>;
   }
 }

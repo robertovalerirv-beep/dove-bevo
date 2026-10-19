@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
-import { goToMilano, mapRegion } from "./helpers";
+import { atHour, goToMilano, mapRegion, THEME_HOURS } from "./helpers";
 
 // F4 of the brand package: search of bars by name in all Italy (M4-11…M4-16, ADR 0024).
 // Read-only: no price is written. Fixture: Milano centro (9 cells), search fragments in data/s/.
@@ -26,7 +26,9 @@ test("M4-12 a bar outside the loaded cells is found by name in two taps, with no
   const camparino = options(page).filter({ hasText: "Camparino in Galleria" });
   await expect(camparino).toBeVisible();
   await expect(camparino.locator("mark")).toHaveText("Campar");
-  expect(api).toEqual([]); // nothing from the server while searching
+  // Only the short list of approved user bars (ADR 0025); nothing typed is ever sent.
+  expect(api.map((url) => new URL(url).pathname)).toEqual(["/api/venues/approved"]);
+  expect(api.every((url) => !url.includes("campar"))).toBe(true);
   await page.screenshot({ path: info.outputPath("m4-12-risultati.png") });
   await camparino.click();
   taps++;
@@ -168,8 +170,9 @@ test("M4-15 combobox: arrows, Enter, Esc, announced count, 48 px targets", async
 
 for (const scheme of ["light", "dark"] as const) {
   test(`M4-15 ${scheme}: no axe violations; screenshots of the states`, async ({ page }, info) => {
-    await page.emulateMedia({ colorScheme: scheme });
+    await atHour(page, THEME_HOURS[scheme]);
     await page.goto("/");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
     await openSearch(page);
     await page.screenshot({ path: info.outputPath(`m4-15-vuoto-${scheme}.png`) });
     await box(page).fill("cam");
@@ -269,4 +272,30 @@ test("M4-04 «I più economici qui»: ordered, at most 10, only active prices", 
     .click();
   await page.getByRole("button", { name: "Cerca città o bar" }).click();
   await expect(page.getByRole("list", { name: "I più economici qui" })).toHaveCount(0);
+});
+
+test("ADR 0025 a bar added by hand («Namasce») is found by name and opens its sheet", async ({
+  page,
+}, info) => {
+  const bar = ["u9001", "Namasce", 1, 45.4642, 9.19];
+  let asked = 0;
+  await page.route("**/api/venues/approved", (route) => {
+    asked++;
+    return route.fulfill({ json: { v: [bar] } });
+  });
+  await page.goto("/");
+  await openSearch(page);
+  await box(page).fill("namasce");
+  const hit = options(page).filter({ hasText: "Namasce" });
+  await expect(hit).toBeVisible();
+  await expect(hit.locator("mark")).toHaveText("Namasce");
+  await page.screenshot({ path: info.outputPath("adr0025-namasce-risultato.png") });
+  await box(page).fill("namas");
+  await expect(hit).toBeVisible();
+  expect(asked).toBe(1); // once per visit, and the typed text never goes to the server
+  await hit.click();
+  await expect(page).toHaveURL(/\/bar\/u9001\?c=u0nd9$/);
+  await expect
+    .poll(async () => Number(await mapRegion(page).getAttribute("data-zoom")), { timeout: 15_000 })
+    .toBeGreaterThanOrEqual(16.5);
 });

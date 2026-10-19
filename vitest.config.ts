@@ -1,10 +1,20 @@
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
-import { cpSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { defineConfig } from "vitest/config";
 
 // ASSETS in tests: the wrangler.jsonc assets directory (dist/client) serves the versioned fixture
 // under /data/fixture/, with or without a build (CI runs the tests before building).
 cpSync("tests/fixtures/data", "dist/client/data/fixture", { recursive: true });
+// The SPA shell, for the tests of the pages the Worker enriches (ADR 0025): a real build is used when
+// there is one, a bare page of the same shape otherwise (the tests run before the build in CI).
+if (!existsSync("dist/client/index.html")) {
+  mkdirSync("dist/client", { recursive: true });
+  writeFileSync(
+    "dist/client/index.html",
+    '<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Dove bevo</title>' +
+      '<meta name="description" content="shell"></head><body><div id="app"></div></body></html>',
+  );
+}
 
 // Cloudflare Access in tests: a key pair made at start-up (never stored), public half served as the
 // team certs, private half given to the tests to sign JWTs.

@@ -32,6 +32,14 @@ export interface CellPrices {
   h: string[];
 }
 
+/**
+ * `GET /api/venues/approved` (ADR 0025): every approved user bar, so the name search finds them like
+ * the OSM ones (they are not in the static fragments). Read once per visit, at the first search.
+ */
+export interface ApprovedVenues {
+  v: UserVenue[];
+}
+
 /** History row: [drink, size_ml, hh, price_cents, observed_on (date only)] */
 export type HistoryRow = [string, number, 0 | 1, number, string];
 

@@ -105,6 +105,9 @@ interface Props {
 export function App({ loadMap }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<VenueMap | null>(null);
+  // The map as soon as it exists: handlers of a render that is a moment old still see `map` as null,
+  // and a move asked in that window would be stored for a creation that already happened.
+  const mapRef = useRef<VenueMap | null>(null);
   // A move asked before the map is ready (fast tap, slow network) is applied when it is.
   const [initialAt] = useState(parseAt);
   const pendingMove = useRef<[number, number, number] | null>(initialAt);
@@ -169,16 +172,15 @@ export function App({ loadMap }: Props) {
         if (!created || cancelled) return;
         created.onMove(setView);
         created.onRendered(setPricesShown);
-        created.onIdle(() => {
-          setReady(true);
-        });
         created.onVenueClick((key, cell) => {
           navigate(`/bar/${key}?c=${cell}`);
         });
         setView(created.view());
+        mapRef.current = created;
         if (pendingMove.current) created.moveTo(...pendingMove.current);
         pendingMove.current = null;
         setMap(created);
+        setReady(true); // create() resolves once the style is in: the tiles may still be coming
       })
       .catch(() => {
         setMapFailed(true);
@@ -386,6 +388,12 @@ export function App({ loadMap }: Props) {
    * Only cell ids leave the device (SPEC 14).
    */
   function openAdd(prefill: Prefill | null) {
+    // A plain notice («Annullato», an error) must not stay over the bars of the new sheet; a toast with
+    // «Annulla» or «Aggiungi un altro drink» belongs to a price still waiting and stays.
+    if (toast && !toast.undo && !toast.more) {
+      toastTimer.current?.clear();
+      setToast(null);
+    }
     setAdding({ prefill });
     if (prefill?.venue) return;
     void (async () => {
@@ -765,7 +773,8 @@ export function App({ loadMap }: Props) {
   }
 
   function moveTo(lat: number, lon: number, zoom: number) {
-    if (map) map.moveTo(lat, lon, zoom);
+    const current = mapRef.current;
+    if (current) current.moveTo(lat, lon, zoom);
     else {
       pendingMove.current = [lat, lon, zoom];
       ensureMap();
@@ -869,7 +878,10 @@ export function App({ loadMap }: Props) {
               onPointerDown={ensureMap}
               onClick={ensureMap}
             >
-              <img src="/map-italia.jpg" alt="" width={780} height={1308} />
+              <picture>
+                <source media="(prefers-color-scheme: dark)" srcset="/map-italia-dark.jpg" />
+                <img src="/map-italia-light.jpg" alt="" width={780} height={1276} />
+              </picture>
             </button>
           )}
           {zoomedIn && tiersActive && !pinning && (
@@ -995,7 +1007,11 @@ export function App({ loadMap }: Props) {
           )}
           <button
             type="button"
-            class="btn btn--secondary"
+            class={
+              emptyZone && !("share" in navigator)
+                ? "btn btn--secondary bottom__wide"
+                : "btn btn--secondary"
+            }
             onClick={() => {
               setSheet("list");
             }}

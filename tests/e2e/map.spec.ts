@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "./fixtures";
 import {
   DUOMO,
   goToMilano,
@@ -284,4 +285,29 @@ test("M3-15 a denied position is told also when the map is already zoomed in", a
   await expect(
     page.getByRole("dialog", { name: "Cerca" }).getByText(/Per usare la posizione/),
   ).toBeVisible({ timeout: 15_000 });
+});
+
+test('slow tiles do not keep the map on "Carico la mappa…"', async ({ page }) => {
+  await page.route("https://tiles.openfreemap.org/**/*.pbf", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 20_000));
+    await route.continue();
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 10_000 });
+  await expect(mapStatus(page)).not.toHaveText("Carico la mappa…");
+});
+
+test("one failed request for the tile list does not leave the map dead", async ({ page }) => {
+  let calls = 0;
+  await page.route("https://tiles.openfreemap.org/planet", (route) => {
+    calls++;
+    if (calls === 1) return route.abort("failed");
+    return route.fallback();
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 15_000 });
+  await expect(mapStatus(page)).not.toHaveText(/non si carica/);
+  expect(calls).toBeGreaterThanOrEqual(2);
 });

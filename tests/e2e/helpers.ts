@@ -25,10 +25,18 @@ export async function goToMilano(page: Page) {
 /** The city search is already open (e.g. after a failed "Vicino a me"). */
 export async function milanoFromOpenSearch(page: Page) {
   await page.getByRole("combobox", { name: "Cerca una città o un bar" }).fill("milano");
-  await page
-    .getByRole("listbox", { name: "Risultati" })
-    .getByRole("option", { name: /^Milano/ })
-    .first()
-    .click();
+  // The list is redrawn while the places and the bar fragment arrive: under load a click can land
+  // on a row that was just replaced and do nothing. The choice has worked once the search is closed.
+  await expect(async () => {
+    const search = page.getByRole("dialog", { name: "Cerca" });
+    if (await search.count()) {
+      await page
+        .getByRole("listbox", { name: "Risultati" })
+        .getByRole("option", { name: /^Milano/ })
+        .first()
+        .click({ timeout: 5_000 });
+    }
+    await expect(search).toHaveCount(0, { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
   await waitForBars(page);
 }

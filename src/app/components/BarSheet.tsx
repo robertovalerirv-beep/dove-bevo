@@ -98,7 +98,9 @@ function PriceItem({
         <Icon name={drinkIcon(drink)} />
       </span>
       <span class="price__name">{name}</span>
-      <span class={`price__value price__value--${tier}`}>
+      <span
+        class={`price__value price__value--${tier}${isStale(day, todayRome()) ? " price__value--stale" : ""}`}
+      >
         {tier !== "neutro" && (
           <>
             <span aria-hidden="true">{GLYPH[tier]} </span>
@@ -207,10 +209,13 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[7] === 1) ?? [];
   return (
-    <Sheet title={venue.name} onClose={onClose}>
+    <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino">
         <div class="scontrino__paper">
           <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
+          <h2 class="scontrino__name" tabIndex={-1}>
+            {venue.name}
+          </h2>
           {venue.addr && <p class="bar__addr">{venue.addr}</p>}
           <h3 class="section-title">{it.bar.prices}</h3>
           {pricesFailed && (

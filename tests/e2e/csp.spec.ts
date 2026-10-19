@@ -1,5 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { goToMilano } from "./helpers";
+
+// This file checks the real basemap against the CSP: tiles, glyphs and sprites come from OpenFreeMap.
+test.use({ realTiles: true });
 
 // M0-04: opening the shell (and, from M1, the map) produces no CSP violation.
 // Collected two ways: the securitypolicyviolation event and console messages.

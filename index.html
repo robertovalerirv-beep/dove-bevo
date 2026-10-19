@@ -9,7 +9,20 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/brand/icon-192.png" />
     <meta name="theme-color" content="%THEME_COLOR%" />
-    <link rel="preload" href="/map-italia.jpg" as="image" fetchpriority="high" />
+    <link
+      rel="preload"
+      href="/map-italia-light.jpg"
+      as="image"
+      fetchpriority="high"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="preload"
+      href="/map-italia-dark.jpg"
+      as="image"
+      fetchpriority="high"
+      media="(prefers-color-scheme: dark)"
+    />
     <link
       rel="preload"
       href="/fonts/bricolage-grotesque-latin-wght-normal.woff2"

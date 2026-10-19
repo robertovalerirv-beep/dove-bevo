@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { goToMilano, mapRegion } from "./helpers";
 
 // F5a: colours on the median (M4-03), freshness (M4-05), happy hour (M4-10). Read-only.

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { goToMilano } from "./helpers";
 
 // MB-09: the bar page is a receipt. Read-only: the seeded prices are only looked at.

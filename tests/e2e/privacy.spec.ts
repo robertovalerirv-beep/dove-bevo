@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { DUOMO, mapRegion, waitForBars } from "./helpers";
 
 // M1-14: the user's position never leaves the device (SPEC 14).

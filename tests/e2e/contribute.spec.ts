@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { DUOMO, goToMilano, waitForBars } from "./helpers";
 
@@ -150,9 +151,50 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
   await page.goto("/");
   await goToMilano(page);
 
+  let call = 0;
   const addProsecco = async (price: string) => {
+    call++;
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
-    await barChoices(page).nth(2).click();
+    try {
+      await barChoices(page).nth(2).click({ timeout: 25_000 });
+    } catch (error) {
+      // CI-only WebKit hang: print what moves on the page, then fail with the original error.
+      const state = await page.evaluate(async () => {
+        const button = document.querySelectorAll('[aria-label="Bar vicini"] button')[2];
+        const rects: string[] = [];
+        let mutations = 0;
+        const observer = new MutationObserver((list) => {
+          mutations += list.length;
+        });
+        observer.observe(document.body, { subtree: true, childList: true, attributes: true });
+        const map = document.querySelector('[aria-label="Mappa"]');
+        const before = map?.getAttribute("data-center") ?? "";
+        for (let i = 0; i < 6; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          const r = button?.getBoundingClientRect();
+          rects.push(r ? [r.x, r.y, r.width, r.height].map(Math.round).join(",") : "none");
+        }
+        observer.disconnect();
+        return {
+          visibility: document.visibilityState,
+          rects,
+          mutationsIn1800ms: mutations,
+          mapMoved: before !== (map?.getAttribute("data-center") ?? ""),
+          disabled: button instanceof HTMLButtonElement ? button.disabled : "no button",
+          toasts: [...document.querySelectorAll(".toast")].map((el) => el.textContent),
+          topAtCentre: (() => {
+            const r = button?.getBoundingClientRect();
+            const top = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
+            return top ? `${top.tagName}.${top.className}` : "none";
+          })(),
+          animations: document.getAnimations().map((a) => `${a.constructor.name}:${a.playState}`),
+          buttons: document.querySelectorAll('[aria-label="Bar vicini"] button').length,
+          dialogs: document.querySelectorAll("dialog[open]").length,
+        };
+      });
+      console.log("M2-06 DIAG call " + String(call) + " " + JSON.stringify(state));
+      throw error;
+    }
     await page
       .getByRole("dialog")
       .getByRole("button", { name: /^Calice di prosecco/ })
@@ -163,8 +205,15 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
 
   await addProsecco("8,00");
   await page.getByRole("button", { name: "Annulla" }).click();
+  // The toast holds while it is pointed at (so it does not vanish under a finger or a cursor):
+  // move the pointer away, as a person would, or it stays over the next sheet and takes its clicks.
+  await page.mouse.move(0, 0);
   await page.waitForTimeout(11_000);
   expect(posts).toEqual([]);
+  console.log(
+    "M2-06 toasts 11 s after Annulla: " +
+      JSON.stringify(await page.locator(".toast").allTextContents()),
+  );
 
   await addProsecco("8,20");
   await page.evaluate(() => {

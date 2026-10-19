@@ -14,8 +14,14 @@ export default defineConfig({
   testDir: "tests",
   testMatch: "**/*.spec.ts",
   fullyParallel: true,
-  // WebKit redraws the map labels slowly under parallel load; 10 s keeps the same assertions stable.
-  expect: { timeout: 10_000 },
+  // Under the parallel load of the whole suite (and a busy CI runner) WebKit tests that wait for the real
+  // map tiles ran at 20–30 s, right at the old 30 s cap: a different one timed out on every run.
+  timeout: 60_000,
+  // WebKit redraws the map labels slowly under parallel load (and a CI runner is slower still); 20 s keeps the same assertions stable.
+  expect: { timeout: 20_000 },
+  // A test that fails is run again on CI (shared runners stall now and then); one that fails every
+  // time still fails the job, and a pass after a retry is reported as flaky.
+  retries: process.env.CI ? 2 : 0,
   reporter: "list",
   use: {
     baseURL: `https://localhost:${String(PORT)}`,

@@ -136,8 +136,12 @@ test("M4-15 combobox: arrows, Enter, Esc, announced count, 48 px targets", async
   await expect(field).toHaveAttribute("aria-expanded", "true");
   const announced = page.getByRole("status").filter({ hasText: /risultat/ });
   await expect(announced).toBeVisible();
-  const count = await options(page).count();
-  await expect(announced).toHaveText(count === 1 ? "1 risultato" : `${String(count)} risultati`);
+  // Places answer at once, bars come from a fragment a moment later: wait until the
+  // announcement and the list agree, then check the count that is shown.
+  const label = (n: number) => (n === 1 ? "1 risultato" : `${String(n)} risultati`);
+  await expect
+    .poll(async () => (await announced.textContent()) === label(await options(page).count()))
+    .toBe(true);
   for (const o of await options(page).all()) {
     expect((await o.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48);
   }
@@ -218,15 +222,25 @@ test("M4-16 a typical search downloads little and answers fast once the fragment
           resolve(-1);
           return;
         }
+        // A MutationObserver sees the new list as soon as it is in the DOM; polling with
+        // requestAnimationFrame added up to a frame and the runner's frame throttling.
+        const list = document.querySelector('[role="listbox"]');
+        const done = () => {
+          const text = document.querySelector('[role="option"]')?.textContent ?? "";
+          if (!text.includes("Camparino")) return false;
+          observer.disconnect();
+          resolve(performance.now() - start);
+          return true;
+        };
+        const observer = new MutationObserver(done);
+        observer.observe(list ?? document.body, {
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
         const start = performance.now();
         input.value = "campari";
         input.dispatchEvent(new Event("input", { bubbles: true }));
-        const tick = () => {
-          const text = document.querySelector('[role="option"]')?.textContent ?? "";
-          if (text.includes("Camparino")) resolve(performance.now() - start);
-          else requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
       }),
   );
   console.log(`M4-16 results with the fragment in memory: ${ms.toFixed(0)} ms`);

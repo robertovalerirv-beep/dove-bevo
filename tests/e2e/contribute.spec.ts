@@ -179,6 +179,11 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
           mutationsIn1800ms: mutations,
           mapMoved: before !== (map?.getAttribute("data-center") ?? ""),
           disabled: button instanceof HTMLButtonElement ? button.disabled : "no button",
+          topAtCentre: (() => {
+            const r = button?.getBoundingClientRect();
+            const top = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
+            return top ? `${top.tagName}.${top.className}` : "none";
+          })(),
           animations: document.getAnimations().map((a) => `${a.constructor.name}:${a.playState}`),
           buttons: document.querySelectorAll('[aria-label="Bar vicini"] button').length,
           dialogs: document.querySelectorAll("dialog[open]").length,
@@ -197,6 +202,9 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
 
   await addProsecco("8,00");
   await page.getByRole("button", { name: "Annulla" }).click();
+  // The toast holds while it is pointed at (so it does not vanish under a finger or a cursor):
+  // move the pointer away, as a person would, or it stays over the next sheet and takes its clicks.
+  await page.mouse.move(0, 0);
   await page.waitForTimeout(11_000);
   expect(posts).toEqual([]);
 

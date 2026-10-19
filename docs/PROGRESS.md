@@ -4,6 +4,37 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-19 · Sessione 11 · Pacchetto di correzioni (branch `fix/mockup-and-no-cafes`) · ricerca, tema, SEO, sicurezza, prestazioni
+
+**Richiesta di Roberto:** due difetti (la ricerca non trova «Namasce», un bar inserito a mano; il tema è sempre scuro) e `prompt-seo-secutiry-update.md`, in un solo pacchetto. Decisioni, deviazioni dal prompt e motivi: **ADR 0025**.
+
+**Fatto**
+- **Ricerca:** `GET /api/venues/approved` (solo approvati, cache 60 s, limitatore) e `src/app/lib/user-bars.ts`: i bar utente passano per lo stesso `matches`/`rank` dei bar OSM, una lettura per visita, senza il testo digitato. D-32 e SPEC 7.6 aggiornati.
+- **Tema:** chiaro dalle 06:00 alle 21:29, scuro dalle 21:30 (ora del dispositivo, non l'impostazione del telefono): `src/shared/theme.ts`, `public/theme.js` (prima del primo disegno), `:root[data-theme="dark"]` generato dai token, mappa e immagine iniziale seguono l'ora. D-27 aggiornato.
+- **A (hardening):** `wrangler.jsonc` campionamento 10 % e query string oscurata (tenuto `invocation_logs: false`), `nodejs_compat`; guardia 403 in `requireAccess` con ACCESS_* vuoti; cache JWKS ≤ 4 e chiavi HMAC ≤ 8.
+- **C (prestazioni):** `POST /api/prices` in 2 round trip D1 invece di ~6 per prezzo (risposte e righe identiche al codice sequenziale, golden test), conferma atomica in un batch, `nearestPlace` per latitudine (stesso risultato della scansione), file di cella letti in parallelo, coverage in cache 60 s. **Indici: nessuna migrazione** (esistono già `pc_cell`, `po_venue`, `vu_*`, `rp_bar`; gli altri aumenterebbero le righe scritte per contributo: ADR 0025 §4).
+- **B (SEO):** `/robots.txt`, `/llms.txt`, `/sitemap.xml`, `GET /api/ai/cerca`, e il middleware che aggiunge titolo, descrizione, canonical, Open Graph, JSON-LD e testo `<noscript>` a home, `/copertura`, sei città e `/bar/<chiave>`. `run_worker_first` elenca queste pagine (tutti gli altri asset restano fuori dal Worker). Solo bar pubblici, nomi dai file OSM (≤ 3 celle per pagina per la CPU), escape verificato con un nome `"><script>`.
+
+**Difetti veri del prompt, trovati leggendo il codice** (ADR 0025): `city` è l'ID OSM, non il nome, e i nomi non sono in D1 (le query del prompt non avrebbero trovato nulla); il filtro `status='active'` avrebbe pubblicato bar nascosti e proposte in attesa; l'escape del JSON-LD era doppio; titolo e descrizione erano duplicati; indirizzo di staging scritto a mano; `SearchAction` con `?q=` che l'app non supporta; indici duplicati o dannosi per le quote.
+
+**Prove**
+- `npm test`: 37 file, 310 test verdi (unit e worker). Nuovi: `prices-batch` (golden della versione sequenziale, 30 prezzi in ≤ 5 batch), `seo` (19), `hardening-keys`, `coverage` (cache), `theme` (parità di `theme.js` con la regola per ogni minuto), `nearest-place` (2.000 punti casuali), `search-user-bars`, `seo-config` (`run_worker_first` = `SEO_CITIES`).
+- `npm run lint`, `format:check`, `typecheck` verdi. Shell 42.269 B (budget 51.200).
+- E2E Chromium: ricerca (M4-12…16, con la sola richiesta consentita a `/api/venues/approved`), tema (`atHour`: 21:29 chiaro, 21:30 scuro, 05:59 scuro, 06:00 chiaro anche con il telefono in modo opposto), cambio tema senza richieste a `/api` o `/data` (57 ms), CSP senza violazioni. `tests/security/seo.spec.ts` sulla configurazione vera (`wrangler dev`): robots, llms, sitemap, home e città con tag e CSP intatta, `/admin` senza tag, API aperta senza CORS.
+- `npm run verify` completo: vedi sotto.
+
+**Cambiato in un test esistente:** `shell.spec.ts` `GET /` ora aspetta un titolo che *inizia con* «Dove bevo» (la home ha il titolo SEO «Dove bevo — dove bere in Italia? Prezzi nei bar»); `brand-map` e `brand-search` fissano l'ora con `page.clock` invece di `emulateMedia`.
+
+**Non fatto / da decidere**
+- Nessuna migrazione D1 (indici): da rivalutare con le misure reali di staging.
+- `/copertura` e le pagine di città sono viste per i crawler: un utente che ci arriva vede la mappa.
+- L'API `/api/ai/cerca` mette il nome solo per le 3 celle con più righe di ogni pagina (CPU del piano gratuito); altrove `nome: null` e l'`url` apre la scheda.
+- Fascia scura fissa 21:30–06:00: se si vuole un'altra alba, è `DARK_UNTIL` in `src/shared/theme.ts` (e la copia in `public/theme.js`, che il test tiene allineata).
+
+**Da verificare a mano (staging, dopo il deploy):** cercare «Namasce» da telefono; aprire l'app prima e dopo le 21:30 con il telefono in modo scuro e in modo chiaro; `/robots.txt`, `/llms.txt`, `/sitemap.xml`, sorgente di `/milano` e di una scheda bar; una contribuzione con 3–4 drink insieme.
+
+---
+
 ## 2026-10-17 · Sessione 10 · Pacchetto brand v2 (branch `brand-v2-package`, da `main` 6a60ce4) · F1–F5
 
 **Fatto** (un commit per fase, una PR sola)
@@ -27,6 +58,19 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 **Da verificare a mano (telefono vero):** Timbro e vibrazione su Android, invito all'installazione su Android e iPhone, offline dopo l'installazione, Fuori orario di notte, la ricerca con rete mobile.
 
+---
+
+## 2026-10-17 · Sessione 10 · Brand v1 · passo 4 (mappa), prima parte (PR #29)
+
+**Fatto**: gradini sulla mediana della cella (`tiers.ts`: Affare < 0,9×, Salato > 1,1×, neutro sotto 5 prezzi; soglie in `config.ts`), pin a pillola su canvas (glifo ↓ = ↑, prezzo in Geist Mono, bordo tratteggiato e corsivo oltre 90 giorni), legenda solo con colori attivi, stato «X bar su N qui hanno un prezzo» dai dati già caricati (nessuna richiesta in più). `shownPrice` spostata in `src/shared/prices.ts`. Le immagini dei pin si disegnano in `setVenues` prima del layer: con `styleimagemissing` il posizionamento restava vuoto (e2e «prices are drawn right after a city search»).
+
+**Prove**: `tests/unit/tiers.test.ts` (8 test); `npm run verify` verde in 405 s sul commit pulito (e2e 284 s, Lighthouse); CI della PR #29: 5 controlli verdi, merge, deploy staging avviato.
+
+**Non fatto**: stili mappa Bancone/Fuori orario (MB-06), tappo del selezionato, INP con 300 pin, zona senza prezzi (MB-13), ricerca per nome (passo 3), viste e testi. Nessun `passes` cambiato. Da decidere: e2e M2-02 cerca «Bistrot Duomo» (modifica non committata di Roberto) che con le fixture rigenerate non è tra i 5 vicini.
+
+**Da verificare a mano**: pin, legenda e testo di stato in staging da telefono.
+
+---
 
 ## 2026-10-16 · Sessione 9 · Brand identity v1 + ricerca per nome · passo 0 (misure, nessuna modifica al codice)
 

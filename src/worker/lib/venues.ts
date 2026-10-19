@@ -60,19 +60,22 @@ export async function findDuplicate(
   };
 }
 
-/** Cell and city of a bar, from the static file for OSM bars or D1 for user bars (SPEC 8). */
+/**
+ * Cell and city of a bar, from the static file for OSM bars or D1 for user bars (SPEC 8). `isPublic`
+ * is false for a proposed bar the admin has not approved: its prices never count as peers (ADR 0019).
+ */
 export async function resolveVenue(
   env: Env,
   venue: string,
   cell: string,
-): Promise<{ cell: string; city: number | null }> {
+): Promise<{ cell: string; city: number | null; isPublic: boolean }> {
   if (venue.startsWith("u")) {
     const user = await getUserVenue(env.DB, Number(venue.slice(1)));
     if (user?.cell !== cell) throw new ApiError("bad_request");
-    return { cell, city: null };
+    return { cell, city: null, isPublic: user.status === "approved" };
   }
   const found = await osmVenue(env, venue, cell);
   // Hidden by the admin (not a bar, closed): no new prices (ADR 0017).
   if (!found || (await isHidden(env.DB, venue))) throw new ApiError("bad_request");
-  return { cell, city: found.city };
+  return { cell, city: found.city, isPublic: true };
 }

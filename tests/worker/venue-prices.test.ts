@@ -57,3 +57,22 @@ describe("GET /api/venues/:key/prices (M1-15)", () => {
     });
   }
 });
+
+describe("GET /api/venues/approved (ADR 0025)", () => {
+  it("lists only the approved user bars, for the name search", async () => {
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM venues_user"),
+      env.DB.prepare(
+        `INSERT INTO venues_user (id, name, kind, lat, lon, cell, status) VALUES
+         (1, 'Namasce', 1, 45.46, 9.19, 'u0nd9', 'approved'),
+         (2, 'Da confermare', 1, 45.47, 9.2, 'u0nd9', 'pending'),
+         (3, 'Rifiutato', 1, 45.48, 9.21, 'u0nd9', 'removed')`,
+      ),
+    ]);
+    const response = await get("/api/venues/approved");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(await response.json()).toEqual({ v: [["u1", "Namasce", 1, 45.46, 9.19]] });
+    await env.DB.prepare("DELETE FROM venues_user").run();
+  });
+});

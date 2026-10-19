@@ -40,3 +40,15 @@ export async function milanoFromOpenSearch(page: Page) {
   }).toPass({ timeout: 30_000 });
   await waitForBars(page);
 }
+
+/**
+ * Fixes the hour of the page clock (the theme follows it: Bancone by day, Fuori orario from 21:30,
+ * ADR 0025). The day stays today's, so nothing that depends on the date changes; timers keep running.
+ */
+export async function atHour(page: Page, hour: number, minute = 0) {
+  const when = new Date();
+  when.setHours(hour, minute, 0, 0);
+  await page.clock.setFixedTime(when);
+}
+
+export const THEME_HOURS = { light: 12, dark: 22 } as const;

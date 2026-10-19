@@ -21,6 +21,7 @@ import { blockedHelp, locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
 import { formatPrice, formatSize, formatStampDay, todayRome } from "./lib/format";
 import { installMode, promptInstall } from "./lib/install";
+import { currentTheme } from "./lib/theme";
 import { addPrices, priceCount, stampReached } from "./lib/usage";
 import { cellMedian, coverage, isStale, tierOf } from "./lib/tiers";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
@@ -878,10 +879,7 @@ export function App({ loadMap }: Props) {
               onPointerDown={ensureMap}
               onClick={ensureMap}
             >
-              <picture>
-                <source media="(prefers-color-scheme: dark)" srcset="/map-italia-dark.jpg" />
-                <img src="/map-italia-light.jpg" alt="" width={780} height={1276} />
-              </picture>
+              <img src={`/map-italia-${currentTheme()}.jpg`} alt="" width={780} height={1276} />
             </button>
           )}
           {zoomedIn && tiersActive && !pinning && (

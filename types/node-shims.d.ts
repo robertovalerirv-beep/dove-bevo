@@ -3,6 +3,8 @@ declare module "node:fs" {
   export function readFileSync(path: string, encoding: "utf8" | "latin1"): string;
   export function cpSync(source: string, destination: string, options: { recursive: true }): void;
   export function existsSync(path: string): boolean;
+  export function mkdirSync(path: string, options: { recursive: true }): void;
+  export function writeFileSync(path: string, data: string): void;
   export function readdirSync(path: string): string[];
   export function statSync(path: string): { isFile(): boolean };
 }

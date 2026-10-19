@@ -1,6 +1,8 @@
-// Search of bars by name in all Italy (SPEC 7.6, D-30, ADR 0024): static fragments by word prefix,
-// nothing from /api, no position sent. The fragment name is the only thing that reaches the CDN.
+// Search of bars by name in all Italy (SPEC 7.6, D-30, ADR 0024, 0025): static fragments by word
+// prefix for the OSM bars, plus the short list of approved user bars. No position is sent. The
+// fragment name is the only thing that reaches the CDN; the list of user bars carries no query.
 import { DATA_VERSION } from "./data";
+import { loadUserBars } from "./user-bars";
 import { searchKey, searchWords } from "../../shared/venue";
 import {
   fragmentPath,
@@ -43,6 +45,7 @@ export async function searchBars(
     fragments.set(path, fragment);
   }
   const typed = searchWords(query);
-  const found = (await fragment).filter((h) => matches(h[1], typed));
+  const [osm, user] = await Promise.all([fragment, loadUserBars()]);
+  const found = [...osm, ...user].filter((h) => matches(h[1], typed));
   return rank(found, query, origin).slice(0, MAX_BAR_RESULTS);
 }

@@ -5,7 +5,13 @@ import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { ITALY, validVenueName } from "../../shared/venue";
 import { MAX_PENDING_PER_CELL, MAX_PENDING_VENUES, REJECTION_TRACE_DAYS } from "../config";
 import { romeDay } from "../lib/day";
-import { bumpProposal, claimOnce, getVenuePrices, proposeVenue } from "../lib/db";
+import {
+  bumpProposal,
+  claimOnce,
+  getVenuePrices,
+  listApprovedVenues,
+  proposeVenue,
+} from "../lib/db";
 import { ApiError, apiError } from "../lib/errors";
 import { readJson } from "../lib/guards";
 import { hmacHex } from "../lib/hmac";
@@ -36,6 +42,12 @@ const daysAgo = (day: string, n: number) =>
   new Date(Date.parse(`${day}T12:00:00Z`) - n * 86_400_000).toISOString().slice(0, 10);
 
 export const venues = new Hono<AppEnv>();
+
+// GET /api/venues/approved — the user bars the admin approved, for the name search (ADR 0025).
+// Names and positions only, the same data the cell reads already publish; one small read per visit.
+venues.get("/approved", async (c) =>
+  c.json({ v: await listApprovedVenues(c.env.DB) }, 200, { "Cache-Control": "public, max-age=60" }),
+);
 
 // GET /api/venues/:key/prices — current prices and short history (D-26).
 venues.get("/:key/prices", async (c) => {

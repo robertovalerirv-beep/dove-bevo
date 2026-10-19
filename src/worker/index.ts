@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { routePath } from "hono/route";
 import { version } from "../../package.json";
 import { ApiError, apiError } from "./lib/errors";
@@ -12,9 +13,12 @@ import { requireAccess } from "./lib/access";
 import { admin } from "./routes/admin";
 import { prices } from "./routes/prices";
 import { reports } from "./routes/reports";
+import { seo, seoPages } from "./routes/seo";
 import { session } from "./routes/session";
 import { venues } from "./routes/venues";
 import type { AppEnv } from "./types";
+
+const QueueTask = z.record(z.string(), z.unknown());
 
 const app = new Hono<AppEnv>();
 
@@ -23,6 +27,8 @@ app.use(async (c, next) => {
   await next();
 });
 app.use(securityHeaders);
+// After securityHeaders: the tags and text for crawlers are added to the shell, then the headers are set.
+app.use(seoPages);
 app.use("/api/*", requireOrigin);
 // Burst limit on every write and on the per-bar history (SPEC 9.2, 13.3).
 app.on("POST", "/api/*", rateLimit);
@@ -46,6 +52,15 @@ app.route("/api/session", session);
 app.route("/api/prices", prices);
 app.route("/api/venues", venues);
 app.route("/api/reports", reports);
+app.route("/", seo);
+
+// Pages that run the Worker first (run_worker_first in wrangler.jsonc: the home, /copertura, the main
+// cities, /bar/*) are handed to the static assets; the copy has headers the middleware can change.
+app.all("*", async (c) => {
+  if (new URL(c.req.url).pathname.startsWith("/api/")) return apiError(c, "not_found");
+  const asset = await c.env.ASSETS.fetch(c.req.raw);
+  return new Response(asset.body, asset);
+});
 
 app.notFound((c) => apiError(c, "not_found"));
 
@@ -65,5 +80,19 @@ export default {
     const today = Date.parse(`${romeDay()}T12:00:00Z`);
     const oldestKept = new Date(today - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10);
     await purgeOldKeys(env.DB, oldestKept);
+  },
+  /** Consumer of the "dovebevo-tasks" queue: validate, log only a code and the id, ack or retry. */
+  queue(batch: MessageBatch): void {
+    for (const message of batch.messages) {
+      try {
+        // No task shape is defined yet: accept only a plain object. Bodies are never logged (13.8).
+        QueueTask.parse(message.body);
+        console.log(JSON.stringify({ code: "queue_task_ok", id: message.id }));
+        message.ack();
+      } catch {
+        console.error(JSON.stringify({ code: "queue_task_failed", id: message.id }));
+        message.retry();
+      }
+    }
   },
 } satisfies ExportedHandler<Env>;

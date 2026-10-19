@@ -2,6 +2,8 @@
 <html lang="it">
   <head>
     <meta charset="utf-8" />
+    <!-- Theme by the hour (Bancone by day, Fuori orario 21:30-06:00): must run before the first paint. -->
+    <script src="/theme.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>%APP_NAME%</title>
     <meta name="description" content="%APP_DESCRIPTION%" />
@@ -9,20 +11,6 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/brand/icon-192.png" />
     <meta name="theme-color" content="%THEME_COLOR%" />
-    <link
-      rel="preload"
-      href="/map-italia-light.jpg"
-      as="image"
-      fetchpriority="high"
-      media="(prefers-color-scheme: light)"
-    />
-    <link
-      rel="preload"
-      href="/map-italia-dark.jpg"
-      as="image"
-      fetchpriority="high"
-      media="(prefers-color-scheme: dark)"
-    />
     <link
       rel="preload"
       href="/fonts/bricolage-grotesque-latin-wght-normal.woff2"

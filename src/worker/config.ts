@@ -22,3 +22,31 @@ export const KEEP_DAYS = 1;
 
 /** Minimum time between two coverage calculations: protects the D1 read quota (ADR 0022). */
 export const COVERAGE_MIN_INTERVAL_MS = 10_000;
+
+/** The coverage figures are kept this long between two admin changes: the page asks often, D1 reads are shared (ADR 0025). */
+export const COVERAGE_CACHE_MS = 60_000;
+
+/** Cities that get a page of their own for search engines (/milano, …), by URL slug (ADR 0025). */
+export const SEO_CITIES = {
+  milano: "Milano",
+  roma: "Roma",
+  torino: "Torino",
+  bologna: "Bologna",
+  firenze: "Firenze",
+  napoli: "Napoli",
+} as const;
+export type SeoCitySlug = keyof typeof SEO_CITIES;
+
+/** Limits on what the SEO pages and the open API expose (ADR 0025). */
+export const SEO_LIMITS = {
+  /** Bars in a sitemap, in the JSON-LD and in the pre-rendered text of one page. */
+  sitemapUrls: 5000,
+  barsPerPage: 30,
+  /** Rows of the open API per page and the highest page. */
+  aiPerPage: 100,
+  aiMaxPage: 50,
+  /** Cell files opened to put names on one page: each is parsed, and a free Worker has ~10 ms of CPU. */
+  nameCells: 3,
+  /** How long a built page lives in the isolate and at the edge, in seconds. */
+  memSeconds: 300,
+} as const;

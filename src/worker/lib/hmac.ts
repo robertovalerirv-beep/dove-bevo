@@ -1,6 +1,8 @@
 // HMAC-SHA256 with WebCrypto. Keys for counters/dedup never contain a sid or an IP in clear (SPEC 8).
 const encoder = new TextEncoder();
 const keys = new Map<string, Promise<CryptoKey>>();
+/** Three secrets are in use (session, hash, and a rotation); the oldest imported key goes first. */
+const KEYS_MAX = 8;
 
 function importKey(secret: string): Promise<CryptoKey> {
   let key = keys.get(secret);
@@ -12,6 +14,10 @@ function importKey(secret: string): Promise<CryptoKey> {
       false,
       ["sign", "verify"],
     );
+    if (keys.size >= KEYS_MAX) {
+      const oldest = keys.keys().next().value;
+      if (oldest) keys.delete(oldest);
+    }
     keys.set(secret, key);
   }
   return key;

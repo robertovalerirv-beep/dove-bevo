@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { test } from "./fixtures";
 import { goToMilano, mapRegion, mapStatus } from "./helpers";
 
 // F2 of the brand package: MB-06 (styles per theme), MB-07 (cork), MB-13 (empty zone), MB-14.

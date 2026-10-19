@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "./fixtures";
 import { goToMilano, mapRegion } from "./helpers";
 
 // M3-11 (v1.1, ADR 0019): "Non trovi il bar?" → name → kind → pin on the map → send. The bar stays

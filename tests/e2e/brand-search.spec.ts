@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "./fixtures";
 import { goToMilano, mapRegion } from "./helpers";
 
 // F4 of the brand package: search of bars by name in all Italy (M4-11…M4-16, ADR 0024).

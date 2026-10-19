@@ -48,13 +48,25 @@ const reducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)"
 const token = (name: string) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
+/** One transient network error must not leave the map dead for the whole visit: two more tries. */
+async function fetchJson(url: string): Promise<unknown> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
+      return (await response.json()) as unknown;
+    } catch (error) {
+      if (attempt >= 2) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
+    }
+  }
+}
+
 async function loadStyle(): Promise<StyleSpecification> {
   // Our own recoloured style (SPEC D-27) and the TileJSON in parallel; the attributions are
   // rendered by the shell, see app.tsx.
   const [style, tileJson] = (await Promise.all(
-    [MAP_STYLES[theme()], TILEJSON_URL].map(
-      async (url): Promise<unknown> => (await fetch(url)).json() as Promise<unknown>,
-    ),
+    [MAP_STYLES[theme()], TILEJSON_URL].map((url) => fetchJson(url)),
   )) as [StyleSpecification, { tiles: string[]; minzoom?: number; maxzoom?: number }];
   for (const [id, source] of Object.entries(style.sources)) {
     if (source.type === "vector" && source.url === TILEJSON_URL) {
@@ -226,6 +238,11 @@ export class VenueMap {
       locale: { "Map.Title": it.map.canvas },
     });
     this.map.touchZoomRotate.disableRotation();
+    for (const type of ["dragstart", "zoomstart"] as const) {
+      this.map.on(type, (e) => {
+        if (e.originalEvent) this.taken = true; // a gesture, not our own flight
+      });
+    }
     this.ready = new Promise((resolve) => {
       // The style is enough: "load" also waits for the tiles, and on a slow network the map would
       // stay on "Carico la mappa…" although it can already be moved and the cells can be read.
@@ -498,9 +515,30 @@ export class VenueMap {
     this.map.triggerRepaint();
   }
 
+  /** The last move asked for, and whether a person has taken the map since. */
+  private moveId = 0;
+  private taken = false;
+
   moveTo(lat: number, lon: number, zoom: number) {
     const target = { center: [lon, lat] as [number, number], zoom };
-    if (reducedMotion()) this.map.jumpTo(target);
-    else this.map.flyTo({ ...target, duration: 800 });
+    if (reducedMotion()) {
+      this.map.jumpTo(target);
+      return;
+    }
+    const id = ++this.moveId;
+    this.taken = false;
+    this.map.flyTo({ ...target, duration: 800 });
+    // A flight that is cut short or never finishes (slow frames, a resize, WebKit under load) must
+    // still end on the target, or the app stays zoomed out with "Avvicinati…" for good. Unless a
+    // person took the map in the meantime, it jumps there.
+    window.setTimeout(() => {
+      if (id !== this.moveId || this.taken) return;
+      const c = this.map.getCenter();
+      const there =
+        Math.abs(this.map.getZoom() - zoom) < 0.3 &&
+        Math.abs(c.lat - lat) < 0.01 &&
+        Math.abs(c.lng - lon) < 0.01;
+      if (!there) this.map.jumpTo(target);
+    }, 2500);
   }
 }

@@ -3,7 +3,7 @@ import type { PriceRow, VenuePrices } from "../../shared/api-types";
 import { it } from "../i18n/it";
 import { loadCell, loadVenuePrices, type Venue } from "../lib/data";
 import { formatDate, formatPrice, formatSize, todayRome } from "../lib/format";
-import { isStale } from "../lib/tiers";
+import { isStale, type Tier } from "../lib/tiers";
 import { directionsUrl } from "../lib/geo";
 import { drinkIcon, Icon } from "./Icon";
 import { Sheet } from "./Sheet";
@@ -22,12 +22,16 @@ interface Props {
   actions: BarActions;
   /** The drink chosen on the map comes first on the receipt. */
   focus: { drink: string; size: number };
+  /** Tier of a price against its cell median (D-12), from the prices already loaded. */
+  tier: (row: PriceRow) => Tier;
   onVenue: (venue: Venue) => void;
   onClose: () => void;
 }
 
 /** Rows visible on the receipt before "Vedi tutti" (brand, Scontrino). */
 const VISIBLE_ROWS = 5;
+
+const GLYPH = { affare: "↓", giusto: "=", salato: "↑" } as const;
 
 const rowId = (row: PriceRow) => `${row[1]}|${String(row[2])}|${String(row[3])}`;
 
@@ -56,11 +60,13 @@ function PriceItem({
   venue,
   actions,
   inReview,
+  tier,
 }: {
   row: PriceRow;
   venue: Venue;
   actions: BarActions;
   inReview: boolean;
+  tier: Tier;
 }) {
   const [, drink, size, hh, cents, day, confirmations] = row;
   const id = `${row[0]}|${rowId(row)}|${String(cents)}`;
@@ -92,7 +98,15 @@ function PriceItem({
         <Icon name={drinkIcon(drink)} />
       </span>
       <span class="price__name">{name}</span>
-      <span class="price__value">{formatPrice(cents)}</span>
+      <span class={`price__value price__value--${tier}`}>
+        {tier !== "neutro" && (
+          <>
+            <span aria-hidden="true">{GLYPH[tier]} </span>
+            <span class="sr-only">{it.map.tiers[tier]}: </span>
+          </>
+        )}
+        {formatPrice(cents)}
+      </span>
       <span class="price__meta" aria-live="polite">
         {formatDate(day)} · {it.bar.confirmations(count)}
         {isStale(day, todayRome()) && <span class="price__stale"> · {it.bar.toConfirm}</span>}
@@ -147,7 +161,7 @@ function PriceItem({
 }
 
 /** Bar page `/bar/<key>?c=<cell>` (SPEC 7.2). */
-export function BarSheet({ venueKey, cell, actions, focus, onVenue, onClose }: Props) {
+export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
@@ -195,8 +209,47 @@ export function BarSheet({ venueKey, cell, actions, focus, onVenue, onClose }: P
   return (
     <Sheet title={venue.name} onClose={onClose}>
       <div class="scontrino">
-        <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
-        {venue.addr && <p class="bar__addr">{venue.addr}</p>}
+        <div class="scontrino__paper">
+          <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
+          {venue.addr && <p class="bar__addr">{venue.addr}</p>}
+          <h3 class="section-title">{it.bar.prices}</h3>
+          {pricesFailed && (
+            <p class="hint" role="alert">
+              {it.bar.pricesError}
+            </p>
+          )}
+          {prices && active.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
+          <ul class="prices">
+            {shown.map((row) => (
+              <PriceItem
+                key={rowId(row)}
+                row={row}
+                venue={venue}
+                actions={actions}
+                inReview={false}
+                tier={tier(row)}
+              />
+            ))}
+          </ul>
+          {active.length > VISIBLE_ROWS && (
+            <button
+              type="button"
+              class="btn btn--ghost"
+              aria-expanded={showAll}
+              onClick={() => {
+                setShowAll(!showAll);
+              }}
+            >
+              {showAll ? it.bar.seeLess : it.bar.seeAll(active.length)}
+            </button>
+          )}
+          {active.length > 0 && (
+            <p class="scontrino__foot">
+              <span>{it.bar.receiptFoot}</span>
+              <span>{it.bar.drinkCount(active.length)}</span>
+            </p>
+          )}
+        </div>
         <div class="bar__actions">
           <a
             class="btn btn--secondary"
@@ -218,43 +271,20 @@ export function BarSheet({ venueKey, cell, actions, focus, onVenue, onClose }: P
             {it.actions.addHere}
           </button>
         </div>
-        <h3 class="section-title">{it.bar.prices}</h3>
-        {pricesFailed && (
-          <p class="hint" role="alert">
-            {it.bar.pricesError}
-          </p>
-        )}
-        {prices && active.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
-        <ul class="prices">
-          {shown.map((row) => (
-            <PriceItem
-              key={rowId(row)}
-              row={row}
-              venue={venue}
-              actions={actions}
-              inReview={false}
-            />
-          ))}
-        </ul>
-        {active.length > VISIBLE_ROWS && (
-          <button
-            type="button"
-            class="btn btn--ghost"
-            aria-expanded={showAll}
-            onClick={() => {
-              setShowAll(!showAll);
-            }}
-          >
-            {showAll ? it.bar.seeLess : it.bar.seeAll(active.length)}
-          </button>
-        )}
         {review.length > 0 && (
           <>
             <h3 class="section-title">{it.bar.inReview}</h3>
             <p class="hint">{it.bar.inReviewHelp}</p>
             <ul class="prices">
               {review.map((row) => (
-                <PriceItem key={rowId(row)} row={row} venue={venue} actions={actions} inReview />
+                <PriceItem
+                  key={rowId(row)}
+                  row={row}
+                  venue={venue}
+                  actions={actions}
+                  inReview
+                  tier="neutro"
+                />
               ))}
             </ul>
           </>

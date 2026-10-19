@@ -97,7 +97,7 @@ test.describe("with the position (Duomo)", () => {
 
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click(); // 1
     await expect(barChoices(page)).toHaveCount(5); // position already granted → nearest bars
-    await barChoices(page).first().click(); // 2
+    await barChoices(page).filter({ hasText: "The View Milano" }).click(); // 2 (the nearest one, Terrazza Duomo 21, has a price under review in the seed)
     await page
       .getByRole("dialog")
       .getByRole("button", { name: /^Spritz/ })
@@ -413,8 +413,8 @@ test.describe("MB-10 MB-11 MB-12 with the position (Duomo)", () => {
     };
 
     await tap(page.getByRole("button", { name: "Aggiungi prezzo" }).click());
-    await page.getByRole("searchbox", { name: "Cerca il bar per nome" }).fill("Prima classe");
-    await tap(barChoices(page).filter({ hasText: "Prima classe" }).first().click());
+    await page.getByRole("searchbox", { name: "Cerca il bar per nome" }).fill("Straf Bar");
+    await tap(barChoices(page).filter({ hasText: "Straf Bar" }).first().click());
     await tap(
       page
         .getByRole("dialog")
@@ -462,8 +462,8 @@ test.describe("MB-10 MB-11 MB-12 with the position (Duomo)", () => {
     await page.getByRole("button", { name: "Vicino a me" }).click();
     await waitForBars(page);
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
-    await page.getByRole("searchbox", { name: "Cerca il bar per nome" }).fill("Prima classe");
-    await barChoices(page).filter({ hasText: "Prima classe" }).first().click();
+    await page.getByRole("searchbox", { name: "Cerca il bar per nome" }).fill("Straf Bar");
+    await barChoices(page).filter({ hasText: "Straf Bar" }).first().click();
     await page
       .getByRole("dialog")
       .getByRole("button", { name: /^Spritz/ })

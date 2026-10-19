@@ -17,7 +17,7 @@ tmp="$(mktemp -d)"
 trap 'rm -r "$tmp"' EXIT
 
 osmium tags-filter --overwrite -o "$tmp/filtered.osm.pbf" "$pbf" \
-  nwr/amenity=cafe,bar,pub,biergarten,nightclub n/place=city,town
+  nwr/amenity=bar,pub,biergarten,nightclub n/place=city,town
 osmium export --overwrite -f geojsonseq --add-unique-id=type_id \
   -o "$tmp/features.geojsonseq" "$tmp/filtered.osm.pbf"
 node scripts/osm-import/build.mjs "$tmp/features.geojsonseq" "$out/$version" "$version" >&2

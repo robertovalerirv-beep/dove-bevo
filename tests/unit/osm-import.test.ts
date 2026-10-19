@@ -44,7 +44,8 @@ const features = [
   point("n2", 45.4643, 9.1902, { amenity: "pub", name: "The Pub" }),
   point("n3", 45.4644, 9.1903, { amenity: "bar" }), // no name: excluded
   point("n4", 45.4645, 9.1904, { amenity: "restaurant", name: "Trattoria" }), // not a bar
-  square("w99", { amenity: "cafe", name: "Caffè Area" }),
+  square("w99", { amenity: "bar", name: "Caffè Area" }),
+  point("n6", 45.4646, 9.1905, { amenity: "cafe", name: "Caffè Escluso" }), // cafes are not imported
   { ...square("r42", { amenity: "nightclub", name: "Club" }), id: "r42" },
   point("n5", 41.9028, 12.4964, { amenity: "biergarten", name: "Lontano" }), // > 15 km from places
 ];
@@ -65,7 +66,7 @@ describe("OSM import (M1-02)", () => {
       ["n1", "Bar Duomo", 1, 45.46421, 9.19001, "Piazza del Duomo 1", 0],
       ["n2", "The Pub", 2, 45.4643, 9.1902, "", 0],
       ["r42", "Club", 4, 45.465, 9.19, "", 0],
-      ["w99", "Caffè Area", 0, 45.465, 9.19, "", 0],
+      ["w99", "Caffè Area", 1, 45.465, 9.19, "", 0],
     ]);
   });
 
@@ -109,7 +110,7 @@ describe("osmium area ids", () => {
     const files = buildDataset(
       [
         milano,
-        { ...square("x", { amenity: "cafe", name: "Area da via" }), id: "a200" },
+        { ...square("x", { amenity: "bar", name: "Area da via" }), id: "a200" },
         { ...square("x", { amenity: "nightclub", name: "Area da relazione" }), id: "a401" },
       ],
       "20261010",

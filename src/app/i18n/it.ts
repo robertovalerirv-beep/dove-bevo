@@ -96,6 +96,8 @@ export const it = {
     toConfirm: "Da confermare",
     seeAll: (n: number) => `Vedi tutti (${String(n)})`,
     seeLess: "Mostra meno",
+    receiptFoot: "Segnati da chi ordina",
+    drinkCount: (n: number) => (n === 1 ? "1 drink" : `${String(n)} drink`),
   },
   install: {
     prompt: "Metti Dove bevo sulla schermata Home: si apre più in fretta.",
@@ -112,6 +114,7 @@ export const it = {
       25: "25 prezzi segnati. Ormai guidi tu la zona.",
       50: "50 prezzi segnati. La mappa è anche tua.",
     } as Record<number, string>,
+    count: (n: number) => (n === 1 ? "1 prezzo segnato." : `${String(n)} prezzi segnati.`),
   },
   add: {
     open: "Aggiungi prezzo",

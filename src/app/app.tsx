@@ -11,7 +11,7 @@ import { BarSheet, type BarActions } from "./components/BarSheet";
 import { PinPanel } from "./components/PinPanel";
 import { ProposeSheet, type Proposal } from "./components/ProposeSheet";
 import { ReportSheet, type Reason } from "./components/ReportSheet";
-import { Toast } from "./components/Toast";
+import { Toast, type StampInfo } from "./components/Toast";
 import { drinkIcon, Icon } from "./components/Icon";
 import { ListSheet } from "./components/ListSheet";
 import type { Cheap, SearchSheet as SearchSheetType } from "./components/SearchSheet";
@@ -120,7 +120,7 @@ export function App({ loadMap }: Props) {
   const [reporting, setReporting] = useState<{ venue: Venue; row: PriceRow | null } | null>(null);
   const [toast, setToast] = useState<{
     text: string;
-    stamp?: { day: string; lines: string[] };
+    stamp?: StampInfo;
     undo?: () => void;
     more?: { label: string; run: () => void };
   } | null>(null);
@@ -355,6 +355,13 @@ export function App({ loadMap }: Props) {
                 ? it.map.loadError
                 : it.map.coverage(zoneCoverage.withPrice, zoneCoverage.total));
 
+  // The coverage bar of the brand (Copertura): only beside the coverage sentence itself.
+  const showMeter = status === it.map.coverage(zoneCoverage.withPrice, zoneCoverage.total);
+  const meterWidth =
+    zoneCoverage.total && zoneCoverage.withPrice
+      ? Math.max(10, Math.round((60 * zoneCoverage.withPrice) / zoneCoverage.total))
+      : 0;
+
   /** Back to the map: a real "back" when we opened the bar, otherwise replace (MASTER: predictable back). */
   function closeBar() {
     if ((history.state as { inApp?: boolean } | null)?.inApp) {
@@ -415,7 +422,7 @@ export function App({ loadMap }: Props) {
     undo?: () => void,
     ms = 4000,
     more?: { label: string; run: () => void },
-    stamp?: { day: string; lines: string[] },
+    stamp?: StampInfo,
   ) {
     toastTimer.current?.clear();
     setToast({ text, undo, more, stamp });
@@ -566,7 +573,7 @@ export function App({ loadMap }: Props) {
     // The second price, once: the moment someone shows they will come back (M4-09).
     if (before === 1 && after === 2) setInvite(installMode());
     const step = stampReached(before, after);
-    if (step) lines.push(it.tessera.messages[step] ?? "");
+    const tessera = (step && it.tessera.messages[step]) || it.tessera.count(after);
     // Android only; Safari has no vibrate().
     (navigator as { vibrate?: (ms: number) => boolean }).vibrate?.(20);
     showToast(
@@ -586,7 +593,7 @@ export function App({ loadMap }: Props) {
           openAdd({ venue: draft.venue });
         },
       },
-      { day: formatStampDay(), lines },
+      { day: formatStampDay(), lines, count: after, tessera },
     );
     // Turnstile only now, at the first contribution (M2-02), during the 10 s window; after the
     // add sheet has closed, so its host lands in the layer that stays open.
@@ -796,7 +803,7 @@ export function App({ loadMap }: Props) {
         <div class="top__row">
           <h1 class="brand">
             <img class="brand__mark" src="/brand/simbolo.svg" alt="" width="28" height="34" />
-            {APP_NAME}
+            <span class="sr-only">{APP_NAME}</span>
           </h1>
           <button
             type="button"
@@ -809,6 +816,14 @@ export function App({ loadMap }: Props) {
           >
             <Icon name="search" />
             {it.search.open}
+          </button>
+          <button
+            type="button"
+            class="btn icon-btn"
+            aria-label={it.map.nearMe}
+            onClick={() => void nearMe()}
+          >
+            <Icon name="locate" />
           </button>
         </div>
         <div class="chips" role="group" aria-label={it.map.drinks}>
@@ -871,6 +886,12 @@ export function App({ loadMap }: Props) {
           )}
           {pinning && <div class="map__cross" aria-hidden="true" data-testid="pin-mark" />}
           <p class="map__status" data-testid="map-status" role="status">
+            {showMeter && (
+              <svg class="meter" viewBox="0 0 64 14" aria-hidden="true">
+                <rect class="meter__fill" x="2" y="2" height="10" rx="5" width={meterWidth} />
+                <rect class="meter__track" x="1" y="1" width="62" height="12" rx="6" />
+              </svg>
+            )}
             {status}
           </p>
           {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}
@@ -972,10 +993,6 @@ export function App({ loadMap }: Props) {
               )}
             </>
           )}
-          <button type="button" class="btn btn--secondary" onClick={() => void nearMe()}>
-            <Icon name="locate" />
-            {it.map.nearMe}
-          </button>
           <button
             type="button"
             class="btn btn--secondary"
@@ -1052,6 +1069,11 @@ export function App({ loadMap }: Props) {
           cell={route.cell}
           actions={barActions}
           focus={{ drink: selected.drink, size: selected.size }}
+          tier={(row) =>
+            row[3] === 0
+              ? tierOf(row[4], cellMedian(allVenues, route.cell, row[1], row[2]))
+              : "neutro"
+          }
           onVenue={(v) => {
             // A search already flew to the bar (zoom 17): the page must not move the map again.
             if (flewToBar.current) flewToBar.current = false;

@@ -4,7 +4,7 @@ import { it } from "../i18n/it";
 import type { Venue } from "../lib/data";
 import { distanceMeters, searchKey } from "../../shared/venue";
 import { formatDistance, formatPrice, formatSize } from "../lib/format";
-import { cellRange, seenPrices } from "../lib/tiers";
+import { cellRange, seenPrices, tierOf } from "../lib/tiers";
 import { drinkIcon, Icon } from "./Icon";
 import { Sheet } from "./Sheet";
 
@@ -201,7 +201,10 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
           save();
         }}
       >
-        <h3 class="section-title">{drinkName(drink)}</h3>
+        <h3 class="context-tag">
+          <Icon name={drinkIcon(drink)} />
+          {drinkName(drink)}
+        </h3>
         <p class="question">{it.add.question}</p>
         {sizes.length > 1 && (
           <fieldset class="segmented">
@@ -221,31 +224,6 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
               </label>
             ))}
           </fieldset>
-        )}
-        {range && (
-          <p class="hint zone-range">
-            {it.add.zoneRange(bare(range.min), bare(range.max), bare(range.median))}
-          </p>
-        )}
-        {seen.length > 0 && (
-          <>
-            <ul class="seen" aria-label={it.add.seenHere}>
-              {seen.map((cents) => (
-                <li key={cents}>
-                  <button
-                    type="button"
-                    class="chip"
-                    onClick={() => {
-                      onSave({ venue, drink, size, hh, cents });
-                    }}
-                  >
-                    {formatPrice(cents)}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <p class="hint">{it.add.seenHelp}</p>
-          </>
         )}
         <label class="price-input">
           <span class="sr-only">{it.add.price}</span>
@@ -269,6 +247,39 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
         <p id="price-error" class="error" role="alert">
           {error}
         </p>
+        {seen.length > 0 && (
+          <>
+            <p class="seen__label">{it.add.seenHelp}</p>
+            <ul class="seen" aria-label={it.add.seenHere}>
+              {seen.map((cents) => {
+                const tier = tierOf(cents, range?.median ?? null);
+                return (
+                  <li key={cents}>
+                    <button
+                      type="button"
+                      class={`chip seen__price seen__price--${tier}`}
+                      onClick={() => {
+                        onSave({ venue, drink, size, hh, cents });
+                      }}
+                    >
+                      {tier !== "neutro" && (
+                        <span aria-hidden="true">
+                          {tier === "affare" ? "↓" : tier === "giusto" ? "=" : "↑"}
+                        </span>
+                      )}
+                      {formatPrice(cents)}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+        {range && (
+          <p class="hint zone-range">
+            {it.add.zoneRange(bare(range.min), bare(range.max), bare(range.median))}
+          </p>
+        )}
         <button
           type="button"
           role="switch"

@@ -152,6 +152,34 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
 
   const addProsecco = async (price: string) => {
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+    try {
+      await expect(barChoices(page).nth(2)).toBeVisible({ timeout: 25_000 });
+    } catch (error) {
+      // CI-only hang (WebKit): print what the page looks like, then fail with the original error.
+      const state = await page.evaluate(async () => ({
+        visibility: document.visibilityState,
+        dialogs: document.querySelectorAll("dialog[open]").length,
+        animations: document.getAnimations().length,
+        frames: await Promise.race([
+          new Promise((resolve) =>
+            requestAnimationFrame(() => {
+              resolve("rAF ok");
+            }),
+          ),
+          new Promise((resolve) =>
+            setTimeout(() => {
+              resolve("rAF stuck");
+            }, 1500),
+          ),
+        ]),
+        list:
+          document.querySelector('[aria-label="Bar vicini"]')?.outerHTML.slice(0, 700) ?? "no list",
+        toast: document.querySelector('[role="status"]')?.textContent ?? "",
+        dialog: (document.querySelector("dialog[open]")?.textContent ?? "no dialog").slice(0, 200),
+      }));
+      console.log("M2-06 DIAG " + JSON.stringify(state));
+      throw error;
+    }
     await barChoices(page).nth(2).click();
     await page
       .getByRole("dialog")

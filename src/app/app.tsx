@@ -869,7 +869,10 @@ export function App({ loadMap }: Props) {
               onPointerDown={ensureMap}
               onClick={ensureMap}
             >
-              <img src="/map-italia.jpg" alt="" width={780} height={1308} />
+              <picture>
+                <source media="(prefers-color-scheme: dark)" srcset="/map-italia-dark.jpg" />
+                <img src="/map-italia-light.jpg" alt="" width={780} height={1276} />
+              </picture>
             </button>
           )}
           {zoomedIn && tiersActive && !pinning && (

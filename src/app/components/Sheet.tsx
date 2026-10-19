@@ -10,11 +10,13 @@ interface Props {
   onBack?: () => void;
   /** Changes when the content is swapped (a new step): focus moves to its `[autofocus]` element. */
   step?: string;
+  /** The content writes its own title (the bar receipt): the sheet only shows a grip and a close button. */
+  bare?: boolean;
   children: ComponentChildren;
 }
 
 /** Bottom sheet on a native modal <dialog>: focus trap, Esc and inert background for free. */
-export function Sheet({ title, onClose, onBack, step, children }: Props) {
+export function Sheet({ title, onClose, onBack, step, bare, children }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   // Layout effects run in order: open the dialog first, then move focus into it.
@@ -36,28 +38,40 @@ export function Sheet({ title, onClose, onBack, step, children }: Props) {
   return (
     <dialog
       ref={ref}
-      class="sheet"
-      aria-labelledby={titleId}
+      class={bare ? "sheet sheet--bare" : "sheet"}
+      aria-labelledby={bare ? undefined : titleId}
+      aria-label={bare ? title : undefined}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
       }}
     >
-      <div class="sheet__head">
-        {onBack && (
-          <button type="button" class="btn btn--ghost sheet__back" onClick={onBack}>
-            <Icon name="back" />
-            {it.add.back}
+      {bare && (
+        <div class="sheet__grip">
+          <span aria-hidden="true" />
+          <button type="button" class="btn btn--ghost sheet__x" onClick={onClose}>
+            <Icon name="close" />
+            <span class="sr-only">{it.common.close}</span>
           </button>
-        )}
-        <h2 id={titleId} class="sheet__title" tabIndex={-1}>
-          {title}
-        </h2>
-        <button type="button" class="btn btn--ghost" onClick={onClose}>
-          <Icon name="close" />
-          {it.common.close}
-        </button>
-      </div>
+        </div>
+      )}
+      {!bare && (
+        <div class="sheet__head">
+          {onBack && (
+            <button type="button" class="btn btn--ghost sheet__back" onClick={onBack}>
+              <Icon name="back" />
+              {it.add.back}
+            </button>
+          )}
+          <h2 id={titleId} class="sheet__title" tabIndex={-1}>
+            {title}
+          </h2>
+          <button type="button" class="btn btn--ghost" onClick={onClose}>
+            <Icon name="close" />
+            {it.common.close}
+          </button>
+        </div>
+      )}
       <div class="sheet__body">{children}</div>
     </dialog>
   );

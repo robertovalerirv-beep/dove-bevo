@@ -227,7 +227,9 @@ export class VenueMap {
     });
     this.map.touchZoomRotate.disableRotation();
     this.ready = new Promise((resolve) => {
-      this.map.on("load", () => {
+      // The style is enough: "load" also waits for the tiles, and on a slow network the map would
+      // stay on "Carico la mappa…" although it can already be moved and the cells can be read.
+      this.map.once("style.load", () => {
         this.addLayers();
         this.bindEvents();
         resolve();
@@ -394,12 +396,6 @@ export class VenueMap {
   private reportRendered() {
     const features = this.map.queryRenderedFeatures({ layers: ["venue-price"] });
     this.renderedListener?.([...new Set(features.map((f) => String(f.properties.label)))].sort());
-  }
-
-  onIdle(listener: () => void) {
-    // The map may already be idle: "idle" fired between "load" and this call, and would not come again.
-    if (this.map.loaded()) listener();
-    else this.map.once("idle", listener);
   }
 
   onVenueClick(listener: (key: string, cell: string) => void) {

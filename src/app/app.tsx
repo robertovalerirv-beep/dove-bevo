@@ -169,9 +169,6 @@ export function App({ loadMap }: Props) {
         if (!created || cancelled) return;
         created.onMove(setView);
         created.onRendered(setPricesShown);
-        created.onIdle(() => {
-          setReady(true);
-        });
         created.onVenueClick((key, cell) => {
           navigate(`/bar/${key}?c=${cell}`);
         });
@@ -179,6 +176,7 @@ export function App({ loadMap }: Props) {
         if (pendingMove.current) created.moveTo(...pendingMove.current);
         pendingMove.current = null;
         setMap(created);
+        setReady(true); // create() resolves once the style is in: the tiles may still be coming
       })
       .catch(() => {
         setMapFailed(true);

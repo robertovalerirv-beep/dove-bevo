@@ -285,3 +285,14 @@ test("M3-15 a denied position is told also when the map is already zoomed in", a
     page.getByRole("dialog", { name: "Cerca" }).getByText(/Per usare la posizione/),
   ).toBeVisible({ timeout: 15_000 });
 });
+
+test('slow tiles do not keep the map on "Carico la mappa…"', async ({ page }) => {
+  await page.route("https://tiles.openfreemap.org/**/*.pbf", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 20_000));
+    await route.continue();
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 10_000 });
+  await expect(mapStatus(page)).not.toHaveText("Carico la mappa…");
+});

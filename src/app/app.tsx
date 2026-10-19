@@ -105,6 +105,9 @@ interface Props {
 export function App({ loadMap }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<VenueMap | null>(null);
+  // The map as soon as it exists: handlers of a render that is a moment old still see `map` as null,
+  // and a move asked in that window would be stored for a creation that already happened.
+  const mapRef = useRef<VenueMap | null>(null);
   // A move asked before the map is ready (fast tap, slow network) is applied when it is.
   const [initialAt] = useState(parseAt);
   const pendingMove = useRef<[number, number, number] | null>(initialAt);
@@ -173,6 +176,7 @@ export function App({ loadMap }: Props) {
           navigate(`/bar/${key}?c=${cell}`);
         });
         setView(created.view());
+        mapRef.current = created;
         if (pendingMove.current) created.moveTo(...pendingMove.current);
         pendingMove.current = null;
         setMap(created);
@@ -763,7 +767,8 @@ export function App({ loadMap }: Props) {
   }
 
   function moveTo(lat: number, lon: number, zoom: number) {
-    if (map) map.moveTo(lat, lon, zoom);
+    const current = mapRef.current;
+    if (current) current.moveTo(lat, lon, zoom);
     else {
       pendingMove.current = [lat, lon, zoom];
       ensureMap();

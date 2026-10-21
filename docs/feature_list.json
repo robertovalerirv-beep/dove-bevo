@@ -585,28 +585,28 @@
     "milestone": "MC",
     "descrizione": "Menu «Scegli cosa bere» a caselle multiple",
     "verifica": "e2e Chromium e WebKit 390×844: nell'intestazione un solo pulsante (nessuna riga di chip da scorrere) con l'elenco chiuso all'inizio; si apre e si chiude con tocco, tastiera, Esc (il fuoco torna al pulsante) e tocco fuori; nove voci nell'ordine della tabella 6, la stessa lista della griglia di \"Aggiungi prezzo\"; l'ultima casella spuntata non si toglie; target ≥ 48 px, nessuna misura (ml) nei nomi, axe senza violazioni nei due temi",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MC-02",
     "milestone": "MC",
     "descrizione": "Con più drink il segnaposto mostra il prezzo più basso",
     "verifica": "unit + e2e: `bestPrice` sceglie il prezzo più basso tra i drink scelti (parità: il più recente), ignora quarantena e fascia HH se esiste il normale; con più drink spuntati i bar contati sono quelli con almeno uno dei drink (un bar una volta sola), pin, «Elenco» e «I più economici qui» mostrano il minimo con il nome del drink, il colore (D-12) è sulla mediana di quel drink; nessuna richiesta di rete in più",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MC-03",
     "milestone": "MC",
     "descrizione": "Catalogo senza formati",
     "verifica": "unit/worker/sec: `CATALOG` ha i nove drink della tabella 6 e nessun formato; `POST /api/prices`, `/confirm`, `/reports` e l'admin rifiutano `size_ml` e i drink tolti con 400; `src/` non contiene `size_ml`, `formatSize` né `findSize` (test); la migrazione 0006, su un D1 con prezzi a più formati, tiene i drink validi, porta la birra a 400 ml sull'unica chiave, archivia in `archive_sizes_*` le righe dei drink tolti e delle birre 0,2 e 0,5 l, conserva le segnalazioni sul bar; formato compatto 9.2 senza `size_ml`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MC-04",
     "milestone": "MC",
     "descrizione": "Nomi e icone dei nuovi drink",
     "verifica": "unit/e2e: i nomi di `it.ts` sono quelli della tabella 6; ogni codice ha la sua icona (MB-05); la scheda bar, l'elenco, l'admin e le pagine per i motori di ricerca non scrivono più alcun formato",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-01",

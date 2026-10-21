@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect } from "@playwright/test";
 import { test } from "./fixtures";
-import { goToMilano, mapRegion, mapStatus, atHour, THEME_HOURS } from "./helpers";
+import { goToMilano, mapRegion, mapStatus, atHour, THEME_HOURS, chooseDrinks } from "./helpers";
 
 // F2 of the brand package: MB-06 (styles per theme), MB-07 (cork), MB-13 (empty zone), MB-14.
 
@@ -14,7 +14,7 @@ test("MB-13 a zone without prices invites the first one on the map; the bar keep
   await expect(buttons).toHaveText(["Aggiungi prezzo", "Aggiungi locale mancante"]);
   const barBefore = await nav.boundingBox();
   await goToMilano(page);
-  await page.getByRole("group", { name: "Drink" }).getByRole("button", { name: "Negroni" }).click();
+  await chooseDrinks(page, "Negroni");
   // The invitation is on the map, not in the bar; the bar is exactly what it was.
   await expect(mapRegion(page)).toContainText(
     "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
@@ -40,10 +40,7 @@ for (const scheme of ["light", "dark"] as const) {
     await atHour(page, THEME_HOURS[scheme]);
     await page.goto("/");
     await goToMilano(page);
-    await page
-      .getByRole("group", { name: "Drink" })
-      .getByRole("button", { name: "Negroni" })
-      .click();
+    await chooseDrinks(page, "Negroni");
     await expect(page.locator(".map__note")).toBeVisible();
     const list = page.getByRole("button", { name: "Elenco" });
     await expect(list).toHaveCount(1);
@@ -167,9 +164,8 @@ test("MB-07 the interactions on the pins never freeze the page (INP measured)", 
   await page.evaluate(() => {
     (window as unknown as { slowest: number }).slowest = 0;
   });
-  const chips = page.getByRole("group", { name: "Drink" });
-  for (const name of ["Calice di vino", "Spritz", "Birra alla spina 0,4 l", "Calice di vino"])
-    await chips.getByRole("button", { name }).click();
+  for (const name of ["Calice di vino", "Spritz", "Birra media", "Calice di vino"] as const)
+    await chooseDrinks(page, name);
   await page.getByRole("button", { name: "Elenco" }).click();
   await page.getByRole("button", { name: "Chiudi" }).click();
   const pins = await page.locator("[data-prices-shown]").getAttribute("data-prices-shown");

@@ -52,3 +52,43 @@ export async function atHour(page: Page, hour: number, minute = 0) {
 }
 
 export const THEME_HOURS = { light: 12, dark: 22 } as const;
+
+/** The nine drinks of «Scegli cosa bere», in the order of the list. */
+export const DRINK_NAMES = [
+  "Birra media",
+  "Spritz",
+  "Negroni",
+  "Sbagliato",
+  "Gin tonic",
+  "Gin lemon",
+  "Calice di vino",
+  "Analcolico",
+  "Acqua",
+] as const;
+
+export const drinkMenuButton = (page: Page) =>
+  page.getByRole("button", { name: /^Scegli cosa bere/ });
+export const drinkList = (page: Page) => page.getByRole("group", { name: "Drink" });
+
+/** Opens the list of drinks if it is closed. */
+export async function openDrinkMenu(page: Page) {
+  const button = drinkMenuButton(page);
+  if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  await expect(drinkList(page)).toBeVisible();
+}
+
+/** Chooses exactly these drinks on the map (the first one is kept checked while the others change) and closes the list. */
+export async function chooseDrinks(page: Page, ...names: (typeof DRINK_NAMES)[number][]) {
+  await openDrinkMenu(page);
+  const list = drinkList(page);
+  const toggle = async (name: string, wanted: boolean) => {
+    const box = list.getByRole("checkbox", { name });
+    if ((await box.isChecked()) !== wanted) await list.locator("label", { hasText: name }).click();
+    if (wanted) await expect(box).toBeChecked();
+    else await expect(box).not.toBeChecked();
+  };
+  for (const name of names) await toggle(name, true); // the wanted first: the last check cannot go
+  for (const name of DRINK_NAMES) if (!names.includes(name)) await toggle(name, false);
+  await drinkMenuButton(page).click();
+  await expect(list).toBeHidden();
+}

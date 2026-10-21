@@ -139,8 +139,7 @@ seo.get("/api/ai/cerca", readLimit, async (c) => {
         prezzi: [],
       };
       found.prezzi.push({
-        bevanda: drinkLabel(r.drink, r.size_ml, 0),
-        dimensione_ml: r.size_ml,
+        bevanda: drinkLabel(r.drink, 0),
         happy_hour: r.hh === 1,
         prezzo_eur: (r.price_cents / 100).toFixed(2),
         aggiornato: r.observed_on,

@@ -4,6 +4,31 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-21 · Sessione 13 · Menu «Scegli cosa bere», nove drink senza formati (branch `m7-menu-drink`, sopra `fix/map-stability-undo-5s`) · SPEC 1.6, ADR 0028
+
+**Richiesta di Roberto (feedback degli amici):** al posto della riga di chip un solo pulsante «Scegli cosa bere» con menu a caselle multiple; lista nuova (Birra media, Spritz, Negroni, Sbagliato, Gin tonic, Gin lemon, Calice di vino, Analcolico, Acqua) che sostituisce la vecchia anche in «Aggiungi prezzo»; con più drink il pin mostra il prezzo più basso; la colonna dei ml tolta da qualsiasi parte del codice. Il terzo punto (due tasti in zona vuota) era già nella PR #40 (ADR 0027): nulla da fare.
+
+**Fatto**
+- `src/shared/catalog.ts`: `{ code, min, max }`, niente formati. `PriceRow` senza `size_ml` (indici dopo `drink` scalati di uno), API, `db.ts`, SEO, admin, client e test senza ml. `tests/unit/no-sizes.test.ts` fallisce se tornano.
+- `migrations/0006_no_sizes.sql`: `prices_current` con chiave `(venue_key, drink, hh)`, colonna tolta da `price_obs` e `reports`; le righe dei drink tolti e delle birre 0,2 e 0,5 l vanno in `archive_sizes_*` (nessuna cancellazione).
+- `DrinkMenu` (caselle con spunta come forma, ≥ 48 px, Esc, tocco fuori, ultima casella non removibile); `bestPrice` per pin, copertura, «Elenco», «I più economici qui»; tre icone nuove.
+- SPEC 1.6, MC-01…MC-04 e voci riscritte in `feature_list.json`, guardia sul tag `spec-approved-7`, ADR 0028.
+
+**Prove**
+- `npm run lint`, `format:check`, `typecheck` verdi. `npm test`: 41 file, 391 test verdi (tra cui `migration-no-sizes`, che ha trovato la perdita delle segnalazioni sul bar nella prima versione della migrazione).
+- E2E completo (`--workers=2`, Chromium e WebKit): 212 verdi, 2 rossi (MB-10/MB-11, «Copertura +1»: l'avevo cambiata io, ripristinata la regola di prima); poi `contribute` 34/34 senza dipendenze e `drink-menu` 14/14.
+- Un e2e di ricerca (`brand-search` M4-12) è caduto una volta su WebKit in un secondo giro con altri file in parallelo, verde nel giro completo.
+- Screenshot 390×844 in `docs/screenshots/mc/` (menu aperto, Fuori orario con due drink): controllati.
+
+**Revisione** (`spec-reviewer`): codice, migrazione e privacy senza problemi. Corretti: `/confirm` e `/reports` ora rifiutano con 400 `size_ml` e i drink tolti (prima 404, test nuovo per MC-03); SPEC 7.1, `docs/data-quality.md` e `SECURITY.md` ancora parlavano di formato/chip; l'elenco dei drink restava aperto uscendo con Tab (ora si chiude, test). Non cambiato: «Copertura +1» dopo il salvataggio resta com'era (la voce MB-11 lo prevede). Rischio noto: un telefono con la vecchia versione già aperta (shell nella cache del service worker) vede la mappa senza prezzi finché non si aggiorna.
+
+**Da fare per Roberto (nell'ordine)**
+1. Pubblicare il tag `spec-approved-7` sul commit `chore(spec)` **prima** del push del ramo; unire dopo la PR #40.
+2. Guardare le icone di Sbagliato, Gin lemon e Acqua e i limiti (Acqua 0,50–6 €, Sbagliato e Gin lemon 4–20 €).
+3. La migrazione 0006 gira in staging dalla CI; in produzione la lancia lui. Le tabelle `archive_sizes_*` si possono cancellare quando vuole.
+
+---
+
 ## 2026-10-21 · Sessione 12 · Mappa stabile, barra a due tasti, Annulla da 5 s (branch `fix/map-stability-undo-5s`, da `main` 10c91eb) · SPEC 1.5, ADR 0027
 
 **Richiesta di Roberto:** la mappa «salta tra due livelli di zoom» (visto da un tester e da lui); Annulla da 10 a 5 secondi; barra in basso con soli «Aggiungi prezzo» e «Aggiungi locale», «Manda la mappa» eliminato col suo codice, «Elenco» come icona discreta sulla mappa; «mai più deploy rossi».

@@ -113,7 +113,7 @@ Sitemap: ${origin}/sitemap.xml
 > Città con più dati: Milano, Roma, Torino, Bologna, Firenze, Napoli.
 
 ## Cosa puoi trovare
-- Prezzi aggiornati di birra alla spina, birra in bottiglia, spritz, gin tonic, negroni, vino e prosecco
+- Prezzi aggiornati di birra media, spritz, negroni, sbagliato, gin tonic, gin lemon, vino, analcolico e acqua
 - La differenza tra il prezzo pieno e quello dell'happy hour
 - La posizione dei bar su una mappa interattiva
 - La copertura per città, con il numero di bar che hanno un prezzo

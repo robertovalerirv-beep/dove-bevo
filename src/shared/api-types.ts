@@ -16,8 +16,8 @@ export interface CellFile {
 /** `places.json` row: [cityId, name, lat, lon, nBars], sorted by nBars descending. */
 export type Place = [number, string, number, number, number];
 
-/** [key, drink, size_ml, hh, price_cents, observed_on, confirmations, q (quarantined)] */
-export type PriceRow = [string, string, number, 0 | 1, number, string, number, 0 | 1];
+/** [key, drink, hh, price_cents, observed_on, confirmations, q (quarantined)] */
+export type PriceRow = [string, string, 0 | 1, number, string, number, 0 | 1];
 /** Approved user venue: [key "u<id>", name, kind, lat, lon] */
 export type UserVenue = [string, string, VenueKind, number, number];
 /** Pending user venue: [key "u<id>", name, kind, lat, lon, independent proposals] */
@@ -40,10 +40,10 @@ export interface ApprovedVenues {
   v: UserVenue[];
 }
 
-/** History row: [drink, size_ml, hh, price_cents, observed_on (date only)] */
-export type HistoryRow = [string, number, 0 | 1, number, string];
+/** History row: [drink, hh, price_cents, observed_on (date only)] */
+export type HistoryRow = [string, 0 | 1, number, string];
 
-/** `GET /api/venues/:key/prices` (D-26): current prices and ≤ 10 observations per drink and size. */
+/** `GET /api/venues/:key/prices` (D-26): current prices and ≤ 10 observations per drink. */
 export interface VenuePrices {
   p: PriceRow[];
   h: HistoryRow[];

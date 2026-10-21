@@ -6,12 +6,12 @@ Valori in `src/worker/config.ts` e `src/shared/catalog.ts`. Test: `tests/worker/
 
 | Regola | Comportamento | Codice / test |
 |---|---|---|
-| Catalogo | Drink o formato fuori catalogo → 400 per tutta la richiesta | M2-08 |
-| Limiti di prezzo | Fuori dai limiti inclusivi del formato (SPEC 6) → voce `rejected`, codice `out_of_range`; il client mostra "Ci sembra un prezzo insolito per …: controlla le cifre" | M2-08 |
+| Catalogo | Drink fuori catalogo (o un campo `size_ml`, che non esiste più) → 400 per tutta la richiesta | M2-08 |
+| Limiti di prezzo | Fuori dai limiti inclusivi del drink (SPEC 6) → voce `rejected`, codice `out_of_range`; il client mostra "Ci sembra un prezzo insolito per …: controlla le cifre" | M2-08 |
 | Bar | Bar OSM verificato sul file della cella dal binding `ASSETS`; bar `u<id>` su `venues_user`. Il client non è fonte di verità: cella e città vengono dal server | M2-08 |
-| Quarantena | Con almeno 5 prezzi `active` dello stesso drink, formato e fascia nella cella, un prezzo oltre ±50 % dalla mediana → `quarantined`: fuori dalla mappa, nella sezione "In verifica" della scheda | M2-09 |
+| Quarantena | Con almeno 5 prezzi `active` dello stesso drink e fascia nella cella, un prezzo oltre ±50 % dalla mediana → `quarantined`: fuori dalla mappa, nella sezione "In verifica" della scheda | M2-09 |
 | Uscita dalla quarantena | Una conferma (o lo stesso prezzo) da una sessione **e** un IP diversi da chi l'ha inserito → `active` (D-10) | M2-09 |
-| Stesso prezzo | Stesso bar, drink, formato, fascia e prezzo del prezzo corrente → conferma (+1, `observed_on` aggiornato a oggi), nessuna nuova riga in `prices_current` né in `price_obs`. Se la sessione o l'IP ha già confermato, o ne è l'autore, la risposta è `confirmed` con codice `already` e il contatore non cambia | M2-10 |
+| Stesso prezzo | Stesso bar, drink, fascia e prezzo del prezzo corrente → conferma (+1, `observed_on` aggiornato a oggi), nessuna nuova riga in `prices_current` né in `price_obs`. Se la sessione o l'IP ha già confermato, o ne è l'autore, la risposta è `confirmed` con codice `already` e il contatore non cambia | M2-10 |
 | Prezzo diverso | Sostituisce il corrente con `confirmations = 0`; la vecchia osservazione resta in `price_obs` (storico, D-26) | M2-10 |
 | Segnalazioni | Motivi chiusi (D-07). Una per sessione e per IP per bersaglio. Più di 3 segnalazioni distinte **dall'ultimo cambio di prezzo** → `review`: fuori da mappa, scheda e storico finché Roberto non decide | M2-13 |
 | Prezzi in revisione | Un prezzo `review` o `removed` non si sovrascrive né si conferma dal pubblico (`rejected`, codice `under_review`; conferma → 404) | M2-13 |

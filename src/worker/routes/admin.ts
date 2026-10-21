@@ -42,7 +42,6 @@ const Unhide = z.strictObject({ venue: OsmKey });
 const PriceStatus = z.strictObject({
   venue: VenueKey,
   drink: z.string().refine((d) => CATALOG.some((e) => e.code === d)),
-  size_ml: z.number().int().min(0).max(2000),
   hh: z.union([z.literal(0), z.literal(1)]),
   status: z.enum(["active", "removed"]),
 });
@@ -139,7 +138,7 @@ admin.post("/reports/dismiss", async (c) => {
 // Decide on a price in review or in quarantine (SPEC 11).
 admin.post("/prices/status", async (c) => {
   const body = await readJson(c, PriceStatus);
-  const k = { venue: body.venue, drink: body.drink, size: body.size_ml, hh: body.hh };
+  const k = { venue: body.venue, drink: body.drink, hh: body.hh };
   const cell = await setPriceStatus(c.env.DB, k, body.status);
   if (!cell) throw new ApiError("not_found");
   await forgetCell(c.req.url, cell);

@@ -75,7 +75,7 @@ describe("POST /api/venues (M3-11, M3-12)", () => {
         venue: key,
         cell: "u0nd9",
         source: "manual",
-        items: [{ drink: "spritz", size_ml: 0, hh: 0, price_cents: 700 }],
+        items: [{ drink: "spritz", hh: 0, price_cents: 700 }],
       }),
     });
     expect(price.status).toBe(200);
@@ -100,14 +100,14 @@ describe("POST /api/venues (M3-11, M3-12)", () => {
     const cookie = await newSession();
     const { key } = await (await propose(bar("Bar Invisibile"), cookie)).json<{ key: string }>();
     await env.DB.prepare(
-      `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-       VALUES (?, 'spritz', 0, 0, 'u0nd9', NULL, 700, '2026-10-10', 0, 'active', 'manual')`,
+      `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+       VALUES (?, 'spritz', 0, 'u0nd9', NULL, 700, '2026-10-10', 0, 'active', 'manual')`,
     )
       .bind(key)
       .run();
     await env.DB.prepare(
-      `INSERT INTO price_obs (venue_key, drink, size_ml, hh, price_cents, observed_on, source, status)
-       VALUES (?, 'spritz', 0, 0, 700, '2026-10-10', 'manual', 'active')`,
+      `INSERT INTO price_obs (venue_key, drink, hh, price_cents, observed_on, source, status)
+       VALUES (?, 'spritz', 0, 700, '2026-10-10', 'manual', 'active')`,
     )
       .bind(key)
       .run();
@@ -115,11 +115,11 @@ describe("POST /api/venues (M3-11, M3-12)", () => {
       headers: { "CF-Connecting-IP": nextIp() },
     });
     expect(await page.json()).toEqual({ p: [], h: [] });
-    expect(await activePrices(env.DB, "u0nd9", "spritz", 0, 0)).toEqual([]);
+    expect(await activePrices(env.DB, "u0nd9", "spritz", 0)).toEqual([]);
 
     const id = Number(key.slice(1));
     await env.DB.prepare("UPDATE venues_user SET status = 'approved' WHERE id = ?").bind(id).run();
-    expect(await activePrices(env.DB, "u0nd9", "spritz", 0, 0)).toEqual([700]);
+    expect(await activePrices(env.DB, "u0nd9", "spritz", 0)).toEqual([700]);
     const open = await exports.default.fetch(`${ORIGIN}/api/venues/${key}/prices`, {
       headers: { "CF-Connecting-IP": nextIp() },
     });

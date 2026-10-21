@@ -9,7 +9,7 @@ beforeAll(async () => {
   const rows = (cell: string, n: number, offset: number) =>
     Array.from({ length: n }, (_, i) =>
       env.DB.prepare(
-        "INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source) VALUES (?, ?, 0, 0, ?, 1, 700, '2026-10-10', 0, 'active', 'manual')",
+        "INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source) VALUES (?, ?, 0, ?, 1, 700, '2026-10-10', 0, 'active', 'manual')",
       ).bind(
         `n${String(offset + Math.floor(i / 3))}`,
         ["spritz", "negroni", "gin_tonic"][i % 3],
@@ -41,9 +41,9 @@ describe("D1 reads per cell request (M1-05)", () => {
 
   it("reads about two rows per returned price, never the other cells", async () => {
     const result = await env.DB.prepare(
-      `SELECT venue_key, drink, size_ml, hh, price_cents, observed_on, confirmations, status, source
+      `SELECT venue_key, drink, hh, price_cents, observed_on, confirmations, status, source
        FROM prices_current WHERE cell = ?1 AND status IN ('active', 'quarantined')
-       ORDER BY venue_key, drink, size_ml, hh`,
+       ORDER BY venue_key, drink, hh`,
     )
       .bind("u0nd9")
       .all();
@@ -57,12 +57,12 @@ describe("D1 writes per contribution (M1-05, SPEC 8 write path)", () => {
   it("measures the rows written by one price: history insert + current upsert", async () => {
     const [obs, current] = await env.DB.batch([
       env.DB.prepare(
-        "INSERT INTO price_obs (venue_key, drink, size_ml, hh, price_cents, observed_on, source, status) VALUES ('n1', 'spritz', 0, 0, 750, '2026-10-11', 'manual', 'active')",
+        "INSERT INTO price_obs (venue_key, drink, hh, price_cents, observed_on, source, status) VALUES ('n1', 'spritz', 0, 750, '2026-10-11', 'manual', 'active')",
       ),
       env.DB.prepare(
-        `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-         VALUES ('n1', 'spritz', 0, 0, 'u0nd9', 1, 750, '2026-10-11', 0, 'active', 'manual')
-         ON CONFLICT (venue_key, drink, size_ml, hh) DO UPDATE SET price_cents = excluded.price_cents,
+        `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+         VALUES ('n1', 'spritz', 0, 'u0nd9', 1, 750, '2026-10-11', 0, 'active', 'manual')
+         ON CONFLICT (venue_key, drink, hh) DO UPDATE SET price_cents = excluded.price_cents,
            observed_on = excluded.observed_on, confirmations = 0, status = excluded.status, source = excluded.source`,
       ),
     ]);

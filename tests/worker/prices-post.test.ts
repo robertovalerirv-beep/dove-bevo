@@ -34,7 +34,7 @@ const priceBody = (items: object[], venue = BAR, cell = "u0nd9") => ({
   source: "manual",
   items,
 });
-const spritz = (price_cents: number) => ({ drink: "spritz", size_ml: 0, hh: 0, price_cents });
+const spritz = (price_cents: number) => ({ drink: "spritz", hh: 0, price_cents });
 
 async function current(venue = BAR, drink = "spritz") {
   return env.DB.prepare("SELECT * FROM prices_current WHERE venue_key = ? AND drink = ?")
@@ -90,10 +90,13 @@ describe("POST /api/prices validation (M2-08)", () => {
     expect((await post("/api/prices", priceBody([spritz(750)], BAR, "zzzzz"), cookie)).status).toBe(
       400,
     );
-    const whisky = { drink: "whisky", size_ml: 0, hh: 0, price_cents: 800 };
+    const whisky = { drink: "whisky", hh: 0, price_cents: 800 };
     expect((await post("/api/prices", priceBody([whisky]), cookie)).status).toBe(400);
-    const pint = { drink: "beer_draft", size_ml: 568, hh: 0, price_cents: 600 };
-    expect((await post("/api/prices", priceBody([pint]), cookie)).status).toBe(400);
+    // The sizes are gone (SPEC 1.6): a size, and a drink that left the catalog, are refused.
+    const sized = { ...spritz(750), size_ml: 0 };
+    expect((await post("/api/prices", priceBody([sized]), cookie)).status).toBe(400);
+    const prosecco = { drink: "prosecco", hh: 0, price_cents: 600 };
+    expect((await post("/api/prices", priceBody([prosecco]), cookie)).status).toBe(400);
   });
 
   it("only manual prices are accepted (no AI, ADR 0018)", async () => {
@@ -120,9 +123,9 @@ describe("anti-fraud quarantine (M2-09, D-10)", () => {
     const cell: { p: unknown[][] } = await (
       await exports.default.fetch(`${ORIGIN}/api/prices/u0nd9`)
     ).json();
-    expect(cell.p.find((p) => p[0] === BAR)?.[7]).toBe(1); // q = 1: off the map, in "In verifica"
+    expect(cell.p.find((p) => p[0] === BAR)?.[6]).toBe(1); // q = 1: off the map, in "In verifica"
 
-    const confirm = { venue: BAR, drink: "spritz", size_ml: 0, hh: 0 };
+    const confirm = { venue: BAR, drink: "spritz", hh: 0 };
     await post("/api/prices/confirm", confirm, author); // the author does not count
     expect((await current())?.status).toBe("quarantined");
     const other = await post("/api/prices/confirm", confirm, await newSession(), "192.0.2.50");
@@ -159,7 +162,7 @@ describe("Confermo (M2-11)", () => {
   it("one tap increments, a second tap of the same session does not", async () => {
     await post("/api/prices", priceBody([spritz(750)]), await newSession());
     const me = await newSession();
-    const confirm = { venue: BAR, drink: "spritz", size_ml: 0, hh: 0 };
+    const confirm = { venue: BAR, drink: "spritz", hh: 0 };
     expect(
       await (await post("/api/prices/confirm", confirm, me, "192.0.2.20")).json(),
     ).toMatchObject({
@@ -178,14 +181,28 @@ describe("Confermo (M2-11)", () => {
   });
 });
 
+describe("no sizes, no dropped drinks on the other routes (MC-03)", () => {
+  it("confirm and report refuse size_ml and a drink that left the catalog with 400", async () => {
+    const me = await newSession();
+    const price = { drink: "spritz", hh: 0 };
+    let n = 0;
+    for (const extra of [{ size_ml: 0 }, { drink: "prosecco" }, { drink: "beer_bottle" }]) {
+      const ip = `192.0.2.${String(100 + n++)}`;
+      const confirm = { venue: BAR, ...price, ...extra };
+      expect((await post("/api/prices/confirm", confirm, me, ip)).status).toBe(400);
+      const report = { cell: "u0nd9", reason: "wrong_price", ...confirm };
+      expect((await post("/api/reports", report, me, ip)).status).toBe(400);
+    }
+  });
+});
+
 describe("quotas (M2-14)", () => {
   it("the 31st manual price of the day → 429 with Retry-After, per session and per IP", async () => {
     const cookie = await newSession();
-    const drinks = ["spritz", "gin_tonic", "negroni", "alcohol_free", "beer_bottle", "soft_drink"];
+    const drinks = ["spritz", "gin_tonic", "negroni", "alcohol_free", "water", "sbagliato"];
     const items = (n: number) =>
       Array.from({ length: n }, (_, i) => ({
         drink: drinks[i % 6],
-        size_ml: [0, 0, 0, 0, 330, 330][i % 6],
         hh: i % 2,
         price_cents: 500,
       }));
@@ -214,7 +231,7 @@ describe("no personal data stored (M2-16)", () => {
     await post("/api/prices", priceBody([spritz(750)]), cookie, ip);
     await post(
       "/api/prices/confirm",
-      { venue: BAR, drink: "spritz", size_ml: 0, hh: 0 },
+      { venue: BAR, drink: "spritz", hh: 0 },
       await newSession(),
       ip,
     );
@@ -244,7 +261,7 @@ describe("moderation and author checks (security review)", () => {
     }
     const ip = "203.0.113.99";
     await post("/api/prices", priceBody([spritz(900)]), await newSession(), ip);
-    const confirm = { venue: BAR, drink: "spritz", size_ml: 0, hh: 0 };
+    const confirm = { venue: BAR, drink: "spritz", hh: 0 };
     expect(
       await (await post("/api/prices/confirm", confirm, await newSession(), ip)).json(),
     ).toMatchObject({
@@ -269,7 +286,7 @@ describe("moderation and author checks (security review)", () => {
 describe("confirmations per IP (new session after a reload)", () => {
   it("a second confirmation from the same IP with a new session does not count", async () => {
     await post("/api/prices", priceBody([spritz(750)]), await newSession(), "192.0.2.100");
-    const confirm = { venue: BAR, drink: "spritz", size_ml: 0, hh: 0 };
+    const confirm = { venue: BAR, drink: "spritz", hh: 0 };
     const ip = "192.0.2.101";
     expect(
       await (await post("/api/prices/confirm", confirm, await newSession(), ip)).json(),

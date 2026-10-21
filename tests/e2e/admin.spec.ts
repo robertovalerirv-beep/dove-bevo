@@ -36,7 +36,6 @@ const OVERVIEW = {
     {
       venue_key: "n2420779240",
       drink: "spritz",
-      size_ml: 0,
       hh: 0,
       cell: "u0nd9",
       price_cents: 2000,
@@ -114,7 +113,7 @@ test("admin: find and hide a non-bar, add a missing bar, decide reviews", async 
   await price.getByRole("button", { name: "Rimuovi" }).click();
   await expect
     .poll(() => posts.find((p) => p.path === "/api/admin/prices/status")?.body)
-    .toEqual({ venue: "n2420779240", drink: "spritz", size_ml: 0, hh: 0, status: "removed" });
+    .toEqual({ venue: "n2420779240", drink: "spritz", hh: 0, status: "removed" });
   await page.locator("#new-bars").getByRole("button", { name: "Approva" }).click();
   await expect.poll(() => posts.map((p) => p.path)).toContain("/api/admin/venues/3/status");
   await page

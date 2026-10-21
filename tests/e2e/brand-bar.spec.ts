@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect } from "@playwright/test";
 import { test } from "./fixtures";
-import { goToMilano } from "./helpers";
+import { goToMilano, chooseDrinks } from "./helpers";
 
 // MB-09: the bar page is a receipt. Read-only: the seeded prices are only looked at.
 const CAMPARINO = "/bar/n13001337602?c=u0nd9";
@@ -34,24 +34,15 @@ test("MB-09 at most five rows, then «Vedi tutti»", async ({ page }) => {
     "gin_tonic",
     "negroni",
     "wine_glass",
-    "prosecco",
+    "gin_lemon",
     "alcohol_free",
-    "soft_drink",
+    "water",
   ];
   await page.route("**/api/venues/n13001337602/prices", (route) =>
     route.fulfill({
       contentType: "application/json",
       json: {
-        p: drinks.map((d, i) => [
-          "n13001337602",
-          d,
-          d === "soft_drink" ? 330 : d === "wine_glass" || d === "prosecco" ? 150 : 0,
-          0,
-          500 + i * 50,
-          day,
-          i,
-          0,
-        ]),
+        p: drinks.map((d, i) => ["n13001337602", d, 0, 500 + i * 50, day, i, 0]),
         h: [],
       },
     }),
@@ -71,7 +62,7 @@ test("MB-09 at most five rows, then «Vedi tutti»", async ({ page }) => {
 test("MB-09 the drink chosen on the map comes first", async ({ page }) => {
   await page.goto("/");
   await goToMilano(page);
-  await page.getByRole("group", { name: "Drink" }).getByRole("button", { name: "Spritz" }).click();
+  await chooseDrinks(page, "Spritz");
   await page.getByRole("button", { name: "Elenco" }).click();
   await page
     .getByRole("dialog", { name: "Bar nella zona" })

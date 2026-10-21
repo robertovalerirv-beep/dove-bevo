@@ -2,7 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { PriceRow, VenuePrices } from "../../shared/api-types";
 import { it } from "../i18n/it";
 import { loadCell, loadVenuePrices, type Venue } from "../lib/data";
-import { formatDate, formatPrice, formatSize, todayRome } from "../lib/format";
+import { formatDate, formatPrice, todayRome } from "../lib/format";
 import { isStale, type Tier } from "../lib/tiers";
 import { directionsUrl } from "../lib/geo";
 import { drinkIcon, Icon } from "./Icon";
@@ -20,8 +20,8 @@ interface Props {
   venueKey: string;
   cell: string;
   actions: BarActions;
-  /** The drink chosen on the map comes first on the receipt. */
-  focus: { drink: string; size: number };
+  /** The drinks chosen on the map come first on the receipt. */
+  focus: readonly string[];
   /** Tier of a price against its cell median (D-12), from the prices already loaded. */
   tier: (row: PriceRow) => Tier;
   onVenue: (venue: Venue) => void;
@@ -33,7 +33,7 @@ const VISIBLE_ROWS = 5;
 
 const GLYPH = { affare: "↓", giusto: "=", salato: "↑" } as const;
 
-const rowId = (row: PriceRow) => `${row[1]}|${String(row[2])}|${String(row[3])}`;
+const rowId = (row: PriceRow) => `${row[1]}|${String(row[2])}`;
 
 // Prices this tab has already confirmed: the button stays "Confermato" across reloads of the
 // visit. Kept only in this tab (sessionStorage), never sent anywhere.
@@ -68,16 +68,14 @@ function PriceItem({
   inReview: boolean;
   tier: Tier;
 }) {
-  const [, drink, size, hh, cents, day, confirmations] = row;
+  const [, drink, hh, cents, day, confirmations] = row;
   const id = `${row[0]}|${rowId(row)}|${String(cents)}`;
   const [count, setCount] = useState(confirmations);
   const [state, setState] = useState<"idle" | "busy" | "done" | "already" | "failed">(() => {
     const seen = confirmedHere();
     return seen.has(`${id}|1`) ? "done" : seen.has(`${id}|0`) ? "already" : "idle";
   });
-  const name = [it.drinks[drink] ?? drink, formatSize(size), hh ? it.bar.happyHour : ""]
-    .filter(Boolean)
-    .join(" ");
+  const name = [it.drinks[drink] ?? drink, hh ? it.bar.happyHour : ""].filter(Boolean).join(" ");
 
   async function confirm() {
     if (state === "busy" || state === "done" || state === "already") return;
@@ -202,12 +200,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
       </Sheet>
     );
   }
-  const isFocus = (p: PriceRow) => p[1] === focus.drink && p[2] === focus.size;
-  const active = [...(prices?.p.filter((p) => p[7] === 0) ?? [])].sort(
+  const isFocus = (p: PriceRow) => focus.includes(p[1]);
+  const active = [...(prices?.p.filter((p) => p[6] === 0) ?? [])].sort(
     (a, b) => Number(isFocus(b)) - Number(isFocus(a)),
   );
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
-  const review = prices?.p.filter((p) => p[7] === 1) ?? [];
+  const review = prices?.p.filter((p) => p[6] === 1) ?? [];
   return (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino">

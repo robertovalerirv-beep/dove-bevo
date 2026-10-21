@@ -9,6 +9,7 @@ import {
   mapStatus,
   waitForBars,
   zoomOf,
+  chooseDrinks,
 } from "./helpers";
 
 test("M1-06 opens on Italy with the attributions visible", async ({ page }, info) => {
@@ -70,25 +71,18 @@ test("M1-07 loads at most 12 cells from zoom 13 and nothing below", async ({ pag
   expect(priceRequests.length).toBe(before);
 });
 
-test("M1-09 the drink chips switch the prices shown", async ({ page }) => {
+test("M1-09 the drink menu switches the prices shown", async ({ page }) => {
   await page.goto("/");
   await goToMilano(page);
-  const chips = page.getByRole("group", { name: "Drink" });
-  await expect(chips.getByRole("button", { name: "Birra alla spina 0,4 l" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(page.getByTestId("drink-summary")).toHaveText("Birra media");
 
   await page.getByRole("button", { name: "Elenco" }).click();
   const list = page.getByRole("dialog", { name: "Bar nella zona" });
   await expect(list.getByRole("link", { name: /Bistrot Duomo/ })).toContainText("6,00 €");
   await list.getByRole("button", { name: "Chiudi" }).click();
 
-  await chips.getByRole("button", { name: "Spritz" }).click();
-  await expect(chips.getByRole("button", { name: "Spritz" })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await chooseDrinks(page, "Spritz");
+  await expect(page.getByTestId("drink-summary")).toHaveText("Spritz");
   await page.getByRole("button", { name: "Elenco" }).click();
   await expect(list.getByRole("link", { name: /Bistrot Duomo/ })).toContainText("7,50 €");
   await expect(list.getByRole("link", { name: /Terrazza Aperol/ })).toContainText("10,00 € HH");
@@ -266,7 +260,7 @@ test("prices are drawn right after a city search, not hidden in clusters", async
   await page.goto("/");
   await goToMilano(page);
   expect(await zoomOf(page)).toBeLessThan(14.5); // search lands at zoom 14
-  await page.getByRole("button", { name: "Spritz" }).click();
+  await chooseDrinks(page, "Spritz");
   await expect(mapRegion(page)).toHaveAttribute("data-prices-shown", /7,50 €/);
   await expect(mapRegion(page)).toHaveAttribute("data-prices-shown", /12,00 €/);
 });

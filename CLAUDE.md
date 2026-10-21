@@ -19,7 +19,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - Se sbagli due volte la stessa cosa: fermati e proponi `/clear` con un'istruzione migliore.
 
 ## Feature list
-**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-6`.
+**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-7`.
 
 ## Comandi (da M0)
 - `./init.sh` · `./init.sh --stop`

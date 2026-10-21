@@ -103,7 +103,7 @@ export function loadPlaces(): Promise<Place[]> {
 export const loadVenuePrices = (key: string) =>
   getJson<VenuePrices>(`/api/venues/${encodeURIComponent(key)}/prices`, { p: [], h: [] });
 
-export { shownPrice } from "../../shared/prices";
+export { bestPrice, shownPrice } from "../../shared/prices";
 
 /** Drops a cell from the visit cache so its prices are read again after a contribution. */
 export function invalidateCell(cell: string): void {

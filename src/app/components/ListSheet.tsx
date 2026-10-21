@@ -1,24 +1,24 @@
 import { it } from "../i18n/it";
-import { shownPrice, type Venue } from "../lib/data";
+import { bestPrice, type Venue } from "../lib/data";
 import { formatDistance, formatPrice } from "../lib/format";
 import { distanceMeters } from "../../shared/venue";
 import { Sheet } from "./Sheet";
 
 interface Props {
   venues: Venue[];
-  drink: string;
-  size: number;
+  /** The drinks chosen on the map: each bar shows the cheapest of them. */
+  drinks: readonly string[];
   position: { lat: number; lon: number } | null;
   onOpen: (venue: Venue) => void;
   onClose: () => void;
 }
 
 /** Accessible alternative to the map (SPEC 7.1): visible bars, keyboard and screen reader friendly. */
-export function ListSheet({ venues, drink, size, position, onOpen, onClose }: Props) {
+export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) {
   const rows = venues
     .map((venue) => ({
       venue,
-      price: shownPrice(venue, drink, size),
+      price: bestPrice(venue, drinks),
       meters: position ? distanceMeters(position.lat, position.lon, venue.lat, venue.lon) : null,
     }))
     .sort((a, b) =>
@@ -45,11 +45,15 @@ export function ListSheet({ venues, drink, size, position, onOpen, onClose }: Pr
               <span class="row__name">{venue.name}</span>
               <span class={price ? "row__price" : "row__price row__price--none"}>
                 {price
-                  ? `${formatPrice(price[4])}${price[3] === 1 ? ` ${it.bar.happyHour}` : ""}`
+                  ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`
                   : it.list.noPrice}
               </span>
               <span class="row__meta">
-                {[it.kinds[venue.kind], meters === null ? "" : formatDistance(meters)]
+                {[
+                  it.kinds[venue.kind],
+                  price && drinks.length > 1 ? it.drinks[price[1]] : "",
+                  meters === null ? "" : formatDistance(meters),
+                ]
                   .filter(Boolean)
                   .join(" · ")}
               </span>

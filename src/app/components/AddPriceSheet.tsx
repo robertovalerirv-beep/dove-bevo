@@ -1,9 +1,9 @@
 import { useMemo, useState } from "preact/hooks";
-import { CATALOG, findSize } from "../../shared/catalog";
+import { CATALOG, findDrink } from "../../shared/catalog";
 import { it } from "../i18n/it";
 import type { Venue } from "../lib/data";
 import { distanceMeters, searchKey } from "../../shared/venue";
-import { formatDistance, formatPrice, formatSize } from "../lib/format";
+import { formatDistance, formatPrice } from "../lib/format";
 import { cellRange, seenPrices, tierOf } from "../lib/tiers";
 import { drinkIcon, Icon } from "./Icon";
 import { Sheet } from "./Sheet";
@@ -11,7 +11,6 @@ import { Sheet } from "./Sheet";
 export interface Draft {
   venue: Venue;
   drink: string;
-  size: number;
   hh: 0 | 1;
   cents: number;
 }
@@ -19,7 +18,6 @@ export interface Draft {
 export interface Prefill {
   venue: Venue;
   drink?: string;
-  size?: number;
   hh?: 0 | 1;
   /** Shown above the price, e.g. a rejection from the server. */
   error?: string;
@@ -46,18 +44,10 @@ export function parseCents(text: string): number | null {
   return Number(match[1]) * 100 + Number((match[2] ?? "0").padEnd(2, "0"));
 }
 
-const defaultSize = (drink: string) => {
-  const entry = CATALOG.find((d) => d.code === drink);
-  return entry?.sizes[entry.defaultSize]?.ml ?? 0;
-};
-
 /** "Aggiungi prezzo" (SPEC 7.3): bar → drink → price, 4 taps plus the digits. */
 export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onClose }: Props) {
   const [venue, setVenue] = useState<Venue | null>(prefill?.venue ?? null);
   const [drink, setDrink] = useState<string | null>(prefill?.drink ?? null);
-  const [size, setSize] = useState<number>(
-    prefill?.size ?? (prefill?.drink ? defaultSize(prefill.drink) : 0),
-  );
   const [hh, setHh] = useState<0 | 1>(prefill?.hh ?? 0);
   const [text, setText] = useState(prefill?.text ?? "");
   const [error, setError] = useState(prefill?.error ?? "");
@@ -82,12 +72,12 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
       setError(it.add.badFormat);
       return;
     }
-    const range = findSize(drink, size);
-    if (range && (cents < range.min || cents > range.max)) {
+    const limits = findDrink(drink);
+    if (limits && (cents < limits.min || cents > limits.max)) {
       setError(it.add.outOfRange(drinkName(drink).toLowerCase()));
       return;
     }
-    onSave({ venue, drink, size, hh, cents });
+    onSave({ venue, drink, hh, cents });
   }
 
   if (!venue) {
@@ -163,12 +153,10 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
                 class="drink"
                 onClick={() => {
                   setDrink(d.code);
-                  setSize(defaultSize(d.code));
                 }}
               >
                 <Icon name={drinkIcon(d.code)} />
                 <span class="drink__name">{drinkName(d.code)}</span>
-                <span class="drink__size">{formatSize(defaultSize(d.code))}</span>
               </button>
             </li>
           ))}
@@ -177,10 +165,9 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
     );
   }
 
-  const sizes = CATALOG.find((d) => d.code === drink)?.sizes ?? [];
-  // Prices already seen in this zone for the same drink and size (MB-10): one tap saves one.
-  const seen = seenPrices(venues, venue.cell, drink, size);
-  const range = cellRange(venues, venue.cell, drink, size);
+  // Prices already seen in this zone for the same drink (MB-10): one tap saves one.
+  const seen = seenPrices(venues, venue.cell, drink);
+  const range = cellRange(venues, venue.cell, drink);
   const bare = (cents: number) => formatPrice(cents).replace(" €", "");
   return (
     <Sheet
@@ -206,25 +193,6 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
           {drinkName(drink)}
         </h3>
         <p class="question">{it.add.question}</p>
-        {sizes.length > 1 && (
-          <fieldset class="segmented">
-            <legend class="sr-only">{it.add.size}</legend>
-            {sizes.map((s) => (
-              <label key={s.ml} class="chip">
-                <input
-                  type="radio"
-                  name="size"
-                  class="sr-only"
-                  checked={s.ml === size}
-                  onChange={() => {
-                    setSize(s.ml);
-                  }}
-                />
-                {formatSize(s.ml)}
-              </label>
-            ))}
-          </fieldset>
-        )}
         <label class="price-input">
           <span class="sr-only">{it.add.price}</span>
           <input
@@ -259,7 +227,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
                       type="button"
                       class={`chip seen__price seen__price--${tier}`}
                       onClick={() => {
-                        onSave({ venue, drink, size, hh, cents });
+                        onSave({ venue, drink, hh, cents });
                       }}
                     >
                       {tier !== "neutro" && (

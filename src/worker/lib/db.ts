@@ -12,7 +12,6 @@ import type {
 interface PriceDbRow {
   venue_key: string;
   drink: string;
-  size_ml: number;
   hh: 0 | 1;
   price_cents: number;
   observed_on: string;
@@ -33,7 +32,6 @@ interface VenueDbRow {
 const toPriceRow = (r: PriceDbRow): PriceRow => [
   r.venue_key,
   r.drink,
-  r.size_ml,
   r.hh,
   r.price_cents,
   r.observed_on,
@@ -46,9 +44,9 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
   const [prices, venues, hidden] = await db.batch([
     db
       .prepare(
-        `SELECT venue_key, drink, size_ml, hh, price_cents, observed_on, confirmations, status
+        `SELECT venue_key, drink, hh, price_cents, observed_on, confirmations, status
          FROM prices_current WHERE cell = ?1 AND status IN ('active', 'quarantined')
-         ORDER BY venue_key, drink, size_ml, hh`,
+         ORDER BY venue_key, drink, hh`,
       )
       .bind(cell),
     db
@@ -137,41 +135,40 @@ export async function getCoverageRows(db: D1Database): Promise<CoverageRows> {
 const BAR_IS_PUBLIC = `(?1 NOT LIKE 'u%' OR EXISTS (SELECT 1 FROM venues_user
   WHERE id = CAST(substr(?1, 2) AS INTEGER) AND status = 'approved'))`;
 
-/** Current prices of a bar and its latest 10 observations per drink and size (D-26). */
+/** Current prices of a bar and its latest 10 observations per drink (D-26). */
 export async function getVenuePrices(db: D1Database, key: string): Promise<VenuePrices> {
   const [current, history] = await db.batch([
     db
       .prepare(
-        `SELECT venue_key, drink, size_ml, hh, price_cents, observed_on, confirmations, status
+        `SELECT venue_key, drink, hh, price_cents, observed_on, confirmations, status
          FROM prices_current WHERE venue_key = ?1 AND status IN ('active', 'quarantined')
            AND ${BAR_IS_PUBLIC}
-         ORDER BY drink, size_ml, hh`,
+         ORDER BY drink, hh`,
       )
       .bind(key),
     db
       .prepare(
-        `SELECT drink, size_ml, hh, price_cents, observed_on FROM (
-           SELECT drink, size_ml, hh, price_cents, observed_on, id,
-             ROW_NUMBER() OVER (PARTITION BY drink, size_ml ORDER BY observed_on DESC, id DESC) AS n
+        `SELECT drink, hh, price_cents, observed_on FROM (
+           SELECT drink, hh, price_cents, observed_on, id,
+             ROW_NUMBER() OVER (PARTITION BY drink ORDER BY observed_on DESC, id DESC) AS n
            FROM price_obs WHERE venue_key = ?1 AND status NOT IN ('review', 'removed')
              AND ${BAR_IS_PUBLIC}
              -- a price under review leaves the bar page, its history included (SPEC 11)
              AND NOT EXISTS (SELECT 1 FROM prices_current pc WHERE pc.venue_key = price_obs.venue_key
-               AND pc.drink = price_obs.drink AND pc.size_ml = price_obs.size_ml AND pc.hh = price_obs.hh
+               AND pc.drink = price_obs.drink AND pc.hh = price_obs.hh
                AND pc.price_cents = price_obs.price_cents AND pc.status IN ('review', 'removed')))
-         WHERE n <= 10 ORDER BY drink, size_ml, observed_on DESC, id DESC`,
+         WHERE n <= 10 ORDER BY drink, observed_on DESC, id DESC`,
       )
       .bind(key),
   ]);
   const h = (
     (history?.results ?? []) as unknown as {
       drink: string;
-      size_ml: number;
       hh: 0 | 1;
       price_cents: number;
       observed_on: string;
     }[]
-  ).map((r): HistoryRow => [r.drink, r.size_ml, r.hh, r.price_cents, r.observed_on]);
+  ).map((r): HistoryRow => [r.drink, r.hh, r.price_cents, r.observed_on]);
   return { p: ((current?.results ?? []) as unknown as PriceDbRow[]).map(toPriceRow), h };
 }
 
@@ -180,7 +177,6 @@ export async function getVenuePrices(db: D1Database, key: string): Promise<Venue
 export interface PriceKey {
   venue: string;
   drink: string;
-  size: number;
   hh: 0 | 1;
 }
 
@@ -191,8 +187,8 @@ export interface CurrentPrice {
   confirmations: number;
 }
 
-const PK = "venue_key = ?1 AND drink = ?2 AND size_ml = ?3 AND hh = ?4";
-const pk = (k: PriceKey) => [k.venue, k.drink, k.size, k.hh] as const;
+const PK = "venue_key = ?1 AND drink = ?2 AND hh = ?3";
+const pk = (k: PriceKey) => [k.venue, k.drink, k.hh] as const;
 
 export function getCurrentPrice(db: D1Database, k: PriceKey): Promise<CurrentPrice | null> {
   return db
@@ -203,22 +199,16 @@ export function getCurrentPrice(db: D1Database, k: PriceKey): Promise<CurrentPri
     .first<CurrentPrice>();
 }
 
-/** Active prices of the same drink, size and band in a cell (median for the quarantine). */
-export async function activePrices(
-  db: D1Database,
-  cell: string,
-  drink: string,
-  size: number,
-  hh: number,
-) {
+/** Active prices of the same drink and band in a cell (median for the quarantine). */
+export async function activePrices(db: D1Database, cell: string, drink: string, hh: number) {
   const { results } = await db
     .prepare(
       // Prices of proposed bars the admin has not approved never move the median (ADR 0019).
-      `SELECT price_cents FROM prices_current WHERE cell = ?1 AND drink = ?2 AND size_ml = ?3 AND hh = ?4
+      `SELECT price_cents FROM prices_current WHERE cell = ?1 AND drink = ?2 AND hh = ?3
          AND status = 'active' AND (venue_key NOT LIKE 'u%'
            OR CAST(substr(venue_key, 2) AS INTEGER) IN (SELECT id FROM venues_user WHERE status = 'approved'))`,
     )
-    .bind(cell, drink, size, hh)
+    .bind(cell, drink, hh)
     .all<{ price_cents: number }>();
   return results.map((r) => r.price_cents);
 }
@@ -240,14 +230,14 @@ export function writePriceStatements(
   return [
     db
       .prepare(
-        "INSERT INTO price_obs (venue_key, drink, size_ml, hh, price_cents, observed_on, source, status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO price_obs (venue_key, drink, hh, price_cents, observed_on, source, status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
       )
       .bind(...pk(k), p.price, p.day, "manual", p.status),
     db
       .prepare(
-        `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 0, ?9, ?10)
-         ON CONFLICT (venue_key, drink, size_ml, hh) DO UPDATE SET cell = excluded.cell, city = excluded.city,
+        `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, ?8, ?9)
+         ON CONFLICT (venue_key, drink, hh) DO UPDATE SET cell = excluded.cell, city = excluded.city,
            price_cents = excluded.price_cents, observed_on = excluded.observed_on, confirmations = 0,
            status = excluded.status, source = excluded.source
          WHERE prices_current.status NOT IN ('review', 'removed')`,
@@ -269,11 +259,11 @@ export function confirmStatements(
   blockers: string[],
   claims: string[],
 ): D1PreparedStatement[] {
-  const marks = blockers.map((_, i) => `?${String(i + 6)}`).join(", ");
+  const marks = blockers.map((_, i) => `?${String(i + 5)}`).join(", ");
   return [
     db
       .prepare(
-        `UPDATE prices_current SET confirmations = confirmations + 1, observed_on = max(observed_on, ?5),
+        `UPDATE prices_current SET confirmations = confirmations + 1, observed_on = max(observed_on, ?4),
            status = CASE WHEN status = 'quarantined' THEN 'active' ELSE status END
          WHERE ${PK} AND status IN ('active', 'quarantined')
            AND NOT EXISTS (SELECT 1 FROM dedup WHERE k IN (${marks})) RETURNING confirmations`,
@@ -285,14 +275,13 @@ export function confirmStatements(
 
 /** What a contribution needs to decide, read in one round trip (SPEC 11). */
 export interface PriceContext {
-  /** The bar's own rows, by `drink|size|hh`. */
+  /** The bar's own rows, by `drink|hh`. */
   own: Map<string, { price: number; status: CurrentPrice["status"]; cell: string }>;
-  /** Active prices of the same cell from other public bars, by `drink|size|hh` (the median's peers). */
+  /** Active prices of the same cell from other public bars, by `drink|hh` (the median's peers). */
   peers: Map<string, number[]>;
 }
 
-export const tripleId = (drink: string, size: number, hh: number) =>
-  `${drink}|${String(size)}|${String(hh)}`;
+export const bandId = (drink: string, hh: number) => `${drink}|${String(hh)}`;
 
 /**
  * The bar's current rows and the cell's peer prices for the given drinks, in one batch (index
@@ -309,12 +298,12 @@ export async function loadPriceContext(
   const [own, peers] = await db.batch([
     db
       .prepare(
-        "SELECT drink, size_ml, hh, price_cents, status, cell FROM prices_current WHERE venue_key = ?1",
+        "SELECT drink, hh, price_cents, status, cell FROM prices_current WHERE venue_key = ?1",
       )
       .bind(venue),
     db
       .prepare(
-        `SELECT drink, size_ml, hh, price_cents FROM prices_current
+        `SELECT drink, hh, price_cents FROM prices_current
          WHERE cell = ?2 AND status = 'active' AND venue_key != ?1 AND drink IN (${marks})
            AND (venue_key NOT LIKE 'u%'
              OR CAST(substr(venue_key, 2) AS INTEGER) IN (SELECT id FROM venues_user WHERE status = 'approved'))`,
@@ -323,7 +312,6 @@ export async function loadPriceContext(
   ]);
   const ownRows = (own?.results ?? []) as unknown as {
     drink: string;
-    size_ml: number;
     hh: number;
     price_cents: number;
     status: CurrentPrice["status"];
@@ -331,19 +319,18 @@ export async function loadPriceContext(
   }[];
   const peerRows = (peers?.results ?? []) as unknown as {
     drink: string;
-    size_ml: number;
     hh: number;
     price_cents: number;
   }[];
   const peerMap = new Map<string, number[]>();
   for (const r of peerRows) {
-    const id = tripleId(r.drink, r.size_ml, r.hh);
+    const id = bandId(r.drink, r.hh);
     peerMap.set(id, [...(peerMap.get(id) ?? []), r.price_cents]);
   }
   return {
     own: new Map(
       ownRows.map((r) => [
-        tripleId(r.drink, r.size_ml, r.hh),
+        bandId(r.drink, r.hh),
         { price: r.price_cents, status: r.status, cell: r.cell },
       ]),
     ),
@@ -458,7 +445,6 @@ export interface ReportTarget {
   /** Cell of the bar, kept so the admin can hide it (migration 0003). */
   cell: string;
   drink: string | null;
-  size: number | null;
   hh: 0 | 1 | null;
 }
 
@@ -473,14 +459,14 @@ export async function addReport(
   const [, count] = await db.batch<{ n: number }>([
     db
       .prepare(
-        "INSERT INTO reports (venue_key, drink, size_ml, hh, reason, day, cell) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO reports (venue_key, drink, hh, reason, day, cell) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
       )
-      .bind(t.venue, t.drink, t.size, t.hh, reason, day, t.cell),
+      .bind(t.venue, t.drink, t.hh, reason, day, t.cell),
     db
       .prepare(
-        "SELECT COUNT(*) AS n FROM reports WHERE venue_key = ?1 AND drink IS ?2 AND size_ml IS ?3 AND hh IS ?4 AND (?5 IS NULL OR day >= ?5)",
+        "SELECT COUNT(*) AS n FROM reports WHERE venue_key = ?1 AND drink IS ?2 AND hh IS ?3 AND (?4 IS NULL OR day >= ?4)",
       )
-      .bind(t.venue, t.drink, t.size, t.hh, since),
+      .bind(t.venue, t.drink, t.hh, since),
   ]);
   return count?.results[0]?.n ?? 0;
 }
@@ -608,13 +594,12 @@ export async function setUserVenueStatus(
 export async function listPricesToReview(db: D1Database) {
   const { results } = await db
     .prepare(
-      `SELECT venue_key, drink, size_ml, hh, cell, price_cents, observed_on, confirmations, status
+      `SELECT venue_key, drink, hh, cell, price_cents, observed_on, confirmations, status
        FROM prices_current WHERE status IN ('review', 'quarantined') ORDER BY observed_on DESC LIMIT 200`,
     )
     .all<{
       venue_key: string;
       drink: string;
-      size_ml: number;
       hh: 0 | 1;
       cell: string;
       price_cents: number;
@@ -633,7 +618,7 @@ export async function setPriceStatus(
 ): Promise<string | null> {
   const row = await db
     .prepare(
-      `UPDATE prices_current SET status = ?5 WHERE ${PK} AND status IN ('review', 'quarantined')
+      `UPDATE prices_current SET status = ?4 WHERE ${PK} AND status IN ('review', 'quarantined')
        RETURNING cell`,
     )
     .bind(...pk(k), status)
@@ -668,13 +653,12 @@ export interface SeoPriceRow {
   venue_key: string;
   cell: string;
   drink: string;
-  size_ml: number;
   hh: 0 | 1;
   price_cents: number;
   observed_on: string;
 }
 
-const SEO_COLUMNS = "venue_key, cell, drink, size_ml, hh, price_cents, observed_on";
+const SEO_COLUMNS = "venue_key, cell, drink, hh, price_cents, observed_on";
 
 /** The active prices of one public bar, and the name of an approved user bar (an OSM name is in its cell file). */
 export async function getSeoVenue(
@@ -686,7 +670,7 @@ export async function getSeoVenue(
     db
       .prepare(
         `SELECT ${SEO_COLUMNS} FROM prices_current WHERE venue_key = ?1 AND status = 'active' AND ${PUBLIC_BAR}
-         ORDER BY drink, size_ml, hh LIMIT ?2`,
+         ORDER BY drink, hh LIMIT ?2`,
       )
       .bind(key, limit),
     db
@@ -775,7 +759,7 @@ export async function getAiRows(
   const { results } = await db
     .prepare(
       `SELECT ${SEO_COLUMNS} FROM prices_current WHERE ${where}status = 'active' AND ${PUBLIC_BAR}
-       ORDER BY price_cents, venue_key, drink, size_ml, hh LIMIT ?1 OFFSET ?2`,
+       ORDER BY price_cents, venue_key, drink, hh LIMIT ?1 OFFSET ?2`,
     )
     .bind(limit, offset, ...(cityIds ?? []))
     .all<SeoPriceRow>();

@@ -23,6 +23,8 @@
 
 /* Header: brand, search, drink chips */
 .top {
+  position: relative; /* the drink list opens over the map */
+  z-index: 5;
   background: var(--bg);
   border-bottom: var(--border-hair) solid var(--line-soft);
   padding: var(--space-2) var(--space-4) var(--space-3);
@@ -48,15 +50,106 @@
   height: 34px;
   flex: none;
 }
-.chips {
+/* «Scegli cosa bere»: one button, a list of check boxes under it. */
+.drink-menu {
+  position: relative;
+  margin-top: var(--space-2);
+}
+.drink-menu__button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+}
+.drink-menu__text {
   display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.2;
+}
+.drink-menu__summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-muted);
+  font-size: var(--size-caption);
+  font-weight: var(--weight-regular);
+}
+.drink-menu__chevron {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-2px, -2px);
+}
+.drink-menu__button[aria-expanded="true"] .drink-menu__chevron {
+  transform: rotate(-135deg);
+}
+.drink-menu__list {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
-  overflow-x: auto;
-  /* Room for the focus ring, which overflow would otherwise clip. */
-  padding: calc(var(--focus-width) + var(--focus-offset)) 0;
-  margin: calc(var(--space-2) - var(--focus-width) - var(--focus-offset)) 0
-    calc(-1 * (var(--focus-width) + var(--focus-offset)));
-  scrollbar-width: none;
+  max-height: min(78dvh, 33rem); /* the nine drinks without scrolling on a phone */
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: var(--border-strong) solid var(--ink);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-stampa);
+}
+.drink-menu__list[hidden] {
+  display: none;
+}
+.drink-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: none;
+  min-height: var(--target);
+  padding: 0 var(--space-3);
+  border: var(--border-strong) solid var(--ink);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: var(--type-label);
+  cursor: pointer;
+}
+.drink-option:has(input:checked) {
+  background: var(--spritz);
+  color: var(--on-spritz);
+}
+.drink-option:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--focus);
+  outline-offset: var(--focus-offset);
+}
+.drink-option__name {
+  flex: 1;
+}
+.drink-option__box {
+  flex: none;
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border: var(--border-strong) solid currentColor;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+/* The tick is a shape, not a colour: the state is never told by colour alone. */
+.drink-option input:checked ~ .drink-option__box::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 1px;
+  width: 6px;
+  height: 12px;
+  border: solid var(--ink);
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
 }
 .chip {
   display: inline-flex;
@@ -499,11 +592,6 @@
   transition:
     transform var(--duration-tap) var(--ease-out),
     box-shadow var(--duration-tap) var(--ease-out);
-}
-.drink__size {
-  color: var(--ink-muted);
-  font-size: var(--size-caption);
-  font-weight: var(--weight-regular);
 }
 .segmented {
   display: flex;

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { searchKey } from "../../shared/venue";
 import { it } from "../i18n/it";
 import { invalidateCell, loadCell, type Venue } from "../lib/data";
-import { formatDate, formatPrice, formatSize } from "../lib/format";
+import { formatDate, formatPrice } from "../lib/format";
 
 // The bars of one city that have a public price, for the admin (ADR 0022). Which bars come from the
 // coverage calculation; names, addresses and prices from the map data the public app reads.
@@ -114,15 +114,15 @@ export function CityBars({ name, at, members, onBack }: Props) {
                   : it.admin.coverage.notInMap}
               </span>
               {(venue?.prices ?? [])
-                .filter((p) => p[7] === 0)
-                .sort((a, b) => a[1].localeCompare(b[1]) || a[2] - b[2] || a[3] - b[3])
+                .filter((p) => p[6] === 0)
+                .sort((a, b) => a[1].localeCompare(b[1]) || a[2] - b[2])
                 .map((p) => (
-                  <p class="cov__price" key={`${p[1]}-${String(p[2])}-${String(p[3])}`}>
+                  <p class="cov__price" key={`${p[1]}-${String(p[2])}`}>
                     {[
-                      [it.drinks[p[1]] ?? p[1], formatSize(p[2])].join(" ").trim(),
-                      p[3] ? it.bar.happyHour : "",
-                      formatPrice(p[4]),
-                      formatDate(p[5]),
+                      it.drinks[p[1]] ?? p[1],
+                      p[2] ? it.bar.happyHour : "",
+                      formatPrice(p[3]),
+                      formatDate(p[4]),
                     ]
                       .filter(Boolean)
                       .join(" · ")}

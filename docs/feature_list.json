@@ -135,8 +135,8 @@
   {
     "id": "M1-09",
     "milestone": "M1",
-    "descrizione": "Chip dei drink",
-    "verifica": "e2e: toccando \"Spritz\" i segnaposto mostrano il prezzo dello spritz; bar senza prezzo restano visibili e discreti",
+    "descrizione": "Menu dei drink",
+    "verifica": "e2e: nel menu «Scegli cosa bere» scegliendo \"Spritz\" i segnaposto mostrano il prezzo dello spritz; bar senza prezzo restano visibili e discreti",
     "passes": true
   },
   {
@@ -178,14 +178,14 @@
     "id": "M1-15",
     "milestone": "M1",
     "descrizione": "Storico di un bar",
-    "verifica": "unit: `GET /api/venues/:key/prices` restituisce correnti e ≤ 10 osservazioni per drink e formato, solo data",
+    "verifica": "unit: `GET /api/venues/:key/prices` restituisce correnti e ≤ 10 osservazioni per drink, solo data",
     "passes": true
   },
   {
     "id": "M1-16",
     "milestone": "M1",
     "descrizione": "La mappa non cambia mai altezza né si muove da sola",
-    "verifica": "e2e Chromium e WebKit 390×844: l'altezza della mappa e della barra è identica con le chip Birra, Spritz e Negroni (zona con e senza prezzi); a ogni zoom da 13 in su (con Spritz e Negroni) nessun ridimensionamento della mappa durante lo zoom e, a riposo, nessun ridimensionamento né cambio di centro o zoom per 2 s; il test fallisce sul codice con la barra che cambia altezza",
+    "verifica": "e2e Chromium e WebKit 390×844: l'altezza della mappa e della barra è identica con Birra, Spritz e Negroni scelti nel menu dei drink (zona con e senza prezzi); a ogni zoom da 13 in su (con Spritz e Negroni) nessun ridimensionamento della mappa durante lo zoom e, a riposo, nessun ridimensionamento né cambio di centro o zoom per 2 s; il test fallisce sul codice con la barra che cambia altezza",
     "passes": true
   },
   {
@@ -241,7 +241,7 @@
     "id": "M2-08",
     "milestone": "M2",
     "descrizione": "Validazione prezzo e bar",
-    "verifica": "sec: prezzo fuori limite → `rejected` con messaggio; bar inesistente nella cella → 400; drink o formato fuori catalogo → 400",
+    "verifica": "sec: prezzo fuori limite → `rejected` con messaggio; bar inesistente nella cella → 400; drink fuori catalogo (anche prosecco, bibita, bottiglia) o campo `size_ml` → 400",
     "passes": true
   },
   {
@@ -269,7 +269,7 @@
     "id": "M2-12",
     "milestone": "M2",
     "descrizione": "\"È cambiato\" precompilato",
-    "verifica": "e2e: apre l'inserimento con bar, drink, formato e fascia già scelti; basta cifre e `Salva`",
+    "verifica": "e2e: apre l'inserimento con bar, drink e fascia già scelti; basta cifre e `Salva`",
     "passes": true
   },
   {
@@ -493,7 +493,7 @@
     "id": "MB-05",
     "milestone": "MB",
     "descrizione": "Icone dei drink",
-    "verifica": "unit: ogni codice del catalogo (SPEC 6) ha un'icona inline con `currentColor` in un modulo unico; i tre formati della spina usano la stessa; nessuna emoji",
+    "verifica": "unit: ogni codice del catalogo (SPEC 6) ha un'icona inline con `currentColor` in un modulo unico; nessuna emoji",
     "passes": true
   },
   {
@@ -528,7 +528,7 @@
     "id": "MB-10",
     "milestone": "MB",
     "descrizione": "Prezzi già visti in zona",
-    "verifica": "e2e: nel passo Prezzo compaiono i prezzi della cella per lo stesso drink e formato; un tocco su uno sostituisce le cifre: esattamente 4 tocchi senza cifre; la riga con intervallo e mediana solo con ≥ 5 prezzi; nessuna richiesta in più",
+    "verifica": "e2e: nel passo Prezzo compaiono i prezzi della cella per lo stesso drink; un tocco su uno sostituisce le cifre: esattamente 4 tocchi senza cifre; la riga con intervallo e mediana solo con ≥ 5 prezzi; nessuna richiesta in più",
     "passes": true
   },
   {
@@ -578,6 +578,34 @@
     "milestone": "MB",
     "descrizione": "Budget brand",
     "verifica": "Lighthouse CI mobile: Performance ≥ 90, altre ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip; font ≤ 70 KB; righe D1 e richieste per vista e per contributo invariate (M3-20); misure prima e dopo in PROGRESS",
+    "passes": true
+  },
+  {
+    "id": "MC-01",
+    "milestone": "MC",
+    "descrizione": "Menu «Scegli cosa bere» a caselle multiple",
+    "verifica": "e2e Chromium e WebKit 390×844: nell'intestazione un solo pulsante (nessuna riga di chip da scorrere) con l'elenco chiuso all'inizio; si apre e si chiude con tocco, tastiera, Esc (il fuoco torna al pulsante) e tocco fuori; nove voci nell'ordine della tabella 6, la stessa lista della griglia di \"Aggiungi prezzo\"; l'ultima casella spuntata non si toglie; target ≥ 48 px, nessuna misura (ml) nei nomi, axe senza violazioni nei due temi",
+    "passes": true
+  },
+  {
+    "id": "MC-02",
+    "milestone": "MC",
+    "descrizione": "Con più drink il segnaposto mostra il prezzo più basso",
+    "verifica": "unit + e2e: `bestPrice` sceglie il prezzo più basso tra i drink scelti (parità: il più recente), ignora quarantena e fascia HH se esiste il normale; con più drink spuntati i bar contati sono quelli con almeno uno dei drink (un bar una volta sola), pin, «Elenco» e «I più economici qui» mostrano il minimo con il nome del drink, il colore (D-12) è sulla mediana di quel drink; nessuna richiesta di rete in più",
+    "passes": true
+  },
+  {
+    "id": "MC-03",
+    "milestone": "MC",
+    "descrizione": "Catalogo senza formati",
+    "verifica": "unit/worker/sec: `CATALOG` ha i nove drink della tabella 6 e nessun formato; `POST /api/prices`, `/confirm`, `/reports` e l'admin rifiutano `size_ml` e i drink tolti con 400; `src/` non contiene `size_ml`, `formatSize` né `findSize` (test); la migrazione 0006, su un D1 con prezzi a più formati, tiene i drink validi, porta la birra a 400 ml sull'unica chiave, archivia in `archive_sizes_*` le righe dei drink tolti e delle birre 0,2 e 0,5 l, conserva le segnalazioni sul bar; formato compatto 9.2 senza `size_ml`",
+    "passes": true
+  },
+  {
+    "id": "MC-04",
+    "milestone": "MC",
+    "descrizione": "Nomi e icone dei nuovi drink",
+    "verifica": "unit/e2e: i nomi di `it.ts` sono quelli della tabella 6; ogni codice ha la sua icona (MB-05); la scheda bar, l'elenco, l'admin e le pagine per i motori di ricerca non scrivono più alcun formato",
     "passes": true
   },
   {

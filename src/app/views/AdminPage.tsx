@@ -4,7 +4,7 @@ import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { it } from "../i18n/it";
 import { invalidateCell, loadCell, loadPlaces, type Venue } from "../lib/data";
 import { distanceMeters, searchKey } from "../../shared/venue";
-import { formatDate, formatDistance, formatPrice, formatSize } from "../lib/format";
+import { formatDate, formatDistance, formatPrice } from "../lib/format";
 
 // /admin (SPEC 7.9, D-19): behind Cloudflare Access; the Worker verifies the JWT on /api/admin/*.
 
@@ -28,7 +28,6 @@ interface Overview {
   prices: {
     venue_key: string;
     drink: string;
-    size_ml: number;
     hh: 0 | 1;
     cell: string;
     price_cents: number;
@@ -390,14 +389,12 @@ function PriceQueue({
       count={prices.length}
     >
       {prices.map((p) => {
-        const key = { venue: p.venue_key, drink: p.drink, size_ml: p.size_ml, hh: p.hh };
+        const key = { venue: p.venue_key, drink: p.drink, hh: p.hh };
         return (
-          <li key={`${p.venue_key}|${p.drink}|${String(p.size_ml)}|${String(p.hh)}`}>
+          <li key={`${p.venue_key}|${p.drink}|${String(p.hh)}`}>
             <a href={`/bar/${p.venue_key}?c=${p.cell}`}>{p.venue_key}</a>{" "}
-            {[it.drinks[p.drink] ?? p.drink, formatSize(p.size_ml), p.hh ? "HH" : ""]
-              .filter(Boolean)
-              .join(" ")}{" "}
-            · {formatPrice(p.price_cents)} · {formatDate(p.observed_on)} ·{" "}
+            {[it.drinks[p.drink] ?? p.drink, p.hh ? "HH" : ""].filter(Boolean).join(" ")} ·{" "}
+            {formatPrice(p.price_cents)} · {formatDate(p.observed_on)} ·{" "}
             {p.status === "review" ? it.admin.review : it.admin.quarantined}
             <span class="admin__actions">
               <button

@@ -9,16 +9,14 @@ const ORIGIN = "https://dovebevo.example";
 const BAR = "n2420779240"; // Bistrot Duomo, fixture cell u0nd9
 const CELL = "u0nd9";
 
-type Item = { drink: string; size_ml: number; hh: 0 | 1; price_cents: number };
+type Item = { drink: string; hh: 0 | 1; price_cents: number };
 const spritz = (price_cents: number, hh: 0 | 1 = 0): Item => ({
   drink: "spritz",
-  size_ml: 0,
   hh,
   price_cents,
 });
 const beer = (price_cents: number, hh: 0 | 1 = 0): Item => ({
   drink: "beer_draft",
-  size_ml: 400,
   hh,
   price_cents,
 });
@@ -57,11 +55,11 @@ async function send(items: Item[], cookie: string, ip: string, venue = BAR) {
 async function rows(venue = BAR) {
   const [current, obs] = await env.DB.batch([
     env.DB.prepare(
-      `SELECT drink, size_ml, hh, price_cents, confirmations, status FROM prices_current
-       WHERE venue_key = ?1 ORDER BY drink, size_ml, hh`,
+      `SELECT drink, hh, price_cents, confirmations, status FROM prices_current
+       WHERE venue_key = ?1 ORDER BY drink, hh`,
     ).bind(venue),
     env.DB.prepare(
-      `SELECT drink, size_ml, hh, price_cents, status FROM price_obs WHERE venue_key = ?1 ORDER BY id`,
+      `SELECT drink, hh, price_cents, status FROM price_obs WHERE venue_key = ?1 ORDER BY id`,
     ).bind(venue),
   ]);
   return {
@@ -74,8 +72,8 @@ async function seedPeers(price: number, count: number) {
   await env.DB.batch(
     Array.from({ length: count }, (_, i) =>
       env.DB.prepare(
-        `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-         VALUES (?1, 'spritz', 0, 0, ?2, 1, ?3, '2026-10-01', 0, 'active', 'manual')`,
+        `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+         VALUES (?1, 'spritz', 0, ?2, 1, ?3, '2026-10-01', 0, 'active', 'manual')`,
       ).bind(`n${String(900 + i)}`, CELL, price),
     ),
   );
@@ -97,7 +95,7 @@ describe("a request with several prices (golden answers of the sequential versio
         spritz(500), // new, peers at 5,00 → active
         spritz(900), // same triple: now compared with the median of 5 peers + own 5,00 → quarantined
         beer(600), // no peers → active
-        { drink: "gin_tonic", size_ml: 0, hh: 0, price_cents: 9900 }, // out of range
+        { drink: "gin_tonic", hh: 0, price_cents: 9900 }, // out of range
         beer(450, 1), // happy hour is another price
         beer(600), // equals the current beer: a confirmation, but the author cannot confirm
       ],
@@ -116,7 +114,6 @@ describe("a request with several prices (golden answers of the sequential versio
       current: [
         {
           drink: "beer_draft",
-          size_ml: 400,
           hh: 0,
           price_cents: 600,
           confirmations: 0,
@@ -124,7 +121,6 @@ describe("a request with several prices (golden answers of the sequential versio
         },
         {
           drink: "beer_draft",
-          size_ml: 400,
           hh: 1,
           price_cents: 450,
           confirmations: 0,
@@ -132,7 +128,6 @@ describe("a request with several prices (golden answers of the sequential versio
         },
         {
           drink: "spritz",
-          size_ml: 0,
           hh: 0,
           price_cents: 900,
           confirmations: 0,
@@ -140,10 +135,10 @@ describe("a request with several prices (golden answers of the sequential versio
         },
       ],
       obs: [
-        { drink: "spritz", size_ml: 0, hh: 0, price_cents: 500, status: "active" },
-        { drink: "spritz", size_ml: 0, hh: 0, price_cents: 900, status: "quarantined" },
-        { drink: "beer_draft", size_ml: 400, hh: 0, price_cents: 600, status: "active" },
-        { drink: "beer_draft", size_ml: 400, hh: 1, price_cents: 450, status: "active" },
+        { drink: "spritz", hh: 0, price_cents: 500, status: "active" },
+        { drink: "spritz", hh: 0, price_cents: 900, status: "quarantined" },
+        { drink: "beer_draft", hh: 0, price_cents: 600, status: "active" },
+        { drink: "beer_draft", hh: 1, price_cents: 450, status: "active" },
       ],
     });
   });
@@ -182,7 +177,7 @@ describe("a request with several prices (golden answers of the sequential versio
     ]);
     const { current, obs } = await rows();
     expect(current).toEqual([
-      { drink: "spritz", size_ml: 0, hh: 0, price_cents: 750, confirmations: 0, status: "active" },
+      { drink: "spritz", hh: 0, price_cents: 750, confirmations: 0, status: "active" },
     ]);
     expect(obs.map((o) => o["price_cents"])).toEqual([700, 750]);
   });
@@ -196,7 +191,7 @@ describe("a request with several prices (golden answers of the sequential versio
       { status: "confirmed" },
     ]);
     expect((await rows()).current).toEqual([
-      { drink: "spritz", size_ml: 0, hh: 0, price_cents: 900, confirmations: 1, status: "active" },
+      { drink: "spritz", hh: 0, price_cents: 900, confirmations: 1, status: "active" },
     ]);
   });
 
@@ -230,8 +225,8 @@ describe("a request with several prices (golden answers of the sequential versio
     ]);
     await env.DB.prepare("DELETE FROM prices_current WHERE venue_key = ?1").bind(BAR).run();
     await env.DB.prepare(
-      `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-       VALUES ('n903', 'spritz', 0, 0, ?1, 1, 500, '2026-10-01', 0, 'active', 'manual')`,
+      `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+       VALUES ('n903', 'spritz', 0, ?1, 1, 500, '2026-10-01', 0, 'active', 'manual')`,
     )
       .bind(CELL)
       .run();
@@ -258,7 +253,6 @@ describe("a request with several prices (golden answers of the sequential versio
       current: [
         {
           drink: "spritz",
-          size_ml: 0,
           hh: 0,
           price_cents: 500,
           confirmations: 0,
@@ -267,7 +261,6 @@ describe("a request with several prices (golden answers of the sequential versio
       ],
       obs: items.map((item, i) => ({
         drink: "spritz",
-        size_ml: 0,
         hh: 0,
         price_cents: item.price_cents,
         status: status(i),

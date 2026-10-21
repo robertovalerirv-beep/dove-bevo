@@ -28,8 +28,8 @@ function price(
   drink = "spritz",
 ) {
   return env.DB.prepare(
-    `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-     VALUES (?1, ?2, 0, 0, 'u0nd9', ?3, 700, ?4, 0, ?5, 'manual')`,
+    `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+     VALUES (?1, ?2, 0, 'u0nd9', ?3, 700, ?4, 0, ?5, 'manual')`,
   ).bind(key, drink, city, day, status);
 }
 
@@ -182,7 +182,6 @@ describe("what counts as a bar with a price (M5-12)", () => {
     await decide("prices/status", {
       venue: "n1",
       drink: "spritz",
-      size_ml: 0,
       hh: 0,
       status: "active",
     });

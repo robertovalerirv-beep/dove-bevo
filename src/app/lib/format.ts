@@ -17,9 +17,6 @@ export function formatDate(isoDay: string): string {
   return day.format(new Date(Date.UTC(y, m - 1, d)));
 }
 
-/** 400 → "0,4 l"; 0 (cocktail serving) → "" */
-export const formatSize = (ml: number) => (ml > 0 ? `${liters.format(ml / 1000)} l` : "");
-
 /** 120 → "120 m", 1234 → "1,2 km" */
 export function formatDistance(meters: number): string {
   if (meters < 1000) return `${String(Math.round(meters / 10) * 10)} m`;

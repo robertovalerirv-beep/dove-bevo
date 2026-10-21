@@ -8,11 +8,13 @@ import { searchBars, type Hit } from "../lib/search";
 import { leadWord, MIN_CHARS } from "../lib/search-match";
 import { Sheet } from "./Sheet";
 
-/** A bar of «I più economici qui»: the cheapest prices of the chosen drink in the visible area. */
+/** A bar of «I più economici qui»: the cheapest prices of the chosen drinks in the visible area. */
 export interface Cheap {
   venue: Venue;
   cents: number;
   day: string;
+  /** Name of the drink the price is for; only set when several drinks are chosen. */
+  drink?: string;
 }
 
 interface Props {
@@ -275,7 +277,7 @@ export function SearchSheet({
                   <span class="row__name">{c.venue.name}</span>
                   <span class="row__price">{formatPrice(c.cents)}</span>
                   <span class="row__meta">
-                    {[c.venue.addr, formatDate(c.day)].filter(Boolean).join(" · ")}
+                    {[c.drink, c.venue.addr, formatDate(c.day)].filter(Boolean).join(" · ")}
                   </span>
                 </button>
               </li>

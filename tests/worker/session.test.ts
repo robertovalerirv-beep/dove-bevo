@@ -41,7 +41,7 @@ describe("session checks on protected POSTs (M2-03)", () => {
   const confirm = (cookie?: string) =>
     post(
       "/api/prices/confirm",
-      { venue: "n1", drink: "spritz", size_ml: 0, hh: 0 },
+      { venue: "n1", drink: "spritz", hh: 0 },
       cookie ? { Cookie: cookie } : {},
     );
 

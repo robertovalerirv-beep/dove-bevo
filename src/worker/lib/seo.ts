@@ -4,7 +4,7 @@
 // Everything here is built from PUBLIC bars only (not hidden, approved if proposed by a user), and
 // every dynamic value is escaped where it enters HTML or JSON-LD.
 import { it } from "../../app/i18n/it";
-import { formatDate, formatPrice, formatSize } from "../../app/lib/format";
+import { formatDate, formatPrice } from "../../app/lib/format";
 import type { Place } from "../../shared/api-types";
 import { APP_NAME } from "../../shared/config";
 import { searchKey } from "../../shared/venue";
@@ -170,17 +170,15 @@ export async function resolveNames(
 
 // ---- Labels ----
 
-export const drinkLabel = (drink: string, size: number, hh: number): string =>
-  [it.drinks[drink] ?? drink, size ? formatSize(size) : "", hh ? `(${seoText.hh})` : ""]
-    .filter(Boolean)
-    .join(" ");
+export const drinkLabel = (drink: string, hh: number): string =>
+  [it.drinks[drink] ?? drink, hh ? `(${seoText.hh})` : ""].filter(Boolean).join(" ");
 
 /** "7.50": the decimal point of schema.org prices. */
 const schemaPrice = (cents: number): string => (cents / 100).toFixed(2);
 
 const offer = (r: SeoPriceRow) => ({
   "@type": "Offer",
-  name: drinkLabel(r.drink, r.size_ml, r.hh),
+  name: drinkLabel(r.drink, r.hh),
   price: schemaPrice(r.price_cents),
   priceCurrency: "EUR",
 });
@@ -238,11 +236,7 @@ export function buildHome(origin: string): SeoPage {
 }
 
 /** The drinks a city page summarises: the ones people ask the price of. */
-const CITY_DRINKS: readonly [string, number][] = [
-  ["beer_draft", 400],
-  ["spritz", 0],
-  ["gin_tonic", 0],
-];
+const CITY_DRINKS: readonly string[] = ["beer_draft", "spritz", "gin_tonic"];
 const CHEAPEST_PER_DRINK = 5;
 
 export async function buildCity(
@@ -272,13 +266,13 @@ export async function buildCity(
 
   const sections: string[] = [];
   const listed = new Map<string, { row: SeoPriceRow; offers: SeoPriceRow[] }>();
-  for (const [drink, size] of CITY_DRINKS) {
-    const all = rows.filter((r) => r.drink === drink && r.size_ml === size);
+  for (const drink of CITY_DRINKS) {
+    const all = rows.filter((r) => r.drink === drink);
     if (all.length === 0) continue;
-    const label = drinkLabel(drink, size, 0);
+    const label = drinkLabel(drink, 0);
     const cents = all.map((r) => r.price_cents);
     const cheapest = local
-      .filter((r) => r.drink === drink && r.size_ml === size && names.has(r.venue_key))
+      .filter((r) => r.drink === drink && names.has(r.venue_key))
       .slice(0, CHEAPEST_PER_DRINK);
     for (const r of cheapest) {
       const entry = listed.get(r.venue_key) ?? { row: r, offers: [] };
@@ -364,7 +358,7 @@ export async function buildVenue(env: Env, origin: string, key: string): Promise
   const lastDay = rows.reduce((day, r) => (r.observed_on > day ? r.observed_on : day), "");
   const summary = rows
     .slice(0, 3)
-    .map((r) => `${drinkLabel(r.drink, r.size_ml, r.hh)} ${formatPrice(r.price_cents)}`)
+    .map((r) => `${drinkLabel(r.drink, r.hh)} ${formatPrice(r.price_cents)}`)
     .join(", ");
   const html =
     `<h1>${escapeHtml(seoText.venueH1(named.name))}</h1>` +
@@ -374,7 +368,7 @@ export async function buildVenue(env: Env, origin: string, key: string): Promise
     `<p>${escapeHtml(seoText.venueIntro)}</p><ul>${rows
       .map(
         (r) =>
-          `<li>${escapeHtml(drinkLabel(r.drink, r.size_ml, r.hh))}: ${escapeHtml(
+          `<li>${escapeHtml(drinkLabel(r.drink, r.hh))}: ${escapeHtml(
             formatPrice(r.price_cents),
           )}</li>`,
       )

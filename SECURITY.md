@@ -27,7 +27,7 @@ Bot e script automatici · spammer di prezzi · concorrenti di un locale · uten
 | S | Sessione falsificata o rubata | Cookie `HttpOnly; Secure; SameSite=Strict`, prefisso `__Host-`; firma con `SESSION_HMAC_KEY`; nessun dato in chiaro nel cookie oltre a id casuale e scadenza | M2-03 |
 | S | Richieste da siti terzi (CSRF) | Controllo `Origin` su tutte le POST; `SameSite=Strict`; `Content-Type: application/json` obbligatorio | M2-04 |
 | S | Accesso ad `/admin` | Cloudflare Access + verifica del JWT nel Worker (firma RS256, `aud`, scadenza) | M5-02 |
-| **T**ampering | Prezzi falsi o fuori scala | Catalogo e limiti per drink/formato; quarantena oltre ±50 % dalla mediana con ≥ 5 prezzi; conferme da sessioni diverse | M2-08, M2-09 |
+| **T**ampering | Prezzi falsi o fuori scala | Catalogo e limiti per drink; quarantena oltre ±50 % dalla mediana con ≥ 5 prezzi; conferme da sessioni diverse | M2-08, M2-09 |
 | T | Bar inesistente o cella falsa nella richiesta | Il Worker legge il file della cella da `ASSETS` e verifica il bar; il client non è mai fonte di verità | M2-08 |
 | T | Campi extra o tipi sbagliati | zod `strict` su ogni ingresso; body ≤ 16 KB letto con limite anche senza `Content-Length` | M2-04 |
 | T | Prompt injection (LLM01) | Non applicabile: nessun LLM (ADR 0018) | — |

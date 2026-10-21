@@ -198,7 +198,7 @@ test("a city opens the list of its bars with their prices, not the map (M5-15)",
   const duomo = bars.filter({ hasText: "Bistrot Duomo" });
   await expect(duomo).toContainText("Spritz");
   await expect(duomo).toContainText("7,50 €");
-  await expect(duomo).toContainText("Birra alla spina 0,4 l");
+  await expect(duomo).toContainText("Birra media");
   await expect(duomo).toContainText("6,00 €");
   await expect(bars.filter({ hasText: "Camparino in Galleria" })).toContainText("12,00 €");
   const aperol = bars.filter({ hasText: "Terrazza Aperol" });

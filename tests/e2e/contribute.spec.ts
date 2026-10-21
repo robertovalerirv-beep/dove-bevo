@@ -2,7 +2,16 @@ import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { UNDO_MS } from "../../src/shared/config";
-import { DUOMO, goToMilano, waitForBars } from "./helpers";
+import {
+  DRINK_NAMES,
+  DUOMO,
+  drinkList,
+  drinkMenuButton,
+  goToMilano,
+  openDrinkMenu,
+  waitForBars,
+  chooseDrinks,
+} from "./helpers";
 
 // Turnstile is Cloudflare's script: replaced by a stub that answers with the public dummy token.
 // The local Worker verifies it with Cloudflare's always-pass test secret (wrangler.jsonc vars).
@@ -67,27 +76,21 @@ test.describe("with the position (Duomo)", () => {
     for (const [i, name] of expected.entries()) expect(names[i]).toContain(name);
   });
 
-  test("the map chips and the drinks to enter are the same list", async ({ page }, info) => {
+  test("the drinks of the map menu and the drinks to enter are the same list", async ({ page }) => {
     await page.goto("/");
-    if (info.project.name.startsWith("chromium")) {
-      await page.screenshot({
-        path: "docs/screenshots/m3/chips-390.png",
-        clip: { x: 0, y: 0, width: 390, height: 130 },
-      });
-    }
-    const chipNames = await page
-      .getByRole("group", { name: "Drink" })
-      .getByRole("button")
-      .allTextContents();
+    await openDrinkMenu(page);
+    const chipNames = (await drinkList(page).locator("label").allTextContents()).map((t) =>
+      t.trim(),
+    );
+    await drinkMenuButton(page).click();
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
     await expect(barChoices(page)).toHaveCount(5);
     await barChoices(page).first().click();
     const entered = await page.getByRole("dialog").locator(".drink__name").allTextContents();
     expect(entered.length).toBeGreaterThan(0);
-    // A drink with several sizes has one chip per size, so a chip is its drink's name, plus the size.
-    const same = (chip: string, name: string) => chip === name || chip.startsWith(`${name} `);
-    for (const name of entered) expect(chipNames.some((c) => same(c, name))).toBe(true);
-    for (const chip of chipNames) expect(entered.some((name) => same(chip, name))).toBe(true);
+    // One list, in one order (SPEC 1.6).
+    expect(entered.map((t) => t.trim())).toEqual(chipNames);
+    expect(chipNames).toEqual([...DRINK_NAMES]);
   });
 
   test("M2-02 + M2-05 from a cold start: four taps plus the digits; Turnstile only after Salva", async ({
@@ -120,7 +123,7 @@ test.describe("with the position (Duomo)", () => {
 
     const request = await saved; // after the UNDO_MS of "Annulla"
     const body = request.postDataJSON() as { venue: string; cell: string; items: unknown[] };
-    expect(body.items).toEqual([{ drink: "spritz", size_ml: 0, hh: 0, price_cents: 750 }]);
+    expect(body.items).toEqual([{ drink: "spritz", hh: 0, price_cents: 750 }]);
     expect((await request.response())?.status()).toBe(200);
     await page.goto(`/bar/${body.venue}?c=${body.cell}`);
     await expect(page.getByRole("listitem").filter({ hasText: "Spritz" }).first()).toContainText(
@@ -153,7 +156,7 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
   await goToMilano(page);
 
   let call = 0;
-  const addProsecco = async (price: string) => {
+  const addSbagliato = async (price: string) => {
     call++;
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
     try {
@@ -198,13 +201,13 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
     }
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: /^Calice di prosecco/ })
+      .getByRole("button", { name: /^Sbagliato/ })
       .click();
     await page.getByRole("textbox", { name: "Prezzo in euro" }).fill(price);
     await page.getByRole("button", { name: "Salva" }).click();
   };
 
-  await addProsecco("8,00");
+  await addSbagliato("8,00");
   await page.getByRole("button", { name: "Annulla" }).click();
   // The toast holds while it is pointed at (so it does not vanish under a finger or a cursor):
   // move the pointer away, as a person would, or it stays over the next sheet and takes its clicks.
@@ -216,7 +219,7 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
       JSON.stringify(await page.locator(".toast").allTextContents()),
   );
 
-  await addProsecco("8,20");
+  await addSbagliato("8,20");
   await page.evaluate(() => {
     Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
     document.dispatchEvent(new Event("visibilitychange"));
@@ -241,7 +244,7 @@ test("M2-07 without the position, the nearest to the map centre", async ({ page 
 // Browsers share the local D1: each one works on its own seeded price.
 const CONFIRM_TARGET = {
   chromium: { url: "/bar/n5471678323?c=u0nd9", row: "Spritz" }, // Terrazza Aperol (HH)
-  webkit: { url: "/bar/n13001337602?c=u0nd9", row: "Birra alla spina" }, // Camparino
+  webkit: { url: "/bar/n13001337602?c=u0nd9", row: "Birra media" }, // Camparino
 } as const;
 const countOf = async (text: Promise<string>) => {
   const match = /(\d+) conferm|Nessuna conferma/.exec(await text);
@@ -303,16 +306,15 @@ test("the author confirming their own price is told it needs someone else", asyn
   await expect(row.getByRole("status")).toContainText("chi ha inserito il prezzo");
 });
 
-test("M2-12 È cambiato opens the price step with bar, drink, size and band already chosen", async ({
+test("M2-12 È cambiato opens the price step with bar, drink and band already chosen", async ({
   page,
 }) => {
   await stubTurnstile(page);
-  await page.goto("/bar/n13001337602?c=u0nd9"); // Camparino: beer 0,4 l 9,00 €
-  const row = page.getByRole("listitem").filter({ hasText: "Birra alla spina 0,4 l" });
+  await page.goto("/bar/n13001337602?c=u0nd9"); // Camparino: beer 9,00 €
+  const row = page.getByRole("listitem").filter({ hasText: "Birra media" });
   await row.getByRole("button", { name: "È cambiato" }).click();
   const sheet = page.getByRole("dialog", { name: "Camparino in Galleria" }).last();
-  await expect(sheet).toContainText("Birra alla spina");
-  await expect(sheet.getByRole("radio", { name: "0,4 l" })).toBeChecked();
+  await expect(sheet).toContainText("Birra media");
   await expect(sheet.getByRole("switch", { name: "Happy hour" })).toHaveAttribute(
     "aria-checked",
     "false",
@@ -326,7 +328,7 @@ test("M2-12 È cambiato opens the price step with bar, drink, size and band alre
   });
   const body = (await sent).postDataJSON() as { venue: string; items: unknown[] };
   expect(body.venue).toBe("n13001337602");
-  expect(body.items).toEqual([{ drink: "beer_draft", size_ml: 400, hh: 0, price_cents: 950 }]);
+  expect(body.items).toEqual([{ drink: "beer_draft", hh: 0, price_cents: 950 }]);
 });
 
 test("M2-13 reporting uses closed reasons", async ({ page, browserName }) => {
@@ -363,10 +365,7 @@ test("M2-09 a quarantined price is shown in 'In verifica' and not on the map", a
   );
   await sheet.getByRole("button", { name: "Chiudi" }).click();
   await goToMilano(page);
-  await page
-    .getByRole("group", { name: "Drink" })
-    .getByRole("button", { name: "Gin tonic" })
-    .click();
+  await chooseDrinks(page, "Gin tonic");
   await page.waitForTimeout(1500);
   expect(
     (await page
@@ -389,7 +388,7 @@ test("M3-16 'Aggiungi un altro drink qui': two drinks of the same bar leave in o
   await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: /^Bibita/ })
+    .getByRole("button", { name: /^Acqua/ })
     .click();
   await page.keyboard.type("3,00");
   await page.keyboard.press("Enter");
@@ -404,8 +403,8 @@ test("M3-16 'Aggiungi un altro drink qui': two drinks of the same bar leave in o
   await page.keyboard.press("Enter");
   await expect.poll(() => posts.length, { timeout: 25_000 }).toBe(1);
   expect(posts[0]?.items).toEqual([
-    { drink: "soft_drink", size_ml: 330, hh: 0, price_cents: 300 },
-    { drink: "alcohol_free", size_ml: 0, hh: 0, price_cents: 450 },
+    { drink: "water", hh: 0, price_cents: 300 },
+    { drink: "alcohol_free", hh: 0, price_cents: 450 },
   ]);
   await page.waitForTimeout(1_000);
   expect(posts).toHaveLength(1); // one request, not two
@@ -424,7 +423,7 @@ test("Annulla works over the bar page and holds the countdown while focused (WCA
   await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: /^Bibita/ })
+    .getByRole("button", { name: /^Acqua/ })
     .click();
   await page.keyboard.type("3,00");
   await page.keyboard.press("Enter"); // Enter saves, like Salva
@@ -526,15 +525,15 @@ test.describe("MB-10 MB-11 MB-12 with the position (Duomo)", () => {
   });
 });
 
-// M4-09: the invitation to install appears after the second price, once. Prosecco, so the spritz
+// M4-09: the invitation to install appears after the second price, once. Sbagliato, so the spritz
 // prices that MB-10 looks at are left alone.
-async function saveProsecco(page: Page, price: string) {
+async function saveSbagliato(page: Page, price: string) {
   await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
   await expect(barChoices(page)).toHaveCount(5);
   await barChoices(page).first().click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: /^Calice di prosecco/ })
+    .getByRole("button", { name: /^Sbagliato/ })
     .click();
   await page.getByRole("textbox", { name: "Prezzo in euro" }).fill(price);
   await page.getByRole("button", { name: "Salva" }).click();
@@ -568,9 +567,9 @@ test.describe("M4-09 install invitation", () => {
       );
     });
     const invite = page.getByRole("region", { name: "Installa" });
-    await saveProsecco(page, "6,10");
+    await saveSbagliato(page, "6,10");
     await expect(invite).toHaveCount(0);
-    await saveProsecco(page, "6,20");
+    await saveSbagliato(page, "6,20");
     await expect(invite).toBeVisible();
     await expect(invite).toContainText("Metti Dove bevo sulla schermata Home");
     await page.screenshot({ path: info.outputPath("m4-09-invito.png") });
@@ -579,7 +578,7 @@ test.describe("M4-09 install invitation", () => {
       true,
     );
     await expect(invite).toHaveCount(0);
-    await saveProsecco(page, "6,30");
+    await saveSbagliato(page, "6,30");
     await expect(invite).toHaveCount(0);
   });
 });
@@ -596,10 +595,10 @@ test.describe("M4-09 install hint on iPhone", () => {
     await stubTurnstile(page);
     await page.goto("/");
     const invite = page.getByRole("region", { name: "Installa" });
-    await saveProsecco(page, "6,40");
+    await saveSbagliato(page, "6,40");
     await expect(invite).toHaveCount(0);
     const before = await layout(page);
-    await saveProsecco(page, "6,50");
+    await saveSbagliato(page, "6,50");
     await expect(invite).toContainText("Aggiungi alla schermata Home");
     // The invitation is over the map: it must not resize it (M1-16, D-28).
     expect(await layout(page)).toEqual(before);
@@ -619,7 +618,7 @@ test.describe("the Timbro on a small screen", () => {
   test("stays inside the screen and Annulla can be reached", async ({ page }) => {
     await stubTurnstile(page);
     await page.goto("/");
-    await saveProsecco(page, "6,60");
+    await saveSbagliato(page, "6,60");
     const toast = page.locator(".toast--stamp");
     await expect(toast).toBeVisible();
     const box = await toast.boundingBox();

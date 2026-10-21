@@ -1,5 +1,6 @@
 // POST /api/reports — closed reasons only, one per session per price or bar (SPEC 7.2, 11, D-07).
 import { Hono } from "hono";
+import { findDrink } from "../../shared/catalog";
 import { z } from "zod";
 import { REVIEW_AFTER_REPORTS } from "../config";
 import { romeDay } from "../lib/day";
@@ -24,8 +25,11 @@ const Body = z.strictObject({
   venue: VenueKey,
   cell: Cell,
   reason: z.enum(["wrong_price", "closed", "not_exists", "wrong_info", "offensive"]),
-  drink: z.string().max(32).optional(),
-  size_ml: z.number().int().min(0).max(2000).optional(),
+  drink: z
+    .string()
+    .max(32)
+    .refine((d) => findDrink(d) !== undefined)
+    .optional(),
   hh: z.union([z.literal(0), z.literal(1)]).optional(),
 });
 
@@ -37,11 +41,10 @@ reports.post("/", async (c) => {
   // they go to the admin's bar queue and never count against the price.
   const aboutBar =
     body.reason === "closed" || body.reason === "not_exists" || body.reason === "wrong_info";
-  const onPrice =
-    !aboutBar && body.drink !== undefined && body.size_ml !== undefined && body.hh !== undefined;
+  const onPrice = !aboutBar && body.drink !== undefined && body.hh !== undefined;
   if (body.reason === "wrong_price" && !onPrice) throw new ApiError("bad_request");
   const k: PriceKey | null = onPrice
-    ? { venue: body.venue, drink: body.drink ?? "", size: body.size_ml ?? 0, hh: body.hh ?? 0 }
+    ? { venue: body.venue, drink: body.drink ?? "", hh: body.hh ?? 0 }
     : null;
   let since: string | null = null;
   if (k) {
@@ -55,7 +58,7 @@ reports.post("/", async (c) => {
   }
   await consumeQuota(c.env, "report", c.var.sid, clientIp(c.req.raw));
   const day = romeDay();
-  const target = k ? `${k.venue}|${k.drink}|${String(k.size)}|${String(k.hh)}` : body.venue;
+  const target = k ? `${k.venue}|${k.drink}|${String(k.hh)}` : body.venue;
   // One report per target per session AND per IP (HMAC, day as salt): a single person cannot
   // reach the review threshold alone with new sessions (security review).
   const ip = clientIp(c.req.raw);
@@ -71,7 +74,6 @@ reports.post("/", async (c) => {
       venue: body.venue,
       cell: body.cell,
       drink: k?.drink ?? null,
-      size: k?.size ?? null,
       hh: k?.hh ?? null,
     },
     body.reason,

@@ -7,7 +7,7 @@ import { createSession } from "../../src/worker/lib/session";
 
 const ORIGIN = "https://dovebevo.example";
 const BAR = "n2420779240";
-const price = { venue: BAR, cell: "u0nd9", drink: "spritz", size_ml: 0, hh: 0 };
+const price = { venue: BAR, cell: "u0nd9", drink: "spritz", hh: 0 };
 
 async function newSession() {
   return `__Host-sid=${(await createSession("test-session-hmac-key")).token}`;
@@ -30,8 +30,8 @@ beforeEach(async () => {
       env.DB.prepare(`DELETE FROM ${t}`),
     ),
     env.DB.prepare(
-      `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-       VALUES ('n2420779240', 'spritz', 0, 0, 'u0nd9', 1, 750, '2026-10-10', 0, 'active', 'manual')`,
+      `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+       VALUES ('n2420779240', 'spritz', 0, 'u0nd9', 1, 750, '2026-10-10', 0, 'active', 'manual')`,
     ),
   ]);
 });
@@ -156,7 +156,7 @@ describe("report abuse (security review)", () => {
 
   it("reports older than the current price do not count", async () => {
     await env.DB.prepare(
-      "INSERT INTO reports (venue_key, drink, size_ml, hh, reason, day) VALUES (?, 'spritz', 0, 0, 'wrong_price', '2026-01-01'), (?, 'spritz', 0, 0, 'wrong_price', '2026-01-02'), (?, 'spritz', 0, 0, 'wrong_price', '2026-01-03')",
+      "INSERT INTO reports (venue_key, drink, hh, reason, day) VALUES (?, 'spritz', 0, 'wrong_price', '2026-01-01'), (?, 'spritz', 0, 'wrong_price', '2026-01-02'), (?, 'spritz', 0, 'wrong_price', '2026-01-03')",
     )
       .bind(BAR, BAR, BAR)
       .run();

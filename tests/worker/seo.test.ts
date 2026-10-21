@@ -12,7 +12,6 @@ const get = (path: string, init?: RequestInit) => exports.default.fetch(`${ORIGI
 async function price(
   key: string,
   drink: string,
-  size: number,
   cents: number,
   city: number | null = MILANO,
   cell = "u0nd9",
@@ -20,10 +19,10 @@ async function price(
   hh = 0,
 ) {
   await env.DB.prepare(
-    `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, '2026-10-10', 0, ?8, 'manual')`,
+    `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, '2026-10-10', 0, ?7, 'manual')`,
   )
-    .bind(key, drink, size, hh, cell, city, cents, status)
+    .bind(key, drink, hh, cell, city, cents, status)
     .run();
 }
 
@@ -92,11 +91,11 @@ describe("sitemap.xml", () => {
         "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n3', 'u0nd9', 'Non è un bar', '2026-10-01')",
       ),
     ]);
-    await price("n1", "spritz", 0, 700);
-    await price("n3", "spritz", 0, 700); // hidden by the admin
-    await price("u1", "spritz", 0, 700, null); // approved user bar
-    await price("u2", "spritz", 0, 700, null); // proposed, not approved
-    await price("n4", "spritz", 0, 700, MILANO, "u0nd9", "quarantined");
+    await price("n1", "spritz", 700);
+    await price("n3", "spritz", 700); // hidden by the admin
+    await price("u1", "spritz", 700, null); // approved user bar
+    await price("u2", "spritz", 700, null); // proposed, not approved
+    await price("n4", "spritz", 700, MILANO, "u0nd9", "quarantined");
     const response = await get("/sitemap.xml");
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/xml");
@@ -146,10 +145,10 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
 
   it("a city page has the medians, the cheapest named bars and an ItemList of BarOrPub", async () => {
     // fixture bars of cell u0nd9: Vesta n10013246997, Bistrot Italia n10081337586, Sally bar n10128978471
-    await price("n10013246997", "spritz", 0, 600);
-    await price("n10081337586", "spritz", 0, 800);
-    await price("n10128978471", "spritz", 0, 700);
-    await price("n10013246997", "beer_draft", 400, 500);
+    await price("n10013246997", "spritz", 600);
+    await price("n10081337586", "spritz", 800);
+    await price("n10128978471", "spritz", 700);
+    await price("n10013246997", "beer_draft", 500);
     const html = await (await get("/milano")).text();
     expect(html).toContain(
       "<title>Dove bere a Milano? Prezzi di birra, spritz e cocktail nei bar</title>",
@@ -169,7 +168,7 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
   });
 
   it("two cities never share a cached page: /roma does not show Milano's data", async () => {
-    await price("n10013246997", "spritz", 0, 600);
+    await price("n10013246997", "spritz", 600);
     const milano = await (await get("/milano")).text();
     const roma = await (await get("/roma")).text();
     expect(milano).toContain("Vesta");
@@ -178,15 +177,15 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
   });
 
   it("a bar page has its name, address, prices and a BarOrPub with an OfferCatalog", async () => {
-    await price("n10081337586", "spritz", 0, 800);
-    await price("n10081337586", "beer_draft", 400, 550, MILANO, "u0nd9", "active", 1);
+    await price("n10081337586", "spritz", 800);
+    await price("n10081337586", "beer_draft", 550, MILANO, "u0nd9", "active", 1);
     const html = await (await get("/bar/n10081337586")).text();
     expect(html).toContain("<title>Bistrot Italia: prezzi di birra, spritz e cocktail</title>");
     expect(html).toContain(`<link rel="canonical" href="${ORIGIN}/bar/n10081337586?c=u0nd9" />`);
     expect(html).toContain("<h1>Prezzi da Bistrot Italia</h1>");
     expect(html).toContain("Corso Italia 35");
     expect(html).toContain("Spritz: 8,00 €");
-    expect(html).toContain("Birra alla spina 0,4 l (happy hour): 5,50 €");
+    expect(html).toContain("Birra media (happy hour): 5,50 €");
     expect(html).toContain('"@type":"BarOrPub"');
     expect(html).toContain('"price":"8.00","priceCurrency":"EUR"');
     expect(html).not.toMatch(/45\.4\d{4}/); // no coordinates at all in the SEO output
@@ -199,7 +198,7 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
     )
       .bind(evil)
       .run();
-    await price("u1", "spritz", 0, 700, null);
+    await price("u1", "spritz", 700, null);
     const response = await get("/bar/u1");
     const html = await response.text();
     expect(html).not.toContain("<script>alert(1)");
@@ -227,8 +226,8 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
         "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n10013246997', 'u0nd9', 'Vesta', '2026-10-01')",
       ),
     ]);
-    await price("u2", "spritz", 0, 700, null);
-    await price("n10013246997", "spritz", 0, 700);
+    await price("u2", "spritz", 700, null);
+    await price("n10013246997", "spritz", 700);
     for (const path of ["/bar/u2", "/bar/n10013246997", "/bar/n10128978471", "/bar/zzz"]) {
       const html = await (await get(path)).text();
       expect(html, path).toContain("<title>Dove bevo</title>"); // the shell as it was
@@ -238,15 +237,15 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
   });
 
   it("/copertura lists the places with bars and prices", async () => {
-    await price("n10013246997", "spritz", 0, 700);
-    await price("n10081337586", "spritz", 0, 700);
+    await price("n10013246997", "spritz", 700);
+    await price("n10081337586", "spritz", 700);
     const html = await (await get("/copertura")).text();
     expect(html).toContain("Milano: 2 bar con prezzo, 2 prezzi");
     expect(html).toContain('"@type":"Dataset"');
   });
 
   it("without D1 the page is the plain shell, with no error", async () => {
-    await price("n10128978471", "spritz", 0, 700);
+    await price("n10128978471", "spritz", 700);
     const original = env.DB.batch.bind(env.DB);
     env.DB.batch = () => Promise.reject(new Error("D1 down"));
     try {
@@ -268,10 +267,10 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
 
 describe("GET /api/ai/cerca", () => {
   it("returns paginated JSON, cheapest first, with names where they can be found", async () => {
-    await price("n10013246997", "spritz", 0, 600);
-    await price("n10081337586", "spritz", 0, 800);
-    await price("n10081337586", "beer_draft", 400, 450);
-    await price("n9", "spritz", 0, 100, null); // another place, hidden by nothing: still public
+    await price("n10013246997", "spritz", 600);
+    await price("n10081337586", "spritz", 800);
+    await price("n10081337586", "beer_draft", 450);
+    await price("n9", "spritz", 100, null); // another place, hidden by nothing: still public
     const response = await get("/api/ai/cerca?citta=Milano");
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, max-age=300");
@@ -293,7 +292,7 @@ describe("GET /api/ai/cerca", () => {
   });
 
   it("accepts the English name of a city and answers an unknown one with an empty list", async () => {
-    await price("n10013246997", "spritz", 0, 600);
+    await price("n10013246997", "spritz", 600);
     const milan = await (await get("/api/ai/cerca?citta=Milan")).json<{ bar: unknown[] }>();
     // Milan is not Milano in places.json: an alias maps the known English names
     expect(milan.bar).toHaveLength(1);
@@ -305,7 +304,7 @@ describe("GET /api/ai/cerca", () => {
     await env.DB.prepare(
       "INSERT INTO venues_user (id, name, kind, lat, lon, cell, status) VALUES (5, 'In attesa', 1, 45.46, 9.19, 'u0nd9', 'pending')",
     ).run();
-    await price("u5", "spritz", 0, 100, null);
+    await price("u5", "spritz", 100, null);
     const body = await (await get("/api/ai/cerca")).json<{ bar: unknown[] }>();
     expect(body.bar).toEqual([]);
   });
@@ -322,8 +321,8 @@ describe("GET /api/ai/cerca", () => {
   it("points at the next page when a page is full", async () => {
     const statements = Array.from({ length: 100 }, (_, i) =>
       env.DB.prepare(
-        `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-         VALUES (?1, 'spritz', 0, 0, 'u0nd9', ?2, ?3, '2026-10-10', 0, 'active', 'manual')`,
+        `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+         VALUES (?1, 'spritz', 0, 'u0nd9', ?2, ?3, '2026-10-10', 0, 'active', 'manual')`,
       ).bind(`n${String(1000 + i)}`, MILANO, 300 + i),
     );
     await env.DB.batch(statements);

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { findSize } from "../../shared/catalog";
+import { findDrink } from "../../shared/catalog";
 import { MAX_ITEMS, QUARANTINE_MIN_PRICES, QUARANTINE_RATIO } from "../config";
 import { forgetCoverage } from "../lib/coverage";
 import { romeDay } from "../lib/day";
@@ -13,7 +13,7 @@ import {
   type PriceContext,
   type PriceKey,
   runStatements,
-  tripleId,
+  bandId,
   writePriceStatements,
 } from "../lib/db";
 import { ApiError, apiError } from "../lib/errors";
@@ -60,7 +60,6 @@ prices.get("/:cell", async (c) => {
 
 const Item = z.strictObject({
   drink: z.string().max(32),
-  size_ml: z.number().int().min(0).max(2000),
   hh: z.union([z.literal(0), z.literal(1)]),
   price_cents: z.number().int().min(0).max(100_000),
 });
@@ -72,8 +71,10 @@ const PriceBody = z.strictObject({
 });
 const ConfirmBody = z.strictObject({
   venue: VenueKey,
-  drink: z.string().max(32),
-  size_ml: z.number().int().min(0).max(2000),
+  drink: z
+    .string()
+    .max(32)
+    .refine((d) => findDrink(d) !== undefined),
   hh: z.union([z.literal(0), z.literal(1)]),
 });
 
@@ -85,7 +86,7 @@ const median = (values: number[]) => {
   return sorted.length % 2 ? (sorted[mid] ?? 0) : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
 };
 
-const priceId = (k: PriceKey) => `${k.venue}|${k.drink}|${String(k.size)}|${String(k.hh)}`;
+const priceId = (k: PriceKey) => `${k.venue}|${k.drink}|${String(k.hh)}`;
 
 /** Author markers of a price, by session and by IP (HMAC, day as salt): today and yesterday. */
 async function authorKeys(env: Env, who: { sid: string; ip: string }, k: PriceKey, day: string) {
@@ -127,16 +128,15 @@ type Planned = Result | { confirmAt: number };
 // write batch: a few D1 round trips instead of up to six per item (ADR 0025).
 prices.post("/", async (c) => {
   const body = await readJson(c, PriceBody);
-  for (const item of body.items)
-    if (!findSize(item.drink, item.size_ml)) throw new ApiError("bad_request");
+  for (const item of body.items) if (!findDrink(item.drink)) throw new ApiError("bad_request");
   const where = await resolveVenue(c.env, body.venue, body.cell);
   const who = { sid: c.var.sid, ip: clientIp(c.req.raw) };
   await consumeQuota(c.env, "price", who.sid, who.ip, body.items.length);
 
   const day = romeDay();
   const inRange = (item: (typeof body.items)[number]) => {
-    const size = findSize(item.drink, item.size_ml);
-    return !!size && item.price_cents >= size.min && item.price_cents <= size.max;
+    const drink = findDrink(item.drink);
+    return !!drink && item.price_cents >= drink.min && item.price_cents <= drink.max;
   };
   const drinks = [...new Set(body.items.filter(inRange).map((item) => item.drink))];
   const { own, peers }: PriceContext =
@@ -151,8 +151,8 @@ prices.post("/", async (c) => {
       planned.push({ status: "rejected", code: "out_of_range" });
       continue;
     }
-    const k: PriceKey = { venue: body.venue, drink: item.drink, size: item.size_ml, hh: item.hh };
-    const id = tripleId(item.drink, item.size_ml, item.hh);
+    const k: PriceKey = { venue: body.venue, drink: item.drink, hh: item.hh };
+    const id = bandId(item.drink, item.hh);
     const existing = own.get(id);
     if (existing?.status === "review" || existing?.status === "removed") {
       // Under moderation: only the admin can change it (SPEC 11, security review).
@@ -198,7 +198,7 @@ prices.post("/", async (c) => {
 // POST /api/prices/confirm — "Confermo", one per session per price (SPEC 7.2, M2-11).
 prices.post("/confirm", async (c) => {
   const body = await readJson(c, ConfirmBody);
-  const k: PriceKey = { venue: body.venue, drink: body.drink, size: body.size_ml, hh: body.hh };
+  const k: PriceKey = { venue: body.venue, drink: body.drink, hh: body.hh };
   const existing = await getCurrentPrice(c.env.DB, k);
   if (!existing || existing.status === "review" || existing.status === "removed")
     throw new ApiError("not_found");

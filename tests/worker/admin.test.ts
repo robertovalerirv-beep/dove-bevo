@@ -122,7 +122,7 @@ describe("admin bar corrections", () => {
         venue: "n2420779240",
         cell: "u0nd9",
         source: "manual",
-        items: [{ drink: "spritz", size_ml: 0, hh: 0, price_cents: 700 }],
+        items: [{ drink: "spritz", hh: 0, price_cents: 700 }],
       }),
     });
     expect(price.status).toBe(400);
@@ -166,11 +166,11 @@ describe("admin bar corrections", () => {
 
   it("decides on a price under review", async () => {
     await env.DB.prepare(
-      `INSERT INTO prices_current (venue_key, drink, size_ml, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-       VALUES ('n2420779240', 'spritz', 0, 0, 'u0nd9', 1, 750, '2026-10-10', 0, 'review', 'manual')`,
+      `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+       VALUES ('n2420779240', 'spritz', 0, 'u0nd9', 1, 750, '2026-10-10', 0, 'review', 'manual')`,
     ).run();
     const jwt = await accessJwt();
-    const key = { venue: "n2420779240", drink: "spritz", size_ml: 0, hh: 0 };
+    const key = { venue: "n2420779240", drink: "spritz", hh: 0 };
     expect((await cell("u0nd9")).p).toEqual([]);
     expect((await call("prices/status", jwt, { ...key, status: "active" })).status).toBe(200);
     expect((await cell("u0nd9")).p).toHaveLength(1);

@@ -1,7 +1,7 @@
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
-import { DEFAULT_CHIP, MAP_CHIPS, type ChipId } from "../shared/catalog";
+import { CATALOG, DEFAULT_DRINK } from "../shared/catalog";
 import { APP_NAME, UNDO_MS } from "../shared/config";
 import { encodeGeohash, visibleCells } from "../shared/geohash";
 import type { PriceRow } from "../shared/api-types";
@@ -12,14 +12,15 @@ import { PinPanel } from "./components/PinPanel";
 import { ProposeSheet, type Proposal } from "./components/ProposeSheet";
 import { ReportSheet, type Reason } from "./components/ReportSheet";
 import { Toast, type StampInfo } from "./components/Toast";
-import { drinkIcon, Icon } from "./components/Icon";
+import { DrinkMenu } from "./components/DrinkMenu";
+import { Icon } from "./components/Icon";
 import { ListSheet } from "./components/ListSheet";
 import type { Cheap, SearchSheet as SearchSheetType } from "./components/SearchSheet";
 import { it } from "./i18n/it";
-import { invalidateCell, loadCell, ServiceBusy, shownPrice, type Venue } from "./lib/data";
+import { bestPrice, invalidateCell, loadCell, ServiceBusy, type Venue } from "./lib/data";
 import { blockedHelp, locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
-import { formatPrice, formatSize, formatStampDay, todayRome } from "./lib/format";
+import { formatPrice, formatStampDay, todayRome } from "./lib/format";
 import { installMode, promptInstall } from "./lib/install";
 import { currentTheme } from "./lib/theme";
 import { addPrices, priceCount, stampReached } from "./lib/usage";
@@ -30,12 +31,6 @@ import type { MapView, VenueMap } from "./lib/maplibre-map";
 const MIN_ZOOM_CELLS = 13;
 
 /** The topmost open sheet: while a modal sheet is open, everything outside it is inert. */
-/** Same names as the drink grid of "Aggiungi prezzo"; the size only where the drink has several. */
-function chipLabel(c: (typeof MAP_CHIPS)[number]): string {
-  const several = MAP_CHIPS.filter((o) => o.drink === c.drink).length > 1;
-  return [it.drinks[c.drink] ?? c.drink, several ? formatSize(c.size) : ""].join(" ").trim();
-}
-
 function topLayer(): HTMLElement {
   const open = document.querySelectorAll<HTMLElement>("dialog.sheet[open]");
   return open[open.length - 1] ?? document.body;
@@ -135,7 +130,8 @@ export function App({ loadMap }: Props) {
   const toastTimer = useRef<HoldableTimer | null>(null);
   const pendingSave = useRef<PendingSave | null>(null);
   const flewToBar = useRef(false);
-  const [chip, setChip] = useState<ChipId>(DEFAULT_CHIP.id);
+  // The drinks the map is filtered on («Scegli cosa bere»): in catalog order, never empty, kept for the visit.
+  const [drinks, setDrinks] = useState<string[]>([DEFAULT_DRINK]);
   const [venues, setVenues] = useState<Map<string, Venue>>(new Map());
   const [cellsState, setCellsState] = useState<CellsState>("idle");
   const [attempt, setAttempt] = useState(0); // "Riprova" after a cell error
@@ -161,7 +157,6 @@ export function App({ loadMap }: Props) {
   const ensureMap = () => {
     setMapWanted(true);
   };
-  const selected = MAP_CHIPS.find((c) => c.id === chip) ?? DEFAULT_CHIP;
 
   // Map: created once, when first wanted.
   useEffect(() => {
@@ -269,17 +264,14 @@ export function App({ loadMap }: Props) {
   );
 
   // Tier of every priced bar against the median of its cell (D-12); colours only with 5+ prices.
-  const zoneCoverage = useMemo(
-    () => coverage(inView, selected.drink, selected.size),
-    [inView, selected],
-  );
+  const zoneCoverage = useMemo(() => coverage(inView, drinks), [inView, drinks]);
   const tiersActive = useMemo(
     () =>
       inView.some((v) => {
-        const price = shownPrice(v, selected.drink, selected.size);
-        return price && cellMedian(allVenues, v.cell, selected.drink, selected.size) !== null;
+        const price = bestPrice(v, drinks);
+        return price && cellMedian(allVenues, v.cell, price[1]) !== null;
       }),
-    [inView, allVenues, selected],
+    [inView, allVenues, drinks],
   );
 
   useEffect(() => {
@@ -287,12 +279,15 @@ export function App({ loadMap }: Props) {
     const medians = new Map<string, number | null>();
     map?.setVenues(
       allVenues.map((v) => {
-        const price = shownPrice(v, selected.drink, selected.size);
+        // With several drinks chosen the pin shows the cheapest of them; the tier is judged against
+        // the median of that drink.
+        const price = bestPrice(v, drinks);
         const label = price
-          ? `${formatPrice(price[4])}${price[3] === 1 ? ` ${it.bar.happyHour}` : ""}`
+          ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`
           : "";
-        if (!medians.has(v.cell)) {
-          medians.set(v.cell, cellMedian(allVenues, v.cell, selected.drink, selected.size));
+        const medianKey = price ? `${v.cell}|${price[1]}` : "";
+        if (price && !medians.has(medianKey)) {
+          medians.set(medianKey, cellMedian(allVenues, v.cell, price[1]));
         }
         return {
           key: v.key,
@@ -301,12 +296,13 @@ export function App({ loadMap }: Props) {
           lon: v.lon,
           label,
           // The median is of normal-hours prices: a happy-hour-only price stays neutral (D-13).
-          tier: price && price[3] === 0 ? tierOf(price[4], medians.get(v.cell) ?? null) : "neutro",
-          stale: price ? isStale(price[5], today) : false,
+          tier:
+            price && price[2] === 0 ? tierOf(price[3], medians.get(medianKey) ?? null) : "neutro",
+          stale: price ? isStale(price[4], today) : false,
         };
       }),
     );
-  }, [map, allVenues, selected]);
+  }, [map, allVenues, drinks]);
 
   // The search code is its own chunk, downloaded when the sheet is first opened (M4-16).
   const [SearchComponent, setSearchComponent] = useState<typeof SearchSheetType | null>(null);
@@ -317,17 +313,26 @@ export function App({ loadMap }: Props) {
     });
   }, [sheet, SearchComponent]);
 
-  // «I più economici qui»: the cheapest prices of the chosen drink in the visible area (M4-04).
+  // «I più economici qui»: the cheapest prices of the chosen drinks in the visible area (M4-04).
   const cheapest = useMemo<Cheap[]>(
     () =>
       inView
         .flatMap((venue) => {
-          const row = shownPrice(venue, selected.drink, selected.size);
-          return row ? [{ venue, cents: row[4], day: row[5] }] : [];
+          const row = bestPrice(venue, drinks);
+          return row
+            ? [
+                {
+                  venue,
+                  cents: row[3],
+                  day: row[4],
+                  drink: drinks.length > 1 ? it.drinks[row[1]] : undefined,
+                },
+              ]
+            : [];
         })
         .sort((a, b) => a.cents - b.cents || (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
         .slice(0, 10),
-    [inView, selected],
+    [inView, drinks],
   );
 
   const zoomedIn = view !== null && view.zoom >= MIN_ZOOM_CELLS;
@@ -487,7 +492,6 @@ export function App({ loadMap }: Props) {
       prefill: {
         venue: draft.venue,
         drink: draft.drink,
-        size: draft.size,
         hh: draft.hh,
         error,
         text: (draft.cents / 100).toFixed(2).replace(".", ","),
@@ -514,7 +518,6 @@ export function App({ loadMap }: Props) {
           source: "manual",
           items: entry.drafts.map((d) => ({
             drink: d.drink,
-            size_ml: d.size,
             hh: d.hh,
             price_cents: d.cents,
           })),
@@ -576,8 +579,8 @@ export function App({ loadMap }: Props) {
     const before = priceCount();
     const after = addPrices(1, today);
     const lines: string[] = [it.add.stamp];
-    const hadPrice = Boolean(shownPrice(draft.venue, selected.drink, selected.size));
-    if (!hadPrice && inView.some((v) => v.key === draft.venue.key))
+    const countsHere = !bestPrice(draft.venue, drinks);
+    if (countsHere && inView.some((v) => v.key === draft.venue.key))
       lines.push(it.add.coverageUp(zoneCoverage.withPrice + 1, zoneCoverage.total));
     // The second price, once: the moment someone shows they will come back (M4-09).
     if (before === 1 && after === 2) setInvite(installMode());
@@ -729,15 +732,14 @@ export function App({ loadMap }: Props) {
       const response = await postWithSession(host(), "/api/prices/confirm", {
         venue: row[0],
         drink: row[1],
-        size_ml: row[2],
-        hh: row[3],
+        hh: row[2],
       });
       if (!response.ok) throw new Error(String(response.status));
       const body = (await response.json()) as { status: string; confirmations: number };
       return { count: body.confirmations, counted: body.status === "confirmed" };
     },
     changed: (venue, row) => {
-      openAdd({ venue, drink: row[1], size: row[2], hh: row[3] });
+      openAdd({ venue, drink: row[1], hh: row[2] });
     },
     report: (venue, row) => {
       setReporting({ venue, row });
@@ -749,9 +751,7 @@ export function App({ loadMap }: Props) {
 
   async function sendReport(target: { venue: Venue; row: PriceRow | null }, reason: Reason) {
     setReporting(null);
-    const price = target.row
-      ? { drink: target.row[1], size_ml: target.row[2], hh: target.row[3] }
-      : {};
+    const price = target.row ? { drink: target.row[1], hh: target.row[2] } : {};
     try {
       const response = await postWithSession(host(), "/api/reports", {
         venue: target.venue.key,
@@ -836,22 +836,7 @@ export function App({ loadMap }: Props) {
             <Icon name="locate" />
           </button>
         </div>
-        <div class="chips" role="group" aria-label={it.map.drinks}>
-          {MAP_CHIPS.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              class="chip"
-              aria-pressed={c.id === chip}
-              onClick={() => {
-                setChip(c.id);
-              }}
-            >
-              <Icon name={drinkIcon(c.drink)} />
-              {chipLabel(c)}
-            </button>
-          ))}
-        </div>
+        <DrinkMenu selected={drinks} onChange={setDrinks} />
       </header>
 
       <main class="main">
@@ -1027,7 +1012,9 @@ export function App({ loadMap }: Props) {
         <SearchComponent
           origin={position ?? (view ? { lat: view.lat, lon: view.lon } : null)}
           cheapest={cheapest}
-          drink={chipLabel(selected)}
+          drink={CATALOG.filter((d) => drinks.includes(d.code))
+            .map((d) => it.drinks[d.code] ?? d.code)
+            .join(", ")}
           hint={searchHint}
           onPlace={goToPlace}
           onBar={(hit) => {
@@ -1051,8 +1038,7 @@ export function App({ loadMap }: Props) {
       {sheet === "list" && (
         <ListSheet
           venues={inView}
-          drink={selected.drink}
-          size={selected.size}
+          drinks={drinks}
           position={position}
           onOpen={(v) => {
             navigate(`/bar/${v.key}?c=${v.cell}`);
@@ -1068,11 +1054,9 @@ export function App({ loadMap }: Props) {
           venueKey={route.key}
           cell={route.cell}
           actions={barActions}
-          focus={{ drink: selected.drink, size: selected.size }}
+          focus={drinks}
           tier={(row) =>
-            row[3] === 0
-              ? tierOf(row[4], cellMedian(allVenues, route.cell, row[1], row[2]))
-              : "neutro"
+            row[2] === 0 ? tierOf(row[3], cellMedian(allVenues, route.cell, row[1])) : "neutro"
           }
           onVenue={(v) => {
             // A search already flew to the bar (zoom 17): the page must not move the map again.

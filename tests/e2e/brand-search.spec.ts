@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
-import { atHour, goToMilano, mapRegion, THEME_HOURS } from "./helpers";
+import { atHour, goToMilano, mapRegion, THEME_HOURS, chooseDrinks } from "./helpers";
 
 // F4 of the brand package: search of bars by name in all Italy (M4-11…M4-16, ADR 0024).
 // Read-only: no price is written. Fixture: Milano centro (9 cells), search fragments in data/s/.
@@ -266,10 +266,7 @@ test("M4-04 «I più economici qui»: ordered, at most 10, only active prices", 
   expect(prices).toEqual([...prices].sort((a, b) => a - b));
   // The seeded quarantined gin tonic (Terrazza Duomo? w549495264) never appears here.
   await page.getByRole("button", { name: "Chiudi" }).click();
-  await page
-    .getByRole("group", { name: "Drink" })
-    .getByRole("button", { name: "Gin tonic" })
-    .click();
+  await chooseDrinks(page, "Gin tonic");
   await page.getByRole("button", { name: "Cerca città o bar" }).click();
   await expect(page.getByRole("list", { name: "I più economici qui" })).toHaveCount(0);
 });

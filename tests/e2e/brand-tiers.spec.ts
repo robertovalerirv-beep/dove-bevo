@@ -1,12 +1,9 @@
 import { expect } from "@playwright/test";
 import { test } from "./fixtures";
-import { goToMilano, mapRegion } from "./helpers";
+import { chooseDrinks, goToMilano, mapRegion } from "./helpers";
 
 // F5a: colours on the median (M4-03), freshness (M4-05), happy hour (M4-10). Read-only.
 // Seed (tests/fixtures/seed.sql): five wine prices 4,00 · 4,50 · 5,00 · 5,50 · 9,00 in cell u0nd9.
-
-const chip = (page: import("@playwright/test").Page, name: string) =>
-  page.getByRole("group", { name: "Drink" }).getByRole("button", { name });
 
 test("M4-03 with five prices the legend appears and the pins are drawn; with fewer it does not", async ({
   page,
@@ -15,7 +12,7 @@ test("M4-03 with five prices the legend appears and the pins are drawn; with few
   await goToMilano(page);
   const legend = page.getByRole("list", { name: "Legenda dei prezzi" });
   await expect(legend).toHaveCount(0); // spritz: two prices only
-  await chip(page, "Calice di vino").click();
+  await chooseDrinks(page, "Calice di vino");
   await expect(legend).toBeVisible();
   await expect(legend.getByRole("listitem")).toHaveText(["↓ Affare", "= Giusto", "↑ Salato"]);
   // The value is always written on the pin, whatever its tier (MapLibre may hide overlapping pins).
@@ -23,15 +20,15 @@ test("M4-03 with five prices the legend appears and the pins are drawn; with few
     timeout: 20_000,
   });
   await page.screenshot({ path: info.outputPath("m4-03-mediana.png") });
-  await chip(page, "Spritz").click();
+  await chooseDrinks(page, "Spritz");
   await expect(legend).toHaveCount(0);
 });
 
 test("M4-05 a price older than 90 days says «Da confermare» on the bar page", async ({ page }) => {
   await page.goto("/bar/n11755824793?c=u0nd9");
   const sheet = page.getByRole("dialog", { name: "Le Jardin Bistrot" });
-  const prosecco = sheet.getByRole("listitem").filter({ hasText: "Calice di prosecco" });
-  await expect(prosecco).toContainText("Da confermare");
+  const old = sheet.getByRole("listitem").filter({ hasText: "Gin lemon" });
+  await expect(old).toContainText("Da confermare");
   const wine = sheet.getByRole("listitem").filter({ hasText: "Calice di vino" });
   await expect(wine).not.toContainText("Da confermare"); // 4 days old
 });
@@ -41,7 +38,7 @@ test("M4-10 happy hour: only the HH price is shown with «HH» on the map; the b
 }) => {
   await page.goto("/");
   await goToMilano(page);
-  await chip(page, "Spritz").click();
+  await chooseDrinks(page, "Spritz");
   await page.getByRole("button", { name: "Elenco" }).click();
   const list = page.getByRole("dialog", { name: "Bar nella zona" });
   await expect(list.getByRole("link", { name: /Terrazza Aperol/ })).toContainText("10,00 € HH");

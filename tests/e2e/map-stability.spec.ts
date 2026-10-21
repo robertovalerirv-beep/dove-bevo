@@ -1,13 +1,10 @@
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
-import { goToMilano, mapRegion, waitForBars, zoomOf } from "./helpers";
+import { chooseDrinks, goToMilano, mapRegion, waitForBars, zoomOf } from "./helpers";
 
 // M1-16: the map never changes size and never moves on its own. A bottom bar whose height followed the
 // view (the "zona senza prezzi" invitation added a paragraph and two buttons) resized the map, the
 // resize moved the view, the view reloaded the cells and could flip the bar back: the map kept jumping.
-
-const chip = (page: Page, name: string) =>
-  page.getByRole("group", { name: "Drink" }).getByRole("button", { name });
 
 const heights = (page: Page) =>
   page.evaluate(() => ({
@@ -46,16 +43,16 @@ test("M1-16 the map has the same height in a zone with prices and in one without
   const sizes: Record<string, { map: number; bar: number }> = {};
   // Birra and Negroni have almost no prices around the Duomo (the invitation), Spritz has enough.
   for (const [name, status] of [
-    ["Birra alla spina 0,4 l", /^2 bar su/],
+    ["Birra media", /^2 bar su/],
     ["Spritz", /^3 bar su/],
     ["Negroni", /^0 bar su/],
   ] as const) {
-    await chip(page, name).click();
+    await chooseDrinks(page, name);
     await expect(page.getByTestId("map-status")).toHaveText(status);
     sizes[name] = await heights(page);
   }
-  expect(sizes["Spritz"]).toEqual(sizes["Birra alla spina 0,4 l"]);
-  expect(sizes["Negroni"]).toEqual(sizes["Birra alla spina 0,4 l"]);
+  expect(sizes["Spritz"]).toEqual(sizes["Birra media"]);
+  expect(sizes["Negroni"]).toEqual(sizes["Birra media"]);
 });
 
 for (const drink of ["Spritz", "Negroni"]) {
@@ -64,7 +61,7 @@ for (const drink of ["Spritz", "Negroni"]) {
   }) => {
     await page.goto("/");
     await goToMilano(page);
-    await chip(page, drink).click();
+    await chooseDrinks(page, drink as "Spritz" | "Negroni");
     await waitForBars(page);
     await mapRegion(page).locator("canvas").focus();
     let previous = await zoomOf(page);

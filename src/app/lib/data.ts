@@ -27,12 +27,14 @@ export interface Venue {
 }
 
 const cells = new Map<string, Promise<Venue[]>>();
+/** Cells whose next read of the prices must skip the browser's HTTP cache. */
+const reread = new Set<string>();
 
 /** The API answered with the SPA page instead of JSON: the free daily limit is over (SPEC 5.3). */
 export class ServiceBusy extends Error {}
 
-async function getJson<T>(url: string, fallback: T): Promise<T> {
-  const response = await fetch(url);
+async function getJson<T>(url: string, fallback: T, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
   // A missing static file (no bars in that cell) comes back as the SPA fallback HTML, not a 404.
   const isJson = response.headers.get("content-type")?.includes("application/json") ?? false;
   if (response.ok && !isJson && url.startsWith("/api/")) throw new ServiceBusy();
@@ -42,9 +44,15 @@ async function getJson<T>(url: string, fallback: T): Promise<T> {
 }
 
 async function fetchCell(cell: string): Promise<Venue[]> {
+  // After a contribution the browser's own copy (max-age 60 s) would hand back the old prices.
+  const fresh = reread.delete(cell);
   const [file, prices] = await Promise.all([
     getJson<CellFile>(`/data/${DATA_VERSION}/v/${cell}.json`, { c: [], v: [] }),
-    getJson<CellPrices>(`/api/prices/${cell}`, { p: [], u: [], pend: [], h: [] }),
+    getJson<CellPrices>(
+      `/api/prices/${cell}`,
+      { p: [], u: [], pend: [], h: [] },
+      fresh ? { cache: "reload" } : undefined,
+    ),
   ]);
   const byKey = new Map<string, PriceRow[]>();
   for (const row of prices.p) byKey.set(row[0], [...(byKey.get(row[0]) ?? []), row]);
@@ -108,4 +116,5 @@ export { bestPrice, shownPrice } from "../../shared/prices";
 /** Drops a cell from the visit cache so its prices are read again after a contribution. */
 export function invalidateCell(cell: string): void {
   cells.delete(cell);
+  reread.add(cell);
 }

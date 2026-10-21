@@ -22,10 +22,17 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 **Revisione** (`spec-reviewer`): codice, migrazione e privacy senza problemi. Corretti: `/confirm` e `/reports` ora rifiutano con 400 `size_ml` e i drink tolti (prima 404, test nuovo per MC-03); SPEC 7.1, `docs/data-quality.md` e `SECURITY.md` ancora parlavano di formato/chip; l'elenco dei drink restava aperto uscendo con Tab (ora si chiude, test). Non cambiato: «Copertura +1» dopo il salvataggio resta com'era (la voce MB-11 lo prevede). Rischio noto: un telefono con la vecchia versione già aperta (shell nella cache del service worker) vede la mappa senza prezzi finché non si aggiorna.
 
+**Chiusura (21/10/2026)**
+- Tag `spec-approved-7` pubblicato da Roberto sul commit `chore(spec)` (6eccd6f); push del ramo con il gate locale `npm run verify` verde in 678 s.
+- [PR #41](https://github.com/robertovalerirv-beep/dove-bevo/pull/41) unita su `main` (merge `d9ce189`, 18:38 UTC). CI su `main` (run 39654537379): 5 job su 5 verdi in 6 min 51 s (gitleaks, lint/typecheck/unit/guardie/audit, import OSM, E2E Chromium e WebKit con sicurezza, Lighthouse).
+- **Deploy in staging** (run 39655565704, con la migrazione `0006` applicata dalla CI): verde.
+- Produzione non toccata (deploy e D1 remoto restano di Roberto).
+
 **Da fare per Roberto (nell'ordine)**
-1. Pubblicare il tag `spec-approved-7` sul commit `chore(spec)` **prima** del push del ramo; unire dopo la PR #40.
-2. Guardare le icone di Sbagliato, Gin lemon e Acqua e i limiti (Acqua 0,50–6 €, Sbagliato e Gin lemon 4–20 €).
-3. La migrazione 0006 gira in staging dalla CI; in produzione la lancia lui. Le tabelle `archive_sizes_*` si possono cancellare quando vuole.
+1. Guardare le icone di Sbagliato, Gin lemon e Acqua e i limiti (Acqua 0,50–6 €, Sbagliato e Gin lemon 4–20 €): sono ipotesi mie, si correggono in `catalog.ts` e `Icon.tsx`.
+2. Da telefono (staging): aprire «Scegli cosa bere», spuntare più drink e controllare che il pin mostri il più basso; inserire un prezzo con la nuova lista.
+3. La migrazione 0006 in produzione la lancia lui. Le tabelle `archive_sizes_*` si possono cancellare quando vuole.
+4. Sul ramo `sec-seo-hardening` (lavoro non committato nel checkout principale): `db.ts`, `seo.ts`, `seo-texts.ts` sono cambiati su `main` (niente `size_ml`, nuovi drink): riallineare prima di committare.
 
 ---
 

@@ -2,6 +2,9 @@
 export const APP_NAME = "Dove bevo";
 export const APP_DOMAIN = "dovebevo.example";
 
+/** "Annulla" after Salva (SPEC D-15): the price is sent when this runs out. One value for the timer, the progress bar and the texts. */
+export const UNDO_MS = 5_000;
+
 /** Launch gate (ADR 0022): bars with a price in the Comune di Milano (OSM id of its place node). */
 export const LAUNCH_CITY_ID = 62505581;
 export const LAUNCH_TARGET = 150;

@@ -2,7 +2,7 @@ import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
 import { DEFAULT_CHIP, MAP_CHIPS, type ChipId } from "../shared/catalog";
-import { APP_NAME } from "../shared/config";
+import { APP_NAME, UNDO_MS } from "../shared/config";
 import { encodeGeohash, visibleCells } from "../shared/geohash";
 import type { PriceRow } from "../shared/api-types";
 import { distanceMeters, searchKey } from "../shared/venue";
@@ -83,7 +83,7 @@ function parseRoute(): Route {
 
 type CellsState = "idle" | "too-many" | "loading" | "error" | "busy" | "ready";
 
-/** Prices saved for one bar, sent together as one request after the 10 s of "Annulla" (D-15). */
+/** Prices saved for one bar, sent together as one request after the UNDO_MS of "Annulla" (D-15). */
 interface PendingSave {
   drafts: Draft[];
   timer: HoldableTimer;
@@ -495,7 +495,7 @@ export function App({ loadMap }: Props) {
     });
   }
 
-  /** Sends a saved price: after the 10 s of "Annulla" or when the page goes to the background (D-15). */
+  /** Sends a saved price: after the UNDO_MS of "Annulla" or when the page goes to the background (D-15). */
   async function send(entry: PendingSave) {
     if (entry.sent) return;
     entry.sent = true;
@@ -566,7 +566,7 @@ export function App({ loadMap }: Props) {
     previous?.timer.clear();
     const entry: PendingSave = {
       drafts: joins ? [...previous.drafts, draft] : [draft],
-      timer: holdableTimeout(() => void send(entry), 10_000),
+      timer: holdableTimeout(() => void send(entry), UNDO_MS),
       sent: false,
     };
     pendingSave.current = entry;
@@ -594,7 +594,7 @@ export function App({ loadMap }: Props) {
         if (pendingSave.current === entry) pendingSave.current = null;
         showToast(it.add.undone);
       },
-      10_000,
+      UNDO_MS,
       {
         label: it.add.another,
         run: () => {
@@ -604,7 +604,7 @@ export function App({ loadMap }: Props) {
       },
       { day: formatStampDay(), lines, count: after, tessera },
     );
-    // Turnstile only now, at the first contribution (M2-02), during the 10 s window; after the
+    // Turnstile only now, at the first contribution (M2-02), during the undo window; after the
     // add sheet has closed, so its host lands in the layer that stays open.
     setTimeout(() => {
       ensureSession(host()).catch(() => undefined);
@@ -882,18 +882,63 @@ export function App({ loadMap }: Props) {
               <img src={`/map-italia-${currentTheme()}.jpg`} alt="" width={780} height={1276} />
             </button>
           )}
-          {zoomedIn && tiersActive && !pinning && (
-            <ul class="legend" aria-label={it.map.legend}>
-              {(["affare", "giusto", "salato"] as const).map((t) => (
-                <li key={t} class={`legend__item legend__item--${t}`}>
-                  <span aria-hidden="true">
-                    {t === "affare" ? "↓" : t === "giusto" ? "=" : "↑"}
-                  </span>{" "}
-                  {it.map.tiers[t]}
-                </li>
-              ))}
-            </ul>
+          {/* The list is an icon on the map, not a button of the bar. */}
+          {!pinning && (
+            <button
+              type="button"
+              class="btn icon-btn map__list"
+              aria-label={it.map.list}
+              onClick={() => {
+                setSheet("list");
+              }}
+            >
+              <Icon name="list" />
+            </button>
           )}
+          {/* Over the map, never in the layout: what the view shows must not resize the map (M1-16). */}
+          <div class="map__stack">
+            {emptyZone && !pinning && <p class="map__note">{it.map.emptyZone}</p>}
+            {invite && !pinning && (
+              <div class="map__invite" role="region" aria-label={it.install.action}>
+                <p>{invite === "ios" ? it.install.ios : it.install.prompt}</p>
+                <div class="map__invite-actions">
+                  {invite === "prompt" && (
+                    <button
+                      type="button"
+                      class="btn btn--secondary"
+                      onClick={() => {
+                        setInvite(null);
+                        void promptInstall();
+                      }}
+                    >
+                      {it.install.action}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    class="btn btn--ghost"
+                    onClick={() => {
+                      setInvite(null);
+                    }}
+                  >
+                    {invite === "ios" ? it.install.ok : it.install.dismiss}
+                  </button>
+                </div>
+              </div>
+            )}
+            {zoomedIn && tiersActive && !pinning && (
+              <ul class="legend" aria-label={it.map.legend}>
+                {(["affare", "giusto", "salato"] as const).map((t) => (
+                  <li key={t} class={`legend__item legend__item--${t}`}>
+                    <span aria-hidden="true">
+                      {t === "affare" ? "↓" : t === "giusto" ? "=" : "↑"}
+                    </span>{" "}
+                    {it.map.tiers[t]}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           {pinning && <div class="map__cross" aria-hidden="true" data-testid="pin-mark" />}
           <p class="map__status" data-testid="map-status" role="status">
             {showMeter && (
@@ -939,35 +984,7 @@ export function App({ loadMap }: Props) {
           it: the map must not change height, or its centre moves and the pin looks already placed. */}
       <div class="bottom-slot">
         <nav class="bottom" aria-label={it.map.actions} inert={pinning ? true : undefined}>
-          {invite && (
-            <div class="bottom__invite" role="region" aria-label={it.install.action}>
-              <p>{invite === "ios" ? it.install.ios : it.install.prompt}</p>
-              <div class="bottom__invite-actions">
-                {invite === "prompt" && (
-                  <button
-                    type="button"
-                    class="btn btn--secondary"
-                    onClick={() => {
-                      setInvite(null);
-                      void promptInstall();
-                    }}
-                  >
-                    {it.install.action}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  class="btn btn--ghost"
-                  onClick={() => {
-                    setInvite(null);
-                  }}
-                >
-                  {invite === "ios" ? it.install.ok : it.install.dismiss}
-                </button>
-              </div>
-            </div>
-          )}
-          {emptyZone && <p class="bottom__empty">{it.map.emptyZone}</p>}
+          {/* Always these two, whatever the view shows: the map never changes height (M1-16). */}
           <button
             type="button"
             class="btn btn--primary bottom__primary"
@@ -977,45 +994,14 @@ export function App({ loadMap }: Props) {
           >
             {it.add.open}
           </button>
-          {emptyZone && (
-            <>
-              <button
-                type="button"
-                class="btn btn--secondary"
-                onClick={() => {
-                  startProposal();
-                }}
-              >
-                {it.add.addMissing}
-              </button>
-              {"share" in navigator && (
-                <button
-                  type="button"
-                  class="btn btn--secondary"
-                  onClick={() => {
-                    navigator
-                      .share({ title: APP_NAME, url: location.origin })
-                      .catch(() => undefined);
-                  }}
-                >
-                  {it.map.shareMap}
-                </button>
-              )}
-            </>
-          )}
           <button
             type="button"
-            class={
-              emptyZone && !("share" in navigator)
-                ? "btn btn--secondary bottom__wide"
-                : "btn btn--secondary"
-            }
+            class="btn btn--secondary"
             onClick={() => {
-              setSheet("list");
+              startProposal();
             }}
           >
-            <Icon name="list" />
-            {it.map.list}
+            {it.add.addMissing}
           </button>
         </nav>
         {pinning && (

@@ -52,6 +52,8 @@ test("M3-11 a proposed bar: pin, send, then its price can be added at once", asy
   const pin = page.getByRole("region", { name: `Dov'è «${name}»?` });
   await expect(pin).toBeVisible();
   await expect(page.getByTestId("pin-mark")).toBeVisible();
+  // While the pin is placed nothing else of the map takes the focus or opens over it.
+  await expect(page.getByRole("button", { name: "Elenco" })).toHaveCount(0);
   const confirm = pin.getByRole("button", { name: "Conferma e invia" });
   await expect(mapRegion(page)).toHaveAttribute("data-zoom", /^1[6-9]|^2/, { timeout: 20_000 });
   // Where the map started could be the device's position: the pin must be moved away from it
@@ -159,7 +161,6 @@ test("M3-11 the same proposal is reachable from Aggiungi prezzo (Non trovi il ba
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Aggiungi locale mancante" })).toHaveCount(0);
   await page.screenshot({ path: "docs/screenshots/m3/home-390.png" });
   await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
   await page.getByRole("button", { name: "Non trovi il bar?" }).click();

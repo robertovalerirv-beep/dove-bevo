@@ -4,6 +4,38 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-21 · Sessione 12 · Mappa stabile, barra a due tasti, Annulla da 5 s (branch `fix/map-stability-undo-5s`, da `main` 10c91eb) · SPEC 1.5, ADR 0027
+
+**Richiesta di Roberto:** la mappa «salta tra due livelli di zoom» (visto da un tester e da lui); Annulla da 10 a 5 secondi; barra in basso con soli «Aggiungi prezzo» e «Aggiungi locale», «Manda la mappa» eliminato col suo codice, «Elenco» come icona discreta sulla mappa; «mai più deploy rossi».
+
+**Causa (misurata, non supposta):** la barra in basso cambiava altezza con la vista (zona senza prezzi = +102 px) e con lei la mappa. Il primo test scritto (a zoom fermo) era verde: non vedeva il difetto. Reso più severo (osserva anche *durante* lo zoom e confronta la stessa vista con chip diverse) è diventato rosso sul codice di `main`: mappa 654 px con Spritz contro 552 con Birra, e **3 ridimensionamenti** andando a zoom 13 senza toccare nulla.
+
+**Fatto**
+- Barra: sempre [Aggiungi prezzo][Aggiungi locale mancante] in una riga; la frase della zona senza prezzi e la legenda stanno in `.map__stack` (assoluto, sopra le attribuzioni); «Elenco» è `.map__list` (48×48, in alto a destra, lo stato lascia l'angolo). Tolti `navigator.share`, `shareMap`, `.bottom__wide`, `.bottom__empty`.
+- `UNDO_MS = 5000` (`src/shared/config.ts`) per timer, barra di avanzamento (`--toast-duration` generato da `scripts/tokens.ts`) e test del testo `seenHelp`.
+- SPEC 1.5 (D-15, D-28, 7.1, 7.3, M1-13, M2-05, M2-06, M3-16, MB-11, MB-13; nuova M1-16), ADR 0027, guardia della feature list sul tag `spec-approved-6`.
+- Test: `tests/e2e/map-stability.spec.ts` (nuovo), MB-13 riscritto (due temi, bounding box, axe), `tests/unit/undo.test.ts`, `contribute.spec.ts` senza «10» scritti a mano, tab order di M1-13 con `aria-label`.
+
+**Prove**
+- `npm test`: 38 file, 313 test verdi. `npm run lint`, `typecheck`, `format:check` verdi.
+- E2E Chromium e WebKit: `map-stability` + `brand-map` + `map` + `brand-tiers` 62/62; `contribute` (Chromium e WebKit, writes) 32/32; `map-stability` e MB-13 ripetuti 3 volte per browser: 36/36.
+- Screenshot 390×844 (zona vuota, Elenco, chiaro e scuro) controllati: icona e nota non coprono stato né attribuzioni.
+- `npm run verify` completo sul commit `fix(map)`: lint, formato, typecheck, unit, guardia, workflow, audit, e2e (498 s), build, budget shell, Lighthouse → **tutto verde in 683 s**. Rieseguito dopo le correzioni della revisione (vedi sotto).
+
+**Revisioni** (`spec-reviewer`, `ux-a11y-reviewer`): nessun problema di SPEC; trovati e corretti
+- l'invito all'installazione era nella barra e la faceva crescere di 112 px dopo il secondo prezzo (la mappa si ridimensionava di nuovo): ora è sulla mappa (`.map__invite`), test: altezza di mappa e barra uguale prima e dopo l'invito (iPhone);
+- l'icona «Elenco» restava attiva durante il posizionamento del pin: ora sparisce, come nota e invito (test in M3-11);
+- il Timbro era più alto dello schermo a 320×568 (y = −43 px, «Annulla» irraggiungibile in 5 s): sotto i 700 px di altezza scorre dentro lo schermo; test a 320×568 **rosso senza la regola**, verde con.
+- **Primo push bloccato dal gate** (M2-09, «Non riesco a caricare i prezzi»): era il limitatore a raffica (20 / 10 s per IP) che in locale si applica a tutti i test dallo stesso IP. Misurato: stesso esito con 10 s e con 5 s sotto carico doppio (6 test caduti, 5 risposte 429). Ora spento nel `wrangler.jsonc` di livello alto (staging a 20 / 10 intatto, test del Worker col limite vero, test di configurazione). ADR 0027.
+- Non toccato: la nota lascia passare i tocchi (`pointer-events: none`) verso i bar sotto di lei, voluto. `.claude/agents/spec-reviewer.md` cita ancora `spec-approved-3` e `docs/brand/01-strategia.md`/`mockup/README.md` «Annulla 10 s»: sono file di configurazione e documenti storici, li lascio a te.
+
+**Da fare per Roberto (nell'ordine)**
+1. Pubblicare il tag: `git push origin spec-approved-6` (è creato in locale sul commit `chore(spec)`); **prima** del push del ramo, altrimenti la guardia della CI fallisce. `spec-approved-5` esiste già (SPEC 1.4, ramo `brand-v2-map` non unito): se preferisci un altro nome, la guardia è in `scripts/check-feature-list.mjs`.
+2. Da telefono, in una zona senza prezzi: zoom da 13 a 17 su iPhone e Android; Annulla da 5 s col pollice (il timer si ferma solo con puntatore o focus sul messaggio).
+3. Se preferisci l'etichetta «Aggiungi locale» (senza «mancante») è una stringa in `it.ts` più i nomi nei test.
+
+---
+
 ## 2026-10-19 · Sessione 11 · Pacchetto di correzioni (branch `fix/mockup-and-no-cafes`) · ricerca, tema, SEO, sicurezza, prestazioni
 
 **Richiesta di Roberto:** due difetti (la ricerca non trova «Namasce», un bar inserito a mano; il tema è sempre scuro) e `prompt-seo-secutiry-update.md`, in un solo pacchetto. Decisioni, deviazioni dal prompt e motivi: **ADR 0025**.

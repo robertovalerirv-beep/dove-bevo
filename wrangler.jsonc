@@ -62,8 +62,11 @@
     },
   ],
   // Burst limit keyed by the HMAC of the IP (SPEC 13.3); free-plan availability: ADR 0010.
+  // Local and e2e share one IP across parallel tests: effectively off there, like the read limiter
+  // (ADR 0027). The real 20 / 10 s is in staging and production below, and in the worker tests
+  // (vitest.config.ts).
   "ratelimits": [
-    { "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 20, "period": 10 } },
+    { "name": "RATE_LIMITER", "namespace_id": "1001", "simple": { "limit": 3000, "period": 10 } },
     // Cell reads. Local and e2e share one IP across parallel tests: effectively off there.
     { "name": "READ_LIMITER", "namespace_id": "1003", "simple": { "limit": 3000, "period": 60 } },
   ],

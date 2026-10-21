@@ -26,6 +26,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - l'invito all'installazione era nella barra e la faceva crescere di 112 px dopo il secondo prezzo (la mappa si ridimensionava di nuovo): ora è sulla mappa (`.map__invite`), test: altezza di mappa e barra uguale prima e dopo l'invito (iPhone);
 - l'icona «Elenco» restava attiva durante il posizionamento del pin: ora sparisce, come nota e invito (test in M3-11);
 - il Timbro era più alto dello schermo a 320×568 (y = −43 px, «Annulla» irraggiungibile in 5 s): sotto i 700 px di altezza scorre dentro lo schermo; test a 320×568 **rosso senza la regola**, verde con.
+- **Primo push bloccato dal gate** (M2-09, «Non riesco a caricare i prezzi»): era il limitatore a raffica (20 / 10 s per IP) che in locale si applica a tutti i test dallo stesso IP. Misurato: stesso esito con 10 s e con 5 s sotto carico doppio (6 test caduti, 5 risposte 429). Ora spento nel `wrangler.jsonc` di livello alto (staging a 20 / 10 intatto, test del Worker col limite vero, test di configurazione). ADR 0027.
 - Non toccato: la nota lascia passare i tocchi (`pointer-events: none`) verso i bar sotto di lei, voluto. `.claude/agents/spec-reviewer.md` cita ancora `spec-approved-3` e `docs/brand/01-strategia.md`/`mockup/README.md` «Annulla 10 s»: sono file di configurazione e documenti storici, li lascio a te.
 
 **Da fare per Roberto (nell'ordine)**

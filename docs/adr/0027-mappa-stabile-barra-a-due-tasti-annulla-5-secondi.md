@@ -25,6 +25,13 @@
 ## Processo (SPEC 1.5)
 Cambiano testi di voci congelate della feature list (M1-13, M2-05, M2-06, M3-16, MB-11, MB-13) e se ne aggiunge una (M1-16): serve un nuovo tag. `spec-approved-5` esiste già (SPEC 1.4, ramo `brand-v2-map`, mai unito a `main`): la guardia passa a `spec-approved-6`. **Il tag lo pubblica Roberto prima del push del ramo**, altrimenti la guardia della CI fallisce.
 
+## Il gate rosso al primo push (stessa sessione)
+Il controllo locale del push è caduto una volta su M2-09 («Non riesco a caricare i prezzi»): `RATE_LIMITER` (20 richieste / 10 s per IP, SPEC 13.3) vale anche per le prove locali, dove tutti i test arrivano dallo stesso IP e due browser scrivono in parallelo. Misura (`contribute.spec`, due browser, carico doppio con `--repeat-each=2`): **con 10 s e con 5 s lo stesso risultato**, 5 risposte 429 e 6 test caduti (M3-16, M4-09, autore che conferma, M2-09…): il difetto c'era già (è la «M2-11 Confermo» intermittente che il gate aveva dato altre volte), non lo ha introdotto il 5 s.
+- `wrangler.jsonc` (livello alto, usato da `npm run dev`, e2e e Lighthouse): `RATE_LIMITER` a 3000 / 10 s, come `READ_LIMITER` che era già «praticamente spento» in locale per lo stesso motivo. Staging (`namespace_id` 1002) resta a 20 / 10 s; produzione dovrà ripetere il suo blocco.
+- `vitest.config.ts`: i test del Worker usano il limite vero (20 / 10 s), quindi `rate-limit.test.ts` continua a provare il 429.
+- `tests/unit/rate-limit-config.test.ts`: staging a 20 / 10, il livello alto a 3000 e nessun altro ambiente che usi il suo `namespace_id` per errore.
+- Dopo la modifica, stessa prova a carico doppio: nessuna 429; restano 4 test che non si possono ripetere due volte sullo stesso database (M2-11 e M2-13, artefatto di `--repeat-each` e non del carico).
+
 ## Rischi accettati
 - 5 secondi sono pochi con un dito su un telefono: il timer si ferma solo con puntatore o focus sul messaggio. Se i tester si lamentano, si cambia la sola costante `UNDO_MS`.
 - Quando una nota e la legenda compaiono insieme coprono una fascia della mappa sopra le attribuzioni (circa 100 px); ammesso, sono transitorie e non toccano i controlli.

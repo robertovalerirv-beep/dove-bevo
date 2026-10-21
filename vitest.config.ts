@@ -79,6 +79,10 @@ export default defineConfig(async () => {
                   ACCESS_AUD: "test-aud",
                   TEST_ACCESS_PRIVATE_JWK: JSON.stringify(accessPrivate),
                 },
+                // The real burst limit (wrangler.jsonc has it off for local runs, ADR 0027).
+                ratelimits: {
+                  RATE_LIMITER: { namespace_id: "1001", simple: { limit: 20, period: 10 } },
+                },
                 // Fake Turnstile siteverify ("ok-*" tokens pass once) and Access team certs.
                 outboundService: fakeSiteverify,
               },

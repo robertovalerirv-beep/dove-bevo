@@ -164,7 +164,7 @@
     "id": "M1-13",
     "milestone": "M1",
     "descrizione": "Elenco accessibile dei bar visibili",
-    "verifica": "e2e: \"Elenco\" mostra i bar visibili; navigazione solo da tastiera fino all'apertura di una scheda; axe senza violazioni",
+    "verifica": "e2e: l'icona \"Elenco\" (sulla mappa, non nella barra) mostra i bar visibili; navigazione solo da tastiera fino all'apertura di una scheda; axe senza violazioni",
     "passes": true
   },
   {
@@ -180,6 +180,13 @@
     "descrizione": "Storico di un bar",
     "verifica": "unit: `GET /api/venues/:key/prices` restituisce correnti e ≤ 10 osservazioni per drink e formato, solo data",
     "passes": true
+  },
+  {
+    "id": "M1-16",
+    "milestone": "M1",
+    "descrizione": "La mappa non cambia mai altezza né si muove da sola",
+    "verifica": "e2e Chromium e WebKit 390×844: l'altezza della mappa e della barra è identica con le chip Birra, Spritz e Negroni (zona con e senza prezzi); a ogni zoom da 13 in su (con Spritz e Negroni) nessun ridimensionamento della mappa durante lo zoom e, a riposo, nessun ridimensionamento né cambio di centro o zoom per 2 s; il test fallisce sul codice con la barra che cambia altezza",
+    "passes": false
   },
   {
     "id": "M2-01",
@@ -213,14 +220,14 @@
     "id": "M2-05",
     "milestone": "M2",
     "descrizione": "Inserimento in 4 tocchi più le cifre",
-    "verifica": "e2e: dalla mappa `Aggiungi prezzo` → primo bar proposto → Spritz → \"7,50\" → `Salva`: esattamente 4 tocchi; dopo 10 s il prezzo compare nella scheda",
+    "verifica": "e2e: dalla mappa `Aggiungi prezzo` → primo bar proposto → Spritz → \"7,50\" → `Salva`: esattamente 4 tocchi; dopo 5 s il prezzo compare nella scheda",
     "passes": true
   },
   {
     "id": "M2-06",
     "milestone": "M2",
     "descrizione": "Annulla senza scritture",
-    "verifica": "e2e: `Salva` poi `Annulla` entro 10 s → nessuna `POST /api/prices`; passaggio in background entro 10 s → invio con `keepalive`",
+    "verifica": "e2e: `Salva` poi `Annulla` entro 5 s → nessuna `POST /api/prices`; passaggio in background entro 5 s → invio con `keepalive`",
     "passes": true
   },
   {
@@ -332,7 +339,7 @@
     "id": "M3-16",
     "milestone": "M3",
     "descrizione": "Aggiungi un altro drink qui",
-    "verifica": "e2e: dopo `Salva` il messaggio offre \"Aggiungi un altro drink qui\"; il bar resta selezionato; più drink partono in un'unica `POST /api/prices` con l'Annulla di 10 s",
+    "verifica": "e2e: dopo `Salva` il messaggio offre \"Aggiungi un altro drink qui\"; il bar resta selezionato; più drink partono in un'unica `POST /api/prices` con l'Annulla di 5 s",
     "passes": true
   },
   {
@@ -528,7 +535,7 @@
     "id": "MB-11",
     "milestone": "MB",
     "descrizione": "Timbro dopo `Salva`",
-    "verifica": "e2e: timbro con la data del giorno; `Annulla` entro 10 s → nessuna `POST /api/prices`; dopo 10 s una sola; passaggio in background → invio con `keepalive` (D-15 invariato); \"Aggiungi un altro drink qui\" (M3-16) presente",
+    "verifica": "e2e: timbro con la data del giorno; `Annulla` entro 5 s → nessuna `POST /api/prices`; dopo 5 s una sola; passaggio in background → invio con `keepalive` (D-15); \"Aggiungi un altro drink qui\" (M3-16) presente; `UNDO_MS`, durata della barra di avanzamento e testi coincidono (unit)",
     "passes": true
   },
   {
@@ -541,8 +548,8 @@
   {
     "id": "MB-13",
     "milestone": "MB",
-    "descrizione": "Zona senza prezzi e bar mancante fuori dalla mappa (D-28)",
-    "verifica": "e2e: con copertura sotto il 5% compare il foglio con il primario; \"Aggiungi locale mancante\" non è sulla mappa ed è raggiungibile dal passo Bar, dalla ricerca senza risultati e dalla zona senza prezzi",
+    "descrizione": "Zona senza prezzi e barra della mappa a due tasti (D-28)",
+    "verifica": "e2e: la barra ha sempre e solo \"Aggiungi prezzo\" e \"Aggiungi locale mancante\" in una riga, con la stessa altezza anche nella zona senza prezzi; con copertura sotto il 5% la nota \"Qui nessuno ha ancora segnato un prezzo\" è sulla mappa, non nella barra; l'icona \"Elenco\" è sulla mappa, 48×48 px, senza sovrapporsi a stato, nota e attribuzioni, nei due temi; nessun \"Manda la mappa a un amico\"",
     "passes": true
   },
   {

@@ -1,6 +1,6 @@
 # Dove bevo — Specifica della Fase 0
 
-> **Versione 1.3 · 16/10/2026 · la 1.3 aggiunge la brand identity v1 (ADR 0023) e la ricerca dei bar per nome in tutta Italia (ADR 0024); è approvata da Roberto il 16/10/2026 in chat, e vale con il tag `spec-approved-4`. Storico: versione 1.2 · 15/10/2026 · la 1.2 aggiunge la dashboard di copertura in `/admin` (ADR 0022, M5-11…M5-16) ed è autorizzata da Roberto il 15/10/2026 in chat, e valeva con il tag `spec-approved-3`; versione 1.1 · 14/10/2026 · la 1.0 è approvata da Roberto l'11/10/2026 (tag `spec-approved`); la 1.1 è autorizzata da Roberto il 13/10/2026 (prompt v3.2) e il 14/10/2026 in chat, e valeva con il tag `spec-approved-2`.**
+> **Versione 1.5 · 21/10/2026 · la 1.5 porta l'Annulla da 10 a 5 secondi, riduce la barra della mappa ai soli due tasti "Aggiungi prezzo" e "Aggiungi locale mancante" ("Elenco" diventa un'icona sulla mappa, "Manda la mappa a un amico" sparisce) e fissa che la mappa non cambia mai altezza (ADR 0027, D-15, D-28, M1-16); è decisa da Roberto il 21/10/2026 in chat, e vale con il tag `spec-approved-6` (la 1.4 e il tag `spec-approved-5` stanno sul ramo `brand-v2-map`, non unito a `main`). Storico: versione 1.3 · 16/10/2026 · la 1.3 aggiunge la brand identity v1 (ADR 0023) e la ricerca dei bar per nome in tutta Italia (ADR 0024); è approvata da Roberto il 16/10/2026 in chat, e vale con il tag `spec-approved-4`. Storico: versione 1.2 · 15/10/2026 · la 1.2 aggiunge la dashboard di copertura in `/admin` (ADR 0022, M5-11…M5-16) ed è autorizzata da Roberto il 15/10/2026 in chat, e valeva con il tag `spec-approved-3`; versione 1.1 · 14/10/2026 · la 1.0 è approvata da Roberto l'11/10/2026 (tag `spec-approved`); la 1.1 è autorizzata da Roberto il 13/10/2026 (prompt v3.2) e il 14/10/2026 in chat, e valeva con il tag `spec-approved-2`.**
 >
 > **Registro delle modifiche 1.3:** (1) brand identity v1 da `docs/brand/` (ADR 0023, sostituisce l'ADR 0011 per i valori visivi): temi Bancone e Fuori orario, token generati da `docs/brand/tokens.json`, Bricolage Grotesque e Geist Mono, gradini Affare/Giusto/Salato con glifo, pin su canvas, scontrino, timbro, copertura e Tessera, nuovo vincolo 2.10; (2) mappa scura in Fuori orario (D-27, deroga a 4 e al MASTER di M0); (3) "Aggiungi locale mancante" esce dalla mappa (D-28); (4) Tessera (D-29); (5) ricerca dei bar per nome in tutta Italia con indice statico a frammenti, senza server (D-30, ADR 0024): M4-06 sostituita da M4-11…M4-16; (6) parole vietate nei testi (D-31); (7) limiti della ricerca (D-32); (8) budget font ≤ 70 KB (15); (9) nuove voci MB-01…MB-17 (sezione 18) e milestone MB (19). Il bottone primario resta "Aggiungi prezzo"; nessuna modifica a schema, migrazioni, API e scritture.
 >
@@ -53,7 +53,7 @@ Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → ac
 | D-12 | Colori sulla mediana | Solo con ≥ 5 prezzi attivi dello stesso drink e formato nella cella, fascia normale. Più economico (**Affare**, `↓`) < 0,9 × mediana, più caro (**Salato**, `↑`) > 1,1 × mediana, altrimenti nella media (**Giusto**, `=`; nomi e glifi dalla v1.3). Sotto 5 prezzi: colore neutro. Soglie in configurazione. Il valore è sempre scritto. |
 | D-13 | Happy hour | La mappa mostra il prezzo normale; se esiste solo quello in happy hour lo mostra con l'etichetta "HH". La scheda bar mostra entrambi. |
 | D-14 | Fuso orario | Ogni "giorno" (data del prezzo, quote, sale giornaliero, budget AI) è calcolato in `Europe/Rome`. |
-| D-15 | Annulla | Il prezzo parte allo scadere dei 10 s **oppure** quando la pagina passa in background (`visibilitychange` → `hidden`), con `fetch(..., { keepalive: true })`: chiudere l'app non è un annullamento. |
+| D-15 | Annulla | Il prezzo parte allo scadere dei 5 s (`UNDO_MS` in `src/shared/config.ts`: una sola costante per timer, barra di avanzamento e testi) **oppure** quando la pagina passa in background (`visibilitychange` → `hidden`), con `fetch(..., { keepalive: true })`: chiudere l'app non è un annullamento. |
 | D-16 | Bar più vicini | Calcolati sul dispositivo dalla posizione se concessa, altrimenti dal centro della mappa. |
 | D-17 | Tetto AI per ambiente | Rimosso in 1.1 (ADR 0018). |
 | D-18 | Fonte del prezzo | `prices_current` ha la colonna `source` (fonte dell'ultima osservazione). In 1.1 l'API accetta solo `manual`. |
@@ -66,7 +66,7 @@ Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → ac
 | D-25 | Foto per le evals | Rimosso in 1.1 (ADR 0018). |
 | D-26 | Storico di un bar | `GET /api/venues/:key/prices` restituisce al massimo le ultime 10 osservazioni per drink e formato, solo data. |
 | D-27 | Mappa scura (v1.3) | In Fuori orario la mappa usa uno stile derivato da OpenFreeMap Dark; in Bancone uno derivato da Positron. Entrambi generati da `scripts/build-map-styles.mjs` con i token `map-*` e serviti da `public/map/` con cache immutabile; tessere, glifi e sprite restano su `tiles.openfreemap.org`. Decisione di Roberto del 16/10/2026 (deroga a 4 e al MASTER di M0). **Dal 19/10/2026 (ADR 0025) il tema si sceglie dall'ora del dispositivo, non dall'impostazione del sistema:** Bancone dalle 06:00 alle 21:29, Fuori orario dalle 21:30 alle 05:59. |
-| D-28 | Bar mancante (v1.3) | "Aggiungi locale mancante" non è più sulla mappa: si raggiunge dal passo Bar di "Aggiungi prezzo" (7.5), dalla ricerca senza risultati (7.6) e dalla zona senza prezzi (7.1). |
+| D-28 | Barra della mappa (v1.3, rivista in 1.5) | La barra in basso ha sempre e solo due tasti: "Aggiungi prezzo" e "Aggiungi locale mancante" (7.5). Ciò che la vista mostra non ne cambia mai l'altezza, altrimenti la mappa si ridimensiona, ricarica le celle e salta (M1-16): l'invito della zona senza prezzi e la legenda sono scritti sulla mappa, "Elenco" è un'icona sulla mappa. "Manda la mappa a un amico" non esiste più (basta copiare l'indirizzo del sito). Il bar mancante si raggiunge anche dal passo Bar di "Aggiungi prezzo" e dalla ricerca senza risultati. |
 | D-29 | Tessera (v1.3) | Timbri a 1, 5, 10, 25 e 50 prezzi inseriti, dal contatore già in `localStorage` (12). Nessun dato sul server, nessuna chiave nuova, nessuna classifica. |
 | D-30 | Ricerca per nome (v1.3) | Qualunque bar OSM d'Italia si trova per nome dalla casella di ricerca, con un indice statico a frammenti per prefisso di parola generato all'import (5.1, ADR 0024). Zero richieste a `/api/*` e zero letture D1 per ricerca. Nessuna ricerca per quartiere. |
 | D-31 | Parole vietate (v1.3) | Un test fallisce se `it.ts` contiene, senza accenti e per radice: «sbronz», «ubriac», «sballo», «shot», «chupito», «brindis», «brinda», «bevi di più», «bere di più», «a volontà», «open bar», «senza limiti», «tracanna», «alcolic» (escluso «analcolico»). Elenco approvato da Roberto il 16/10/2026; si aggiorna solo con il suo ok. Si parla di prezzi e posti, mai di bere tanto (L. 125/2001, art. 13). |
@@ -154,10 +154,10 @@ Ogni funzionalità ha una verifica end-to-end nella sezione 18 (ID tra parentesi
 - Chip per drink (sezione 6). I segnaposto mostrano il prezzo del drink scelto; i bar senza prezzo restano visibili e discreti. Clustering nativo.
 - Colore rispetto alla mediana della cella (D-12), sempre con il valore scritto. Calcolato sul client dai dati della cella.
 - Prezzi con `observed_on` oltre 90 giorni marcati "da confermare".
-- Pulsante primario fisso **"Aggiungi prezzo"**, con "Elenco" come secondario; "Aggiungi locale mancante" non è sulla mappa (D-28).
-- **Copertura** (v1.3): "X bar su N qui hanno un prezzo", dai dati già caricati. **Legenda** "↓ Affare · = Giusto · ↑ Salato" solo quando la zona ha i colori attivi (D-12). **Zona senza prezzi** (copertura sotto il 5%): foglio "Qui nessuno ha ancora segnato un prezzo." con il primario.
+- Barra in basso fissa, sempre di una sola riga: **"Aggiungi prezzo"** (primario) e "Aggiungi locale mancante" (D-28). "Elenco" è un'icona sulla mappa, in alto a destra, di fronte alla riga di stato.
+- **Copertura** (v1.3): "X bar su N qui hanno un prezzo", dai dati già caricati. **Legenda** "↓ Affare · = Giusto · ↑ Salato" solo quando la zona ha i colori attivi (D-12). **Zona senza prezzi** (copertura sotto il 5%): nota sulla mappa "Qui nessuno ha ancora segnato un prezzo.", sopra le attribuzioni; il primario è già nella barra e la nota non ne cambia l'altezza (D-28).
 - Attribuzioni sempre visibili.
-- **Alternativa accessibile**: pulsante "Elenco" con la lista dei bar visibili (nome, prezzo del drink scelto, distanza se nota), navigabile da tastiera e screen reader; ogni voce apre la scheda bar.
+- **Alternativa accessibile**: icona "Elenco" sulla mappa con la lista dei bar visibili (nome, prezzo del drink scelto, distanza se nota), navigabile da tastiera e screen reader; ogni voce apre la scheda bar.
 
 ### 7.2 Scheda bar — M1 (lettura), M2 (azioni)
 - Nome, indirizzo, tipo, città; prezzi per drink e formato con data (solo giorno), numero di conferme, etichetta "HH" se happy hour; sezione "In verifica" per i prezzi in quarantena (D-10).
@@ -172,7 +172,7 @@ Ogni funzionalità ha una verifica end-to-end nella sezione 18 (ID tra parentesi
 4. **Prezzo**: tastierino numerico (`inputmode="decimal"`), formato euro con virgola, interruttore "Happy hour", `Salva`.
 - Conteggio: dalla mappa, `Aggiungi prezzo` (1) → bar (2) → drink (3) → cifre → `Salva` (4).
 - Nel passo Prezzo (v1.3): i **prezzi già visti in zona** per lo stesso drink e formato, toccabili al posto delle cifre (dati della cella già caricati); con almeno 5 prezzi la riga "In zona va da X a Y €, mediana Z €".
-- Dopo `Salva`: messaggio breve "Prezzo salvato" con **Annulla** per 10 s, nella forma del **Timbro** con la data del giorno, la Copertura con "+1" e la Tessera (D-29); l'invio parte allo scadere o al passaggio in background (D-15). Annullare non genera richieste.
+- Dopo `Salva`: messaggio breve "Prezzo salvato" con **Annulla** per 5 s (D-15), nella forma del **Timbro** con la data del giorno, la Copertura con "+1" e la Tessera (D-29); l'invio parte allo scadere o al passaggio in background (D-15). Annullare non genera richieste.
 - Al primo contributo della visita: Turnstile e sessione (13.2), in modo trasparente se possibile.
 - Errori (fuori limite, quota, rete) annunciati con `aria-live` e con il prezzo ancora modificabile.
 
@@ -415,9 +415,10 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | M1-10 | "Vicino a me" | e2e con geolocalizzazione simulata: la mappa si centra sulla posizione; con permesso negato appare l'invito alla ricerca e tutto resta usabile |
 | M1-11 | Ricerca città | e2e: cerco "milano" → primo risultato Milano → la mappa si sposta e carica le celle |
 | M1-12 | Scheda bar in lettura | e2e: apro un bar con prezzi fixture: nome, indirizzo, tipo, prezzi con data, conferme, link "Indicazioni"; URL `/bar/<key>` funziona anche ricaricando |
-| M1-13 | Elenco accessibile dei bar visibili | e2e: "Elenco" mostra i bar visibili; navigazione solo da tastiera fino all'apertura di una scheda; axe senza violazioni |
+| M1-13 | Elenco accessibile dei bar visibili | e2e: l'icona "Elenco" (sulla mappa, non nella barra) mostra i bar visibili; navigazione solo da tastiera fino all'apertura di una scheda; axe senza violazioni |
 | M1-14 | Nessuna coordinata dell'utente in rete | e2e con posizione simulata: nessuna richiesta (URL, header, body) contiene le coordinate simulate né loro arrotondamenti a 2+ decimali |
 | M1-15 | Storico di un bar | unit: `GET /api/venues/:key/prices` restituisce correnti e ≤ 10 osservazioni per drink e formato, solo data |
+| M1-16 | La mappa non cambia mai altezza né si muove da sola | e2e Chromium e WebKit 390×844: l'altezza della mappa e della barra è identica con le chip Birra, Spritz e Negroni (zona con e senza prezzi); a ogni zoom da 13 in su (con Spritz e Negroni) nessun ridimensionamento della mappa durante lo zoom e, a riposo, nessun ridimensionamento né cambio di centro o zoom per 2 s; il test fallisce sul codice con la barra che cambia altezza |
 
 ### M2
 | ID | Funzionalità | Verifica |
@@ -426,8 +427,8 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | M2-02 | Turnstile caricato solo al primo contributo | e2e: nessuna richiesta a `challenges.cloudflare.com` finché non si salva un prezzo |
 | M2-03 | Sessione anonima | unit/sec: `POST /api/session` con token valido → cookie `__Host-sid` con attributi esatti e 30 min; token riusato → 403; firma alterata o scaduta → 401 |
 | M2-04 | Controlli comuni delle POST | sec: 401 senza sessione, 403 con `Origin` estraneo o assente, 415 senza JSON, 413 oltre 16 KB, 400 con campi extra |
-| M2-05 | Inserimento in 4 tocchi più le cifre | e2e: dalla mappa `Aggiungi prezzo` → primo bar proposto → Spritz → "7,50" → `Salva`: esattamente 4 tocchi; dopo 10 s il prezzo compare nella scheda |
-| M2-06 | Annulla senza scritture | e2e: `Salva` poi `Annulla` entro 10 s → nessuna `POST /api/prices`; passaggio in background entro 10 s → invio con `keepalive` |
+| M2-05 | Inserimento in 4 tocchi più le cifre | e2e: dalla mappa `Aggiungi prezzo` → primo bar proposto → Spritz → "7,50" → `Salva`: esattamente 4 tocchi; dopo 5 s il prezzo compare nella scheda |
+| M2-06 | Annulla senza scritture | e2e: `Salva` poi `Annulla` entro 5 s → nessuna `POST /api/prices`; passaggio in background entro 5 s → invio con `keepalive` |
 | M2-07 | Bar proposti per vicinanza | e2e: con posizione simulata i 5 bar proposti sono i più vicini secondo i dati fixture; senza posizione, i più vicini al centro mappa |
 | M2-08 | Validazione prezzo e bar | sec: prezzo fuori limite → `rejected` con messaggio; bar inesistente nella cella → 400; drink o formato fuori catalogo → 400 |
 | M2-09 | Quarantena anti-frode | sec: con 5 prezzi attivi a ~5 €, un prezzo a 9 € → `quarantined`, non in mappa, presente in "In verifica"; conferma da altra sessione → `active` |
@@ -447,7 +448,7 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | M3-13 | Un bar proposto è pubblico solo se lo approva l'admin | unit/e2e: un bar `pending` e i suoi prezzi non compaiono sulla mappa né tra i prezzi della cella, né nella sua scheda; compare solo nella scelta del bar con "Nuovo, da confermare"; conferme e prezzi non lo approvano mai e non muovono la mediana; dopo l'approvazione bar e prezzi sono pubblici; dopo il rifiuto no |
 | M3-14 | Pannello admin a tre code | e2e con JWT di test: tre code con contatori e badge (nuovi bar, bar da cancellare, prezzi da rivedere); Approva/Rifiuta un bar; "Togli dalla mappa" nasconde un bar OSM ed elimina un bar utente approvato; "Tieni" archivia le segnalazioni; nessuna cancellazione senza azione dell'admin; axe senza violazioni |
 | M3-15 | "Vicino a me" diagnosticabile | e2e Chromium e WebKit: permesso concesso, negato e timeout danno messaggi distinti e il focus passa alla ricerca; un solo modulo `locate()` per il pulsante e per `Aggiungi prezzo`; la posizione non compare nelle richieste di rete. La prova su iPhone e Android è di Roberto |
-| M3-16 | Aggiungi un altro drink qui | e2e: dopo `Salva` il messaggio offre "Aggiungi un altro drink qui"; il bar resta selezionato; più drink partono in un'unica `POST /api/prices` con l'Annulla di 10 s |
+| M3-16 | Aggiungi un altro drink qui | e2e: dopo `Salva` il messaggio offre "Aggiungi un altro drink qui"; il bar resta selezionato; più drink partono in un'unica `POST /api/prices` con l'Annulla di 5 s |
 | M3-17 | Inserimento da listino in admin | unit/e2e con JWT di test: in `/admin` si sceglie un bar, si compila una tabella di drink e prezzi con la data di osservazione; data futura o oltre 90 giorni → 400; i prezzi passano gli stessi controlli di catalogo e limiti dell'inserimento manuale |
 | M3-18 | Nessun pagamento e nessuna AI | sec: nessun riferimento a processori di pagamento (`paddle`, `stripe`, `checkout`) né ad `anthropic` nel codice, nelle dipendenze e in `dist/` |
 | M3-19 | Degrado gentile | e2e: se `/api/*` risponde con HTML e stato 200 il client mostra "Il servizio è molto richiesto, riprova più tardi", mantiene i dati già caricati e non scrive errori in console |
@@ -483,9 +484,9 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | MB-08 | Copertura della zona | e2e: "X bar su N qui hanno un prezzo" uguale al calcolo a mano su un caso fixture; nessuna richiesta di rete in più all'apertura e al movimento della mappa |
 | MB-09 | Scheda bar come scontrino | e2e: righe per drink con icona, data e conferme in `meta`, al massimo 5 righe poi "Vedi tutti"; "In verifica" (D-10), "Confermo", "È cambiato", "Indicazioni", "Segnala un errore" invariati; nessun attributo `style` nell'HTML servito |
 | MB-10 | Prezzi già visti in zona | e2e: nel passo Prezzo compaiono i prezzi della cella per lo stesso drink e formato; un tocco su uno sostituisce le cifre: esattamente 4 tocchi senza cifre; la riga con intervallo e mediana solo con ≥ 5 prezzi; nessuna richiesta in più |
-| MB-11 | Timbro dopo `Salva` | e2e: timbro con la data del giorno; `Annulla` entro 10 s → nessuna `POST /api/prices`; dopo 10 s una sola; passaggio in background → invio con `keepalive` (D-15 invariato); "Aggiungi un altro drink qui" (M3-16) presente |
+| MB-11 | Timbro dopo `Salva` | e2e: timbro con la data del giorno; `Annulla` entro 5 s → nessuna `POST /api/prices`; dopo 5 s una sola; passaggio in background → invio con `keepalive` (D-15); "Aggiungi un altro drink qui" (M3-16) presente; `UNDO_MS`, durata della barra di avanzamento e testi coincidono (unit) |
 | MB-12 | Tessera (D-29) | e2e: timbri a 1, 5, 10, 25, 50 prezzi dal contatore esistente; nessuna chiave nuova in `localStorage`; nessuna richiesta in più |
-| MB-13 | Zona senza prezzi e bar mancante fuori dalla mappa (D-28) | e2e: con copertura sotto il 5% compare il foglio con il primario; "Aggiungi locale mancante" non è sulla mappa ed è raggiungibile dal passo Bar, dalla ricerca senza risultati e dalla zona senza prezzi |
+| MB-13 | Zona senza prezzi e barra della mappa a due tasti (D-28) | e2e: la barra ha sempre e solo "Aggiungi prezzo" e "Aggiungi locale mancante" in una riga, con la stessa altezza anche nella zona senza prezzi; con copertura sotto il 5% la nota "Qui nessuno ha ancora segnato un prezzo" è sulla mappa, non nella barra; l'icona "Elenco" è sulla mappa, 48×48 px, senza sovrapporsi a stato, nota e attribuzioni, nei due temi; nessun "Manda la mappa a un amico" |
 | MB-14 | Tema Fuori orario | e2e Chromium e WebKit: ogni vista nel tema scuro progettato (non invertito); axe senza violazioni in entrambi i temi; nessuna violazione CSP su ogni vista nuova |
 | MB-15 | Voce e parole vietate (D-31) | unit: le frasi di `docs/brand/02-voce.md` sono in `it.ts` (escluso il bottone primario, che resta "Aggiungi prezzo"); il test fallisce se `it.ts` contiene una parola dell'elenco D-31 |
 | MB-16 | Logo e icone dell'app | build: PNG 192, 512 e maskable generati da `dovebevo-icona-app.svg` con uno script Playwright; favicon SVG dal simbolo; simbolo sulla mappa e logo orizzontale in `/privacy` e `/regole` |
@@ -526,7 +527,7 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 |---|---|---|
 | **M-1** | Intervista, SPEC, feature list, PROGRESS, `init.sh`, ADR iniziali, `.claude/` | SPEC e configurazione approvate, tag `spec-approved`; poi `/clear` |
 | **M0** | Tooling, Worker con assets, header, CI, staging via CI, design system | M0-01…M0-11 |
-| **M1** | Import OSM, mappa, celle, ricerca città, scheda bar in lettura | M1-01…M1-15 |
+| **M1** | Import OSM, mappa, celle, ricerca città, scheda bar in lettura | M1-01…M1-16 |
 | **M2** | STRIDE, Turnstile e sessione, inserimento, conferme, segnalazioni, anti-frode, quote | M2-01…M2-16 |
 | **M3** | Bar proposti dagli utenti (li approva solo l'admin), pannello admin a tre code, "Vicino a me", "Aggiungi un altro drink qui", inserimento da listino, lettura delle celle a costo costante | M3-11…M3-20 |
 | **M4** | Colori sulla mediana, "più economici qui", freschezza, PWA, happy hour, ricerca dei bar per nome in tutta Italia (v1.3) | M4-03…M4-05, M4-07…M4-16 |

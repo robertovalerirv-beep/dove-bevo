@@ -1,6 +1,5 @@
 // Price tiers against the cell median (D-12) and zone coverage (SPEC 7.1), from data already loaded.
 import {
-  EMPTY_ZONE_SHARE,
   STALE_DAYS,
   TIER_CHEAP_BELOW,
   TIER_MIN_PRICES,
@@ -79,12 +78,10 @@ export function isStale(observedOn: string, today: string): boolean {
 export interface Coverage {
   withPrice: number;
   total: number;
-  empty: boolean;
 }
 
 /** "X bar of N here have a price": same rule as the pins, so the two numbers always agree. */
 export function coverage(venues: Venue[], drinks: readonly string[]): Coverage {
   const withPrice = venues.filter((v) => bestPrice(v, drinks)).length;
-  const total = venues.length;
-  return { withPrice, total, empty: total > 0 && withPrice / total < EMPTY_ZONE_SHARE };
+  return { withPrice, total: venues.length };
 }

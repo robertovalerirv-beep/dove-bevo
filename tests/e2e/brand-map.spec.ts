@@ -3,9 +3,9 @@ import { expect } from "@playwright/test";
 import { test } from "./fixtures";
 import { goToMilano, mapRegion, mapStatus, atHour, THEME_HOURS, chooseDrinks } from "./helpers";
 
-// F2 of the brand package: MB-06 (styles per theme), MB-07 (cork), MB-13 (empty zone), MB-14.
+// F2 of the brand package: MB-06 (styles per theme), MB-07 (cork), MB-13 (two-button bar), MB-14.
 
-test("MB-13 a zone without prices invites the first one on the map; the bar keeps two buttons", async ({
+test("MB-13 a zone without prices changes nothing: the bar keeps two buttons and its size", async ({
   page,
 }, info) => {
   await page.goto("/");
@@ -15,11 +15,8 @@ test("MB-13 a zone without prices invites the first one on the map; the bar keep
   const barBefore = await nav.boundingBox();
   await goToMilano(page);
   await chooseDrinks(page, "Negroni");
-  // The invitation is on the map, not in the bar; the bar is exactly what it was.
-  await expect(mapRegion(page)).toContainText(
-    "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
-  );
-  await expect(nav).not.toContainText("Qui nessuno");
+  // No invitation anywhere: the zone without prices is the same screen, the bar is exactly what it was.
+  await expect(page.getByText("Qui nessuno ha ancora segnato un prezzo")).toHaveCount(0);
   await expect(buttons).toHaveText(["Aggiungi prezzo", "Aggiungi locale mancante"]);
   await expect(page.getByRole("button", { name: "Manda la mappa a un amico" })).toHaveCount(0);
   expect(await nav.boundingBox()).toEqual(barBefore);
@@ -41,7 +38,6 @@ for (const scheme of ["light", "dark"] as const) {
     await page.goto("/");
     await goToMilano(page);
     await chooseDrinks(page, "Negroni");
-    await expect(page.locator(".map__note")).toBeVisible();
     const list = page.getByRole("button", { name: "Elenco" });
     await expect(list).toHaveCount(1);
     const box = await list.boundingBox();
@@ -49,7 +45,7 @@ for (const scheme of ["light", "dark"] as const) {
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
     const map = await mapRegion(page).boundingBox();
     expect(box && map && box.y >= map.y && box.y + box.height <= map.y + map.height).toBe(true);
-    const others = [".map__status", ".map__note", ".map__attribution"];
+    const others = [".map__status", ".map__attribution"];
     for (const selector of others) {
       const other = await page.locator(selector).boundingBox();
       const apart =

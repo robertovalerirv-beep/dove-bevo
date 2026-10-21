@@ -14,6 +14,21 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - SPEC 1.7 (7.1, D-28, MB-13, registro delle modifiche); `feature_list.json`: solo il testo di MB-13; guardia di `scripts/check-feature-list.mjs`, `ci.yml` e `CLAUDE.md` su `spec-approved-8` (tag sul commit `chore(spec)`, da pubblicare insieme al ramo).
 
 **Prove:** vedi il gate al push (`npm run verify`); `node scripts/check-feature-list.mjs` verde col tag nuovo.
+---
+
+## 2026-10-21 · Sessione 14 · Il prezzo cambiato si vede subito (branch `fix/price-cache-invalidate`, da `main` d9ce189)
+
+**Richiesta di Roberto:** un prezzo inserito e confermato, poi modificato, non risultava né cambiato né «da approvare».
+
+**Causa (letta nel codice e confermata dai test):** la risposta `GET /api/prices/:cell` è in cache 60 s (bordo e browser; su staging `CF-Cache-Status: HIT`, quindi la Cache API è attiva anche su `workers.dev`). Solo le azioni dell'admin la svuotavano (`forgetCell`): dopo un prezzo, una conferma o una segnalazione il client rileggeva subito la cella e riceveva la copia vecchia. Il dato era già giusto in D1 (su staging: Namasce, birra 4,00 → 6,00 il 21/10 con 0 conferme). Roberto ha poi visto i prezzi aggiornati.
+
+**Fatto**
+- `src/worker/routes/prices.ts`: `forgetCellCache` (solo la cella, non il riepilogo della dashboard) dopo `POST /api/prices` e `/confirm`; `reports.ts` dopo l'invio in revisione; `getCurrentPrice` restituisce anche `cell`.
+- `src/app/lib/data.ts`: dopo `invalidateCell` la prossima lettura dei prezzi di quella cella usa `cache: "reload"` (salta la copia del browser).
+- Test nuovo `tests/worker/prices-cache.test.ts` (prezzo cambiato e conferma): **rosso prima, verde dopo**.
+
+**Prove:** `npm run verify` completo verde in 692 s (lint, formato, typecheck, unit e worker 394, guardia, audit, e2e Chromium e WebKit 512 s, build, budget, Lighthouse). Prima di quel giro 3 test WebKit di `map-stability` erano caduti nel giro da 204 test in parallelo e sono passati da soli (3/3) e ripetuti (6/6): noto «Carico la mappa…» sotto carico.
+**Limiti:** nessun test e2e della parte client (`cache: "reload"`); la Cache API svuota solo la sede Cloudflare che serve la richiesta (accettato: è quella dell'utente che ha appena salvato).
 
 ---
 

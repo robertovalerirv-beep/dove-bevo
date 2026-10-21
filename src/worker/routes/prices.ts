@@ -35,8 +35,16 @@ const cellCacheKey = (url: string, cell: string) =>
  */
 export const forgetCell = (url: string, cell: string) => {
   forgetCoverage();
-  return caches.default.delete(cellCacheKey(url, cell));
+  return forgetCellCache(url, cell);
 };
+
+/**
+ * Drops a cell from the edge cache after a write of a person (a price, a confirmation, a bar sent to
+ * review): the next read, which the app makes right away, must not get the answer of up to 60 s ago.
+ * Only the cell: the dashboard figures keep their own minimum between two calculations (ADR 0022).
+ */
+export const forgetCellCache = (url: string, cell: string) =>
+  caches.default.delete(cellCacheKey(url, cell));
 
 export const prices = new Hono<AppEnv>();
 
@@ -185,6 +193,7 @@ prices.post("/", async (c) => {
   }
 
   const done = await runStatements(c.env.DB, statements);
+  if (statements.length > 0) await forgetCellCache(c.req.url, where.cell);
   const results = planned.map((p): Result => {
     if (!("confirmAt" in p)) return p;
     // "already": not counted (author, or this session/IP already confirmed it).
@@ -209,6 +218,7 @@ prices.post("/confirm", async (c) => {
     await confirmStatementsFor(c.env, who, k, romeDay()),
   );
   const count = countedBy(update);
+  if (count !== null) await forgetCellCache(c.req.url, existing.cell);
   return c.json(
     count === null
       ? { status: "already", confirmations: existing.confirmations }

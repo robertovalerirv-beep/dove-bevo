@@ -181,6 +181,7 @@ export interface PriceKey {
 }
 
 export interface CurrentPrice {
+  cell: string;
   price_cents: number;
   observed_on: string;
   status: "active" | "quarantined" | "review" | "removed";
@@ -193,7 +194,7 @@ const pk = (k: PriceKey) => [k.venue, k.drink, k.hh] as const;
 export function getCurrentPrice(db: D1Database, k: PriceKey): Promise<CurrentPrice | null> {
   return db
     .prepare(
-      `SELECT price_cents, observed_on, status, confirmations FROM prices_current WHERE ${PK}`,
+      `SELECT cell, price_cents, observed_on, status, confirmations FROM prices_current WHERE ${PK}`,
     )
     .bind(...pk(k))
     .first<CurrentPrice>();

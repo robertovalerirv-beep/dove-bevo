@@ -14,6 +14,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - SPEC 1.7 (7.1, D-28, MB-13, registro delle modifiche); `feature_list.json`: solo il testo di MB-13; guardia di `scripts/check-feature-list.mjs`, `ci.yml` e `CLAUDE.md` su `spec-approved-8` (tag sul commit `chore(spec)`, da pubblicare insieme al ramo).
 
 **Prove:** vedi il gate al push (`npm run verify`); `node scripts/check-feature-list.mjs` verde col tag nuovo.
+
 ---
 
 ## 2026-10-21 · Sessione 14 · Il prezzo cambiato si vede subito (branch `fix/price-cache-invalidate`, da `main` d9ce189)

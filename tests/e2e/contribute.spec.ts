@@ -541,6 +541,13 @@ async function saveProsecco(page: Page, price: string) {
   await expect(page.getByRole("status").filter({ hasText: "Prezzo salvato" })).toBeVisible();
 }
 
+/** Heights of the map and of the bottom bar: the map never changes size (M1-16). */
+const layout = (page: Page) =>
+  page.evaluate(() => ({
+    map: document.querySelector(".map")?.getBoundingClientRect().height ?? 0,
+    bar: document.querySelector(".bottom")?.getBoundingClientRect().height ?? 0,
+  }));
+
 test.describe("M4-09 install invitation", () => {
   test.use({ geolocation: DUOMO, permissions: ["geolocation"] });
 
@@ -591,9 +598,36 @@ test.describe("M4-09 install hint on iPhone", () => {
     const invite = page.getByRole("region", { name: "Installa" });
     await saveProsecco(page, "6,40");
     await expect(invite).toHaveCount(0);
+    const before = await layout(page);
     await saveProsecco(page, "6,50");
     await expect(invite).toContainText("Aggiungi alla schermata Home");
+    // The invitation is over the map: it must not resize it (M1-16, D-28).
+    expect(await layout(page)).toEqual(before);
     await invite.getByRole("button", { name: "Ho capito" }).click();
     await expect(invite).toHaveCount(0);
+  });
+});
+
+// The stamp after Salva is taller than a small screen: it must not leave it, or "Annulla" cannot be reached.
+test.describe("the Timbro on a small screen", () => {
+  test.use({
+    geolocation: DUOMO,
+    permissions: ["geolocation"],
+    viewport: { width: 320, height: 568 },
+  });
+
+  test("stays inside the screen and Annulla can be reached", async ({ page }) => {
+    await stubTurnstile(page);
+    await page.goto("/");
+    await saveProsecco(page, "6,60");
+    const toast = page.locator(".toast--stamp");
+    await expect(toast).toBeVisible();
+    const box = await toast.boundingBox();
+    expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
+    expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(568);
+    const undo = page.getByRole("button", { name: "Annulla" });
+    await undo.hover(); // holds the countdown, so nothing is sent whatever the runner does
+    await undo.click();
+    await expect(page.getByRole("status").filter({ hasText: "Annullato" })).toBeVisible();
   });
 });

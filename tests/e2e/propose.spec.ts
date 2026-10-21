@@ -52,6 +52,8 @@ test("M3-11 a proposed bar: pin, send, then its price can be added at once", asy
   const pin = page.getByRole("region", { name: `Dov'è «${name}»?` });
   await expect(pin).toBeVisible();
   await expect(page.getByTestId("pin-mark")).toBeVisible();
+  // While the pin is placed nothing else of the map takes the focus or opens over it.
+  await expect(page.getByRole("button", { name: "Elenco" })).toHaveCount(0);
   const confirm = pin.getByRole("button", { name: "Conferma e invia" });
   await expect(mapRegion(page)).toHaveAttribute("data-zoom", /^1[6-9]|^2/, { timeout: 20_000 });
   // Where the map started could be the device's position: the pin must be moved away from it

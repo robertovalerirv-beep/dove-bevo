@@ -883,19 +883,49 @@ export function App({ loadMap }: Props) {
             </button>
           )}
           {/* The list is an icon on the map, not a button of the bar. */}
-          <button
-            type="button"
-            class="btn icon-btn map__list"
-            aria-label={it.map.list}
-            onClick={() => {
-              setSheet("list");
-            }}
-          >
-            <Icon name="list" />
-          </button>
+          {!pinning && (
+            <button
+              type="button"
+              class="btn icon-btn map__list"
+              aria-label={it.map.list}
+              onClick={() => {
+                setSheet("list");
+              }}
+            >
+              <Icon name="list" />
+            </button>
+          )}
           {/* Over the map, never in the layout: what the view shows must not resize the map (M1-16). */}
           <div class="map__stack">
-            {emptyZone && <p class="map__note">{it.map.emptyZone}</p>}
+            {emptyZone && !pinning && <p class="map__note">{it.map.emptyZone}</p>}
+            {invite && !pinning && (
+              <div class="map__invite" role="region" aria-label={it.install.action}>
+                <p>{invite === "ios" ? it.install.ios : it.install.prompt}</p>
+                <div class="map__invite-actions">
+                  {invite === "prompt" && (
+                    <button
+                      type="button"
+                      class="btn btn--secondary"
+                      onClick={() => {
+                        setInvite(null);
+                        void promptInstall();
+                      }}
+                    >
+                      {it.install.action}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    class="btn btn--ghost"
+                    onClick={() => {
+                      setInvite(null);
+                    }}
+                  >
+                    {invite === "ios" ? it.install.ok : it.install.dismiss}
+                  </button>
+                </div>
+              </div>
+            )}
             {zoomedIn && tiersActive && !pinning && (
               <ul class="legend" aria-label={it.map.legend}>
                 {(["affare", "giusto", "salato"] as const).map((t) => (
@@ -954,34 +984,6 @@ export function App({ loadMap }: Props) {
           it: the map must not change height, or its centre moves and the pin looks already placed. */}
       <div class="bottom-slot">
         <nav class="bottom" aria-label={it.map.actions} inert={pinning ? true : undefined}>
-          {invite && (
-            <div class="bottom__invite" role="region" aria-label={it.install.action}>
-              <p>{invite === "ios" ? it.install.ios : it.install.prompt}</p>
-              <div class="bottom__invite-actions">
-                {invite === "prompt" && (
-                  <button
-                    type="button"
-                    class="btn btn--secondary"
-                    onClick={() => {
-                      setInvite(null);
-                      void promptInstall();
-                    }}
-                  >
-                    {it.install.action}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  class="btn btn--ghost"
-                  onClick={() => {
-                    setInvite(null);
-                  }}
-                >
-                  {invite === "ios" ? it.install.ok : it.install.dismiss}
-                </button>
-              </div>
-            </div>
-          )}
           {/* Always these two, whatever the view shows: the map never changes height (M1-16). */}
           <button
             type="button"

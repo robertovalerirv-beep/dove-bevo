@@ -20,7 +20,13 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - `npm test`: 38 file, 313 test verdi. `npm run lint`, `typecheck`, `format:check` verdi.
 - E2E Chromium e WebKit: `map-stability` + `brand-map` + `map` + `brand-tiers` 62/62; `contribute` (Chromium e WebKit, writes) 32/32; `map-stability` e MB-13 ripetuti 3 volte per browser: 36/36.
 - Screenshot 390×844 (zona vuota, Elenco, chiaro e scuro) controllati: icona e nota non coprono stato né attribuzioni.
-- `npm run verify` completo: vedi sotto.
+- `npm run verify` completo sul commit `fix(map)`: lint, formato, typecheck, unit, guardia, workflow, audit, e2e (498 s), build, budget shell, Lighthouse → **tutto verde in 683 s**. Rieseguito dopo le correzioni della revisione (vedi sotto).
+
+**Revisioni** (`spec-reviewer`, `ux-a11y-reviewer`): nessun problema di SPEC; trovati e corretti
+- l'invito all'installazione era nella barra e la faceva crescere di 112 px dopo il secondo prezzo (la mappa si ridimensionava di nuovo): ora è sulla mappa (`.map__invite`), test: altezza di mappa e barra uguale prima e dopo l'invito (iPhone);
+- l'icona «Elenco» restava attiva durante il posizionamento del pin: ora sparisce, come nota e invito (test in M3-11);
+- il Timbro era più alto dello schermo a 320×568 (y = −43 px, «Annulla» irraggiungibile in 5 s): sotto i 700 px di altezza scorre dentro lo schermo; test a 320×568 **rosso senza la regola**, verde con.
+- Non toccato: la nota lascia passare i tocchi (`pointer-events: none`) verso i bar sotto di lei, voluto. `.claude/agents/spec-reviewer.md` cita ancora `spec-approved-3` e `docs/brand/01-strategia.md`/`mockup/README.md` «Annulla 10 s»: sono file di configurazione e documenti storici, li lascio a te.
 
 **Da fare per Roberto (nell'ordine)**
 1. Pubblicare il tag: `git push origin spec-approved-6` (è creato in locale sul commit `chore(spec)`); **prima** del push del ramo, altrimenti la guardia della CI fallisce. `spec-approved-5` esiste già (SPEC 1.4, ramo `brand-v2-map` non unito): se preferisci un altro nome, la guardia è in `scripts/check-feature-list.mjs`.

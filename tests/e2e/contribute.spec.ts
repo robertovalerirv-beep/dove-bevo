@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
 import { readFileSync } from "node:fs";
+import { UNDO_MS } from "../../src/shared/config";
 import { DUOMO, goToMilano, waitForBars } from "./helpers";
 
 // Turnstile is Cloudflare's script: replaced by a stub that answers with the public dummy token.
@@ -92,7 +93,7 @@ test.describe("with the position (Duomo)", () => {
   test("M2-02 + M2-05 from a cold start: four taps plus the digits; Turnstile only after Salva", async ({
     page,
   }) => {
-    test.slow(); // waits out the real 10 s undo window
+    test.slow(); // waits out the real undo window (UNDO_MS)
     const turnstile = await stubTurnstile(page);
     await page.goto("/"); // no prior tap: the map is still the static picture
 
@@ -117,7 +118,7 @@ test.describe("with the position (Duomo)", () => {
     await expect(page.getByRole("status").filter({ hasText: "Prezzo salvato" })).toBeVisible();
     await expect.poll(() => turnstile.length).toBeGreaterThan(0); // loaded at the first contribution
 
-    const request = await saved; // after the 10 s of "Annulla"
+    const request = await saved; // after the UNDO_MS of "Annulla"
     const body = request.postDataJSON() as { venue: string; cell: string; items: unknown[] };
     expect(body.items).toEqual([{ drink: "spritz", size_ml: 0, hh: 0, price_cents: 750 }]);
     expect((await request.response())?.status()).toBe(200);
@@ -131,7 +132,7 @@ test.describe("with the position (Duomo)", () => {
 test("M2-06 Annulla sends nothing; going to the background sends at once with keepalive", async ({
   page,
 }) => {
-  test.slow(); // waits out the real 10 s undo window
+  test.slow(); // waits out the real undo window (UNDO_MS)
   await stubTurnstile(page);
   await page.addInitScript(() => {
     const original = window.fetch.bind(window);
@@ -208,10 +209,10 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
   // The toast holds while it is pointed at (so it does not vanish under a finger or a cursor):
   // move the pointer away, as a person would, or it stays over the next sheet and takes its clicks.
   await page.mouse.move(0, 0);
-  await page.waitForTimeout(11_000);
+  await page.waitForTimeout(UNDO_MS + 1_500); // past the window: only asserts an absence
   expect(posts).toEqual([]);
   console.log(
-    "M2-06 toasts 11 s after Annulla: " +
+    "M2-06 toasts after the undo window: " +
       JSON.stringify(await page.locator(".toast").allTextContents()),
   );
 
@@ -277,7 +278,7 @@ test("M2-11 Confermo: one tap counts, a second tap of the same session does not"
 });
 
 test("the author confirming their own price is told it needs someone else", async ({ page }) => {
-  test.slow(); // waits out the real 10 s undo window
+  test.slow(); // waits out the real undo window (UNDO_MS)
   await stubTurnstile(page);
   await page.goto("/bar/w549495264?c=u0nd9"); // Motta
   await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
@@ -293,7 +294,7 @@ test("the author confirming their own price is told it needs someone else", asyn
     (r) => r.url().endsWith("/api/prices") && r.request().method() === "POST" && r.status() === 200,
     { timeout: 30_000 },
   );
-  await page.keyboard.press("Enter"); // sent when the 10 s of "Annulla" run out
+  await page.keyboard.press("Enter"); // sent when the UNDO_MS of "Annulla" run out
   await sent;
   await page.goto("/bar/w549495264?c=u0nd9");
   const row = page.getByRole("listitem").filter({ hasText: "Negroni" }).first();
@@ -377,7 +378,7 @@ test("M2-09 a quarantined price is shown in 'In verifica' and not on the map", a
 test("M3-16 'Aggiungi un altro drink qui': two drinks of the same bar leave in one request", async ({
   page,
 }) => {
-  test.slow(); // waits out the real 10 s undo window
+  test.slow(); // waits out the real undo window (UNDO_MS)
   await stubTurnstile(page);
   const posts: { items: unknown[]; venue: string }[] = [];
   page.on("request", (r) => {
@@ -413,7 +414,7 @@ test("M3-16 'Aggiungi un altro drink qui': two drinks of the same bar leave in o
 test("Annulla works over the bar page and holds the countdown while focused (WCAG 2.2.1)", async ({
   page,
 }) => {
-  test.slow(); // waits out the real 10 s undo window
+  test.slow(); // waits out the real undo window (UNDO_MS)
   await stubTurnstile(page);
   const posts: string[] = [];
   page.on("request", (r) => {
@@ -430,7 +431,7 @@ test("Annulla works over the bar page and holds the countdown while focused (WCA
   const undo = page.getByRole("button", { name: "Annulla" });
   await expect(undo).toBeVisible();
   await undo.focus();
-  await page.waitForTimeout(11_500);
+  await page.waitForTimeout(UNDO_MS + 1_500); // longer than the window: held while focused
   expect(posts).toEqual([]); // held while focused
   await undo.press("Enter"); // reachable from the keyboard: not under the bar page backdrop
   await expect(page.getByRole("status").filter({ hasText: "Annullato" })).toBeVisible();
@@ -446,7 +447,7 @@ test.describe("MB-10 MB-11 MB-12 with the position (Duomo)", () => {
   test("a price already seen in the zone saves in four taps; the Timbro, Copertura and Tessera appear", async ({
     page,
   }, info) => {
-    test.slow(); // waits out the real 10 s undo window
+    test.slow(); // waits out the real undo window (UNDO_MS)
     await stubTurnstile(page);
     await page.goto("/");
     await page.getByRole("button", { name: "Vicino a me" }).click();
@@ -481,7 +482,7 @@ test.describe("MB-10 MB-11 MB-12 with the position (Duomo)", () => {
     );
     await tap(seen.getByRole("button", { name: "7,50 €" }).click());
     expect(taps).toBe(4);
-    await page.mouse.move(0, 0); // a pointer resting on the toast holds the 10 s (WCAG 2.2.1)
+    await page.mouse.move(0, 0); // a pointer resting on the toast holds the undo countdown (WCAG 2.2.1)
 
     const stamp = page.getByRole("status").filter({ hasText: "Prezzo salvato" });
     await expect(stamp).toBeVisible();

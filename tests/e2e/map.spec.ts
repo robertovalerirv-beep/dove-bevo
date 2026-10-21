@@ -193,7 +193,14 @@ test("M1-12 the bar page shows details and prices, also after a reload", async (
 async function tabTo(page: Page, key: string, name: string) {
   for (let i = 0; i < 30; i++) {
     await page.keyboard.press(key);
-    const label = await page.evaluate(() => (document.activeElement?.textContent ?? "").trim());
+    // An icon button has no text: its name is the aria-label.
+    const label = await page.evaluate(() =>
+      (
+        document.activeElement?.getAttribute("aria-label") ??
+        document.activeElement?.textContent ??
+        ""
+      ).trim(),
+    );
     if (label === name) return;
   }
   throw new Error(`${name} not reachable with ${key}`);

@@ -23,7 +23,6 @@ export const it = {
     region: "Mappa",
     canvas: "Mappa interattiva dei bar",
     zoomIn: "Avvicinati per vedere i prezzi, o cerca una città.",
-    shareMap: "Manda la mappa a un amico",
     offline: "Sei offline: la mappa e i prezzi tornano con la connessione",
     emptyZone: "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
     tooManyCells: "Avvicinati per vedere i prezzi della zona",
@@ -141,7 +140,8 @@ export const it = {
     coverageUp: (withPrice: number, total: number) =>
       `Copertura +1: ${String(withPrice)} bar su ${String(total)} qui hanno un prezzo`,
     seenHere: "Prezzi già visti qui",
-    seenHelp: "Tocca un prezzo per segnarlo subito: hai 10 secondi per annullare.",
+    // The seconds are UNDO_MS (tests/unit/undo.test.ts keeps them equal).
+    seenHelp: "Tocca un prezzo per segnarlo subito: hai 5 secondi per annullare.",
     zoneRange: (min: string, max: string, median: string) =>
       `In zona va da ${min} a ${max} €, mediana ${median} €`,
     undo: "Annulla",

@@ -5,35 +5,71 @@ import { goToMilano, mapRegion, mapStatus, atHour, THEME_HOURS } from "./helpers
 
 // F2 of the brand package: MB-06 (styles per theme), MB-07 (cork), MB-13 (empty zone), MB-14.
 
-test("MB-13 a zone without prices invites the first one; the missing bar is not on the map", async ({
+test("MB-13 a zone without prices invites the first one on the map; the bar keeps two buttons", async ({
   page,
 }, info) => {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Aggiungi locale mancante" })).toHaveCount(0);
+  const nav = page.getByRole("navigation", { name: "Azioni della mappa" });
+  const buttons = nav.getByRole("button");
+  await expect(buttons).toHaveText(["Aggiungi prezzo", "Aggiungi locale mancante"]);
+  const barBefore = await nav.boundingBox();
   await goToMilano(page);
   await page.getByRole("group", { name: "Drink" }).getByRole("button", { name: "Negroni" }).click();
-  const nav = page.getByRole("navigation", { name: "Azioni della mappa" });
-  await expect(nav).toContainText(
+  // The invitation is on the map, not in the bar; the bar is exactly what it was.
+  await expect(mapRegion(page)).toContainText(
     "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
   );
-  await expect(nav.getByRole("button", { name: "Aggiungi prezzo" })).toBeVisible();
-  // Four buttons in two rows of two, each at least 48 px, and the map keeps 60% of the screen.
-  const boxes = await Promise.all(
-    ["Aggiungi prezzo", "Aggiungi locale mancante", "Elenco"].map((name) =>
-      nav.getByRole("button", { name }).boundingBox(),
-    ),
-  );
+  await expect(nav).not.toContainText("Qui nessuno");
+  await expect(buttons).toHaveText(["Aggiungi prezzo", "Aggiungi locale mancante"]);
+  await expect(page.getByRole("button", { name: "Manda la mappa a un amico" })).toHaveCount(0);
+  expect(await nav.boundingBox()).toEqual(barBefore);
+  const boxes = await Promise.all([0, 1].map((i) => buttons.nth(i).boundingBox()));
   for (const box of boxes) expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
-  const share = nav.getByRole("button", { name: "Manda la mappa a un amico" });
-  const rows = new Set(boxes.map((b) => Math.round(b?.y ?? 0)));
-  if (await share.count()) rows.add(Math.round((await share.boundingBox())?.y ?? 0));
-  expect(rows.size).toBeLessThanOrEqual(2);
+  expect(new Set(boxes.map((b) => Math.round(b?.y ?? 0))).size).toBe(1); // one row
   const viewport = page.viewportSize()?.height ?? 844;
-  expect((await mapRegion(page).boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(viewport * 0.6);
+  expect((await mapRegion(page).boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(viewport * 0.7);
   await page.screenshot({ path: info.outputPath("mb-13-zona-vuota.png") });
   await nav.getByRole("button", { name: "Aggiungi locale mancante" }).click();
   await expect(page.getByRole("textbox", { name: "Nome del bar" })).toBeVisible();
 });
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`MB-13 ${scheme}: the list icon is on the map and covers nothing`, async ({
+    page,
+  }, info) => {
+    await atHour(page, THEME_HOURS[scheme]);
+    await page.goto("/");
+    await goToMilano(page);
+    await page
+      .getByRole("group", { name: "Drink" })
+      .getByRole("button", { name: "Negroni" })
+      .click();
+    await expect(page.locator(".map__note")).toBeVisible();
+    const list = page.getByRole("button", { name: "Elenco" });
+    await expect(list).toHaveCount(1);
+    const box = await list.boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(48);
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(48);
+    const map = await mapRegion(page).boundingBox();
+    expect(box && map && box.y >= map.y && box.y + box.height <= map.y + map.height).toBe(true);
+    const others = [".map__status", ".map__note", ".map__attribution"];
+    for (const selector of others) {
+      const other = await page.locator(selector).boundingBox();
+      const apart =
+        !box ||
+        !other ||
+        box.x + box.width <= other.x ||
+        other.x + other.width <= box.x ||
+        box.y + box.height <= other.y ||
+        other.y + other.height <= box.y;
+      expect(apart, `the list icon overlaps ${selector}`).toBe(true);
+    }
+    await page.screenshot({ path: info.outputPath(`mb-13-elenco-${scheme}.png`) });
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    await list.click();
+    await expect(page.getByRole("dialog", { name: "Bar nella zona" })).toBeVisible();
+  });
+}
 
 for (const scheme of ["light", "dark"] as const) {
   test(`MB-06 MB-14 ${scheme}: own style, no axe violations`, async ({ page }, info) => {

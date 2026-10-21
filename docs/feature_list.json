@@ -186,7 +186,7 @@
     "milestone": "M1",
     "descrizione": "La mappa non cambia mai altezza né si muove da sola",
     "verifica": "e2e Chromium e WebKit 390×844: l'altezza della mappa e della barra è identica con le chip Birra, Spritz e Negroni (zona con e senza prezzi); a ogni zoom da 13 in su (con Spritz e Negroni) nessun ridimensionamento della mappa durante lo zoom e, a riposo, nessun ridimensionamento né cambio di centro o zoom per 2 s; il test fallisce sul codice con la barra che cambia altezza",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M2-01",

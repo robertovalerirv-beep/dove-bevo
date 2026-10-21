@@ -15,8 +15,8 @@ dal menu del browser ("Aggiungi a schermata Home").
 4. Scrivi il **prezzo** (es. `7,50`) e tocca **Salva** (o Invio). Se era in happy hour attiva l'interruttore
    *Happy hour* prima di salvare.
 
-Compare **"Prezzo salvato"** con **Annulla** per 10 secondi: se hai sbagliato, tocca Annulla e non parte
-nulla. Se tieni il dito o il cursore sul messaggio, il tempo si ferma. Passati i 10 secondi (o se chiudi
+Compare **"Prezzo salvato"** con **Annulla** per 5 secondi: se hai sbagliato, tocca Annulla e non parte
+nulla. Se tieni il dito o il cursore sul messaggio, il tempo si ferma. Passati i 5 secondi (o se chiudi
 l'app) il prezzo viene inviato.
 
 La prima volta Cloudflare fa un controllo anti-robot, di solito invisibile.

@@ -159,7 +159,6 @@ test("M3-11 the same proposal is reachable from Aggiungi prezzo (Non trovi il ba
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Aggiungi locale mancante" })).toHaveCount(0);
   await page.screenshot({ path: "docs/screenshots/m3/home-390.png" });
   await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
   await page.getByRole("button", { name: "Non trovi il bar?" }).click();

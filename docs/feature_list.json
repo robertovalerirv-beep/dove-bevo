@@ -549,7 +549,7 @@
     "id": "MB-13",
     "milestone": "MB",
     "descrizione": "Zona senza prezzi e barra della mappa a due tasti (D-28)",
-    "verifica": "e2e: la barra ha sempre e solo \"Aggiungi prezzo\" e \"Aggiungi locale mancante\" in una riga, con la stessa altezza anche nella zona senza prezzi; con copertura sotto il 5% la nota \"Qui nessuno ha ancora segnato un prezzo\" è sulla mappa, non nella barra; l'icona \"Elenco\" è sulla mappa, 48×48 px, senza sovrapporsi a stato, nota e attribuzioni, nei due temi; nessun \"Manda la mappa a un amico\"",
+    "verifica": "e2e: la barra ha sempre e solo \"Aggiungi prezzo\" e \"Aggiungi locale mancante\" in una riga, con la stessa altezza anche nella zona senza prezzi; nessuna frase di invito nella zona senza prezzi (\"Qui nessuno ha ancora segnato un prezzo\" non compare in nessun punto); l'icona \"Elenco\" è sulla mappa, 48×48 px, senza sovrapporsi a stato e attribuzioni, nei due temi; nessun \"Manda la mappa a un amico\"",
     "passes": true
   },
   {

@@ -24,7 +24,6 @@ export const it = {
     canvas: "Mappa interattiva dei bar",
     zoomIn: "Avvicinati per vedere i prezzi, o cerca una città.",
     offline: "Sei offline: la mappa e i prezzi tornano con la connessione",
-    emptyZone: "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.",
     tooManyCells: "Avvicinati per vedere i prezzi della zona",
     loading: "Carico i prezzi della zona…",
     loadError: "Non riesco a caricare i prezzi della zona. Controlla la connessione.",

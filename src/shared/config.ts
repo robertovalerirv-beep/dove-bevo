@@ -18,5 +18,3 @@ export const TIER_CHEAP_BELOW = 0.9;
 export const TIER_PRICEY_ABOVE = 1.1;
 /** Prices observed more than this many days ago are marked "da confermare" (SPEC 7.1). */
 export const STALE_DAYS = 90;
-/** Under this share of bars with a price the zone counts as empty (SPEC 7.1). */
-export const EMPTY_ZONE_SHARE = 0.05;

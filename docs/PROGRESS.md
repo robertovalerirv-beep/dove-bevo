@@ -4,6 +4,19 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-21 · Sessione 14 (seguito) · Via la frase della zona senza prezzi (branch `fix/remove-empty-zone-note`, da `main` 367ad8a) · SPEC 1.7
+
+**Richiesta di Roberto:** togliere da ovunque «Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.»: appesantisce e non dà valore. Autorizzati da lui in chat: SPEC 1.7, la riscrittura di MB-13 in `feature_list.json`, il tag `spec-approved-8` e la guardia aggiornata.
+
+**Fatto**
+- Tolti: la nota in `app.tsx`, `emptyZone` in `it.ts`, il campo `empty` e `EMPTY_ZONE_SHARE` (la soglia del 5%), `.map__note` in `app.css`, la riga in `docs/brand/02-voce.md` e la frase nel README della Copertura.
+- Test: `brand-map.spec.ts` ora verifica che la frase non compaia in nessun punto e che barra e mappa non cambino; `tiers.test.ts` e `voice.test.ts` senza il caso tolto.
+- SPEC 1.7 (7.1, D-28, MB-13, registro delle modifiche); `feature_list.json`: solo il testo di MB-13; guardia di `scripts/check-feature-list.mjs`, `ci.yml` e `CLAUDE.md` su `spec-approved-8` (tag sul commit `chore(spec)`, da pubblicare insieme al ramo).
+
+**Prove:** vedi il gate al push (`npm run verify`); `node scripts/check-feature-list.mjs` verde col tag nuovo.
+
+---
+
 ## 2026-10-21 · Sessione 14 · Il prezzo cambiato si vede subito (branch `fix/price-cache-invalidate`, da `main` d9ce189)
 
 **Richiesta di Roberto:** un prezzo inserito e confermato, poi modificato, non risultava né cambiato né «da approvare».

@@ -27,7 +27,6 @@
 - **Domanda nel tastierino:** "Quanto l'hai pagato?"
 - **Conferma (timbro):** "Segnato. Il prossimo che passa sa già quanto spende."
 - **Annulla nel timbro:** "Annulla" (5 secondi)
-- **Mappa vuota nella zona:** "Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi."
 - **Copertura:** "42 bar su 180 qui hanno un prezzo"
 - **Zoom troppo basso:** "Avvicinati per vedere i prezzi, o cerca una città."
 - **Prezzo vecchio:** "Visto 3 mesi fa. Ci sei passato? Confermalo."

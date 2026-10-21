@@ -341,7 +341,6 @@ export function App({ loadMap }: Props) {
     map?.setSelected(route.name === "bar" ? route.key : null);
   }, [map, route, allVenues]);
   // A zone where almost nobody has a price yet invites the first one (D-28, MB-13).
-  const emptyZone = zoomedIn && cellsState === "ready" && zoneCoverage.empty;
   // The message of "Vicino a me" (searching, not found, denied) is shown at any zoom: it ends as
   // soon as the map moves (see the effect above), then the cell status is back.
   const shownMessage = message;
@@ -882,7 +881,6 @@ export function App({ loadMap }: Props) {
           )}
           {/* Over the map, never in the layout: what the view shows must not resize the map (M1-16). */}
           <div class="map__stack">
-            {emptyZone && !pinning && <p class="map__note">{it.map.emptyZone}</p>}
             {invite && !pinning && (
               <div class="map__invite" role="region" aria-label={it.install.action}>
                 <p>{invite === "ios" ? it.install.ios : it.install.prompt}</p>

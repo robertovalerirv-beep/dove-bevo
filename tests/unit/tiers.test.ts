@@ -69,12 +69,12 @@ describe("MB-08 coverage", () => {
       venue("c", "c", [row("c", 600, { q: 1 })]),
       venue("d", "c", []),
     ];
-    expect(coverage(vs, ["spritz"])).toEqual({ withPrice: 2, total: 4, empty: false });
+    expect(coverage(vs, ["spritz"])).toEqual({ withPrice: 2, total: 4 });
   });
-  it("an empty zone is under 5% (not with no bars)", () => {
+  it("a zone without bars or without prices is 0 of N, with no invitation to compute", () => {
     const vs = Array.from({ length: 40 }, (_, i) => venue(`n${String(i)}`, "c", []));
-    expect(coverage(vs, ["spritz"]).empty).toBe(true);
-    expect(coverage([], ["spritz"]).empty).toBe(false);
+    expect(coverage(vs, ["spritz"])).toEqual({ withPrice: 0, total: 40 });
+    expect(coverage([], ["spritz"])).toEqual({ withPrice: 0, total: 0 });
   });
 });
 

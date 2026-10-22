@@ -21,17 +21,19 @@ const CELL_FETCHES = 8;
 /**
  * Bars are stored with a city only when the static file had one within 15 km, and user bars never
  * had one. Whatever is missing is placed here by position (nearest place), so "no city" is left
- * only for a bar whose position cannot be found at all (ADR 0022).
+ * only for a bar whose position cannot be found at all (ADR 0022). An OSM bar that is no longer in
+ * the static file of its cell (a later import dropped it) is not on the map: its prices stay in D1
+ * as history but it is not a bar with a price, and the admin list could not open it.
  */
 export async function buildCoverage(env: Env): Promise<Coverage> {
   const { rows, hidden, users } = await getCoverageRows(env.DB);
   const approved = new Set(users.keys());
 
-  // The static files of every cell that holds a bar without a city, read in parallel; only the
-  // positions of the bars that need one are kept (ADR 0025).
+  // The static files of every cell that holds an OSM bar with a price, read in parallel; only the
+  // positions of those bars are kept (ADR 0025).
   const wanted = new Map<string, Set<string>>();
   for (const r of rows) {
-    if (r.city !== null || r.venue_key.startsWith("u")) continue;
+    if (r.venue_key.startsWith("u")) continue;
     if (!isPublicBar(r.venue_key, approved, hidden)) continue;
     wanted.set(r.cell, (wanted.get(r.cell) ?? new Set()).add(r.venue_key));
   }
@@ -61,6 +63,7 @@ export async function buildCoverage(env: Env): Promise<Coverage> {
   for (const r of rows) {
     active += r.n;
     if (!isPublicBar(r.venue_key, approved, hidden)) continue;
+    if (!r.venue_key.startsWith("u") && !position(r.venue_key, r.cell)) continue; // gone from OSM
     let city = r.city;
     if (city === null) {
       const at = position(r.venue_key, r.cell);

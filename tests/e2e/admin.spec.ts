@@ -47,6 +47,29 @@ const OVERVIEW = {
   ],
 };
 
+const METRICS = {
+  days: [
+    {
+      day: "2026-10-21",
+      opens: 20,
+      returning: 5,
+      added: 7,
+      confirmed: 3,
+      viewed: 31,
+      contributed: 4,
+    },
+    {
+      day: "2026-10-20",
+      opens: 10,
+      returning: 0,
+      added: 0,
+      confirmed: 1,
+      viewed: 12,
+      contributed: 0,
+    },
+  ],
+};
+
 async function fakeAdmin(page: Page, allowed = true) {
   const posts: { path: string; body: unknown }[] = [];
   await page.route("**/api/admin/**", async (route) => {
@@ -56,7 +79,8 @@ async function fakeAdmin(page: Page, allowed = true) {
       return;
     }
     if (request.method() === "GET") {
-      await route.fulfill({ json: OVERVIEW });
+      const metrics = new URL(request.url()).pathname === "/api/admin/metrics";
+      await route.fulfill({ json: metrics ? METRICS : OVERVIEW });
       return;
     }
     posts.push({ path: new URL(request.url()).pathname, body: request.postDataJSON() });
@@ -227,4 +251,34 @@ test("M3-14 three queues with counters; a proposed bar is public only if the adm
   await expect
     .poll(() => posts.filter((p) => p.path === "/api/admin/venues/3/status").at(-1)?.body)
     .toEqual({ status: "removed" });
+});
+
+test("M5-03 daily metrics: one line per day, no person, readable", async ({ page }) => {
+  await fakeAdmin(page);
+  await page.goto("/admin");
+  const section = page.getByTestId("metrics-section");
+  await expect(section.getByRole("heading", { name: "Uso giorno per giorno" })).toBeVisible();
+  const table = section.getByRole("table");
+  const row = table.getByRole("row").filter({ hasText: "21 ott" });
+  await expect(row).toContainText("20"); // visits
+  await expect(row).toContainText("25%"); // returning: 5 of 20
+  await expect(row).toContainText("7"); // prices added
+  await expect(row).toContainText("20%"); // visits with a contribution: 4 of 20
+  await expect(table.getByRole("row").filter({ hasText: "20 ott" })).toContainText("0%");
+  const axe = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(axe.violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await section.screenshot({ path: "docs/screenshots/admin/metrics.png" });
+});
+
+test("M5-03 metrics that fail to load leave the rest of the admin page working", async ({
+  page,
+}) => {
+  await fakeAdmin(page);
+  await page.route("**/api/admin/metrics", (route) => route.fulfill({ status: 500, body: "x" }));
+  await page.goto("/admin");
+  await expect(page.getByTestId("metrics-section")).toContainText("Non riesco a leggere");
+  await expect(page.getByTestId("admin-total")).toHaveText("4 da fare");
 });

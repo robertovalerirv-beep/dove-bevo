@@ -3,6 +3,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { CATALOG } from "../../shared/catalog";
+import { summarizeMetrics } from "../../shared/metrics";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { COVERAGE_MIN_INTERVAL_MS } from "../config";
 import { coverageSnapshot, forgetCoverage } from "../lib/coverage";
@@ -11,6 +12,7 @@ import {
   addApprovedVenue,
   hideVenue,
   listHidden,
+  listMetrics,
   listPricesToReview,
   clearBarReports,
   listBarReports,
@@ -68,6 +70,17 @@ export const resetCoverageLimit = () => {
   lastCoverageAt = 0;
   forgetCoverage();
 };
+
+// Usage of the last two weeks, from the anonymous counters (M5-03). One range read of a small table.
+const METRICS_DAYS = 14;
+admin.get("/metrics", async (c) => {
+  // Calendar arithmetic on the Rome date, as the cron does, so DST days do not shift the cut.
+  const since = new Date(Date.parse(`${romeDay()}T12:00:00Z`) - (METRICS_DAYS - 1) * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  c.header("Cache-Control", "no-store");
+  return c.json({ days: summarizeMetrics(await listMetrics(c.env.DB, since)) });
+});
 
 admin.get("/coverage", async (c) => {
   const wait = lastCoverageAt + COVERAGE_MIN_INTERVAL_MS - Date.now();

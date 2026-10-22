@@ -4,6 +4,20 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-22 · Metriche giornaliere in `/admin` (stesso branch, dopo M5-01) · M5-03
+
+**Fatto**
+- `GET /api/admin/metrics` (dietro Access, `Cache-Control: no-store`): ultimi 14 giorni di `metrics_daily`, una sola lettura per intervallo sulla chiave primaria; `summarizeMetrics` (`src/shared/metrics.ts`) somma le righe: un evento con più proprietà scrive una riga per proprietà, quindi si conta la somma di un solo tipo di proprietà (o il massimo), non il totale.
+- Sezione «Uso giorno per giorno» in `/admin` (`src/app/views/Metrics.tsx`): visite, quota di chi torna, prezzi, quota di visite con prezzo; conferme e bar visti dai 600 px in su. Se non carica, una riga di stato e il resto della pagina funziona.
+- Le code review/quarantena/nuovi bar con Approva/Rimuovi e la copertura per città erano già coperte da `admin.spec.ts` e `admin-coverage.spec.ts`.
+
+**Prove**
+- `tests/worker/admin-metrics.test.ts` (4: riepilogo, 403 senza JWT, 200 no-store, piano di lettura); `admin.spec.ts` +2 (tabella, errore) Chromium e WebKit con axe e nessuno scroll orizzontale; screenshot 390 px in `docs/screenshots/admin/metrics.png`.
+- Admin e copertura e2e: 42 verdi (Chromium e WebKit); `npm test` verde; lint, formato e typecheck verdi.
+- Non lanciato `npm run verify` completo né push.
+
+---
+
 ## 2026-10-22 · Eventi anonimi (branch `claude/prossimi-step-tecnici-uiux-62e374`, da `main` 1857ced) · M5-01
 
 **Fatto**

@@ -627,7 +627,7 @@
     "milestone": "M5",
     "descrizione": "Admin: revisione e metriche",
     "verifica": "e2e con JWT di test: code `review`/`quarantined`/`pending` con Approva/Rimuovi; metriche giornaliere; copertura per città",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-04",

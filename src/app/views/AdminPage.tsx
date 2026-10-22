@@ -4,6 +4,7 @@ import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { it } from "../i18n/it";
 import { invalidateCell, loadCell, loadPlaces, type Venue } from "../lib/data";
 import { distanceMeters, searchKey } from "../../shared/venue";
+import { MetricsSection } from "./Metrics";
 import { formatDate, formatDistance, formatPrice } from "../lib/format";
 
 // /admin (SPEC 7.9, D-19): behind Cloudflare Access; the Worker verifies the JWT on /api/admin/*.
@@ -110,6 +111,7 @@ export function AdminPage() {
       {state === "ready" && data && (
         <>
           {Coverage && <Coverage />}
+          <MetricsSection />
           <Todo
             counts={[
               [

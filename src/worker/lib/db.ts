@@ -1,4 +1,5 @@
 // The only module that talks to D1 (CLAUDE.md).
+import type { MetricRow } from "../../shared/metrics";
 import type {
   CellPrices,
   HistoryRow,
@@ -499,6 +500,15 @@ export async function addMetrics(
         .bind(day, r.event, r.prop, r.n),
     ),
   );
+}
+
+/** Rows of metrics_daily from `since` (inclusive) on: one range of the primary key. */
+export async function listMetrics(db: D1Database, since: string): Promise<MetricRow[]> {
+  const { results } = await db
+    .prepare("SELECT day, event, prop, n FROM metrics_daily WHERE day >= ?1 ORDER BY day DESC")
+    .bind(since)
+    .all<MetricRow>();
+  return results;
 }
 
 /** Nightly cleanup of the day-salted keys (SPEC 8, 14): only the last days survive. */

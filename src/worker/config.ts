@@ -50,3 +50,8 @@ export const SEO_LIMITS = {
   /** How long a built page lives in the isolate and at the edge, in seconds. */
   memSeconds: 300,
 } as const;
+
+/** Prefix of the development placeholder keys at the top level of wrangler.jsonc: never in a deployed Worker (red-team audit 22/10/2026). */
+export const PLACEHOLDER_PREFIX = "local-dev-only";
+/** Cloudflare's public always-pass Turnstile secret (local and e2e only): its answers carry no action. */
+export const TURNSTILE_TEST_SECRET = "1x0000000000000000000000000000000AA";

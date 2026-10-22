@@ -1,0 +1,28 @@
+# 0029 · Rafforzamento dopo il pen test del 22/10/2026
+
+- **Stato:** pronta per la revisione di Roberto (codice scritto e provato in locale, nessun push né deploy) · **Data:** 2026-10-22 · tocca SPEC 13.1–13.7, M5-09; nessuna modifica a schema, API, interfaccia o testi
+
+## Contesto
+Roberto ha chiesto un pen test aggressivo di sito e repository, con un'unica correzione cumulativa e senza toccare UI e UX. Metodo: lettura del codice, GET su staging, `gh` in sola lettura, scansione della storia git, 159 attacchi in workerd (sessione, JWT Access, Origin, body, SQL, XSS/CSP, cache, privacy, race su quote e conferme), attacchi HTTP e in browser (Chromium e WebKit) sulla build locale. Dopo ADR 0021 nessuna falla critica: tutti gli attacchi a sessione, Access, CSRF, injection e quote sono stati respinti.
+
+## Trovato e corretto in questa passata
+1. **Segnaposto = segreti (media, latente).** In `wrangler.jsonc` il livello alto ha `SESSION_HMAC_KEY`/`HASH_KEY` fissi e il secret Turnstile di test: con quei valori un cookie si forgia leggendo il repo e ogni token Turnstile passa. Staging è sicuro (ambiente e secret propri), ma un deploy senza ambiente o un futuro `env.production` incompleto no.
+   - `src/worker/lib/env-guard.ts`: se le chiavi sono segnaposto (o vuote) e l'host non è locale, le POST di sessione e scrittura rispondono 503 `busy` e si logga il solo codice `insecure_config`. Le letture non cambiano.
+   - `scripts/check-config.mjs` (CI e `npm run verify`): ogni `env.*` ridefinisce `vars`, limitatori e D1, non ha segnaposto né secret scritti come var, e ogni workflow con `wrangler deploy` nomina `CLOUDFLARE_ENV`. Mantiene la promessa di ADR 0021 per M6.
+2. **Nomi dei bar proposti (bassa).** Link nascosti (`bit.ly/x`, `evil.xyz`, `t.me/x`, `ｗｗｗ．evil．ｃｏｍ`, `bit . ly`), separatori di riga, caratteri di uso privato o non assegnati e surrogati isolati (finivano in D1 come UTF-8 non valido) passavano il filtro e comparivano a tutti nella scelta del bar prima della moderazione. `validVenueName` guarda ora anche una forma NFKC senza spazi attorno ai punti e vieta Zl, Zp, Co, Cn, Cs. Misurato su 840 nomi reali di bar (fixture OSM): zero nuovi rifiuti; il messaggio d'errore è quello di prima. **Compromesso:** i domini veri (`evil.xyz`, `bit.ly`, `x.io`) si rifiutano sempre; le terminazioni che sono anche parole o abbreviazioni italiane (`.club`, `.shop`, `.de`, `.co`, `.me`) solo con un percorso dopo (`promo.club/x`, `t.me/x`), così `Punto Club`, `Dr. De Luca`, `Dott. De Santis` e `Pizzeria S.Co` restano validi (trovato dalla revisione). Un dominio con una di quelle terminazioni senza percorso, e un indirizzo scritto a parole («bar dot com»), passano: non sono cliccabili e l'admin vede il nome prima che sia pubblico. Il filtro è un elenco di terminazioni: un dominio con una terminazione non prevista (`.pizza`, `.cloud`) passa; il bar resta `pending` e non è pubblico finché l'admin non lo approva (ADR 0019). Resta anche rifiutato, come prima, un nome con un intervallo di anni (`Bar 1900 - 2000`, regola dei numeri di telefono).
+3. **Dipendenze di sviluppo (media, solo dev).** vitest e @vitest/mocker ≤ 4.1.11 avevano 2 avvisi moderate; aggiornati a 4.1.12 (PR Dependabot #45). La CI ora controlla con `npm audit --omit=dev --audit-level=low` anche le dipendenze di produzione, a qualsiasi gravità.
+4. **`/.well-known/security.txt` (bassa, M5-09).** Il file mancava (rispondeva la shell). Contatto: segnalazione privata di GitHub, senza email personale; scadenza 30/09/2027 (il test security fallisce alla scadenza: va rinnovato).
+5. **Email personale nei documenti (bassa).** Tolta da `docs/PROGRESS.md` e `docs/guida-admin.md` (indicava chi può entrare in `/admin`).
+6. **Suite red-team permanente.** `tests/worker/pentest-suite.test.ts` tiene come regressione gli attacchi respinti (cookie malformati, matrice di JWT falsi, trucchi di percorso, Origin e Content-Type, body e JSON anomali, quote e conferme concorrenti, privacy a riposo); `tests/worker/env-guard.test.ts`, `tests/unit/venue-name.test.ts`, `tests/unit/check-config.test.ts` coprono i punti 1-2.
+
+## Impostazioni GitHub e account
+Le correzioni che stanno fuori dal codice (ruleset dei tag, approvazioni dei fork, Environment dei segreti, pulizia dei rami, email privata) sono state consegnate a Roberto a parte, con i comandi; si applicano prima del push di questo ramo.
+
+## Rischi di design lasciati a Roberto (richiedono modifica di SPEC)
+Misurati sul D1 locale, **non** cambiati: l'attivazione di un prezzo in quarantena con la conferma di una seconda identità (D-10), la rimozione di un prezzo con 4 segnalazioni distinte (SPEC 11), il prezzo «ultimo vince» sotto i 5 prezzi in cella, le quote per IP aggirabili con molti prefissi IPv6 e sessioni (già in ADR 0021). Ogni identità richiede una risoluzione Turnstile. Le contromisure candidate (più conferme indipendenti, peso delle segnalazioni, seconda osservazione per i valori anomali, quota per /48) vanno decise insieme perché cambiano la SPEC.
+
+## Conseguenze
+- Un deploy sbagliato (segnaposto) non apre più sessioni forgiabili: le scritture danno 503 finché non si impostano i secret.
+- Sviluppo da rete locale (localhost, 127.x, 10.x, 172.16-31.x, 192.168.x, `*.localhost`) invariato.
+- Nessun cambiamento visibile: stesse schermate, stessi testi, stesse richieste di rete.
+- Non fatto di proposito: `X-Robots-Tag: noindex` su staging (da M6, con il dominio) e nessuna modifica agli header di SPEC 13.1 (test a valori esatti).

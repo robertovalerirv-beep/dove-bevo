@@ -1,7 +1,7 @@
 # Sicurezza di Dove bevo
 
 ## Segnalare una vulnerabilità
-Scrivi all'indirizzo in `/.well-known/security.txt` (RFC 9116, in arrivo con M5). Non aprire issue pubbliche per le vulnerabilità.
+Usa la segnalazione privata di GitHub (<https://github.com/robertovalerirv-beep/dove-bevo/security/advisories/new>), indicata anche in `/.well-known/security.txt` (RFC 9116, da rinnovare prima della scadenza). Non aprire issue pubbliche per le vulnerabilità.
 
 ## Modello di minaccia (STRIDE) — M2-01
 
@@ -24,16 +24,16 @@ Bot e script automatici · spammer di prezzi · concorrenti di un locale · uten
 | STRIDE | Minaccia | Contromisure | Verifica |
 |---|---|---|---|
 | **S**poofing | Bot che contribuiscono in massa | Turnstile al primo contributo, verificato server-side senza IP, `hostname` e `action` controllati; sessione `__Host-sid` firmata HMAC-SHA256, 30 min, confronto a tempo costante | M2-02, M2-03 |
-| S | Sessione falsificata o rubata | Cookie `HttpOnly; Secure; SameSite=Strict`, prefisso `__Host-`; firma con `SESSION_HMAC_KEY`; nessun dato in chiaro nel cookie oltre a id casuale e scadenza | M2-03 |
+| S | Sessione falsificata o rubata | Cookie `HttpOnly; Secure; SameSite=Strict`, prefisso `__Host-`; firma con `SESSION_HMAC_KEY`; nessun dato in chiaro nel cookie oltre a id casuale e scadenza; un Worker con le chiavi segnaposto di sviluppo rifiuta sessioni e scritture fuori da localhost (`env-guard`, ADR 0029) | M2-03 |
 | S | Richieste da siti terzi (CSRF) | Controllo `Origin` su tutte le POST; `SameSite=Strict`; `Content-Type: application/json` obbligatorio | M2-04 |
 | S | Accesso ad `/admin` | Cloudflare Access + verifica del JWT nel Worker (firma RS256, `aud`, scadenza) | M5-02 |
 | **T**ampering | Prezzi falsi o fuori scala | Catalogo e limiti per drink; quarantena oltre ±50 % dalla mediana con ≥ 5 prezzi; conferme da sessioni diverse | M2-08, M2-09 |
 | T | Bar inesistente o cella falsa nella richiesta | Il Worker legge il file della cella da `ASSETS` e verifica il bar; il client non è mai fonte di verità | M2-08 |
 | T | Campi extra o tipi sbagliati | zod `strict` su ogni ingresso; body ≤ 16 KB letto con limite anche senza `Content-Length` | M2-04 |
 | T | Prompt injection (LLM01) | Non applicabile: nessun LLM (ADR 0018) | — |
-| T | Bar falsi o spam di proposte | Un bar proposto è `pending` e diventa pubblico solo con l'approvazione dell'admin, mai in automatico; nome validato (2–80, NFC, niente URL, email, telefoni, caratteri di controllo); duplicati bloccati (nome uguale entro 50 m → 409); 5 proposte al giorno per sessione e per IP; massimo 200 in attesa; prezzi di bar non approvati mai pubblici (ADR 0019) | M3-11, M3-12, M3-13 |
+| T | Bar falsi o spam di proposte | Un bar proposto è `pending` e diventa pubblico solo con l'approvazione dell'admin, mai in automatico; nome validato (2–80, NFC, niente URL, email, telefoni, link nascosti con full-width o spazi, caratteri di controllo, invisibili, di uso privato o non validi; ADR 0029); duplicati bloccati (nome uguale entro 50 m → 409); 5 proposte al giorno per sessione e per IP; massimo 200 in attesa; prezzi di bar non approvati mai pubblici (ADR 0019) | M3-11, M3-12, M3-13 |
 | T | Dati OSM manipolati | Validazione dell'import (riquadro Italia, nomi ≤ 120); deploy fallisce se l'import fallisce | M1-02, M1-03 |
-| T | Supply chain e CI | Lockfile e versioni esatte, `npm audit`, Dependabot, Actions fissate a SHA, niente `pull_request_target`, deploy solo da `main` con `workflow_run` filtrato, ruleset su `main` e sui tag `spec-approved` e `spec-approved-2` | M0-05, M0-08 |
+| T | Supply chain e CI | Lockfile e versioni esatte, `npm audit`, Dependabot, Actions fissate a SHA, niente `pull_request_target`, deploy solo da `main` con `workflow_run` filtrato, ruleset su `main` e sui tag `spec-approved` e `spec-approved-2` (da estendere a `spec-approved*`, ADR 0029); `scripts/check-config.mjs` in CI: ogni ambiente di `wrangler.jsonc` senza segnaposto e ogni deploy con `CLOUDFLARE_ENV`; `npm audit` anche sulle sole dipendenze di produzione a qualsiasi gravità | M0-05, M0-08 |
 | **R**epudiation | Contributi non attribuibili | Accettato per scelta (anonimato, SPEC 14): si limita l'abuso con quote e conferme, non con l'identità. Log senza dati personali: codice, rotta, durata | M2-16 |
 | **I**nformation disclosure | Posizione dell'utente | Calcoli di distanza e "Vicino a me" sul dispositivo; al server solo celle geohash5; nessuna coordinata in URL, header o body | M1-14 |
 | I | Legame tra contributi della stessa persona | Nessun sid o IP salvato con i prezzi; solo HMAC con sale del giorno in `counters`/`dedup`, cancellati entro 48 h (ADR 0016) | M2-15, M2-16 |
@@ -54,3 +54,4 @@ Bot e script automatici · spammer di prezzi · concorrenti di un locale · uten
 - L'immagine statica e i dati OSM sono pubblici per definizione.
 - Le segnalazioni sono uniche per bersaglio, per sessione e per IP (IPv6 ridotto al /64) **nel giorno**: la stessa persona può segnalare di nuovo nei giorni seguenti. Contare i segnalatori distinti su più giorni richiederebbe salvare un hash dell'IP accanto alla segnalazione, vietato da SPEC 14. Accettato: `review` toglie il prezzo dalla vista ma non lo cancella, e decide l'admin (M5).
 - L'autore di un prezzo è riconosciuto (per sessione e per IP, come HMAC) solo per 48 ore, la vita di `dedup` imposta da SPEC 8: dopo, da un IP diverso, potrebbe confermare il proprio prezzo in quarantena. Accettato: la quarantena serve a frenare valori anomali immediati, e i prezzi in `review` restano fermi finché non decide l'admin.
+- Pen test del 22/10/2026 (ADR 0029): restano da decidere, perché cambiano la SPEC, l'attivazione di un prezzo in quarantena con la conferma di una seconda identità (D-10), la rimozione con 4 segnalazioni distinte, il prezzo «ultimo vince» sotto i 5 prezzi in cella e le quote per IP aggirabili con molti prefissi IPv6 e sessioni. Ogni identità richiede una risoluzione Turnstile.

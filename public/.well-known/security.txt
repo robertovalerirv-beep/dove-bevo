@@ -1,0 +1,5 @@
+# Dove bevo: how to report a vulnerability (RFC 9116)
+Contact: https://github.com/robertovalerirv-beep/dove-bevo/security/advisories/new
+Expires: 2027-09-30T00:00:00.000Z
+Preferred-Languages: it, en
+Policy: https://github.com/robertovalerirv-beep/dove-bevo/blob/main/SECURITY.md

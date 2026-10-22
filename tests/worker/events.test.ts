@@ -71,7 +71,7 @@ describe("POST /api/events (M5-01, D-06)", () => {
       { events: [{ e: "app_open", p: { day_bucket: "9999" } }] },
       { events: [{ e: "price_added", p: { drink: "prosecco" } }] },
       { events: [{ e: "price_added", p: { source: "menu_photo" } }] },
-      { events: [{ e: "price_added", p: { city: "<script>" } }] },
+      { events: [{ e: "price_added", p: { city: "12345" } }] }, // unbounded values would grow the table
       { events: [{ e: "price_added", p: { ip: "1.2.3.4" } }] },
       { events: [{ e: "app_open", extra: 1 }] },
       { events: [{ e: "app_open" }], sid: "x" },
@@ -86,15 +86,12 @@ describe("POST /api/events (M5-01, D-06)", () => {
 
   it("accepts the allowed properties", async () => {
     const res = await beacon({
-      events: [
-        { e: "price_added", p: { source: "manual" } },
-        { e: "venue_viewed", p: { city: "12345" } },
-      ],
+      events: [{ e: "price_added", p: { source: "manual" } }, { e: "venue_viewed" }],
     });
     expect(res.status).toBe(204);
     expect(await rows()).toEqual([
       { event: "price_added", prop: "source:manual", n: 1 },
-      { event: "venue_viewed", prop: "city:12345", n: 1 },
+      { event: "venue_viewed", prop: "-", n: 1 },
       { event: "visit_contributed", prop: "-", n: 1 },
     ]);
   });

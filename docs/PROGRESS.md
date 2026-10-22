@@ -7,7 +7,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 ## 2026-10-22 · Eventi anonimi (branch `claude/prossimi-step-tecnici-uiux-62e374`, da `main` 1857ced) · M5-01
 
 **Fatto**
-- `POST /api/events` (`src/worker/routes/events.ts`): senza sessione né `Content-Type: application/json` (D-06); `Origin` controllato, rate limit per IP-HMAC, corpo ≤ 2 KB (413), schema chiuso (`src/shared/events.ts`): eventi `app_open`, `price_added`, `price_confirmed`, `venue_viewed`; proprietà `day_bucket`, `source`, `drink`, `city`; ≤ 10 eventi. Risposta 204. Incrementa solo `metrics_daily`, più `visit_contributed` per ogni beacon con un `price_added`.
+- `POST /api/events` (`src/worker/routes/events.ts`): senza sessione né `Content-Type: application/json` (D-06); `Origin` controllato, rate limit per IP-HMAC, corpo ≤ 2 KB (413), schema chiuso (`src/shared/events.ts`): eventi `app_open`, `price_added`, `price_confirmed`, `venue_viewed`; proprietà `day_bucket`, `source`, `drink` (`city` esclusa: un valore libero farebbe crescere `metrics_daily` senza limite, rilievo della revisione di sicurezza; tornerà con un elenco chiuso di ID); ≤ 10 eventi. Risposta 204. Incrementa solo `metrics_daily`, più `visit_contributed` per ogni beacon con un `price_added`.
 - Client (`src/app/lib/events.ts`): eventi accumulati e inviati con `sendBeacon` (text/plain) al passaggio in background; se il prezzo parte già in background l'invio è immediato. `day_bucket` dalla data del primo uso già in `localStorage` (nessuna chiave nuova).
 
 **Prove**

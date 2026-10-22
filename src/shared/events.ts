@@ -8,8 +8,11 @@ export type DayBucket = (typeof DAY_BUCKETS)[number];
 
 export interface AppEvent {
   e: EventName;
-  /** At most one of: day_bucket, source, drink, city (OSM id of the place). */
-  p?: { day_bucket?: DayBucket; source?: "manual"; drink?: string; city?: string };
+  /**
+   * Every value comes from a closed list, so the rows of metrics_daily stay bounded. `city` (SPEC 12)
+   * is left out until it is used: it would have to be checked against the known OSM ids.
+   */
+  p?: { day_bucket?: DayBucket; source?: "manual"; drink?: string };
 }
 
 export interface EventsBody {

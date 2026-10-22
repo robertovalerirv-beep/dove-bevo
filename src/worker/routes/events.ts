@@ -18,10 +18,6 @@ const Props = z.strictObject({
     .max(32)
     .refine((d) => findDrink(d) !== undefined)
     .optional(),
-  city: z
-    .string()
-    .regex(/^\d{1,12}$/)
-    .optional(),
 });
 const Body = z.strictObject({
   events: z

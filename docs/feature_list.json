@@ -669,7 +669,7 @@
     "milestone": "M5",
     "descrizione": "security.txt e robots.txt",
     "verifica": "e2e: `/.well-known/security.txt` conforme a RFC 9116 (Contact, Expires); `robots.txt` presente",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-10",

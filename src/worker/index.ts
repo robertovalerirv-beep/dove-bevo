@@ -3,6 +3,7 @@ import { z } from "zod";
 import { routePath } from "hono/route";
 import { version } from "../../package.json";
 import { ApiError, apiError } from "./lib/errors";
+import { requireRealSecrets } from "./lib/env-guard";
 import { requireOrigin, requireSession } from "./lib/guards";
 import { rateLimit, readLimit } from "./lib/rate-limit";
 import { securityHeaders } from "./lib/security-headers";
@@ -30,6 +31,8 @@ app.use(securityHeaders);
 // After securityHeaders: the tags and text for crawlers are added to the shell, then the headers are set.
 app.use(seoPages);
 app.use("/api/*", requireOrigin);
+// A deployed Worker with the development placeholder keys must not accept sessions or writes.
+app.on("POST", "/api/*", requireRealSecrets);
 // Burst limit on every write and on the per-bar history (SPEC 9.2, 13.3).
 app.on("POST", "/api/*", rateLimit);
 app.get("/api/venues/*", rateLimit);

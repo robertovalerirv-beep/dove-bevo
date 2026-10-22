@@ -36,7 +36,10 @@ jobs:
       - run: npm run test
       - run: node scripts/check-feature-list.mjs
       - run: node scripts/check-workflows.mjs
+      - run: node scripts/check-config.mjs
       - run: npm audit --audit-level=high
+      # What runs in the Worker and the browser: any advisory, whatever its severity.
+      - run: npm audit --omit=dev --audit-level=low
 
   e2e:
     name: E2E (Chromium, WebKit) and security tests

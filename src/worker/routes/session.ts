@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
 import { z } from "zod";
+import { TURNSTILE_TEST_SECRET } from "../config";
 import { ApiError } from "../lib/errors";
 import { readJson } from "../lib/guards";
 import { createSession, SESSION_COOKIE, SESSION_TTL_S } from "../lib/session";
@@ -9,8 +10,6 @@ import type { AppEnv } from "../types";
 
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 export const TURNSTILE_ACTION = "contribute";
-/** Cloudflare's public always-pass test secret (local and e2e only): its answers carry no action. */
-const TEST_SECRET = "1x0000000000000000000000000000000AA";
 
 const Body = z.strictObject({ token: z.string().min(1).max(2048) });
 const Verdict = z.object({
@@ -30,7 +29,7 @@ session.post("/", async (c) => {
   const verdict = Verdict.safeParse(
     await (await fetch(SITEVERIFY, { method: "POST", body: form })).json(),
   );
-  const testing = c.env.TURNSTILE_SECRET === TEST_SECRET;
+  const testing = c.env.TURNSTILE_SECRET === TURNSTILE_TEST_SECRET;
   if (
     !verdict.success ||
     !verdict.data.success ||

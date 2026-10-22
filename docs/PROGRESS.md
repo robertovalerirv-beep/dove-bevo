@@ -4,6 +4,36 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-22 · Pen test aggressivo e rafforzamento (branch `sec/hardening-2026-10-22`, da `main` 20072d0) · ADR 0029
+
+**Richiesta di Roberto:** pen test aggressivo di sito e GitHub, un report interno per bug, una sola correzione cumulativa, UI e UX ineccepibili; il deploy lo decide lui.
+
+**Metodo:** lettura del codice, GET su staging (sola lettura), `gh` in sola lettura, scansione della storia git, 159 attacchi in workerd, attacchi HTTP e in browser (Chromium e WebKit) sulla build locale. Nessuna scrittura remota. Il report interno con le prove sta fuori dal repo.
+
+**Esito:** nessuna falla critica; sessione, JWT Access, Origin, body, SQL, XSS/CSP, cache, privacy a riposo e race su quote e conferme hanno retto.
+
+**Fatto (un solo ramo, nessun push)**
+- Guardia fail-closed (`src/worker/lib/env-guard.ts`): con le chiavi segnaposto di `wrangler.jsonc` fuori da localhost ogni POST (tranne l'admin) risponde 503; `scripts/check-config.mjs` in CI e `npm run verify` (ambienti senza segnaposto, deploy con `CLOUDFLARE_ENV`).
+- `validVenueName`: link nascosti, full-width, separatori, caratteri non validi; zero nuovi rifiuti su 840 nomi reali.
+- vitest 4.1.12 (0 avvisi); `npm audit` anche sulle dipendenze di produzione.
+- `/.well-known/security.txt` (M5-09); tolta l'email personale dai documenti.
+- Suite red-team permanente (`tests/worker/pentest-suite.test.ts`) e test di regressione.
+
+**Prove**
+- Test nuovi rossi sul codice vecchio (7 + 17), verdi sul nuovo.
+- `npm run verify` verde in 688 s: lint, formato, typecheck, 477+ test unit e worker, guardie, audit (0 avvisi, anche produzione), E2E Chromium e WebKit più sicurezza (531 s), build, budget shell, Lighthouse.
+- Interfaccia invariata: 44 screenshot 390×844 (Chromium e WebKit, chiaro e scuro, 11 viste) confrontati pixel per pixel prima e dopo: 44 su 44 identici (una differenza di 5.166 px in un giro, non riprodotta in 3 ripetizioni, rumore di rendering).
+- `security-txt.spec.ts` verde (2 test): M5-09 `passes: true`.
+- Revisioni `security-reviewer` e `spec-reviewer`: due falsi positivi del filtro dei nomi (`Dr. De Luca`, `Punto Club`) corretti e coperti da test; guardia resa attiva su tutte le POST.
+
+**Da fare per Roberto prima del push/deploy**
+- Impostazioni GitHub: ruleset dei tag `spec-approved*`, approvazione fork e cancellazione dei rami dopo il merge sono già applicati (22/10/2026). Restano: Environment `staging` con i segreti Cloudflare (poi `environment: staging` nel deploy), scope del token Cloudflare, email privata su GitHub.
+- Verificare i secret di staging (`wrangler secret list --env staging`): SESSION_HMAC_KEY, HASH_KEY, TURNSTILE_SECRET reali (non il secret di test), altrimenti dopo il deploy le scritture danno 503.
+- Dopo il deploy: `/.well-known/security.txt` servito su staging.
+- Decisioni di SPEC aperte (ADR 0029): conferma di prezzi in quarantena, segnalazioni, ultimo prezzo vince, quote IPv6.
+
+---
+
 ## 2026-10-21 · Sessione 14 (seguito) · Via la frase della zona senza prezzi (branch `fix/remove-empty-zone-note`, da `main` 367ad8a) · SPEC 1.7
 
 **Richiesta di Roberto:** togliere da ovunque «Qui nessuno ha ancora segnato un prezzo. Il primo sei tu: ci vogliono 10 secondi.»: appesantisce e non dà valore. Autorizzati da lui in chat: SPEC 1.7, la riscrittura di MB-13 in `feature_list.json`, il tag `spec-approved-8` e la guardia aggiornata.
@@ -585,7 +615,7 @@ Scritti: ADR 0023 (brand, sostituisce la 0011 per i valori visivi) e 0024 (indic
 - Roberto ha approvato SPEC 1.0 e chiesto a Claude di attivare la configurazione.
 - `.claude/settings.proposed.json` → `.claude/settings.json` (attiva). Prova: un `Write` su `.dev.vars.hooktest` è stato respinto dalla regola deny.
 - SPEC e ADR 0001–0007 segnati come approvati/accettati.
-- Identità git del solo repository: Roberto Valeri <roberto.valeri.rv@gmail.com>.
+- Identità git del solo repository: Roberto Valeri <email personale, non riportata qui>.
 - Commit iniziale su `main` e tag `spec-approved` (base della guardia della feature list, D-21).
 
 **Prossimo passo**

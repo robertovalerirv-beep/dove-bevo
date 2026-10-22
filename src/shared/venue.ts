@@ -72,12 +72,41 @@ export const sameName = (a: string, b: string) => {
   return flat(a) === flat(b);
 };
 
-/** The only rule for a bar name, for users and for the admin: text, no control characters, no contacts. */
+/**
+ * Characters a name never needs: controls, invisible formatting (bidi, zero width), line and paragraph
+ * separators, private use, unassigned code points and lone surrogates (D1 would store those as invalid UTF-8).
+ */
+const NEVER_IN_A_NAME = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Co}\p{Cn}\p{Cs}]/u;
+
+/**
+ * Top-level domains of links people hide in a name. The first group is never a word in a bar name
+ * ("evil.xyz", "bit.ly"); the second is also an Italian word or an abbreviation ("Dr. De Luca",
+ * "Punto Club", "S.Co"), so it counts only when a path follows ("t.me/x", "promo.shop/x").
+ */
+const LINK_TLD = "com|net|org|info|biz|eu|it|xyz|ly|io|cc|ws|gl|gg|tk|ml|ga|cf|gq|pw|tv|ru|cn";
+const LINK_TLD_WITH_PATH =
+  "me|co|to|be|at|de|fr|es|uk|shop|app|dev|online|site|link|click|top|club|store|vip";
+const CONTACT = new RegExp(
+  `https?:|www\\.|@|\\[(?:at|dot)\\]|\\((?:at|dot)\\)|` +
+    `[\\p{L}\\p{N}-]\\.(?:${LINK_TLD})(?![\\p{L}\\p{N}])|` +
+    `[\\p{L}\\p{N}-]\\.(?:${LINK_TLD_WITH_PATH})/|[\\p{L}\\p{N}-]{3,}\\.\\p{L}{2,6}/`,
+  "iu",
+);
+
+/**
+ * The only rule for a bar name, for users and for the admin: text, no control characters, no contacts.
+ * Contacts are looked for in a compatibility form (full-width letters become ASCII, spaces around a dot
+ * go), so "ｗｗｗ．evil．ｃｏｍ" and "bit . ly / x" are caught like "www.evil.com" and "bit.ly/x".
+ */
 export function validVenueName(name: string): boolean {
   const text = name.normalize("NFC").trim();
   if (text.length < NAME_MIN || text.length > NAME_MAX) return false;
-  if (/\p{Cc}|\p{Cf}/u.test(text)) return false;
-  if (/https?:|www\.|\.(com|it|net|org|eu|info)\b|@/i.test(text)) return false;
-  if (/\d[\d\s().+-]{6,}\d/.test(text)) return false; // phone numbers
+  if (NEVER_IN_A_NAME.test(text)) return false;
+  const plain = text
+    .normalize("NFKC")
+    .replace(/\s*[.。｡]\s*/gu, ".")
+    .toLowerCase();
+  if (CONTACT.test(plain)) return false;
+  if (/\d[\d\s().+-]{6,}\d/.test(plain)) return false; // phone numbers
   return true;
 }

@@ -21,7 +21,7 @@ mostra "Accesso riservato" e le API rispondono 403.
      - Domain `dovebevo-staging.dovebevo.workers.dev`, Path `admin`
      - Domain `dovebevo-staging.dovebevo.workers.dev`, Path `api/admin/*`
 3. **Policies → Add a policy**: nome `Solo Roberto`, Action **Allow**, Include → **Emails** →
-   `roberto.valeri.rv@gmail.com`. Salva.
+   `<la tua email>` (quella con cui entri in Cloudflare; non scriverla nel repo). Salva.
 4. **Login methods**: lascia **One-time PIN** (codice via email).
 5. Salva l'applicazione, poi aprila e copia l'**Application Audience (AUD) Tag** (una stringa esadecimale lunga).
 6. Il **team domain** è `<nome-del-team>.cloudflareaccess.com` (lo vedi in Settings → Custom pages o

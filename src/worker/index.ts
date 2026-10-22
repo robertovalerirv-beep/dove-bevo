@@ -12,6 +12,7 @@ import { romeDay } from "./lib/day";
 import { purgeOldKeys } from "./lib/db";
 import { requireAccess } from "./lib/access";
 import { admin } from "./routes/admin";
+import { events } from "./routes/events";
 import { prices } from "./routes/prices";
 import { reports } from "./routes/reports";
 import { seo, seoPages } from "./routes/seo";
@@ -55,6 +56,7 @@ app.route("/api/session", session);
 app.route("/api/prices", prices);
 app.route("/api/venues", venues);
 app.route("/api/reports", reports);
+app.route("/api/events", events);
 app.route("/", seo);
 
 // Pages that run the Worker first (run_worker_first in wrangler.jsonc: the home, /copertura, the main

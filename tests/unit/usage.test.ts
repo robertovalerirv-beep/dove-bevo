@@ -1,5 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addPrices, priceCount, stampReached, TESSERA_STEPS } from "../../src/app/lib/usage";
+import {
+  addPrices,
+  dayBucket,
+  priceCount,
+  stampReached,
+  TESSERA_STEPS,
+} from "../../src/app/lib/usage";
 
 // MB-12 (D-29): Tessera stamps from the one counter kept on the device (SPEC 12).
 describe("stampReached", () => {
@@ -54,5 +60,17 @@ describe("the counter", () => {
     });
     expect(priceCount()).toBe(0);
     expect(addPrices(1, "2026-10-17")).toBe(1);
+  });
+
+  it("buckets the days since the first use with the one existing key (SPEC 12)", () => {
+    expect(dayBucket("2026-10-01")).toBe("0"); // stamps the first use
+    expect(store.get("dovebevo-first-use")).toBe("2026-10-01");
+    expect(dayBucket("2026-10-01")).toBe("0");
+    expect(dayBucket("2026-10-02")).toBe("1-7");
+    expect(dayBucket("2026-10-08")).toBe("1-7");
+    expect(dayBucket("2026-10-09")).toBe("8-30");
+    expect(dayBucket("2026-10-31")).toBe("8-30");
+    expect(dayBucket("2026-11-01")).toBe("30+");
+    expect([...store.keys()]).toEqual(["dovebevo-first-use"]);
   });
 });

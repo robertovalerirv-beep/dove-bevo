@@ -482,6 +482,25 @@ export async function sendToReview(db: D1Database, k: PriceKey): Promise<void> {
     .run();
 }
 
+/** Adds anonymous event counts to today's row of each (event, prop): no identifier is stored (SPEC 12). */
+export async function addMetrics(
+  db: D1Database,
+  day: string,
+  rows: { event: string; prop: string; n: number }[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  await db.batch(
+    rows.map((r) =>
+      db
+        .prepare(
+          `INSERT INTO metrics_daily (day, event, prop, n) VALUES (?1, ?2, ?3, ?4)
+           ON CONFLICT (day, event, prop) DO UPDATE SET n = n + ?4`,
+        )
+        .bind(day, r.event, r.prop, r.n),
+    ),
+  );
+}
+
 /** Nightly cleanup of the day-salted keys (SPEC 8, 14): only the last days survive. */
 export async function purgeOldKeys(db: D1Database, before: string): Promise<void> {
   await db.batch([

@@ -99,23 +99,23 @@ describe("GET /api/admin/coverage: access, headers, limit (M5-11)", () => {
 describe("what counts as a bar with a price (M5-12)", () => {
   it("only public bars with an active price: the definition of the map", async () => {
     await env.DB.batch([
-      price("n1", MILANO),
-      price("n1", MILANO, "active", "2026-10-12", "negroni"), // second price, same bar
-      price("n2", MILANO, "quarantined"),
-      price("n2", MILANO, "review", "2026-10-10", "negroni"),
-      price("n2", MILANO, "removed", "2026-10-10", "prosecco"),
-      price("n3", COMO), // hidden by the admin
-      price("n4", COMO, "active", "2026-10-11"),
+      price("n10013246997", MILANO),
+      price("n10013246997", MILANO, "active", "2026-10-12", "negroni"), // second price, same bar
+      price("n10081337586", MILANO, "quarantined"),
+      price("n10081337586", MILANO, "review", "2026-10-10", "negroni"),
+      price("n10081337586", MILANO, "removed", "2026-10-10", "prosecco"),
+      price("n10128978471", COMO), // hidden by the admin
+      price("n10133027509", COMO, "active", "2026-10-11"),
       price("u1", null), // approved user bar: stored without a city, placed by its coordinates
       price("n13001337602", null), // OSM bar of the fixture whose row has no city: placed by its coordinates
       price("u2", null), // pending: not public
       price("u3", null), // rejected: not public
-      price("n5", null), // a key that is in no static file: nothing to place it by
+      price("n5", null), // a key that is in no static file: gone from OSM, not on the map
       user(1, "approved"),
       user(2, "pending"),
       user(3, "removed"),
       env.DB.prepare(
-        "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n3', 'u0nd9', 'Not a bar', '2026-10-10')",
+        "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n10128978471', 'u0nd9', 'Not a bar', '2026-10-10')",
       ),
     ]);
     const body = await coverage();
@@ -123,19 +123,18 @@ describe("what counts as a bar with a price (M5-12)", () => {
       [MILANO, 3, 4, "2026-10-12"],
       [COMO, 1, 1, "2026-10-11"],
     ]);
-    expect(body.none).toEqual([1, 1, "2026-10-10"]);
+    expect(body.none).toEqual([0, 0, ""]);
     // Approved user bars count in the total of their city (the client adds them to places.json).
     expect(body.users).toEqual([[MILANO, 1]]);
-    expect(body.bars).toBe(5);
-    expect(body.prices).toBe(6);
+    expect(body.bars).toBe(4);
+    expect(body.prices).toBe(5);
     // Every active row is read whatever its bar: this is the number the cost warning uses.
     expect(body.active).toBe(9);
     // The bars behind the counts, for the admin's city list: [city or 0, key, cell], public ones only.
     expect([...body.members].sort((a, b) => a[1].localeCompare(b[1]))).toEqual([
-      [MILANO, "n1", "u0nd9"],
+      [MILANO, "n10013246997", "u0nd9"],
+      [COMO, "n10133027509", "u0nd9"],
       [MILANO, "n13001337602", "u0nd9"],
-      [COMO, "n4", "u0nd9"],
-      [0, "n5", "u0nd9"],
       [MILANO, "u1", "u0nd9"],
     ]);
     for (const [id, bars] of body.cities.map((c) => [c[0], c[1]] as const))
@@ -162,16 +161,20 @@ describe("what counts as a bar with a price (M5-12)", () => {
   });
 
   it("a second price on a covered bar adds a price, not a bar", async () => {
-    await env.DB.batch([price("n1", MILANO)]);
+    await env.DB.batch([price("n10013246997", MILANO)]);
     const before = await coverage();
-    await env.DB.batch([price("n1", MILANO, "active", "2026-10-10", "negroni")]);
+    await env.DB.batch([price("n10013246997", MILANO, "active", "2026-10-10", "negroni")]);
     const after = await coverage();
     expect(after.bars).toBe(before.bars);
     expect(after.prices).toBe(before.prices + 1);
   });
 
   it("quarantine and the admin's decisions change the count", async () => {
-    await env.DB.batch([price("n1", MILANO, "quarantined"), user(7, "pending"), price("u7", null)]);
+    await env.DB.batch([
+      price("n10013246997", MILANO, "quarantined"),
+      user(7, "pending"),
+      price("u7", null),
+    ]);
     expect((await coverage()).bars).toBe(0);
 
     const jwt = await accessJwt();
@@ -180,7 +183,7 @@ describe("what counts as a bar with a price (M5-12)", () => {
       expect((await call(path, jwt, body)).status).toBe(200);
     };
     await decide("prices/status", {
-      venue: "n1",
+      venue: "n10013246997",
       drink: "spritz",
       hh: 0,
       status: "active",
@@ -194,15 +197,15 @@ describe("what counts as a bar with a price (M5-12)", () => {
     expect((await coverage()).bars).toBe(1); // removed: no longer counts
 
     await env.DB.prepare(
-      "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n1', 'u0nd9', 'x', '2026-10-10')",
+      "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n10013246997', 'u0nd9', 'x', '2026-10-10')",
     ).run();
     expect((await coverage()).bars).toBe(0); // "Togli dalla mappa"
-    await decide("unhide", { venue: "n1" });
+    await decide("unhide", { venue: "n10013246997" });
     expect((await coverage()).bars).toBe(1); // restored
   });
 
   it("a city is the stored OSM id of the place: the Worker never reads an index into places.json", async () => {
-    await env.DB.batch([price("n1", MILANO), price("n9", COMO)]);
+    await env.DB.batch([price("n10013246997", MILANO), price("n10171157780", COMO)]);
     const ids = (await coverage()).cities.map((c) => c[0]).sort((a, b) => a - b);
     expect(ids).toEqual([MILANO, COMO]);
   });
@@ -211,8 +214,8 @@ describe("what counts as a bar with a price (M5-12)", () => {
 describe("city of a bar and the public cell read (ADR 0022)", () => {
   it("a bar moved to another place by a new import counts for the newest attribution", async () => {
     await env.DB.batch([
-      price("n1", COMO, "active", "2026-09-01", "spritz"),
-      price("n1", MILANO, "active", "2026-10-12", "negroni"),
+      price("n10013246997", COMO, "active", "2026-09-01", "spritz"),
+      price("n10013246997", MILANO, "active", "2026-10-12", "negroni"),
     ]);
     const body = await coverage();
     expect(body.cities).toEqual([[MILANO, 1, 2, "2026-10-12"]]);
@@ -220,16 +223,16 @@ describe("city of a bar and the public cell read (ADR 0022)", () => {
 
   it("GET /api/prices/:cell leaves out the prices of hidden bars and still lists them in h", async () => {
     await env.DB.batch([
-      price("n1", MILANO),
-      price("n2", MILANO),
+      price("n10013246997", MILANO),
+      price("n10081337586", MILANO),
       env.DB.prepare(
-        "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n2', 'u0nd9', 'Not a bar', '2026-10-10')",
+        "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n10081337586', 'u0nd9', 'Not a bar', '2026-10-10')",
       ),
     ]);
     const response = await exports.default.fetch(`${ORIGIN}/api/prices/u0nd9`);
     const body = await response.json<CellPrices>();
-    expect(body.p.map((row) => row[0])).toEqual(["n1"]);
-    expect(body.h).toEqual(["n2"]);
+    expect(body.p.map((row) => row[0])).toEqual(["n10013246997"]);
+    expect(body.h).toEqual(["n10081337586"]);
   });
 });
 
@@ -266,11 +269,11 @@ describe("cost of one calculation (M5-13, ADR 0022)", () => {
 
 describe("the figures are kept for a minute (ADR 0025)", () => {
   it("a second read within the minute costs no D1 access; an admin change drops the figures", async () => {
-    await env.DB.batch([price("n1", MILANO)]);
+    await env.DB.batch([price("n10013246997", MILANO)]);
     const first = await coverageSnapshot(env);
     expect(first.bars).toBe(1);
 
-    await env.DB.batch([price("n2", MILANO)]);
+    await env.DB.batch([price("n10081337586", MILANO)]);
     const batch = vi.spyOn(env.DB, "batch");
     expect(await coverageSnapshot(env)).toBe(first); // same figures, nothing read
     expect(batch).not.toHaveBeenCalled();
@@ -281,7 +284,7 @@ describe("the figures are kept for a minute (ADR 0025)", () => {
     batch.mockRestore();
 
     forgetCoverage();
-    await env.DB.batch([price("n3", MILANO)]);
+    await env.DB.batch([price("n10128978471", MILANO)]);
     expect((await coverageSnapshot(env)).bars).toBe(3);
   });
 });

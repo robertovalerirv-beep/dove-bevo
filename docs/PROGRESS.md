@@ -27,7 +27,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - Revisioni `security-reviewer` e `spec-reviewer`: due falsi positivi del filtro dei nomi (`Dr. De Luca`, `Punto Club`) corretti e coperti da test; guardia resa attiva su tutte le POST.
 
 **Da fare per Roberto prima del push/deploy**
-- Impostazioni GitHub (comandi nel riepilogo di sessione): ruleset dei tag `spec-approved*`, approvazione fork, Environment `staging`, pulizia rami, email privata.
+- Impostazioni GitHub: ruleset dei tag `spec-approved*`, approvazione fork e cancellazione dei rami dopo il merge sono già applicati (22/10/2026). Restano: Environment `staging` con i segreti Cloudflare (poi `environment: staging` nel deploy), scope del token Cloudflare, email privata su GitHub.
 - Verificare i secret di staging (`wrangler secret list --env staging`): SESSION_HMAC_KEY, HASH_KEY, TURNSTILE_SECRET reali (non il secret di test), altrimenti dopo il deploy le scritture danno 503.
 - Dopo il deploy: `/.well-known/security.txt` servito su staging.
 - Decisioni di SPEC aperte (ADR 0029): conferma di prezzi in quarantena, segnalazioni, ultimo prezzo vince, quote IPv6.

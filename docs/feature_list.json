@@ -613,7 +613,7 @@
     "milestone": "M5",
     "descrizione": "Eventi anonimi",
     "verifica": "e2e: una visita genera un solo `sendBeacon` a `/api/events`; sec: evento o proprietà fuori elenco → 400, body > 2 KB → 413, `Origin` estraneo → 403; `metrics_daily` incrementato",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-02",
@@ -627,7 +627,7 @@
     "milestone": "M5",
     "descrizione": "Admin: revisione e metriche",
     "verifica": "e2e con JWT di test: code `review`/`quarantined`/`pending` con Approva/Rimuovi; metriche giornaliere; copertura per città",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-04",

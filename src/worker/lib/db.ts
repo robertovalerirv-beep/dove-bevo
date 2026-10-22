@@ -1,4 +1,5 @@
 // The only module that talks to D1 (CLAUDE.md).
+import type { MetricRow } from "../../shared/metrics";
 import type {
   CellPrices,
   HistoryRow,
@@ -480,6 +481,34 @@ export async function sendToReview(db: D1Database, k: PriceKey): Promise<void> {
     )
     .bind(...pk(k))
     .run();
+}
+
+/** Adds anonymous event counts to today's row of each (event, prop): no identifier is stored (SPEC 12). */
+export async function addMetrics(
+  db: D1Database,
+  day: string,
+  rows: { event: string; prop: string; n: number }[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  await db.batch(
+    rows.map((r) =>
+      db
+        .prepare(
+          `INSERT INTO metrics_daily (day, event, prop, n) VALUES (?1, ?2, ?3, ?4)
+           ON CONFLICT (day, event, prop) DO UPDATE SET n = n + ?4`,
+        )
+        .bind(day, r.event, r.prop, r.n),
+    ),
+  );
+}
+
+/** Rows of metrics_daily from `since` (inclusive) on: one range of the primary key. */
+export async function listMetrics(db: D1Database, since: string): Promise<MetricRow[]> {
+  const { results } = await db
+    .prepare("SELECT day, event, prop, n FROM metrics_daily WHERE day >= ?1 ORDER BY day DESC")
+    .bind(since)
+    .all<MetricRow>();
+  return results;
 }
 
 /** Nightly cleanup of the day-salted keys (SPEC 8, 14): only the last days survive. */

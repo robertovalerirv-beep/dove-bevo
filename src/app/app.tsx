@@ -23,7 +23,8 @@ import { ensureSession, postWithSession } from "./lib/session";
 import { formatPrice, formatStampDay, todayRome } from "./lib/format";
 import { installMode, promptInstall } from "./lib/install";
 import { currentTheme } from "./lib/theme";
-import { addPrices, priceCount, stampReached } from "./lib/usage";
+import { track } from "./lib/events";
+import { addPrices, dayBucket, priceCount, stampReached } from "./lib/usage";
 import { cellMedian, coverage, isStale, tierOf } from "./lib/tiers";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
@@ -123,6 +124,10 @@ export function App({ loadMap }: Props) {
     undo?: () => void;
     more?: { label: string; run: () => void };
   } | null>(null);
+  const viewedBars = useRef(new Set<string>());
+  useEffect(() => {
+    track("app_open", { day_bucket: dayBucket(todayRome()) });
+  }, []);
   const [barVersion, setBarVersion] = useState(0); // reloads the bar page after a contribution
   // Both stay in the page and follow the topmost sheet, so they are never under an inert backdrop.
   const turnstileHost = useMemo(() => floating("turnstile-host"), []);
@@ -551,6 +556,7 @@ export function App({ loadMap }: Props) {
           results.every((r) => r.code === "already") ? it.add.alreadyThere : it.add.confirmedSame,
         );
       }
+      for (const d of entry.drafts) track("price_added", { source: "manual", drink: d.drink });
       invalidateCell(venue.cell);
       setAttempt((n) => n + 1);
       setBarVersion((n) => n + 1);
@@ -735,6 +741,7 @@ export function App({ loadMap }: Props) {
       });
       if (!response.ok) throw new Error(String(response.status));
       const body = (await response.json()) as { status: string; confirmations: number };
+      if (body.status === "confirmed") track("price_confirmed", { drink: row[1] });
       return { count: body.confirmations, counted: body.status === "confirmed" };
     },
     changed: (venue, row) => {
@@ -1057,6 +1064,10 @@ export function App({ loadMap }: Props) {
             row[2] === 0 ? tierOf(row[3], cellMedian(allVenues, route.cell, row[1])) : "neutro"
           }
           onVenue={(v) => {
+            if (!viewedBars.current.has(v.key)) {
+              viewedBars.current.add(v.key);
+              track("venue_viewed");
+            }
             // A search already flew to the bar (zoom 17): the page must not move the map again.
             if (flewToBar.current) flewToBar.current = false;
             else if (!view || view.zoom < MIN_ZOOM_CELLS) moveTo(v.lat, v.lon, 16);

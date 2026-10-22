@@ -4,6 +4,36 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-22 · Metriche giornaliere in `/admin` (stesso branch, dopo M5-01) · M5-03
+
+**Fatto**
+- `GET /api/admin/metrics` (dietro Access, `Cache-Control: no-store`): ultimi 14 giorni di `metrics_daily`, una sola lettura per intervallo sulla chiave primaria; `summarizeMetrics` (`src/shared/metrics.ts`) somma le righe: un evento con più proprietà scrive una riga per proprietà, quindi si conta la somma di un solo tipo di proprietà (o il massimo), non il totale.
+- Sezione «Uso giorno per giorno» in `/admin` (`src/app/views/Metrics.tsx`): visite, quota di chi torna, prezzi, quota di visite con prezzo; conferme e bar visti dai 600 px in su. Se non carica, una riga di stato e il resto della pagina funziona.
+- Le code review/quarantena/nuovi bar con Approva/Rimuovi e la copertura per città erano già coperte da `admin.spec.ts` e `admin-coverage.spec.ts`.
+
+**Prove**
+- `tests/worker/admin-metrics.test.ts` (4: riepilogo, 403 senza JWT, 200 no-store, piano di lettura); `admin.spec.ts` +2 (tabella, errore) Chromium e WebKit con axe e nessuno scroll orizzontale; screenshot 390 px in `docs/screenshots/admin/metrics.png`.
+- Admin e copertura e2e: 42 verdi (Chromium e WebKit); `npm test` verde; lint, formato e typecheck verdi.
+- Non lanciato `npm run verify` completo né push.
+
+---
+
+## 2026-10-22 · Eventi anonimi (branch `claude/prossimi-step-tecnici-uiux-62e374`, da `main` 1857ced) · M5-01
+
+**Fatto**
+- `POST /api/events` (`src/worker/routes/events.ts`): senza sessione né `Content-Type: application/json` (D-06); `Origin` controllato, rate limit per IP-HMAC, corpo ≤ 2 KB (413), schema chiuso (`src/shared/events.ts`): eventi `app_open`, `price_added`, `price_confirmed`, `venue_viewed`; proprietà `day_bucket`, `source`, `drink` (`city` esclusa: un valore libero farebbe crescere `metrics_daily` senza limite, rilievo della revisione di sicurezza; tornerà con un elenco chiuso di ID); ≤ 10 eventi. Risposta 204. Incrementa solo `metrics_daily`, più `visit_contributed` per ogni beacon con un `price_added`.
+- Client (`src/app/lib/events.ts`): eventi accumulati e inviati con `sendBeacon` (text/plain) al passaggio in background; se il prezzo parte già in background l'invio è immediato. `day_bucket` dalla data del primo uso già in `localStorage` (nessuna chiave nuova).
+
+**Prove**
+- `tests/worker/events.test.ts` 8 test (conteggi, `visit_contributed`, 400 fuori elenco, 413, 403, nessun dato personale); `tests/unit/usage.test.ts` +1 (bucket); `tests/e2e/events.spec.ts` Chromium e WebKit: nessun beacon durante l'uso, uno solo in background.
+- `npm test` 47 file, 511 verdi; lint, format e typecheck verdi; e2e csp, contribute, pwa, privacy, brand-tiers su Chromium e WebKit (anche progetti writes): 206 verdi.
+- Il test del Worker non l'ho visto rosso prima del codice (la rotta non esisteva: sarebbe stato 404).
+- Non lanciato `npm run verify` completo né pushato.
+
+**Da sapere:** i contatori ci sono solo dopo il deploy; `/admin` non li mostra ancora (M5-03). Per l'informativa: gli eventi non contengono ID, IP o posizione.
+
+---
+
 ## 2026-10-22 · Pen test aggressivo e rafforzamento (branch `sec/hardening-2026-10-22`, da `main` 20072d0) · ADR 0029
 
 **Richiesta di Roberto:** pen test aggressivo di sito e GitHub, un report interno per bug, una sola correzione cumulativa, UI e UX ineccepibili; il deploy lo decide lui.

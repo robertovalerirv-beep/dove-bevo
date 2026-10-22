@@ -1,3 +1,4 @@
+import type { DayBucket } from "../../shared/events";
 // What stays on the device about this person's use (SPEC 12, D-29): the day of the first use and
 // how many prices they entered. Nothing else, nothing sent. Feeds the Tessera and, in F5, the
 // install invitation.
@@ -40,4 +41,16 @@ export function addPrices(delta: number, today: string): number {
 export function stampReached(before: number, after: number): TesseraStep | null {
   const passed = TESSERA_STEPS.filter((s) => s > before && s <= after);
   return passed[passed.length - 1] ?? null;
+}
+
+/** Stamps the day of the first use (once) and buckets the days since then for the return metric (SPEC 12). */
+export function dayBucket(today: string): DayBucket {
+  const first = read(FIRST_USE);
+  if (first === null) {
+    write(FIRST_USE, today);
+    return "0";
+  }
+  const days = Math.round((Date.parse(today) - Date.parse(first)) / 86_400_000);
+  if (!(days > 0)) return "0";
+  return days <= 7 ? "1-7" : days <= 30 ? "8-30" : "30+";
 }

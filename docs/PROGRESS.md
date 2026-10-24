@@ -13,7 +13,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - **Pagine `/privacy` e `/regole` (M5-04, MB-16):** testi in `it.ts` (sezione `legal`) dalle regole di SPEC 14 e da `PRIVACY-NOTES.md`, chunk a richiesta, logo orizzontale nei due temi, link nella scheda bar e nel foglio di ricerca (la mappa non ha un piè di pagina: la barra a due tasti di D-28 non cambia). `CONTACT_EMAIL` = `dovebevo@gmail.com`.
 - **Riga istantanea per cella (M3-20, ADR 0032, migrazione 0007):** una cella si legge con 1 riga; invalidata a ogni scrittura (anche le proposte di bar, prima mancava), scadenza di sicurezza 5 minuti.
 - **Elenco della mappa:** un prezzo vecchio dice «Da confermare» anche a parole (M4-05; il pin tratteggiato resta solo grafico).
-- **Documenti:** `docs/security/asvs-l1.md` (M5-07), `docs/user-test.md` (M5-10), `docs/runbook-rollback.md`, `docs/release-checklist.md`, `CHANGELOG.md`, `.github/workflows/deploy-production.yml` (solo da tag, solo se il commit è già in `main`, con approvazione dell'environment `production`; non provato: serve il blocco `production` di `wrangler.jsonc`).
+- **Documenti:** `docs/security/asvs-l1.md` (M5-07), `docs/user-test.md` (M5-10), `docs/runbook-rollback.md`, `docs/release-checklist.md`, `CHANGELOG.md`, `docs/templates/deploy-production.yml.example` (modello del workflow di produzione: solo da tag, solo se il commit è già in `main`, con approvazione dell'environment `production`; non provato e non attivo, perché `check-config` lo rifiuta finché `wrangler.jsonc` non ha il blocco `production`: si copia in `.github/workflows/` in M6).
 - `eslint.config.js` ignora `docs/materiali/` (materiali locali fuori dal repository).
 
 **Prove**

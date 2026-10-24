@@ -15,7 +15,7 @@ Cosa fa Roberto, cosa fa Claude Code. Dopo l'acquisto del dominio.
 5. Segreti, solo da te: `npx wrangler secret put TURNSTILE_SECRET --env production`, `SESSION_HMAC_KEY` e `HASH_KEY` (due stringhe casuali lunghe, diverse da quelle di staging).
 6. Blocco `env.production` in `wrangler.jsonc`: stessa forma di `staging` (nome `dovebevo`, `d1_databases`, `ratelimits`, `queues`, `triggers.crons`, `vars`); `node scripts/check-config.mjs` deve restare verde, rifiuta i segnaposto.
 7. GitHub → Settings → Environments → `production`: reviewer obbligatorio = Roberto; i secret `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` anche lì.
-8. Il workflow `.github/workflows/deploy-production.yml` parte da un tag `v0.x.y`: applica le migrazioni D1 a produzione, importa OSM, fa il deploy e lo smoke test.
+8. Il modello `docs/templates/deploy-production.yml.example` va copiato in `.github/workflows/deploy-production.yml` solo dopo il punto 6 (la guardia `scripts/check-config.mjs` rifiuta un workflow con un ambiente che `wrangler.jsonc` non ha). Parte da un tag `v0.x.y` su un commit già in `main`: applica le migrazioni D1 a produzione, importa OSM, fa il deploy e lo smoke test.
 
 ## C. Prima del tag (Claude Code)
 - `npm run verify` verde, `docs/feature_list.json` con `passes: true` tranne le voci M6 che dipendono da produzione.

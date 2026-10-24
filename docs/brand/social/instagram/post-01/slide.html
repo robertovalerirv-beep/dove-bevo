@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Dove bevo — post 01</title>
+<!-- Sorgente delle slide del primo post Instagram (1080×1350, 4:5).
+     Si rigenerano con: node docs/brand/social/instagram/render.mjs
+     Colori e font dal kit: docs/brand/tokens.json e docs/brand/fonts. -->
+<style>
+@font-face { font-family: "Bricolage Grotesque"; src: url("../../../fonts/bricolage-grotesque-latin-wght-normal.woff2") format("woff2"); font-weight: 200 800; }
+@font-face { font-family: "Geist Mono"; src: url("../../../fonts/geist-mono-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; }
+:root {
+  --bg: #FFF4E4; --surface: #FFFBF4; --surface-2: #F6E9D6; --ink: #1B1611; --ink-muted: #5E554B;
+  --spritz: #FF5A1F; --on-spritz: #1B1611;
+  --affare: #C5F23E; --giusto: #FFFBF4; --salato: #6E1A4E; --on-salato: #FFFBF4;
+  --night-bg: #15110D; --night-ink: #FFF4E4; --night-muted: #BDB2A5;
+  --map-land: #F6EBDD; --map-water: #BFD9E6; --map-park: #DCE8C8; --map-road: #FFFFFF;
+  --sans: "Bricolage Grotesque", sans-serif; --mono: "Geist Mono", monospace;
+}
+* { margin: 0; box-sizing: border-box; }
+body { background: #888; font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+.slide { position: relative; width: 1080px; height: 1350px; overflow: hidden; padding: 96px 88px; display: flex; flex-direction: column; }
+.meta { font: 600 26px/32px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.display { font: 800 128px/0.95 var(--sans); letter-spacing: -0.045em; }
+.title { font: 800 92px/1 var(--sans); letter-spacing: -0.04em; }
+.body { font: 500 40px/1.3 var(--sans); }
+.handle { display: flex; align-items: center; gap: 18px; font: 700 34px/1 var(--mono); }
+.handle svg { width: 46px; height: 56px; }
+.dots { position: absolute; left: 88px; bottom: 72px; display: flex; gap: 14px; }
+.dots i { width: 14px; height: 14px; border-radius: 50%; border: 3px solid currentColor; }
+.dots i.on { background: currentColor; }
+
+/* 1 — cover */
+.s1 { background: var(--spritz); color: var(--on-spritz); justify-content: space-between; }
+.s1 .glass { width: 300px; height: 300px; align-self: flex-end; margin-top: -20px; }
+.s1 .q { margin-bottom: 70px; font: 800 168px/1.02 var(--sans); letter-spacing: -0.05em; }
+.s1 .q span { display: block; }
+
+/* 2 — scontrino */
+.s2 { background: var(--bg); gap: 56px; }
+.receipt { background: var(--surface); border: 5px solid var(--ink); border-bottom: 0; border-radius: 28px 28px 0 0; padding: 52px 56px 92px;
+  box-shadow: 10px 10px 0 var(--ink);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='30'%3E%3Cpath d='M0 0h48v6L24 30 0 6z'/%3E%3C/svg%3E") bottom left / 48px 30px repeat-x, linear-gradient(#000 0 0) top / 100% calc(100% - 28px) no-repeat; }
+.receipt .meta { color: var(--ink-muted); }
+.receipt .name { font: 800 72px/1 var(--sans); letter-spacing: -0.03em; margin: 12px 0 6px; }
+.receipt .addr { font: 500 34px/1.2 var(--sans); color: var(--ink-muted); }
+.rows { list-style: none; padding: 20px 0 0; margin: 40px 0 0; border-top: 5px dashed var(--ink); }
+.rows li { display: grid; grid-template-columns: 60px 1fr auto; align-items: center; gap: 22px; min-height: 118px; border-bottom: 2px solid #E2D3BE; }
+.rows svg { width: 56px; height: 56px; }
+.rows .d { font: 650 42px/1 var(--sans); }
+.rows .p { font: 700 58px/1 var(--mono); letter-spacing: -0.02em; }
+.total { display: flex; justify-content: space-between; margin-top: 30px; font: 700 34px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.s2 .body { color: var(--ink); }
+
+/* 3 — mappa */
+.s3 { background: var(--map-land); padding: 0; }
+.s3 .map { position: absolute; inset: 0; }
+.s3 .copy { position: relative; margin-top: auto; background: var(--surface); border-top: 5px solid var(--ink); padding: 56px 88px 140px; display: flex; flex-direction: column; gap: 22px; }
+.pin { position: absolute; display: inline-flex; align-items: center; gap: 10px; height: 82px; padding: 0 30px 0 24px; font: 700 42px/1 var(--mono); letter-spacing: -0.02em; border: 5px solid var(--ink); border-radius: 999px; box-shadow: 8px 8px 0 var(--ink); }
+.pin b { font-size: 36px; }
+.pin.affare { background: var(--affare); }
+.pin.giusto { background: var(--giusto); }
+.pin.salato { background: var(--salato); color: var(--on-salato); }
+.dot { position: absolute; width: 30px; height: 30px; border-radius: 50%; background: var(--surface); border: 5px solid var(--ink); }
+.tappo { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.tappo svg { width: 150px; height: 183px; }
+.tappo .pin { position: static; background: var(--spritz); }
+
+/* 4 — finale, tema Fuori orario */
+.s4 { background: var(--night-bg); color: var(--night-ink); justify-content: center; align-items: flex-start; gap: 52px; }
+.s4 .sym { width: 220px; height: 268px; }
+.s4 .body { color: var(--night-muted); max-width: 820px; }
+.s4 .foot { position: absolute; left: 88px; right: 88px; bottom: 120px; display: flex; justify-content: space-between; align-items: center; }
+.s4 .meta { color: var(--night-muted); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="tappo-path"><path d="M32.00,2.00 L35.73,5.28 L40.25,3.24 L42.85,7.48 L47.77,6.87 L49.00,11.67 L53.89,12.54 L53.65,17.50 L58.06,19.77 L56.37,24.44 L59.92,27.91 L56.93,31.87 L59.30,36.23 L55.27,39.13 L56.25,44.00 L51.55,45.59 L51.04,50.53 L46.08,50.66 L44.15,55.23 L39.37,53.89 L36.17,57.69 L32.00,55.00 L27.83,57.69 L24.63,53.89 L19.85,55.23 L17.92,50.66 L12.96,50.53 L12.45,45.59 L7.75,44.00 L8.73,39.13 L4.70,36.23 L7.07,31.87 L4.08,27.91 L7.63,24.44 L5.94,19.77 L10.35,17.50 L10.11,12.54 L15.00,11.67 L16.23,6.87 L21.15,7.48 L23.75,3.24 L28.27,5.28 Z"/></g>
+    <g id="spritz" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 4.5h11c0 5.5-2.5 8.5-5.5 8.5s-5.5-3-5.5-8.5Z"/><path d="M10 13v6.5M6.5 20.5h7"/><path d="M14.5 4.5a3.75 3.75 0 0 0 7.5 0Z"/><path d="M18.25 4.5v3.2"/></g>
+    <g id="birra" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h10v11.5a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 5 19.5Z"/><path d="M15 10.5h2a2.5 2.5 0 0 1 2.5 2.5v1.5A2.5 2.5 0 0 1 17 17h-2"/><path d="M4.5 8c0-2 1.6-3.2 3.2-2.6.9-1.7 3.7-1.7 4.6 0 1.6-.6 3.2.6 3.2 2.6"/><path d="M8.5 12v5M11.5 12v5"/></g>
+    <g id="negroni" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9h14l-1.2 10.8a1.5 1.5 0 0 1-1.5 1.2H7.7a1.5 1.5 0 0 1-1.5-1.2Z"/><path d="M5.6 13h12.8"/><path d="M15 9a3 3 0 0 1 5.5-1.7"/></g>
+  </defs>
+</svg>
+
+<!-- 1. Domanda -->
+<section class="slide s1" id="s1">
+  <div class="handle"><svg viewBox="0 0 64 78"><g stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"><path d="M21 50 L32 74 L43 50 Z" fill="var(--bg)"/><use href="#tappo-path" fill="var(--bg)"/><circle cx="32" cy="30" r="15.5" fill="none"/><circle cx="32" cy="30" r="5" fill="currentColor" stroke="none"/></g></svg>@dovebevo</div>
+  <svg class="glass" viewBox="0 0 24 24"><use href="#spritz"/></svg>
+  <p class="q"><span>Quanto</span><span>l'hai</span><span>pagato?</span></p>
+  <div class="dots"><i class="on"></i><i></i><i></i><i></i></div>
+</section>
+
+<!-- 2. Il conto -->
+<section class="slide s2" id="s2">
+  <div class="receipt">
+    <p class="meta">Scontrino n. 0001 · Stasera</p>
+    <p class="name">Un bar qualsiasi</p>
+    <p class="addr">Una via qualsiasi, la tua città</p>
+    <ul class="rows">
+      <li><svg viewBox="0 0 24 24"><use href="#spritz"/></svg><span class="d">Spritz</span><span class="p">?,??</span></li>
+      <li><svg viewBox="0 0 24 24"><use href="#birra"/></svg><span class="d">Birra media</span><span class="p">?,??</span></li>
+      <li><svg viewBox="0 0 24 24"><use href="#negroni"/></svg><span class="d">Negroni</span><span class="p">?,??</span></li>
+    </ul>
+    <p class="total"><span>Totale</span><span>Sorpresa</span></p>
+  </div>
+  <p class="title">Il conto lo scopri sempre dopo.</p>
+  <div class="dots"><i></i><i class="on"></i><i></i><i></i></div>
+</section>
+
+<!-- 3. La mappa, ancora coperta -->
+<section class="slide s3" id="s3">
+  <svg class="map" viewBox="0 0 1080 1350" preserveAspectRatio="none" aria-hidden="true">
+    <rect width="1080" height="1350" fill="var(--map-land)"/>
+    <path d="M-20 980 C 200 900, 420 1010, 640 930 S 980 860, 1100 900 L1100 1000 C 960 960, 820 1020, 640 1010 S 220 990, -20 1060Z" fill="var(--map-water)"/>
+    <path d="M700 120 h260 v220 h-260z" fill="var(--map-park)" rx="30"/>
+    <g stroke="var(--map-road)" stroke-width="26" fill="none" stroke-linecap="round">
+      <path d="M-20 300 L1100 380"/><path d="M-20 640 L1100 560"/><path d="M260 -20 L340 1100"/><path d="M620 -20 L560 1100"/><path d="M880 -20 L980 900"/>
+    </g>
+    <g stroke="var(--map-road)" stroke-width="12" fill="none" stroke-linecap="round">
+      <path d="M-20 470 L1100 470"/><path d="M450 -20 L430 900"/><path d="M-20 160 L700 220"/><path d="M120 -20 L60 900"/><path d="M760 400 L1100 760"/>
+    </g>
+  </svg>
+  <span class="pin affare" style="left:90px;top:250px"><b>↓</b>?,??</span>
+  <span class="pin giusto" style="left:640px;top:180px"><b>=</b>?,??</span>
+  <span class="pin salato" style="left:700px;top:620px"><b>↑</b>?,??</span>
+  <span class="pin giusto" style="left:120px;top:690px"><b>=</b>?,??</span>
+  <span class="dot" style="left:330px;top:410px"></span>
+  <span class="dot" style="left:960px;top:470px"></span>
+  <span class="dot" style="left:300px;top:540px"></span>
+  <span class="dot" style="left:860px;top:860px"></span>
+  <div class="tappo" style="left:410px;top:330px">
+    <svg viewBox="0 0 64 78"><g stroke="var(--ink)" stroke-width="3.5" stroke-linejoin="round"><path d="M21 50 L32 74 L43 50 Z" fill="var(--spritz)"/><use href="#tappo-path" fill="var(--spritz)"/><circle cx="32" cy="30" r="15.5" fill="none"/><circle cx="32" cy="30" r="5" fill="var(--ink)" stroke="none"/></g></svg>
+    <span class="pin"><b>↓</b>?,??</span>
+  </div>
+  <div class="copy">
+    <p class="title">Il prezzo,<br>prima del conto.</p>
+    <p class="body">Bar per bar, scritto da chi ha appena pagato.</p>
+    <div class="dots"><i></i><i></i><i class="on"></i><i></i></div>
+  </div>
+</section>
+
+<!-- 4. Attesa -->
+<section class="slide s4" id="s4">
+  <svg class="sym" viewBox="0 0 64 78"><g stroke="var(--night-ink)" stroke-width="3.5" stroke-linejoin="round"><path d="M21 50 L32 74 L43 50 Z" fill="var(--spritz)"/><use href="#tappo-path" fill="var(--spritz)"/><circle cx="32" cy="30" r="15.5" fill="none" stroke="var(--ink)"/><circle cx="32" cy="30" r="5" fill="var(--ink)" stroke="none"/></g></svg>
+  <p class="display">Ci siamo quasi.</p>
+  <p class="body">Non possiamo dirti di più. Cioè, potremmo. Ma così è più bello.</p>
+  <div class="foot"><span class="handle">@dovebevo</span><span class="meta">Per maggiorenni</span></div>
+  <div class="dots"><i></i><i></i><i></i><i class="on"></i></div>
+</section>
+</body>
+</html>

@@ -65,5 +65,8 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 ## Design
 Ogni scelta visiva da `design-system/` (UI UX Pro Max): `MASTER.md` ovunque, il file di pagina prevale. Target ≥ 48×48 px, WCAG 2.2 AA, tema chiaro e scuro, `prefers-reduced-motion`, font self-hosted (≤ 2 woff2).
 
+## Social
+Per post, reel e storie leggi prima `docs/brand/social.md` (stile, limiti, account, contenuti pubblicati). I file dei contenuti non vanno nel repository.
+
 ## Compattazione
 Quando compatti, conserva file modificati, comandi di test e funzionalità in corso.

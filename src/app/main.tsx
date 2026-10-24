@@ -18,6 +18,12 @@ if (root && /^\/admin\/?$/.test(location.pathname)) {
   void import("./views/AdminPage").then(({ AdminPage }) => {
     render(<AdminPage />, root);
   });
+} else if (root && /^\/(privacy|regole)\/?$/.test(location.pathname)) {
+  // Legal pages: their own chunk too, the map and its code are not loaded.
+  const kind = location.pathname.startsWith("/privacy") ? "privacy" : "rules";
+  void import("./views/LegalPage").then(({ LegalPage }) => {
+    render(<LegalPage kind={kind} />, root);
+  });
 } else if (root) {
   listenForInstall();
   render(<App loadMap={loadMap} />, root);

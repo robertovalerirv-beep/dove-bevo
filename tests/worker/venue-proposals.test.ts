@@ -1,6 +1,7 @@
 import { env, exports } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { CellPrices } from "../../src/shared/api-types";
+import { forgetCell } from "../../src/worker/lib/cell-cache";
 import { activePrices } from "../../src/worker/lib/db";
 import { createSession } from "../../src/worker/lib/session";
 
@@ -86,11 +87,13 @@ describe("POST /api/venues (M3-11, M3-12)", () => {
 
     const id = Number(key.slice(1));
     await env.DB.prepare("UPDATE venues_user SET status = 'approved' WHERE id = ?").bind(id).run();
+    await forgetCell(env.DB, ORIGIN, "u0nd9"); // what the admin route does after approving
     const after = await cell();
     expect(after.u.map((v) => v[0])).toEqual([key]);
     expect(after.p.map((r) => r[0])).toEqual([key]);
 
     await env.DB.prepare("UPDATE venues_user SET status = 'removed' WHERE id = ?").bind(id).run();
+    await forgetCell(env.DB, ORIGIN, "u0nd9");
     const gone = await cell();
     expect(gone.u).toEqual([]);
     expect(gone.p).toEqual([]);

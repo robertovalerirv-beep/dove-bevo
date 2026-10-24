@@ -253,6 +253,23 @@ export const it = {
     reject: "Rifiuta",
     confirmReject: (name: string) =>
       `Rifiutare «${name}»? Non comparirà e lo stesso nome nello stesso punto sarà bloccato per 30 giorni.`,
+    listino: {
+      open: "Inserisci listino",
+      help: "Copia i prezzi dal listino del bar e scegli il giorno in cui li hai visti (al massimo 90 giorni fa). Lascia vuoti i drink che non ci sono.",
+      day: "Giorno in cui li hai visti",
+      happy: "happy hour",
+      placeholder: "es. 7,50",
+      save: "Salva i prezzi",
+      empty: "Scrivi almeno un prezzo.",
+      badPrice: (drink: string) => `Il prezzo di «${drink}» non è valido o è fuori dai limiti.`,
+      failed: "Non riesco a salvare i prezzi. Controlla il giorno e riprova.",
+      saved: (n: number, skipped: number) =>
+        `${n === 1 ? "1 prezzo salvato" : `${String(n)} prezzi salvati`}${
+          skipped > 0
+            ? `, ${String(skipped)} non cambiati (ce n'è già uno più recente o in revisione)`
+            : ""
+        }.`,
+    },
     toolsTitle: "Strumenti",
     pricesHelp: "Prezzi insoliti o segnalati dagli utenti: approvali o toglili.",
     pending: "Da confermare",
@@ -322,6 +339,124 @@ export const it = {
       notInMap: "non trovato nei dati della mappa",
       subLine: (total: string, prices: number, day: string) =>
         `${total} bar totali · ${String(prices)} prezzi${day ? ` · ultimo ${day}` : ""}`,
+    },
+  },
+  legal: {
+    logoAlt: "Dove bevo",
+    backToMap: "Torna alla mappa",
+    privacyLink: "Privacy",
+    rulesLink: "Regole",
+    linksLabel: "Informazioni",
+    contactLabel: "Scrivici",
+    privacy: {
+      title: "Privacy",
+      updated: "Ultimo aggiornamento: 24 ottobre 2026",
+      intro:
+        "Dove bevo funziona senza account e senza tracciamento. Qui spieghiamo in poche righe che cosa usiamo, che cosa salviamo e per quanto tempo.",
+      sections: [
+        {
+          heading: "In breve",
+          paragraphs: [
+            "Non ti chiediamo nome, email o password. Non usiamo cookie di tracciamento né pubblicità. La tua posizione resta sul tuo telefono.",
+          ],
+        },
+        {
+          heading: "La tua posizione",
+          paragraphs: [
+            "La posizione serve solo sul tuo telefono: per centrare la mappa, mostrare il pallino e proporti i bar più vicini quando segni un prezzo. Non la inviamo mai e non la salviamo.",
+            "Al server arrivano solo richieste per una «cella» di circa 5 km, che dice dove stai guardando la mappa, non dove sei.",
+          ],
+        },
+        {
+          heading: "Quando segni un prezzo",
+          paragraphs: [
+            "Salviamo il bar, il drink, il prezzo e il giorno. Non salviamo chi l'ha segnato: nessun nome, nessun identificativo di sessione, nessun indirizzo IP insieme al prezzo.",
+            "Per fermare i bot e i troppi invii usiamo codici anonimi, calcolati con un sale che cambia ogni giorno. Non permettono di risalire a te e si cancellano entro 48 ore.",
+          ],
+        },
+        {
+          heading: "Cookie e dati sul telefono",
+          paragraphs: [
+            "Quando segni il primo prezzo riceviamo un solo cookie tecnico, che dura 30 minuti e serve a distinguere una persona da un programma automatico. Non serve un banner perché non traccia nessuno.",
+            "Sul telefono restano soltanto la data del primo uso e quanti prezzi hai segnato, per la Tessera e per l'invito a installare l'app. Questi dati non vengono mai inviati.",
+          ],
+        },
+        {
+          heading: "Controllo anti-bot",
+          paragraphs: [
+            "Prima del tuo primo prezzo usiamo Cloudflare Turnstile, che si carica solo in quel momento. Non mostra pubblicità e non ti segue su altri siti.",
+          ],
+        },
+        {
+          heading: "Ricerca e conteggi anonimi",
+          paragraphs: [
+            "Quando cerchi un bar, il testo che scrivi resta sul telefono: alla rete arrivano soltanto i primi 2 o 3 caratteri di una parola, per scaricare l'elenco giusto, mai la tua posizione.",
+            "Contiamo in forma anonima quante visite ci sono, quanti prezzi vengono segnati e confermati. Sono numeri per giorno, senza nessun legame con le persone.",
+          ],
+        },
+        {
+          heading: "Chi ci aiuta",
+          paragraphs: [
+            "Cloudflare ospita il sito e gestisce il controllo anti-bot. OpenFreeMap fornisce le mappe: è il tuo telefono a chiedere le tessere della mappa direttamente a loro. GitHub custodisce il codice, senza dati degli utenti. I bar vengono da OpenStreetMap (licenza ODbL).",
+          ],
+        },
+        {
+          heading: "I tuoi diritti",
+          paragraphs: [
+            "Hai i diritti previsti dal GDPR: accesso, rettifica, cancellazione, opposizione. Poiché non teniamo dati che ti identificano, di solito non c'è nulla da cancellare, ma scrivici e ti rispondiamo. Puoi anche rivolgerti al Garante per la protezione dei dati personali.",
+          ],
+        },
+        {
+          heading: "Maggiorenni",
+          paragraphs: [
+            "Il servizio è pensato per persone maggiorenni. Non raccogliamo dati di minori.",
+          ],
+        },
+      ],
+    },
+    rules: {
+      title: "Regole",
+      updated: "Ultimo aggiornamento: 24 ottobre 2026",
+      intro:
+        "Dove bevo è fatta di prezzi veri, segnati da persone che ci sono state. Poche regole per tenerla utile.",
+      sections: [
+        {
+          heading: "Cosa si segna",
+          paragraphs: [
+            "Il prezzo che hai pagato davvero, in un bar dove sei stato, per un drink dell'elenco. Per ogni bar c'è un prezzo per drink e per fascia (normale o happy hour): se è cambiato, segna quello nuovo.",
+          ],
+        },
+        {
+          heading: "Cosa non va bene",
+          paragraphs: [
+            "Prezzi inventati o di bar dove non sei stato, nomi di locali falsi, contenuti offensivi. I prezzi molto lontani da quelli della zona restano in verifica finché qualcun altro non li conferma.",
+          ],
+        },
+        {
+          heading: "Come si segnala un errore",
+          paragraphs: [
+            "Dalla scheda del bar tocca «Segnala un errore» e scegli il motivo. Se più persone segnalano lo stesso prezzo, esce dalla mappa e lo controlliamo noi. Niente sparisce da solo senza un controllo.",
+          ],
+        },
+        {
+          heading: "Un bar che manca",
+          paragraphs: [
+            "Se non trovi il bar, proponilo: nome, tipo e punto sulla mappa. Compare per tutti solo dopo che lo abbiamo controllato.",
+          ],
+        },
+        {
+          heading: "Sei il gestore di un locale?",
+          paragraphs: [
+            "Se un dato del tuo locale è sbagliato (nome, indirizzo, chiusura), scrivici con il nome del locale e la correzione e lo sistemiamo. I prezzi non si comprano e non si cambiano su richiesta: li segnano i clienti.",
+          ],
+        },
+        {
+          heading: "Servizio per maggiorenni",
+          paragraphs: [
+            "Dove bevo parla di prezzi e di posti, non invita a bere. È un servizio per persone maggiorenni.",
+          ],
+        },
+      ],
     },
   },
   kinds: ["Caffè", "Bar", "Pub", "Birreria all'aperto", "Discoteca"],

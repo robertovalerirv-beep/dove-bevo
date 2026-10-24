@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CellPrices, Coverage } from "../../src/shared/api-types";
 import { coverageSnapshot, forgetCoverage } from "../../src/worker/lib/coverage";
 import { COVERAGE_SQL } from "../../src/worker/lib/db";
-import { forgetCell } from "../../src/worker/routes/prices";
+import { forgetCell } from "../../src/worker/lib/cell-cache";
 import { resetCoverageLimit } from "../../src/worker/routes/admin";
 import { accessJwt, call, ORIGIN } from "./access-jwt";
 
@@ -278,7 +278,7 @@ describe("the figures are kept for a minute (ADR 0025)", () => {
     expect(await coverageSnapshot(env)).toBe(first); // same figures, nothing read
     expect(batch).not.toHaveBeenCalled();
 
-    await forgetCell("https://dovebevo.example/api/admin/hide", "u0nd9"); // what every admin change calls
+    await forgetCell(env.DB, "https://dovebevo.example/api/admin/hide", "u0nd9"); // what every admin change calls
     expect((await coverageSnapshot(env)).bars).toBe(2);
     expect(batch).toHaveBeenCalled();
     batch.mockRestore();

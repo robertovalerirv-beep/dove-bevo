@@ -6,6 +6,7 @@ import { loadPlaces, type Venue } from "../lib/data";
 import { formatDate, formatPrice } from "../lib/format";
 import { searchBars, type Hit } from "../lib/search";
 import { leadWord, MIN_CHARS } from "../lib/search-match";
+import { LegalLinks } from "./LegalLinks";
 import { Sheet } from "./Sheet";
 
 /** A bar of «I più economici qui»: the cheapest prices of the chosen drinks in the visible area. */
@@ -285,6 +286,7 @@ export function SearchSheet({
           </ul>
         </>
       )}
+      <LegalLinks />
     </Sheet>
   );
 }

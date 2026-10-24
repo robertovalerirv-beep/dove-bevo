@@ -1,6 +1,6 @@
 # 0020 · Capacità sul piano gratuito e degrado gentile
 
-- **Stato:** proposta (misure fatte, redesign delle letture da decidere con Roberto) · **Data:** 2026-10-14 · completa l'ADR 0013
+- **Stato:** misure fatte; il redesign delle letture è realizzato dall'ADR 0032 · **Data:** 2026-10-14 · completa l'ADR 0013
 
 ## Limiti (documentazione Cloudflare, verificata il 13/10/2026)
 Workers: 100.000 richieste al giorno, 10 ms di CPU, 50 subrequest per invocazione. D1: 5 milioni di righe lette e 100.000 scritte al giorno (le letture contano ogni riga scansionata, indici compresi). I file statici non eseguono il Worker e non contano.

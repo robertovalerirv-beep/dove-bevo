@@ -74,6 +74,47 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
   return { p, u, pend, h };
 }
 
+/** How long a snapshot may stand if a change forgot to empty it (ADR 0020). */
+export const SNAPSHOT_TTL_MS = 5 * 60_000;
+export const SNAPSHOT_SQL = "SELECT v, at, body FROM cell_snapshot WHERE cell = ?1";
+
+/**
+ * The answer of a cell as JSON text (M3-20, ADR 0020): one primary-key row when the snapshot is there,
+ * otherwise computed from the tables and stored for the next reader. The body is stored only if no
+ * writer bumped `v` since it was read, so a slow reader never puts an old answer back. A cell with
+ * nothing in it is not stored: reading it already costs next to nothing.
+ */
+export async function getCellSnapshot(db: D1Database, cell: string): Promise<string> {
+  const row = await db
+    .prepare(SNAPSHOT_SQL)
+    .bind(cell)
+    .first<{ v: number; at: number; body: string | null }>();
+  if (row?.body && Date.now() - row.at < SNAPSHOT_TTL_MS) return row.body;
+  const answer = await getCellPrices(db, cell);
+  const body = JSON.stringify(answer);
+  if (answer.p.length + answer.u.length + answer.pend.length + answer.h.length > 0)
+    await db
+      .prepare(
+        `INSERT INTO cell_snapshot (cell, v, at, body) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (cell) DO UPDATE SET at = excluded.at, body = excluded.body
+         WHERE cell_snapshot.v = ?2`,
+      )
+      .bind(cell, row?.v ?? 0, Date.now(), body)
+      .run();
+  return body;
+}
+
+/** A change in a cell: bump its version and empty the snapshot (one row written). */
+export async function invalidateCellSnapshot(db: D1Database, cell: string): Promise<void> {
+  await db
+    .prepare(
+      `INSERT INTO cell_snapshot (cell, v, at, body) VALUES (?1, 1, 0, NULL)
+       ON CONFLICT (cell) DO UPDATE SET v = v + 1, at = 0, body = NULL`,
+    )
+    .bind(cell)
+    .run();
+}
+
 /** Every approved user bar (index vu_status), for the name search; the admin keeps the list short. */
 export async function listApprovedVenues(db: D1Database): Promise<UserVenue[]> {
   const { results } = await db

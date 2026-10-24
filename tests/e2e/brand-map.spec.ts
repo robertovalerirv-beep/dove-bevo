@@ -231,3 +231,57 @@ test("MB-07 the interactions on the pins never freeze the page (INP measured)", 
     .info()
     .annotations.push({ type: "slowest-interaction-ms", description: String(Math.round(slowest)) });
 });
+
+test("MB-07 with about 300 pins on screen the interactions stay light (INP measured)", async ({
+  page,
+}) => {
+  // 300 bars with a spritz price around the Duomo, added to the fixture cell and to its prices.
+  const bars = Array.from({ length: 300 }, (_, i) => ({
+    key: `n${String(8_000_000_000 + i)}`,
+    name: `Bar Prova ${String(i)}`,
+    lat: 45.4545 + (i % 20) * 0.001,
+    lon: 9.1795 + Math.floor(i / 20) * 0.001,
+  }));
+  await page.route(/\/data\/fixture\/v\/u0nd9\.json$/, async (route) => {
+    const response = await route.fetch();
+    const file = (await response.json()) as { v: unknown[][] };
+    file.v.push(...bars.map((b) => [b.key, b.name, 1, b.lat, b.lon, "", -1]));
+    await route.fulfill({ response, json: file });
+  });
+  await page.route(/\/api\/prices\/u0nd9$/, async (route) => {
+    const response = await route.fetch();
+    const body = (await response.json()) as { p: unknown[][] };
+    body.p.push(
+      ...bars.map((b, i) => [b.key, "spritz", 0, 500 + (i % 12) * 50, "2026-10-20", 0, 0]),
+    );
+    await route.fulfill({ response, json: body });
+  });
+  await page.addInitScript(() => {
+    const w = window as unknown as { slowest: number };
+    w.slowest = 0;
+    new PerformanceObserver((list) => {
+      for (const e of list.getEntries()) w.slowest = Math.max(w.slowest, e.duration);
+    }).observe({ type: "event", durationThreshold: 16, buffered: true } as PerformanceObserverInit);
+  });
+  await page.goto("/");
+  await goToMilano(page);
+  await chooseDrinks(page, "Spritz");
+  await expect(page.getByTestId("map-status")).toContainText(/^[23][0-9]{2} bar su/);
+  await page.evaluate(() => {
+    (window as unknown as { slowest: number }).slowest = 0;
+  });
+  for (const name of ["Calice di vino", "Spritz", "Birra media", "Spritz"] as const)
+    await chooseDrinks(page, name);
+  await page.getByRole("button", { name: "Elenco" }).click();
+  await expect(page.getByRole("dialog", { name: "Bar nella zona" })).toBeVisible();
+  await page.getByRole("button", { name: "Chiudi" }).click();
+  const slowest = await page.evaluate(() => (window as unknown as { slowest: number }).slowest);
+  console.log(`MB-07 300 pins: slowest interaction ${String(Math.round(slowest))} ms`);
+  test
+    .info()
+    .annotations.push({
+      type: "slowest-interaction-ms-300-pins",
+      description: String(Math.round(slowest)),
+    });
+  expect(slowest).toBeLessThan(1000); // a sanity bound; the figure itself goes to PROGRESS
+});

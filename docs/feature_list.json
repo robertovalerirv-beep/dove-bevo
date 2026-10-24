@@ -46,7 +46,7 @@
     "milestone": "M0",
     "descrizione": "Deploy in staging da `main` con smoke test",
     "verifica": "dopo il merge il job di deploy è verde; `curl https://<staging>/api/health` → 200 con `data_version` dell'import",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-08",
@@ -347,7 +347,7 @@
     "milestone": "M3",
     "descrizione": "Inserimento da listino in admin",
     "verifica": "unit/e2e con JWT di test: in `/admin` si sceglie un bar, si compila una tabella di drink e prezzi con la data di osservazione; data futura o oltre 90 giorni → 400; i prezzi passano gli stessi controlli di catalogo e limiti dell'inserimento manuale",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-18",
@@ -368,7 +368,7 @@
     "milestone": "M3",
     "descrizione": "Lettura di una cella a costo costante",
     "verifica": "unit worker: `GET /api/prices/:cell` legge al massimo 5 righe D1 con 300 prezzi nella cella; un contributo scrive al massimo 10 righe (test di regressione, ADR 0020)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-03",
@@ -389,7 +389,7 @@
     "milestone": "M4",
     "descrizione": "Freschezza",
     "verifica": "e2e: un prezzo con data > 90 giorni mostra \"da confermare\" in mappa e scheda",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-07",
@@ -438,7 +438,7 @@
     "milestone": "M4",
     "descrizione": "Ordine dei risultati della ricerca",
     "verifica": "e2e: con la mappa su Milano, \"Bar Sport\" mostra prima quelli di Milano; nome esatto prima dell'inizio del nome; il permesso di posizione non viene mai chiesto dalla ricerca",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-14",
@@ -487,7 +487,7 @@
     "milestone": "MB",
     "descrizione": "Controlli del kit",
     "verifica": "e2e: bottoni, chip e campi con bordo `ink` 2 px e ombra `shadow-stampa`, premuti scendono di 3 px; focus a 3 px con 2 px di distanza su ogni elemento interattivo; con `prefers-reduced-motion` nessuna animazione; screenshot 390×844 nei due temi",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-05",
@@ -508,14 +508,14 @@
     "milestone": "MB",
     "descrizione": "Pin e legenda",
     "verifica": "unit + e2e: gradino, glifo e prezzo corretti rispetto alla mediana (D-12); neutro sotto 5 prezzi; bordo tratteggiato oltre 90 giorni; tappo quando selezionato; HH come D-13; legenda solo con colori attivi; interazione peggiore ≤ 200 ms con 300 pin (misura in PROGRESS)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-08",
     "milestone": "MB",
     "descrizione": "Copertura della zona",
     "verifica": "e2e: \"X bar su N qui hanno un prezzo\" uguale al calcolo a mano su un caso fixture; nessuna richiesta di rete in più all'apertura e al movimento della mappa",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-09",
@@ -557,7 +557,7 @@
     "milestone": "MB",
     "descrizione": "Tema Fuori orario",
     "verifica": "e2e Chromium e WebKit: ogni vista nel tema scuro progettato (non invertito); axe senza violazioni in entrambi i temi; nessuna violazione CSP su ogni vista nuova",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-15",
@@ -571,7 +571,7 @@
     "milestone": "MB",
     "descrizione": "Logo e icone dell'app",
     "verifica": "build: PNG 192, 512 e maskable generati da `dovebevo-icona-app.svg` con uno script Playwright; favicon SVG dal simbolo; simbolo sulla mappa e logo orizzontale in `/privacy` e `/regole`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-17",
@@ -627,7 +627,7 @@
     "milestone": "M5",
     "descrizione": "Admin protetta",
     "verifica": "sec: `/api/admin/*` senza JWT Access valido → 403 (firma, `aud`, scadenza verificati)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-03",
@@ -641,14 +641,14 @@
     "milestone": "M5",
     "descrizione": "Pagine `/privacy` e `/regole`",
     "verifica": "e2e: raggiungibili dal piè di pagina e dalla scheda; contenuto da `PRIVACY-NOTES.md`; \"servizio per maggiorenni\" presente",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-05",
     "milestone": "M5",
     "descrizione": "Accessibilità",
     "verifica": "axe senza violazioni su tutte le viste; navigazione completa da tastiera; target ≥ 48×48 px (test sulle dimensioni); `prefers-reduced-motion` rispettato",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-06",
@@ -662,14 +662,14 @@
     "milestone": "M5",
     "descrizione": "ASVS L1",
     "verifica": "`docs/security/asvs-l1.md` senza voci \"da fare\", ogni voce con test o motivazione",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-08",
     "milestone": "M5",
     "descrizione": "Nessun segreto nel bundle",
     "verifica": "sec: scansione di `dist/` per i nomi e i formati dei segreti",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-09",
@@ -683,7 +683,7 @@
     "milestone": "M5",
     "descrizione": "Traccia del test con 5 persone",
     "verifica": "`docs/user-test.md` con compiti, domande e criteri di successo",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-11",

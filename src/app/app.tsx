@@ -778,9 +778,10 @@ export function App({ loadMap }: Props) {
   };
 
   async function sendReport(target: { venue: Venue; row: PriceRow | null }, reason: Reason) {
-    setReporting(null);
     const price = target.row ? { drink: target.row[1], hh: target.row[2] } : {};
     try {
+      // The sheet stays open until the request is done: Turnstile (a new session) lives inside it, and
+      // closing it first detached the widget, so the report waited forever with no message.
       const response = await postWithSession(host(), "/api/reports", {
         venue: target.venue.key,
         cell: target.venue.cell,
@@ -798,6 +799,8 @@ export function App({ loadMap }: Props) {
       );
     } catch {
       showToast(it.actions.failed);
+    } finally {
+      setReporting(null);
     }
   }
 

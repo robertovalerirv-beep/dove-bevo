@@ -20,7 +20,9 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - Tutta la suite e2e Chromium: 116 verdi prima della correzione dei 320 px; `npm run test` 519 verdi (MB-01 token identici, MB-03 contrasto `map-me` su `map-land` ≥ 3:1 nei due temi); `npm run test:security` 16 verdi; lint, formato, typecheck, guardia, workflow, config, audit, build verdi; shell 43.640 B su 51.200.
 - Screenshot 390×844 (e 320) in `docs/screenshots/mc/` (`mc-05-dot-*.png`, `attribution-*.png`).
 
-**Da verificare a mano (Roberto):** su iPhone, il pallino dopo il tocco e che resti fermo camminando; l'attribuzione leggibile su una riga. MC-05 resta `passes: false` finché la CI non è verde anche su WebKit.
+**Da verificare a mano (Roberto):** su iPhone, il pallino dopo il tocco e che resti fermo camminando; l'attribuzione leggibile su una riga.
+
+**CI della PR #52** (run 40123420680 su `e3a0995`): E2E Chromium e WebKit e sicurezza verdi (MC-05 compreso), Lighthouse e budget della shell verdi, import OSM e gitleaks verdi; la guardia della feature list verde dopo il tag `spec-approved-9` creato da Roberto. MC-05 → `passes: true`.
 
 ---
 

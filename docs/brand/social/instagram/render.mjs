@@ -8,7 +8,7 @@ const dir = join(dirname(fileURLToPath(import.meta.url)), process.argv[2] ?? "po
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1080, height: 1350 } });
 await page.goto(pathToFileURL(join(dir, "slide.html")).href);
-await page.evaluate(() => document.fonts.ready);
+await page.evaluate("document.fonts.ready");
 const slides = await page.locator("section.slide").all();
 for (const [i, slide] of slides.entries()) {
   await slide.screenshot({ path: join(dir, `${i + 1}.png`) });

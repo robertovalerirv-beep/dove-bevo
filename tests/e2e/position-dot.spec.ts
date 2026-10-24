@@ -43,7 +43,7 @@ test.describe("MC-05 position dot", () => {
     // The device answers with window.__where (the browser's own cache would keep the first fix);
     // watchPosition is counted: the dot must never follow the device on its own.
     await page.addInitScript(
-      ([first]) => {
+      (first) => {
         const w = window as unknown as { __where: number[]; __watched: number };
         w.__where = first;
         w.__watched = 0;
@@ -55,7 +55,7 @@ test.describe("MC-05 position dot", () => {
         };
         navigator.geolocation.watchPosition = () => ++w.__watched;
       },
-      [[DUOMO.latitude, DUOMO.longitude]],
+      [DUOMO.latitude, DUOMO.longitude],
     );
     await page.goto("/");
     expect(await dotAt(page)).toBeNull();
@@ -67,8 +67,8 @@ test.describe("MC-05 position dot", () => {
     // The device moves: the dot does not follow on its own.
     const before = await dotAt(page);
     await page.evaluate(
-      ([lat, lon]) => {
-        (window as unknown as { __where: number[] }).__where = [lat, lon];
+      (where) => {
+        (window as unknown as { __where: number[] }).__where = where;
       },
       [BRERA.latitude, BRERA.longitude],
     );

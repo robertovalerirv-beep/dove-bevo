@@ -329,7 +329,14 @@ export class VenueMap {
       },
     });
     // Where "Vicino a me" found the device (D-33): a small dot under the prices, drawn here only.
+    // A faint halo around it: it must differ from a bar dot by shape, not by colour only (WCAG 1.4.1).
     map.addSource("me", { type: "geojson", data: this.meData() });
+    map.addLayer({
+      id: "me-ring",
+      type: "circle",
+      source: "me",
+      paint: { "circle-radius": 12, "circle-color": token("--map-me"), "circle-opacity": 0.25 },
+    });
     map.addLayer({
       id: "me-dot",
       type: "circle",
@@ -427,7 +434,8 @@ export class VenueMap {
   private reportRendered() {
     const features = this.map.queryRenderedFeatures({ layers: ["venue-price"] });
     this.renderedListener?.([...new Set(features.map((f) => String(f.properties.label)))].sort());
-    const drawn = this.me && this.map.queryRenderedFeatures({ layers: ["me-dot"] }).length > 0;
+    const drawn =
+      this.me && this.map.queryRenderedFeatures({ layers: ["me-ring", "me-dot"] }).length === 2;
     const at = drawn && this.me ? this.map.project([this.me.lon, this.me.lat]) : null;
     this.meListener?.(at ? { x: at.x, y: at.y } : null);
   }

@@ -6,10 +6,10 @@
 Dallo screenshot di Roberto (iPhone, 390 px): (1) le attribuzioni della mappa, a 14 px su due righe in una fascia larga quanto lo schermo, sembrano pubblicità e tolgono spazio; (2) dopo «Vicino a me» la mappa si centra ma non mostra dove si è.
 
 ## Decisione
-- **Attribuzioni:** restano (licenza ODbL e linee guida OSMF, SPEC 2.8) con lo stesso testo, ma in una riga sola a 11 px (`--size-legal`), in un'etichetta piccola nell'angolo in basso a destra. Sotto i 360 px possono andare a capo invece di essere tagliate. Scartata l'icona ⓘ che le apre: non sarebbero più «sempre visibili».
-- **Pallino:** un cerchio `circle` di MapLibre da 12 px (token `map-me`, bordo chiaro, nessun alone), sotto i prezzi e non toccabile. Lo accende solo «Vicino a me»: le altre letture della posizione (Aggiungi prezzo) non lo mostrano. È statico, quindi niente `watchPosition` (GPS non acceso in continuo, codice minimo), e si sposta a ogni nuovo tocco. `locate()` accetta una posizione vecchia fino a 60 s, quindi un tocco entro un minuto può ridare quella precedente: accettato.
+- **Attribuzioni:** restano (licenza ODbL e linee guida OSMF, SPEC 2.8) con lo stesso testo, ma in una riga sola a 11 px (`--size-legal`), in un'etichetta piccola nell'angolo in basso a destra. Possono andare a capo (telefono stretto, testo spaziato come in WCAG 1.4.12): mai tagliate né fuori schermo, e la legenda segue la loro altezza misurata (`--attribution-h`). Scartata l'icona ⓘ che le apre: non sarebbero più «sempre visibili».
+- **Pallino:** un cerchio `circle` di MapLibre da 12 px (token `map-me`, bordo chiaro) con un alone `map-me` al 25% di 24 px: nel tema scuro un bar senza prezzo è un pallino chiaro e il colore da solo non basterebbe a distinguerli (WCAG 1.4.1), sotto i prezzi e non toccabile. Lo accende solo «Vicino a me»: le altre letture della posizione (Aggiungi prezzo) non lo mostrano. È statico, quindi niente `watchPosition` (GPS non acceso in continuo, codice minimo), e si sposta a ogni nuovo tocco. `locate()` accetta una posizione vecchia fino a 60 s, quindi un tocco entro un minuto può ridare quella precedente: accettato.
 
 ## Conseguenze
 - Privacy invariata: la posizione resta sul dispositivo, nessuna richiesta in più (M1-14 la verifica col pallino acceso).
 - Il layer `me-dot` viene rimesso al cambio di tema insieme agli altri; la sua posizione sullo schermo è esposta nel DOM (`data-me`, solo pixel) per gli e2e.
-- La legenda scende da 64 a 24 px sopra il bordo della mappa, perché le attribuzioni ora occupano una riga.
+- La legenda sta 8 px sopra le attribuzioni, misurate con un `ResizeObserver` (prima: 64 px fissi).

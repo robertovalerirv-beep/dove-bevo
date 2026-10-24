@@ -465,6 +465,20 @@ export function App({ loadMap }: Props) {
     }
   }
 
+  // The legend stays above the attribution however many lines it takes (SPEC 2.8).
+  useEffect(() => {
+    const attribution = document.querySelector<HTMLElement>(".map__attribution");
+    const map = attribution?.parentElement;
+    if (!attribution || !map) return;
+    const observer = new ResizeObserver(() => {
+      map.style.setProperty("--attribution-h", `${String(Math.ceil(attribution.offsetHeight))}px`);
+    });
+    observer.observe(attribution);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   // The toast region follows the topmost sheet and sits just above the attribution (SPEC 2.8).
   useEffect(() => {
     const layer = topLayer();

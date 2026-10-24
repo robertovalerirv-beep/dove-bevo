@@ -95,6 +95,33 @@ for (const [scheme, width, lines] of [
   });
 }
 
+test("SPEC 2.8 with WCAG 1.4.12 text spacing the attribution wraps inside the map, under the legend", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await goToMilano(page);
+  await chooseDrinks(page, "Calice di vino");
+  const attribution = page.locator(".map__attribution");
+  // CSSOM, as a user stylesheet would: the CSP forbids an inline <style>.
+  await attribution.evaluate((e) => {
+    e.style.letterSpacing = "0.12em";
+    e.style.wordSpacing = "0.16em";
+    e.style.lineHeight = "1.5";
+  });
+  await expect(attribution).toContainText("© OpenStreetMap contributors");
+  expect(await attribution.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
+  const map = await mapRegion(page).boundingBox();
+  const line = await attribution.boundingBox();
+  expect(line && map && line.x >= map.x && line.x + line.width <= map.x + map.width).toBe(true);
+  await expect
+    .poll(async () => {
+      const legend = await page.locator(".legend").boundingBox();
+      const now = await attribution.boundingBox();
+      return legend && now ? now.y - (legend.y + legend.height) : -1;
+    })
+    .toBeGreaterThanOrEqual(0);
+});
+
 for (const scheme of ["light", "dark"] as const) {
   test(`MB-06 MB-14 ${scheme}: own style, no axe violations`, async ({ page }, info) => {
     await atHour(page, THEME_HOURS[scheme]);

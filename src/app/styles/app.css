@@ -312,7 +312,6 @@
   margin: 0;
   padding: 2px var(--space-1);
   line-height: 1.3;
-  white-space: nowrap;
   text-align: right;
   font-size: var(--size-legal);
   color: var(--map-pill-text);
@@ -323,12 +322,6 @@
   color: var(--map-pill-text);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
-}
-/* A narrow phone wraps rather than cutting the names off. */
-@media (max-width: 359px) {
-  .map__attribution {
-    white-space: normal;
-  }
 }
 
 /* Bottom bar */
@@ -1054,22 +1047,18 @@
   color: var(--map-pill-text);
 }
 /* Legend and invitation float over the map above the attributions (SPEC 2.8: always visible, one line
-   from 360 px, two below); nothing here takes room from the map. */
+   at 390 px, more on a narrow phone or with larger text: their height is measured); nothing here takes
+   room from the map. */
 .map__stack {
   position: absolute;
   left: var(--space-3);
   right: var(--space-3);
-  bottom: var(--space-6);
+  bottom: calc(var(--attribution-h, var(--space-6)) + var(--space-2));
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
   pointer-events: none;
-}
-@media (max-width: 359px) {
-  .map__stack {
-    bottom: calc(var(--space-8) + var(--space-2));
-  }
 }
 
 /* Price legend (D-12): shown only when the zone has colours; glyph + word, never colour alone */

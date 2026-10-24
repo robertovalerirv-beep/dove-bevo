@@ -1,6 +1,7 @@
 import { it } from "../i18n/it";
 import { bestPrice, type Venue } from "../lib/data";
-import { formatDistance, formatPrice } from "../lib/format";
+import { formatDistance, formatPrice, todayRome } from "../lib/format";
+import { isStale } from "../lib/tiers";
 import { distanceMeters } from "../../shared/venue";
 import { Sheet } from "./Sheet";
 
@@ -15,6 +16,7 @@ interface Props {
 
 /** Accessible alternative to the map (SPEC 7.1): visible bars, keyboard and screen reader friendly. */
 export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) {
+  const today = todayRome();
   const rows = venues
     .map((venue) => ({
       venue,
@@ -52,6 +54,8 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
                 {[
                   it.kinds[venue.kind],
                   price && drinks.length > 1 ? it.drinks[price[1]] : "",
+                  // The dashed pin of an old price, said in words (SPEC 7.1, M4-05).
+                  price && isStale(price[4], today) ? it.bar.toConfirm : "",
                   meters === null ? "" : formatDistance(meters),
                 ]
                   .filter(Boolean)

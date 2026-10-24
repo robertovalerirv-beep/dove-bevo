@@ -18,7 +18,7 @@ import { hmacHex } from "../lib/hmac";
 import { clientIp, consumeQuota } from "../lib/quota";
 import { resolveVenue } from "../lib/venues";
 import type { AppEnv } from "../types";
-import { forgetCellCache } from "./prices";
+import { forgetCellCache } from "../lib/cell-cache";
 import { VenueKey } from "./venues";
 
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
@@ -83,7 +83,7 @@ reports.post("/", async (c) => {
   );
   if (k && total > REVIEW_AFTER_REPORTS) {
     await sendToReview(c.env.DB, k);
-    await forgetCellCache(c.req.url, body.cell); // it leaves the map at once
+    await forgetCellCache(c.env.DB, c.req.url, body.cell); // it leaves the map at once
   }
   return c.json({ status: "reported" });
 });

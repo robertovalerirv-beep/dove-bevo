@@ -6,6 +6,7 @@ import { formatDate, formatPrice, todayRome } from "../lib/format";
 import { isStale, type Tier } from "../lib/tiers";
 import { directionsUrl } from "../lib/geo";
 import { drinkIcon, Icon } from "./Icon";
+import { LegalLinks } from "./LegalLinks";
 import { Sheet } from "./Sheet";
 
 export interface BarActions {
@@ -301,6 +302,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         >
           {it.actions.reportBar}
         </button>
+        <LegalLinks />
       </div>
     </Sheet>
   );

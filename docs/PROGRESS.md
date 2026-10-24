@@ -4,6 +4,35 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-24 · Chiusura del codice prima del dominio (branch `m5-chiusura-codice`, da `main` 91386b7) · M3-17, M3-20, M4-05, M4-13, MB-04, MB-07, MB-08, MB-14, MB-16, M5-02, M5-04, M5-05, M5-07, M5-08, M5-10, M0-07
+
+**Richiesta di Roberto:** fare tutte le verifiche e chiudere ciò che si può sul codice prima di comprare il dominio. Provato da lui su telefono vero: «Vicino a me» funziona; icone e limiti di Sbagliato, Gin lemon e Acqua approvati; il test con 5 persone è in corso (inseriscono anche locali e prezzi). Contatto pubblico deciso da lui: `dovebevo@gmail.com`.
+
+**Fatto**
+- **Listino in admin (M3-17):** `POST /api/admin/listino` (zod `strict`, catalogo e limiti come l'inserimento manuale, giorno non futuro e non oltre 90 giorni, un prezzo più recente o in revisione non si sostituisce) e il modulo «Inserisci listino» sotto ogni bar trovato in `/admin`.
+- **Pagine `/privacy` e `/regole` (M5-04, MB-16):** testi in `it.ts` (sezione `legal`) dalle regole di SPEC 14 e da `PRIVACY-NOTES.md`, chunk a richiesta, logo orizzontale nei due temi, link nella scheda bar e nel foglio di ricerca (la mappa non ha un piè di pagina: la barra a due tasti di D-28 non cambia). `CONTACT_EMAIL` = `dovebevo@gmail.com`.
+- **Riga istantanea per cella (M3-20, ADR 0032, migrazione 0007):** una cella si legge con 1 riga; invalidata a ogni scrittura (anche le proposte di bar, prima mancava), scadenza di sicurezza 5 minuti.
+- **Elenco della mappa:** un prezzo vecchio dice «Da confermare» anche a parole (M4-05; il pin tratteggiato resta solo grafico).
+- **Documenti:** `docs/security/asvs-l1.md` (M5-07), `docs/user-test.md` (M5-10), `docs/runbook-rollback.md`, `docs/release-checklist.md`, `CHANGELOG.md`, `docs/templates/deploy-production.yml.example` (modello del workflow di produzione: solo da tag, solo se il commit è già in `main`, con approvazione dell'environment `production`; non provato e non attivo, perché `check-config` lo rifiuta finché `wrangler.jsonc` non ha il blocco `production`: si copia in `.github/workflows/` in M6).
+- `eslint.config.js` ignora `docs/materiali/` (materiali locali fuori dal repository).
+
+**Prove**
+- Worker: `admin-listino.test.ts` 6 verdi; `cell-snapshot.test.ts` 6 verdi (300 prezzi: la lettura dello snapshot costa ≤ 5 righe; un contributo vero via `POST /api/prices` aggiunge ≤ 10 righe; corsa lettore/scrittore chiusa).
+- E2E Chromium e WebKit: `admin.spec.ts` 16 verdi (listino + axe); `legal.spec.ts` (contenuto, logo, axe, target ≥ 48 px, nessuna CSP, nessun caricamento della mappa, link dalla ricerca e dalla scheda); `a11y-views.spec.ts` (axe wcag22aa, target ≥ 48 px, nessuno scroll orizzontale su mappa, menu drink, elenco, ricerca, aggiungi prezzo in 3 passi, proponi bar, scheda, segnalazione, nei due temi; Tab dentro i fogli, Esc, `prefers-reduced-motion`); `brand-controls.spec.ts` (bordo 2 px `ink`, ombra, 3 px da premuto, focus 3 px a 2 px; la mappa a tutto schermo ha il suo anello interno, app.css); `brand-coverage.spec.ts` (conteggio a mano su proiezione Web Mercator indipendente dal codice, zero richieste di rete); `brand-search.spec.ts` M4-13 (esatto, inizio, distanza); `brand-tiers.spec.ts` M4-05 sull'elenco.
+- **M5-06:** `npm run verify` tutto verde in 796 s (lint, formato, typecheck, unit e worker, guardia, audit, E2E Chromium e WebKit, build, budget della shell, Lighthouse mediana di 3): performance 0,97, accessibilità 0,96, best practices 1, SEO 1, LCP 2,42 s (limite 2,5), CLS 0, TBT 41–106 ms; INP delle interazioni sui pin 80 ms (Chromium) e 160 ms (WebKit) con circa 263 pin, vedi MB-07.
+- Sicurezza: `no-secrets.spec.ts` (nomi dei segreti mai nei file del browser, nessun formato di chiave nel build).
+- **MB-07, 300 pin:** con circa 263 pin sullo schermo l'interazione più lenta è 80 ms su Chromium e 160 ms su WebKit (locale). Sul runner CI i tempi sono più alti e instabili, quindi il test fissa solo un limite di buon senso (< 1000 ms) e riporta il numero; la prova di Roberto su telefono resta il riferimento.
+- M0-07: Deploy staging verde su 91386b7 e `curl https://dovebevo-staging.dovebevo.workers.dev/api/health` → `{"status":"ok","version":"0.0.0","data_version":"20261023"}`.
+- Revisioni: `security-reviewer` OK, nessun punto sopra LOW (corretti: testo della privacy sulla fascia di anzianità, ADR 0032, tag sul ramo `main` nel workflow di produzione); `spec-reviewer` NOT OK per la mancanza di queste prove in PROGRESS e per il test delle scritture, ora entrambi sistemati.
+
+**Non fatto, di Roberto o da decidere**
+- M6-01…M6-05 dopo il dominio.
+- `/privacy` non indica il titolare del trattamento (informativa iubenda o dati del titolare, a cura di Roberto).
+- SPEC 7.8 parla di «piè di pagina della mappa»: i link sono nella scheda bar e nel foglio di ricerca; se li vuoi anche sulla mappa serve una decisione sul layout (D-28).
+- I quattro punti del pen test del 22/10 che cambiano la SPEC restano da decidere (SECURITY.md).
+
+---
+
 ## 2026-10-24 · Attribuzioni in una riga e pallino della posizione (branch `claude/reduce-ads-location-ui-b283ws`, da `main` be1891e) · SPEC 1.8, MC-05
 
 **Richiesta di Roberto (screenshot iPhone):** ridurre la scritta in basso «OpenFreeMap © OpenMapTiles © OpenStreetMap contributors» e mostrare un pallino blu piccolo della posizione, solo dopo il pulsante in alto a destra, fermo finché non lo si ritocca. Autorizzati da lui in chat: SPEC 1.8, la voce nuova MC-05 in `feature_list.json`, il tag `spec-approved-9` e la guardia aggiornata. (Il suo «non mi trovava» dipendeva dalla posizione di Safari spenta: attivandola funziona.)

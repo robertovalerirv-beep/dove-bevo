@@ -282,3 +282,47 @@ test("M5-03 metrics that fail to load leave the rest of the admin page working",
   await expect(page.getByTestId("metrics-section")).toContainText("Non riesco a leggere");
   await expect(page.getByTestId("admin-total")).toHaveText("4 da fare");
 });
+
+test("admin: price list entry for a bar found by city and name (M3-17)", async ({ page }) => {
+  const posts = await fakeAdmin(page);
+  await page.route("**/api/admin/listino", async (route) => {
+    posts.push({ path: "/api/admin/listino", body: route.request().postDataJSON() });
+    await route.fulfill({ json: { results: [{ status: "active" }, { status: "skipped" }] } });
+  });
+  await page.goto("/admin");
+  await page.getByLabel("Città", { exact: true }).fill("milano");
+  await page.getByLabel("Nome del bar").nth(1).fill("camparino");
+  await page.getByRole("button", { name: "Cerca" }).click();
+  const found = page.getByRole("listitem").filter({ hasText: "Camparino in Galleria" });
+  await found.getByRole("button", { name: "Inserisci listino" }).click();
+
+  // Nothing typed, then a price outside the limits: refused before any request.
+  await found.getByRole("button", { name: "Salva i prezzi" }).click();
+  await expect(found.getByRole("status")).toContainText("almeno un prezzo");
+  await found.getByLabel("Spritz (€)", { exact: true }).fill("90");
+  await found.getByRole("button", { name: "Salva i prezzi" }).click();
+  await expect(found.getByRole("status")).toContainText("fuori dai limiti");
+  expect(posts.some((p) => p.path === "/api/admin/listino")).toBe(false);
+
+  await found.getByLabel("Spritz (€)", { exact: true }).fill("7,50");
+  await found.getByLabel("Acqua (€)", { exact: true }).fill("3");
+  await found.getByLabel("Giorno in cui li hai visti").fill("2026-10-20");
+  await found.getByRole("button", { name: "Salva i prezzi" }).click();
+  await expect(found.getByRole("status")).toContainText("1 prezzo salvato, 1 non cambiati");
+  const body = posts.find((p) => p.path === "/api/admin/listino")?.body as {
+    venue: string;
+    cell: string;
+    observed_on: string;
+    items: unknown[];
+  };
+  expect(body).toMatchObject({ venue: "n13001337602", cell: "u0nd9", observed_on: "2026-10-20" });
+  expect(body.items).toEqual([
+    { drink: "spritz", hh: 0, price_cents: 750 },
+    { drink: "water", hh: 0, price_cents: 300 },
+  ]);
+
+  const axe = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+    .analyze();
+  expect(axe.violations).toEqual([]);
+});

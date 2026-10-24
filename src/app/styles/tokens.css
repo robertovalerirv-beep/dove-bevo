@@ -52,6 +52,7 @@
   --map-water: #bfd9e6;
   --map-park: #dce8c8;
   --map-road: #ffffff;
+  --map-me: #1f4fff;
   --map-label: #5e554b;
   --shadow-stampa: 3px 3px 0 #1b1611;
   --shadow-premuto: 0 0 0 #1b1611;
@@ -115,6 +116,7 @@
   --tile-min-h: 88px;
   --control-sm: 24px;
   --icon-md: 24px;
+  --size-legal: 11px;
   --switch-w: 48px;
   --switch-h: 28px;
   --switch-knob: 20px;
@@ -157,6 +159,7 @@
   --map-water: #1b2a33;
   --map-park: #1f2a1c;
   --map-road: #2c241d;
+  --map-me: #8faeff;
   --map-label: #a89c8e;
   --shadow-stampa: 3px 3px 0 #000000;
   --shadow-premuto: 0 0 0 #000000;

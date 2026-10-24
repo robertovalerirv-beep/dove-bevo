@@ -64,6 +64,37 @@ for (const scheme of ["light", "dark"] as const) {
   });
 }
 
+// One line from 360 px; a narrower phone may wrap to two, and the legend still stays above it.
+for (const [scheme, width, lines] of [
+  ["light", 390, 1],
+  ["dark", 390, 1],
+  ["light", 320, 2],
+] as const) {
+  test(`SPEC 2.8 ${scheme} ${String(width)} px: the attribution is small and covered by nothing`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width, height: 844 });
+    await atHour(page, THEME_HOURS[scheme]);
+    await page.goto("/");
+    await goToMilano(page);
+    await chooseDrinks(page, "Calice di vino"); // five prices in the fixture: the legend is shown
+    const attribution = page.locator(".map__attribution");
+    await expect(attribution).toBeVisible();
+    await expect(page.locator(".legend")).toBeVisible();
+    const line = await attribution.boundingBox();
+    expect(line?.height ?? 99).toBeLessThanOrEqual(20 * lines);
+    const map = await mapRegion(page).boundingBox();
+    expect(line && map && line.x >= map.x && line.x + line.width <= map.x + map.width).toBe(true);
+    for (const selector of [".legend", ".bottom"]) {
+      const other = await page.locator(selector).boundingBox();
+      const apart =
+        !line || !other || line.y + line.height <= other.y || other.y + other.height <= line.y;
+      expect(apart, `the attribution overlaps ${selector}`).toBe(true);
+    }
+    await page.screenshot({ path: info.outputPath(`attribution-${scheme}-${String(width)}.png`) });
+  });
+}
+
 for (const scheme of ["light", "dark"] as const) {
   test(`MB-06 MB-14 ${scheme}: own style, no axe violations`, async ({ page }, info) => {
     await atHour(page, THEME_HOURS[scheme]);

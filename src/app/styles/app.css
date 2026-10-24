@@ -303,22 +303,32 @@
   left: 50%;
   transform: translateX(-50%);
 }
+/* Required by the licences and always visible (SPEC 2.8), but one small line in the corner. */
 .map__attribution {
   position: absolute;
   right: 0;
   bottom: 0;
   max-width: 100%;
   margin: 0;
-  padding: var(--space-1) var(--space-2);
-  line-height: 1.5;
+  padding: 2px var(--space-1);
+  line-height: 1.3;
+  white-space: nowrap;
   text-align: right;
-  font-size: var(--size-caption);
+  font-size: var(--size-legal);
   color: var(--map-pill-text);
   background: color-mix(in srgb, var(--map-pill-bg) 85%, transparent);
-  border-top-left-radius: var(--radius-md);
+  border-top-left-radius: var(--radius-sm);
 }
 .map__attribution a {
   color: var(--map-pill-text);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+/* A narrow phone wraps rather than cutting the names off. */
+@media (max-width: 359px) {
+  .map__attribution {
+    white-space: normal;
+  }
 }
 
 /* Bottom bar */
@@ -1043,18 +1053,23 @@
   background: var(--map-pill-bg);
   color: var(--map-pill-text);
 }
-/* Legend and invitation float over the map above the attributions (SPEC 2.8: always visible, they may
-   take two lines); nothing here takes room from the map. */
+/* Legend and invitation float over the map above the attributions (SPEC 2.8: always visible, one line
+   from 360 px, two below); nothing here takes room from the map. */
 .map__stack {
   position: absolute;
   left: var(--space-3);
   right: var(--space-3);
-  bottom: calc(2 * var(--space-8));
+  bottom: var(--space-6);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
   pointer-events: none;
+}
+@media (max-width: 359px) {
+  .map__stack {
+    bottom: calc(var(--space-8) + var(--space-2));
+  }
 }
 
 /* Price legend (D-12): shown only when the zone has colours; glyph + word, never colour alone */

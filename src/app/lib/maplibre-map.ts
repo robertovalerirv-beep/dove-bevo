@@ -328,6 +328,19 @@ export class VenueMap {
         "circle-stroke-width": 2,
       },
     });
+    // Where "Vicino a me" found the device (D-33): a small dot under the prices, drawn here only.
+    map.addSource("me", { type: "geojson", data: this.meData() });
+    map.addLayer({
+      id: "me-dot",
+      type: "circle",
+      source: "me",
+      paint: {
+        "circle-radius": 6,
+        "circle-color": token("--map-me"),
+        "circle-stroke-color": dotFill,
+        "circle-stroke-width": 2,
+      },
+    });
     map.addLayer({
       id: "venue-price",
       type: "symbol",
@@ -414,6 +427,44 @@ export class VenueMap {
   private reportRendered() {
     const features = this.map.queryRenderedFeatures({ layers: ["venue-price"] });
     this.renderedListener?.([...new Set(features.map((f) => String(f.properties.label)))].sort());
+    const drawn = this.me && this.map.queryRenderedFeatures({ layers: ["me-dot"] }).length > 0;
+    const at = drawn && this.me ? this.map.project([this.me.lon, this.me.lat]) : null;
+    this.meListener?.(at ? { x: at.x, y: at.y } : null);
+  }
+
+  /** Screen point of the position dot once drawn, null when absent (exposed in the DOM for tests). */
+  onMeRendered(listener: (at: { x: number; y: number } | null) => void) {
+    this.meListener = listener;
+  }
+
+  private meListener: ((at: { x: number; y: number } | null) => void) | null = null;
+
+  private me: { lat: number; lon: number } | null = null;
+
+  private meData() {
+    const me = this.me;
+    return {
+      type: "FeatureCollection" as const,
+      features: me
+        ? [
+            {
+              type: "Feature" as const,
+              geometry: { type: "Point" as const, coordinates: [me.lon, me.lat] },
+              properties: {},
+            },
+          ]
+        : [],
+    };
+  }
+
+  /** Puts the position dot where the device was found; it stays there until the next call (D-33). */
+  setMe(me: { lat: number; lon: number } | null) {
+    this.me = me;
+    void this.map.getSource<GeoJSONSource>("me")?.setData(this.meData());
+    this.map.once("idle", () => {
+      this.reportRendered();
+    });
+    this.map.triggerRepaint();
   }
 
   onVenueClick(listener: (key: string, cell: string) => void) {

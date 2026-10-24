@@ -4,6 +4,25 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-24 · Attribuzioni in una riga e pallino della posizione (branch `claude/reduce-ads-location-ui-b283ws`, da `main` be1891e) · SPEC 1.8, MC-05
+
+**Richiesta di Roberto (screenshot iPhone):** ridurre la scritta in basso «OpenFreeMap © OpenMapTiles © OpenStreetMap contributors» e mostrare un pallino blu piccolo della posizione, solo dopo il pulsante in alto a destra, fermo finché non lo si ritocca. Autorizzati da lui in chat: SPEC 1.8, la voce nuova MC-05 in `feature_list.json`, il tag `spec-approved-9` e la guardia aggiornata. (Il suo «non mi trovava» dipendeva dalla posizione di Safari spenta: attivandola funziona.)
+
+**Fatto**
+- Attribuzioni (SPEC 2.8, testo invariato): una riga a 11 px (`--size-legal`, generato da `scripts/tokens.ts`) in un'etichetta nell'angolo in basso a destra, invece di due righe a 14 px su tutta la larghezza; sotto i 360 px va a capo e la legenda resta sopra. La legenda scende da 64 a 24 px dal bordo.
+- Pallino (D-33, ADR 0031): layer `circle` `me-dot` da 12 px (token `map-me` in `docs/brand/tokens.json`, bordo chiaro) sotto i prezzi; lo accende solo `nearMe()` in `app.tsx`, non la posizione letta per Aggiungi prezzo; niente `watchPosition`; rimesso al cambio di tema. `data-me` (pixel sullo schermo, mai coordinate) per gli e2e.
+- SPEC 1.8 (7.1, D-33, MC-05, registro), ADR 0031, riga in `PRIVACY-NOTES.md`, guardia e CI su `spec-approved-9`.
+
+**Prove (Chromium; WebKit non installato nel container, lo esegue la CI)**
+- `tests/e2e/position-dot.spec.ts`: 4 verdi (nessun pallino prima, pallino al centro dopo «Vicino a me», fermo quando il telefono si sposta e `watchPosition` mai chiamato, sulla nuova posizione al nuovo tocco, spento con Aggiungi prezzo, axe nei due temi).
+- `brand-map.spec.ts` SPEC 2.8 a 390 (due temi) e 320 px: verdi; il caso a 320 px è **rosso senza la correzione della legenda** (sovrapposizione), verde con.
+- Tutta la suite e2e Chromium: 116 verdi prima della correzione dei 320 px; `npm run test` 519 verdi (MB-01 token identici, MB-03 contrasto `map-me` su `map-land` ≥ 3:1 nei due temi); `npm run test:security` 16 verdi; lint, formato, typecheck, guardia, workflow, config, audit, build verdi; shell 43.640 B su 51.200.
+- Screenshot 390×844 (e 320) in `docs/screenshots/mc/` (`mc-05-dot-*.png`, `attribution-*.png`).
+
+**Da verificare a mano (Roberto):** su iPhone, il pallino dopo il tocco e che resti fermo camminando; l'attribuzione leggibile su una riga. MC-05 resta `passes: false` finché la CI non è verde anche su WebKit.
+
+---
+
 ## 2026-10-22 · Metriche giornaliere in `/admin` (stesso branch, dopo M5-01) · M5-03
 
 **Fatto**

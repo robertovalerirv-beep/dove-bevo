@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { CellPrices } from "../../src/shared/api-types";
 import { forgetCellCache } from "../../src/worker/lib/cell-cache";
 import { getCellSnapshot, SNAPSHOT_SQL, SNAPSHOT_TTL_MS } from "../../src/worker/lib/db";
+import { createSession } from "../../src/worker/lib/session";
 import { ORIGIN } from "./access-jwt";
 
 // M3-20 (ADR 0020): a cell is read in one D1 row, however many prices it holds, and a change shows at once.
@@ -89,25 +90,38 @@ describe("cell snapshot (M3-20)", () => {
     expect(row).toBeNull();
   });
 
-  it("a contribution writes at most 10 rows, the snapshot included", async () => {
-    const [obs, current, snap] = await env.DB.batch([
-      env.DB.prepare(
-        "INSERT INTO price_obs (venue_key, drink, hh, price_cents, observed_on, source, status) VALUES ('n1', 'spritz', 0, 750, '2026-10-11', 'manual', 'active')",
-      ),
-      env.DB.prepare(
-        `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
-         VALUES ('n1', 'spritz', 0, 'u0nd9', 1, 750, '2026-10-11', 0, 'active', 'manual')
-         ON CONFLICT (venue_key, drink, hh) DO UPDATE SET price_cents = excluded.price_cents`,
-      ),
-      env.DB.prepare(
-        `INSERT INTO cell_snapshot (cell, v, at, body) VALUES ('u0nd9', 1, 0, NULL)
-         ON CONFLICT (cell) DO UPDATE SET v = v + 1, at = 0, body = NULL`,
-      ),
-    ]);
-    const written =
-      (obs?.meta.rows_written ?? 0) +
-      (current?.meta.rows_written ?? 0) +
-      (snap?.meta.rows_written ?? 0);
-    expect(written).toBeLessThanOrEqual(10);
+  it("a real contribution through POST /api/prices adds at most 10 rows, the snapshot included", async () => {
+    await read(); // the snapshot exists before the contribution
+    const tables = ["price_obs", "prices_current", "cell_snapshot", "counters", "dedup"];
+    const total = async () => {
+      let n = 0;
+      for (const t of tables)
+        n +=
+          (await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${t}`).first<{ n: number }>())?.n ?? 0;
+      return n;
+    };
+    const before = await total();
+    const { token } = await createSession("test-session-hmac-key");
+    const response = await exports.default.fetch(`${ORIGIN}/api/prices`, {
+      method: "POST",
+      headers: {
+        Origin: ORIGIN,
+        "Content-Type": "application/json",
+        Cookie: `__Host-sid=${token}`,
+        "CF-Connecting-IP": "203.0.113.50",
+      },
+      body: JSON.stringify({
+        venue: "n2420779240",
+        cell: CELL,
+        source: "manual",
+        items: [{ drink: "spritz", hh: 0, price_cents: 750 }],
+      }),
+    });
+    expect(response.status).toBe(200);
+    const row = await env.DB.prepare("SELECT body FROM cell_snapshot WHERE cell = ?")
+      .bind(CELL)
+      .first<{ body: string | null }>();
+    expect(row?.body).toBeNull(); // the change emptied the snapshot
+    expect((await total()) - before).toBeLessThanOrEqual(10);
   });
 });

@@ -4,8 +4,8 @@ Cosa fa Roberto, cosa fa Claude Code. Dopo l'acquisto del dominio.
 
 ## A. Dominio (Roberto)
 1. Comprare il dominio su Cloudflare (registrar) e controllare che il DNS sia sul tuo account.
-2. Comunicare il nome a Claude Code: cambia `APP_DOMAIN` in `src/shared/config.ts` (da lì arriva anche `CONTACT_EMAIL`, `ciao@<dominio>`; il resto del sito usa l'indirizzo della richiesta) e aggiunge `routes` / dominio personalizzato al blocco `production` di `wrangler.jsonc`.
-3. **Email Routing** (Cloudflare → Email → Email Routing): crea `ciao@<dominio>` e inoltra alla tua email. È l'indirizzo scritto in `/privacy` e `/regole`: così nessuna email personale è pubblica.
+2. Comunicare il nome a Claude Code: cambia `APP_DOMAIN` in `src/shared/config.ts` (il resto del sito usa l'indirizzo della richiesta) e aggiunge `routes` / dominio personalizzato al blocco `production` di `wrangler.jsonc`.
+3. L'indirizzo di contatto è `dovebevo@gmail.com` (casella del progetto, `CONTACT_EMAIL` in `src/shared/config.ts`): non dipende dal dominio. Quando vorrai un indirizzo col dominio, Email Routing di Cloudflare lo inoltra alla stessa casella.
 
 ## B. Ambiente di produzione (Roberto; Claude Code prepara i file)
 1. D1: `dovebevo-production` (dashboard o `wrangler d1 create`). Il suo `database_id` va nel blocco `production`.

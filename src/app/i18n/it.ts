@@ -378,7 +378,7 @@ export const it = {
           heading: "Cookie e dati sul telefono",
           paragraphs: [
             "Quando segni il primo prezzo riceviamo un solo cookie tecnico, che dura 30 minuti e serve a distinguere una persona da un programma automatico. Non serve un banner perché non traccia nessuno.",
-            "Sul telefono restano soltanto la data del primo uso e quanti prezzi hai segnato, per la Tessera e per l'invito a installare l'app. Questi dati non vengono mai inviati.",
+            "Sul telefono restano soltanto la data del primo uso e quanti prezzi hai segnato, per la Tessera e per l'invito a installare l'app. La data e il numero non vengono mai inviati: ai conteggi anonimi arriva soltanto una fascia di anzianità, per esempio «1-7 giorni».",
           ],
         },
         {

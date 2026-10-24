@@ -1,8 +1,8 @@
 // Single source for the product name and domain (SPEC 1). The domain is a placeholder until M6.
 export const APP_NAME = "Dove bevo";
 export const APP_DOMAIN = "dovebevo.example";
-/** Where owners and users write (rules, privacy). An address of the domain, forwarded to the owner, so no personal address is public. */
-export const CONTACT_EMAIL = `ciao@${APP_DOMAIN}`;
+/** Where owners and users write (rules, privacy): the mailbox of the project, not a personal address. */
+export const CONTACT_EMAIL = "dovebevo@gmail.com";
 
 /** "Annulla" after Salva (SPEC D-15): the price is sent when this runs out. One value for the timer, the progress bar and the texts. */
 export const UNDO_MS = 5_000;

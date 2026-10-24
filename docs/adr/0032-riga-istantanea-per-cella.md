@@ -19,4 +19,7 @@ Un endpoint con più celle (abbassa le richieste, non le letture); un indice cop
 - Una cella con 300 prezzi si legge con 1 riga (misurato in `tests/worker/cell-snapshot.test.ts`, soglia 5) e la capacità stimata non è più limitata dalle letture ma dalle richieste (~11.600 utenti al giorno, ADR 0020).
 - Una proposta di bar compare ora nella scelta del bar subito, non dopo la copia da un minuto (prima la rotta `POST /api/venues` non toglieva la cella dalla cache).
 - Chi scrive su D1 fuori dal Worker (migrazioni, comandi manuali) deve svuotare la cella o aspettare i 5 minuti. Le migrazioni future che toccano `prices_current`, `venues_user` o `venues_hidden` lo devono ricordare: `DELETE FROM cell_snapshot`.
+- Cambiando la forma della risposta di una cella (formato compatto di SPEC 9.2) si lancia `DELETE FROM cell_snapshot` insieme alla migrazione, o si aspettano i 5 minuti.
+- La prima lettura dopo ogni modifica (e dopo 5 minuti) legge tutte le righe della cella e scrive una riga: il limite di 5 righe vale a snapshot pronto. Le scritture in più sono al massimo una per modifica e una per rigenerazione, dentro le stime di ADR 0020.
+- Resta una corsa preesistente sulla Cache API (un lettore lento può rimettere per al massimo 60 secondi la copia vecchia): accettata.
 - La Cache API resta come primo livello; sul dominio di produzione si somma al secondo.

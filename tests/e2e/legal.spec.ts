@@ -28,7 +28,7 @@ for (const { path, title, text } of PAGES) {
       await expect(
         page.getByRole("img", { name: "Dove bevo" }).locator("visible=true"),
       ).toHaveCount(1);
-      await expect(page.getByRole("link", { name: /ciao@/ })).toBeVisible();
+      await expect(page.getByRole("link", { name: "dovebevo@gmail.com" })).toBeVisible();
       await expect(page).toHaveTitle(new RegExp(`^${title} · Dove bevo`));
 
       const axe = await new AxeBuilder({ page })

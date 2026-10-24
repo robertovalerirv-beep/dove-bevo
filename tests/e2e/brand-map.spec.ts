@@ -277,11 +277,9 @@ test("MB-07 with about 300 pins on screen the interactions stay light (INP measu
   await page.getByRole("button", { name: "Chiudi" }).click();
   const slowest = await page.evaluate(() => (window as unknown as { slowest: number }).slowest);
   console.log(`MB-07 300 pins: slowest interaction ${String(Math.round(slowest))} ms`);
-  test
-    .info()
-    .annotations.push({
-      type: "slowest-interaction-ms-300-pins",
-      description: String(Math.round(slowest)),
-    });
+  test.info().annotations.push({
+    type: "slowest-interaction-ms-300-pins",
+    description: String(Math.round(slowest)),
+  });
   expect(slowest).toBeLessThan(1000); // a sanity bound; the figure itself goes to PROGRESS
 });

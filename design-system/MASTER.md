@@ -20,7 +20,7 @@ Una schermata, un'azione primaria. Una mano, poca luce: comandi nella metà bass
 
 ## Tipografia
 - **Bricolage Grotesque** (`sans`, variabile 200–800) per tutto il testo; **Geist Mono** (`mono`) solo per `price-xl`, `price`, `meta`. Due woff2 del kit, self-hosted, ≤ 70 KB in tutto, `font-display: swap`, preload del solo Bricolage, fallback con metriche misurate.
-- Stili: `display` (una volta per schermata), `title`, `subtitle`, `body` (mai sotto 16 px), `label`, `caption`, `price-xl`, `price`, `meta` (maiuscolo solo qui). Cifre tabellari negli elenchi.
+- Stili: `display` (una volta per schermata), `title`, `subtitle`, `body` (mai sotto 16 px), `label`, `caption`, `price-xl`, `price`, `meta` (maiuscolo solo qui). Cifre tabellari negli elenchi. Solo per le attribuzioni della mappa: `--size-legal` 11 px (ADR 0031).
 - Prezzi in formato italiano: `6,50 €` nelle schede, `6,50` nei pin.
 
 ## Forme, spazi, ombre
@@ -48,7 +48,7 @@ Anello `focus` pieno da 3 px con 2 px di distanza, così cade su `bg` o `surface
 Icone: 24 px, tratto 2 px, inline con `currentColor`, decorative con `aria-hidden`; i 9 drink da `docs/brand/assets/Icone/`.
 
 ## Mappa
-Vedi `docs/brand/03-mappa.md` e `pages/mappa.md`. Stili derivati da Positron (Bancone) e Dark (Fuori orario) con i token `map-*`, senza punti di interesse né etichette delle strade minori. I pin sono un livello `symbol` con immagini disegnate su canvas. Attribuzioni sempre visibili.
+Vedi `docs/brand/03-mappa.md` e `pages/mappa.md`. Stili derivati da Positron (Bancone) e Dark (Fuori orario) con i token `map-*`, senza punti di interesse né etichette delle strade minori. I pin sono un livello `symbol` con immagini disegnate su canvas. Attribuzioni sempre visibili, in una riga piccola (11 px) nell'angolo in basso a destra, che va a capo se serve. Pallino della posizione (D-33): `map-me` 12 px con bordo chiaro e alone `map-me` al 25%, solo dopo «Vicino a me» (ADR 0031).
 
 ## Logo
 Simbolo sulla mappa; logo orizzontale in `/privacy`, `/regole` e nelle condivisioni; negativo su fondo scuro; mono sotto 24 px. Icona dell'app: simbolo crema su `spritz`.

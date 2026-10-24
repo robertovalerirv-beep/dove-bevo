@@ -110,6 +110,7 @@ export function App({ loadMap }: Props) {
   const pendingMove = useRef<[number, number, number] | null>(initialAt);
   const [ready, setReady] = useState(false);
   const [pricesShown, setPricesShown] = useState<string[]>([]);
+  const [meShown, setMeShown] = useState<{ x: number; y: number } | null>(null);
   const [view, setView] = useState<MapView | null>(null);
   const [route, setRoute] = useState<Route>(parseRoute);
   const [sheet, setSheet] = useState<"search" | "list" | null>(null);
@@ -141,6 +142,8 @@ export function App({ loadMap }: Props) {
   const [cellsState, setCellsState] = useState<CellsState>("idle");
   const [attempt, setAttempt] = useState(0); // "Riprova" after a cell error
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
+  // The dot follows only "Vicino a me" and stays put until it is pressed again (D-33).
+  const [me, setMe] = useState<{ lat: number; lon: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
@@ -173,6 +176,7 @@ export function App({ loadMap }: Props) {
         if (!created || cancelled) return;
         created.onMove(setView);
         created.onRendered(setPricesShown);
+        created.onMeRendered(setMeShown);
         created.onVenueClick((key, cell) => {
           navigate(`/bar/${key}?c=${cell}`);
         });
@@ -190,6 +194,10 @@ export function App({ loadMap }: Props) {
       cancelled = true;
     };
   }, [mapWanted]);
+
+  useEffect(() => {
+    map?.setMe(me);
+  }, [map, me]);
 
   // Going to the background is not a cancellation: send the pending price now (D-15).
   useEffect(() => {
@@ -456,6 +464,20 @@ export function App({ loadMap }: Props) {
       else timer?.release();
     }
   }
+
+  // The legend stays above the attribution however many lines it takes (SPEC 2.8).
+  useEffect(() => {
+    const attribution = document.querySelector<HTMLElement>(".map__attribution");
+    const map = attribution?.parentElement;
+    if (!attribution || !map) return;
+    const observer = new ResizeObserver(() => {
+      map.style.setProperty("--attribution-h", `${String(Math.ceil(attribution.offsetHeight))}px`);
+    });
+    observer.observe(attribution);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   // The toast region follows the topmost sheet and sits just above the attribution (SPEC 2.8).
   useEffect(() => {
@@ -795,6 +817,7 @@ export function App({ loadMap }: Props) {
     if (found.ok) {
       // Kept in memory on the device only (SPEC 14).
       setPosition({ lat: found.lat, lon: found.lon });
+      setMe({ lat: found.lat, lon: found.lon });
       setMessage(null);
       moveTo(found.lat, found.lon, 15);
     } else {
@@ -854,6 +877,7 @@ export function App({ loadMap }: Props) {
           data-ready={ready ? "true" : "false"}
           data-selected={route.name === "bar" ? route.key : ""}
           data-prices-shown={pricesShown.join("|")}
+          data-me={meShown ? `${meShown.x.toFixed(0)},${meShown.y.toFixed(0)}` : ""}
           onPointerDown={() => {
             if (pinning && !pinning.touched) setProposing({ ...pinning, touched: true });
           }}

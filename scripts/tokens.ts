@@ -46,6 +46,7 @@ export const UI_PAIRS: readonly [string, string][] = [
   ["ink", "surface"],
   ["focus", "bg"],
   ["focus", "surface"],
+  ["map-me", "map-land"],
 ];
 
 /**
@@ -71,6 +72,7 @@ const OWN = `  /* Ours, not in the kit (ADR 0023): targets, controls, motion, la
   --tile-min-h: 88px;
   --control-sm: 24px;
   --icon-md: 24px;
+  --size-legal: 11px;
   --switch-w: 48px;
   --switch-h: 28px;
   --switch-knob: 20px;

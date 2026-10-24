@@ -609,6 +609,13 @@
     "passes": true
   },
   {
+    "id": "MC-05",
+    "milestone": "MC",
+    "descrizione": "Pallino della posizione (v1.8, D-33)",
+    "verifica": "e2e Chromium e WebKit 390×844: nessun pallino prima di «Vicino a me»; dopo, il pallino è disegnato nel punto trovato (centro della mappa); spostando il telefono non si muove e `watchPosition` non è mai chiamato; un nuovo tocco lo porta sulla nuova posizione; la posizione letta per \"Aggiungi prezzo\" non lo accende; nessuna coordinata nelle richieste di rete (M1-14); axe senza violazioni e screenshot nei due temi",
+    "passes": true
+  },
+  {
     "id": "M5-01",
     "milestone": "M5",
     "descrizione": "Eventi anonimi",

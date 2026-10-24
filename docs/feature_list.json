@@ -655,7 +655,7 @@
     "milestone": "M5",
     "descrizione": "Performance",
     "verifica": "Lighthouse CI mobile: Performance ≥ 90, Accessibility/Best Practices/SEO ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip esclusa MapLibre; INP ≤ 200 ms misurato in e2e",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-07",

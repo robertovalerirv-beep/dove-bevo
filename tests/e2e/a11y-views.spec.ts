@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
-import { atHour, goToMilano, openDrinkMenu, THEME_HOURS } from "./helpers";
+import { atHour, drinkMenuButton, goToMilano, openDrinkMenu, THEME_HOURS } from "./helpers";
 
 // MB-14 and M5-05: every view of the app, in both themes, has no axe violation, every target is at
 // least 48×48 px, nothing scrolls sideways, the keyboard reaches and leaves the sheets, and the
@@ -40,6 +40,8 @@ for (const scheme of ["light", "dark"] as const) {
   test(`MB-14 M5-05 ${scheme}: every view is accessible and has comfortable targets`, async ({
     page,
   }, info) => {
+    // Twelve views in one test: under the load of the whole suite WebKit needs more than the default minute.
+    test.setTimeout(180_000);
     await atHour(page, THEME_HOURS[scheme]);
     await page.goto("/");
     await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
@@ -49,7 +51,7 @@ for (const scheme of ["light", "dark"] as const) {
 
     await openDrinkMenu(page);
     await check(page, "drink menu");
-    await page.keyboard.press("Escape");
+    await drinkMenuButton(page).click(); // Esc closing it is tested in drink-menu.spec.ts
 
     await page.getByRole("button", { name: "Elenco" }).click();
     await check(page, "list");

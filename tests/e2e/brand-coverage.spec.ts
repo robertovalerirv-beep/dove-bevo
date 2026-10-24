@@ -1,4 +1,4 @@
-import { expect } from "@playwright/test";
+import { expect, type Locator } from "@playwright/test";
 import { readFileSync, readdirSync } from "node:fs";
 import { test } from "./fixtures";
 import { chooseDrinks, goToMilano, mapRegion, mapStatus } from "./helpers";
@@ -37,14 +37,27 @@ function barsOnScreen(centre: [number, number], zoom: number, w: number, h: numb
   );
 }
 
+/** The centre and zoom of the map once they have not moved for three reads in a row (it flies, then rests). */
+async function restingView(region: Locator): Promise<{ centre: string; zoom: string }> {
+  let last = "";
+  let same = 0;
+  for (let i = 0; i < 80 && same < 3; i++) {
+    const now = `${(await region.getAttribute("data-center")) ?? ""}|${(await region.getAttribute("data-zoom")) ?? ""}`;
+    same = now === last ? same + 1 : 0;
+    last = now;
+    await region.page().waitForTimeout(250);
+  }
+  const [centre = "", zoom = ""] = last.split("|");
+  return { centre, zoom };
+}
+
 test("MB-08 the coverage is the count by hand, drink by drink", async ({ page }) => {
   await page.goto("/");
   await goToMilano(page);
   const region = mapRegion(page);
-  const [lat = 0, lon = 0] = ((await region.getAttribute("data-center")) ?? "")
-    .split(",")
-    .map(Number);
-  const zoom = Number(await region.getAttribute("data-zoom"));
+  const view = await restingView(region);
+  const [lat = 0, lon = 0] = view.centre.split(",").map(Number);
+  const zoom = Number(view.zoom);
   const box = (await region.boundingBox()) ?? { width: 0, height: 0 };
   const onScreen = barsOnScreen([lat, lon], zoom, box.width, box.height);
   const keys = new Set(onScreen.map((b) => b.key));

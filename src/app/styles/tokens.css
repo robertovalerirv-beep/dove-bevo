@@ -53,6 +53,7 @@
   --map-park: #dce8c8;
   --map-road: #ffffff;
   --map-me: #1f4fff;
+  --verified: #1f4fff;
   --map-label: #5e554b;
   --shadow-stampa: 3px 3px 0 #1b1611;
   --shadow-premuto: 0 0 0 #1b1611;
@@ -160,6 +161,7 @@
   --map-park: #1f2a1c;
   --map-road: #2c241d;
   --map-me: #8faeff;
+  --verified: #8faeff;
   --map-label: #a89c8e;
   --shadow-stampa: 3px 3px 0 #000000;
   --shadow-premuto: 0 0 0 #000000;

@@ -1499,3 +1499,115 @@
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
+
+/* «Gestore verificato» (SPEC 1.9, D-34): the blue check is never alone, the words say it all */
+.verified {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--size-caption);
+}
+.verified__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ink);
+  font-weight: var(--weight-semibold);
+}
+.verified__check .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--verified);
+}
+.verified__sponsored {
+  color: var(--ink-muted);
+  font: var(--type-meta);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.row__badge {
+  grid-column: 1 / -1;
+}
+.bar__verified {
+  margin: 0 0 var(--space-2);
+}
+.hours__list {
+  margin: 0;
+}
+.hours__day {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.hours__day dt {
+  font-weight: var(--weight-semibold);
+}
+.hours__day dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.hours__range {
+  white-space: nowrap;
+}
+
+/* /admin/verificati (SPEC 7.10) */
+.admin__hours {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+  font-size: var(--size-caption);
+}
+.admin__views summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--target);
+  cursor: pointer;
+}
+.hours-form {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.hours-form__title {
+  margin: 0;
+  font: var(--type-subtitle);
+}
+.hours-form__day {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+}
+.hours-form__day legend {
+  padding: 0 var(--space-1);
+  font-weight: var(--weight-bold);
+}
+.hours-form__times {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.hours-form .check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target);
+  cursor: pointer;
+}
+.hours-form .check input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+.hours-form .field:disabled {
+  opacity: 0.5;
+}

@@ -14,7 +14,8 @@ export const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const isTime = (value: unknown): value is string => typeof value === "string" && TIME.test(value);
 
-function validDay(day: unknown): boolean {
+/** One day of the week: closed, or up to two ranges in order (MD-03). */
+export function isValidDay(day: unknown): day is DayHours {
   if (!Array.isArray(day) || day.length > MAX_RANGES) return false;
   const ranges = day as unknown[];
   for (const [i, range] of ranges.entries()) {
@@ -31,7 +32,7 @@ function validDay(day: unknown): boolean {
 
 /** Seven days of up to two non-overlapping ranges each (MD-03). */
 export function isValidWeek(value: unknown): value is WeekHours {
-  return Array.isArray(value) && value.length === DAYS_IN_WEEK && value.every(validDay);
+  return Array.isArray(value) && value.length === DAYS_IN_WEEK && value.every(isValidDay);
 }
 
 /** "18:00–02:00" */

@@ -4,6 +4,7 @@ import { formatDistance, formatPrice, todayRome } from "../lib/format";
 import { isStale } from "../lib/tiers";
 import { distanceMeters } from "../../shared/venue";
 import { Sheet } from "./Sheet";
+import { VerifiedBadge } from "./Verified";
 
 interface Props {
   venues: Venue[];
@@ -14,7 +15,11 @@ interface Props {
   onClose: () => void;
 }
 
-/** Accessible alternative to the map (SPEC 7.1): visible bars, keyboard and screen reader friendly. */
+/**
+ * Accessible alternative to the map (SPEC 7.1): visible bars, keyboard and screen reader friendly.
+ * Bars with «Gestore verificato» come first, marked «Sponsorizzato» (D-34); within each group the order
+ * is the same as for everyone (distance, or bars with a price first, then the name).
+ */
 export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) {
   const today = todayRome();
   const rows = venues
@@ -23,10 +28,12 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
       price: bestPrice(venue, drinks),
       meters: position ? distanceMeters(position.lat, position.lon, venue.lat, venue.lon) : null,
     }))
-    .sort((a, b) =>
-      a.meters !== null && b.meters !== null
-        ? a.meters - b.meters
-        : Number(!a.price) - Number(!b.price) || a.venue.name.localeCompare(b.venue.name, "it"),
+    .sort(
+      (a, b) =>
+        Number(b.venue.verified) - Number(a.venue.verified) ||
+        (a.meters !== null && b.meters !== null
+          ? a.meters - b.meters
+          : Number(!a.price) - Number(!b.price) || a.venue.name.localeCompare(b.venue.name, "it")),
     );
   return (
     <Sheet title={it.list.title} onClose={onClose}>
@@ -50,6 +57,11 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
                   ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`
                   : it.list.noPrice}
               </span>
+              {venue.verified && (
+                <span class="row__badge">
+                  <VerifiedBadge />
+                </span>
+              )}
               <span class="row__meta">
                 {[
                   it.kinds[venue.kind],

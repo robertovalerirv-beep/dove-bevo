@@ -1,6 +1,7 @@
 import { it } from "../i18n/it";
 import { bestPrice, type Venue } from "../lib/data";
 import { formatDistance, formatPrice, todayRome } from "../lib/format";
+import { compareListRows } from "../lib/list-order";
 import { isStale } from "../lib/tiers";
 import { distanceMeters } from "../../shared/venue";
 import { Sheet } from "./Sheet";
@@ -17,8 +18,7 @@ interface Props {
 
 /**
  * Accessible alternative to the map (SPEC 7.1): visible bars, keyboard and screen reader friendly.
- * Bars with «Gestore verificato» come first, marked «Sponsorizzato» (D-34); within each group the order
- * is the same as for everyone (distance, or bars with a price first, then the name).
+ * Bars with «Gestore verificato» come first, marked «Sponsorizzato» (D-34, lib/list-order.ts).
  */
 export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) {
   const today = todayRome();
@@ -28,12 +28,21 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
       price: bestPrice(venue, drinks),
       meters: position ? distanceMeters(position.lat, position.lon, venue.lat, venue.lon) : null,
     }))
-    .sort(
-      (a, b) =>
-        Number(b.venue.verified) - Number(a.venue.verified) ||
-        (a.meters !== null && b.meters !== null
-          ? a.meters - b.meters
-          : Number(!a.price) - Number(!b.price) || a.venue.name.localeCompare(b.venue.name, "it")),
+    .sort((a, b) =>
+      compareListRows(
+        {
+          name: a.venue.name,
+          verified: a.venue.verified,
+          priced: Boolean(a.price),
+          meters: a.meters,
+        },
+        {
+          name: b.venue.name,
+          verified: b.venue.verified,
+          priced: Boolean(b.price),
+          meters: b.meters,
+        },
+      ),
     );
   return (
     <Sheet title={it.list.title} onClose={onClose}>

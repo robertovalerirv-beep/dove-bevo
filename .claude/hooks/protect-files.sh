@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse hook (Edit|Write): blocks writes to secrets, the lockfile and applied migrations.
 # Reads the hook JSON from stdin. Exit 2 = block (stderr is shown to Claude).
-# A migration counts as applied once it exists on the `main` branch (SPEC D-20).
+# A migration counts as applied once it exists on the `main` branch (SPEC D-20), local or remote:
+# a local `main` left behind must not leave the newer migrations unprotected.
 set -uo pipefail
 
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
@@ -32,7 +33,10 @@ case "$base" in
     exit 2 ;;
 esac
 
-if [[ "$rel" == migrations/* ]] && git -C "$PROJECT_DIR" cat-file -e "main:$rel" 2>/dev/null; then
+if [[ "$rel" == migrations/* ]] && {
+  git -C "$PROJECT_DIR" cat-file -e "main:$rel" 2>/dev/null ||
+    git -C "$PROJECT_DIR" cat-file -e "origin/main:$rel" 2>/dev/null
+}; then
   echo "Blocked: $rel is already on main (applied). Add a new migration instead." >&2
   exit 2
 fi

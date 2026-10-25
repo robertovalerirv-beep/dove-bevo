@@ -98,16 +98,16 @@ export function AdminPage() {
     <main class="admin">
       <header class="admin__head">
         <h1>{it.admin.title}</h1>
-        <a class="btn btn--secondary" href="/">
-          {it.admin.backToMap}
-        </a>
+        {/* «Gestore verificato» has its own page (SPEC 7.10), reached from the header. */}
+        <nav class="admin__nav" aria-label={it.admin.nav}>
+          <a class="btn btn--secondary" href="/admin/verificati">
+            {it.admin.verified.nav}
+          </a>
+          <a class="btn btn--secondary" href="/">
+            {it.admin.backToMap}
+          </a>
+        </nav>
       </header>
-      {/* «Gestore verificato» has its own page (SPEC 7.10), always one tap away. */}
-      <p>
-        <a class="btn btn--secondary" href="/admin/verificati">
-          {it.admin.verified.nav}
-        </a>
-      </p>
       <p class="hint" role="status">
         {state === "loading" ? it.admin.loading : message}
       </p>

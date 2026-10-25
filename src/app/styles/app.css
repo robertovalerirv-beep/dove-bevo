@@ -817,6 +817,12 @@
   margin: 0;
   font-size: var(--size-title);
 }
+.admin__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
 .admin__form {
   display: grid;
   gap: var(--space-3);

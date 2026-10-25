@@ -3,7 +3,8 @@ import { expect, type Page } from "@playwright/test";
 import type { CellPrices, VenuePrices, VerifiedList } from "../../src/shared/api-types";
 import type { WeekHours } from "../../src/shared/hours";
 import { test } from "./fixtures";
-import { atHour, goToMilano, THEME_HOURS } from "./helpers";
+import { formatDate } from "../../src/app/lib/format";
+import { atHour, chooseDrinks, goToMilano, mapRegion, mapStatus, THEME_HOURS } from "./helpers";
 
 // «Gestore verificato» (SPEC 1.9, D-34, ADR 0033): MD-06, MD-07, MD-08, MD-09, MD-11.
 // The Worker side is in tests/worker/verified.test.ts; here the verified bar is added to the real
@@ -42,7 +43,30 @@ const listNames = async (page: Page) => {
   return sheet.locator(".row__name").allTextContents();
 };
 
-test("MD-07 the verified bar comes first in the list, the others keep their order", async ({
+/**
+ * What the map shows besides the list: pins and their prices, colour legend, coverage line,
+ * «I più economici qui» and the search results. None of it may change for a verified bar (D-34).
+ */
+async function mapState(page: Page) {
+  await chooseDrinks(page, "Calice di vino"); // five prices in u0nd9: the colours are on (D-12)
+  await expect(mapRegion(page)).toHaveAttribute("data-prices-shown", /9,00 €/);
+  const pins = await mapRegion(page).getAttribute("data-prices-shown");
+  const legend = await page
+    .getByRole("list", { name: "Legenda dei prezzi" })
+    .getByRole("listitem")
+    .allTextContents();
+  const coverage = await mapStatus(page).textContent();
+  const cheapestHere = await cheapest(page);
+  await page.getByRole("button", { name: "Cerca" }).click();
+  await page.getByRole("combobox", { name: "Cerca una città o un bar" }).fill("camparino");
+  const options = page.getByRole("listbox", { name: "Risultati" }).getByRole("option");
+  await expect(options.first()).toBeVisible();
+  const search = await options.allTextContents();
+  await page.keyboard.press("Escape");
+  return { pins, legend, coverage, cheapestHere, search };
+}
+
+test("MD-07 the verified bar comes first in the list; the others, the map and the search do not change", async ({
   page,
 }) => {
   await page.goto("/");
@@ -50,9 +74,11 @@ test("MD-07 the verified bar comes first in the list, the others keep their orde
   const before = await listNames(page);
   expect(before).toContain("Camparino in Galleria");
   expect(before[0]).not.toBe("Camparino in Galleria");
-  const sheetBefore = page.getByRole("dialog", { name: "Bar nella zona" });
-  await expect(sheetBefore.getByText("Gestore verificato")).toHaveCount(0);
-  const cheapestBefore = await cheapest(page);
+  await expect(
+    page.getByRole("dialog", { name: "Bar nella zona" }).getByText("Gestore verificato"),
+  ).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  const stateBefore = await mapState(page);
 
   await verifyCamparino(page);
   await page.goto("/");
@@ -69,13 +95,14 @@ test("MD-07 the verified bar comes first in the list, the others keep their orde
   // Only that row, and the check never without «Sponsorizzato».
   await expect(sheet.getByText("Gestore verificato")).toHaveCount(1);
   await expect(sheet.getByText("Sponsorizzato")).toHaveCount(1);
-  // «I più economici qui» is a price ranking: the verified bar gets no place there (art. 23 m-bis).
-  expect(await cheapest(page)).toEqual(cheapestBefore);
+  await page.keyboard.press("Escape");
+  // Pins, colours, coverage, «I più economici qui» (a price ranking, art. 23 m-bis) and the search:
+  // exactly as before.
+  expect(await mapState(page)).toEqual(stateBefore);
 });
 
 /** The rows of «I più economici qui» in the search sheet, as text. */
 async function cheapest(page: Page) {
-  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Cerca" }).click();
   const list = page.getByRole("list", { name: "I più economici qui" });
   await expect(list.getByRole("listitem").first()).toBeVisible();
@@ -140,6 +167,19 @@ for (const scheme of ["light", "dark"] as const) {
     await page.screenshot({ path: `docs/screenshots/md/md-07-elenco-${scheme}.png` });
   });
 }
+
+test("MD-09 /regole explains «Gestore verificato», «Sponsorizzato» and the order of the list", async ({
+  page,
+}) => {
+  await page.goto("/regole");
+  const section = page
+    .getByRole("heading", { name: "Gestore verificato e Sponsorizzato" })
+    .locator("xpath=..");
+  await expect(section).toContainText("abbiamo controllato chi gestisce il locale");
+  await expect(section).toContainText("«Sponsorizzato» vuol dire che quel primo posto è pagato");
+  await expect(section).toContainText("prima i locali sponsorizzati e poi tutti gli altri");
+  await expect(section).toContainText("i prezzi non si comprano");
+});
 
 test("MD-08 a bar that is not verified has the same page as before", async ({ page }) => {
   await verifyCamparino(page);
@@ -233,7 +273,11 @@ const timeInput = (page: Page, day: string, which: string) =>
 test("MD-06 the admin turns a bar into «Gestore verificato» with its hours", async ({ page }) => {
   const posts = await fakeVerified(page);
   await page.goto("/admin");
-  await page.getByRole("link", { name: "Gestori verificati" }).click();
+  // From the header of /admin (SPEC 7.10).
+  await page
+    .locator("header.admin__head")
+    .getByRole("link", { name: "Gestori verificati" })
+    .click();
   await expect(page).toHaveURL(/\/admin\/verificati$/);
   await expect(page.getByRole("heading", { level: 1, name: "Gestori verificati" })).toBeVisible();
 
@@ -245,6 +289,12 @@ test("MD-06 the admin turns a bar into «Gestore verificato» with its hours", a
   await expect(current).toContainText("Bar Magenta");
   await expect(current).toContainText("Venerdì 08:00–15:00 · 18:00–02:00");
   await expect(current).toContainText("13 aperture della scheda negli ultimi 30 giorni");
+  // The openings day by day, newest first (MD-11).
+  await current.getByText("Aperture per giorno").click();
+  await expect(current.locator(".admin__views li")).toHaveText([
+    `${formatDate("2026-10-24")}: 9`,
+    `${formatDate("2026-10-23")}: 4`,
+  ]);
 
   // Find Camparino and turn it on.
   await page.getByLabel("Città del locale").fill("milano");
@@ -259,7 +309,7 @@ test("MD-06 the admin turns a bar into «Gestore verificato» with its hours", a
 
   await timeInput(page, "Lunedì", "Apre").fill("08:00");
   await timeInput(page, "Lunedì", "Chiude").fill("20:00");
-  await page.getByRole("button", { name: "Copia il lunedì su tutti i giorni" }).click();
+  await page.getByRole("button", { name: "Copia su tutti i giorni" }).click();
   await expect(timeInput(page, "Giovedì", "Chiude")).toHaveValue("20:00");
   await page.getByRole("group", { name: "Lunedì" }).getByLabel("Chiuso").check();
   await page.getByRole("group", { name: "Domenica" }).getByLabel("Chiuso").check();
@@ -339,10 +389,44 @@ for (const scheme of ["light", "dark"] as const) {
   });
 }
 
-test("MD-06 the page has its own chunk: the map never loads it", async ({ page }) => {
+test("MD-06 the bar found by the link of its page can be turned on", async ({ page }) => {
+  const posts = await fakeVerified(page);
+  await page.goto("/admin/verificati");
+  await page
+    .getByLabel("Oppure il link della scheda del locale")
+    .fill(`https://dovebevo.example/bar/${CAMPARINO}?c=u0nd9`);
+  await page.getByRole("button", { name: "Cerca il locale" }).click();
+  const found = page.getByRole("list", { name: "Risultati della ricerca" }).locator(":scope > li");
+  await expect(found).toHaveCount(1);
+  await expect(found).toContainText("Camparino in Galleria");
+  await found.getByRole("button", { name: "Attiva" }).click();
+  for (const day of ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"])
+    await page.getByRole("group", { name: day }).getByLabel("Chiuso").check();
+  await page.getByRole("button", { name: "Salva e pubblica" }).click();
+  await expect(page.getByRole("status")).toContainText("Salvato");
+  expect(posts).toEqual([
+    {
+      path: "/api/admin/verified",
+      body: { venue: CAMPARINO, cell: "u0nd9", hours: [[], [], [], [], [], [], []] },
+    },
+  ]);
+});
+
+test("MD-06 the page is a chunk of its own: /admin/verificati loads it, the map never does", async ({
+  page,
+}) => {
+  // The suite runs on the production build: a module bundled into the shell would never be
+  // requested on its own, so seeing the request proves the separate chunk.
   const loaded: string[] = [];
-  page.on("request", (r) => loaded.push(r.url()));
+  page.on("request", (r) => loaded.push(new URL(r.url()).pathname));
+  const verifiedChunk = (paths: string[]) =>
+    paths.filter((p) => /\/VerifiedPage[-.][^/]*\.js$/.test(p));
   await page.goto("/");
   await goToMilano(page);
-  expect(loaded.filter((u) => /Verified/i.test(u))).toEqual([]);
+  expect(verifiedChunk(loaded)).toEqual([]);
+
+  await fakeVerified(page);
+  await page.goto("/admin/verificati");
+  await expect(page.getByRole("heading", { level: 1, name: "Gestori verificati" })).toBeVisible();
+  expect(verifiedChunk(loaded)).toHaveLength(1);
 });

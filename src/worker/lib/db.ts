@@ -886,7 +886,7 @@ export async function getUserVenueNames(db: D1Database, ids: number[]) {
 // ---- Gestore verificato (SPEC 1.9, D-34, ADR 0033) ----
 
 /** One row per verified bar: the upsert writes the row and its cell index entry. */
-export const VERIFIED_UPSERT_SQL = `INSERT INTO venues_verified (venue_key, cell, name, hours)
+const VERIFIED_UPSERT_SQL = `INSERT INTO venues_verified (venue_key, cell, name, hours)
   VALUES (?1, ?2, ?3, ?4)
   ON CONFLICT (venue_key) DO UPDATE SET cell = excluded.cell, name = excluded.name, hours = excluded.hours`;
 
@@ -935,12 +935,19 @@ export async function listVerifiedViews(
   return results.map((r) => [r.prop.slice("venue:".length), r.day, r.n]);
 }
 
-/** Which of these keys are verified bars: the only keys a bar page opening may carry (MD-11). */
+/**
+ * Which of these keys are verified public bars: the only keys a bar page opening may carry (MD-11).
+ * Public as everywhere else (isPublicBar): not hidden, and a user bar only while approved.
+ */
 export async function verifiedAmong(db: D1Database, keys: string[]): Promise<Set<string>> {
   if (keys.length === 0) return new Set();
   const { results } = await db
     .prepare(
-      "SELECT venue_key FROM venues_verified WHERE venue_key IN (SELECT value FROM json_each(?1))",
+      `SELECT v.venue_key FROM venues_verified v
+       WHERE v.venue_key IN (SELECT value FROM json_each(?1))
+         AND NOT EXISTS (SELECT 1 FROM venues_hidden h WHERE h.venue_key = v.venue_key)
+         AND (v.venue_key NOT LIKE 'u%' OR EXISTS (SELECT 1 FROM venues_user u
+           WHERE u.id = CAST(substr(v.venue_key, 2) AS INTEGER) AND u.status = 'approved'))`,
     )
     .bind(JSON.stringify(keys))
     .all<{ venue_key: string }>();

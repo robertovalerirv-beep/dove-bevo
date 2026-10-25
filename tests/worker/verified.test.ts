@@ -4,8 +4,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { CellPrices, VenuePrices } from "../../src/shared/api-types";
 import type { WeekHours } from "../../src/shared/hours";
 import { summarizeMetrics, type MetricRow } from "../../src/shared/metrics";
-import { getCellPrices, SNAPSHOT_SQL, VERIFIED_UPSERT_SQL } from "../../src/worker/lib/db";
+import { getCellPrices, SNAPSHOT_SQL } from "../../src/worker/lib/db";
+import { forgetCoverage } from "../../src/worker/lib/coverage";
 import { romeDay } from "../../src/worker/lib/day";
+import { resetSeoMemory } from "../../src/worker/lib/seo";
+import { createSession } from "../../src/worker/lib/session";
 import { accessJwt, ORIGIN } from "./access-jwt";
 
 // «Gestore verificato» (SPEC 1.9, D-34, ADR 0033): MD-01, MD-02, MD-04, MD-05, MD-10, MD-11.
@@ -318,16 +321,54 @@ describe("D1 cost (MD-05)", () => {
     expect(hit.meta.rows_read).toBeLessThanOrEqual(5);
   });
 
-  it("an activation writes at most 5 rows", async () => {
-    const result = await env.DB.prepare(VERIFIED_UPSERT_SQL)
-      .bind(VESTA, CELL, "Vesta", JSON.stringify(HOURS))
-      .run();
-    // The upsert (row + index) and the snapshot bump of forgetCell (one row, ADR 0032).
-    expect(result.meta.rows_written + 1).toBeLessThanOrEqual(5);
-    const again = await env.DB.prepare(VERIFIED_UPSERT_SQL)
-      .bind(VESTA, CELL, "Vesta", JSON.stringify(HOURS))
-      .run();
-    expect(again.meta.rows_written + 1).toBeLessThanOrEqual(5);
+  it("the admin route writes at most 5 rows; a contribution in the same cell stays at 10", async () => {
+    // Every row of every table, before and after: what a request added, removed or changed.
+    const rows = async () => {
+      const { results: tables } = await env.DB.prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE '\\_%' ESCAPE '\\' AND name NOT LIKE 'sqlite%' AND name NOT LIKE 'd1%'",
+      ).all<{ name: string }>();
+      const all = new Set<string>();
+      for (const { name } of tables)
+        for (const row of (await env.DB.prepare(`SELECT * FROM ${name}`).all()).results)
+          all.add(`${name}:${JSON.stringify(row)}`);
+      return all;
+    };
+    const written = (before: Set<string>, after: Set<string>) => {
+      const gone = [...before].filter((r) => !after.has(r)).map((r) => r.slice(0, r.indexOf(":")));
+      const added = [...after].filter((r) => !before.has(r)).map((r) => r.slice(0, r.indexOf(":")));
+      // A changed row is one removed and one added in the same table: count it once.
+      let n = added.length;
+      for (const table of gone) {
+        const k = added.indexOf(table);
+        if (k >= 0) added.splice(k, 1);
+        else n += 1;
+      }
+      return n;
+    };
+
+    let before = await rows();
+    expect((await activate({})).status).toBe(200);
+    expect(written(before, await rows())).toBeLessThanOrEqual(5);
+
+    before = await rows();
+    const { token } = await createSession("test-session-hmac-key");
+    const response = await exports.default.fetch(`${ORIGIN}/api/prices`, {
+      method: "POST",
+      headers: {
+        Origin: ORIGIN,
+        "Content-Type": "application/json",
+        Cookie: `__Host-sid=${token}`,
+        "CF-Connecting-IP": ip(),
+      },
+      body: JSON.stringify({
+        venue: VESTA,
+        cell: CELL,
+        source: "manual",
+        items: [{ drink: "spritz", hh: 0, price_cents: 750 }],
+      }),
+    });
+    expect(response.status).toBe(200);
+    expect(written(before, await rows())).toBeLessThanOrEqual(10);
   });
 });
 
@@ -369,8 +410,53 @@ describe("bar page openings (MD-11)", () => {
     expect(await viewed()).toEqual([]);
   });
 
+  it("a verified bar hidden or no longer approved counts as a plain view, like its page shows it", async () => {
+    const approved = await userBar("approved");
+    await activate({});
+    await activate({ venue: approved });
+    await env.DB.batch([
+      env.DB.prepare(
+        "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES (?1, ?2, 'Vesta', '2026-10-01')",
+      ).bind(VESTA, CELL),
+      env.DB.prepare("UPDATE venues_user SET status = 'removed'"),
+    ]);
+    const response = await beacon([
+      { e: "venue_viewed", p: { venue: VESTA } },
+      { e: "venue_viewed", p: { venue: approved } },
+    ]);
+    expect(response.status).toBe(204);
+    expect(await viewed()).toEqual([{ prop: "-", n: 2 }]);
+  });
+
   it("an invented key never reaches metrics_daily", async () => {
     await beacon([{ e: "venue_viewed", p: { venue: "n999999999" } }]);
     expect(await viewed()).toEqual([{ prop: "-", n: 1 }]);
+  });
+});
+
+describe("pages for search engines (MD-09)", () => {
+  it("the bar page and the city page are the same with or without «Gestore verificato»", async () => {
+    await env.DB.batch(
+      [VESTA, BISTROT].map((key) =>
+        env.DB.prepare(
+          "INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source) VALUES (?1, 'spritz', 0, ?2, 62505581, 700, '2026-10-10', 0, 'active', 'manual')",
+        ).bind(key, CELL),
+      ),
+    );
+    const pages = async () => {
+      resetSeoMemory();
+      forgetCoverage();
+      return Promise.all(
+        [`/bar/${BISTROT}`, `/bar/${VESTA}`, "/milano"].map(async (path) =>
+          (await get(path)).text(),
+        ),
+      );
+    };
+    const before = await pages();
+    expect(before[0]).toContain("Bistrot Italia"); // a real page, not the bare shell
+    expect((await activate({ venue: BISTROT })).status).toBe(200);
+    const after = await pages();
+    expect(after).toEqual(before);
+    for (const html of after) expect(html).not.toMatch(/Gestore verificato|Sponsorizzato/);
   });
 });

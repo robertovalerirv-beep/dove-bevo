@@ -218,6 +218,7 @@ export const it = {
     failed: "Operazione non riuscita. Riprova.",
     done: "Fatto.",
     backToMap: "Torna alla mappa",
+    nav: "Pagine dell'amministrazione",
     findTitle: "Trova un bar sulla mappa",
     findHelp:
       "Scrivi la città e una parte del nome (cerca fino a circa 7 km dal centro), oppure incolla il link della scheda del bar. Se un risultato non è un bar o non esiste più, eliminalo: sparisce dalla mappa e non riceve più prezzi.",
@@ -308,13 +309,13 @@ export const it = {
         `Togliere «Gestore verificato» a «${name}»? Spunta, «Sponsorizzato», primo posto nell'Elenco e orari spariscono dalla mappa.`,
       hoursFor: (name: string) => `Orari di ${name}`,
       hoursHelp:
-        "Per ogni giorno: «Chiuso», oppure l'ora di apertura e di chiusura. Se il locale chiude a metà giornata, usa anche «Riapre» e «Richiude». Una chiusura dopo mezzanotte (es. 02:00) va bene, ma solo nell'ultima fascia del giorno.",
+        "Per ogni giorno: «Chiuso», oppure l'ora di apertura e di chiusura. Se il locale chiude a metà giornata, usa anche «Riapre» e «Richiude». Una chiusura dopo mezzanotte (es. 02:00) va bene, ma solo nell'ultima fascia del giorno. «Copia su tutti i giorni» ripete gli orari del lunedì.",
       open: "Apre",
       close: "Chiude",
       reopen: "Riapre",
       reclose: "Richiude",
       closedDay: "Chiuso",
-      copy: "Copia il lunedì su tutti i giorni",
+      copy: "Copia su tutti i giorni",
       save: "Salva e pubblica",
       cancel: "Annulla",
       saved: "Salvato: la scheda pubblica è aggiornata.",

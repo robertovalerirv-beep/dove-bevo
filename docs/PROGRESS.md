@@ -4,6 +4,18 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-25 · Dominio www.dovebevo.com sul Worker esistente (branch `claude/cloudflare-domain-setup-beb3b8`) · M6-01 in parte
+
+**Richiesta di Roberto:** portare il sito vero (bar e prezzi già inseriti) sul dominio comprato, sostituendo l'indirizzo `workers.dev`. ADR 0035: nessuna copia del D1, il dominio si collega al Worker `dovebevo-staging`.
+
+**Verificato da fuori (sola lettura):** `dovebevo.com` e `www.dovebevo.com` rispondono 200 con `data_version 20261024`, identico a `workers.dev` (stessi dati), HSTS e CSP presenti, `CF-Cache-Status: HIT`. `/api/admin/metrics` sul nuovo dominio → 403 (chiuso dal Worker), su `workers.dev` → 302 al login di Access: Access non copre ancora il nuovo hostname.
+
+**Fatto nel codice:** `TURNSTILE_HOSTNAME` di staging e `APP_DOMAIN` = `www.dovebevo.com` (canonico, scelto da Roberto), test di configurazione, guide admin e inserimento, ADR 0035.
+
+**A carico di Roberto (dashboard):** hostname `www.dovebevo.com` nel widget Turnstile `dovebevo-staging`; due public hostname (`admin`, `api/admin/*`, su `www.dovebevo.com`) nell'applicazione Access; la Redirect Rule radice → `www` è già creata, da verificare che risponda 301; Always Use HTTPS. Poi prova: salvare un prezzo e aprire `/admin` su `www.dovebevo.com`.
+
+---
+
 ## 2026-10-25 · «Gestore verificato» (branch `md-gestore-verificato`, da `main` baba407) · SPEC 1.9, MD-01…MD-11
 
 **Richiesta di Roberto:** offerta ai gestori che firmano un contratto (fuori dal repository): spunta blu con «Gestore verificato», «Sponsorizzato», primo posto nell'Elenco e orari nella scheda prima dello scontrino; si attiva e si scrivono gli orari solo da admin; contratti, pagamenti, scadenze e dati dei gestori fuori dal progetto; niente «aperto ora»; chiusure straordinarie a mano; pagine per i motori di ricerca invariate. Autorizzati da lui in chat: SPEC 1.9, le voci MD-01…MD-11, il tag `spec-approved-10` (lo crea lui sul commit 815b4c7) e le regole contro i turni rossi.
@@ -41,7 +53,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 **Fatto**
 - **Listino in admin (M3-17):** `POST /api/admin/listino` (zod `strict`, catalogo e limiti come l'inserimento manuale, giorno non futuro e non oltre 90 giorni, un prezzo più recente o in revisione non si sostituisce) e il modulo «Inserisci listino» sotto ogni bar trovato in `/admin`.
 - **Pagine `/privacy` e `/regole` (M5-04, MB-16):** testi in `it.ts` (sezione `legal`) dalle regole di SPEC 14 e da `PRIVACY-NOTES.md`, chunk a richiesta, logo orizzontale nei due temi, link nella scheda bar e nel foglio di ricerca (la mappa non ha un piè di pagina: la barra a due tasti di D-28 non cambia). `CONTACT_EMAIL` = `dovebevo@gmail.com`.
-- **Riga istantanea per cella (M3-20, ADR 0032, migrazione 0007):** una cella si legge con 1 riga; invalidata a ogni scrittura (anche le proposte di bar, prima mancava), scadenza di sicurezza 5 minuti.
+- **Riga istantanea per cella (M3-20, ADR 0035, migrazione 0007):** una cella si legge con 1 riga; invalidata a ogni scrittura (anche le proposte di bar, prima mancava), scadenza di sicurezza 5 minuti.
 - **Elenco della mappa:** un prezzo vecchio dice «Da confermare» anche a parole (M4-05; il pin tratteggiato resta solo grafico).
 - **Documenti:** `docs/security/asvs-l1.md` (M5-07), `docs/user-test.md` (M5-10), `docs/runbook-rollback.md`, `docs/release-checklist.md`, `CHANGELOG.md`, `docs/templates/deploy-production.yml.example` (modello del workflow di produzione: solo da tag, solo se il commit è già in `main`, con approvazione dell'environment `production`; non provato e non attivo, perché `check-config` lo rifiuta finché `wrangler.jsonc` non ha il blocco `production`: si copia in `.github/workflows/` in M6).
 - `eslint.config.js` ignora `docs/materiali/` (materiali locali fuori dal repository).
@@ -53,7 +65,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - Sicurezza: `no-secrets.spec.ts` (nomi dei segreti mai nei file del browser, nessun formato di chiave nel build).
 - **MB-07, 300 pin:** con circa 263 pin sullo schermo l'interazione più lenta è 80 ms su Chromium e 160 ms su WebKit (locale). Sul runner CI i tempi sono più alti e instabili, quindi il test fissa solo un limite di buon senso (< 1000 ms) e riporta il numero; la prova di Roberto su telefono resta il riferimento.
 - M0-07: Deploy staging verde su 91386b7 e `curl https://dovebevo-staging.dovebevo.workers.dev/api/health` → `{"status":"ok","version":"0.0.0","data_version":"20261023"}`.
-- Revisioni: `security-reviewer` OK, nessun punto sopra LOW (corretti: testo della privacy sulla fascia di anzianità, ADR 0032, tag sul ramo `main` nel workflow di produzione); `spec-reviewer` NOT OK per la mancanza di queste prove in PROGRESS e per il test delle scritture, ora entrambi sistemati.
+- Revisioni: `security-reviewer` OK, nessun punto sopra LOW (corretti: testo della privacy sulla fascia di anzianità, ADR 0035, tag sul ramo `main` nel workflow di produzione); `spec-reviewer` NOT OK per la mancanza di queste prove in PROGRESS e per il test delle scritture, ora entrambi sistemati.
 
 **Non fatto, di Roberto o da decidere**
 - M6-01…M6-05 dopo il dominio.

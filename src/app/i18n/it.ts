@@ -74,6 +74,15 @@ export const it = {
     barsCount: (n: number) => `${String(n)} bar`,
     loadError: "Non riesco a caricare l'elenco delle città. Controlla la connessione.",
   },
+  verified: {
+    // «Gestore verificato» (SPEC 1.9, D-34): the check never shows without «Sponsorizzato».
+    badge: "Gestore verificato",
+    sponsored: "Sponsorizzato",
+    hoursTitle: "Orari",
+    closed: "Chiuso",
+    rangeJoin: " · ",
+    days: ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"],
+  },
   list: {
     title: "Bar nella zona",
     empty: "Nessun bar in questa zona.",
@@ -209,6 +218,7 @@ export const it = {
     failed: "Operazione non riuscita. Riprova.",
     done: "Fatto.",
     backToMap: "Torna alla mappa",
+    nav: "Pagine dell'amministrazione",
     findTitle: "Trova un bar sulla mappa",
     findHelp:
       "Scrivi la città e una parte del nome (cerca fino a circa 7 km dal centro), oppure incolla il link della scheda del bar. Se un risultato non è un bar o non esiste più, eliminalo: sparisce dalla mappa e non riceve più prezzi.",
@@ -269,6 +279,48 @@ export const it = {
             ? `, ${String(skipped)} non cambiati (ce n'è già uno più recente o in revisione)`
             : ""
         }.`,
+    },
+    verified: {
+      nav: "Gestori verificati",
+      title: "Gestori verificati",
+      back: "Torna all'amministrazione",
+      intro:
+        "Locali che hanno firmato: spunta, «Sponsorizzato», primo posto nell'Elenco e orari. Contratti e pagamenti restano fuori dall'app.",
+      activeTitle: "Gestori verificati attivi",
+      none: "Nessun gestore verificato.",
+      views: (n: number) =>
+        `${String(n)} ${n === 1 ? "apertura" : "aperture"} della scheda negli ultimi 30 giorni`,
+      viewsByDay: "Aperture per giorno",
+      findTitle: "Attiva un gestore verificato",
+      findHelp: "Città e nome, oppure il link della scheda; poi «Attiva».",
+      city: "Città del locale",
+      name: "Nome del locale",
+      link: "Oppure il link della scheda del locale",
+      search: "Cerca il locale",
+      results: "Risultati della ricerca",
+      activate: "Attiva",
+      already: "Già verificato",
+      edit: "Modifica orari",
+      remove: "Disattiva",
+      confirmRemove: (name: string) => `Togliere «Gestore verificato» a «${name}»?`,
+      hoursFor: (name: string) => `Orari di ${name}`,
+      hoursHelp:
+        "«Chiuso», oppure apertura e chiusura; «Riapre» e «Richiude» per una pausa. Dopo mezzanotte (es. 02:00) solo nell'ultima fascia. «Copia su tutti i giorni» ripete il lunedì.",
+      open: "Apre",
+      close: "Chiude",
+      reopen: "Riapre",
+      reclose: "Richiude",
+      closedDay: "Chiuso",
+      copy: "Copia su tutti i giorni",
+      save: "Salva e pubblica",
+      cancel: "Annulla",
+      saved: "Salvato: la scheda pubblica è aggiornata.",
+      removed: "Disattivato.",
+      failed: "Salvataggio non riuscito: gli orari restano qui, riprova.",
+      removeFailed: "Disattivazione non riuscita, riprova.",
+      loadFailed: "Non riesco a leggere i gestori verificati, ricarica.",
+      badDay: (day: string) =>
+        `${day}: fasce in ordine, apertura diversa dalla chiusura, dopo mezzanotte solo l'ultima.`,
     },
     toolsTitle: "Strumenti",
     pricesHelp: "Prezzi insoliti o segnalati dagli utenti: approvali o toglili.",
@@ -350,7 +402,7 @@ export const it = {
     contactLabel: "Scrivici",
     privacy: {
       title: "Privacy",
-      updated: "Ultimo aggiornamento: 24 ottobre 2026",
+      updated: "Ultimo aggiornamento: 25 ottobre 2026",
       intro:
         "Dove bevo funziona senza account e senza tracciamento. Qui spieghiamo in poche righe che cosa usiamo, che cosa salviamo e per quanto tempo.",
       sections: [
@@ -392,6 +444,7 @@ export const it = {
           paragraphs: [
             "Quando cerchi un bar, il testo che scrivi resta sul telefono: alla rete arrivano soltanto i primi 2 o 3 caratteri di una parola, per scaricare l'elenco giusto, mai la tua posizione.",
             "Contiamo in forma anonima quante visite ci sono, quanti prezzi vengono segnati e confermati. Sono numeri per giorno, senza nessun legame con le persone.",
+            "Per i locali sponsorizzati contiamo anche quante volte viene aperta la loro scheda, giorno per giorno: è soltanto un numero, senza nessun legame con chi l'ha aperta.",
           ],
         },
         {
@@ -416,7 +469,7 @@ export const it = {
     },
     rules: {
       title: "Regole",
-      updated: "Ultimo aggiornamento: 24 ottobre 2026",
+      updated: "Ultimo aggiornamento: 25 ottobre 2026",
       intro:
         "Dove bevo è fatta di prezzi veri, segnati da persone che ci sono state. Poche regole per tenerla utile.",
       sections: [
@@ -448,6 +501,15 @@ export const it = {
           heading: "Sei il gestore di un locale?",
           paragraphs: [
             "Se un dato del tuo locale è sbagliato (nome, indirizzo, chiusura), scrivici con il nome del locale e la correzione e lo sistemiamo. I prezzi non si comprano e non si cambiano su richiesta: li segnano i clienti.",
+            "Se vuoi diventare «Gestore verificato», scrivici.",
+          ],
+        },
+        {
+          heading: "Gestore verificato e Sponsorizzato",
+          paragraphs: [
+            "Un gestore può firmare con noi un accordo a pagamento: il suo locale mostra la spunta blu «Gestore verificato» con «Sponsorizzato», gli orari nella scheda e il primo posto nell'Elenco.",
+            "«Gestore verificato» vuol dire che abbiamo controllato chi gestisce il locale, non che garantiamo il locale o i prezzi. «Sponsorizzato» vuol dire che quel primo posto è pagato.",
+            "L'Elenco mostra prima i locali sponsorizzati, poi gli altri, nell'ordine di sempre: per distanza se la posizione è attiva, altrimenti prima quelli con un prezzo, poi alfabetico. Mappa, ricerca, «I più economici qui», colori e prezzi non cambiano: i prezzi non si comprano.",
           ],
         },
         {

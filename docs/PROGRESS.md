@@ -4,6 +4,36 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-25 · «Gestore verificato» (branch `md-gestore-verificato`, da `main` baba407) · SPEC 1.9, MD-01…MD-11
+
+**Richiesta di Roberto:** offerta ai gestori che firmano un contratto (fuori dal repository): spunta blu con «Gestore verificato», «Sponsorizzato», primo posto nell'Elenco e orari nella scheda prima dello scontrino; si attiva e si scrivono gli orari solo da admin; contratti, pagamenti, scadenze e dati dei gestori fuori dal progetto; niente «aperto ora»; chiusure straordinarie a mano; pagine per i motori di ricerca invariate. Autorizzati da lui in chat: SPEC 1.9, le voci MD-01…MD-11, il tag `spec-approved-10` (lo crea lui sul commit 815b4c7) e le regole contro i turni rossi.
+
+**Fatto**
+- SPEC 1.9 (D-34, 7.10, 8, 9.2, 12, 14, MD), ADR 0033, feature list con MD-01…MD-11 a `false`, guardia su `spec-approved-10`.
+- Migrazione `0008_verified_venues.sql` (`venue_key`, `cell`, `name`, `hours`; svuota `cell_snapshot`). Rotte `GET/POST /api/admin/verified` e `POST /api/admin/verified/remove` dietro Access; nome e cella dal file del bar o da `venues_user`; ogni scrittura svuota la cella. `g` nella cella, `o` nella scheda, solo per bar pubblici. `venue_viewed` porta la chiave solo di un bar verificato e pubblico, controllata dal Worker. Orari validati da un solo modulo (`src/shared/hours.ts`).
+- App: Elenco con i verificati in cima (`src/app/lib/list-order.ts`), badge sempre con «Sponsorizzato» (`components/Verified.tsx`), orari prima dei prezzi, pagina `/admin/verificati` (chunk a sé, link nell'intestazione di `/admin`), ricerca admin condivisa (`lib/admin-find.ts`), token `verified`, `/regole` e `/privacy` aggiornati, `PRIVACY-NOTES.md`.
+- Regole: hook di fine turno `.claude/hooks/check-before-stop.sh` (typecheck e test collegati ai file TypeScript cambiati; blocca il turno se rossi) e sezione «Prima di scrivere codice» in CLAUDE.md. `protect-files.sh` controlla anche `origin/main`: con il `main` locale fermo a ae2183b la 0007 non era protetta (provato: ora bloccata).
+
+**Prove**
+- `npm run test`: 54 file, 603 test verdi (tra cui `tests/worker/verified.test.ts` 18, `tests/unit/hours.test.ts` 30, `list-order` 4, `migrations-frozen` 8: le sette migrazioni di `origin/main` identiche byte per byte, e il test diventa rosso se se ne tocca una).
+- Righe D1 misurate sulle rotte vere, contando ogni tabella prima e dopo: attivazione **2** righe (limite 5), contributo in una cella con un bar verificato **7** (limite 10); lettura di 300 prezzi a snapshot pronto ≤ 5 righe.
+- E2E Chromium `tests/e2e/verified.spec.ts` 15 verdi (MD-06…MD-09, MD-11; MD-07 ripetuto 6 volte); `verified-writes.spec.ts` (riga nel D1 locale → spunta e orari sulla scheda, e spariscono alla rimozione) verde; sicurezza `tests/security/verified.spec.ts` 3 verdi (403 senza Access sulle tre rotte, colonne di `venues_verified`, `g` solo chiavi). Suite Chromium completa e sicurezza: vedi sotto.
+- Shell: col vecchio conteggio (tutti i JS e CSS tranne MapLibre) **46.574 B** su `origin/main` → **51.136 B** (budget 51.200); la funzione aggiunge ~4,6 KB, di cui 2,4 KB nella pagina admin a richiesta. Con il conteggio della shell iniziale deciso da Roberto (ADR 0034): **38.508 B** (index.html, `theme.js`, JS e CSS principali); pagine a richiesta stampate a parte (VerifiedPage 2.408 B).
+- Revisioni: `security-reviewer` OK (segnalato: chiave di un bar verificato poi nascosto ancora contata → corretto con test); `spec-reviewer` OK con 9 lacune nei test → chiuse tutte; `ux-a11y-reviewer` OK con 4 punti (annuncio dei messaggi di ricerca, fuoco dopo salva/annulla/disattiva, righe degli orari, link a 48 px) → corretti con test.
+- Screenshot 390×844 nei due temi in `docs/screenshots/md/` (scheda, Elenco, admin).
+- `verify` in locale, passo per passo: lint, formato, typecheck, unit e worker (603), policy dei workflow, configurazione, `npm audit` (0), build, budget, Lighthouse mediana di 3 (performance 0,97, accessibilità 0,96, best practices 1, SEO 1, LCP 2,35 s, CLS 0) verdi; E2E Chromium 129, sicurezza 23, scrittura 19, proposte 5 verdi. Non eseguibili qui: guardia della feature list (manca il tag `spec-approved-10`; confrontata con `origin/main` risultano solo le 11 voci MD aggiunte) e WebKit (non installato). Push con `--no-verify` autorizzato da Roberto per questi due motivi.
+
+**Non fatto, di Roberto o da decidere**
+- Tag `spec-approved-10` sul commit 815b4c7: finché manca, la guardia della feature list è rossa in CI.
+- WebKit non è installato in questo container: la parte WebKit la esegue la CI.
+- In `/admin` («Trova un bar sulla mappa») il messaggio della ricerca non è in una regione `aria-live`, come segnalato dalla revisione: difetto precedente, fuori da questo lavoro.
+
+**Da verificare a mano (Roberto):** su telefono, la spunta e gli orari di un bar attivato da `/admin/verificati`; il campo orario a 24 ore con il telefono in italiano.
+
+**CI della PR #55** (run 40193292677 su `30a06af`): E2E Chromium e WebKit e sicurezza, Lighthouse, import OSM, gitleaks verdi; la guardia della feature list verde dopo il tag `spec-approved-10` creato da Roberto sul commit 815b4c7. MD-01…MD-11 → `passes: true`.
+
+---
+
 ## 2026-10-24 · Chiusura del codice prima del dominio (branch `m5-chiusura-codice`, da `main` 91386b7) · M3-17, M3-20, M4-05, M4-13, MB-04, MB-07, MB-08, MB-14, MB-16, M5-02, M5-04, M5-05, M5-07, M5-08, M5-10, M0-07
 
 **Richiesta di Roberto:** fare tutte le verifiche e chiudere ciò che si può sul codice prima di comprare il dominio. Provato da lui su telefono vero: «Vicino a me» funziona; icone e limiti di Sbagliato, Gin lemon e Acqua approvati; il test con 5 persone è in corso (inseriscono anche locali e prezzi). Contatto pubblico deciso da lui: `dovebevo@gmail.com`.

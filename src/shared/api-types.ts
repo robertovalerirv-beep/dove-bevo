@@ -1,4 +1,5 @@
 // Compact formats shared by the import script, the Worker and the client (SPEC 5.1, 9.2, D-11).
+import type { WeekHours } from "./hours";
 
 /** Bar kind: 0 cafe, 1 bar, 2 pub, 3 biergarten, 4 nightclub. */
 export type VenueKind = 0 | 1 | 2 | 3 | 4;
@@ -30,6 +31,11 @@ export interface CellPrices {
   pend: PendingVenue[];
   /** OSM keys of the cell hidden by the admin (not a bar, closed): never drawn (ADR 0017). */
   h: string[];
+  /**
+   * Public bars of the cell with «Gestore verificato» (SPEC 1.9, D-34). Optional: a snapshot stored by
+   * the Worker of before has none for at most 5 minutes after the deploy (ADR 0032).
+   */
+  g?: string[];
 }
 
 /**
@@ -47,6 +53,15 @@ export type HistoryRow = [string, 0 | 1, number, string];
 export interface VenuePrices {
   p: PriceRow[];
   h: HistoryRow[];
+  /** Opening hours, only for a public bar with «Gestore verificato» (SPEC 1.9, D-34). */
+  o?: WeekHours;
+}
+
+/** `GET /api/admin/verified` (SPEC 7.10): the verified bars and their bar page openings of 30 days. */
+export interface VerifiedList {
+  v: { key: string; cell: string; name: string; hours: WeekHours }[];
+  /** [bar key, day, openings of its bar page] */
+  views: [string, string, number][];
 }
 
 /**

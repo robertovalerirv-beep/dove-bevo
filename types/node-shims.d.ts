@@ -21,3 +21,14 @@ declare module "node:crypto" {
     update(data: string): { digest(encoding: "hex"): string };
   };
 }
+declare module "node:child_process" {
+  export function execFileSync(
+    file: string,
+    args: readonly string[],
+    options?: {
+      encoding?: "utf8";
+      stdio?: "ignore" | "pipe";
+      env?: Record<string, string | undefined>;
+    },
+  ): string;
+}

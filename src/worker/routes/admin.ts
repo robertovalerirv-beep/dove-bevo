@@ -3,6 +3,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { CATALOG, findDrink } from "../../shared/catalog";
+import { DAYS_IN_WEEK, isValidWeek, MAX_RANGES, TIME, type WeekHours } from "../../shared/hours";
 import { STALE_DAYS } from "../../shared/config";
 import { summarizeMetrics } from "../../shared/metrics";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
@@ -21,13 +22,17 @@ import {
   runStatements,
   writePriceStatements,
   listUserVenues,
+  listVerified,
+  listVerifiedViews,
+  removeVerified,
+  saveVerified,
   setPriceStatus,
   setUserVenueStatus,
   unhideVenue,
 } from "../lib/db";
 import { ApiError } from "../lib/errors";
 import { readJson } from "../lib/guards";
-import { osmVenue, resolveVenue } from "../lib/venues";
+import { osmVenue, publicVenueName, resolveVenue } from "../lib/venues";
 import { forgetCell } from "../lib/cell-cache";
 import type { AppEnv } from "../types";
 import { Lat, Lon, VenueKey, VenueName } from "./venues";
@@ -51,6 +56,13 @@ const PriceStatus = z.strictObject({
   hh: z.union([z.literal(0), z.literal(1)]),
   status: z.enum(["active", "removed"]),
 });
+
+/** Seven days, Monday first, each closed ([]) or up to two "HH:MM" ranges (SPEC 9.2, D-34). */
+const Hours = z
+  .array(z.array(z.tuple([z.string().regex(TIME), z.string().regex(TIME)])).max(MAX_RANGES))
+  .length(DAYS_IN_WEEK)
+  .refine((week): week is WeekHours => isValidWeek(week));
+const Verified = z.strictObject({ venue: VenueKey, cell: Cell, hours: Hours });
 
 export const admin = new Hono<AppEnv>();
 
@@ -232,4 +244,40 @@ admin.post("/listino", async (c) => {
     await forgetCell(c.env.DB, c.req.url, where.cell);
   }
   return c.json({ results });
+});
+
+// ---- Gestore verificato (SPEC 1.9, 7.10, D-34, ADR 0033) ----
+
+// Openings of the bar pages counted over this many days, for the admin list.
+const VIEWS_DAYS = 30;
+
+admin.get("/verified", async (c) => {
+  const since = new Date(Date.parse(`${romeDay()}T12:00:00Z`) - (VIEWS_DAYS - 1) * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const [v, views] = await Promise.all([
+    listVerified(c.env.DB),
+    listVerifiedViews(c.env.DB, since),
+  ]);
+  c.header("Cache-Control", "no-store");
+  return c.json({ v, views });
+});
+
+// Turns «Gestore verificato» on for a bar the map shows, or replaces its hours. The name and the cell
+// come from the static file or D1: the client only says which bar.
+admin.post("/verified", async (c) => {
+  const body = await readJson(c, Verified);
+  const name = await publicVenueName(c.env, body.venue, body.cell);
+  if (name === null) throw new ApiError("bad_request");
+  await saveVerified(c.env.DB, { key: body.venue, cell: body.cell, name, hours: body.hours });
+  await forgetCell(c.env.DB, c.req.url, body.cell);
+  return c.json({ status: "verified" });
+});
+
+admin.post("/verified/remove", async (c) => {
+  const body = await readJson(c, z.strictObject({ venue: VenueKey }));
+  const cell = await removeVerified(c.env.DB, body.venue);
+  if (!cell) throw new ApiError("not_found");
+  await forgetCell(c.env.DB, c.req.url, cell);
+  return c.json({ status: "removed" });
 });

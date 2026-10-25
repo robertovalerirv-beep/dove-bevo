@@ -18,6 +18,11 @@ if (root && /^\/admin\/?$/.test(location.pathname)) {
   void import("./views/AdminPage").then(({ AdminPage }) => {
     render(<AdminPage />, root);
   });
+} else if (root && /^\/admin\/verificati\/?$/.test(location.pathname)) {
+  // «Gestori verificati» (SPEC 7.10): a chunk of its own, behind the same Cloudflare Access as /admin.
+  void import("./views/VerifiedPage").then(({ VerifiedPage }) => {
+    render(<VerifiedPage />, root);
+  });
 } else if (root && /^\/(privacy|regole)\/?$/.test(location.pathname)) {
   // Legal pages: their own chunk too, the map and its code are not loaded.
   const kind = location.pathname.startsWith("/privacy") ? "privacy" : "rules";

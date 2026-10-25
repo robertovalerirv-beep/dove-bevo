@@ -1,4 +1,5 @@
 // The only module that talks to D1 (CLAUDE.md).
+import { isValidWeek, type WeekHours } from "../../shared/hours";
 import type { MetricRow } from "../../shared/metrics";
 import type {
   CellPrices,
@@ -40,9 +41,12 @@ const toPriceRow = (r: PriceDbRow): PriceRow => [
   r.status === "quarantined" ? 1 : 0,
 ];
 
-/** Prices, user venues and hidden OSM keys of a cell (SPEC 5.4, 9.2): indexed reads, one round trip. */
+/**
+ * Prices, user venues, hidden OSM keys and verified bars of a cell (SPEC 5.4, 9.2, D-34): indexed
+ * reads, one round trip.
+ */
 export async function getCellPrices(db: D1Database, cell: string): Promise<CellPrices> {
-  const [prices, venues, hidden] = await db.batch([
+  const [prices, venues, hidden, verified] = await db.batch([
     db
       .prepare(
         `SELECT venue_key, drink, hh, price_cents, observed_on, confirmations, status
@@ -57,6 +61,7 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
       )
       .bind(cell),
     db.prepare("SELECT venue_key FROM venues_hidden WHERE cell = ?1").bind(cell),
+    db.prepare("SELECT venue_key FROM venues_verified WHERE cell = ?1").bind(cell),
   ]);
   const rows = (venues?.results ?? []) as unknown as VenueDbRow[];
   const u = rows
@@ -71,7 +76,11 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
   const pend = rows
     .filter((r) => r.status === "pending")
     .map((r): PendingVenue => [`u${String(r.id)}`, r.name, r.kind, r.lat, r.lon, r.confirmations]);
-  return { p, u, pend, h };
+  // A verified bar shows as such only while it is public (ADR 0033): hidden or not approved, never.
+  const g = ((verified?.results ?? []) as unknown as { venue_key: string }[])
+    .map((r) => r.venue_key)
+    .filter((key) => isPublicBar(key, approved, hiddenKeys));
+  return { p, u, pend, h, g };
 }
 
 /** How long a snapshot may stand if a change forgot to empty it (ADR 0020). */
@@ -92,7 +101,14 @@ export async function getCellSnapshot(db: D1Database, cell: string): Promise<str
   if (row?.body && Date.now() - row.at < SNAPSHOT_TTL_MS) return row.body;
   const answer = await getCellPrices(db, cell);
   const body = JSON.stringify(answer);
-  if (answer.p.length + answer.u.length + answer.pend.length + answer.h.length > 0)
+  if (
+    answer.p.length +
+      answer.u.length +
+      answer.pend.length +
+      answer.h.length +
+      (answer.g?.length ?? 0) >
+    0
+  )
     await db
       .prepare(
         `INSERT INTO cell_snapshot (cell, v, at, body) VALUES (?1, ?2, ?3, ?4)
@@ -177,9 +193,9 @@ export async function getCoverageRows(db: D1Database): Promise<CoverageRows> {
 const BAR_IS_PUBLIC = `(?1 NOT LIKE 'u%' OR EXISTS (SELECT 1 FROM venues_user
   WHERE id = CAST(substr(?1, 2) AS INTEGER) AND status = 'approved'))`;
 
-/** Current prices of a bar and its latest 10 observations per drink (D-26). */
+/** Current prices of a bar, its latest 10 observations per drink (D-26) and its hours if verified (D-34). */
 export async function getVenuePrices(db: D1Database, key: string): Promise<VenuePrices> {
-  const [current, history] = await db.batch([
+  const [current, history, verified] = await db.batch([
     db
       .prepare(
         `SELECT venue_key, drink, hh, price_cents, observed_on, confirmations, status
@@ -202,6 +218,12 @@ export async function getVenuePrices(db: D1Database, key: string): Promise<Venue
          WHERE n <= 10 ORDER BY drink, observed_on DESC, id DESC`,
       )
       .bind(key),
+    db
+      .prepare(
+        `SELECT hours FROM venues_verified WHERE venue_key = ?1 AND ${BAR_IS_PUBLIC}
+           AND NOT EXISTS (SELECT 1 FROM venues_hidden WHERE venue_key = ?1)`,
+      )
+      .bind(key),
   ]);
   const h = (
     (history?.results ?? []) as unknown as {
@@ -211,7 +233,20 @@ export async function getVenuePrices(db: D1Database, key: string): Promise<Venue
       observed_on: string;
     }[]
   ).map((r): HistoryRow => [r.drink, r.hh, r.price_cents, r.observed_on]);
-  return { p: ((current?.results ?? []) as unknown as PriceDbRow[]).map(toPriceRow), h };
+  const p = ((current?.results ?? []) as unknown as PriceDbRow[]).map(toPriceRow);
+  const stored = (verified?.results[0] as { hours: string } | undefined)?.hours;
+  const o = stored === undefined ? undefined : parseHours(stored);
+  return o ? { p, h, o } : { p, h };
+}
+
+/** Hours as stored by the admin route; anything else (a hand edit gone wrong) is not shown. */
+function parseHours(text: string): WeekHours | undefined {
+  try {
+    const value: unknown = JSON.parse(text);
+    return isValidWeek(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // ---- Writes (M2) ----
@@ -475,10 +510,10 @@ export async function bumpProposal(db: D1Database, id: number): Promise<void> {
 export function getUserVenue(db: D1Database, id: number) {
   return db
     .prepare(
-      "SELECT cell, status FROM venues_user WHERE id = ?1 AND status IN ('pending', 'approved')",
+      "SELECT cell, status, name FROM venues_user WHERE id = ?1 AND status IN ('pending', 'approved')",
     )
     .bind(id)
-    .first<{ cell: string; status: "pending" | "approved" }>();
+    .first<{ cell: string; status: "pending" | "approved"; name: string }>();
 }
 
 // ---- Reports and cleanup (M2) ----
@@ -846,4 +881,75 @@ export async function getUserVenueNames(db: D1Database, ids: number[]) {
     .bind(...ids)
     .all<{ id: number; name: string }>();
   return new Map(results.map((r) => [`u${String(r.id)}`, r.name]));
+}
+
+// ---- Gestore verificato (SPEC 1.9, D-34, ADR 0033) ----
+
+/** One row per verified bar: the upsert writes the row and its cell index entry. */
+const VERIFIED_UPSERT_SQL = `INSERT INTO venues_verified (venue_key, cell, name, hours)
+  VALUES (?1, ?2, ?3, ?4)
+  ON CONFLICT (venue_key) DO UPDATE SET cell = excluded.cell, name = excluded.name, hours = excluded.hours`;
+
+export async function saveVerified(
+  db: D1Database,
+  v: { key: string; cell: string; name: string; hours: WeekHours },
+): Promise<void> {
+  await db.prepare(VERIFIED_UPSERT_SQL).bind(v.key, v.cell, v.name, JSON.stringify(v.hours)).run();
+}
+
+/** Turns «Gestore verificato» off; the cell of the bar, or null if it was not verified. */
+export async function removeVerified(db: D1Database, key: string): Promise<string | null> {
+  const row = await db
+    .prepare("DELETE FROM venues_verified WHERE venue_key = ?1 RETURNING cell")
+    .bind(key)
+    .first<{ cell: string }>();
+  return row?.cell ?? null;
+}
+
+export async function listVerified(
+  db: D1Database,
+): Promise<{ key: string; cell: string; name: string; hours: WeekHours }[]> {
+  const { results } = await db
+    .prepare("SELECT venue_key, cell, name, hours FROM venues_verified ORDER BY name LIMIT 500")
+    .all<{ venue_key: string; cell: string; name: string; hours: string }>();
+  return results.map((r) => ({
+    key: r.venue_key,
+    cell: r.cell,
+    name: r.name,
+    hours: parseHours(r.hours) ?? [[], [], [], [], [], [], []],
+  }));
+}
+
+/** Bar page openings of the verified bars since a day (SPEC 12): [key, day, n], newest first. */
+export async function listVerifiedViews(
+  db: D1Database,
+  since: string,
+): Promise<[string, string, number][]> {
+  const { results } = await db
+    .prepare(
+      `SELECT day, prop, n FROM metrics_daily
+       WHERE day >= ?1 AND event = 'venue_viewed' AND prop LIKE 'venue:%' ORDER BY day DESC, prop`,
+    )
+    .bind(since)
+    .all<{ day: string; prop: string; n: number }>();
+  return results.map((r) => [r.prop.slice("venue:".length), r.day, r.n]);
+}
+
+/**
+ * Which of these keys are verified public bars: the only keys a bar page opening may carry (MD-11).
+ * Public as everywhere else (isPublicBar): not hidden, and a user bar only while approved.
+ */
+export async function verifiedAmong(db: D1Database, keys: string[]): Promise<Set<string>> {
+  if (keys.length === 0) return new Set();
+  const { results } = await db
+    .prepare(
+      `SELECT v.venue_key FROM venues_verified v
+       WHERE v.venue_key IN (SELECT value FROM json_each(?1))
+         AND NOT EXISTS (SELECT 1 FROM venues_hidden h WHERE h.venue_key = v.venue_key)
+         AND (v.venue_key NOT LIKE 'u%' OR EXISTS (SELECT 1 FROM venues_user u
+           WHERE u.id = CAST(substr(v.venue_key, 2) AS INTEGER) AND u.status = 'approved'))`,
+    )
+    .bind(JSON.stringify(keys))
+    .all<{ venue_key: string }>();
+  return new Set(results.map((r) => r.venue_key));
 }

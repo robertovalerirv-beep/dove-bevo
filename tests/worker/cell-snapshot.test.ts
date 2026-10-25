@@ -85,7 +85,7 @@ describe("cell snapshot (M3-20)", () => {
   });
 
   it("an empty cell is not stored: nothing to save, nothing written", async () => {
-    expect(await read("u0ndd")).toEqual({ p: [], u: [], pend: [], h: [] });
+    expect(await read("u0ndd")).toEqual({ p: [], u: [], pend: [], h: [], g: [] });
     const row = await env.DB.prepare("SELECT cell FROM cell_snapshot WHERE cell = 'u0ndd'").first();
     expect(row).toBeNull();
   });

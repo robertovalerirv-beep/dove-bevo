@@ -721,6 +721,7 @@ export function App({ loadMap }: Props) {
           cell,
           prices: [],
           pending: true,
+          verified: false,
         };
         mergeVenues([venue]);
         invalidateCell(cell);
@@ -1093,7 +1094,8 @@ export function App({ loadMap }: Props) {
           onVenue={(v) => {
             if (!viewedBars.current.has(v.key)) {
               viewedBars.current.add(v.key);
-              track("venue_viewed");
+              // The key only for a verified bar: its manager sees the openings (SPEC 12, D-34).
+              track("venue_viewed", v.verified ? { venue: v.key } : undefined);
             }
             // A search already flew to the bar (zoom 17): the page must not move the map again.
             if (flewToBar.current) flewToBar.current = false;

@@ -12,7 +12,13 @@ export interface AppEvent {
    * Every value comes from a closed list, so the rows of metrics_daily stay bounded. `city` (SPEC 12)
    * is left out until it is used: it would have to be checked against the known OSM ids.
    */
-  p?: { day_bucket?: DayBucket; source?: "manual"; drink?: string };
+  p?: {
+    day_bucket?: DayBucket;
+    source?: "manual";
+    drink?: string;
+    /** venue_viewed only, for a bar with «Gestore verificato» (SPEC 1.9, D-34): checked by the Worker. */
+    venue?: string;
+  };
 }
 
 export interface EventsBody {

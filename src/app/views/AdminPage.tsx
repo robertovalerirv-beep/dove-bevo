@@ -1,9 +1,9 @@
 import type { ComponentChildren, ComponentType } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
 import { it } from "../i18n/it";
-import { invalidateCell, loadCell, loadPlaces, type Venue } from "../lib/data";
-import { distanceMeters, searchKey } from "../../shared/venue";
+import { findBars } from "../lib/admin-find";
+import { invalidateCell, loadCell, type Venue } from "../lib/data";
+import { distanceMeters } from "../../shared/venue";
 import { MetricsSection } from "./Metrics";
 import { formatDate, formatDistance, formatPrice, todayRome } from "../lib/format";
 import { CATALOG } from "../../shared/catalog";
@@ -98,9 +98,15 @@ export function AdminPage() {
     <main class="admin">
       <header class="admin__head">
         <h1>{it.admin.title}</h1>
-        <a class="btn btn--secondary" href="/">
-          {it.admin.backToMap}
-        </a>
+        {/* «Gestore verificato» has its own page (SPEC 7.10), reached from the header. */}
+        <nav class="admin__nav" aria-label={it.admin.nav}>
+          <a class="btn btn--secondary" href="/admin/verificati">
+            {it.admin.verified.nav}
+          </a>
+          <a class="btn btn--secondary" href="/">
+            {it.admin.backToMap}
+          </a>
+        </nav>
       </header>
       <p class="hint" role="status">
         {state === "loading" ? it.admin.loading : message}
@@ -485,27 +491,6 @@ function BarReports({
   );
 }
 
-/** Cells around a point, about ±7 km: wide enough for a city, fetched fresh for the admin. */
-function cellsAround(lat: number, lon: number): string[] {
-  const cells = new Set<string>();
-  for (let dLat = -0.06; dLat <= 0.06001; dLat += 0.03)
-    for (let dLon = -0.08; dLon <= 0.08001; dLon += 0.03)
-      cells.add(encodeGeohash(lat + dLat, lon + dLon, CELL_PRECISION));
-  return [...cells];
-}
-
-async function freshCells(cells: string[]): Promise<Venue[]> {
-  for (const cell of cells) invalidateCell(cell); // a bar added a moment ago must show up
-  const lists = await Promise.all(cells.map((c) => loadCell(c).catch(() => [])));
-  return lists.flat();
-}
-
-/** "/bar/n123?c=u0nd9" or a full link to it → key and cell. */
-export function parseBarLink(text: string): { key: string; cell: string } | null {
-  const match = /\/bar\/([nwru][1-9]\d{0,14})\?c=([0-9b-hjkmnp-z]{5})/.exec(text);
-  return match?.[1] && match[2] ? { key: match[1], cell: match[2] } : null;
-}
-
 /** City + part of the name, or a bar link → OSM and added bars, each one deletable. */
 function FindBars({ onDelete }: { onDelete: (venue: Venue) => Promise<boolean> }) {
   const [city, setCity] = useState("");
@@ -519,35 +504,9 @@ function FindBars({ onDelete }: { onDelete: (venue: Venue) => Promise<boolean> }
     e.preventDefault();
     setNote("");
     setFound(null);
-    let result: Venue[];
-    if (link.trim()) {
-      const target = parseBarLink(link);
-      if (!target) {
-        setNote(it.admin.badLink);
-        return;
-      }
-      result = (await freshCells([target.cell])).filter((v) => v.key === target.key);
-    } else {
-      if (!city.trim() || name.trim().length < 2) {
-        setNote(it.admin.needCityOrLink);
-        return;
-      }
-      const places = await loadPlaces();
-      const wanted = searchKey(city);
-      const place =
-        places.find((p) => searchKey(p[1]) === wanted) ??
-        places.find((p) => searchKey(p[1]).startsWith(wanted));
-      if (!place) {
-        setNote(it.admin.cityNotFound);
-        return;
-      }
-      const key = searchKey(name);
-      result = (await freshCells(cellsAround(place[2], place[3])))
-        .filter((v) => searchKey(v.name).includes(key))
-        .slice(0, 30);
-    }
-    setFound(result);
-    if (result.length === 0) setNote(it.admin.noResults);
+    const result = await findBars({ city, name, link });
+    setFound(result.found);
+    setNote(result.note);
   }
 
   return (

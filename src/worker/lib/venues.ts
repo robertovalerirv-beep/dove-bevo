@@ -79,3 +79,20 @@ export async function resolveVenue(
   if (!found || (await isHidden(env.DB, venue))) throw new ApiError("bad_request");
   return { cell, city: found.city, isPublic: true };
 }
+
+/**
+ * Name of a bar the map shows (an OSM bar not hidden, or an approved user bar) in the given cell, from
+ * the static file or D1, never from the client; null otherwise. For «Gestore verificato» (D-34).
+ */
+export async function publicVenueName(
+  env: Env,
+  venue: string,
+  cell: string,
+): Promise<string | null> {
+  if (venue.startsWith("u")) {
+    const user = await getUserVenue(env.DB, Number(venue.slice(1)));
+    return user?.status === "approved" && user.cell === cell ? user.name : null;
+  }
+  const found = await osmVenue(env, venue, cell);
+  return found && !(await isHidden(env.DB, venue)) ? found.name : null;
+}

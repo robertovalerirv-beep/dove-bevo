@@ -4,6 +4,18 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-25 · Dominio dovebevo.com sul Worker esistente (branch `claude/cloudflare-domain-setup-beb3b8`) · M6-01 in parte
+
+**Richiesta di Roberto:** portare il sito vero (bar e prezzi già inseriti) sul dominio comprato, sostituendo l'indirizzo `workers.dev`. ADR 0032: nessuna copia del D1, il dominio si collega al Worker `dovebevo-staging`.
+
+**Verificato da fuori (sola lettura):** `dovebevo.com` e `www.dovebevo.com` rispondono 200 con `data_version 20261024`, identico a `workers.dev` (stessi dati), HSTS e CSP presenti, `CF-Cache-Status: HIT`. `/api/admin/metrics` sul nuovo dominio → 403 (chiuso dal Worker), su `workers.dev` → 302 al login di Access: Access non copre ancora il nuovo hostname.
+
+**Fatto nel codice:** `TURNSTILE_HOSTNAME` di staging e `APP_DOMAIN` = `www.dovebevo.com` (canonico, scelto da Roberto), test di configurazione, guide admin e inserimento, ADR 0032.
+
+**A carico di Roberto (dashboard):** hostname `www.dovebevo.com` nel widget Turnstile `dovebevo-staging`; due public hostname (`admin`, `api/admin/*`, su `www.dovebevo.com`) nell'applicazione Access; la Redirect Rule radice → `www` è già creata, da verificare che risponda 301; Always Use HTTPS. Poi prova: salvare un prezzo e aprire `/admin` su `www.dovebevo.com`.
+
+---
+
 ## 2026-10-24 · Attribuzioni in una riga e pallino della posizione (branch `claude/reduce-ads-location-ui-b283ws`, da `main` be1891e) · SPEC 1.8, MC-05
 
 **Richiesta di Roberto (screenshot iPhone):** ridurre la scritta in basso «OpenFreeMap © OpenMapTiles © OpenStreetMap contributors» e mostrare un pallino blu piccolo della posizione, solo dopo il pulsante in alto a destra, fermo finché non lo si ritocca. Autorizzati da lui in chat: SPEC 1.8, la voce nuova MC-05 in `feature_list.json`, il tag `spec-approved-9` e la guardia aggiornata. (Il suo «non mi trovava» dipendeva dalla posizione di Safari spenta: attivandola funziona.)

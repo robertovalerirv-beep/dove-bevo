@@ -1,6 +1,6 @@
 // Single source for the product name and domain (SPEC 1). The domain is a placeholder until M6.
 export const APP_NAME = "Dove bevo";
-export const APP_DOMAIN = "dovebevo.example";
+export const APP_DOMAIN = "www.dovebevo.com";
 
 /** "Annulla" after Salva (SPEC D-15): the price is sent when this runs out. One value for the timer, the progress bar and the texts. */
 export const UNDO_MS = 5_000;

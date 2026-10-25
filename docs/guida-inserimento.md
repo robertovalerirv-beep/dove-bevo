@@ -1,6 +1,6 @@
 # Guida: inserire un prezzo
 
-Indirizzo di prova (staging): <https://dovebevo-staging.dovebevo.workers.dev>
+Indirizzo di prova (staging): <https://www.dovebevo.com>
 
 Funziona da telefono e da computer, senza registrazione. Sul telefono puoi aggiungerla alla schermata Home
 dal menu del browser ("Aggiungi a schermata Home").

@@ -10,9 +10,13 @@ declare module "node:fs" {
 }
 declare module "node:path" {
   export function join(...parts: string[]): string;
+  export function dirname(path: string): string;
+}
+declare module "node:url" {
+  export function fileURLToPath(url: string): string;
 }
 
-declare const process: { env: Record<string, string | undefined> };
+declare const process: { env: Record<string, string | undefined>; execPath: string };
 declare module "node:zlib" {
   export function gzipSync(data: string): { length: number };
 }

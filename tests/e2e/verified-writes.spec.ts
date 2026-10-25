@@ -1,4 +1,6 @@
 import { execFileSync } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect } from "@playwright/test";
 import type { WeekHours } from "../../src/shared/hours";
 import { test } from "./fixtures";
@@ -14,9 +16,15 @@ const BARS = {
 const CELL = "u0nd9";
 const HOURS: WeekHours = [[], [["08:00", "20:00"]], [], [], [], [["18:00", "02:00"]], []];
 
+// Wrangler's own entry point run with node: `npx` is a .cmd file that execFileSync cannot start on Windows.
+const WRANGLER = join(
+  dirname(fileURLToPath(import.meta.resolve("wrangler/package.json"))),
+  "bin/wrangler.js",
+);
+
 /** SQL on the local D1 of the preview, as `npm run db:local` runs it. */
 function d1(sql: string) {
-  execFileSync("npx", ["wrangler", "d1", "execute", "DB", "--local", "--command", sql], {
+  execFileSync(process.execPath, [WRANGLER, "d1", "execute", "DB", "--local", "--command", sql], {
     stdio: "ignore",
     env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
   });

@@ -620,77 +620,77 @@
     "milestone": "MD",
     "descrizione": "Tabella e migrazione `0008_verified_venues`",
     "verifica": "unit worker: `venues_verified` con le sole colonne di 8 (`venue_key`, `cell`, `name`, `hours`), `WITHOUT ROWID` e indice sulla cella; nessuna colonna con dati personali o economici; la migrazione svuota `cell_snapshot`; le migrazioni già su `main` sono intatte",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-02",
     "milestone": "MD",
     "descrizione": "Rotte admin protette e validate",
     "verifica": "sec/unit worker: `GET /api/admin/verified`, `POST /api/admin/verified` e `POST /api/admin/verified/remove` senza JWT Access valido → 403; campi extra → 400; bar inesistente nella cella, nascosto o non approvato → 400; cella e nome vengono dal file del bar o da `venues_user`, mai dal client; ogni scrittura svuota la cella (snapshot e Cache API)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-03",
     "milestone": "MD",
     "descrizione": "Orari validati da un solo modulo",
     "verifica": "unit: `src/shared/hours.ts`, usato da Worker e client: 7 giorni da lunedì, `[]` = chiuso, al massimo 2 fasce `[\"HH:MM\",\"HH:MM\"]` con ore 00–23 e minuti 00–59, apertura diversa dalla chiusura, fasce in ordine e senza sovrapposizioni, chiusura dopo mezzanotte solo nell'ultima fascia; nessun testo libero; il testo mostrato è sempre testo (mai HTML)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-04",
     "milestone": "MD",
     "descrizione": "Lettura pubblica",
     "verifica": "unit worker: `GET /api/prices/:cell` ha `g` con le sole chiavi dei bar verificati e pubblici della cella (nascosto o non approvato esclusi); `GET /api/venues/:key/prices` ha `o` solo per un bar verificato e pubblico; dopo la disattivazione spariscono entrambi alla lettura successiva",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-05",
     "milestone": "MD",
     "descrizione": "Costo D1 invariato",
     "verifica": "unit worker: cella con 300 prezzi e un bar verificato, a snapshot pronto → ≤ 5 righe lette (M3-20); a snapshot vuoto una sola query in più nello stesso `batch`; un'attivazione scrive ≤ 5 righe; un contributo resta ≤ 10 righe",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-06",
     "milestone": "MD",
     "descrizione": "Sezione admin «Gestori verificati»",
     "verifica": "e2e Chromium e WebKit 390×844 con JWT di test: la sezione si raggiunge dall'intestazione di `/admin`; cerco un bar (città e nome, o link), scrivo gli orari («Chiuso», due fasce, «Copia su tutti i giorni») e salvo; l'elenco mostra il bar con gli orari, «Modifica orari» e «Disattiva» con conferma; un errore di rete lascia il modulo compilato e lo dice; la sezione è in un chunk a richiesta (shell ≤ 50 KB gzip); target ≥ 48 px; axe senza violazioni nei due temi",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-07",
     "milestone": "MD",
     "descrizione": "Elenco con i verificati in cima",
     "verifica": "e2e: nell'Elenco i bar verificati vengono prima degli altri, con spunta, «Gestore verificato» e «Sponsorizzato»; tra loro e tra gli altri l'ordine resta quello di prima (distanza, poi nome); pin, ricerca, «I più economici qui», mediane e colori invariati; dopo il salvataggio in admin il bar compare verificato alla lettura successiva della cella",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-08",
     "milestone": "MD",
     "descrizione": "Scheda con gestore verificato e orari",
     "verifica": "e2e: accanto al nome spunta, «Gestore verificato» e «Sponsorizzato»; orari di ogni giorno (fasce o «Chiuso») prima della sezione Prezzi; nessun «aperto ora» e nessun calcolo sull'ora; un bar non verificato ha la scheda identica a prima; nessun attributo `style` nell'HTML servito; screenshot 390×844 nei due temi; axe senza violazioni",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-09",
     "milestone": "MD",
     "descrizione": "Trasparenza, colore e testi",
     "verifica": "unit/e2e: testi in `it.ts` con il test D-31; la spunta non compare mai senza «Sponsorizzato»; il colore non è l'unico segnale (glifo e testo); token `verified` in `docs/brand/tokens.json` con contrasto ≥ 3:1 su `bg` e `surface` nei due temi (MB-03); `/regole` spiega «Gestore verificato», «Sponsorizzato» e l'ordine dell'Elenco; pagine per i motori di ricerca invariate",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-10",
     "milestone": "MD",
     "descrizione": "Nessun dato personale o economico, nessun pagamento",
     "verifica": "sec: le colonne di `venues_verified` sono solo quelle di 8; nessun riferimento a processori di pagamento nel codice, nelle dipendenze e in `dist/` (M3-18); `PRIVACY-NOTES.md` e `/privacy` aggiornati",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MD-11",
     "milestone": "MD",
     "descrizione": "Aperture della scheda dei gestori verificati",
     "verifica": "unit/sec/e2e: aprendo la scheda di un bar verificato `venue_viewed` porta la chiave del bar (una volta per visita, nello stesso `sendBeacon`), per un bar non verificato no; il Worker conta la chiave solo se il bar è in `venues_verified`, altrimenti conta la visita senza chiave; body ≤ 2 KB, 10 eventi e rate limit invariati; il totale delle schede viste in `/admin` non cambia; la sezione «Gestori verificati» mostra le aperture per giorno degli ultimi 30 giorni",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-01",

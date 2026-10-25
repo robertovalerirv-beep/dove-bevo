@@ -26,10 +26,11 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 **Non fatto, di Roberto o da decidere**
 - Tag `spec-approved-10` sul commit 815b4c7: finché manca, la guardia della feature list è rossa in CI.
 - WebKit non è installato in questo container: la parte WebKit la esegue la CI.
-- `passes` delle voci MD resta `false` finché la CI (Chromium e WebKit) non è verde.
 - In `/admin` («Trova un bar sulla mappa») il messaggio della ricerca non è in una regione `aria-live`, come segnalato dalla revisione: difetto precedente, fuori da questo lavoro.
 
 **Da verificare a mano (Roberto):** su telefono, la spunta e gli orari di un bar attivato da `/admin/verificati`; il campo orario a 24 ore con il telefono in italiano.
+
+**CI della PR #55** (run 40193292677 su `30a06af`): E2E Chromium e WebKit e sicurezza, Lighthouse, import OSM, gitleaks verdi; la guardia della feature list verde dopo il tag `spec-approved-10` creato da Roberto sul commit 815b4c7. MD-01…MD-11 → `passes: true`.
 
 ---
 

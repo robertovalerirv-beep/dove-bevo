@@ -2,13 +2,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { findDrink } from "../../shared/catalog";
 import { MAX_ITEMS, QUARANTINE_MIN_PRICES, QUARANTINE_RATIO } from "../config";
-import { forgetCoverage } from "../lib/coverage";
+import { edgeKey, forgetCellCache } from "../lib/cell-cache";
 import { romeDay } from "../lib/day";
 import {
   claimStatement,
   confirmStatements,
   getCurrentPrice,
-  getCellPrices,
+  getCellSnapshot,
   loadPriceContext,
   type PriceContext,
   type PriceKey,
@@ -26,26 +26,6 @@ import type { AppEnv } from "../types";
 
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
 const EDGE_TTL = "public, max-age=60";
-const cellCacheKey = (url: string, cell: string) =>
-  new Request(new URL(`/api/prices/${cell}`, url));
-
-/**
- * Drops a cell from the edge cache after an admin change, so the map shows it at once; the coverage
- * figures of the dashboard are dropped too (ADR 0025).
- */
-export const forgetCell = (url: string, cell: string) => {
-  forgetCoverage();
-  return forgetCellCache(url, cell);
-};
-
-/**
- * Drops a cell from the edge cache after a write of a person (a price, a confirmation, a bar sent to
- * review): the next read, which the app makes right away, must not get the answer of up to 60 s ago.
- * Only the cell: the dashboard figures keep their own minimum between two calculations (ADR 0022).
- */
-export const forgetCellCache = (url: string, cell: string) =>
-  caches.default.delete(cellCacheKey(url, cell));
-
 export const prices = new Hono<AppEnv>();
 
 // GET /api/prices/:cell — edge cache 60 s (SPEC 5.4; inactive on workers.dev).
@@ -53,11 +33,13 @@ prices.get("/:cell", async (c) => {
   const cell = Cell.safeParse(c.req.param("cell"));
   if (!cell.success) return apiError(c, "bad_request");
 
-  const key = cellCacheKey(c.req.url, cell.data);
+  const key = edgeKey(c.req.url, cell.data);
   const hit = await caches.default.match(key);
   if (hit) return new Response(hit.body, hit); // mutable copy for the header middleware
 
-  const response = c.json(await getCellPrices(c.env.DB, cell.data), 200, {
+  // One row from the cell's snapshot (ADR 0020); the text is already JSON.
+  const response = c.body(await getCellSnapshot(c.env.DB, cell.data), 200, {
+    "Content-Type": "application/json",
     "Cache-Control": EDGE_TTL,
   });
   c.executionCtx.waitUntil(caches.default.put(key, response.clone()));
@@ -193,7 +175,7 @@ prices.post("/", async (c) => {
   }
 
   const done = await runStatements(c.env.DB, statements);
-  if (statements.length > 0) await forgetCellCache(c.req.url, where.cell);
+  if (statements.length > 0) await forgetCellCache(c.env.DB, c.req.url, where.cell);
   const results = planned.map((p): Result => {
     if (!("confirmAt" in p)) return p;
     // "already": not counted (author, or this session/IP already confirmed it).
@@ -218,7 +200,7 @@ prices.post("/confirm", async (c) => {
     await confirmStatementsFor(c.env, who, k, romeDay()),
   );
   const count = countedBy(update);
-  if (count !== null) await forgetCellCache(c.req.url, existing.cell);
+  if (count !== null) await forgetCellCache(c.env.DB, c.req.url, existing.cell);
   return c.json(
     count === null
       ? { status: "already", confirmations: existing.confirmations }

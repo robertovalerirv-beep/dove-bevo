@@ -24,6 +24,8 @@ export interface Venue {
   prices: PriceRow[];
   /** Proposed by a user, not yet approved: only offered when choosing the bar of a price. */
   pending: boolean;
+  /** «Gestore verificato» (SPEC 1.9, D-34): first in the list, with «Sponsorizzato». */
+  verified: boolean;
 }
 
 const cells = new Map<string, Promise<Venue[]>>();
@@ -50,13 +52,14 @@ async function fetchCell(cell: string): Promise<Venue[]> {
     getJson<CellFile>(`/data/${DATA_VERSION}/v/${cell}.json`, { c: [], v: [] }),
     getJson<CellPrices>(
       `/api/prices/${cell}`,
-      { p: [], u: [], pend: [], h: [] },
+      { p: [], u: [], pend: [], h: [], g: [] },
       fresh ? { cache: "reload" } : undefined,
     ),
   ]);
   const byKey = new Map<string, PriceRow[]>();
   for (const row of prices.p) byKey.set(row[0], [...(byKey.get(row[0]) ?? []), row]);
   const hidden = new Set(prices.h);
+  const verified = new Set(prices.g ?? []);
   const osm = file.v
     .filter(([key]) => !hidden.has(key)) // not a bar, or closed (admin, ADR 0017)
     .map(([key, name, kind, lat, lon, addr, ci]) => ({
@@ -70,6 +73,7 @@ async function fetchCell(cell: string): Promise<Venue[]> {
       cell,
       prices: byKey.get(key) ?? [],
       pending: false,
+      verified: verified.has(key),
     }));
   const user = [...prices.u, ...prices.pend].map(([key, name, kind, lat, lon], i) => ({
     key,
@@ -82,6 +86,7 @@ async function fetchCell(cell: string): Promise<Venue[]> {
     cell,
     prices: byKey.get(key) ?? [],
     pending: i >= prices.u.length,
+    verified: i < prices.u.length && verified.has(key),
   }));
   return [...osm, ...user];
 }

@@ -1,4 +1,4 @@
-# 0032 · Dominio www.dovebevo.com sul Worker esistente
+# 0035 · Dominio www.dovebevo.com sul Worker esistente
 
 - **Stato:** decisa da Roberto il 25/10/2026 in chat · **Data:** 2026-10-25 · tocca SPEC D-01 e M6-01 (nessun cambio di testo: `APP_DOMAIN` era un segnaposto)
 

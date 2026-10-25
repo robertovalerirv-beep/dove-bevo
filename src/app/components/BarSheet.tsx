@@ -6,7 +6,9 @@ import { formatDate, formatPrice, todayRome } from "../lib/format";
 import { isStale, type Tier } from "../lib/tiers";
 import { directionsUrl } from "../lib/geo";
 import { drinkIcon, Icon } from "./Icon";
+import { LegalLinks } from "./LegalLinks";
 import { Sheet } from "./Sheet";
+import { HoursList, VerifiedBadge } from "./Verified";
 
 export interface BarActions {
   /** New count; `counted` is false when this person had already confirmed or is the author. */
@@ -214,7 +216,14 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           <h2 class="scontrino__name" tabIndex={-1}>
             {venue.name}
           </h2>
+          {venue.verified && (
+            <p class="bar__verified">
+              <VerifiedBadge />
+            </p>
+          )}
           {venue.addr && <p class="bar__addr">{venue.addr}</p>}
+          {/* The hours of a verified bar come before the prices (SPEC 7.2, D-34). */}
+          {venue.verified && prices?.o && <HoursList hours={prices.o} />}
           <h3 class="section-title">{it.bar.prices}</h3>
           {pricesFailed && (
             <p class="hint" role="alert">
@@ -301,6 +310,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         >
           {it.actions.reportBar}
         </button>
+        <LegalLinks />
       </div>
     </Sheet>
   );

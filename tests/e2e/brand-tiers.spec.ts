@@ -33,6 +33,25 @@ test("M4-05 a price older than 90 days says «Da confermare» on the bar page", 
   await expect(wine).not.toContainText("Da confermare"); // 4 days old
 });
 
+test("M4-05 a price older than 90 days is marked on the map list too, and a recent one is not", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await goToMilano(page);
+  await chooseDrinks(page, "Gin lemon");
+  await page.getByRole("button", { name: "Elenco" }).click();
+  const list = page.getByRole("dialog", { name: "Bar nella zona" });
+  await expect(list.getByRole("link", { name: /Le Jardin Bistrot/ })).toContainText(
+    "Da confermare",
+  );
+  await list.getByRole("button", { name: "Chiudi" }).click();
+  await chooseDrinks(page, "Calice di vino");
+  await page.getByRole("button", { name: "Elenco" }).click();
+  await expect(list.getByRole("link", { name: /Le Jardin Bistrot/ })).not.toContainText(
+    "Da confermare",
+  );
+});
+
 test("M4-10 happy hour: only the HH price is shown with «HH» on the map; the bar page shows both", async ({
   page,
 }) => {

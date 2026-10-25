@@ -4,15 +4,74 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
-## 2026-10-25 · Dominio dovebevo.com sul Worker esistente (branch `claude/cloudflare-domain-setup-beb3b8`) · M6-01 in parte
+## 2026-10-25 · Dominio www.dovebevo.com sul Worker esistente (branch `claude/cloudflare-domain-setup-beb3b8`) · M6-01 in parte
 
-**Richiesta di Roberto:** portare il sito vero (bar e prezzi già inseriti) sul dominio comprato, sostituendo l'indirizzo `workers.dev`. ADR 0032: nessuna copia del D1, il dominio si collega al Worker `dovebevo-staging`.
+**Richiesta di Roberto:** portare il sito vero (bar e prezzi già inseriti) sul dominio comprato, sostituendo l'indirizzo `workers.dev`. ADR 0035: nessuna copia del D1, il dominio si collega al Worker `dovebevo-staging`.
 
 **Verificato da fuori (sola lettura):** `dovebevo.com` e `www.dovebevo.com` rispondono 200 con `data_version 20261024`, identico a `workers.dev` (stessi dati), HSTS e CSP presenti, `CF-Cache-Status: HIT`. `/api/admin/metrics` sul nuovo dominio → 403 (chiuso dal Worker), su `workers.dev` → 302 al login di Access: Access non copre ancora il nuovo hostname.
 
-**Fatto nel codice:** `TURNSTILE_HOSTNAME` di staging e `APP_DOMAIN` = `www.dovebevo.com` (canonico, scelto da Roberto), test di configurazione, guide admin e inserimento, ADR 0032.
+**Fatto nel codice:** `TURNSTILE_HOSTNAME` di staging e `APP_DOMAIN` = `www.dovebevo.com` (canonico, scelto da Roberto), test di configurazione, guide admin e inserimento, ADR 0035.
 
 **A carico di Roberto (dashboard):** hostname `www.dovebevo.com` nel widget Turnstile `dovebevo-staging`; due public hostname (`admin`, `api/admin/*`, su `www.dovebevo.com`) nell'applicazione Access; la Redirect Rule radice → `www` è già creata, da verificare che risponda 301; Always Use HTTPS. Poi prova: salvare un prezzo e aprire `/admin` su `www.dovebevo.com`.
+
+---
+
+## 2026-10-25 · «Gestore verificato» (branch `md-gestore-verificato`, da `main` baba407) · SPEC 1.9, MD-01…MD-11
+
+**Richiesta di Roberto:** offerta ai gestori che firmano un contratto (fuori dal repository): spunta blu con «Gestore verificato», «Sponsorizzato», primo posto nell'Elenco e orari nella scheda prima dello scontrino; si attiva e si scrivono gli orari solo da admin; contratti, pagamenti, scadenze e dati dei gestori fuori dal progetto; niente «aperto ora»; chiusure straordinarie a mano; pagine per i motori di ricerca invariate. Autorizzati da lui in chat: SPEC 1.9, le voci MD-01…MD-11, il tag `spec-approved-10` (lo crea lui sul commit 815b4c7) e le regole contro i turni rossi.
+
+**Fatto**
+- SPEC 1.9 (D-34, 7.10, 8, 9.2, 12, 14, MD), ADR 0033, feature list con MD-01…MD-11 a `false`, guardia su `spec-approved-10`.
+- Migrazione `0008_verified_venues.sql` (`venue_key`, `cell`, `name`, `hours`; svuota `cell_snapshot`). Rotte `GET/POST /api/admin/verified` e `POST /api/admin/verified/remove` dietro Access; nome e cella dal file del bar o da `venues_user`; ogni scrittura svuota la cella. `g` nella cella, `o` nella scheda, solo per bar pubblici. `venue_viewed` porta la chiave solo di un bar verificato e pubblico, controllata dal Worker. Orari validati da un solo modulo (`src/shared/hours.ts`).
+- App: Elenco con i verificati in cima (`src/app/lib/list-order.ts`), badge sempre con «Sponsorizzato» (`components/Verified.tsx`), orari prima dei prezzi, pagina `/admin/verificati` (chunk a sé, link nell'intestazione di `/admin`), ricerca admin condivisa (`lib/admin-find.ts`), token `verified`, `/regole` e `/privacy` aggiornati, `PRIVACY-NOTES.md`.
+- Regole: hook di fine turno `.claude/hooks/check-before-stop.sh` (typecheck e test collegati ai file TypeScript cambiati; blocca il turno se rossi) e sezione «Prima di scrivere codice» in CLAUDE.md. `protect-files.sh` controlla anche `origin/main`: con il `main` locale fermo a ae2183b la 0007 non era protetta (provato: ora bloccata).
+
+**Prove**
+- `npm run test`: 54 file, 603 test verdi (tra cui `tests/worker/verified.test.ts` 18, `tests/unit/hours.test.ts` 30, `list-order` 4, `migrations-frozen` 8: le sette migrazioni di `origin/main` identiche byte per byte, e il test diventa rosso se se ne tocca una).
+- Righe D1 misurate sulle rotte vere, contando ogni tabella prima e dopo: attivazione **2** righe (limite 5), contributo in una cella con un bar verificato **7** (limite 10); lettura di 300 prezzi a snapshot pronto ≤ 5 righe.
+- E2E Chromium `tests/e2e/verified.spec.ts` 15 verdi (MD-06…MD-09, MD-11; MD-07 ripetuto 6 volte); `verified-writes.spec.ts` (riga nel D1 locale → spunta e orari sulla scheda, e spariscono alla rimozione) verde; sicurezza `tests/security/verified.spec.ts` 3 verdi (403 senza Access sulle tre rotte, colonne di `venues_verified`, `g` solo chiavi). Suite Chromium completa e sicurezza: vedi sotto.
+- Shell: col vecchio conteggio (tutti i JS e CSS tranne MapLibre) **46.574 B** su `origin/main` → **51.136 B** (budget 51.200); la funzione aggiunge ~4,6 KB, di cui 2,4 KB nella pagina admin a richiesta. Con il conteggio della shell iniziale deciso da Roberto (ADR 0034): **38.508 B** (index.html, `theme.js`, JS e CSS principali); pagine a richiesta stampate a parte (VerifiedPage 2.408 B).
+- Revisioni: `security-reviewer` OK (segnalato: chiave di un bar verificato poi nascosto ancora contata → corretto con test); `spec-reviewer` OK con 9 lacune nei test → chiuse tutte; `ux-a11y-reviewer` OK con 4 punti (annuncio dei messaggi di ricerca, fuoco dopo salva/annulla/disattiva, righe degli orari, link a 48 px) → corretti con test.
+- Screenshot 390×844 nei due temi in `docs/screenshots/md/` (scheda, Elenco, admin).
+- `verify` in locale, passo per passo: lint, formato, typecheck, unit e worker (603), policy dei workflow, configurazione, `npm audit` (0), build, budget, Lighthouse mediana di 3 (performance 0,97, accessibilità 0,96, best practices 1, SEO 1, LCP 2,35 s, CLS 0) verdi; E2E Chromium 129, sicurezza 23, scrittura 19, proposte 5 verdi. Non eseguibili qui: guardia della feature list (manca il tag `spec-approved-10`; confrontata con `origin/main` risultano solo le 11 voci MD aggiunte) e WebKit (non installato). Push con `--no-verify` autorizzato da Roberto per questi due motivi.
+
+**Non fatto, di Roberto o da decidere**
+- Tag `spec-approved-10` sul commit 815b4c7: finché manca, la guardia della feature list è rossa in CI.
+- WebKit non è installato in questo container: la parte WebKit la esegue la CI.
+- In `/admin` («Trova un bar sulla mappa») il messaggio della ricerca non è in una regione `aria-live`, come segnalato dalla revisione: difetto precedente, fuori da questo lavoro.
+
+**Da verificare a mano (Roberto):** su telefono, la spunta e gli orari di un bar attivato da `/admin/verificati`; il campo orario a 24 ore con il telefono in italiano.
+
+**CI della PR #55** (run 40193292677 su `30a06af`): E2E Chromium e WebKit e sicurezza, Lighthouse, import OSM, gitleaks verdi; la guardia della feature list verde dopo il tag `spec-approved-10` creato da Roberto sul commit 815b4c7. MD-01…MD-11 → `passes: true`.
+
+---
+
+## 2026-10-24 · Chiusura del codice prima del dominio (branch `m5-chiusura-codice`, da `main` 91386b7) · M3-17, M3-20, M4-05, M4-13, MB-04, MB-07, MB-08, MB-14, MB-16, M5-02, M5-04, M5-05, M5-07, M5-08, M5-10, M0-07
+
+**Richiesta di Roberto:** fare tutte le verifiche e chiudere ciò che si può sul codice prima di comprare il dominio. Provato da lui su telefono vero: «Vicino a me» funziona; icone e limiti di Sbagliato, Gin lemon e Acqua approvati; il test con 5 persone è in corso (inseriscono anche locali e prezzi). Contatto pubblico deciso da lui: `dovebevo@gmail.com`.
+
+**Fatto**
+- **Listino in admin (M3-17):** `POST /api/admin/listino` (zod `strict`, catalogo e limiti come l'inserimento manuale, giorno non futuro e non oltre 90 giorni, un prezzo più recente o in revisione non si sostituisce) e il modulo «Inserisci listino» sotto ogni bar trovato in `/admin`.
+- **Pagine `/privacy` e `/regole` (M5-04, MB-16):** testi in `it.ts` (sezione `legal`) dalle regole di SPEC 14 e da `PRIVACY-NOTES.md`, chunk a richiesta, logo orizzontale nei due temi, link nella scheda bar e nel foglio di ricerca (la mappa non ha un piè di pagina: la barra a due tasti di D-28 non cambia). `CONTACT_EMAIL` = `dovebevo@gmail.com`.
+- **Riga istantanea per cella (M3-20, ADR 0035, migrazione 0007):** una cella si legge con 1 riga; invalidata a ogni scrittura (anche le proposte di bar, prima mancava), scadenza di sicurezza 5 minuti.
+- **Elenco della mappa:** un prezzo vecchio dice «Da confermare» anche a parole (M4-05; il pin tratteggiato resta solo grafico).
+- **Documenti:** `docs/security/asvs-l1.md` (M5-07), `docs/user-test.md` (M5-10), `docs/runbook-rollback.md`, `docs/release-checklist.md`, `CHANGELOG.md`, `docs/templates/deploy-production.yml.example` (modello del workflow di produzione: solo da tag, solo se il commit è già in `main`, con approvazione dell'environment `production`; non provato e non attivo, perché `check-config` lo rifiuta finché `wrangler.jsonc` non ha il blocco `production`: si copia in `.github/workflows/` in M6).
+- `eslint.config.js` ignora `docs/materiali/` (materiali locali fuori dal repository).
+
+**Prove**
+- Worker: `admin-listino.test.ts` 6 verdi; `cell-snapshot.test.ts` 6 verdi (300 prezzi: la lettura dello snapshot costa ≤ 5 righe; un contributo vero via `POST /api/prices` aggiunge ≤ 10 righe; corsa lettore/scrittore chiusa).
+- E2E Chromium e WebKit: `admin.spec.ts` 16 verdi (listino + axe); `legal.spec.ts` (contenuto, logo, axe, target ≥ 48 px, nessuna CSP, nessun caricamento della mappa, link dalla ricerca e dalla scheda); `a11y-views.spec.ts` (axe wcag22aa, target ≥ 48 px, nessuno scroll orizzontale su mappa, menu drink, elenco, ricerca, aggiungi prezzo in 3 passi, proponi bar, scheda, segnalazione, nei due temi; Tab dentro i fogli, Esc, `prefers-reduced-motion`); `brand-controls.spec.ts` (bordo 2 px `ink`, ombra, 3 px da premuto, focus 3 px a 2 px; la mappa a tutto schermo ha il suo anello interno, app.css); `brand-coverage.spec.ts` (conteggio a mano su proiezione Web Mercator indipendente dal codice, zero richieste di rete); `brand-search.spec.ts` M4-13 (esatto, inizio, distanza); `brand-tiers.spec.ts` M4-05 sull'elenco.
+- **M5-06:** `npm run verify` tutto verde in 796 s (lint, formato, typecheck, unit e worker, guardia, audit, E2E Chromium e WebKit, build, budget della shell, Lighthouse mediana di 3): performance 0,97, accessibilità 0,96, best practices 1, SEO 1, LCP 2,42 s (limite 2,5), CLS 0, TBT 41–106 ms; INP delle interazioni sui pin 80 ms (Chromium) e 160 ms (WebKit) con circa 263 pin, vedi MB-07.
+- Sicurezza: `no-secrets.spec.ts` (nomi dei segreti mai nei file del browser, nessun formato di chiave nel build).
+- **MB-07, 300 pin:** con circa 263 pin sullo schermo l'interazione più lenta è 80 ms su Chromium e 160 ms su WebKit (locale). Sul runner CI i tempi sono più alti e instabili, quindi il test fissa solo un limite di buon senso (< 1000 ms) e riporta il numero; la prova di Roberto su telefono resta il riferimento.
+- M0-07: Deploy staging verde su 91386b7 e `curl https://dovebevo-staging.dovebevo.workers.dev/api/health` → `{"status":"ok","version":"0.0.0","data_version":"20261023"}`.
+- Revisioni: `security-reviewer` OK, nessun punto sopra LOW (corretti: testo della privacy sulla fascia di anzianità, ADR 0035, tag sul ramo `main` nel workflow di produzione); `spec-reviewer` NOT OK per la mancanza di queste prove in PROGRESS e per il test delle scritture, ora entrambi sistemati.
+
+**Non fatto, di Roberto o da decidere**
+- M6-01…M6-05 dopo il dominio.
+- `/privacy` non indica il titolare del trattamento (informativa iubenda o dati del titolare, a cura di Roberto).
+- SPEC 7.8 parla di «piè di pagina della mappa»: i link sono nella scheda bar e nel foglio di ricerca; se li vuoi anche sulla mappa serve una decisione sul layout (D-28).
+- I quattro punti del pen test del 22/10 che cambiano la SPEC restano da decidere (SECURITY.md).
 
 ---
 

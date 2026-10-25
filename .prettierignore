@@ -19,3 +19,8 @@ brand/
 
 # Map styles are named by the hash of their exact bytes (scripts/build-map-styles.mjs)
 public/map/
+
+# Local-only folders, ignored by git: other worktrees, marketing material, backups
+.claude/worktrees/
+docs/materiali/
+backup-*/

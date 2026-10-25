@@ -1,0 +1,21 @@
+# Changelog
+
+Formato: [Keep a Changelog](https://keepachangelog.com/it-IT/1.1.0/). Versioni `0.x.y`, un tag per ogni rilascio in produzione.
+
+## [Non rilasciato] — verso 0.1.0
+
+### Aggiunto
+- Mappa dei bar italiani con i prezzi inseriti dagli utenti, senza registrazione e senza tracciamento.
+- «Scegli cosa bere»: nove drink, prezzo più basso tra quelli scelti, colori Affare, Giusto, Salato rispetto alla mediana della zona.
+- «Vicino a me» con pallino fermo della posizione, che resta sul telefono.
+- Ricerca di città e di bar per nome in tutta Italia, senza richieste a `/api/*`.
+- «Aggiungi prezzo» in al massimo 4 tocchi più le cifre, con Annulla di 5 secondi, conferme, segnalazioni e quarantena dei prezzi anomali.
+- Proposta di un bar mancante (lo rende pubblico solo l'admin).
+- `/admin` dietro Cloudflare Access: tre code di revisione, strumenti per i bar, metriche giornaliere, dashboard di copertura e inserimento da listino.
+- Pagine `/privacy` e `/regole`.
+- PWA: installabile e con la shell offline.
+- Pagine per i motori di ricerca (città, bar, `sitemap.xml`, `llms.txt`).
+
+### Sicurezza
+- Header e CSP di SPEC 13.1, sessione anonima con Turnstile, quote e rate limit, nessun dato personale salvato (SECURITY.md, `docs/security/asvs-l1.md`).
+- Pen test del 22/10/2026 e rafforzamenti (ADR 0029).

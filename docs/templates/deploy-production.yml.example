@@ -1,0 +1,109 @@
+# Deploy to production from a tag v0.x.y, after Roberto approves the "production" environment (SPEC 16, M6).
+# Needs, before the first run: the "production" block in wrangler.jsonc (docs/release-checklist.md), the
+# GitHub environment "production" with a required reviewer, and the Cloudflare secrets set by Roberto.
+name: Deploy production
+
+on:
+  push:
+    tags: ["v0.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Production only from a version tag, and only after Roberto approves the "production" environment
+    # in GitHub (SPEC 16). The tag must be on a commit of main whose CI is green.
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      WRANGLER_SEND_METRICS: "false"
+      PBF_URL: https://download.geofabrik.de/europe/italy-latest.osm.pbf
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # The tag must sit on a commit that is already in main (whose CI was green): never a branch's code.
+      - name: Tag is on main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # OSM import (SPEC 5.3, D-03): the PBF is cached by its Geofabrik date, so several deploys
+      # on the same day do not download it again. A failed import fails the deploy.
+      - run: sudo apt-get update && sudo apt-get install -y osmium-tool
+      - name: Geofabrik extract date
+        id: pbf
+        run: |
+          set -o pipefail # default bash -e has no pipefail: a failed request must fail here
+          # italy-latest answers 307 to the dated file: follow it and keep the last Last-Modified.
+          modified="$(curl -fsSIL "$PBF_URL" | grep -i "^last-modified:" | tail -1 | cut -d" " -f2- | tr -d '\r')"
+          echo "key=osm-italy-$(date -u -d "$modified" +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/italy.osm.pbf
+          key: ${{ steps.pbf.outputs.key }}
+      - name: Download the extract (cache miss only)
+        run: test -f "$RUNNER_TEMP/italy.osm.pbf" || curl -fsSL -o "$RUNNER_TEMP/italy.osm.pbf" "$PBF_URL"
+      - name: OSM import
+        id: import
+        run: |
+          set -o pipefail # a failed import must fail the deploy (SPEC 5.3)
+          started=$(date +%s)
+          version="$(scripts/osm-import/import.sh "$RUNNER_TEMP/italy.osm.pbf" public/data | tail -1)"
+          [[ "$version" =~ ^[0-9]{8}$ ]] || { echo "Bad DATA_VERSION: '$version'"; exit 1; }
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "DATA_VERSION=$version · import took $(( $(date +%s) - started )) s"
+      - run: npm run build
+        env:
+          CLOUDFLARE_ENV: production
+          VITE_DATA_VERSION: ${{ steps.import.outputs.version }}
+      # Migrations reach production before the code that needs them (SPEC 16); only CI runs this.
+      - name: D1 migrations (production)
+        run: npx wrangler d1 migrations apply DB --remote --env production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Deploy
+        id: deploy
+        run: |
+          set -o pipefail # default `bash -e` has no pipefail: a failed deploy must fail here
+          npx wrangler deploy --var "DATA_VERSION:$DATA_VERSION" 2>&1 | tee deploy.log
+          url="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)"
+          test -n "$url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          DATA_VERSION: ${{ steps.import.outputs.version }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Smoke test
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+          DATA_VERSION: ${{ steps.import.outputs.version }}
+        run: |
+          # The new version takes a few seconds to answer everywhere: wait for its data_version.
+          for i in $(seq 1 40); do
+            curl -fsS "$URL/api/health" 2>/dev/null | grep -q "\"data_version\":\"$DATA_VERSION\"" && break
+            sleep 3
+          done
+          echo
+          # Capture first, then match: curl | grep -q can fail with EPIPE under pipefail.
+          health="$(curl -fsS "$URL/api/health")"
+          grep -q '"status":"ok"' <<<"$health"
+          curl -fsS -o /dev/null -w "shell: HTTP %{http_code}\n" "$URL/"
+          shell_headers="$(curl -fsSI "$URL/")"
+          grep -qi '^content-security-policy:' <<<"$shell_headers"
+          api_headers="$(curl -fsSI "$URL/api/health")"
+          grep -qi '^strict-transport-security:' <<<"$api_headers"
+          grep -q "\"data_version\":\"$DATA_VERSION\"" <<<"$health"
+          cell_headers="$(curl -fsSI "$URL/data/$DATA_VERSION/v/u0nd9.json")"
+          grep -qi '^content-type: application/json' <<<"$cell_headers" # not the SPA fallback
+          grep -qi '^cache-control: public, max-age=31536000, immutable' <<<"$cell_headers"
+          curl -fsS -o /dev/null -w "cell prices: HTTP %{http_code}\n" "$URL/api/prices/u0nd9"

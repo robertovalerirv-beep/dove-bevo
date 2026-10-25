@@ -817,6 +817,12 @@
   margin: 0;
   font-size: var(--size-title);
 }
+.admin__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
 .admin__form {
   display: grid;
   gap: var(--space-3);
@@ -858,11 +864,14 @@
   margin: 0 0 var(--space-6);
   padding: 0;
 }
-.admin__list li {
+.admin__list > li {
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--line-soft);
 }
 .admin__list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
   color: var(--ink);
   font-weight: var(--weight-semibold);
 }
@@ -1455,4 +1464,158 @@
 .scontrino .price__value--stale {
   border-style: dashed;
   font-style: italic;
+}
+
+/* Privacy and rules pages (/privacy, /regole) and their links in the sheets (SPEC 7.8) */
+.legal {
+  max-width: var(--sheet-max-width);
+  margin: 0 auto;
+  padding: var(--space-4);
+  padding-bottom: max(var(--space-8), env(safe-area-inset-bottom));
+}
+.legal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.legal__logo {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+}
+.legal__logo img {
+  display: block;
+  height: 40px;
+  width: auto;
+}
+.legal__logo-dark {
+  display: none !important;
+}
+:root[data-theme="dark"] .legal__logo-light {
+  display: none !important;
+}
+:root[data-theme="dark"] .legal__logo-dark {
+  display: block !important;
+}
+.legal h1 {
+  font: var(--type-title);
+  letter-spacing: var(--tracking-title);
+}
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+/* «Gestore verificato» (SPEC 1.9, D-34): the blue check is never alone, the words say it all */
+.verified {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--size-caption);
+}
+.verified__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: var(--weight-semibold);
+}
+.verified__check .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--verified);
+}
+.verified__sponsored {
+  color: var(--ink-muted);
+  font: var(--type-meta);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.row__badge {
+  grid-column: 1 / -1;
+}
+.bar__verified {
+  margin: 0 0 var(--space-2);
+}
+.hours__list {
+  margin: 0;
+}
+.hours__day {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.hours__day dt {
+  font-weight: var(--weight-semibold);
+}
+.hours__day dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.hours__range {
+  white-space: nowrap;
+}
+
+/* /admin/verificati (SPEC 7.10) */
+.admin__hours {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+  font-size: var(--size-caption);
+}
+.admin__views summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--target);
+  cursor: pointer;
+}
+.hours-form {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.hours-form__title {
+  margin: 0;
+  font: var(--type-subtitle);
+}
+.hours-form__day {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm);
+}
+.hours-form__day legend {
+  padding: 0 var(--space-1);
+  font-weight: var(--weight-bold);
+}
+.hours-form__times {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.hours-form .check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target);
+  cursor: pointer;
+}
+.hours-form .check input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--ink);
+}
+.hours-form .field:disabled {
+  opacity: 0.5;
 }

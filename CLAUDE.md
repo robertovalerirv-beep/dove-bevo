@@ -18,8 +18,15 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - Chiusura: test verdi, PROGRESS aggiornato, commit, PR verso `main`, riepilogo (fatto, prove, cosa verificare a mano). Poi fermati.
 - Se sbagli due volte la stessa cosa: fermati e proponi `/clear` con un'istruzione migliore.
 
+## Prima di scrivere codice
+- Leggi il percorso che il codice attraversa (middleware, limiti, cache, helper dei test) prima di scrivere il test o il codice.
+- Se cambi un formato, un tipo o un testo, cerca subito ogni uso e ogni test che lo controlla e aggiornali nello stesso passo.
+- Un test nuovo fallisce prima del codice, e per il motivo giusto; un test esistente si cambia solo se il requisito è cambiato, e lo si dichiara.
+- Dopo ogni file: `tsc -b`, ESLint e Prettier. Il hook di fine turno (`.claude/hooks/check-before-stop.sh`) blocca se typecheck o test collegati sono rossi; `verify` sul push fa il resto.
+- Interfaccia: verifica a 390 px già la prima versione (a capo, griglie, testi lunghi).
+
 ## Feature list
-**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-9`.
+**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-10`.
 
 ## Comandi (da M0)
 - `./init.sh` · `./init.sh --stop`

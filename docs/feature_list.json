@@ -46,7 +46,7 @@
     "milestone": "M0",
     "descrizione": "Deploy in staging da `main` con smoke test",
     "verifica": "dopo il merge il job di deploy è verde; `curl https://<staging>/api/health` → 200 con `data_version` dell'import",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M0-08",
@@ -347,7 +347,7 @@
     "milestone": "M3",
     "descrizione": "Inserimento da listino in admin",
     "verifica": "unit/e2e con JWT di test: in `/admin` si sceglie un bar, si compila una tabella di drink e prezzi con la data di osservazione; data futura o oltre 90 giorni → 400; i prezzi passano gli stessi controlli di catalogo e limiti dell'inserimento manuale",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M3-18",
@@ -368,7 +368,7 @@
     "milestone": "M3",
     "descrizione": "Lettura di una cella a costo costante",
     "verifica": "unit worker: `GET /api/prices/:cell` legge al massimo 5 righe D1 con 300 prezzi nella cella; un contributo scrive al massimo 10 righe (test di regressione, ADR 0020)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-03",
@@ -389,7 +389,7 @@
     "milestone": "M4",
     "descrizione": "Freschezza",
     "verifica": "e2e: un prezzo con data > 90 giorni mostra \"da confermare\" in mappa e scheda",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-07",
@@ -438,7 +438,7 @@
     "milestone": "M4",
     "descrizione": "Ordine dei risultati della ricerca",
     "verifica": "e2e: con la mappa su Milano, \"Bar Sport\" mostra prima quelli di Milano; nome esatto prima dell'inizio del nome; il permesso di posizione non viene mai chiesto dalla ricerca",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M4-14",
@@ -487,7 +487,7 @@
     "milestone": "MB",
     "descrizione": "Controlli del kit",
     "verifica": "e2e: bottoni, chip e campi con bordo `ink` 2 px e ombra `shadow-stampa`, premuti scendono di 3 px; focus a 3 px con 2 px di distanza su ogni elemento interattivo; con `prefers-reduced-motion` nessuna animazione; screenshot 390×844 nei due temi",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-05",
@@ -508,14 +508,14 @@
     "milestone": "MB",
     "descrizione": "Pin e legenda",
     "verifica": "unit + e2e: gradino, glifo e prezzo corretti rispetto alla mediana (D-12); neutro sotto 5 prezzi; bordo tratteggiato oltre 90 giorni; tappo quando selezionato; HH come D-13; legenda solo con colori attivi; interazione peggiore ≤ 200 ms con 300 pin (misura in PROGRESS)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-08",
     "milestone": "MB",
     "descrizione": "Copertura della zona",
     "verifica": "e2e: \"X bar su N qui hanno un prezzo\" uguale al calcolo a mano su un caso fixture; nessuna richiesta di rete in più all'apertura e al movimento della mappa",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-09",
@@ -557,7 +557,7 @@
     "milestone": "MB",
     "descrizione": "Tema Fuori orario",
     "verifica": "e2e Chromium e WebKit: ogni vista nel tema scuro progettato (non invertito); axe senza violazioni in entrambi i temi; nessuna violazione CSP su ogni vista nuova",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-15",
@@ -571,7 +571,7 @@
     "milestone": "MB",
     "descrizione": "Logo e icone dell'app",
     "verifica": "build: PNG 192, 512 e maskable generati da `dovebevo-icona-app.svg` con uno script Playwright; favicon SVG dal simbolo; simbolo sulla mappa e logo orizzontale in `/privacy` e `/regole`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MB-17",
@@ -616,6 +616,83 @@
     "passes": true
   },
   {
+    "id": "MD-01",
+    "milestone": "MD",
+    "descrizione": "Tabella e migrazione `0008_verified_venues`",
+    "verifica": "unit worker: `venues_verified` con le sole colonne di 8 (`venue_key`, `cell`, `name`, `hours`), `WITHOUT ROWID` e indice sulla cella; nessuna colonna con dati personali o economici; la migrazione svuota `cell_snapshot`; le migrazioni già su `main` sono intatte",
+    "passes": true
+  },
+  {
+    "id": "MD-02",
+    "milestone": "MD",
+    "descrizione": "Rotte admin protette e validate",
+    "verifica": "sec/unit worker: `GET /api/admin/verified`, `POST /api/admin/verified` e `POST /api/admin/verified/remove` senza JWT Access valido → 403; campi extra → 400; bar inesistente nella cella, nascosto o non approvato → 400; cella e nome vengono dal file del bar o da `venues_user`, mai dal client; ogni scrittura svuota la cella (snapshot e Cache API)",
+    "passes": true
+  },
+  {
+    "id": "MD-03",
+    "milestone": "MD",
+    "descrizione": "Orari validati da un solo modulo",
+    "verifica": "unit: `src/shared/hours.ts`, usato da Worker e client: 7 giorni da lunedì, `[]` = chiuso, al massimo 2 fasce `[\"HH:MM\",\"HH:MM\"]` con ore 00–23 e minuti 00–59, apertura diversa dalla chiusura, fasce in ordine e senza sovrapposizioni, chiusura dopo mezzanotte solo nell'ultima fascia; nessun testo libero; il testo mostrato è sempre testo (mai HTML)",
+    "passes": true
+  },
+  {
+    "id": "MD-04",
+    "milestone": "MD",
+    "descrizione": "Lettura pubblica",
+    "verifica": "unit worker: `GET /api/prices/:cell` ha `g` con le sole chiavi dei bar verificati e pubblici della cella (nascosto o non approvato esclusi); `GET /api/venues/:key/prices` ha `o` solo per un bar verificato e pubblico; dopo la disattivazione spariscono entrambi alla lettura successiva",
+    "passes": true
+  },
+  {
+    "id": "MD-05",
+    "milestone": "MD",
+    "descrizione": "Costo D1 invariato",
+    "verifica": "unit worker: cella con 300 prezzi e un bar verificato, a snapshot pronto → ≤ 5 righe lette (M3-20); a snapshot vuoto una sola query in più nello stesso `batch`; un'attivazione scrive ≤ 5 righe; un contributo resta ≤ 10 righe",
+    "passes": true
+  },
+  {
+    "id": "MD-06",
+    "milestone": "MD",
+    "descrizione": "Sezione admin «Gestori verificati»",
+    "verifica": "e2e Chromium e WebKit 390×844 con JWT di test: la sezione si raggiunge dall'intestazione di `/admin`; cerco un bar (città e nome, o link), scrivo gli orari («Chiuso», due fasce, «Copia su tutti i giorni») e salvo; l'elenco mostra il bar con gli orari, «Modifica orari» e «Disattiva» con conferma; un errore di rete lascia il modulo compilato e lo dice; la sezione è in un chunk a richiesta (shell ≤ 50 KB gzip); target ≥ 48 px; axe senza violazioni nei due temi",
+    "passes": true
+  },
+  {
+    "id": "MD-07",
+    "milestone": "MD",
+    "descrizione": "Elenco con i verificati in cima",
+    "verifica": "e2e: nell'Elenco i bar verificati vengono prima degli altri, con spunta, «Gestore verificato» e «Sponsorizzato»; tra loro e tra gli altri l'ordine resta quello di prima (distanza, poi nome); pin, ricerca, «I più economici qui», mediane e colori invariati; dopo il salvataggio in admin il bar compare verificato alla lettura successiva della cella",
+    "passes": true
+  },
+  {
+    "id": "MD-08",
+    "milestone": "MD",
+    "descrizione": "Scheda con gestore verificato e orari",
+    "verifica": "e2e: accanto al nome spunta, «Gestore verificato» e «Sponsorizzato»; orari di ogni giorno (fasce o «Chiuso») prima della sezione Prezzi; nessun «aperto ora» e nessun calcolo sull'ora; un bar non verificato ha la scheda identica a prima; nessun attributo `style` nell'HTML servito; screenshot 390×844 nei due temi; axe senza violazioni",
+    "passes": true
+  },
+  {
+    "id": "MD-09",
+    "milestone": "MD",
+    "descrizione": "Trasparenza, colore e testi",
+    "verifica": "unit/e2e: testi in `it.ts` con il test D-31; la spunta non compare mai senza «Sponsorizzato»; il colore non è l'unico segnale (glifo e testo); token `verified` in `docs/brand/tokens.json` con contrasto ≥ 3:1 su `bg` e `surface` nei due temi (MB-03); `/regole` spiega «Gestore verificato», «Sponsorizzato» e l'ordine dell'Elenco; pagine per i motori di ricerca invariate",
+    "passes": true
+  },
+  {
+    "id": "MD-10",
+    "milestone": "MD",
+    "descrizione": "Nessun dato personale o economico, nessun pagamento",
+    "verifica": "sec: le colonne di `venues_verified` sono solo quelle di 8; nessun riferimento a processori di pagamento nel codice, nelle dipendenze e in `dist/` (M3-18); `PRIVACY-NOTES.md` e `/privacy` aggiornati",
+    "passes": true
+  },
+  {
+    "id": "MD-11",
+    "milestone": "MD",
+    "descrizione": "Aperture della scheda dei gestori verificati",
+    "verifica": "unit/sec/e2e: aprendo la scheda di un bar verificato `venue_viewed` porta la chiave del bar (una volta per visita, nello stesso `sendBeacon`), per un bar non verificato no; il Worker conta la chiave solo se il bar è in `venues_verified`, altrimenti conta la visita senza chiave; body ≤ 2 KB, 10 eventi e rate limit invariati; il totale delle schede viste in `/admin` non cambia; la sezione «Gestori verificati» mostra le aperture per giorno degli ultimi 30 giorni",
+    "passes": true
+  },
+  {
     "id": "M5-01",
     "milestone": "M5",
     "descrizione": "Eventi anonimi",
@@ -627,7 +704,7 @@
     "milestone": "M5",
     "descrizione": "Admin protetta",
     "verifica": "sec: `/api/admin/*` senza JWT Access valido → 403 (firma, `aud`, scadenza verificati)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-03",
@@ -641,35 +718,35 @@
     "milestone": "M5",
     "descrizione": "Pagine `/privacy` e `/regole`",
     "verifica": "e2e: raggiungibili dal piè di pagina e dalla scheda; contenuto da `PRIVACY-NOTES.md`; \"servizio per maggiorenni\" presente",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-05",
     "milestone": "M5",
     "descrizione": "Accessibilità",
     "verifica": "axe senza violazioni su tutte le viste; navigazione completa da tastiera; target ≥ 48×48 px (test sulle dimensioni); `prefers-reduced-motion` rispettato",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-06",
     "milestone": "M5",
     "descrizione": "Performance",
     "verifica": "Lighthouse CI mobile: Performance ≥ 90, Accessibility/Best Practices/SEO ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip esclusa MapLibre; INP ≤ 200 ms misurato in e2e",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-07",
     "milestone": "M5",
     "descrizione": "ASVS L1",
     "verifica": "`docs/security/asvs-l1.md` senza voci \"da fare\", ogni voce con test o motivazione",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-08",
     "milestone": "M5",
     "descrizione": "Nessun segreto nel bundle",
     "verifica": "sec: scansione di `dist/` per i nomi e i formati dei segreti",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-09",
@@ -683,7 +760,7 @@
     "milestone": "M5",
     "descrizione": "Traccia del test con 5 persone",
     "verifica": "`docs/user-test.md` con compiti, domande e criteri di successo",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-11",

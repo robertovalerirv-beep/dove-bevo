@@ -721,6 +721,7 @@ export function App({ loadMap }: Props) {
           cell,
           prices: [],
           pending: true,
+          verified: false,
         };
         mergeVenues([venue]);
         invalidateCell(cell);
@@ -778,9 +779,10 @@ export function App({ loadMap }: Props) {
   };
 
   async function sendReport(target: { venue: Venue; row: PriceRow | null }, reason: Reason) {
-    setReporting(null);
     const price = target.row ? { drink: target.row[1], hh: target.row[2] } : {};
     try {
+      // The sheet stays open until the request is done: Turnstile (a new session) lives inside it, and
+      // closing it first detached the widget, so the report waited forever with no message.
       const response = await postWithSession(host(), "/api/reports", {
         venue: target.venue.key,
         cell: target.venue.cell,
@@ -798,6 +800,8 @@ export function App({ loadMap }: Props) {
       );
     } catch {
       showToast(it.actions.failed);
+    } finally {
+      setReporting(null);
     }
   }
 
@@ -1090,7 +1094,8 @@ export function App({ loadMap }: Props) {
           onVenue={(v) => {
             if (!viewedBars.current.has(v.key)) {
               viewedBars.current.add(v.key);
-              track("venue_viewed");
+              // The key only for a verified bar: its manager sees the openings (SPEC 12, D-34).
+              track("venue_viewed", v.verified ? { venue: v.key } : undefined);
             }
             // A search already flew to the bar (zoom 17): the page must not move the map again.
             if (flewToBar.current) flewToBar.current = false;

@@ -296,3 +296,31 @@ test("ADR 0025 a bar added by hand («Namasce») is found by name and opens its 
     .poll(async () => Number(await mapRegion(page).getAttribute("data-zoom")), { timeout: 15_000 })
     .toBeGreaterThanOrEqual(16.5);
 });
+
+test("M4-13 results: exact name first, then the start of the name, nearest first (map on Milano)", async ({
+  page,
+}) => {
+  // Four «Bar Sport» added to every fragment: two cities and a longer name next to the Duomo.
+  const MILANO = 62505581;
+  const extra = [
+    ["n9000000001", "Bar Sport", 45.4645, 9.1898, MILANO],
+    ["n9000000002", "Bar Sport", 45.53479, 9.23718, 62514732], // Sesto San Giovanni, ~8 km
+    ["n9000000003", "Bar Sport Centrale", 45.4642, 9.1896, MILANO], // the nearest, but not the exact name
+    ["n9000000004", "Bar Sport", 45.383, 9.15453, 62514263], // Rozzano, ~10 km
+  ];
+  await page.route(/\/data\/fixture\/s\/(?!index)[^/]+\.json$/, async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({ response, json: [...((await response.json()) as unknown[]), ...extra] });
+  });
+  await page.goto("/");
+  await goToMilano(page);
+  await openSearch(page);
+  await box(page).fill("bar sport");
+  await expect(options(page).filter({ hasText: "Bar Sport" }).first()).toBeVisible();
+  await expect(options(page)).toHaveCount(4);
+  const rows = (await options(page).allTextContents()).map((t) => t.replace(/\s+/g, " ").trim());
+  expect(rows[0]).toMatch(/^Bar Sport(?!Centrale).*Milano/);
+  expect(rows[1]).toMatch(/^Bar Sport(?!Centrale).*Sesto San Giovanni/);
+  expect(rows[2]).toMatch(/^Bar Sport(?!Centrale).*Rozzano/);
+  expect(rows[3]).toMatch(/^Bar Sport ?Centrale/);
+});

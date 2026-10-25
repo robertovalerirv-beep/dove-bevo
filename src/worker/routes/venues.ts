@@ -12,6 +12,7 @@ import {
   listApprovedVenues,
   proposeVenue,
 } from "../lib/db";
+import { forgetCellCache } from "../lib/cell-cache";
 import { ApiError, apiError } from "../lib/errors";
 import { readJson } from "../lib/guards";
 import { hmacHex } from "../lib/hmac";
@@ -82,8 +83,10 @@ venues.post("/", async (c) => {
     // Another independent person asking for the same pending bar only moves it up the queue.
     if (known.pending && known.key) {
       const [ipKey, sidKey] = await marks(known.key);
-      if ((await claimOnce(c.env.DB, ipKey, day)) && (await claimOnce(c.env.DB, sidKey, day)))
+      if ((await claimOnce(c.env.DB, ipKey, day)) && (await claimOnce(c.env.DB, sidKey, day))) {
         await bumpProposal(c.env.DB, Number(known.key.slice(1)));
+        await forgetCellCache(c.env.DB, c.req.url, cell); // the count of the pending bar moved
+      }
     }
     return c.json(
       { error: { code: "conflict", message: it.errors.conflict }, key: known.key },
@@ -99,6 +102,7 @@ venues.post("/", async (c) => {
     MAX_PENDING_PER_CELL,
   );
   if (id === null) throw new ApiError("busy");
+  await forgetCellCache(c.env.DB, c.req.url, cell); // the pending bar shows in its cell at once
   const key = `u${String(id)}`;
   for (const mark of await marks(key)) await claimOnce(c.env.DB, mark, day); // the proposer is counted
   return c.json({ key, cell });

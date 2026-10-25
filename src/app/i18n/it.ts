@@ -74,6 +74,15 @@ export const it = {
     barsCount: (n: number) => `${String(n)} bar`,
     loadError: "Non riesco a caricare l'elenco delle città. Controlla la connessione.",
   },
+  verified: {
+    // «Gestore verificato» (SPEC 1.9, D-34): the check never shows without «Sponsorizzato».
+    badge: "Gestore verificato",
+    sponsored: "Sponsorizzato",
+    hoursTitle: "Orari",
+    closed: "Chiuso",
+    rangeJoin: " · ",
+    days: ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"],
+  },
   list: {
     title: "Bar nella zona",
     empty: "Nessun bar in questa zona.",
@@ -209,6 +218,7 @@ export const it = {
     failed: "Operazione non riuscita. Riprova.",
     done: "Fatto.",
     backToMap: "Torna alla mappa",
+    nav: "Pagine dell'amministrazione",
     findTitle: "Trova un bar sulla mappa",
     findHelp:
       "Scrivi la città e una parte del nome (cerca fino a circa 7 km dal centro), oppure incolla il link della scheda del bar. Se un risultato non è un bar o non esiste più, eliminalo: sparisce dalla mappa e non riceve più prezzi.",
@@ -253,6 +263,65 @@ export const it = {
     reject: "Rifiuta",
     confirmReject: (name: string) =>
       `Rifiutare «${name}»? Non comparirà e lo stesso nome nello stesso punto sarà bloccato per 30 giorni.`,
+    listino: {
+      open: "Inserisci listino",
+      help: "Copia i prezzi dal listino del bar e scegli il giorno in cui li hai visti (al massimo 90 giorni fa). Lascia vuoti i drink che non ci sono.",
+      day: "Giorno in cui li hai visti",
+      happy: "happy hour",
+      placeholder: "es. 7,50",
+      save: "Salva i prezzi",
+      empty: "Scrivi almeno un prezzo.",
+      badPrice: (drink: string) => `Il prezzo di «${drink}» non è valido o è fuori dai limiti.`,
+      failed: "Non riesco a salvare i prezzi. Controlla il giorno e riprova.",
+      saved: (n: number, skipped: number) =>
+        `${n === 1 ? "1 prezzo salvato" : `${String(n)} prezzi salvati`}${
+          skipped > 0
+            ? `, ${String(skipped)} non cambiati (ce n'è già uno più recente o in revisione)`
+            : ""
+        }.`,
+    },
+    verified: {
+      nav: "Gestori verificati",
+      title: "Gestori verificati",
+      back: "Torna all'amministrazione",
+      intro:
+        "Locali che hanno firmato: spunta, «Sponsorizzato», primo posto nell'Elenco e orari. Contratti e pagamenti restano fuori dall'app.",
+      activeTitle: "Gestori verificati attivi",
+      none: "Nessun gestore verificato.",
+      views: (n: number) =>
+        `${String(n)} ${n === 1 ? "apertura" : "aperture"} della scheda negli ultimi 30 giorni`,
+      viewsByDay: "Aperture per giorno",
+      findTitle: "Attiva un gestore verificato",
+      findHelp: "Città e nome, oppure il link della scheda; poi «Attiva».",
+      city: "Città del locale",
+      name: "Nome del locale",
+      link: "Oppure il link della scheda del locale",
+      search: "Cerca il locale",
+      results: "Risultati della ricerca",
+      activate: "Attiva",
+      already: "Già verificato",
+      edit: "Modifica orari",
+      remove: "Disattiva",
+      confirmRemove: (name: string) => `Togliere «Gestore verificato» a «${name}»?`,
+      hoursFor: (name: string) => `Orari di ${name}`,
+      hoursHelp:
+        "«Chiuso», oppure apertura e chiusura; «Riapre» e «Richiude» per una pausa. Dopo mezzanotte (es. 02:00) solo nell'ultima fascia. «Copia su tutti i giorni» ripete il lunedì.",
+      open: "Apre",
+      close: "Chiude",
+      reopen: "Riapre",
+      reclose: "Richiude",
+      closedDay: "Chiuso",
+      copy: "Copia su tutti i giorni",
+      save: "Salva e pubblica",
+      cancel: "Annulla",
+      saved: "Salvato: la scheda pubblica è aggiornata.",
+      removed: "Disattivato.",
+      failed: "Salvataggio non riuscito: gli orari restano qui, riprova.",
+      removeFailed: "Disattivazione non riuscita, riprova.",
+      loadFailed: "Non riesco a leggere i gestori verificati, ricarica.",
+      badDay: (day: string) =>
+        `${day}: fasce in ordine, apertura diversa dalla chiusura, dopo mezzanotte solo l'ultima.`,
+    },
     toolsTitle: "Strumenti",
     pricesHelp: "Prezzi insoliti o segnalati dagli utenti: approvali o toglili.",
     pending: "Da confermare",
@@ -322,6 +391,134 @@ export const it = {
       notInMap: "non trovato nei dati della mappa",
       subLine: (total: string, prices: number, day: string) =>
         `${total} bar totali · ${String(prices)} prezzi${day ? ` · ultimo ${day}` : ""}`,
+    },
+  },
+  legal: {
+    logoAlt: "Dove bevo",
+    backToMap: "Torna alla mappa",
+    privacyLink: "Privacy",
+    rulesLink: "Regole",
+    linksLabel: "Informazioni",
+    contactLabel: "Scrivici",
+    privacy: {
+      title: "Privacy",
+      updated: "Ultimo aggiornamento: 25 ottobre 2026",
+      intro:
+        "Dove bevo funziona senza account e senza tracciamento. Qui spieghiamo in poche righe che cosa usiamo, che cosa salviamo e per quanto tempo.",
+      sections: [
+        {
+          heading: "In breve",
+          paragraphs: [
+            "Non ti chiediamo nome, email o password. Non usiamo cookie di tracciamento né pubblicità. La tua posizione resta sul tuo telefono.",
+          ],
+        },
+        {
+          heading: "La tua posizione",
+          paragraphs: [
+            "La posizione serve solo sul tuo telefono: per centrare la mappa, mostrare il pallino e proporti i bar più vicini quando segni un prezzo. Non la inviamo mai e non la salviamo.",
+            "Al server arrivano solo richieste per una «cella» di circa 5 km, che dice dove stai guardando la mappa, non dove sei.",
+          ],
+        },
+        {
+          heading: "Quando segni un prezzo",
+          paragraphs: [
+            "Salviamo il bar, il drink, il prezzo e il giorno. Non salviamo chi l'ha segnato: nessun nome, nessun identificativo di sessione, nessun indirizzo IP insieme al prezzo.",
+            "Per fermare i bot e i troppi invii usiamo codici anonimi, calcolati con un sale che cambia ogni giorno. Non permettono di risalire a te e si cancellano entro 48 ore.",
+          ],
+        },
+        {
+          heading: "Cookie e dati sul telefono",
+          paragraphs: [
+            "Quando segni il primo prezzo riceviamo un solo cookie tecnico, che dura 30 minuti e serve a distinguere una persona da un programma automatico. Non serve un banner perché non traccia nessuno.",
+            "Sul telefono restano soltanto la data del primo uso e quanti prezzi hai segnato, per la Tessera e per l'invito a installare l'app. La data e il numero non vengono mai inviati: ai conteggi anonimi arriva soltanto una fascia di anzianità, per esempio «1-7 giorni».",
+          ],
+        },
+        {
+          heading: "Controllo anti-bot",
+          paragraphs: [
+            "Prima del tuo primo prezzo usiamo Cloudflare Turnstile, che si carica solo in quel momento. Non mostra pubblicità e non ti segue su altri siti.",
+          ],
+        },
+        {
+          heading: "Ricerca e conteggi anonimi",
+          paragraphs: [
+            "Quando cerchi un bar, il testo che scrivi resta sul telefono: alla rete arrivano soltanto i primi 2 o 3 caratteri di una parola, per scaricare l'elenco giusto, mai la tua posizione.",
+            "Contiamo in forma anonima quante visite ci sono, quanti prezzi vengono segnati e confermati. Sono numeri per giorno, senza nessun legame con le persone.",
+            "Per i locali sponsorizzati contiamo anche quante volte viene aperta la loro scheda, giorno per giorno: è soltanto un numero, senza nessun legame con chi l'ha aperta.",
+          ],
+        },
+        {
+          heading: "Chi ci aiuta",
+          paragraphs: [
+            "Cloudflare ospita il sito e gestisce il controllo anti-bot. OpenFreeMap fornisce le mappe: è il tuo telefono a chiedere le tessere della mappa direttamente a loro. GitHub custodisce il codice, senza dati degli utenti. I bar vengono da OpenStreetMap (licenza ODbL).",
+          ],
+        },
+        {
+          heading: "I tuoi diritti",
+          paragraphs: [
+            "Hai i diritti previsti dal GDPR: accesso, rettifica, cancellazione, opposizione. Poiché non teniamo dati che ti identificano, di solito non c'è nulla da cancellare, ma scrivici e ti rispondiamo. Puoi anche rivolgerti al Garante per la protezione dei dati personali.",
+          ],
+        },
+        {
+          heading: "Maggiorenni",
+          paragraphs: [
+            "Il servizio è pensato per persone maggiorenni. Non raccogliamo dati di minori.",
+          ],
+        },
+      ],
+    },
+    rules: {
+      title: "Regole",
+      updated: "Ultimo aggiornamento: 25 ottobre 2026",
+      intro:
+        "Dove bevo è fatta di prezzi veri, segnati da persone che ci sono state. Poche regole per tenerla utile.",
+      sections: [
+        {
+          heading: "Cosa si segna",
+          paragraphs: [
+            "Il prezzo che hai pagato davvero, in un bar dove sei stato, per un drink dell'elenco. Per ogni bar c'è un prezzo per drink e per fascia (normale o happy hour): se è cambiato, segna quello nuovo.",
+          ],
+        },
+        {
+          heading: "Cosa non va bene",
+          paragraphs: [
+            "Prezzi inventati o di bar dove non sei stato, nomi di locali falsi, contenuti offensivi. I prezzi molto lontani da quelli della zona restano in verifica finché qualcun altro non li conferma.",
+          ],
+        },
+        {
+          heading: "Come si segnala un errore",
+          paragraphs: [
+            "Dalla scheda del bar tocca «Segnala un errore» e scegli il motivo. Se più persone segnalano lo stesso prezzo, esce dalla mappa e lo controlliamo noi. Niente sparisce da solo senza un controllo.",
+          ],
+        },
+        {
+          heading: "Un bar che manca",
+          paragraphs: [
+            "Se non trovi il bar, proponilo: nome, tipo e punto sulla mappa. Compare per tutti solo dopo che lo abbiamo controllato.",
+          ],
+        },
+        {
+          heading: "Sei il gestore di un locale?",
+          paragraphs: [
+            "Se un dato del tuo locale è sbagliato (nome, indirizzo, chiusura), scrivici con il nome del locale e la correzione e lo sistemiamo. I prezzi non si comprano e non si cambiano su richiesta: li segnano i clienti.",
+            "Se vuoi diventare «Gestore verificato», scrivici.",
+          ],
+        },
+        {
+          heading: "Gestore verificato e Sponsorizzato",
+          paragraphs: [
+            "Un gestore può firmare con noi un accordo a pagamento: il suo locale mostra la spunta blu «Gestore verificato» con «Sponsorizzato», gli orari nella scheda e il primo posto nell'Elenco.",
+            "«Gestore verificato» vuol dire che abbiamo controllato chi gestisce il locale, non che garantiamo il locale o i prezzi. «Sponsorizzato» vuol dire che quel primo posto è pagato.",
+            "L'Elenco mostra prima i locali sponsorizzati, poi gli altri, nell'ordine di sempre: per distanza se la posizione è attiva, altrimenti prima quelli con un prezzo, poi alfabetico. Mappa, ricerca, «I più economici qui», colori e prezzi non cambiano: i prezzi non si comprano.",
+          ],
+        },
+        {
+          heading: "Servizio per maggiorenni",
+          paragraphs: [
+            "Dove bevo parla di prezzi e di posti, non invita a bere. È un servizio per persone maggiorenni.",
+          ],
+        },
+      ],
     },
   },
   kinds: ["Caffè", "Bar", "Pub", "Birreria all'aperto", "Discoteca"],

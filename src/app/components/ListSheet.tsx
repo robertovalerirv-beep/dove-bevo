@@ -1,8 +1,11 @@
 import { it } from "../i18n/it";
 import { bestPrice, type Venue } from "../lib/data";
-import { formatDistance, formatPrice } from "../lib/format";
+import { formatDistance, formatPrice, todayRome } from "../lib/format";
+import { compareListRows } from "../lib/list-order";
+import { isStale } from "../lib/tiers";
 import { distanceMeters } from "../../shared/venue";
 import { Sheet } from "./Sheet";
+import { VerifiedBadge } from "./Verified";
 
 interface Props {
   venues: Venue[];
@@ -13,8 +16,12 @@ interface Props {
   onClose: () => void;
 }
 
-/** Accessible alternative to the map (SPEC 7.1): visible bars, keyboard and screen reader friendly. */
+/**
+ * Accessible alternative to the map (SPEC 7.1): visible bars, keyboard and screen reader friendly.
+ * Bars with «Gestore verificato» come first, marked «Sponsorizzato» (D-34, lib/list-order.ts).
+ */
 export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) {
+  const today = todayRome();
   const rows = venues
     .map((venue) => ({
       venue,
@@ -22,9 +29,20 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
       meters: position ? distanceMeters(position.lat, position.lon, venue.lat, venue.lon) : null,
     }))
     .sort((a, b) =>
-      a.meters !== null && b.meters !== null
-        ? a.meters - b.meters
-        : Number(!a.price) - Number(!b.price) || a.venue.name.localeCompare(b.venue.name, "it"),
+      compareListRows(
+        {
+          name: a.venue.name,
+          verified: a.venue.verified,
+          priced: Boolean(a.price),
+          meters: a.meters,
+        },
+        {
+          name: b.venue.name,
+          verified: b.venue.verified,
+          priced: Boolean(b.price),
+          meters: b.meters,
+        },
+      ),
     );
   return (
     <Sheet title={it.list.title} onClose={onClose}>
@@ -48,10 +66,17 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
                   ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`
                   : it.list.noPrice}
               </span>
+              {venue.verified && (
+                <span class="row__badge">
+                  <VerifiedBadge />
+                </span>
+              )}
               <span class="row__meta">
                 {[
                   it.kinds[venue.kind],
                   price && drinks.length > 1 ? it.drinks[price[1]] : "",
+                  // The dashed pin of an old price, said in words (SPEC 7.1, M4-05).
+                  price && isStale(price[4], today) ? it.bar.toConfirm : "",
                   meters === null ? "" : formatDistance(meters),
                 ]
                   .filter(Boolean)

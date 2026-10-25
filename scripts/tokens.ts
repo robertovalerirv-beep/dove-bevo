@@ -47,6 +47,8 @@ export const UI_PAIRS: readonly [string, string][] = [
   ["focus", "bg"],
   ["focus", "surface"],
   ["map-me", "map-land"],
+  ["verified", "bg"],
+  ["verified", "surface"],
 ];
 
 /**

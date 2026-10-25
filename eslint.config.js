@@ -6,6 +6,8 @@ export default defineConfig(
   {
     ignores: [
       "dist/",
+      "docs/materiali/", // local marketing material, not in the repository
+      "backup-*/",
       ".wrangler/",
       "public/data/",
       "playwright-report/",

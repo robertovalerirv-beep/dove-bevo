@@ -44,13 +44,28 @@ const listNames = async (page: Page) => {
 };
 
 /**
- * What the map shows besides the list: pins and their prices, colour legend, coverage line,
- * «I più economici qui» and the search results. None of it may change for a verified bar (D-34).
+ * What the map shows besides the order of the list: the price of every bar (the one its pin shows,
+ * from the same bestPrice), the colour legend, the coverage line, «I più economici qui» and the
+ * search results. None of it may change for a verified bar (D-34). The pins MapLibre happens to draw
+ * (data-prices-shown) depend on collisions and timing, so the comparison uses what each pin carries.
  */
 async function mapState(page: Page) {
   await chooseDrinks(page, "Calice di vino"); // five prices in u0nd9: the colours are on (D-12)
   await expect(mapRegion(page)).toHaveAttribute("data-prices-shown", /9,00 €/);
-  const pins = await mapRegion(page).getAttribute("data-prices-shown");
+  await page.getByRole("button", { name: "Elenco" }).click();
+  const sheet = page.getByRole("dialog", { name: "Bar nella zona" });
+  await expect(sheet.locator(".row").first()).toBeVisible();
+  const pins = (
+    await sheet
+      .locator(".row")
+      .evaluateAll((rows) =>
+        rows.map(
+          (r) =>
+            `${r.querySelector(".row__name")?.textContent ?? ""} ${r.querySelector(".row__price")?.textContent ?? ""}`,
+        ),
+      )
+  ).sort();
+  await page.keyboard.press("Escape");
   const legend = await page
     .getByRole("list", { name: "Legenda dei prezzi" })
     .getByRole("listitem")
@@ -177,7 +192,7 @@ test("MD-09 /regole explains «Gestore verificato», «Sponsorizzato» and the o
     .locator("xpath=..");
   await expect(section).toContainText("abbiamo controllato chi gestisce il locale");
   await expect(section).toContainText("«Sponsorizzato» vuol dire che quel primo posto è pagato");
-  await expect(section).toContainText("prima i locali sponsorizzati e poi tutti gli altri");
+  await expect(section).toContainText("prima i locali sponsorizzati, poi gli altri");
   await expect(section).toContainText("i prezzi non si comprano");
 });
 
@@ -319,10 +334,12 @@ test("MD-06 the admin turns a bar into «Gestore verificato» with its hours", a
   await timeInput(page, "Sabato", "Apre").fill("18:00");
   await timeInput(page, "Sabato", "Chiude").fill("02:00");
   await page.getByRole("button", { name: "Salva e pubblica" }).click();
-  await expect(page.getByRole("status")).toContainText("Salvato");
+  await expect(page.getByRole("status").filter({ hasText: "Salvato" })).toBeVisible();
   expect(posts).toEqual([
     { path: "/api/admin/verified", body: { venue: CAMPARINO, cell: "u0nd9", hours: HOURS } },
   ]);
+  // The form closes and the focus goes back to the button that opened it (WCAG 2.4.3).
+  await expect(found.getByRole("button", { name: "Attiva" })).toBeFocused();
 });
 
 test("MD-06 wrong hours are explained before any request; a network error keeps the form", async ({
@@ -345,6 +362,27 @@ test("MD-06 wrong hours are explained before any request; a network error keeps 
 
 const current = (page: Page) =>
   page.getByRole("list", { name: "Gestori verificati attivi" }).getByRole("listitem").first();
+
+test("MD-06 search messages are announced; cancel and disable keep the focus where it was", async ({
+  page,
+}) => {
+  await fakeVerified(page);
+  await page.goto("/admin/verificati");
+  await page.getByLabel("Città del locale").fill("milano");
+  await page.getByLabel("Nome del locale").fill("nessun bar con questo nome");
+  await page.getByRole("button", { name: "Cerca il locale" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Nessun bar trovato" })).toBeVisible();
+
+  const edit = current(page).getByRole("button", { name: "Modifica orari" });
+  await edit.click();
+  await page.getByRole("button", { name: "Annulla" }).click();
+  await expect(page.getByRole("group", { name: "Lunedì" })).toHaveCount(0);
+  await expect(edit).toBeFocused();
+
+  page.once("dialog", (d) => void d.accept());
+  await current(page).getByRole("button", { name: "Disattiva" }).click();
+  await expect(page.getByRole("heading", { name: /Gestori verificati attivi/ })).toBeFocused();
+});
 
 test("MD-06 turning it off asks first, then removes it", async ({ page }) => {
   const posts = await fakeVerified(page);
@@ -372,7 +410,9 @@ for (const scheme of ["light", "dark"] as const) {
     expect(axe.violations).toEqual([]);
     for (const box of await page
       // Checkboxes count by their label, which is the whole touch target.
-      .locator("main button, main input:not([type=checkbox]), main a.btn, main label.check")
+      .locator(
+        "main button, main input:not([type=checkbox]), main a.btn, main label.check, main .admin__list a",
+      )
       .evaluateAll((els) =>
         els.map((e) => e.getBoundingClientRect().toJSON() as { width: number; height: number }),
       )) {
@@ -382,6 +422,13 @@ for (const scheme of ["light", "dark"] as const) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
+    // The hours summary reads as one entry: its day lines have no padding or divider of their own.
+    for (const style of await page
+      .locator(".admin__hours li")
+      .evaluateAll((els) =>
+        els.map((e) => [getComputedStyle(e).paddingTop, getComputedStyle(e).borderBottomWidth]),
+      ))
+      expect(style).toEqual(["0px", "0px"]);
     await page.screenshot({
       path: `docs/screenshots/md/md-06-admin-${scheme}.png`,
       fullPage: true,
@@ -403,7 +450,7 @@ test("MD-06 the bar found by the link of its page can be turned on", async ({ pa
   for (const day of ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"])
     await page.getByRole("group", { name: day }).getByLabel("Chiuso").check();
   await page.getByRole("button", { name: "Salva e pubblica" }).click();
-  await expect(page.getByRole("status")).toContainText("Salvato");
+  await expect(page.getByRole("status").filter({ hasText: "Salvato" })).toBeVisible();
   expect(posts).toEqual([
     {
       path: "/api/admin/verified",

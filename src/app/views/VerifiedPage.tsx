@@ -82,8 +82,15 @@ export function VerifiedPage() {
   const [state, setState] = useState<"loading" | "denied" | "failed" | "ready">("loading");
   const [message, setMessage] = useState("");
   const [version, setVersion] = useState(0);
-  // The bar whose hours are open in the form: one at a time.
+  // The bar whose hours are open in the form: one at a time. Its opener button has id `open-<editing>`.
   const [editing, setEditing] = useState<string | null>(null);
+  // Where the focus goes once the form or the entry it was in is gone (WCAG 2.4.3).
+  const [focusTo, setFocusTo] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focusTo) return;
+    document.getElementById(focusTo)?.focus();
+    setFocusTo(null);
+  }, [focusTo]);
 
   useEffect(() => {
     void fetch("/api/admin/verified")
@@ -104,9 +111,14 @@ export function VerifiedPage() {
       });
   }, [version]);
 
+  const closeForm = () => {
+    if (editing) setFocusTo(`open-${editing}`);
+    setEditing(null);
+  };
+
   const saved = (cell: string) => {
     invalidateCell(cell);
-    setEditing(null);
+    closeForm();
     setMessage(t.saved);
     setVersion((n) => n + 1);
   };
@@ -115,6 +127,7 @@ export function VerifiedPage() {
     if (!window.confirm(t.confirmRemove(bar.name))) return;
     if (await post("verified/remove", { venue: bar.key })) {
       invalidateCell(bar.cell);
+      setFocusTo("verified-active"); // the entry and its buttons are gone
       setMessage(t.removed);
       setVersion((n) => n + 1);
     } else setMessage(t.removeFailed);
@@ -146,7 +159,7 @@ export function VerifiedPage() {
       {state === "ready" && data && (
         <>
           <section aria-labelledby="verified-active">
-            <h2 class="section-title" id="verified-active">
+            <h2 class="section-title" id="verified-active" tabIndex={-1}>
               {t.activeTitle} ({verified.length})
             </h2>
             {verified.length === 0 && <p class="hint">{t.none}</p>}
@@ -176,6 +189,7 @@ export function VerifiedPage() {
                     <span class="admin__actions">
                       <button
                         type="button"
+                        id={`open-${bar.key}`}
                         class="btn btn--secondary"
                         aria-expanded={editing === bar.key}
                         onClick={() => {
@@ -193,9 +207,7 @@ export function VerifiedPage() {
                         bar={bar}
                         initial={bar.hours}
                         onSaved={saved}
-                        onCancel={() => {
-                          setEditing(null);
-                        }}
+                        onCancel={closeForm}
                       />
                     )}
                   </li>
@@ -208,6 +220,7 @@ export function VerifiedPage() {
             editing={editing}
             setEditing={setEditing}
             onSaved={saved}
+            onCancel={closeForm}
           />
         </>
       )}
@@ -220,11 +233,13 @@ function FindAndActivate({
   editing,
   setEditing,
   onSaved,
+  onCancel,
 }: {
   verified: VerifiedList["v"];
   editing: string | null;
   setEditing: (key: string | null) => void;
   onSaved: (cell: string) => void;
+  onCancel: () => void;
 }) {
   const [city, setCity] = useState("");
   const [name, setName] = useState("");
@@ -295,7 +310,10 @@ function FindAndActivate({
           {t.search}
         </button>
       </form>
-      {note && <p class="hint">{note}</p>}
+      {/* Always there, so a new message is announced (WCAG 4.1.3). */}
+      <p class="hint" role="status">
+        {note}
+      </p>
       {found && found.length > 0 && (
         <ul class="admin__list" aria-label={t.results}>
           {found.map((v) => {
@@ -309,6 +327,7 @@ function FindAndActivate({
                 <span class="admin__actions">
                   <button
                     type="button"
+                    id={`open-${id}`}
                     class="btn btn--secondary"
                     aria-expanded={editing === id}
                     onClick={() => {
@@ -323,9 +342,7 @@ function FindAndActivate({
                     bar={{ key: v.key, cell: v.cell, name: v.name }}
                     initial={current?.hours}
                     onSaved={onSaved}
-                    onCancel={() => {
-                      setEditing(null);
-                    }}
+                    onCancel={onCancel}
                   />
                 )}
               </li>

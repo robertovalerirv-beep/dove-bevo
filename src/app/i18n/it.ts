@@ -285,17 +285,14 @@ export const it = {
       title: "Gestori verificati",
       back: "Torna all'amministrazione",
       intro:
-        "I locali che hanno firmato con te. Qui li attivi, scrivi i loro orari e li disattivi: contratti, pagamenti e scadenze restano fuori dall'app. Quando salvi, la scheda pubblica si aggiorna subito; chi ha già la mappa aperta lo vede entro un minuto.",
+        "Locali che hanno firmato: spunta, «Sponsorizzato», primo posto nell'Elenco e orari. Contratti e pagamenti restano fuori dall'app.",
       activeTitle: "Gestori verificati attivi",
       none: "Nessun gestore verificato.",
       views: (n: number) =>
-        n === 1
-          ? "1 apertura della scheda negli ultimi 30 giorni"
-          : `${String(n)} aperture della scheda negli ultimi 30 giorni`,
+        `${String(n)} ${n === 1 ? "apertura" : "aperture"} della scheda negli ultimi 30 giorni`,
       viewsByDay: "Aperture per giorno",
       findTitle: "Attiva un gestore verificato",
-      findHelp:
-        "Cerca il locale per città e nome (fino a circa 7 km dal centro) oppure incolla il link della sua scheda, poi tocca «Attiva» e scrivi gli orari.",
+      findHelp: "Città e nome, oppure il link della scheda; poi «Attiva».",
       city: "Città del locale",
       name: "Nome del locale",
       link: "Oppure il link della scheda del locale",
@@ -305,11 +302,10 @@ export const it = {
       already: "Già verificato",
       edit: "Modifica orari",
       remove: "Disattiva",
-      confirmRemove: (name: string) =>
-        `Togliere «Gestore verificato» a «${name}»? Spunta, «Sponsorizzato», primo posto nell'Elenco e orari spariscono dalla mappa.`,
+      confirmRemove: (name: string) => `Togliere «Gestore verificato» a «${name}»?`,
       hoursFor: (name: string) => `Orari di ${name}`,
       hoursHelp:
-        "Per ogni giorno: «Chiuso», oppure l'ora di apertura e di chiusura. Se il locale chiude a metà giornata, usa anche «Riapre» e «Richiude». Una chiusura dopo mezzanotte (es. 02:00) va bene, ma solo nell'ultima fascia del giorno. «Copia su tutti i giorni» ripete gli orari del lunedì.",
+        "«Chiuso», oppure apertura e chiusura; «Riapre» e «Richiude» per una pausa. Dopo mezzanotte (es. 02:00) solo nell'ultima fascia. «Copia su tutti i giorni» ripete il lunedì.",
       open: "Apre",
       close: "Chiude",
       reopen: "Riapre",
@@ -319,13 +315,12 @@ export const it = {
       save: "Salva e pubblica",
       cancel: "Annulla",
       saved: "Salvato: la scheda pubblica è aggiornata.",
-      removed: "Disattivato: il locale torna come tutti gli altri.",
-      failed:
-        "Salvataggio non riuscito. Controlla la connessione e riprova: gli orari scritti restano qui.",
-      removeFailed: "Disattivazione non riuscita. Riprova.",
-      loadFailed: "Non riesco a leggere i gestori verificati. Ricarica la pagina.",
+      removed: "Disattivato.",
+      failed: "Salvataggio non riuscito: gli orari restano qui, riprova.",
+      removeFailed: "Disattivazione non riuscita, riprova.",
+      loadFailed: "Non riesco a leggere i gestori verificati, ricarica.",
       badDay: (day: string) =>
-        `Controlla ${day}: ogni fascia ha un'apertura e una chiusura diverse, la seconda fascia comincia dopo la fine della prima e solo l'ultima può finire dopo mezzanotte.`,
+        `${day}: fasce in ordine, apertura diversa dalla chiusura, dopo mezzanotte solo l'ultima.`,
     },
     toolsTitle: "Strumenti",
     pricesHelp: "Prezzi insoliti o segnalati dagli utenti: approvali o toglili.",
@@ -512,9 +507,9 @@ export const it = {
         {
           heading: "Gestore verificato e Sponsorizzato",
           paragraphs: [
-            "Un gestore può firmare con noi un accordo a pagamento. Il suo locale mostra allora una spunta blu con «Gestore verificato» e la scritta «Sponsorizzato», i suoi orari nella scheda, e compare per primo nell'Elenco dei bar della zona.",
-            "«Gestore verificato» vuol dire che abbiamo controllato chi gestisce il locale, non che garantiamo il locale o i suoi prezzi. «Sponsorizzato» vuol dire che quel primo posto è pagato.",
-            "L'Elenco mostra prima i locali sponsorizzati e poi tutti gli altri; dentro ciascun gruppo l'ordine è lo stesso per tutti: per distanza se la posizione è attiva, altrimenti prima i locali con un prezzo e poi in ordine alfabetico. La mappa, la ricerca, «I più economici qui», i colori e i prezzi non cambiano: i prezzi non si comprano.",
+            "Un gestore può firmare con noi un accordo a pagamento: il suo locale mostra la spunta blu «Gestore verificato» con «Sponsorizzato», gli orari nella scheda e il primo posto nell'Elenco.",
+            "«Gestore verificato» vuol dire che abbiamo controllato chi gestisce il locale, non che garantiamo il locale o i prezzi. «Sponsorizzato» vuol dire che quel primo posto è pagato.",
+            "L'Elenco mostra prima i locali sponsorizzati, poi gli altri, nell'ordine di sempre: per distanza se la posizione è attiva, altrimenti prima quelli con un prezzo, poi alfabetico. Mappa, ricerca, «I più economici qui», colori e prezzi non cambiano: i prezzi non si comprano.",
           ],
         },
         {

@@ -864,11 +864,14 @@
   margin: 0 0 var(--space-6);
   padding: 0;
 }
-.admin__list li {
+.admin__list > li {
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--line-soft);
 }
 .admin__list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
   color: var(--ink);
   font-weight: var(--weight-semibold);
 }
@@ -1518,7 +1521,6 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  color: var(--ink);
   font-weight: var(--weight-semibold);
 }
 .verified__check .icon {

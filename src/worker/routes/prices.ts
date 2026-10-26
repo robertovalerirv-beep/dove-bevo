@@ -101,7 +101,8 @@ async function authorKeys(env: Env, who: { sid: string; ip: string }, k: PriceKe
  * The statements that confirm a price once per session (D-10, security review): the author never
  * counts, neither from a new session on the same IP nor the next day, and a person counts once per
  * price whatever the session. The count and the markers are one batch (see confirmStatements), so
- * the checks cost no round trip of their own. dedup is purged within 48 h (ADR 0016).
+ * the checks cost no round trip of their own. Scheduled cleanup removes dedup rows older than
+ * yesterday in the Rome calendar (ADR 0016); this is not an exact 48-hour retention bound.
  */
 async function confirmStatementsFor(
   env: Env,

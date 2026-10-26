@@ -107,6 +107,63 @@ async function fakeAdmin(page: Page, allowed = true) {
   return posts;
 }
 
+test("a failed restriction refresh disables stale controls until a successful retry", async ({
+  page,
+}) => {
+  const posts = await fakeAdmin(page);
+  let failRefresh = false;
+  await page.route("**/api/admin/restrictions", (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    return failRefresh
+      ? route.fulfill({ status: 503, json: { error: { code: "busy" } } })
+      : route.fulfill({
+          json: {
+            days: ["2026-10-26", "2026-10-25"],
+            capacity: 16,
+            restrictions: [
+              {
+                family: "price",
+                target: "n2420779240|spritz|0",
+                day: "2026-10-25",
+                expires_at: Date.parse("2026-10-26T23:00:00Z"),
+              },
+            ],
+          },
+        });
+  });
+  await page.goto("/admin");
+  const section = page.locator("#contribution-restrictions");
+  const target = section.getByLabel("Contenuto di riferimento");
+  const day = section.getByLabel("Giorno degli invii da limitare (Roma)");
+  const add = section.getByRole("button", { name: "Limita questo gruppo temporaneamente" });
+  const revoke = section.getByRole("button", { name: "Revoca limite" });
+  await target.selectOption("price|n2420779240|spritz|0");
+  await day.selectOption("2026-10-25");
+  await expect(add).toBeEnabled();
+  await expect(revoke).toBeEnabled();
+  failRefresh = true;
+  page.once("dialog", (dialog) => dialog.accept());
+  await add.click();
+  await expect(section.getByRole("alert")).toContainText("Non riesco a caricare i limiti");
+  await expect(target).toBeDisabled();
+  await expect(day).toBeDisabled();
+  await expect(add).toBeDisabled();
+  await expect(revoke).toBeDisabled();
+  await expect(section).toContainText("n2420779240|spritz|0"); // keep the last known data, clearly in error
+  expect(posts).toHaveLength(1);
+  const retry = section.getByRole("button", { name: "Riprova", exact: true });
+  await expect(retry).toBeEnabled();
+  failRefresh = false;
+  await retry.click();
+  await expect(section.getByRole("alert")).toHaveCount(0);
+  await expect(target).toBeEnabled();
+  await expect(day).toBeEnabled();
+  await expect(add).toBeEnabled();
+  await expect(revoke).toBeEnabled();
+  await revoke.click();
+  await expect.poll(() => posts.at(-1)?.path).toBe("/api/admin/restrictions/revoke");
+});
+
 for (const scheme of ["light", "dark"] as const) {
   test(`admin selects an explicit cohort day, reads its expiry and revokes it (${scheme})`, async ({
     page,

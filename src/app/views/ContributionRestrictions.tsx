@@ -34,6 +34,7 @@ export function ContributionRestrictions({
 }) {
   const [data, setData] = useState<RestrictionOverview | null>(null);
   const [failed, setFailed] = useState(false);
+  const [refresh, setRefresh] = useState(0);
   const [selected, setSelected] = useState("");
   const [day, setDay] = useState("");
   useEffect(() => {
@@ -53,7 +54,7 @@ export function ContributionRestrictions({
     return () => {
       live = false;
     };
-  }, [version]);
+  }, [version, refresh]);
   const key = (t: RestrictionTarget) =>
     `${t.family}|${t.venue}|${t.drink ?? ""}|${String(t.hh ?? "")}`;
   const target = targets.find((t) => key(t) === selected);
@@ -65,9 +66,20 @@ export function ContributionRestrictions({
       <p class="hint">{it.admin.restrictions.help}</p>
       <p class="hint">{it.admin.restrictions.warning}</p>
       {failed && (
-        <p class="error" role="alert">
-          {it.admin.restrictions.failed}
-        </p>
+        <>
+          <p class="error" role="alert">
+            {it.admin.restrictions.failed}
+          </p>
+          <button
+            class="btn btn--secondary"
+            type="button"
+            onClick={() => {
+              setRefresh((n) => n + 1);
+            }}
+          >
+            {it.map.retry}
+          </button>
+        </>
       )}
       {data && (
         <>
@@ -78,6 +90,7 @@ export function ContributionRestrictions({
             onSubmit={(e) => {
               e.preventDefault();
               if (
+                failed ||
                 !target ||
                 !data.days.includes(day) ||
                 !window.confirm(it.admin.restrictions.warning)
@@ -95,6 +108,7 @@ export function ContributionRestrictions({
               {it.admin.restrictions.target}
               <select
                 class="field"
+                disabled={failed}
                 value={selected}
                 onChange={(e) => {
                   setSelected(e.currentTarget.value);
@@ -113,6 +127,7 @@ export function ContributionRestrictions({
               {it.admin.restrictions.day}
               <select
                 class="field"
+                disabled={failed}
                 value={day}
                 onChange={(e) => {
                   setDay(e.currentTarget.value);
@@ -131,7 +146,10 @@ export function ContributionRestrictions({
               class="btn btn--secondary"
               type="submit"
               disabled={
-                !target || !data.days.includes(day) || data.restrictions.length >= data.capacity
+                failed ||
+                !target ||
+                !data.days.includes(day) ||
+                data.restrictions.length >= data.capacity
               }
             >
               {it.admin.restrictions.add}
@@ -158,7 +176,10 @@ export function ContributionRestrictions({
                   <button
                     class="btn btn--ghost"
                     type="button"
-                    onClick={() => void act("restrictions/revoke", inputFor(r))}
+                    disabled={failed}
+                    onClick={() => {
+                      if (!failed) void act("restrictions/revoke", inputFor(r));
+                    }}
                   >
                     {it.admin.restrictions.revoke}
                   </button>

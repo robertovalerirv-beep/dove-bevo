@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="back" type="id" />
+    <item name="home" type="id" />
+    <item name="share" type="id" />
+    <item name="refresh" type="id" />
+    <item name="retry" type="id" />
+    <item name="website" type="id" />
+    <item name="offline" type="id" />
+    <item name="load_error" type="id" />
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dove bevo</string>
+    <string name="back">Indietro</string>
+    <string name="home">Home</string>
+    <string name="share">Condividi</string>
+    <string name="refresh">Ricarica</string>
+    <string name="loading">Caricamento di Dove bevo</string>
+    <string name="unavailable_title">Pagina non disponibile</string>
+    <string name="unavailable_body">Controlla la connessione e riprova. I contenuti già aperti potrebbero essere ancora disponibili.</string>
+    <string name="retry">Riprova</string>
+    <string name="offline">Sei offline. Controlla la connessione.</string>
+    <string name="external_unavailable">Nessuna app disponibile per questo collegamento.</string>
+    <string name="blocked_link">Questo collegamento non può essere aperto.</string>
+    <string name="no_resubmit">L’invio non è stato ripetuto. Riapri la pagina per continuare.</string>
+</resources>

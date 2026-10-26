@@ -437,7 +437,9 @@ def run_launch(root, sdk, evidence, runner, host, settle=time.sleep):
                            "ADB_SERVER_SOCKET": "tcp:" + HOST + ":" + str(host.server_port)})
         adb, emu = str(sdk / "platform-tools/adb"), str(sdk / "emulator/emulator")
         prefix = [adb, "-H", HOST, "-P", str(host.server_port)]
-        emulator_version = runner.text("emulator-version", [emu, "-version"])
+        # The vendor launcher selects a separate headless engine. Keep probes
+        # consistent with startup so GUI-only dependencies cannot block them.
+        emulator_version = runner.text("emulator-version", [emu, "-no-window", "-version"])
         actual_emulator_version = re.search(r"Android emulator version (\d+\.\d+\.\d+(?:\.\d+)?)\b", emulator_version)
         if not actual_emulator_version or ".".join(actual_emulator_version.group(1).split(".")[:3]) != result["runtime_packages"]["emulator"]:
             raise LaunchFailure("Installed emulator binary revision differs from package metadata")
@@ -449,7 +451,7 @@ def run_launch(root, sdk, evidence, runner, host, settle=time.sleep):
         if probe.returncode == 0 or not host.free_server_port():
             raise LaunchFailure("Private adb no-autostart probe failed; no server adopted")
         result["adb_closed_port_no_autostart_probe"] = "nonzero-and-port-remained-closed"
-        runner.run("acceleration", [emu, "-accel-check"])
+        runner.run("acceleration", [emu, "-no-window", "-accel-check"])
         runner.run("create-avd", [str(sdk / "cmdline-tools/latest/bin/avdmanager"), "create", "avd",
                    "--name", host.name, "--package", IMAGE, "--device", "pixel_6",
                    "--path", str(host.work / "avds" / (host.name + ".avd"))], timeout=30)

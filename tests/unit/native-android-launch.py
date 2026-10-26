@@ -124,6 +124,8 @@ class Commands:
             text = "Android Debug Bridge version 1.0.41\nVersion 37.0.1-12345"
         elif stage == "emulator-version":
             text = "Android emulator version 37.2.12.0 (build_id fixture)"
+            if self.mode == "wrong-emulator-version":
+                text = "Android emulator version 37.2.11.0 (build_id fixture)"
         elif stage == "adb-no-autostart-probe":
             code = 0 if self.mode == "probe-success" else 1
             if self.mode == "probe-spawned":
@@ -186,6 +188,10 @@ class Commands:
                 text = "topResumedActivity=ActivityRecord{abc u0 other.app/.MainActivity t1}"
         elif stage == "screenshot":
             output.write_bytes(b"not PNG" if self.mode == "invalid-png" else PNG)
+        if stage in ("emulator-version", "acceleration") and self.mode == "headless-required" and "-no-window" not in argv:
+            return SimpleNamespace(returncode=127, stdout=b"", stderr=b"qemu-system-x86_64: libpulse.so.0: cannot open shared object file")
+        if stage == "acceleration" and self.mode == "acceleration-unusable":
+            return SimpleNamespace(returncode=1, stdout=b"accel: KVM is not usable", stderr=b"")
         return SimpleNamespace(returncode=code, stdout=text.encode(), stderr=b"")
 
 
@@ -260,6 +266,24 @@ class LaunchTests(unittest.TestCase):
                 self.assertFalse(result["success"])
                 self.assertEqual(host.started, [])
                 self.assertTrue(host.removed)
+
+    def test_every_emulator_probe_selects_headless_while_preserving_version_and_acceleration_checks(self):
+        code, result, commands, _, _ = self.run_fake("headless-required")
+        self.assertEqual(code, 0)
+        version = [argv for stage, argv, *_ in commands.calls if stage == "emulator-version"]
+        acceleration = [argv for stage, argv, *_ in commands.calls if stage == "acceleration"]
+        self.assertEqual(len(version), 1)
+        self.assertEqual(len(acceleration), 1)
+        self.assertEqual(version[0][1:], ["-no-window", "-version"])
+        self.assertEqual(acceleration[0][1:], ["-no-window", "-accel-check"])
+        self.assertEqual(result["emulator_binary_version"], "37.2.12.0")
+
+    def test_headless_probes_still_reject_unreviewed_version_or_unusable_acceleration(self):
+        for mode in ("wrong-emulator-version", "acceleration-unusable"):
+            code, result, _, host, _ = self.run_fake(mode)
+            self.assertEqual(code, 1)
+            self.assertFalse(result["success"])
+            self.assertEqual(host.started, [])
 
     def test_closed_port_probe_refuses_autostart_or_new_listener_before_server_start(self):
         for mode in ("probe-success", "probe-spawned"):

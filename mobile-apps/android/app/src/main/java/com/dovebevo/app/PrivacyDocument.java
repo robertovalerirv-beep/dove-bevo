@@ -7,7 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 
-/** Reads the single bundled policy as complete UTF-8 plain text, without a WebView or network. */
+/** Reads a bundled policy/rules document as complete UTF-8 plain text, without a WebView or network. */
 public final class PrivacyDocument {
     public static final int MAX_BYTES = 128 * 1024;
 

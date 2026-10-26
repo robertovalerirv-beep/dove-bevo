@@ -18,6 +18,8 @@ if (releaseSigningEnabled && (!new File(releaseKeystorePath).isAbsolute() || !ne
 abstract class GeneratePrivacyAssets extends DefaultTask {
     @InputFile @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getPolicyFile()
+    @InputFile @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getTermsFile()
     @OutputDirectory
     abstract DirectoryProperty getOutputDirectory()
     @Inject
@@ -26,11 +28,12 @@ abstract class GeneratePrivacyAssets extends DefaultTask {
     @TaskAction
     void generate() {
         File policy = policyFile.get().asFile
-        if (!policy.isFile() || policy.length() == 0 || policy.length() > 131072)
-            throw new GradleException('The common mobile privacy policy is missing, empty or too large.')
-        // Copy exactly this document; never expose the parent source directory as app assets.
+        File terms = termsFile.get().asFile
+        if ([policy, terms].any { !it.isFile() || it.length() == 0 || it.length() > 131072 })
+            throw new GradleException('A common mobile policy document is missing, empty or too large.')
+        // Copy exactly these documents; never expose the parent source directory as app assets.
         fileSystemOperations.sync {
-            from(policy)
+            from(policy, terms)
             into(outputDirectory)
         }
     }
@@ -76,6 +79,7 @@ androidComponents {
     onVariants(selector().all()) { variant ->
         def generatePrivacyAssets = tasks.register("generate${variant.name.capitalize()}PrivacyAssets", GeneratePrivacyAssets) {
             policyFile.set(layout.projectDirectory.file('../../privacy.md'))
+            termsFile.set(layout.projectDirectory.file('../../terms.md'))
             outputDirectory.set(layout.buildDirectory.dir("generated/privacyAssets/${variant.name}"))
         }
         variant.sources.assets.addGeneratedSourceDirectory(generatePrivacyAssets) { it.outputDirectory }

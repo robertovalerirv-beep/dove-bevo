@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
@@ -57,6 +58,7 @@ public final class MainActivity extends ComponentActivity {
     private boolean foreground;
     private boolean failed;
     private boolean destroyed;
+    private boolean websiteStarted;
     private String locationOrigin;
     private GeolocationPermissions.Callback locationCallback;
     private boolean requestingLocationPermission;
@@ -67,7 +69,12 @@ public final class MainActivity extends ComponentActivity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        WebView.setWebContentsDebuggingEnabled(false);
+        SharedPreferences rules = getSharedPreferences("dovebevo_rules", MODE_PRIVATE);
+        RulesAcceptance.route(rules.getString("accepted_rules_version", null),
+                () -> showWelcome(state, rules), () -> showWebsiteShell(state));
+    }
+
+    private LinearLayout createShell() {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
         shell.setBackgroundColor(getColor(R.color.shell_background));
@@ -81,6 +88,66 @@ public final class MainActivity extends ComponentActivity {
             }
             return insets;
         });
+        return shell;
+    }
+
+    private void showWelcome(Bundle state, SharedPreferences rules) {
+        LinearLayout shell = createShell();
+        ScrollView scroll = new ScrollView(this);
+        scroll.setId(R.id.rules_scroll);
+        LinearLayout reading = new LinearLayout(this);
+        reading.setOrientation(LinearLayout.VERTICAL);
+        reading.setPadding(dp(24), dp(24), dp(24), dp(24));
+        TextView title = text(R.string.welcome_title, 24);
+        title.setPadding(0, 0, 0, dp(16));
+        reading.addView(title);
+        TextView introduction = text(R.string.welcome_body, 16);
+        introduction.setGravity(Gravity.START);
+        introduction.setPadding(0, 0, 0, dp(16));
+        reading.addView(introduction);
+        TextView document = new TextView(this);
+        document.setId(R.id.rules_document);
+        document.setTextSize(16);
+        document.setTextColor(getColor(R.color.shell_text));
+        document.setTextIsSelectable(true);
+        boolean readable;
+        try (InputStream asset = getAssets().open("terms.md")) {
+            document.setText(PrivacyDocument.read(asset));
+            readable = true;
+        } catch (IOException error) {
+            document.setText(R.string.rules_unavailable);
+            readable = false;
+        }
+        reading.addView(document, new LinearLayout.LayoutParams(-1, -2));
+        scroll.addView(reading, new ScrollView.LayoutParams(-1, -2));
+        shell.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        Button accept = button(R.id.accept_rules, R.string.accept_rules, () -> {});
+        accept.setOnClickListener(view -> {
+            view.setEnabled(false);
+            // Confirm the small version-only write before any WebView or network setup.
+            boolean saved = RulesAcceptance.accept(
+                    () -> rules.edit().putString("accepted_rules_version", RulesAcceptance.VERSION).commit(),
+                    () -> showWebsiteShell(state));
+            if (!saved) { view.setEnabled(true); toast(R.string.rules_not_saved); }
+        });
+        accept.setTextSize(16);
+        accept.setPadding(dp(12), dp(8), dp(12), dp(8));
+        accept.setEnabled(readable);
+        shell.addView(accept, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout actions = new LinearLayout(this);
+        actions.addView(button(R.id.privacy, R.string.privacy, this::showPrivacy), toolSize());
+        actions.addView(button(R.id.decline_rules, R.string.decline_rules, this::finish), toolSize());
+        shell.addView(actions, new LinearLayout.LayoutParams(-1, -2));
+        setContentView(shell);
+        shell.requestApplyInsets();
+    }
+
+    private void showWebsiteShell(Bundle state) {
+        if (destroyed || websiteStarted) return;
+        websiteStarted = true;
+        // The first WebView and network observer are created only after current rules acceptance.
+        WebView.setWebContentsDebuggingEnabled(false);
+        LinearLayout shell = createShell();
         LinearLayout tools = new LinearLayout(this);
         tools.setGravity(Gravity.CENTER_VERTICAL);
         tools.addView(button(R.id.back, R.string.back, this::goBack), toolSize());

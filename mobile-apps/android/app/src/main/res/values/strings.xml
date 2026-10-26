@@ -11,6 +11,12 @@
     <string name="support">Contatta l’assistenza</string>
     <string name="close">Chiudi</string>
     <string name="privacy_unavailable">Non è stato possibile leggere l’informativa inclusa nell’app. Chiudi e riprova, oppure contatta l’assistenza.</string>
+    <string name="welcome_title">Benvenuto in Dove bevo</string>
+    <string name="welcome_body">Leggi le regole prima di continuare. Il servizio è riservato alle persone maggiorenni. Puoi leggere anche l’informativa Privacy senza aprire il sito.</string>
+    <string name="accept_rules">Ho almeno 18 anni e accetto</string>
+    <string name="decline_rules">Esci</string>
+    <string name="rules_unavailable">Non è stato possibile leggere le regole incluse nell’app. Chiudi e riprova, oppure contatta l’assistenza indicata nella Privacy.</string>
+    <string name="rules_not_saved">Non è stato possibile salvare la scelta. Riprova per continuare.</string>
     <string name="loading">Caricamento di Dove bevo</string>
     <string name="unavailable_title">Pagina non disponibile</string>
     <string name="unavailable_body">Controlla la connessione e riprova. I contenuti già aperti potrebbero essere ancora disponibili.</string>

@@ -9,6 +9,10 @@
     <item name="support" type="id" />
     <item name="privacy_document" type="id" />
     <item name="privacy_scroll" type="id" />
+    <item name="rules_scroll" type="id" />
+    <item name="rules_document" type="id" />
+    <item name="accept_rules" type="id" />
+    <item name="decline_rules" type="id" />
     <item name="retry" type="id" />
     <item name="website" type="id" />
     <item name="offline" type="id" />

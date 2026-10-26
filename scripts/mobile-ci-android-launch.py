@@ -642,7 +642,9 @@ def run_launch(root, sdk, evidence, runner, host, settle=time.sleep):
         runner.run("create-avd", [str(sdk / "cmdline-tools/latest/bin/avdmanager"), "create", "avd",
                    "--name", host.name, "--package", IMAGE, "--device", "pixel_6",
                    "--path", str(host.work / "avds" / (host.name + ".avd"))], timeout=30)
-        server = host.start("adb-server", [adb, "-L", "tcp:" + HOST + ":" + str(host.server_port), "server", "nodaemon"], runner.env)
+        # ADB's listener accepts localhost for IPv4 loopback; numeric HOST stays
+        # client-only so a missing private server cannot trigger auto-start.
+        server = host.start("adb-server", [adb, "-L", "tcp:localhost:" + str(host.server_port), "server", "nodaemon"], runner.env)
         result["adb_server_host_pid"] = getattr(server, "pid", None)
         # Only readiness polling repeats. There is one server, one AVD and one boot attempt.
         ready_deadline = min(runner.clock() + 10, runner.clock() + runner.remaining())

@@ -60,6 +60,7 @@ class Host:
         self.started, self.stopped = [], []
         self.removed = False
         self.listener = False
+        self.server_bind_rejected = False
 
     def require_kvm(self):
         if self.mode == "missing-kvm":
@@ -82,10 +83,15 @@ class Host:
     def start(self, stage, argv, env):
         self.started.append((stage, argv, env))
         if stage == "adb-server":
-            self.listener = True
+            # Vendor socket_spec_listen accepts localhost for IPv4 loopback,
+            # but exits before listening when given the numeric client host.
+            self.server_bind_rejected = self.mode == "loopback-binding-required" and argv[1:3] != ["-L", "tcp:localhost:" + str(self.server_port)]
+            self.listener = not self.server_bind_rejected
         return stage
 
     def alive(self, process):
+        if process == "adb-server" and self.server_bind_rejected:
+            return False
         return not (self.mode in ("server-lost", "server-exit", "pid-mismatch") and process == "adb-server") and not (getattr(self, "lost_during_install", False) and process == "adb-server")
 
     def listener_owned(self, process):
@@ -311,6 +317,22 @@ class LaunchTests(unittest.TestCase):
             if mode == "probe-spawned":
                 self.assertEqual(result["cleanup"], "failed")
                 self.assertFalse(host.removed)
+
+    def test_server_uses_supported_loopback_binding_while_clients_keep_numeric_no_autostart_host(self):
+        code, result, commands, host, _ = self.run_fake("loopback-binding-required")
+        self.assertEqual(code, 0, result.get("failure"))
+        server = [argv for stage, argv, _ in host.started if stage == "adb-server"]
+        self.assertEqual(len(server), 1)
+        self.assertEqual(server[0][1:], ["-L", "tcp:localhost:39001", "server", "nodaemon"])
+        self.assertNotIn("-a", server[0])
+        clients = [(argv, env) for stage, argv, _, env in commands.calls if Path(argv[0]).name == "adb" and stage != "adb-version"]
+        self.assertTrue(clients)
+        for argv, env in clients:
+            self.assertEqual(argv[1:5], ["-H", "127.0.0.1", "-P", "39001"])
+            self.assertEqual(env["ADB_SERVER_SOCKET"], "tcp:127.0.0.1:39001")
+        for _, _, env in host.started:
+            self.assertEqual(env["ADB_SERVER_SOCKET"], "tcp:127.0.0.1:39001")
+        self.assertEqual(result["adb_closed_port_no_autostart_probe"], "nonzero-and-port-remained-closed")
 
     def test_wrong_ownership_never_installs_launches_or_screenshots(self):
         for mode in ("wrong-serial", "wrong-avd", "foreign-listener", "server-lost", "server-version"):
@@ -683,7 +705,7 @@ class ExecutionTests(unittest.TestCase):
         header = "sl local_address rem_address st tx_queue rx_queue tr tm retr uid timeout inode\n"
         row = "0: 0100007F:9859 00000000:0000 0A 0:0 00:0 0 1000 0 12345\n"
         self.assertTrue(launch.listener_inodes_match(header + row, {"12345"}, 39001))
-        for changed in (row.replace("0100007F", "00000000"), row.replace(":9859", ":985A"), row.replace(" 0A ", " 01 "), row.replace("12345", "99999")):
+        for changed in (row.replace("0100007F", "00000000"), row.replace("0100007F", "0101A8C0"), row.replace("0100007F", "00000000000000000000000001000000"), row.replace(":9859", ":985A"), row.replace(" 0A ", " 01 "), row.replace("12345", "99999")):
             self.assertFalse(launch.listener_inodes_match(header + changed, {"12345"}, 39001))
 
     def test_actual_executor_uses_eof_stdin_owned_group_and_bounded_artifact_logs(self):

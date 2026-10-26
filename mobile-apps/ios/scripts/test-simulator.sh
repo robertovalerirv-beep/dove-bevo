@@ -16,6 +16,7 @@ while [[ -e "$RESULT_BUNDLE" ]]; do
 done
 mkdir -p "$IOS_ROOT/.build"
 printf '%s\n' "$RESULT_BUNDLE" > "$IOS_ROOT/.build/last-test-result-path.txt"
+TEST_STARTED_AT="$(date +%s)"
 set +e
 xcodebuild \
     -project "$IOS_ROOT/DoveBevo.xcodeproj" \
@@ -33,6 +34,8 @@ xcrun simctl spawn "$SIMULATOR_ID" log show --style compact --last 15m \
     >"$IOS_ROOT/.build/SimulatorDiagnostics/browser-process.txt" \
     2>"$IOS_ROOT/.build/SimulatorDiagnostics/log-collection.txt" \
     || printf 'Simulator process diagnostics were unavailable; test status is retained.\n' >&2
+python3 "$IOS_ROOT/scripts/collect-diagnostics.py" --since "$TEST_STARTED_AT" \
+    || printf 'Host crash metadata was unavailable; test status is retained.\n' >&2
 if [[ -d "$RESULT_BUNDLE" ]]; then
     xcrun xcresulttool export attachments --path "$RESULT_BUNDLE" \
         --output-path "$IOS_ROOT/.build/Screenshots"

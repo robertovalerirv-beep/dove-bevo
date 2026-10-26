@@ -149,9 +149,19 @@ licence: stdin is closed and no licence-acceptance command runs. Installed emula
 revisions are checked explicitly, so changing SDK metadata requires review.
 
 Startup requires available KVM, one uniquely owned temporary AVD, a private foreground ADB
-server and explicit serial/ports. It checks the installed ADB's closed-port behavior, process
-identity and socket ownership; no shared server, physical device, permission change, CPU
-fallback or second boot/install/launch attempt is used. Read-only boot/provider readiness
+server and explicit serial/ports. A separate preflight is limited to ephemeral GitHub-hosted
+Linux: it records the original numeric ACL of the root-owned `/dev/kvm` character device,
+grants only the current runner UID read/write access if needed, verifies the exact result and
+restores the original ACL in an always step. The grant rejects changes that would widen
+other principals' effective permissions. Detected device replacement or unrelated ACL drift
+fails without overwriting that state.
+Private rollback rules remain outside artifacts; bounded diagnostics record verification.
+No global chmod, udev/group change or user-PC setup is performed. Abrupt runner termination
+can prevent restoration; this is not an atomic permission fence or a self-hosted-runner tool.
+
+The runtime checks the installed ADB's closed-port behavior, process identity and socket
+ownership; no shared server, physical device, CPU fallback or second boot/install/launch
+attempt is used. Read-only boot/provider readiness
 polling stays within the overall work deadline. The active valid WebView must be installed,
 enabled and finished preparing, with Chromium 111 or newer; it is never updated or switched.
 
@@ -174,7 +184,8 @@ available iPhone's explicit runtime/type pairing, preferring the current SDK; it
 no runtime and fails if it cannot establish a reliable compatible stable pair at iOS 16.4+.
 It creates one uniquely named job-owned simulator, boots/installs/launches the preview, checks
 the returned PID still belongs to the installed executable after 25 seconds, and captures
-one PNG. A 330-second overall deadline reserves 60 seconds for exact-UDID cleanup inside the
+one PNG. The installed-container lookup has a 30-second stage cap; the launch cap is 60 seconds.
+A 330-second overall deadline reserves 60 seconds for exact-UDID cleanup inside the
 six-minute workflow step. Existing simulators are never booted, shut down or deleted.
 
 The launch evidence folder records the checkout SHA, a deterministic app-tree hash, selected

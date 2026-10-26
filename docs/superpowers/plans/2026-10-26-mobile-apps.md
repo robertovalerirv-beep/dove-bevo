@@ -93,6 +93,8 @@
 
 ## Task 6: Concrete moderation release corrections
 
+Task 5 source preparation now includes the default-disabled [CI/owner deployment route](../../mobile-preview-deployment.md). It does not satisfy provisioning, permission, real-service or device gates. Protected environment, dedicated owner resources/access and exact-source activation are still required.
+
 - [x] Make every price/venue report actionable from the first report through protected admin review/removal/dismissal.
 - [x] Keep pending venue names out of public cell APIs, old D1/edge cache bodies and other contributors’ selectors; preserve the proposer’s local acknowledgement.
 - [x] Implement temporary contribution restrictions through membership checks against existing daily anti-abuse keys, with no new actor attribution or persistent identifier.

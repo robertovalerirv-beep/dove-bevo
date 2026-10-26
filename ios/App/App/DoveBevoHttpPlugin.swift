@@ -5,7 +5,7 @@ import Capacitor
 public class DoveBevoHttpPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "DoveBevoHttpPlugin"
     public let jsName = "DoveBevoHttp"
-    public let pluginMethods = [CAPPluginMethod(name: "request", returnType: CAPPluginReturnPromise)]
+    public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "request", returnType: CAPPluginReturnPromise)]
     private let mutations: Set<String> = ["/api/mobile/prices", "/api/mobile/prices/confirm", "/api/mobile/venues", "/api/mobile/reports"]
 
     @objc func request(_ call: CAPPluginCall) {

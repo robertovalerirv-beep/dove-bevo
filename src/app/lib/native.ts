@@ -7,6 +7,7 @@ import { createMobileClient, nativeVenuePath } from "./native-client";
 import { foregroundLocation } from "./native-location";
 import { installNativePlatform, NATIVE_BACKGROUND, NATIVE_LINK, NATIVE_BACK } from "./platform";
 import { it } from "../i18n/it";
+import { CONTACT_EMAIL } from "../../shared/config";
 
 interface IsolatedHttp {
   request: (options: {
@@ -130,6 +131,8 @@ async function initialize(): Promise<string> {
       const link =
         event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null;
       if (!link || link.origin === location.origin || event.defaultPrevented) return;
+      // Capacitor's navigation delegate hands this fixed support address to the OS mail app.
+      if (link.href === `mailto:${CONTACT_EMAIL}`) return;
       event.preventDefault();
       void open(link.href).catch(() => {
         const message = document.createElement("p");

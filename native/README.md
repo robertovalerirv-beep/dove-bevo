@@ -49,8 +49,9 @@ checks this generated config when present. Its only reviewed profile has fixture
 disabled, an empty public sitekey and Access identifiers, no routes/queues/extra bindings, and both
 `workers_dev` and `preview_urls` disabled. Independent rate-limit namespaces `2026102601` and
 `2026102602` avoid the website's configured namespaces; account-wide availability still needs live
-verification. Real Turnstile/secrets, enabling mobile auth, attaching the exact preview host and a
-trusted deployment job require a further reviewed change. No deploy workflow is added here.
+verification. Real Turnstile/secrets, enabling mobile auth and attaching the exact preview host use
+the separately reviewed, default-disabled route in `docs/mobile-preview-deployment.md`. Its
+protected environment, dedicated resources and exact-source activation still require owner setup.
 
 Android: open `android/` in compatible Android Studio, with JDK 21, compile SDK 37 and Build Tools
 36.0.0. The checked-in project targets API 36 (minimum 24). `android/gradlew assembleDebug` builds a package signed
@@ -171,6 +172,14 @@ The owned server uses the vendor-supported `-L tcp:localhost:<port>` loopback li
 Clients and `ADB_SERVER_SOCKET` keep literal `127.0.0.1` to prevent missing-server autostart;
 the two forms are deliberately different. IPv4 loopback address, PID and socket inode
 ownership are verified; wildcard and foreign listeners are rejected.
+
+The private AVD directory exists before SDK tools resolve their environment. After creating
+one AVD, the helper accepts only its exact registry file up to 8 KiB, with a bounded extra-byte
+overflow check. It requires UTF-8 and the expected encoding, absolute owned data path and API 36
+target. Directories and the regular registry
+file must resolve directly without symlinks; unknown, changed or unexpected fields fail before
+ADB or emulator startup. No fallback directory is searched or adopted. These checks are not
+atomic isolation against concurrent changes by another process with the same privileges.
 
 Evidence binds the actual compiled/copied APK hash, checkout, API/image/tool versions, install
 result, exact component and surviving foreground PID after 25 seconds, plus PNG dimensions/hash.

@@ -1,0 +1,79 @@
+name: DoveBevo
+options:
+  minimumXcodeGenVersion: 2.44.1
+  xcodeVersion: "16.4"
+  deploymentTarget:
+    iOS: "16.4"
+  developmentLanguage: it
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.4"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CLANG_ENABLE_MODULES: YES
+    GCC_TREAT_WARNINGS_AS_ERRORS: YES
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+targets:
+  DoveBevo:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dovebevo.app
+        PRODUCT_NAME: DoveBevo
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+    dependencies:
+      - sdk: UIKit.framework
+      - sdk: WebKit.framework
+      - sdk: Network.framework
+  DoveBevoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dovebevo.app.tests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: DoveBevo
+  DoveBevoUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dovebevo.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: DoveBevo
+schemes:
+  DoveBevo:
+    build:
+      targets:
+        DoveBevo: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      gatherCoverageData: true
+      targets:
+        - name: DoveBevoTests
+          parallelizable: false
+        - name: DoveBevoUITests
+          parallelizable: false
+    archive:
+      config: Release

@@ -34,6 +34,8 @@ Prima di aprire il servizio online, l'app mostra le regole d'uso per maggiorenni
 
 Il servizio registra conteggi giornalieri di utilizzo e azioni, come apertura dell'app, contributi e conferme, con categorie limitate. Per i locali sponsorizzati può contare le aperture della scheda per locale e giorno. La tabella dei conteggi non associa questi numeri a un profilo personale. Le richieste di rete possono comunque includere normali dati tecnici e cookie di sessione; non descriviamo tutti i dati di sicurezza come irreversibilmente anonimi.
 
+Il servizio prevede anche log tecnici per individuare errori e problemi di funzionamento, con codici di errore, schemi delle rotte e durata delle richieste. La configurazione limita il campionamento ed esclude le stringhe di ricerca dai log. I fornitori possono trattare altri dati tecnici delle connessioni secondo le proprie informative. Questi log non seguono necessariamente i tempi di pulizia delle chiavi antiabuso descritti sotto.
+
 ## Fornitori e collegamenti esterni
 
 Cloudflare ospita il servizio e fornisce Turnstile. Il controllo anti-bot può elaborare IP, informazioni del browser e della connessione, origine e altri segnali tecnici. Cloudflare descrive anche un proprio utilizzo per migliorare Turnstile nella sua informativa: https://www.cloudflare.com/turnstile-privacy-policy/.

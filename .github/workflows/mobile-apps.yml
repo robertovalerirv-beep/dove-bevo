@@ -58,7 +58,11 @@ jobs:
             mobile-apps/android/app/build/outputs/apk/debug/*.apk
             mobile-apps/android/app/build/outputs/bundle/release/*.aab
             mobile-apps/android/app/build/reports/
-            mobile-apps/evidence/android/
+            mobile-apps/evidence/android/*.png
+            mobile-apps/evidence/android/smoke-result.json
+            mobile-apps/evidence/android/latest-ui.xml
+            mobile-apps/evidence/android/command-failures.json
+            mobile-apps/evidence/android/emulator-startup.json
           retention-days: 7
           if-no-files-found: error
 

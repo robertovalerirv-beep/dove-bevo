@@ -42,7 +42,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(website.waitForExistence(timeout: 20), "WKWebView did not appear")
         let searchButton = website.buttons["Cerca città o bar"]
         XCTAssertTrue(searchButton.waitForExistence(timeout: 90), "Live website did not become ready; inspect screenshot and network/challenge state")
-        XCTAssertFalse(app.otherElements["browser.error"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["browser.error"].exists)
         XCTAssertTrue(website.buttons["Vicino a me"].exists)
         searchButton.tap()
 
@@ -110,8 +110,8 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func assertNoNativeRecovery() {
-        XCTAssertFalse(app.otherElements["browser.loading"].exists, "Native loading appeared during city search; inspect renderer diagnostics")
-        XCTAssertFalse(app.otherElements["browser.error"].exists, "Native recovery/error UI replaced city search")
+        XCTAssertFalse(app.descendants(matching: .any)["browser.loading"].exists, "Native loading appeared during city search; inspect renderer diagnostics")
+        XCTAssertFalse(app.descendants(matching: .any)["browser.error"].exists, "Native recovery/error UI replaced city search")
     }
 
     private func dismissKeyboardIntroductionIfPresent(searchField: XCUIElement) {

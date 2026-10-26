@@ -78,7 +78,8 @@ export default defineConfig({
     { name: "security", testDir: "tests/security" },
   ],
   webServer: {
-    command: `npm run fixture && npm run db:local && npm run build && npm run preview -- --port ${String(PORT)}`,
+    // Browser checks serve the bundled native shell too: build it fresh before collecting evidence.
+    command: `npm run fixture && npm run db:local && npm run build && npm run build:native && npm run native:check && npm run preview -- --port ${String(PORT)}`,
     url: `https://localhost:${String(PORT)}/api/health`,
     ignoreHTTPSErrors: true,
     env: { WRANGLER_SEND_METRICS: "false" },

@@ -259,10 +259,6 @@ test("public privacy describes sponsorship, anonymous daily metrics and both ver
 });
 
 test.describe("bundled native consent with mocked bridge", () => {
-  test.skip(
-    !existsSync(join(nativeRoot, "index.html")),
-    "Build native preview for bundled-shell checks",
-  );
   for (const width of [390, 360]) {
     test(`native ${String(width)}: visible acceptance, external rules and unchanged acknowledged price upload`, async ({
       page,
@@ -322,10 +318,6 @@ for (const mode of ["web", "native"] as const) {
     test(`${mode} ${String(width)}: autofocus exposes visible rules before Enter accepts price and proposal`, async ({
       page,
     }, info) => {
-      test.skip(
-        mode === "native" && !existsSync(join(nativeRoot, "index.html")),
-        "Build native preview for bundled-shell checks",
-      );
       await page.setViewportSize({ width, height: 844 });
       const writes: unknown[] = [];
       const venues: unknown[] = [];

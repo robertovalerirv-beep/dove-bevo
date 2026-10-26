@@ -5,10 +5,6 @@ import { test, expect, type Page } from "@playwright/test";
 
 // This is a bundled-shell test with a mocked native bridge. It is not device evidence.
 const nativeRoot = fileURLToPath(new URL("../../dist/native/", import.meta.url).href);
-test.skip(
-  !existsSync(join(nativeRoot, "index.html")),
-  "Build the native preview before these tests",
-);
 async function serveNative(page: Page) {
   await page.route("https://native.example/**", (route) => {
     const pathname = new URL(route.request().url()).pathname;

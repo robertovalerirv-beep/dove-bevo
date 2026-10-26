@@ -248,18 +248,37 @@ export async function verifyPreviewResources(
   // Domains is an unpaginated SinglePage endpoint. Reject ambiguous pagination metadata.
   const domainsBody = await read(`${accountPath}/workers/domains`);
   demand(
-    Array.isArray(domainsBody.result) && domainsBody.result.every(object),
+    Array.isArray(domainsBody.result) &&
+      domainsBody.result.every(
+        (d) =>
+          object(d) &&
+          ["id", "cert_id", "environment", "hostname", "service", "zone_id", "zone_name"].every(
+            (field) => typeof d[field] === "string",
+          ) &&
+          d.hostname.length > 0 &&
+          d.service.length > 0 &&
+          typeof d.enabled === "boolean" &&
+          typeof d.previews_enabled === "boolean",
+      ),
     "INVALID_DOMAIN_LIST",
   );
   const domainInfo = domainsBody.result_info;
-  if (domainInfo !== undefined)
+  if (domainInfo !== undefined) {
+    const count = domainsBody.result.length;
     demand(
       object(domainInfo) &&
-        (domainInfo.total_count === undefined ||
-          domainInfo.total_count === domainsBody.result.length) &&
-        (domainInfo.total_pages === undefined || domainInfo.total_pages <= 1),
+        ["count", "page", "per_page", "total_count", "total_pages"].every(
+          (field) => domainInfo[field] === undefined || Number.isSafeInteger(domainInfo[field]),
+        ) &&
+        (domainInfo.count === undefined || domainInfo.count === count) &&
+        (domainInfo.page === undefined || domainInfo.page === 1) &&
+        (domainInfo.per_page === undefined || domainInfo.per_page >= count) &&
+        (domainInfo.total_count === undefined || domainInfo.total_count === count) &&
+        (domainInfo.total_pages === undefined ||
+          (domainInfo.total_pages >= (count === 0 ? 0 : 1) && domainInfo.total_pages <= 1)),
       "INCOMPLETE_DOMAIN_LIST",
     );
+  }
   const domains = domainsBody.result.filter(
     (d) => d.hostname === PREVIEW_HOST || d.service === PREVIEW_NAME,
   );

@@ -69,6 +69,18 @@ const page = (result: Json[]) => ({
   result,
   result_info: { page: 1, per_page: 100, count: result.length, total_count: result.length },
 });
+const domain = (changed: Json = {}) => ({
+  id: "dbe10b4bc17c295377eabd600e1787fd",
+  cert_id: "9fdf92c8-64c2-4a3d-b1af-e15304961145",
+  environment: "production",
+  hostname: PREVIEW_HOST,
+  service: PREVIEW_NAME,
+  zone_id: input.zone,
+  zone_name: "dovebevo.com",
+  enabled: true,
+  previews_enabled: false,
+  ...changed,
+});
 function hostedBindings(profile: Config, sha = input.sha): Json[] {
   return [
     { type: "d1", name: "DB", id: input.database },
@@ -130,19 +142,7 @@ function scenario(override?: (path: string, body: Json) => Json, previousSha = "
     else if (url.pathname.endsWith(`/workers/scripts/${PREVIEW_NAME}/settings`))
       body = { result: { bindings: hostedBindings(profile, currentSha) } };
     else if (url.pathname.endsWith("/workers/domains"))
-      body = {
-        result: deployed
-          ? [
-              {
-                hostname: PREVIEW_HOST,
-                service: PREVIEW_NAME,
-                zone_id: input.zone,
-                enabled: true,
-                previews_enabled: false,
-              },
-            ]
-          : [],
-      };
+      body = { result: deployed ? [domain()] : [] };
     else if (url.pathname.endsWith("/subdomain"))
       body = { result: { enabled: false, previews_enabled: false } };
     else if (url.pathname.endsWith("/workers/routes")) body = { result: [] };
@@ -364,11 +364,7 @@ describe("provider preconditions and ordered intended writes", () => {
       "/workers/scripts",
       { result: [{ id: "dovebevo-staging" }, { id: PREVIEW_NAME }] },
     ],
-    [
-      "hostname collision",
-      "/workers/domains",
-      { result: [{ hostname: PREVIEW_HOST, service: "unrelated" }] },
-    ],
+    ["hostname collision", "/workers/domains", { result: [domain({ service: "unrelated" })] }],
     ["DNS collision", "/dns_records", page([{ name: PREVIEW_HOST, content: "somewhere" }])],
     [
       "wildcard route collision",
@@ -417,6 +413,131 @@ describe("provider preconditions and ordered intended writes", () => {
 });
 
 describe("bounded provider parsing", () => {
+  it("rejects the malformed domain-list reproduction before any writes", async () => {
+    const options = scenario((path, body) =>
+      path.endsWith("/workers/domains")
+        ? {
+            result: [{ service: "unrelated" }],
+            result_info: { total_count: 1, total_pages: -1, page: "malformed" },
+          }
+        : body,
+    );
+    await expect(executePreviewDeployment(options)).rejects.toThrow("INVALID_DOMAIN_LIST");
+    expect(options.mutate).not.toHaveBeenCalled();
+  });
+  it.each([
+    "id",
+    "cert_id",
+    "environment",
+    "hostname",
+    "service",
+    "zone_id",
+    "zone_name",
+    "enabled",
+    "previews_enabled",
+  ])("rejects a domain row with missing or wrongly typed %s before writes", async (field) => {
+    for (const value of [undefined, null, 7]) {
+      const options = scenario((path, body) =>
+        path.endsWith("/workers/domains")
+          ? {
+              result: [
+                domain({ hostname: "unrelated.example", service: "unrelated", [field]: value }),
+              ],
+            }
+          : body,
+      );
+      await expect(executePreviewDeployment(options)).rejects.toThrow("INVALID_DOMAIN_LIST");
+      expect(options.mutate).not.toHaveBeenCalled();
+    }
+  });
+  it.each(["hostname", "service"])("rejects an empty domain %s before writes", async (field) => {
+    const options = scenario((path, body) =>
+      path.endsWith("/workers/domains")
+        ? { result: [domain({ hostname: "unrelated.example", service: "unrelated", [field]: "" })] }
+        : body,
+    );
+    await expect(executePreviewDeployment(options)).rejects.toThrow("INVALID_DOMAIN_LIST");
+    expect(options.mutate).not.toHaveBeenCalled();
+  });
+  it.each([
+    null,
+    [],
+    { count: "0" },
+    { count: -1 },
+    { count: 0.5 },
+    { count: 1 },
+    { page: "malformed" },
+    { page: 0 },
+    { page: -1 },
+    { page: 0.5 },
+    { page: 2 },
+    { per_page: "100" },
+    { per_page: -1 },
+    { per_page: 0.5 },
+    { per_page: Number.MAX_SAFE_INTEGER + 1 },
+    { total_count: "0" },
+    { total_count: -1 },
+    { total_count: 0.5 },
+    { total_count: 1 },
+    { total_pages: "1" },
+    { total_pages: -1 },
+    { total_pages: 0.5 },
+    { total_pages: 2 },
+  ])("rejects malformed or incomplete optional domain metadata %j before writes", async (info) => {
+    const options = scenario((path, body) =>
+      path.endsWith("/workers/domains") ? { ...body, result_info: info } : body,
+    );
+    await expect(executePreviewDeployment(options)).rejects.toThrow("INCOMPLETE_DOMAIN_LIST");
+    expect(options.mutate).not.toHaveBeenCalled();
+  });
+  it.each([{ per_page: 0 }, { total_pages: 0 }])(
+    "rejects metadata inconsistent with a nonempty domain list %j before writes",
+    async (info) => {
+      const options = scenario((path, body) =>
+        path.endsWith("/workers/domains")
+          ? {
+              result: [domain({ hostname: "unrelated.example", service: "unrelated" })],
+              result_info: info,
+            }
+          : body,
+      );
+      await expect(executePreviewDeployment(options)).rejects.toThrow("INCOMPLETE_DOMAIN_LIST");
+      expect(options.mutate).not.toHaveBeenCalled();
+    },
+  );
+  it.each([undefined, {}, { page: 1 }, { total_pages: 1 }, { per_page: 100 }, "complete"])(
+    "accepts a complete SinglePage domain list with optional metadata %j",
+    async (metadata) => {
+      const options = scenario((path, body) => {
+        if (!path.endsWith("/workers/domains")) return body;
+        const result = [
+          domain({ hostname: "unrelated.example", service: "unrelated" }),
+          ...(body.result as Json[]),
+        ];
+        const info =
+          metadata === "complete"
+            ? {
+                page: 1,
+                per_page: 100,
+                count: result.length,
+                total_count: result.length,
+                total_pages: 1,
+              }
+            : metadata;
+        return info === undefined ? { result } : { result, result_info: info };
+      });
+      await expect(executePreviewDeployment(options)).resolves.toBeUndefined();
+      expect(options.mutate).toHaveBeenCalledTimes(2);
+    },
+  );
+  it("accepts zero-valued counts for an empty SinglePage list", async () => {
+    const options = scenario((path, body) =>
+      path.endsWith("/workers/domains") && (body.result as Json[]).length === 0
+        ? { ...body, result_info: { count: 0, per_page: 0, total_count: 0, total_pages: 0 } }
+        : body,
+    );
+    await expect(executePreviewDeployment(options)).resolves.toBeUndefined();
+  });
   it("rejects incomplete pagination instead of claiming absence", async () => {
     const read: Read = () =>
       Promise.resolve({

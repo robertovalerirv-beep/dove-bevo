@@ -158,6 +158,13 @@ for (const colorScheme of ["light", "dark"] as const) {
         if (!proof.nativeConfigRespond) throw new Error("Native config request was not waiting");
         proof.nativeConfigRespond(status);
       }, status);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => typeof (window as unknown as { nativeConfigRespond: unknown }).nativeConfigRespond,
+        ),
+      )
+      .toBe("function");
     await respond(503);
     const message = page.getByRole("status").filter({
       hasText: "Anteprima non disponibile. Controlla la connessione e riprova.",

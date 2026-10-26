@@ -5,6 +5,16 @@ import org.gradle.api.file.RegularFileProperty
 
 plugins { id 'com.android.application' }
 
+def releaseKeystorePath = providers.environmentVariable('DOVEBEVO_ANDROID_KEYSTORE').orNull
+def releaseSigningPassword = providers.environmentVariable('DOVEBEVO_SIGNING_PASSWORD').orNull
+def hasReleaseKeystore = releaseKeystorePath != null && !releaseKeystorePath.isEmpty()
+def hasReleasePassword = releaseSigningPassword != null && !releaseSigningPassword.isEmpty()
+if (hasReleaseKeystore != hasReleasePassword)
+    throw new GradleException('Release signing requires both protected signing inputs.')
+def releaseSigningEnabled = hasReleaseKeystore && hasReleasePassword
+if (releaseSigningEnabled && (!new File(releaseKeystorePath).isAbsolute() || !new File(releaseKeystorePath).isFile()))
+    throw new GradleException('The protected release keystore must be an existing absolute file.')
+
 abstract class GeneratePrivacyAssets extends DefaultTask {
     @InputFile @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getPolicyFile()
@@ -41,11 +51,22 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    signingConfigs {
+        if (releaseSigningEnabled) {
+            create('protectedRelease') {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseSigningPassword
+                keyPassword = releaseSigningPassword
+                keyAlias = 'dovebevo-upload'
+                storeType = 'PKCS12'
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled = false
             // Signing is supplied by the secure release environment, never by source.
-            signingConfig = null
+            signingConfig = releaseSigningEnabled ? signingConfigs.getByName('protectedRelease') : null
         }
     }
     lint { abortOnError = true; checkReleaseBuilds = true }

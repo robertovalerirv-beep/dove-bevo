@@ -43,6 +43,6 @@ final class RulesAcceptanceTests: XCTestCase {
     @MainActor
     private func button(_ identifier: String, in view: UIView) -> UIButton? {
         if let button = view as? UIButton, button.accessibilityIdentifier == identifier { return button }
-        return view.subviews.lazy.compactMap { button(identifier, in: $0) }.first
+        return view.subviews.lazy.compactMap { self.button(identifier, in: $0) }.first
     }
 }

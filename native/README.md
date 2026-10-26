@@ -119,3 +119,21 @@ opt-outs preserve those scripts without patching `node_modules`. They do not sup
 metadata checks. Full native-plugin migration is required before those AGP compatibility
 opt-outs are removed. This toolchain change still requires a successful hosted build; source
 configuration checks alone do not establish Capacitor compatibility or an installable APK.
+
+### Android merged manifest checks
+
+The pinned `iongeolocation-android:2.2.2` SDK contributes the normal
+`ACCESS_NETWORK_STATE` permission. Its provider selection and settings-error handling call
+`ConnectivityManager.activeNetwork` and `getNetworkCapabilities`, which require this permission.
+Retain that specific reviewed permission alongside Internet and foreground coarse/fine location;
+the final-manifest guard rejects every other external permission, including background location
+and advertising ID. AndroidX's app-private receiver permission is accepted only when declared
+with signature protection. This does not authorize a broader permission set for future SDKs.
+
+Location remains optional for manual map/search use. Generic location, GPS and network location
+hardware are explicitly `required=false`; the helper checks both the merged XML and `aapt2`
+badging so an inferred required hardware feature cannot silently filter supported devices.
+`scripts/mobile-ci-android-check.py` validates real merged output and is exercised with negative
+manifest/permission/hardware fixtures. APK hashing and packaged-asset checks run before this
+manifest check, preserving their evidence even when a manifest policy fails. A new APK must be
+built before the corrected hardware declarations can be verified in packaged output.

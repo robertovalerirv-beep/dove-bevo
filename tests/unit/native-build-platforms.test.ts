@@ -1,7 +1,115 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(path, "utf8");
+
+// Real 206dc25 permission shape, with this fix's explicit optional location features.
+const mergedManifest = `<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.dovebevo.app.preview">
+<uses-sdk android:minSdkVersion="24" android:targetSdkVersion="36" />
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+<permission android:name="com.dovebevo.app.preview.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" android:protectionLevel="signature" />
+<uses-permission android:name="com.dovebevo.app.preview.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+<uses-feature android:name="android.hardware.location" android:required="false" />
+<uses-feature android:name="android.hardware.location.gps" android:required="false" />
+<uses-feature android:name="android.hardware.location.network" android:required="false" />
+<application android:allowBackup="false" android:usesCleartextTraffic="false" />
+</manifest>`;
+const runManifestGuard = (manifest: string, badging = "") => {
+  const dir = mkdtempSync(join(tmpdir(), "dovebevo-manifest-"));
+  try {
+    const xml = join(dir, "AndroidManifest.xml");
+    const badge = join(dir, "badging.txt");
+    writeFileSync(xml, manifest);
+    writeFileSync(badge, badging);
+    return execFileSync("python", ["scripts/mobile-ci-android-check.py", xml, badge], {
+      encoding: "utf8",
+      stdio: "pipe",
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+describe("merged Android manifest validation", () => {
+  it("accepts only the reviewed SDK network-state permission and app-private signature permission", () => {
+    expect(runManifestGuard(mergedManifest)).toContain("foreground location optional");
+    expect(() =>
+      runManifestGuard(
+        mergedManifest.replace(
+          'android:protectionLevel="signature"',
+          'android:protectionLevel="normal"',
+        ),
+      ),
+    ).toThrow(/signature/);
+  });
+
+  it.each([
+    "android.permission.CAMERA",
+    "android.permission.ACCESS_BACKGROUND_LOCATION",
+    "com.google.android.gms.permission.AD_ID",
+  ])("rejects unreviewed permission %s", (permission) => {
+    expect(() =>
+      runManifestGuard(
+        mergedManifest.replace(
+          "</manifest>",
+          `<uses-permission android:name="${permission}" /></manifest>`,
+        ),
+      ),
+    ).toThrow(/permission/);
+  });
+
+  it.each(["allowBackup", "usesCleartextTraffic"])("rejects unsafe %s", (attribute) => {
+    expect(() =>
+      runManifestGuard(mergedManifest.replace(`${attribute}="false"`, `${attribute}="true"`)),
+    ).toThrow(/application/);
+  });
+
+  it("rejects the wrong identity or changed target API", () => {
+    expect(() =>
+      runManifestGuard(
+        mergedManifest.replace('package="com.dovebevo.app.preview"', 'package="com.other.app"'),
+      ),
+    ).toThrow(/identity/);
+    expect(() =>
+      runManifestGuard(mergedManifest.replace('targetSdkVersion="36"', 'targetSdkVersion="37"')),
+    ).toThrow(/SDK/);
+  });
+
+  it.each([
+    "android.hardware.location",
+    "android.hardware.location.gps",
+    "android.hardware.location.network",
+  ])("rejects missing/required optional hardware %s", (feature) => {
+    const declaration = `<uses-feature android:name="${feature}" android:required="false" />`;
+    expect(() => runManifestGuard(mergedManifest.replace(declaration, ""))).toThrow(/location/);
+    expect(() =>
+      runManifestGuard(
+        mergedManifest.replace(
+          declaration,
+          declaration.replace('required="false"', 'required="true"'),
+        ),
+      ),
+    ).toThrow(/location/);
+  });
+
+  it("rejects a required location feature inferred into actual aapt badging", () => {
+    expect(() =>
+      runManifestGuard(mergedManifest, "uses-feature: name='android.hardware.location'\n"),
+    ).toThrow(/badging/);
+    expect(
+      runManifestGuard(
+        mergedManifest,
+        "uses-feature-not-required: name='android.hardware.location'\n",
+      ),
+    ).toContain("foreground location optional");
+  });
+});
 
 describe("generated native platform boundaries (source checks, not device proof)", () => {
   it("aligns every iOS deployment minimum with the explicit bundled browser targets", () => {

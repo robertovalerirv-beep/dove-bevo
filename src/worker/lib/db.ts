@@ -1,10 +1,10 @@
 // The only module that talks to D1 (CLAUDE.md).
 import { isValidWeek, type WeekHours } from "../../shared/hours";
 import type { MetricRow } from "../../shared/metrics";
+import { publicCellBody } from "./public-cell";
 import type {
   CellPrices,
   HistoryRow,
-  PendingVenue,
   PriceRow,
   UserVenue,
   VenueKind,
@@ -57,7 +57,7 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
     db
       .prepare(
         `SELECT id, name, kind, lat, lon, status, confirmations
-         FROM venues_user WHERE cell = ?1 AND status IN ('approved', 'pending') ORDER BY id`,
+         FROM venues_user WHERE cell = ?1 AND status = 'approved' ORDER BY id`,
       )
       .bind(cell),
     db.prepare("SELECT venue_key FROM venues_hidden WHERE cell = ?1").bind(cell),
@@ -73,14 +73,11 @@ export async function getCellPrices(db: D1Database, cell: string): Promise<CellP
   const p = ((prices?.results ?? []) as unknown as PriceDbRow[])
     .filter((r) => isPublicBar(r.venue_key, approved, hiddenKeys))
     .map(toPriceRow);
-  const pend = rows
-    .filter((r) => r.status === "pending")
-    .map((r): PendingVenue => [`u${String(r.id)}`, r.name, r.kind, r.lat, r.lon, r.confirmations]);
   // A verified bar shows as such only while it is public (ADR 0033): hidden or not approved, never.
   const g = ((verified?.results ?? []) as unknown as { venue_key: string }[])
     .map((r) => r.venue_key)
     .filter((key) => isPublicBar(key, approved, hiddenKeys));
-  return { p, u, pend, h, g };
+  return { p, u, pend: [], h, g };
 }
 
 /** How long a snapshot may stand if a change forgot to empty it (ADR 0020). */
@@ -98,7 +95,7 @@ export async function getCellSnapshot(db: D1Database, cell: string): Promise<str
     .prepare(SNAPSHOT_SQL)
     .bind(cell)
     .first<{ v: number; at: number; body: string | null }>();
-  if (row?.body && Date.now() - row.at < SNAPSHOT_TTL_MS) return row.body;
+  if (row?.body && Date.now() - row.at < SNAPSHOT_TTL_MS) return publicCellBody(row.body);
   const answer = await getCellPrices(db, cell);
   const body = JSON.stringify(answer);
   if (
@@ -776,8 +773,14 @@ export async function setUserVenueStatus(
 export async function listPricesToReview(db: D1Database) {
   const { results } = await db
     .prepare(
-      `SELECT venue_key, drink, hh, cell, price_cents, observed_on, confirmations, status
-       FROM prices_current WHERE status IN ('review', 'quarantined') ORDER BY observed_on DESC LIMIT 200`,
+      `SELECT p.venue_key, p.drink, p.hh, p.cell, p.price_cents, p.observed_on, p.confirmations, p.status,
+         COALESCE(r.n, 0) AS n, r.reasons, r.report_day
+       FROM prices_current p LEFT JOIN (
+         SELECT venue_key, drink, hh, COUNT(*) AS n, group_concat(DISTINCT reason) AS reasons,
+           max(day) AS report_day FROM reports WHERE drink IS NOT NULL GROUP BY venue_key, drink, hh
+       ) r ON r.venue_key = p.venue_key AND r.drink = p.drink AND r.hh = p.hh
+       WHERE p.status IN ('review', 'quarantined') OR r.n > 0
+       ORDER BY COALESCE(r.report_day, p.observed_on) DESC, p.venue_key, p.drink, p.hh LIMIT 200`,
     )
     .all<{
       venue_key: string;
@@ -787,24 +790,35 @@ export async function listPricesToReview(db: D1Database) {
       price_cents: number;
       observed_on: string;
       confirmations: number;
-      status: "review" | "quarantined";
+      status: "active" | "review" | "quarantined" | "removed";
+      n: number;
+      reasons: string | null;
+      report_day: string | null;
     }>();
   return results;
 }
 
-/** Admin decision on a price under review or in quarantine. */
+/** A reported active price is actionable immediately; the automatic threshold is unchanged. */
 export async function setPriceStatus(
   db: D1Database,
   k: PriceKey,
-  status: "active" | "removed",
+  status: "active" | "review" | "removed",
 ): Promise<string | null> {
-  const row = await db
+  const update = db
     .prepare(
-      `UPDATE prices_current SET status = ?4 WHERE ${PK} AND status IN ('review', 'quarantined')
+      `UPDATE prices_current SET status = ?4 WHERE ${PK}
+       AND (status IN ('review', 'quarantined') OR (status = 'active' AND EXISTS (
+         SELECT 1 FROM reports WHERE venue_key = ?1 AND drink = ?2 AND hh = ?3
+       )))
        RETURNING cell`,
     )
-    .bind(...pk(k), status)
-    .first<{ cell: string }>();
+    .bind(...pk(k), status);
+  // One atomic batch: a final decision closes its reports; sending to review keeps the evidence.
+  const statements = [update];
+  if (status !== "review")
+    statements.push(db.prepare(`DELETE FROM reports WHERE ${PK} AND changes() > 0`).bind(...pk(k)));
+  const results = await db.batch(statements);
+  const row = results[0]?.results[0] as { cell: string } | undefined;
   return row?.cell ?? null;
 }
 
@@ -812,17 +826,36 @@ export async function setPriceStatus(
 export async function listBarReports(db: D1Database) {
   const { results } = await db
     .prepare(
-      `SELECT venue_key, max(cell) AS cell, group_concat(DISTINCT reason) AS reasons, COUNT(*) AS n,
-         max(day) AS day
-       FROM reports WHERE drink IS NULL GROUP BY venue_key ORDER BY n DESC, day DESC LIMIT 200`,
+      `SELECT r.venue_key, max(r.cell) AS cell, group_concat(DISTINCT r.reason) AS reasons, COUNT(*) AS n,
+         max(r.day) AS day,
+         CASE WHEN r.venue_key LIKE 'u%' THEN COALESCE(v.status, 'removed')
+           WHEN h.venue_key IS NOT NULL THEN 'hidden' ELSE 'visible' END AS status
+       FROM reports r LEFT JOIN venues_user v ON r.venue_key = 'u' || v.id
+       LEFT JOIN venues_hidden h ON r.venue_key = h.venue_key
+       WHERE r.drink IS NULL GROUP BY r.venue_key ORDER BY n DESC, day DESC LIMIT 200`,
     )
-    .all<{ venue_key: string; cell: string | null; reasons: string; n: number; day: string }>();
+    .all<{
+      venue_key: string;
+      cell: string | null;
+      reasons: string;
+      n: number;
+      day: string;
+      status: "pending" | "approved" | "removed" | "hidden" | "visible";
+    }>();
   return results;
 }
 
 /** Closes the reports on a bar: after a delete, or when the admin judges them unfounded. */
 export async function clearBarReports(db: D1Database, key: string): Promise<void> {
   await db.prepare("DELETE FROM reports WHERE venue_key = ?1 AND drink IS NULL").bind(key).run();
+}
+
+/** Dismiss only this drink/band's reports; keep the anti-duplicate markers. */
+export async function clearPriceReports(db: D1Database, k: PriceKey): Promise<void> {
+  await db
+    .prepare(`DELETE FROM reports WHERE ${PK}`)
+    .bind(...pk(k))
+    .run();
 }
 
 // ---- Pages for search engines and the open API (ADR 0025): public bars only ----

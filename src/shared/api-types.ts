@@ -28,6 +28,7 @@ export type PendingVenue = [string, string, VenueKind, number, number, number];
 export interface CellPrices {
   p: PriceRow[];
   u: UserVenue[];
+  /** Compatibility field, always empty. Pending names are restricted to the admin. */
   pend: PendingVenue[];
   /** OSM keys of the cell hidden by the admin (not a bar, closed): never drawn (ADR 0017). */
   h: string[];

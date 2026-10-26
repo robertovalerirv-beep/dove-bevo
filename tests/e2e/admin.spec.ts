@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { atHour, THEME_HOURS } from "./helpers";
 
 // The Worker side (Access JWT, hide, add, review) is covered in tests/worker/admin.test.ts.
 // Here the admin API is simulated: locally there is no Cloudflare Access in front of it.
@@ -12,8 +13,16 @@ const OVERVIEW = {
       reasons: "not_exists,closed",
       n: 2,
       day: "2026-10-12",
+      status: "visible",
     },
-    { venue_key: "w549495264", cell: "u0nd9", reasons: "wrong_info", n: 1, day: "2026-10-11" },
+    {
+      venue_key: "w549495264",
+      cell: "u0nd9",
+      reasons: "wrong_info",
+      n: 1,
+      day: "2026-10-11",
+      status: "visible",
+    },
   ],
   venues: [
     {
@@ -42,6 +51,9 @@ const OVERVIEW = {
       observed_on: "2026-10-12",
       confirmations: 0,
       status: "review",
+      n: 0,
+      reasons: null,
+      report_day: null,
       source: "manual",
     },
   ],
@@ -87,6 +99,67 @@ async function fakeAdmin(page: Page, allowed = true) {
     await route.fulfill({ json: { status: "ok" } });
   });
   return posts;
+}
+
+for (const scheme of ["light", "dark"] as const) {
+  test(`a first reported active price shows evidence and supports review, remove and dismiss (${scheme})`, async ({
+    page,
+  }, testInfo) => {
+    const posts = await fakeAdmin(page);
+    const reported = {
+      ...OVERVIEW.prices[0],
+      status: "active",
+      n: 1,
+      reasons: "offensive",
+      report_day: "2026-10-26",
+    };
+    await page.route("**/api/admin/overview", (route) =>
+      route.fulfill({
+        json: { ...OVERVIEW, prices: [reported] },
+      }),
+    );
+    await atHour(page, THEME_HOURS[scheme]);
+    await page.goto("/admin");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
+    const queue = page.locator("#price-review");
+    await expect(queue).toContainText("Contenuto offensivo");
+    await expect(queue).toContainText("1 segnalazione");
+    await expect(queue).toContainText("26 ott");
+    await expect(queue).toContainText("Pubblico");
+    await queue.getByRole("button", { name: "Metti in revisione" }).click();
+    await expect
+      .poll(() => posts.at(-1)?.body)
+      .toEqual({ venue: "n2420779240", drink: "spritz", hh: 0, status: "review" });
+    await queue.getByRole("button", { name: "Rimuovi" }).click();
+    await expect
+      .poll(() => posts.at(-1)?.body)
+      .toEqual({ venue: "n2420779240", drink: "spritz", hh: 0, status: "removed" });
+    await queue.getByRole("button", { name: "Ignora segnalazioni" }).click();
+    await expect
+      .poll(() => posts.at(-1))
+      .toEqual({
+        path: "/api/admin/reports/dismiss",
+        body: { venue: "n2420779240", drink: "spritz", hh: 0 },
+      });
+    await expect(queue.getByRole("button", { name: "Metti in revisione" })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    for (const button of await queue.getByRole("button").all()) {
+      const box = await button.boundingBox();
+      expect(box?.width).toBeGreaterThanOrEqual(48);
+      expect(box?.height).toBeGreaterThanOrEqual(48);
+    }
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+    await queue.screenshot({ path: testInfo.outputPath(`price-moderation-${scheme}.png`) });
+  });
 }
 
 test("without Cloudflare Access the admin page says it is reserved", async ({ page }) => {

@@ -61,7 +61,7 @@ describe("POST /api/venues (M3-11, M3-12)", () => {
     expect(row).toMatchObject({ status: "pending", lat: 45.46512, lon: 9.19112, confirmations: 1 });
   });
 
-  it("a pending bar is listed for choosing but its prices are not public (M3-13)", async () => {
+  it("a pending bar and its prices stay private until approval (ADR 0037 narrows M3-13)", async () => {
     const cookie = await newSession();
     const { key } = await (await propose(bar("Bar Delle Prove"), cookie)).json<{ key: string }>();
     const price = await exports.default.fetch(`${ORIGIN}/api/prices`, {
@@ -82,7 +82,7 @@ describe("POST /api/venues (M3-11, M3-12)", () => {
     expect(price.status).toBe(200);
     const before = await cell();
     expect(before.u).toEqual([]);
-    expect(before.pend.map((v) => v[0])).toEqual([key]);
+    expect(before.pend).toEqual([]);
     expect(before.p).toEqual([]);
 
     const id = Number(key.slice(1));

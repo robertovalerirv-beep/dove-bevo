@@ -23,7 +23,7 @@ export interface Venue {
   city: string;
   cell: string;
   prices: PriceRow[];
-  /** Proposed by a user, not yet approved: only offered when choosing the bar of a price. */
+  /** A proposal acknowledged locally in this visit; never loaded from the public API. */
   pending: boolean;
   /** «Gestore verificato» (SPEC 1.9, D-34): first in the list, with «Sponsorizzato». */
   verified: boolean;
@@ -76,7 +76,8 @@ async function fetchCell(cell: string): Promise<Venue[]> {
       pending: false,
       verified: verified.has(key),
     }));
-  const user = [...prices.u, ...prices.pend].map(([key, name, kind, lat, lon], i) => ({
+  // Ignore legacy server `pend` too: selectors must never expose another person's proposal.
+  const user = prices.u.map(([key, name, kind, lat, lon]) => ({
     key,
     name,
     kind,
@@ -86,8 +87,8 @@ async function fetchCell(cell: string): Promise<Venue[]> {
     city: "",
     cell,
     prices: byKey.get(key) ?? [],
-    pending: i >= prices.u.length,
-    verified: i < prices.u.length && verified.has(key),
+    pending: false,
+    verified: verified.has(key),
   }));
   return [...osm, ...user];
 }

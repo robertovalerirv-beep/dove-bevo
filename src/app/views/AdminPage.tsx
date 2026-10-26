@@ -12,7 +12,14 @@ import { STALE_DAYS } from "../../shared/config";
 // /admin (SPEC 7.9, D-19): behind Cloudflare Access; the Worker verifies the JWT on /api/admin/*.
 
 interface Overview {
-  reports: { venue_key: string; cell: string | null; reasons: string; n: number; day: string }[];
+  reports: {
+    venue_key: string;
+    cell: string | null;
+    reasons: string;
+    n: number;
+    day: string;
+    status: "pending" | "approved" | "removed" | "hidden" | "visible";
+  }[];
   venues: {
     id: number;
     name: string;
@@ -35,7 +42,10 @@ interface Overview {
     cell: string;
     price_cents: number;
     observed_on: string;
-    status: "review" | "quarantined";
+    status: "active" | "review" | "quarantined" | "removed";
+    n: number;
+    reasons: string | null;
+    report_day: string | null;
   }[];
 }
 
@@ -383,7 +393,10 @@ function NewBar({
   );
 }
 
-/** Quarantined prices and prices reported by users, to approve or remove. */
+const reasonText = (code: string) =>
+  (it.report.reasons as Record<string, string | undefined>)[code] ?? code;
+
+/** Every reported price is actionable from its first report, regardless of the automatic threshold. */
 function PriceQueue({
   prices,
   act,
@@ -405,22 +418,51 @@ function PriceQueue({
             <a href={`/bar/${p.venue_key}?c=${p.cell}`}>{p.venue_key}</a>{" "}
             {[it.drinks[p.drink] ?? p.drink, p.hh ? "HH" : ""].filter(Boolean).join(" ")} ·{" "}
             {formatPrice(p.price_cents)} · {formatDate(p.observed_on)} ·{" "}
-            {p.status === "review" ? it.admin.review : it.admin.quarantined}
+            {it.admin.contentStatus[p.status]}
+            {p.n > 0 && (
+              <p class="hint">
+                {(p.reasons ?? "").split(",").map(reasonText).join(", ")} ·{" "}
+                {it.admin.reportCount(p.n)}
+                {p.report_day && ` · ${formatDate(p.report_day)}`}
+              </p>
+            )}
             <span class="admin__actions">
-              <button
-                type="button"
-                class="btn btn--secondary"
-                onClick={() => void act("prices/status", { ...key, status: "active" }, p.cell)}
-              >
-                {it.admin.approve}
-              </button>
-              <button
-                type="button"
-                class="btn btn--ghost"
-                onClick={() => void act("prices/status", { ...key, status: "removed" }, p.cell)}
-              >
-                {it.admin.remove}
-              </button>
+              {p.status === "active" && (
+                <button
+                  type="button"
+                  class="btn btn--secondary"
+                  onClick={() => void act("prices/status", { ...key, status: "review" }, p.cell)}
+                >
+                  {it.admin.sendToReview}
+                </button>
+              )}
+              {(p.status === "review" || p.status === "quarantined") && (
+                <button
+                  type="button"
+                  class="btn btn--secondary"
+                  onClick={() => void act("prices/status", { ...key, status: "active" }, p.cell)}
+                >
+                  {it.admin.approve}
+                </button>
+              )}
+              {p.status !== "removed" && (
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  onClick={() => void act("prices/status", { ...key, status: "removed" }, p.cell)}
+                >
+                  {it.admin.remove}
+                </button>
+              )}
+              {p.n > 0 && (
+                <button
+                  type="button"
+                  class="btn btn--ghost"
+                  onClick={() => void act("reports/dismiss", key)}
+                >
+                  {it.admin.dismissReports}
+                </button>
+              )}
             </span>
           </li>
         );
@@ -446,8 +488,6 @@ function BarReports({
       setNames(new Map(lists.flat().map((v) => [v.key, v.name])));
     });
   }, [reports]);
-  const reasonText = (code: string) =>
-    (it.report.reasons as Record<string, string | undefined>)[code] ?? code;
 
   return (
     <Queue
@@ -462,9 +502,9 @@ function BarReports({
           <li key={r.venue_key}>
             {r.cell ? <a href={`/bar/${r.venue_key}?c=${r.cell}`}>{name}</a> : name} ·{" "}
             {r.reasons.split(",").map(reasonText).join(", ")} · {it.admin.reportCount(r.n)} ·{" "}
-            {formatDate(r.day)}
+            {formatDate(r.day)} · {it.admin.contentStatus[r.status]}
             <span class="admin__actions">
-              {r.cell && (
+              {r.cell && r.status !== "removed" && r.status !== "hidden" && (
                 <button
                   type="button"
                   class="btn btn--secondary"

@@ -21,6 +21,7 @@ import { readJson } from "../lib/guards";
 import { hmacHex } from "../lib/hmac";
 import { clientIp, consumeQuota } from "../lib/quota";
 import { resolveVenue } from "../lib/venues";
+import { publicCellBody } from "../lib/public-cell";
 import { VenueKey } from "./venues";
 import type { AppEnv } from "../types";
 
@@ -35,7 +36,13 @@ prices.get("/:cell", async (c) => {
 
   const key = edgeKey(c.req.url, cell.data);
   const hit = await caches.default.match(key);
-  if (hit) return new Response(hit.body, hit); // mutable copy for the header middleware
+  // Old edge entries survive a deploy. Strip pending names even on a cache hit.
+  if (hit) {
+    const headers = new Headers(hit.headers);
+    headers.delete("Content-Length");
+    headers.delete("ETag");
+    return new Response(publicCellBody(await hit.text()), { status: hit.status, headers });
+  }
 
   // One row from the cell's snapshot (ADR 0020); the text is already JSON.
   const response = c.body(await getCellSnapshot(c.env.DB, cell.data), 200, {

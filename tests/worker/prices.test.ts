@@ -42,7 +42,7 @@ describe("GET /api/prices/:cell (M1-08)", () => {
         ["u7", "spritz", 0, 650, "2026-10-10", 0, 0],
       ],
       u: [["u7", "Bar Nuovo", 1, 45.4641, 9.1901]],
-      pend: [["u8", "Bar In Attesa", 0, 45.4642, 9.1902, 1]],
+      pend: [], // Premoderation now includes names, not only prices (ADR 0037).
       h: [],
       g: [],
     });

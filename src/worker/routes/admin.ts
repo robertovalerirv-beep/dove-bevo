@@ -17,6 +17,7 @@ import {
   listMetrics,
   listPricesToReview,
   clearBarReports,
+  clearPriceReports,
   getCurrentPrice,
   listBarReports,
   runStatements,
@@ -54,7 +55,7 @@ const PriceStatus = z.strictObject({
   venue: VenueKey,
   drink: z.string().refine((d) => CATALOG.some((e) => e.code === d)),
   hh: z.union([z.literal(0), z.literal(1)]),
-  status: z.enum(["active", "removed"]),
+  status: z.enum(["active", "review", "removed"]),
 });
 
 /** Seven days, Monday first, each closed ([]) or up to two "HH:MM" ranges (SPEC 9.2, D-34). */
@@ -157,14 +158,18 @@ admin.post("/unhide", async (c) => {
   return c.json({ status: "visible" });
 });
 
-// Reports on a bar judged unfounded: the bar stays, its reports are closed.
+// Close only the selected target's reports. The content and anti-duplicate markers stay.
 admin.post("/reports/dismiss", async (c) => {
-  const body = await readJson(c, z.strictObject({ venue: VenueKey }));
-  await clearBarReports(c.env.DB, body.venue);
+  const body = await readJson(
+    c,
+    z.union([z.strictObject({ venue: VenueKey }), PriceStatus.omit({ status: true })]),
+  );
+  if ("drink" in body) await clearPriceReports(c.env.DB, body);
+  else await clearBarReports(c.env.DB, body.venue);
   return c.json({ status: "dismissed" });
 });
 
-// Decide on a price in review or in quarantine (SPEC 11).
+// Decide on a price in review/quarantine or reported at least once (SPEC 11, ADR 0037).
 admin.post("/prices/status", async (c) => {
   const body = await readJson(c, PriceStatus);
   const k = { venue: body.venue, drink: body.drink, hh: body.hh };

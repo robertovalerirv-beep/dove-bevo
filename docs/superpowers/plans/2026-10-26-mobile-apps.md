@@ -37,11 +37,11 @@
 
 **Produces:** `/api/mobile/config`, `/api/mobile/authorize`, `/api/mobile/session`, `/api/mobile/events` and authenticated mobile price/report/venue aliases. Preview routes answer 404 unless `MOBILE_PREVIEW_ENABLED=true`. `authorize` accepts only exact same-origin hosted challenge submissions and validates real Turnstile hostname/action; native session/events/mutations require `X-Dovebevo-Native: 1` and reject foreign browser Origin. No CORS headers. Return existing structured API error shapes.
 
-- [ ] Write focused worker tests proving disabled gate, accepted authorization/redemption, invalid/replayed/verifier/nonce/audience/environment rejection and web-cookie/mobile-token separation. Demonstrate absent routes fail first.
-- [ ] Add a new migration for bounded hashed authorization codes. D1 access stays in `db.ts`; atomic consume, expiry, cleanup and storage failure are tested. Apply five authorizations/minute and 60/day using existing abuse-control primitives, 1,000 outstanding maximum, existing global burst protection. Do not log code/verifier/token.
-- [ ] Implement separate mobile token encoding/signature derivation and middleware. Keep all web/admin origin and cookie checks intact. Share existing business routers and quotas; canonical public reads remain unchanged.
-- [ ] Test mobile events without session/cookie/identifier; enforce existing closed event schema/body/rate limits. Token-bearing web/admin access and cookie-only mobile access fail.
-- [ ] Run focused Vitest worker/unit checks, typecheck and format/lint for owned paths. Commit only owned paths and report exact commands, counts, commits and unverified device boundaries.
+- [x] Write focused worker tests proving disabled gate, accepted authorization/redemption, invalid/replayed/verifier/nonce/audience/environment rejection and web-cookie/mobile-token separation. Demonstrate absent routes fail first.
+- [x] Add a new migration for bounded hashed authorization codes. D1 access stays in `db.ts`; atomic consume, expiry, cleanup and storage failure are tested. Apply five authorizations/minute and 60/day using existing abuse-control primitives, 1,000 outstanding maximum, existing global burst protection. Do not log code/verifier/token.
+- [x] Implement separate mobile token encoding/signature derivation and middleware. Keep all web/admin origin and cookie checks intact. Share existing business routers and quotas; canonical public reads remain unchanged.
+- [x] Test mobile events without session/cookie/identifier; enforce existing closed event schema/body/rate limits. Token-bearing web/admin access and cookie-only mobile access fail.
+- [x] Run focused Vitest worker/unit checks, typecheck and format/lint for owned paths. Commit only owned paths and report exact commands, counts, commits and unverified device boundaries.
 
 ## Task 2: Native build and platform projects
 
@@ -51,12 +51,12 @@
 
 **Produces:** `npm run build:native`, `npm run native:sync`, generated preview platform projects with exact pinned Capacitor versions. Native build output `dist/native` has a root HTML and explicit CSP; excludes admin, Worker output, service worker/install behavior, secrets and fixture fallback. Default preview may use fixture only when explicitly labelled preview; a release guard refuses it.
 
-- [ ] Add meaningful tests for build configuration/release guard: fixture/missing data version, arbitrary backend URL and production `server.url` are rejected.
-- [ ] Pin reviewed Capacitor packages; generate official Android/iOS projects without executing unreviewed hooks or downloading unknown software. Use `com.dovebevo.app.preview` and visible Preview naming.
-- [ ] Add isolated native Vite config and cross-platform build/sync/check scripts. Keep normal web bundle unchanged and measure before/after JS gzip; archive size is not runtime size.
-- [ ] Register preview callback scheme; foreground location strings/permissions only, no background/AD_ID permission. Android target at least API 36. Account for current iOS lifecycle/privacy template. Use existing brand icons where valid.
-- [ ] Build and sync locally, run focused tests/typecheck/format; attempt an Android debug build only if required JDK/SDK are already present or official installation is suitable. Record a concrete missing-tool blocker rather than claiming a binary.
-- [ ] Commit only owned paths. Return exact package versions, footprint, build results, generated platform paths and blockers. No CI launch, cloud mutation, signing material or public upload from the worker.
+- [x] Add meaningful tests for build configuration/release guard: fixture/missing data version, arbitrary backend URL and production `server.url` are rejected.
+- [x] Pin reviewed Capacitor packages; generate official Android/iOS projects without executing unreviewed hooks or downloading unknown software. Use `com.dovebevo.app.preview` and visible Preview naming.
+- [x] Add isolated native Vite config and cross-platform build/sync/check scripts. Keep normal web bundle unchanged and measure before/after JS gzip; archive size is not runtime size.
+- [x] Register preview callback scheme; foreground location strings/permissions only, no background/AD_ID permission. Android target at least API 36. Account for current iOS lifecycle/privacy template. Use existing brand icons where valid.
+- [x] Build and sync locally, run focused tests/typecheck/format; attempt an Android debug build only if required JDK/SDK are already present or official installation is suitable. Record a concrete missing-tool blocker rather than claiming a binary.
+- [x] Commit only owned paths. Return exact package versions, footprint, build results, generated platform paths and blockers. No CI launch, cloud mutation, signing material or public upload from the worker.
 
 ## Task 3: Native client adapter and application integration
 
@@ -66,21 +66,21 @@
 
 **Produces:** native-only platform/transport boundary, foreground location, validated callback handling, native share/navigation/back/lifecycle, and PWA/SW suppression. Web behavior stays unchanged. Public reads/events get no token; only exact mobile mutation paths receive it; redirects and arbitrary destinations fail closed.
 
-- [ ] Write tests for allowlisted URL construction, bearer exclusion on public/static/map/event requests, verifier/state/callback parsing, missing config/version and denied location. Demonstrate missing adapter behavior fails first.
-- [ ] Implement native HTTPS adapter and in-memory session state. Load `/api/mobile/config`, open the controlled challenge path, validate callback and redeem code; clear expired/cancelled state. Never persist/log tokens or coordinates.
-- [ ] Route existing data/search/session/mutation/event call sites through narrow adapters; no global fetch patch. Preserve canonical web APIs and public cache paths. Native first contribution fails visibly if the preview backend is not enabled; never silently falls back to web authentication.
-- [ ] Integrate one-shot native location, sharing/maps, Android back and lifecycle. Keep user-facing Italian text in `it.ts`; preserve manual fallback and acknowledged save/undo semantics. Isolate native imports from the ordinary web entry.
-- [ ] Add early native initialization, suppress SW and PWA hints, and add route handling needed for callbacks. Native admin is excluded/blocked. No contributor terms/age gate change until the actual pre-contribution design is tested without breaking the four-tap flow.
-- [ ] Run owned unit and affected web/e2e tests and formatting/typecheck; commit owned paths with a report distinguishing mocks from real-device evidence.
+- [x] Write tests for allowlisted URL construction, bearer exclusion on public/static/map/event requests, verifier/state/callback parsing, missing config/version and denied location. Demonstrate missing adapter behavior fails first.
+- [x] Implement native HTTPS adapter and in-memory session state. Load `/api/mobile/config`, open the controlled challenge path, validate callback and redeem code; clear expired/cancelled state. Never persist/log tokens or coordinates.
+- [x] Route existing data/search/session/mutation/event call sites through narrow adapters; no global fetch patch. Preserve canonical web APIs and public cache paths. Native first contribution fails visibly if the preview backend is not enabled; never silently falls back to web authentication.
+- [x] Integrate one-shot native location, sharing/maps, Android back and lifecycle. Keep user-facing Italian text in `it.ts`; preserve manual fallback and acknowledged save/undo semantics. Isolate native imports from the ordinary web entry.
+- [x] Add early native initialization, suppress SW and PWA hints, and add route handling needed for callbacks. Native admin is excluded/blocked. No contributor terms/age gate change until the actual pre-contribution design is tested without breaking the four-tap flow.
+- [x] Run owned unit and affected web/e2e tests and formatting/typecheck; commit owned paths with a report distinguishing mocks from real-device evidence.
 
 ## Task 4: Coordinator integration, controlled challenge page and independent review
 
 **Owner:** coordinator. Paths: shared contracts, mobile challenge page/entry, integration tests, docs/ADR/SPEC addendum/PROGRESS, final cross-lane fixes only after ownership transfer.
 
-- [ ] Review each worker diff independently for spec and correctness before integration; cherry-pick only their exact owned commits. Resolve contract mismatches explicitly.
-- [ ] Add a controlled hosted challenge page using existing Turnstile widget/action, S256 challenge/nonce and fixed preview callback. No arbitrary redirects or bearer in URLs. Italian copy remains centralized.
-- [ ] Add native scope/ADR and truthful progress; preserve frozen feature-list and migrations. Run fresh integrated lint, format, typecheck, web/unit/worker, native build/sync and affected Chromium/WebKit workflows at 390×844.
-- [ ] Review final assets/network surfaces and perform whole-branch independent security/spec/code review. Push one coherent PR after local gates; no manual routine workflow dispatch.
+- [x] Review each worker diff independently for spec and correctness before integration; cherry-pick only their exact owned commits. Resolve contract mismatches explicitly.
+- [x] Add a controlled hosted challenge page using existing Turnstile widget/action, S256 challenge/nonce and fixed preview callback. No arbitrary redirects or bearer in URLs. Italian copy remains centralized.
+- [x] Add native scope/ADR and truthful progress; preserve frozen feature-list and migrations. Run fresh integrated lint, format, typecheck, web/unit/worker, native build/sync and affected Chromium/WebKit workflows at 390×844.
+- [x] Review final assets/network surfaces and perform whole-branch independent security/spec/code review. Push one coherent PR after local gates; no manual routine workflow dispatch.
 
 ## Task 5: Isolated hosted proof, beta and release
 
@@ -90,6 +90,16 @@
 - [ ] Verify real iPhone/Android challenge→callback→redeem→contribution, permissions, offline/lifecycle, failure and replay behavior. If the proof fails, revise transport before production work.
 - [ ] Complete publishing-rights/controller/trader/support facts, UGC terms/moderation review and actual privacy/data-safety/permission audit; no invented declarations.
 - [ ] Register verified production identities/associations; sign reviewed commits; upload TestFlight/Play beta and verify installed behavior. Proceed through owner-only/legal/security gates and store review, then verify public listings/installability.
+
+## Task 6: Concrete moderation release corrections
+
+- [x] Make every price/venue report actionable from the first report through protected admin review/removal/dismissal.
+- [x] Keep pending venue names out of public cell APIs, old D1/edge cache bodies and other contributors’ selectors; preserve the proposer’s local acknowledgement.
+- [ ] Implement temporary contribution restrictions through membership checks against existing daily anti-abuse keys, with no new actor attribution or persistent identifier.
+- [ ] Independently review the restrictions, rerun combined source/browser gates and verify the changed admin interface in both themes.
+- [ ] Reconcile privacy/store worksheets with the actual candidate and test the controls on the isolated service.
+
+The first two corrections are recorded in ADR 0037 and deliberately replace the earlier pending-venue chooser exposure. Temporary restrictions remain bounded by existing marker retention and shared-network limitations; they cannot be described as durable person bans or store approval. Roberto is personally responsible for now and the support/content-report address remains dovebevo@gmail.com.
 
 ## Coordination ledger
 

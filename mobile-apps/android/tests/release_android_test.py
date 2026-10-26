@@ -56,6 +56,7 @@ if [[ "${FAKE_EXTRA_CERT:-}" == yes ]]; then printf ' SHA256: b2\\n'; fi
 ''')
         self.write_tool(self.android / "gradlew", '''
 printf '%s\\n' "$@" > "$FAKE_LOG/gradle-args"
+printf '%s\\n' "${DOVEBEVO_BUILD_NUMBER:-}" > "$FAKE_LOG/build-number"
 printf '%s\\n' "$DOVEBEVO_ANDROID_KEYSTORE" > "$FAKE_LOG/key-path"
 [[ -z "${DOVEBEVO_ANDROID_KEYSTORE_BASE64:-}" ]] || exit 71
 [[ -n "$DOVEBEVO_SIGNING_PASSWORD" ]] || exit 72
@@ -125,6 +126,19 @@ if [[ "${FAKE_BUILD_MODE:-}" == dirty-cleanup ]]; then printf unknown > "$(dirna
         result = self.run_release(DOVEBEVO_ANDROID_CERT_SHA256=":".join(["A1"] * 32))
         self.assertEqual(0, result.returncode, result.stderr)
         self.assert_no_private_files()
+
+    def test_valid_build_number_is_forwarded_unchanged_to_gradle(self):
+        result = self.run_release(DOVEBEVO_BUILD_NUMBER="2100000000")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("2100000000", (self.log / "build-number").read_text().strip())
+        self.assert_no_private_files()
+
+    def test_invalid_build_numbers_fail_before_key_decoding_or_build(self):
+        for value in ("", "0", "-1", "01", "1.2", "2100000001", "2147483647", "99999999999", "1\n2"):
+            with self.subTest(value=value):
+                self.assertNotEqual(0, self.run_release(DOVEBEVO_BUILD_NUMBER=value).returncode)
+                self.assert_no_private_files()
+                self.assertFalse((self.log / "gradle-args").exists())
 
     def test_caller_xtrace_is_disabled_before_any_signing_input_is_expanded(self):
         result = self.run_release(FAKE_SHELL_TRACE="yes")

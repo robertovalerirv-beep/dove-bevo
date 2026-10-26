@@ -9,6 +9,12 @@ release_fail() { printf 'Android release failed: %s\n' "$1" >&2; exit 1; }
 [[ "${GITHUB_ACTIONS:-}" == true && "${RUNNER_ENVIRONMENT:-}" == github-hosted && "${RUNNER_OS:-}" == Linux ]] \
     || release_fail 'the protected GitHub-hosted Linux job is required.'
 [[ "$(uname -s)" == Linux ]] || release_fail 'Linux is required.'
+if [[ "${DOVEBEVO_BUILD_NUMBER+x}" == x ]]; then
+    [[ "$DOVEBEVO_BUILD_NUMBER" =~ ^[1-9][0-9]{0,9}$ ]] \
+        || release_fail 'the optional build number must be a positive integer.'
+    (( 10#$DOVEBEVO_BUILD_NUMBER <= 2100000000 )) \
+        || release_fail 'the optional build number exceeds the Play version-code limit.'
+fi
 [[ -n "${DOVEBEVO_ANDROID_KEYSTORE_BASE64:-}" && -n "${DOVEBEVO_SIGNING_PASSWORD:-}" && -n "${DOVEBEVO_ANDROID_CERT_SHA256:-}" ]] \
     || release_fail 'the protected key, password and pinned public certificate fingerprint are required.'
 [[ ${#DOVEBEVO_ANDROID_KEYSTORE_BASE64} -le 65536 && ${#DOVEBEVO_SIGNING_PASSWORD} -le 4096 ]] \

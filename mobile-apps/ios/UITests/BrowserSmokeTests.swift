@@ -6,6 +6,15 @@ final class BrowserSmokeTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
+        addUIInterruptionMonitor(withDescription: "First-use keyboard typing introduction") { interruption in
+            let introduction = interruption.staticTexts.matching(
+                NSPredicate(format: "label BEGINSWITH %@", "Speed up your typing")
+            ).firstMatch
+            let continueButton = interruption.buttons["Continue"]
+            guard introduction.exists && continueButton.exists else { return false }
+            continueButton.tap()
+            return true
+        }
         app.launch()
     }
 
@@ -48,10 +57,19 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(website.buttons["Vicino a me"].exists)
         searchButton.tap()
 
-        let searchField = website.textFields["Cerca una città o un bar"]
+        // The HTML modal and keyboard can change WebKit's nested accessibility
+        // containers; keep the exact input label, queried from the application.
+        let searchField = app.textFields["Cerca una città o un bar"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 15), "Website city search field missing")
-        searchField.tap()
+        dismissKeyboardIntroductionIfPresent()
+        let searchScreenshot = XCTAttachment(screenshot: app.screenshot())
+        searchScreenshot.name = "DoveBevo-live-city-search-before-input"
+        searchScreenshot.lifetime = .keepAlways
+        add(searchScreenshot)
+        // Opening the website sheet intentionally focuses this field. A second
+        // tap is unnecessary and can collide with the first keyboard intro.
         searchField.typeText("Milano")
+        XCTAssertEqual(searchField.value as? String, "Milano", "The actual website input must receive the query")
         let city = website.descendants(matching: .any).matching(
             NSPredicate(format: "label BEGINSWITH[c] %@ AND label CONTAINS[c] %@", "Milano", "Città")
         ).firstMatch
@@ -95,5 +113,17 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(app.buttons["privacy.contact"].isHittable)
         app.navigationBars["Privacy"].buttons["Torna alla mappa"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 5))
+    }
+
+    private func dismissKeyboardIntroductionIfPresent() {
+        // A fresh simulator may show this system tutorial instead of keys.
+        // Handle only its observed prompt, never an arbitrary Continue button.
+        let introduction = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Speed up your typing")
+        ).firstMatch
+        guard introduction.waitForExistence(timeout: 2) else { return }
+        let continueButton = app.buttons["Continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 5), "Keyboard introduction has no Continue action")
+        continueButton.tap()
     }
 }

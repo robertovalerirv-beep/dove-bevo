@@ -5,6 +5,12 @@
     <string name="home">Home</string>
     <string name="share">Condividi</string>
     <string name="refresh">Ricarica</string>
+    <string name="more_options">Altre opzioni</string>
+    <string name="more_symbol" translatable="false">⋮</string>
+    <string name="privacy">Privacy</string>
+    <string name="support">Contatta l’assistenza</string>
+    <string name="close">Chiudi</string>
+    <string name="privacy_unavailable">Non è stato possibile leggere l’informativa inclusa nell’app. Chiudi e riprova, oppure contatta l’assistenza.</string>
     <string name="loading">Caricamento di Dove bevo</string>
     <string name="unavailable_title">Pagina non disponibile</string>
     <string name="unavailable_body">Controlla la connessione e riprova. I contenuti già aperti potrebbero essere ancora disponibili.</string>

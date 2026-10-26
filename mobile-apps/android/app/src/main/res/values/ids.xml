@@ -4,6 +4,11 @@
     <item name="home" type="id" />
     <item name="share" type="id" />
     <item name="refresh" type="id" />
+    <item name="more" type="id" />
+    <item name="privacy" type="id" />
+    <item name="support" type="id" />
+    <item name="privacy_document" type="id" />
+    <item name="privacy_scroll" type="id" />
     <item name="retry" type="id" />
     <item name="website" type="id" />
     <item name="offline" type="id" />

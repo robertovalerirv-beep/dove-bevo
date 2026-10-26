@@ -2,6 +2,7 @@ package com.dovebevo.app;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -15,6 +16,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
 import android.view.Gravity;
+import android.view.Menu;
 import android.view.View;
 import android.view.WindowInsets;
 import android.webkit.CookieManager;
@@ -32,11 +34,15 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
+import java.io.IOException;
+import java.io.InputStream;
 
 /** The live website stays in its normal browser origin and cookie context. */
 public final class MainActivity extends ComponentActivity {
@@ -57,6 +63,7 @@ public final class MainActivity extends ComponentActivity {
     private boolean locationResultReady;
     private ConnectivityManager connectivity;
     private ConnectivityManager.NetworkCallback networkCallback;
+    private AlertDialog privacyDialog;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -80,6 +87,11 @@ public final class MainActivity extends ComponentActivity {
         tools.addView(button(R.id.home, R.string.home, () -> navigate(BrowserPolicy.HOME)), toolSize());
         tools.addView(button(R.id.share, R.string.share, this::share), toolSize());
         tools.addView(button(R.id.refresh, R.string.refresh, this::refresh), toolSize());
+        Button more = button(R.id.more, R.string.more_options, () -> {});
+        more.setText(R.string.more_symbol);
+        more.setTextSize(24);
+        more.setOnClickListener(this::showMenu);
+        tools.addView(more, new LinearLayout.LayoutParams(dp(48), -2));
         shell.addView(tools, new LinearLayout.LayoutParams(-1, -2));
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(true);
@@ -215,6 +227,43 @@ public final class MainActivity extends ComponentActivity {
         catch (ActivityNotFoundException error) { toast(R.string.external_unavailable); }
     }
     private void toast(int message) { Toast.makeText(this, message, Toast.LENGTH_SHORT).show(); }
+    private void showMenu(View anchor) {
+        PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add(Menu.NONE, R.id.privacy, Menu.NONE, R.string.privacy);
+        menu.getMenu().add(Menu.NONE, R.id.support, Menu.NONE, R.string.support);
+        menu.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.privacy) { showPrivacy(); return true; }
+            if (item.getItemId() == R.id.support) { openExternal("mailto:dovebevo@gmail.com"); return true; }
+            return false;
+        });
+        menu.show();
+    }
+    private void showPrivacy() {
+        if (destroyed) return;
+        if (privacyDialog != null) privacyDialog.dismiss();
+        String policy;
+        try (InputStream asset = getAssets().open("privacy.md")) {
+            policy = PrivacyDocument.read(asset);
+        } catch (IOException error) {
+            policy = getString(R.string.privacy_unavailable);
+        }
+        TextView document = new TextView(this);
+        document.setId(R.id.privacy_document);
+        document.setText(policy);
+        document.setTextSize(16); // sp: follows the system's font size, including larger accessibility text.
+        document.setTextColor(getColor(R.color.shell_text));
+        document.setTextIsSelectable(true);
+        document.setPadding(dp(24), dp(12), dp(24), dp(24));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setId(R.id.privacy_scroll);
+        scroll.addView(document, new ScrollView.LayoutParams(-1, -2));
+        privacyDialog = new AlertDialog.Builder(this).setTitle(R.string.privacy).setView(scroll)
+                .setPositiveButton(R.string.close, null)
+                .setNeutralButton(R.string.support, (dialog, which) -> openExternal("mailto:dovebevo@gmail.com"))
+                .create();
+        privacyDialog.setOnDismissListener(dialog -> privacyDialog = null);
+        privacyDialog.show();
+    }
     private void showFailure() {
         if (destroyed) return;
         failed = true;
@@ -407,6 +456,7 @@ public final class MainActivity extends ComponentActivity {
     }
     @Override protected void onDestroy() {
         destroyed = true;
+        if (privacyDialog != null) privacyDialog.dismiss();
         cancelLocation();
         disposePopup();
         if (connectivity != null && networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback);

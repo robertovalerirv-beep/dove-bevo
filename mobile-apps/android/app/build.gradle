@@ -1,5 +1,22 @@
 plugins { id 'com.android.application' }
 
+def commonPrivacyPolicy = layout.projectDirectory.file('../../privacy.md')
+def generatedPrivacyAssets = layout.buildDirectory.dir('generated/privacyAssets')
+def generatePrivacyAssets = tasks.register('generatePrivacyAssets') {
+    inputs.file(commonPrivacyPolicy).withPropertyName('commonPrivacyPolicy')
+    outputs.file(generatedPrivacyAssets.map { it.file('privacy.md') })
+    doLast {
+        File policy = commonPrivacyPolicy.asFile
+        if (!policy.isFile() || policy.length() == 0 || policy.length() > 131072)
+            throw new GradleException('The common mobile privacy policy is missing, empty or too large.')
+        // Copy exactly this document; never expose the parent source directory as app assets.
+        copy {
+            from(policy)
+            into(generatedPrivacyAssets)
+        }
+    }
+}
+
 android {
     namespace = 'com.dovebevo.app'
     compileSdk = 37
@@ -22,8 +39,11 @@ android {
             signingConfig = null
         }
     }
+    sourceSets.main.assets.srcDir(generatedPrivacyAssets)
     lint { abortOnError = true; checkReleaseBuilds = true }
 }
+
+tasks.named('preBuild').configure { dependsOn(generatePrivacyAssets) }
 
 dependencies {
     implementation 'androidx.activity:activity:1.11.0'

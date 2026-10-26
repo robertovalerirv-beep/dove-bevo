@@ -2,7 +2,6 @@ package com.dovebevo.app;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -36,9 +35,11 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
 
 /** The live website stays in its normal browser origin and cookie context. */
-public final class MainActivity extends Activity {
+public final class MainActivity extends ComponentActivity {
     private static final int LOCATION_REQUEST = 71;
     private WebView website;
     private WebView popup;
@@ -56,7 +57,6 @@ public final class MainActivity extends Activity {
     private boolean locationResultReady;
     private ConnectivityManager connectivity;
     private ConnectivityManager.NetworkCallback networkCallback;
-    private Object backCallback;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -109,7 +109,9 @@ public final class MainActivity extends Activity {
         setContentView(shell);
         shell.requestApplyInsets();
         monitorNetwork();
-        if (Build.VERSION.SDK_INT >= 33) backCallback = Api33.register(this, this::goBack);
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() { goBack(); }
+        });
         if (state != null && BrowserPolicy.target(state.getString("trusted_url")) == BrowserPolicy.Target.INTERNAL)
             lastTrustedUrl = state.getString("trusted_url");
         navigate(lastTrustedUrl);
@@ -180,14 +182,12 @@ public final class MainActivity extends Activity {
         navigate(BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL ? url : lastTrustedUrl);
     }
     private void goBack() {
-        if (website != null && website.canGoBack()) {
+        BackNavigation.perform(website != null && website.canGoBack(), () -> {
             failed = false;
             progress.setVisibility(View.VISIBLE);
             website.goBack();
-        }
-        else finish();
+        }, this::finish);
     }
-    @Override public void onBackPressed() { goBack(); }
 
     private boolean handleNavigation(String url) {
         BrowserPolicy.Target target = BrowserPolicy.target(url);
@@ -410,23 +410,11 @@ public final class MainActivity extends Activity {
         cancelLocation();
         disposePopup();
         if (connectivity != null && networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback);
-        if (Build.VERSION.SDK_INT >= 33 && backCallback != null) Api33.unregister(this, backCallback);
         if (website != null) {
             content.removeView(website);
             website.destroy();
             website = null;
         }
         super.onDestroy();
-    }
-    @android.annotation.TargetApi(33)
-    private static final class Api33 {
-        private static Object register(Activity activity, Runnable action) {
-            android.window.OnBackInvokedCallback callback = action::run;
-            activity.getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback);
-            return callback;
-        }
-        private static void unregister(Activity activity, Object callback) {
-            activity.getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback((android.window.OnBackInvokedCallback) callback);
-        }
     }
 }

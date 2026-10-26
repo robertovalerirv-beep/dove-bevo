@@ -25,6 +25,8 @@ targets:
       - path: App
         excludes:
           - Info.plist
+      - path: ../privacy.md
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dovebevo.app

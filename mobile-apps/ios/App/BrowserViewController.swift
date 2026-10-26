@@ -58,6 +58,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             UIAction(title: "Permessi posizione", image: UIImage(systemName: "location")) { [weak self] _ in
                 self?.showLocationHelp()
             },
+            UIAction(title: "Privacy", image: UIImage(systemName: "hand.raised")) { [weak self] _ in
+                self?.showPrivacy()
+            },
             UIAction(title: "Informazioni", image: UIImage(systemName: "info.circle")) { [weak self] _ in
                 self?.showInformation()
             }
@@ -307,8 +310,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private func showInformation() {
         showAlert(
             title: "Dove bevo",
-            message: "La mappa dei bar e dei prezzi di www.dovebevo.com. L'app usa il sito aggiornato e conserva la sessione su questo dispositivo. I collegamenti esterni si aprono nel browser o nell'app adatta. Serve una connessione per caricare la mappa e i prezzi."
+            message: "La mappa dei bar e dei prezzi di www.dovebevo.com. L'app usa il sito aggiornato e conserva la sessione su questo dispositivo. I collegamenti esterni si aprono nel browser o nell'app adatta. Serve una connessione per caricare la mappa e i prezzi. Per l'informativa completa e i contatti, apri Privacy dal menu Altre opzioni. Assistenza: \(PrivacyPolicy.supportEmail)."
         )
+    }
+
+    private func showPrivacy() {
+        navigationItem.backButtonTitle = "Torna alla mappa"
+        navigationController?.pushViewController(PrivacyViewController(), animated: true)
     }
 
     private func showAlert(title: String, message: String) {

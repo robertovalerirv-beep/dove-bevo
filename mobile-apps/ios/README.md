@@ -7,6 +7,10 @@ There are no third-party runtime SDKs or native JavaScript bridges.
 
 The native controls provide back, forward, home, sharing, reload, browser handoff,
 location-permission help, accessible loading/progress, offline information and retry.
+The More menu also opens a native, scrollable Privacy screen from the shared
+`mobile-apps/privacy.md` bundled as UTF-8, available without connectivity. A
+support button explicitly opens `mailto:dovebevo@gmail.com`; returning with the
+native back button preserves the existing website view and session.
 WebKit can recover automatically once after a content-process termination; another
 termination shows an explicit retry. Dark mode, system text sizes, safe areas,
 landscape and iPad share popovers use UIKit defaults.

@@ -30,6 +30,13 @@ final class BrowserSmokeTests: XCTestCase {
         app.alerts.buttons["Chiudi"].tap()
     }
 
+    func testBundledPrivacyContactAndNativeBack() {
+        XCTAssertTrue(app.buttons["browser.more"].waitForExistence(timeout: 10))
+        openPrivacyAndReturn()
+        XCTAssertTrue(app.webViews.firstMatch.exists)
+        XCTAssertTrue(app.buttons["browser.home"].exists)
+    }
+
     /// This deliberately requires live HTTPS website readiness. A native
     /// toolbar or an offline/retry screen does not count as a working map.
     func testLiveWebsiteCitySearchAndMap() {
@@ -67,5 +74,26 @@ final class BrowserSmokeTests: XCTestCase {
         mapScreenshot.name = "DoveBevo-live-Milano-map"
         mapScreenshot.lifetime = .keepAlways
         add(mapScreenshot)
+        openPrivacyAndReturn()
+        XCTAssertTrue(interactiveMap.exists, "Returning from native privacy must retain the website map")
+        XCTAssertTrue(searchButton.exists)
+        XCTAssertTrue(app.buttons["browser.share"].isEnabled)
+    }
+
+    private func openPrivacyAndReturn() {
+        app.buttons["browser.more"].tap()
+        app.buttons["Privacy"].tap()
+        XCTAssertTrue(app.navigationBars["Privacy"].waitForExistence(timeout: 5))
+        let policy = app.textViews["privacy.text"]
+        XCTAssertTrue(policy.exists)
+        let text = policy.value as? String ?? ""
+        XCTAssertTrue(text.contains("dovebevo@gmail.com"))
+        XCTAssertGreaterThan(text.count, 500, "The full bundled policy must load")
+        XCTAssertTrue(app.buttons["privacy.contact"].isHittable)
+        XCTAssertEqual(app.buttons["privacy.contact"].label, "Assistenza: dovebevo@gmail.com")
+        policy.swipeUp()
+        XCTAssertTrue(app.buttons["privacy.contact"].isHittable)
+        app.navigationBars["Privacy"].buttons["Torna alla mappa"].tap()
+        XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 5))
     }
 }

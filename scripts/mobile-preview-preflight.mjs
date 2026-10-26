@@ -95,8 +95,7 @@ async function readList(read, path, paginated = true) {
     }
     results.push(...body.result);
     const info = body.result_info;
-    // Workers scripts has no pagination contract. Domains can omit result_info, but any
-    // supplied pagination metadata must explicitly attest the complete returned list.
+    // Workers scripts has no pagination contract; retain its existing metadata checks.
     if (!paginated && info === undefined) return results;
     if (
       !object(info) ||
@@ -118,6 +117,25 @@ async function readList(read, path, paginated = true) {
     }
   }
   throw new ReadFailure("PAGINATION_INCOMPLETE");
+}
+
+async function readWorkerDomains(read, path) {
+  // Cloudflare's official client uses SinglePage for this endpoint, with no next page.
+  // result_info fields are optional; total_count may include domains outside the filter.
+  const body = await read(path);
+  if (!Array.isArray(body.result) || !body.result.every(object)) {
+    throw new ReadFailure("INVALID_API_RESPONSE");
+  }
+  const info = body.result_info;
+  if (
+    info !== undefined &&
+    (!object(info) ||
+      ["count", "page", "per_page", "total_count", "total_pages"].some(
+        (field) => field in info && (!Number.isSafeInteger(info[field]) || info[field] < 0),
+      ))
+  )
+    throw new ReadFailure("INVALID_API_RESPONSE");
+  return body.result;
 }
 
 function sourceConfig(configText) {
@@ -240,8 +258,8 @@ export async function runPreflight({ configText, env, fetchImpl = globalThis.fet
   ) {
     report.checks.zone = check("FAIL", "EXPECTED_ACTIVE_ZONE_NOT_UNIQUE");
   }
-  const available = async (name, path, field, expected, paginated = true) => {
-    const rows = await record(name, () => readList(read, path, paginated));
+  const available = async (name, path, field, expected, list = readList) => {
+    const rows = await record(name, () => list(read, path));
     if (!rows) return;
     if (rows.some((row) => typeof row[field] !== "string")) {
       report.checks[name] = check("UNKNOWN", "INVALID_API_RESPONSE");
@@ -249,7 +267,13 @@ export async function runPreflight({ configText, env, fetchImpl = globalThis.fet
       report.checks[name] = check("FAIL", "PLANNED_RESOURCE_OCCUPIED");
     }
   };
-  await available("workerNameAvailable", `${prefix}/workers/scripts`, "id", PREVIEW_NAME, false);
+  await available(
+    "workerNameAvailable",
+    `${prefix}/workers/scripts`,
+    "id",
+    PREVIEW_NAME,
+    (read, path) => readList(read, path, false),
+  );
   await available(
     "databaseNameAvailable",
     `${prefix}/d1/database?name=${PREVIEW_NAME}`,
@@ -261,7 +285,7 @@ export async function runPreflight({ configText, env, fetchImpl = globalThis.fet
     `${prefix}/workers/domains?hostname=${PREVIEW_HOST}`,
     "hostname",
     PREVIEW_HOST,
-    false,
+    readWorkerDomains,
   );
   if (report.checks.zone.status === "PASS") {
     await available(

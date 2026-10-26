@@ -229,6 +229,123 @@ describe("read-only mobile preview Cloudflare readiness", () => {
     expect(report.checks.turnstileWidgetNameAvailable?.code).toBe("PAGINATION_INCOMPLETE");
   });
 
+  it.each([
+    undefined,
+    {},
+    { count: 0 },
+    { total_count: 3 },
+    { count: 0, total_count: 3 },
+    { count: 0, page: 1, per_page: 20, total_count: 3, total_pages: 100 },
+  ])("accepts the Worker Domains single-page contract with metadata %j", async (info) => {
+    const input = options((url) => {
+      if (!url.pathname.endsWith("/workers/domains")) return fixture(url);
+      expect(url.searchParams.get("hostname")).toBe("mobile-preview.dovebevo.com");
+      expect(url.searchParams.has("page")).toBe(false);
+      expect(url.searchParams.has("per_page")).toBe(false);
+      return Response.json({ success: true, result: [], result_info: info });
+    });
+    const report = await runPreflight(input);
+    expect(report.checks.customDomainAvailable?.status).toBe("PASS");
+    expect(report.readiness).toBe("PASS");
+    expect(input.fetchImpl).toHaveBeenCalledTimes(8);
+    expectSanitized(report);
+  });
+
+  it.each([401, 403])(
+    "retains DNS HTTP %i denial after accepting valid Worker Domains count-only metadata",
+    async (status) => {
+      const report = await runPreflight(
+        options((url) => {
+          if (url.pathname.endsWith("/workers/domains")) {
+            return Response.json({ success: true, result: [], result_info: { count: 0 } });
+          }
+          if (url.pathname.endsWith("/dns_records")) return new Response(serverSecret, { status });
+          return fixture(url);
+        }),
+      );
+      expect(report.checks.customDomainAvailable?.status).toBe("PASS");
+      expect(report.checks.dnsNameAvailable).toEqual({
+        status: "UNKNOWN",
+        code: "READ_ACCESS_DENIED",
+      });
+      expect(report.readiness).toBe("FAIL");
+      expectSanitized(report);
+    },
+  );
+
+  it.each(["/d1/database", "/dns_records"])(
+    "still requires pagination metadata for %s",
+    async (suffix) => {
+      const report = await runPreflight(
+        options((url) =>
+          url.pathname.endsWith(suffix)
+            ? Response.json({ success: true, result: [] })
+            : fixture(url),
+        ),
+      );
+      const name = suffix === "/d1/database" ? "databaseNameAvailable" : "dnsNameAvailable";
+      expect(report.checks[name]).toEqual({ status: "UNKNOWN", code: "PAGINATION_INCOMPLETE" });
+      expect(report.readiness).toBe("FAIL");
+      expectSanitized(report);
+    },
+  );
+
+  it("detects a colliding Worker domain with optional metadata and unfiltered totals", async () => {
+    const report = await runPreflight(
+      options((url) =>
+        url.pathname.endsWith("/workers/domains")
+          ? Response.json({
+              success: true,
+              result: [{ hostname: "mobile-preview.dovebevo.com" }],
+              result_info: { count: 1, total_count: 3 },
+            })
+          : fixture(url),
+      ),
+    );
+    expect(report.checks.customDomainAvailable).toEqual({
+      status: "FAIL",
+      code: "PLANNED_RESOURCE_OCCUPIED",
+    });
+    expectSanitized(report);
+  });
+
+  it.each([undefined, null, {}, [null], [{ secret: serverSecret }]].map((result) => ({ result })))(
+    "rejects malformed Worker domain result $result",
+    async ({ result }) => {
+      const report = await runPreflight(
+        options((url) =>
+          url.pathname.endsWith("/workers/domains")
+            ? Response.json({ success: true, result, result_info: { count: 0 } })
+            : fixture(url),
+        ),
+      );
+      expect(report.checks.customDomainAvailable).toEqual({
+        status: "UNKNOWN",
+        code: "INVALID_API_RESPONSE",
+      });
+      expect(report.readiness).toBe("FAIL");
+      expectSanitized(report);
+    },
+  );
+
+  it.each(
+    [null, [], { count: "0" }, { total_count: -1 }, { total_pages: 1.5 }].map((info) => ({ info })),
+  )("rejects malformed Worker domain metadata $info", async ({ info }) => {
+    const report = await runPreflight(
+      options((url) =>
+        url.pathname.endsWith("/workers/domains")
+          ? Response.json({ success: true, result: [], result_info: info })
+          : fixture(url),
+      ),
+    );
+    expect(report.checks.customDomainAvailable).toEqual({
+      status: "UNKNOWN",
+      code: "INVALID_API_RESPONSE",
+    });
+    expect(report.readiness).toBe("FAIL");
+    expectSanitized(report);
+  });
+
   it("finds a widget collision on a later complete page without exposing widget fields", async () => {
     const input = options((url) => {
       if (!url.pathname.endsWith("/challenges/widgets")) return fixture(url);

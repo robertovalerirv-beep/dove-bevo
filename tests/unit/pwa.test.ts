@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import brand from "../../docs/brand/tokens.json" with { type: "json" };
 import { it as texts } from "../../src/app/i18n/it";
@@ -50,5 +51,40 @@ describe("M4-07 service worker", () => {
   it("opens the cached page when offline and deletes old caches on activate", () => {
     expect(source).toContain('caches.match("/")');
     expect(source).toContain("keys.filter((k) => k !== CACHE)");
+  });
+  it("never intercepts an authorization page or callback with the offline shell", () => {
+    const listeners = new Map<
+      string,
+      (event: {
+        request: { method: string; url: string; mode: string };
+        respondWith: (value: unknown) => void;
+      }) => void
+    >();
+    runInNewContext(source, {
+      self: {
+        location: { origin: "https://www.dovebevo.com" },
+        addEventListener: (
+          name: string,
+          handler: (event: {
+            request: { method: string; url: string; mode: string };
+            respondWith: (value: unknown) => void;
+          }) => void,
+        ) => listeners.set(name, handler),
+      },
+      URL,
+      fetch: () => Promise.resolve(null),
+    });
+    const onFetch = listeners.get("fetch");
+    if (!onFetch) throw new Error("service worker did not register a fetch handler");
+    for (const path of ["/mobile-auth", "/mobile-auth.html", "/mobile/callback"]) {
+      let intercepted = false;
+      onFetch({
+        request: { method: "GET", url: `https://www.dovebevo.com${path}`, mode: "navigate" },
+        respondWith: () => {
+          intercepted = true;
+        },
+      });
+      expect(intercepted, path).toBe(false);
+    }
   });
 });

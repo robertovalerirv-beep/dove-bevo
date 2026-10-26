@@ -1,3 +1,4 @@
+import { isNative, nativePlatform, NATIVE_BACKGROUND } from "./platform";
 // Anonymous usage events (SPEC 12, D-06): collected during the visit and sent in one beacon when
 // the page goes to the background. No identifier, no position, no cookie.
 import { EVENTS_BODY_LIMIT, MAX_EVENTS, type AppEvent } from "../../shared/events";
@@ -12,7 +13,11 @@ function flush() {
     const body = JSON.stringify({ events: batch });
     if (body.length > EVENTS_BODY_LIMIT) continue;
     try {
-      navigator.sendBeacon("/api/events", new Blob([body], { type: "text/plain" }));
+      if (isNative)
+        void nativePlatform()
+          .client.events(body)
+          .catch(() => undefined);
+      else navigator.sendBeacon("/api/events", new Blob([body], { type: "text/plain" }));
     } catch {
       // statistics are never worth an error
     }
@@ -25,6 +30,7 @@ export function track(e: AppEvent["e"], p?: AppEvent["p"]) {
   if (document.visibilityState === "hidden") flush();
   if (listening) return;
   listening = true;
+  if (isNative) addEventListener(NATIVE_BACKGROUND, flush);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flush();
   });

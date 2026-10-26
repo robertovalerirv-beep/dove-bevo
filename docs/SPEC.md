@@ -595,6 +595,14 @@ Ciclo di ogni milestone: plan mode e ok di Roberto → una funzionalità alla vo
 
 **Definizione di finito** per ogni funzionalità: conforme al design system · TypeScript senza `any` · zod su ogni ingresso del Worker · test unit ed e2e con prove · revisioni chiuse · nessuna regressione su header, CSP, budget e privacy · testi in `it.ts` · usabile da tastiera · feature list, PROGRESS e ADR aggiornati.
 
+### Estensione mobile separata (26 ottobre 2026, ADR 0036)
+
+Su richiesta del proprietario, le app iOS e Android riusano l'interfaccia esistente con integrazioni native. Non cambiano il perimetro né le verifiche congelate della Fase 0. Il progetto e i criteri mobile sono in `docs/superpowers/specs/2026-10-26-mobile-apps-design.md`; il piano esecutivo è separato. Autorizzata l'esecuzione autonoma con revisione indipendente; restano distinti gli atti legali, le nuove credenziali, i pagamenti e i gate di pubblicazione.
+
+Solo per il client nativo e gli strumenti di compilazione sono ammesse le versioni esatte Capacitor documentate nel progetto (Core, CLI, iOS, Android, App, Geolocation, Share e Browser se necessario). Non entrano nella shell web iniziale. Il peso effettivo gzip e dei binari va misurato: gli archivi npm non lo rappresentano. Il trasporto nativo isolato può usare OkHttp fissato a versione verificata, senza cookie, redirect o cache; il motivo è evitare il cookie jar condiviso del trasporto predefinito, non introdurre un secondo servizio dati.
+
+Il primo risultato è una prova `com.dovebevo.app.preview`, con autenticazione disattivata per impostazione predefinita e risorse remote isolate. Non si usa il D1 del sito pubblico come sandbox. Le protezioni Origin/cookie/Turnstile del web, i dati di posizione sul dispositivo, l'anonimato dei contributi e la separazione OSM restano vincolanti. Nessuna app è considerata pronta senza prove sul dispositivo e read-back dei provider.
+
 ## 21. Prerequisiti a carico di Roberto
 
 | Quando | Cosa |

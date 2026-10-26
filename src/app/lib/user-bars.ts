@@ -1,3 +1,4 @@
+import { publicFetch } from "./platform";
 // Approved user bars for the name search (ADR 0025). The list is short and carries no query.
 import type { ApprovedVenues } from "../../shared/api-types";
 import type { Hit } from "./search-match";
@@ -8,7 +9,7 @@ import type { Hit } from "./search-match";
  */
 let userBars: Promise<Hit[]> | null = null;
 export function loadUserBars(): Promise<Hit[]> {
-  userBars ??= fetch("/api/venues/approved")
+  userBars ??= publicFetch("/api/venues/approved")
     .then(async (response) => {
       const isJson = response.headers.get("content-type")?.includes("application/json") ?? false;
       if (!response.ok || !isJson) throw new Error("approved venues unavailable");

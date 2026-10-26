@@ -595,6 +595,82 @@ export async function purgeOldKeys(db: D1Database, before: string): Promise<void
   ]);
 }
 
+// ---- Bounded, transient preview authorization state ----
+export interface MobileCodeBinding {
+  codeHash: string;
+  challengeHash: string;
+  nonceHash: string;
+  audience: string;
+  callback: string;
+  environment: string;
+  expiresAt: number;
+}
+
+/** Purge before issuance; INSERT ... SELECT keeps the environment cap atomic under concurrency. */
+export async function storeMobileCode(
+  db: D1Database,
+  code: MobileCodeBinding,
+  now = Date.now(),
+): Promise<boolean> {
+  const results = await db.batch([
+    db.prepare("DELETE FROM mobile_auth_codes WHERE expires_at <= ?1").bind(now),
+    db
+      .prepare(
+        `INSERT INTO mobile_auth_codes
+      (code_hash, challenge_hash, nonce_hash, audience, callback, environment, expires_at)
+      SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7
+      WHERE (SELECT COUNT(*) FROM mobile_auth_codes WHERE environment = ?6) < 1000
+      RETURNING code_hash`,
+      )
+      .bind(
+        code.codeHash,
+        code.challengeHash,
+        code.nonceHash,
+        code.audience,
+        code.callback,
+        code.environment,
+        code.expiresAt,
+      ),
+  ]);
+  // D1 rejects a failed batch; there is no successful partial transaction.
+  return (results[1]?.results.length ?? 0) === 1;
+}
+
+/** A single conditional DELETE is the claim: only one concurrent request can receive the code. */
+export async function consumeMobileCode(
+  db: D1Database,
+  code: Omit<MobileCodeBinding, "expiresAt">,
+  now = Date.now(),
+): Promise<boolean> {
+  const result = await db
+    .prepare(
+      `DELETE FROM mobile_auth_codes WHERE code_hash = ?1
+    AND challenge_hash = ?2 AND nonce_hash = ?3 AND audience = ?4 AND callback = ?5
+    AND environment = ?6 AND expires_at > ?7 RETURNING code_hash`,
+    )
+    .bind(
+      code.codeHash,
+      code.challengeHash,
+      code.nonceHash,
+      code.audience,
+      code.callback,
+      code.environment,
+      now,
+    )
+    .all();
+  return result.results.length === 1;
+}
+
+export async function purgeMobileCodes(db: D1Database, now = Date.now()): Promise<void> {
+  // Existing website databases need not have the preview migration. Once installed, retention
+  // must continue even after routes are disabled. One metadata read per hourly cleanup.
+  const installed = await db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'mobile_auth_codes'")
+    .first();
+  if (!installed) return;
+  await db.prepare("DELETE FROM mobile_auth_codes WHERE expires_at <= ?1").bind(now).run();
+}
+
 /** Day of the latest observation of a price key: when its value last changed (same price = confirmation). */
 export async function lastPriceChange(db: D1Database, k: PriceKey): Promise<string | null> {
   const row = await db

@@ -48,8 +48,15 @@ async function fakeSiteverify(request: Request): Promise<Response> {
   const ok = token.startsWith("ok-") && !reused && form.get("secret") === "test-turnstile-secret";
   return Response.json({
     success: ok,
-    hostname: token === "ok-otherhost" ? "evil.example" : "dovebevo.example",
-    action: token === "ok-otheraction" ? "login" : "contribute",
+    hostname:
+      token === "ok-otherhost" || token.endsWith(":wrong-host")
+        ? "evil.example"
+        : token.endsWith(":preview-host")
+          ? "mobile-preview.dovebevo.com"
+          : "dovebevo.example",
+    action: token === "ok-otheraction" || token.endsWith(":wrong-action") ? "login" : "contribute",
+    // Mobile tests carry the public challenge through the fake token, never a real verifier.
+    cdata: token.startsWith("ok-mobile:") ? token.split(":")[1] : undefined,
     "error-codes": ok ? [] : [reused ? "timeout-or-duplicate" : "invalid-input-response"],
     remoteip_sent: form.has("remoteip"),
   });

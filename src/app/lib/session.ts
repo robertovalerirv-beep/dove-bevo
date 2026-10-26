@@ -1,3 +1,4 @@
+import { isNative, nativePlatform } from "./platform";
 // Anonymous session on the client (SPEC 13.2): Turnstile is loaded only at the first contribution
 // (M2-02), then POST /api/session sets the HttpOnly cookie. Nothing is stored on the device.
 const TURNSTILE_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
@@ -20,7 +21,7 @@ interface Turnstile {
 // When the HttpOnly cookie should expire, kept for this tab only so a reload does not run
 // Turnstile again (sessionStorage may be unavailable: then it is just memory).
 const KEY = "dovebevo.session-until";
-let validUntil = readUntil();
+let validUntil = isNative ? 0 : readUntil();
 
 function readUntil(): number {
   try {
@@ -92,6 +93,7 @@ async function start(host: HTMLElement): Promise<void> {
 
 /** Resolves when a session cookie is valid; at most one Turnstile check at a time. */
 export function ensureSession(host: HTMLElement): Promise<void> {
+  if (isNative) return nativePlatform().client.ensureSession();
   if (Date.now() < validUntil) return Promise.resolve();
   pending ??= start(host).finally(() => {
     pending = null;
@@ -101,6 +103,10 @@ export function ensureSession(host: HTMLElement): Promise<void> {
 
 /** After a 401 the cookie expired: the next ensureSession() runs Turnstile again. */
 export function forgetSession(): void {
+  if (isNative) {
+    nativePlatform().client.forget();
+    return;
+  }
   writeUntil(0);
 }
 
@@ -111,6 +117,7 @@ export async function postWithSession(
   body: unknown,
   keepalive = false,
 ): Promise<Response> {
+  if (isNative) return nativePlatform().client.post(path, body);
   const send = () =>
     fetch(path, {
       method: "POST",

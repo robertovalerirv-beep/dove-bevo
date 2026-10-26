@@ -2,7 +2,18 @@ import { describe, expect, it } from "vitest";
 import packageJson from "../../package.json" with { type: "json" };
 
 // SPEC 4.1 plus the lint configuration packages (ADR 0008) and the renamed Vitest plugin (ADR 0012).
-const ALLOWED_RUNTIME = ["preact", "maplibre-gl", "hono", "zod"];
+const ALLOWED_RUNTIME = [
+  "preact",
+  "maplibre-gl",
+  "hono",
+  "zod",
+  // Native-only integration, selected by the owner (mobile design, 26 October 2026).
+  "@capacitor/core",
+  "@capacitor/app",
+  "@capacitor/geolocation",
+  "@capacitor/share",
+  "@capacitor/browser",
+];
 const ALLOWED_DEV = [
   "vite",
   "@preact/preset-vite",
@@ -19,6 +30,9 @@ const ALLOWED_DEV = [
   "@lhci/cli",
   "typescript-eslint",
   "@eslint/js",
+  "@capacitor/cli",
+  "@capacitor/ios",
+  "@capacitor/android",
 ];
 const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
 

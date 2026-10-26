@@ -2,6 +2,7 @@ import { useState } from "preact/hooks";
 import { validVenueName } from "../../shared/venue";
 import { it } from "../i18n/it";
 import { Sheet } from "./Sheet";
+import { ContributionRules } from "./ContributionRules";
 
 export type ProposedKind = 1 | 2 | 4;
 export interface Proposal {
@@ -36,6 +37,7 @@ export function ProposeSheet({ initialName = "", onNext, onClose }: Props) {
           onNext({ name: name.normalize("NFC").trim(), kind });
         }}
       >
+        <ContributionRules id="venue-contribution-rules" />
         <label class="field-label" for="venue-name">
           {it.propose.name}
         </label>
@@ -47,7 +49,7 @@ export function ProposeSheet({ initialName = "", onNext, onClose }: Props) {
           maxLength={80}
           autofocus
           aria-invalid={error ? "true" : "false"}
-          aria-describedby="venue-name-hint venue-name-error"
+          aria-describedby="venue-name-hint venue-name-error venue-contribution-rules"
           value={name}
           onInput={(e) => {
             setName(e.currentTarget.value);
@@ -77,7 +79,12 @@ export function ProposeSheet({ initialName = "", onNext, onClose }: Props) {
             </label>
           ))}
         </fieldset>
-        <button type="submit" class="btn btn--primary" disabled={!name.trim()}>
+        <button
+          type="submit"
+          class="btn btn--primary"
+          disabled={!name.trim()}
+          aria-describedby="venue-contribution-rules"
+        >
           {it.propose.next}
         </button>
       </form>

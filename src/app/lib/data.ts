@@ -1,3 +1,4 @@
+import { publicFetch } from "./platform";
 // Client data: static OSM cells + live prices, cached for the visit (SPEC 5.4).
 // Requests carry only cell ids and bar keys, never the user's position (SPEC 14).
 import type {
@@ -10,7 +11,7 @@ import type {
 } from "../../shared/api-types";
 
 const BUILT_VERSION = import.meta.env.VITE_DATA_VERSION ?? "";
-export const DATA_VERSION = /^\d{8}$/.test(BUILT_VERSION) ? BUILT_VERSION : "fixture";
+export let DATA_VERSION = /^\d{8}$/.test(BUILT_VERSION) ? BUILT_VERSION : "fixture";
 
 export interface Venue {
   key: string;
@@ -36,7 +37,7 @@ const reread = new Set<string>();
 export class ServiceBusy extends Error {}
 
 async function getJson<T>(url: string, fallback: T, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await publicFetch(url, init);
   // A missing static file (no bars in that cell) comes back as the SPA fallback HTML, not a 404.
   const isJson = response.headers.get("content-type")?.includes("application/json") ?? false;
   if (response.ok && !isJson && url.startsWith("/api/")) throw new ServiceBusy();
@@ -122,4 +123,9 @@ export { bestPrice, shownPrice } from "../../shared/prices";
 export function invalidateCell(cell: string): void {
   cells.delete(cell);
   reread.add(cell);
+}
+
+/** Set from the validated native manifest before the app renders or fetches data. */
+export function setNativeDataVersion(version: string): void {
+  DATA_VERSION = version;
 }

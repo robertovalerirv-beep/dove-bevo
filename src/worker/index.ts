@@ -4,12 +4,13 @@ import { routePath } from "hono/route";
 import { version } from "../../package.json";
 import { ApiError, apiError } from "./lib/errors";
 import { requireRealSecrets } from "./lib/env-guard";
-import { requireOrigin, requireSession } from "./lib/guards";
+import { requireSession } from "./lib/guards";
+import { apiBoundary } from "./lib/mobile-guards";
 import { rateLimit, readLimit } from "./lib/rate-limit";
 import { securityHeaders } from "./lib/security-headers";
 import { KEEP_DAYS } from "./config";
 import { romeDay } from "./lib/day";
-import { purgeOldKeys } from "./lib/db";
+import { purgeMobileCodes, purgeOldKeys } from "./lib/db";
 import { requireAccess } from "./lib/access";
 import { admin } from "./routes/admin";
 import { events } from "./routes/events";
@@ -18,6 +19,7 @@ import { reports } from "./routes/reports";
 import { seo, seoPages } from "./routes/seo";
 import { session } from "./routes/session";
 import { venues } from "./routes/venues";
+import { mobile } from "./routes/mobile";
 import type { AppEnv } from "./types";
 
 const QueueTask = z.record(z.string(), z.unknown());
@@ -31,7 +33,7 @@ app.use(async (c, next) => {
 app.use(securityHeaders);
 // After securityHeaders: the tags and text for crawlers are added to the shell, then the headers are set.
 app.use(seoPages);
-app.use("/api/*", requireOrigin);
+app.use("/api/*", apiBoundary);
 // A deployed Worker with the development placeholder keys must not accept sessions or writes.
 app.on("POST", "/api/*", requireRealSecrets);
 // Burst limit on every write and on the per-bar history (SPEC 9.2, 13.3).
@@ -57,6 +59,7 @@ app.route("/api/prices", prices);
 app.route("/api/venues", venues);
 app.route("/api/reports", reports);
 app.route("/api/events", events);
+app.route("/api/mobile", mobile);
 app.route("/", seo);
 
 // Pages that run the Worker first (run_worker_first in wrangler.jsonc: the home, /copertura, the main
@@ -85,6 +88,7 @@ export default {
     const today = Date.parse(`${romeDay()}T12:00:00Z`);
     const oldestKept = new Date(today - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10);
     await purgeOldKeys(env.DB, oldestKept);
+    await purgeMobileCodes(env.DB);
   },
   /** Consumer of the "dovebevo-tasks" queue: validate, log only a code and the id, ack or retry. */
   queue(batch: MessageBatch): void {

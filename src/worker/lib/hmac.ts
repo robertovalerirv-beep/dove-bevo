@@ -37,7 +37,10 @@ export async function hmacHex(secret: string, parts: string[]): Promise<string> 
 }
 
 export async function sign(secret: string, data: Uint8Array): Promise<Uint8Array> {
-  return new Uint8Array(await crypto.subtle.sign("HMAC", await importKey(secret), data));
+  // Own an ArrayBuffer-backed view in both DOM and Worker WebCrypto type environments.
+  return new Uint8Array(
+    await crypto.subtle.sign("HMAC", await importKey(secret), new Uint8Array(data)),
+  );
 }
 
 /** Constant-time check through WebCrypto (SPEC 13.2). */
@@ -46,5 +49,10 @@ export async function verify(
   signature: Uint8Array,
   data: Uint8Array,
 ): Promise<boolean> {
-  return crypto.subtle.verify("HMAC", await importKey(secret), signature, data);
+  return crypto.subtle.verify(
+    "HMAC",
+    await importKey(secret),
+    new Uint8Array(signature),
+    new Uint8Array(data),
+  );
 }

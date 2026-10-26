@@ -6,6 +6,8 @@ export default defineConfig(
   {
     ignores: [
       "dist/",
+      "android/app/src/main/assets/public/", // copied native bundle; lint its source instead
+      "ios/App/App/public/",
       "docs/materiali/", // local marketing material, not in the repository
       "backup-*/",
       ".wrangler/",

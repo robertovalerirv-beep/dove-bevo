@@ -35,6 +35,15 @@ const PUBLIC_SHELL = [
 ];
 
 export default defineConfig({
+  environments: {
+    client: {
+      build: {
+        rolldownOptions: {
+          input: { index: "index.html", "mobile-auth": "mobile-auth.html" },
+        },
+      },
+    },
+  },
   plugins: [
     preact(),
     cloudflare(),
@@ -53,7 +62,9 @@ export default defineConfig({
       generateBundle(_options, bundle) {
         if (this.environment.name !== "client") return;
         const urls = new Set(PUBLIC_SHELL);
-        const entry = Object.values(bundle).find((o) => o.type === "chunk" && o.isEntry);
+        const entry = Object.values(bundle).find(
+          (o) => o.type === "chunk" && o.isEntry && o.facadeModuleId?.endsWith("/index.html"),
+        );
         const walk = (name: string) => {
           const chunk = bundle[name];
           if (chunk?.type !== "chunk" || urls.has(`/${name}`)) return;

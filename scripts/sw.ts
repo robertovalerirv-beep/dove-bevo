@@ -27,6 +27,8 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+  // Authorization must reach the network; an offline shell is not an authorization result.
+  if (["/mobile-auth", "/mobile-auth/", "/mobile-auth.html", "/mobile/callback"].includes(url.pathname)) return;
   // The app page: network first, the cached shell when offline.
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).catch(() => caches.match("/")));

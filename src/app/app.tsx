@@ -28,6 +28,7 @@ import { addPrices, dayBucket, priceCount, stampReached } from "./lib/usage";
 import { cellMedian, coverage, isStale, tierOf } from "./lib/tiers";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
+import { isNative, NATIVE_BACKGROUND, NATIVE_BACK, NATIVE_LINK } from "./lib/platform";
 
 const MIN_ZOOM_CELLS = 13;
 
@@ -206,8 +207,13 @@ export function App({ loadMap }: Props) {
         void send(pendingSave.current);
     };
     document.addEventListener("visibilitychange", onHide);
+    const onNativeHide = () => {
+      if (pendingSave.current) void send(pendingSave.current);
+    };
+    if (isNative) addEventListener(NATIVE_BACKGROUND, onNativeHide);
     return () => {
       document.removeEventListener("visibilitychange", onHide);
+      removeEventListener(NATIVE_BACKGROUND, onNativeHide);
     };
   }, []);
 
@@ -226,6 +232,36 @@ export function App({ loadMap }: Props) {
     setSheet(null);
     setRoute(parseRoute());
   }
+
+  useEffect(() => {
+    if (!isNative) return;
+    const onLink = (event: Event) => {
+      const path: unknown = (event as CustomEvent<unknown>).detail;
+      if (
+        typeof path === "string" &&
+        /^\/bar\/[nwru][1-9]\d{0,14}\?c=[0-9b-hjkmnp-z]{5}$/.test(path)
+      ) {
+        setAdding(null);
+        setReporting(null);
+        setProposing(null);
+        pendingSave.current?.timer.release();
+        navigate(path);
+      }
+    };
+    const onBack = (event: Event) => {
+      if (proposing) {
+        event.preventDefault();
+        setProposing(null);
+        focusPrimary();
+      }
+    };
+    addEventListener(NATIVE_LINK, onLink);
+    addEventListener(NATIVE_BACK, onBack);
+    return () => {
+      removeEventListener(NATIVE_LINK, onLink);
+      removeEventListener(NATIVE_BACK, onBack);
+    };
+  }, [proposing]);
 
   // Cells: from zoom 13, at most 12 visible cells; each downloaded once per visit (SPEC 5.4).
   useEffect(() => {
@@ -531,6 +567,9 @@ export function App({ loadMap }: Props) {
     entry.sent = true;
     entry.timer.clear();
     if (pendingSave.current === entry) pendingSave.current = null;
+    // Sending intentionally wins over undo, including a held toast on background/resume.
+    // Replace the affordance before any authentication or POST can begin.
+    if (isNative) showToast(it.native.sending);
     const [first] = entry.drafts;
     if (!first) return;
     const { venue } = first;
@@ -572,6 +611,15 @@ export function App({ loadMap }: Props) {
         );
         return;
       }
+      if (isNative) {
+        const count = addPrices(entry.drafts.length, todayRome());
+        showToast(it.add.saved, undefined, 8000, undefined, {
+          day: formatStampDay(),
+          lines: [it.add.stamp],
+          count,
+          tessera: it.tessera.count(count),
+        });
+      }
       if (results.some((r) => r.status === "quarantined")) showToast(it.add.quarantined);
       else if (results.some((r) => r.status === "confirmed")) {
         showToast(
@@ -600,6 +648,29 @@ export function App({ loadMap }: Props) {
       sent: false,
     };
     pendingSave.current = entry;
+    if (isNative) {
+      // Undo cancels the unsent batch. Authentication starts only when sending, so opening
+      // the system browser cannot silently consume the five-second undo window.
+      showToast(
+        it.native.pending,
+        () => {
+          if (entry.sent) return; // A retained DOM callback cannot cancel an in-flight write.
+          entry.timer.clear();
+          entry.sent = true;
+          if (pendingSave.current === entry) pendingSave.current = null;
+          showToast(it.add.undone);
+        },
+        UNDO_MS,
+        {
+          label: it.add.another,
+          run: () => {
+            entry.timer.hold();
+            openAdd({ venue: draft.venue });
+          },
+        },
+      );
+      return;
+    }
     // The Timbro: today's date, the stamp line, Copertura +1 when this bar had no price for the
     // chosen drink in the zone, and the Tessera when a stamp is reached (MB-11, MB-12).
     const today = todayRome();

@@ -7,6 +7,7 @@ import { formatDistance, formatPrice } from "../lib/format";
 import { cellRange, seenPrices, tierOf } from "../lib/tiers";
 import { drinkIcon, Icon } from "./Icon";
 import { Sheet } from "./Sheet";
+import { ContributionRules } from "./ContributionRules";
 
 export interface Draft {
   venue: Venue;
@@ -193,6 +194,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
           {drinkName(drink)}
         </h3>
         <p class="question">{it.add.question}</p>
+        <ContributionRules id="price-quick-rules" />
         <label class="price-input">
           <span class="sr-only">{it.add.price}</span>
           <input
@@ -201,7 +203,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
             autocomplete="off"
             aria-label={it.add.price}
             aria-invalid={error ? "true" : "false"}
-            aria-describedby="price-error"
+            aria-describedby="price-quick-rules price-error"
             placeholder="0,00"
             value={text}
             autofocus
@@ -226,6 +228,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
                     <button
                       type="button"
                       class={`chip seen__price seen__price--${tier}`}
+                      aria-describedby="price-quick-rules"
                       onClick={() => {
                         onSave({ venue, drink, hh, cents });
                       }}
@@ -235,7 +238,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
                           {tier === "affare" ? "↓" : tier === "giusto" ? "=" : "↑"}
                         </span>
                       )}
-                      {formatPrice(cents)}
+                      {it.contribution.acceptSeen(formatPrice(cents))}
                     </button>
                   </li>
                 );
@@ -260,7 +263,13 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
           <span class="switch__track" aria-hidden="true" />
           {it.add.happyHour}
         </button>
-        <button type="submit" class="btn btn--primary" disabled={!text.trim()}>
+        <ContributionRules id="price-contribution-rules" />
+        <button
+          type="submit"
+          class="btn btn--primary"
+          disabled={!text.trim()}
+          aria-describedby="price-contribution-rules"
+        >
           {it.add.save}
         </button>
       </form>

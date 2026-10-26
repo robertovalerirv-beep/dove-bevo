@@ -5,6 +5,7 @@ import { loadCell, loadVenuePrices, type Venue } from "../lib/data";
 import { formatDate, formatPrice, todayRome } from "../lib/format";
 import { isStale, type Tier } from "../lib/tiers";
 import { directionsUrl } from "../lib/geo";
+import { isNative, nativePlatform } from "../lib/platform";
 import { drinkIcon, Icon } from "./Icon";
 import { LegalLinks } from "./LegalLinks";
 import { Sheet } from "./Sheet";
@@ -168,6 +169,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [externalFailed, setExternalFailed] = useState(false);
   useEffect(() => {
     void loadCell(cell)
       .then((venues) => {
@@ -267,6 +269,20 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             class="btn btn--secondary"
             tabIndex={0}
             href={directionsUrl(venue.lat, venue.lon)}
+            onClick={(event) => {
+              if (!isNative) return;
+              event.preventDefault();
+              const url = directionsUrl(
+                venue.lat,
+                venue.lon,
+                /iPhone|iPad|iPod/.test(navigator.userAgent) ? "iPhone" : "",
+              );
+              void nativePlatform()
+                .open(url)
+                .catch(() => {
+                  setExternalFailed(true);
+                });
+            }}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -283,6 +299,22 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             {it.actions.addHere}
           </button>
         </div>
+        {isNative && (
+          <button
+            type="button"
+            class="btn btn--ghost"
+            onClick={() => {
+              void nativePlatform()
+                .share(venue.name, `https://www.dovebevo.com/bar/${venue.key}?c=${venue.cell}`)
+                .catch(() => {
+                  setExternalFailed(true);
+                });
+            }}
+          >
+            {it.native.share}
+          </button>
+        )}
+        {externalFailed && <p role="status">{it.native.externalFailed}</p>}
         {review.length > 0 && (
           <>
             <h3 class="section-title">{it.bar.inReview}</h3>

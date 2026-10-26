@@ -7,5 +7,5 @@
     "jsxImportSource": "preact",
     "types": ["vite/client"]
   },
-  "include": ["src/app", "src/shared"]
+  "include": ["src/app", "src/shared", "src/mobile-auth"]
 }

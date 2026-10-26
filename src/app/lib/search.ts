@@ -1,3 +1,4 @@
+import { publicFetch } from "./platform";
 // Search of bars by name in all Italy (SPEC 7.6, D-30, ADR 0024, 0025): static fragments by word
 // prefix for the OSM bars, plus the short list of approved user bars. No position is sent. The
 // fragment name is the only thing that reaches the CDN; the list of user bars carries no query.
@@ -17,7 +18,7 @@ import {
 export type { Hit } from "./search-match";
 
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`/data/${DATA_VERSION}/${path}`);
+  const response = await publicFetch(`/data/${DATA_VERSION}/${path}`);
   const isJson = response.headers.get("content-type")?.includes("application/json") ?? false;
   // No such fragment (no bar has a word starting so): the static host answers with the app shell.
   if (response.status === 404 || (response.ok && !isJson)) return [] as T;

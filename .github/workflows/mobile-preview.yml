@@ -1,0 +1,102 @@
+# Compile evidence only: no backend deployment, release signing or store upload.
+name: Mobile preview compile
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/mobile-preview.yml"
+      - "scripts/mobile-ci*"
+      - "scripts/native-*"
+      - "scripts/build-tokens.mjs"
+      - "package*.json"
+      - "capacitor.config.ts"
+      - "vite.native.config.ts"
+      - "native/**"
+      - "android/**"
+      - "ios/**"
+      - "src/app/**"
+      - "src/shared/**"
+      - "public/**"
+      - "docs/brand/tokens.json"
+      - "tests/fixtures/data/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  WRANGLER_SEND_METRICS: "false"
+
+jobs:
+  android:
+    name: Android debug APK (preview fixtures)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci --ignore-scripts
+      - name: Check dependency lock bootstrap and failure guards
+        run: bash scripts/mobile-ci-test.sh
+      - run: npm run build:native
+      - run: npm run native:check
+      - run: npm run native:sync -- android
+      - name: Compile and inspect debug APK and merged manifest
+        run: bash scripts/mobile-ci-android.sh
+      - name: Retain Android compile evidence for one day
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-preview-debug
+          path: ${{ runner.temp }}/mobile-evidence/android/
+          retention-days: 1
+          if-no-files-found: error
+
+  ios:
+    name: iOS unsigned simulator app (preview fixtures)
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      # macos-15 defaults to Xcode 16; Capacitor 8 requires Xcode 26+.
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build:native
+      - run: npm run native:check
+      - run: npm run native:sync -- ios
+      - name: Resolve app dependencies and capture real Package.resolved
+        run: bash scripts/mobile-ci-ios.sh resolve
+      - name: Compile unsigned simulator app using only resolved versions
+        run: bash scripts/mobile-ci-ios.sh build
+      - name: Retain iOS compile evidence and app workspace lock for one day
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios-preview-simulator
+          path: ${{ runner.temp }}/mobile-evidence/ios/
+          retention-days: 1
+          if-no-files-found: error

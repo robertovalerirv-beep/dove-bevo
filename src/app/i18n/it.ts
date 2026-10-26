@@ -1,5 +1,24 @@
 // Every user-facing text, in Italian (CLAUDE.md). The Worker imports `errors` for API messages.
 export const it = {
+  mobileAuth: {
+    title: "Verifica per contribuire",
+    intro: "Completa la verifica per tornare a Dove bevo.",
+    waiting: "Verifica in corso…",
+    returning: "Verifica completata. Ritorno all’app…",
+    failed: "Non è stato possibile completare la verifica. Torna all’app e riprova.",
+    invalid: "Questa richiesta non è valida. Torna all’app e riprova.",
+  },
+  native: {
+    pending: "Prezzo pronto per l’invio.",
+    sending: "Invio del prezzo in corso…",
+    unavailable: "Anteprima non disponibile. Controlla la connessione e riprova.",
+    cancelled: "Verifica annullata. Riprova per inviare il contributo.",
+    loading: "Caricamento anteprima…",
+    retry: "Riprova",
+    admin: "La gestione dei locali è disponibile sul sito.",
+    share: "Condividi locale",
+    externalFailed: "Non riesco ad aprire il collegamento. Riprova dal sito.",
+  },
   meta: {
     description:
       "Dove si beve e a quale prezzo: la mappa gratuita dei bar con i prezzi reali di birre e drink.",
@@ -124,6 +143,11 @@ export const it = {
     } as Record<number, string>,
     count: (n: number) => (n === 1 ? "1 prezzo segnato." : `${String(n)} prezzi segnati.`),
   },
+  contribution: {
+    beforeRules: "Premendo Invio o un pulsante «Accetta» accetti le",
+    afterRules: ". Vietati prezzi inventati, locali falsi e contenuti offensivi.",
+    acceptSeen: (price: string) => `Accetta e segna ${price}`,
+  },
   add: {
     open: "Aggiungi prezzo",
     addMissing: "Aggiungi locale mancante",
@@ -136,7 +160,7 @@ export const it = {
     chooseDrink: "Che cosa hai preso?",
     price: "Prezzo in euro",
     happyHour: "Happy hour",
-    save: "Salva",
+    save: "Accetta e salva",
     badFormat: "Scrivi il prezzo in euro, per esempio 7,50.",
     outOfRange: (drink: string) => `Ci sembra un prezzo insolito per ${drink}: controlla le cifre.`,
     underReview: "Questo prezzo è in verifica: per ora non si può cambiare.",
@@ -168,7 +192,7 @@ export const it = {
     nameHelp: "Da 2 a 80 caratteri, senza link, email o numeri di telefono.",
     kind: "Che tipo di locale è?",
     kinds: { 1: "Bar", 2: "Pub", 4: "Locale serale" },
-    next: "Avanti",
+    next: "Accetta e vai avanti",
     badName: "Scrivi solo il nome del bar, senza link, email o numeri di telefono.",
     pinTitle: (name: string) => `Dov'è «${name}»?`,
     pinHelp: "Sposta la mappa finché il segno è sul bar, poi conferma.",
@@ -402,68 +426,72 @@ export const it = {
     contactLabel: "Scrivici",
     privacy: {
       title: "Privacy",
-      updated: "Ultimo aggiornamento: 25 ottobre 2026",
+      updated: "Ultimo aggiornamento: 26 ottobre 2026",
       intro:
-        "Dove bevo funziona senza account e senza tracciamento. Qui spieghiamo in poche righe che cosa usiamo, che cosa salviamo e per quanto tempo.",
+        "Dove bevo funziona senza account. Qui spieghiamo quali dati usiamo per la mappa, i contributi e i conteggi del servizio.",
       sections: [
+        {
+          heading: "Chi è responsabile",
+          paragraphs: [
+            "Dove bevo è gestita da Roberto, che per ora ne è personalmente responsabile. Per richieste sui contenuti o sulla privacy scrivi a dovebevo@gmail.com.",
+          ],
+        },
         {
           heading: "In breve",
           paragraphs: [
-            "Non ti chiediamo nome, email o password. Non usiamo cookie di tracciamento né pubblicità. La tua posizione resta sul tuo telefono.",
+            "Non ti chiediamo nome, email o password e non usiamo cookie di tracciamento. I locali con una posizione a pagamento nell’Elenco sono indicati come «Sponsorizzato». La posizione del telefono resta sul dispositivo.",
           ],
         },
         {
           heading: "La tua posizione",
           paragraphs: [
             "La posizione serve solo sul tuo telefono: per centrare la mappa, mostrare il pallino e proporti i bar più vicini quando segni un prezzo. Non la inviamo mai e non la salviamo.",
-            "Al server arrivano solo richieste per una «cella» di circa 5 km, che dice dove stai guardando la mappa, non dove sei.",
+            "Al server arrivano richieste per una «cella» di circa 5 km; al servizio di mappe arrivano richieste per le tessere da mostrare. Queste richieste descrivono l’area consultata, che può coincidere con la zona in cui ti trovi.",
           ],
         },
         {
           heading: "Quando segni un prezzo",
           paragraphs: [
             "Salviamo il bar, il drink, il prezzo e il giorno. Non salviamo chi l'ha segnato: nessun nome, nessun identificativo di sessione, nessun indirizzo IP insieme al prezzo.",
-            "Per fermare i bot e i troppi invii usiamo codici anonimi, calcolati con un sale che cambia ogni giorno. Non permettono di risalire a te e si cancellano entro 48 ore.",
+            "Per limitare i bot e i troppi invii usiamo codici temporanei derivati dall’indirizzo IP e dalla verifica della sessione, con un calcolo che cambia ogni giorno. Questi controlli sono separati dai prezzi pubblicati.",
           ],
         },
         {
           heading: "Cookie e dati sul telefono",
           paragraphs: [
-            "Quando segni il primo prezzo riceviamo un solo cookie tecnico, che dura 30 minuti e serve a distinguere una persona da un programma automatico. Non serve un banner perché non traccia nessuno.",
-            "Sul telefono restano soltanto la data del primo uso e quanti prezzi hai segnato, per la Tessera e per l'invito a installare l'app. La data e il numero non vengono mai inviati: ai conteggi anonimi arriva soltanto una fascia di anzianità, per esempio «1-7 giorni».",
+            "Sul sito, al primo contributo, un cookie tecnico conserva la verifica per 30 minuti. Nell'app, invece, la verifica temporanea resta solo in memoria per al massimo 30 minuti: chiudendo e riaprendo l’app può essere necessario ripeterla. Per inviare i contributi l’app non usa il cookie del sito.",
+            "Sul dispositivo conserviamo la data del primo uso e quanti prezzi hai segnato, per la Tessera e, sul sito, per l’invito all’installazione. Questi valori non vengono inviati come tali: ai conteggi arriva una fascia di anzianità, per esempio «1-7 giorni».",
           ],
         },
         {
           heading: "Controllo anti-bot",
           paragraphs: [
-            "Prima del tuo primo prezzo usiamo Cloudflare Turnstile, che si carica solo in quel momento. Non mostra pubblicità e non ti segue su altri siti.",
+            "Al primo contributo usiamo Cloudflare Turnstile per limitare gli invii automatici. Nell’app la verifica si apre in una pagina web e poi ti riporta all’app.",
           ],
         },
         {
           heading: "Ricerca e conteggi anonimi",
           paragraphs: [
             "Quando cerchi un bar, il testo che scrivi resta sul telefono: alla rete arrivano soltanto i primi 2 o 3 caratteri di una parola, per scaricare l'elenco giusto, mai la tua posizione.",
-            "Contiamo in forma anonima quante visite ci sono, quanti prezzi vengono segnati e confermati. Sono numeri per giorno, senza nessun legame con le persone.",
+            "Riceviamo eventi di apertura, inserimento e conferma dei prezzi, con informazioni come il drink e la fascia di anzianità d’uso. Li conserviamo come conteggi aggregati per giorno, senza un identificativo della persona. Gli eventi non includono le coordinate del dispositivo.",
             "Per i locali sponsorizzati contiamo anche quante volte viene aperta la loro scheda, giorno per giorno: è soltanto un numero, senza nessun legame con chi l'ha aperta.",
           ],
         },
         {
           heading: "Chi ci aiuta",
           paragraphs: [
-            "Cloudflare ospita il sito e gestisce il controllo anti-bot. OpenFreeMap fornisce le mappe: è il tuo telefono a chiedere le tessere della mappa direttamente a loro. GitHub custodisce il codice, senza dati degli utenti. I bar vengono da OpenStreetMap (licenza ODbL).",
+            "Cloudflare ospita il sito e i servizi dell’app e gestisce il controllo anti-bot. OpenFreeMap fornisce le mappe: il telefono chiede direttamente le tessere da mostrare. Questi servizi ricevono i dati di rete necessari alla connessione, come l’indirizzo IP. GitHub custodisce il codice. I bar vengono da OpenStreetMap (licenza ODbL).",
           ],
         },
         {
           heading: "I tuoi diritti",
           paragraphs: [
-            "Hai i diritti previsti dal GDPR: accesso, rettifica, cancellazione, opposizione. Poiché non teniamo dati che ti identificano, di solito non c'è nulla da cancellare, ma scrivici e ti rispondiamo. Puoi anche rivolgerti al Garante per la protezione dei dati personali.",
+            "Hai i diritti previsti dal GDPR: accesso, rettifica, cancellazione, opposizione. Scrivici per richieste sui tuoi dati o sui contributi pubblicati. Puoi anche rivolgerti al Garante per la protezione dei dati personali.",
           ],
         },
         {
           heading: "Maggiorenni",
-          paragraphs: [
-            "Il servizio è pensato per persone maggiorenni. Non raccogliamo dati di minori.",
-          ],
+          paragraphs: ["Il servizio è pensato per persone maggiorenni."],
         },
       ],
     },

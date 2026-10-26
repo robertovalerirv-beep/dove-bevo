@@ -1,3 +1,4 @@
+import { isNative, nativePlatform } from "./platform";
 // The only place that asks the browser for the position (SPEC 14: it never leaves the device).
 export type Located =
   | { ok: true; lat: number; lon: number }
@@ -16,6 +17,7 @@ async function permission(): Promise<PermissionState | null> {
 
 /** True when the user already granted the position: reading it then shows no prompt. */
 export async function positionGranted(): Promise<boolean> {
+  if (isNative) return nativePlatform().positionGranted();
   return (await permission()) === "granted";
 }
 
@@ -24,6 +26,7 @@ export async function positionGranted(): Promise<boolean> {
  * would show no prompt and stay silent.
  */
 export async function locate(): Promise<Located> {
+  if (isNative) return nativePlatform().locate();
   if (!("geolocation" in navigator)) return { ok: false, reason: "unavailable" };
   if ((await permission()) === "denied") return { ok: false, reason: "denied" };
   return new Promise((resolve) => {

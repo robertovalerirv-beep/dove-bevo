@@ -16,3 +16,10 @@ test-results/
 
 # private business materials (public repo): never committed
 docs/materiali/
+
+# Native builds/signing and host SDK paths (platform sources are tracked).
+*.jks
+*.keystore
+*.mobileprovision
+*.p12
+android/local.properties

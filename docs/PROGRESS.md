@@ -4,6 +4,18 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-26 · App native iOS e Android · prova Preview isolata
+
+**Direzione scelta dal proprietario:** riusare l'interfaccia esistente con integrazioni native. Identità e schema callback Preview; nessuna pubblicazione store o distribuzione al sito pubblico in questa fase. SPEC §20, ADR 0036 e piano mobile registrano confini e prove richieste.
+
+**Codice:** progetti Capacitor iOS/Android con asset inclusi, posizione solo in primo piano, condivisione, mappe esterne, back e ciclo di vita. Plugin HTTP dedicato senza cookie/cache/redirect; sessione solo in memoria. Namespace backend mobile chiuso per impostazione predefinita, PKCE S256, codici monouso, nonce e sessioni separate dai cookie web. Pagina HTTPS di verifica con callback fissa; nessuna deroga a Origin/SameSite/Turnstile del web. Admin e service worker esclusi dagli asset nativi.
+
+**Prove locali integrate:** 69 file e 714 test unit/Worker verdi; lint, TypeScript e formato verdi anche dopo sync. Build web e Preview, guardia output (221 file) e sync iOS/Android riusciti. Shell web iniziale **39.752 B gzip**, budget 51.200 B. Audit runtime: zero vulnerabilità. Guardie feature list, workflow e configurazione verdi. Chromium/WebKit: 79 test integrati e 10 test proposte verdi, nessuno saltato, inclusi bundle nativo con bridge simulato, pagina di verifica, regole/Invio, PWA, contributi/annulla e header di sicurezza. Le revisioni indipendenti hanno corretto annullamento dopo invio, retry inizializzazione, ricerca Unicode, compatibilità della pagina di verifica e disaccordo fra il percorso di riscatto del client e quello del Worker. Il nuovo test usa il vero client con le vere rotte Worker fino alla scrittura confermata in D1. iOS Preview richiede 16.4; Android API24 con WebView aggiornato. Il lock Swift reale resta da acquisire su Xcode e verificare con compilazione bloccata alle versioni risolte.
+
+**Da provare:** compilatori Android e Xcode, binari e manifest effettivi, Worker/D1/widget Preview separati, Turnstile reale e callback su telefoni fisici, cookie e redirect nativi, firma e store. Il backend Preview previsto non è ancora distribuito. Il Worker chiamato staging serve il sito reale: non usarlo come sandbox e non unire il ramo mobile finché il percorso di migrazione/deploy isolato non è verificato. Le credenziali saranno dedicate a Dove bevo.
+
+---
+
 ## 2026-10-25 · Dominio www.dovebevo.com sul Worker esistente (branch `claude/cloudflare-domain-setup-beb3b8`) · M6-01 in parte
 
 **Richiesta di Roberto:** portare il sito vero (bar e prezzi già inseriti) sul dominio comprato, sostituendo l'indirizzo `workers.dev`. ADR 0035: nessuna copia del D1, il dominio si collega al Worker `dovebevo-staging`.

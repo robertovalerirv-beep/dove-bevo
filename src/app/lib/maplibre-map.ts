@@ -1,6 +1,6 @@
 // MapLibre wrapper (SPEC 4, 7.1). Loaded with a dynamic import in parallel with the shell.
 // The worker is served by us (no blob: workers, CSP worker-src 'self').
-import { Map as MapLibre, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
+import { Map as MapLibre, setWorkerUrl, addProtocol, type GeoJSONSource } from "maplibre-gl";
 import type { ExpressionSpecification, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
@@ -8,8 +8,13 @@ import { it } from "../i18n/it";
 import { MAP_STYLES } from "./map-styles.generated";
 import { currentTheme, THEME_EVENT } from "./theme";
 import type { Tier } from "./tiers";
+import { isNative } from "./platform";
+import { fetchNativeMap, validateNativeMapUrl as validateMapUrl } from "./native-map";
 
 setWorkerUrl(workerUrl);
+if (isNative) {
+  addProtocol("dovebevo-map", fetchNativeMap);
+}
 
 const TILEJSON_URL = "https://tiles.openfreemap.org/planet";
 
@@ -53,7 +58,11 @@ const token = (name: string) =>
 async function fetchJson(url: string): Promise<unknown> {
   for (let attempt = 0; ; attempt++) {
     try {
-      const response = await fetch(url);
+      if (isNative) validateMapUrl(url);
+      const response = await fetch(
+        url,
+        isNative ? { credentials: "omit", redirect: "error" } : undefined,
+      );
       if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
       return (await response.json()) as unknown;
     } catch (error) {
@@ -229,6 +238,19 @@ export class VenueMap {
   private constructor(container: HTMLElement, style: StyleSpecification) {
     this.map = new MapLibre({
       container,
+      ...(isNative
+        ? {
+            transformRequest: (url: string) => {
+              validateMapUrl(url);
+              return {
+                url: url.startsWith("https://tiles.openfreemap.org/")
+                  ? url.replace(/^https:\/\//, "dovebevo-map://")
+                  : url,
+                credentials: "same-origin" as const,
+              };
+            },
+          }
+        : {}),
       style,
       bounds: ITALY,
       attributionControl: false,

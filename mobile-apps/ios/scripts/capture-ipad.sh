@@ -1,20 +1,36 @@
 #!/usr/bin/env bash
-# Capture the existing live-service test on a real 13-inch iPad simulator.
+# Capture the existing live-service test on a real store screenshot device.
 set -euo pipefail
 
 IOS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-RESULT_BUNDLE="$IOS_ROOT/.build/iPadScreenshots.xcresult"
-SCREENSHOTS="$IOS_ROOT/.build/Screenshots-iPad"
-INVENTORY="$IOS_ROOT/.build/iPadSimulatorInventory.json"
+CAPTURE_DEVICE="${STORE_CAPTURE_DEVICE:-ipad}"
+case "$CAPTURE_DEVICE" in
+    ipad)
+        RESULT_BUNDLE="$IOS_ROOT/.build/iPadScreenshots.xcresult"
+        SCREENSHOTS="$IOS_ROOT/.build/Screenshots-iPad"
+        INVENTORY="$IOS_ROOT/.build/iPadSimulatorInventory.json"
+        CAPTURE_LABEL='13-inch iPad'
+        ;;
+    iphone-large)
+        RESULT_BUNDLE="$IOS_ROOT/.build/iPhoneLargeScreenshots.xcresult"
+        SCREENSHOTS="$IOS_ROOT/.build/Screenshots-iPhoneLarge"
+        INVENTORY="$IOS_ROOT/.build/iPhoneLargeSimulatorInventory.json"
+        CAPTURE_LABEL='large iPhone'
+        ;;
+    *)
+        printf 'STORE_CAPTURE_DEVICE must be ipad or iphone-large.\n' >&2
+        exit 2
+        ;;
+esac
 
 if [[ -e "$RESULT_BUNDLE" || -e "$SCREENSHOTS" ]]; then
-    printf 'iPad capture output already exists; preserve it before starting another capture.\n' >&2
+    printf '%s capture output already exists; preserve it before starting another capture.\n' "$CAPTURE_LABEL" >&2
     exit 1
 fi
 mkdir -p "$IOS_ROOT/.build"
 SDK_VERSION="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 xcrun simctl list --json > "$INVENTORY"
-SIMULATOR_ID="$(python3 - "$INVENTORY" "$SDK_VERSION" <<'PY'
+SIMULATOR_ID="$(python3 - "$INVENTORY" "$SDK_VERSION" "$CAPTURE_DEVICE" <<'PY'
 import json
 from pathlib import Path
 import re
@@ -22,15 +38,20 @@ import sys
 import uuid
 
 
-def select_ipad(inventory, sdk_version):
+def select_device(inventory, sdk_version, capture_device):
+    if capture_device not in ("ipad", "iphone-large"):
+        raise ValueError("Capture device must be ipad or iphone-large")
     if not re.fullmatch(r"\d+(?:\.\d+)*", sdk_version):
         raise ValueError("The selected Xcode simulator SDK version is invalid")
     sdk_major = int(sdk_version.split(".")[0])
+    family = "iPad" if capture_device == "ipad" else "iPhone"
+    name_pattern = (r"\b13\s*[-\u2010-\u2015]?\s*inch\b" if capture_device == "ipad"
+                    else r"\b(?:Pro\s*Max|Plus)\b|^iPhone\s+Air\b")
     types = {
         item["identifier"]: item
         for item in inventory["devicetypes"]
-        if item.get("productFamily") == "iPad"
-        and re.search(r"\b13\s*[-\u2010-\u2015]?\s*inch\b", item.get("name", ""), re.IGNORECASE)
+        if item.get("productFamily") == family
+        and re.search(name_pattern, item.get("name", ""), re.IGNORECASE)
     }
     runtimes = {}
     for runtime in inventory["runtimes"]:
@@ -48,11 +69,12 @@ def select_ipad(inventory, sdk_version):
             device_type = types.get(device.get("deviceTypeIdentifier"))
             if device.get("isAvailable") is True and device_type:
                 # Accept only an identifier supplied by simctl, never a guessed
-                # UDID or a renamed phone/11-inch tablet that resembles an iPad.
+                # UDID or a renamed device that resembles a qualifying model.
                 uuid.UUID(device["udid"])
                 candidates.append((runtimes[runtime_id], device_type, device))
     if not candidates:
-        raise ValueError("No installed available 13-inch iPad simulator matches the selected Xcode iOS SDK major version")
+        label = "13-inch iPad" if capture_device == "ipad" else "large iPhone (Pro Max, Plus or iPhone Air)"
+        raise ValueError(f"No installed available {label} simulator matches the selected Xcode iOS SDK major version")
     newest = max(item[0] for item in candidates)
     matches = [item for item in candidates if item[0] == newest]
     matches.sort(key=lambda item: (
@@ -62,12 +84,12 @@ def select_ipad(inventory, sdk_version):
 
 
 try:
-    version, device_type, device = select_ipad(json.loads(Path(sys.argv[1]).read_text()), sys.argv[2])
-    print(f'13-inch iPad capture: {device_type["name"]} | {device["name"]} | '
+    version, device_type, device = select_device(json.loads(Path(sys.argv[1]).read_text()), sys.argv[2], sys.argv[3])
+    print(f'{sys.argv[3]} capture: {device_type["name"]} | {device["name"]} | '
           f'iOS {".".join(map(str, version))} | {device["udid"]} | selected SDK {sys.argv[2]}', file=sys.stderr)
     print(device["udid"])
 except (ValueError, KeyError, TypeError, OSError) as error:
-    sys.exit(f"iPad simulator selection failed: {error}")
+    sys.exit(f"Store screenshot simulator selection failed: {error}")
 PY
 )"
 
@@ -85,10 +107,10 @@ export_attachments() {
             --output-path "$SCREENSHOTS"
         export_status=$?
         if [[ "$export_status" != 0 ]]; then
-            printf 'iPad attachment export failed; the original test result bundle is retained.\n' >&2
+            printf '%s attachment export failed; the original test result bundle is retained.\n' "$CAPTURE_LABEL" >&2
         fi
     else
-        printf 'No iPad test result bundle was produced; no screenshot evidence is available.\n' >&2
+        printf 'No %s test result bundle was produced; no screenshot evidence is available.\n' "$CAPTURE_LABEL" >&2
         export_status=1
     fi
     # A screenshot-export failure cannot turn a failed test green or conceal its

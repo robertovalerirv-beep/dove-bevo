@@ -175,10 +175,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         stack.layer.cornerRadius = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
+        let preferredWidth = stack.widthAnchor.constraint(equalTo: webView.widthAnchor, constant: -32)
+        preferredWidth.priority = .defaultHigh
         NSLayoutConstraint.activate([
             stack.centerXAnchor.constraint(equalTo: webView.centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: webView.centerYAnchor),
             stack.widthAnchor.constraint(lessThanOrEqualToConstant: 400),
+            preferredWidth,
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: webView.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(lessThanOrEqualTo: webView.trailingAnchor, constant: -16)
         ])

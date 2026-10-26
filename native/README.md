@@ -77,10 +77,10 @@ sync do not establish that Xcode builds or runs the application.
 
 Retain the app's resolved Swift dependency graph at
 `ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`.
-The first successful hosted Xcode dependency resolution must export that actual file for review
-and commit; it has not been resolved or captured locally. The npm pins do not pin all native
-transitive dependencies, including the geolocation SDK's permitted 3.x range. After the real
-app workspace lock is committed, validate subsequent Xcode builds with
+The real app workspace lock is now committed after review of hosted Xcode resolution evidence.
+Its 696 bytes have SHA256 `0414941858be1cb14b1ae5407f2da755c8b8cb7ca54f1a425fb6de2530382b65`.
+The npm pins alone do not pin all native transitive dependencies, including the geolocation SDK's
+permitted 3.x range. Subsequent Xcode builds validate the committed resolution with
 `-onlyUsePackageVersionsFromResolvedFile -disableAutomaticPackageResolution`; dependency
 changes require a deliberately refreshed, reviewed lock. A standalone `CapApp-SPM/Package.resolved`
 is not a substitute for the app workspace lock.
@@ -117,8 +117,9 @@ The pinned Capacitor 8 plugins still use the old Android DSL and external `kotli
 the documented temporary `android.newDsl=false` and `android.builtInKotlin=false` migration
 opt-outs preserve those scripts without patching `node_modules`. They do not suppress AAR/API
 metadata checks. Full native-plugin migration is required before those AGP compatibility
-opt-outs are removed. This toolchain change still requires a successful hosted build; source
-configuration checks alone do not establish Capacitor compatibility or an installable APK.
+opt-outs are removed. A hosted build has compiled a debug APK with this toolchain; the corrected
+optional-hardware declarations still require a new packaged-manifest check. Source configuration
+and compilation alone do not establish successful installation or device behavior.
 
 ### Android merged manifest checks
 

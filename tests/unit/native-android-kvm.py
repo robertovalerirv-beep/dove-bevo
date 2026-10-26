@@ -188,7 +188,9 @@ class LifecycleTests(unittest.TestCase):
             self.assertFalse(any(stage == "grant" for stage, *_ in commands.calls))
 
     def test_grant_failure_partial_failure_and_verification_failure_restore_original(self):
-        for mode in ("grant-failed", "grant-partial-failed", "verify-acl-failed", "verify-access-failed"):
+        # An unrelated new principal is outside the permitted mutation domain;
+        # that former fixture now belongs to the drift rejection test below.
+        for mode in ("grant-failed", "grant-partial-failed", "verify-access-failed"):
             with self.subTest(mode=mode):
                 host, store, commands = self.fixture(mode)
                 result = kvm.prepare(host, store, commands)
@@ -196,6 +198,89 @@ class LifecycleTests(unittest.TestCase):
                 self.assertTrue(store.saved_before_grant)
                 self.assertEqual(host.acl, BASE)
                 self.assertTrue(store.state["restored"])
+
+    def test_unrelated_restrictions_new_principals_or_unknown_runner_mask_drift_are_not_overwritten(self):
+        for drift in (
+            lambda acl: acl.replace("group::rw-", "group::r--"),
+            lambda acl: acl.replace("user::rw-", "user::r--"),
+            lambda acl: acl + "user:2000:r--\n",
+            lambda acl: acl + "group:2000:r--\n",
+            lambda acl: acl.replace("mask::rw-", "mask::r--"),
+            lambda acl: acl.replace("user:1001:rw-", "user:1001:r-x"),
+        ):
+            with self.subTest(drift=drift):
+                host, store, commands = self.fixture()
+                self.assertTrue(kvm.prepare(host, store, commands)["success"])
+                host.acl = kvm.canonical_acl(drift(host.acl))
+                before = host.acl
+                commands.calls.clear()
+                result = kvm.restore(host, store, commands)
+                self.assertFalse(result["success"])
+                self.assertFalse(store.state["restored"])
+                self.assertEqual(host.acl, before)
+                self.assertFalse(any(stage == "restore-acl" for stage, *_ in commands.calls))
+
+    def test_other_permission_restriction_and_existing_principal_removal_remain_intact(self):
+        fixtures = (
+            ("user::rw-\ngroup::rw-\nother::r--\n", 0o664, lambda acl: acl.replace("other::r--", "other::---")),
+            ("user::rw-\nuser:2000:r--\ngroup::rw-\nmask::rw-\nother::---\n", 0o660, lambda acl: acl.replace("user:2000:r--\n", "")),
+            ("user::rw-\nuser:2000:r--\ngroup::rw-\nmask::rw-\nother::---\n", 0o660, lambda acl: acl.replace("user:2000:r--", "user:2000:---")),
+            ("user::rw-\ngroup::rw-\ngroup:2000:r--\nmask::rw-\nother::---\n", 0o660, lambda acl: acl.replace("group:2000:r--", "group:2000:---")),
+        )
+        for original, mode, drift in fixtures:
+            host, store, commands = self.fixture(acl=original)
+            host.snapshot["mode"] = mode
+            self.assertTrue(kvm.prepare(host, store, commands)["success"])
+            host.acl = drift(host.acl)
+            commands.calls.clear()
+            self.assertFalse(kvm.restore(host, store, commands)["success"])
+            self.assertFalse(any(stage == "restore-acl" for stage, *_ in commands.calls))
+
+    def test_unrelated_change_during_prepare_verification_does_not_trigger_broad_rollback(self):
+        host, store, commands = self.fixture("verify-acl-failed")
+        result = kvm.prepare(host, store, commands)
+        self.assertFalse(result["success"])
+        self.assertIn("rollback_failure", result)
+        self.assertIn("user:2000:rw-", host.acl)
+        self.assertFalse(store.state["restored"])
+        self.assertFalse(any(stage == "restore-acl" for stage, *_ in commands.calls))
+
+    def test_known_target_and_mask_partial_changes_restore_without_affecting_other_principals(self):
+        original = "user::rw-\nuser:1001:r--\nuser:2000:r--\ngroup::r--\nmask::r--\nother::---\n"
+        for partial in (
+            lambda acl: acl.replace("mask::rw-", "mask::r--"),
+            lambda acl: acl.replace("user:1001:rw-", "user:1001:r--"),
+        ):
+            host, store, commands = self.fixture(acl=original)
+            host.snapshot["mode"] = 0o640
+            self.assertTrue(kvm.prepare(host, store, commands)["success"])
+            host.acl = partial(host.acl)
+            host.snapshot["mode"] = kvm.expected_mode(0o640, host.acl)
+            self.assertTrue(kvm.restore(host, store, commands)["success"])
+            self.assertEqual(host.acl, original)
+        host, store, commands = self.fixture()
+        self.assertTrue(kvm.prepare(host, store, commands)["success"])
+        host.acl = host.acl.replace("user:1001:rw-\n", "")
+        self.assertTrue(kvm.restore(host, store, commands)["success"])
+        self.assertEqual(host.acl, BASE)
+
+    def test_restoration_rechecks_acl_after_identity_preflight_before_privileged_write(self):
+        host, store, commands = self.fixture()
+        self.assertTrue(kvm.prepare(host, store, commands)["success"])
+        device = host.device
+        calls = [0]
+
+        def device_with_restriction():
+            calls[0] += 1
+            if calls[0] == 2:
+                host.acl = host.acl.replace("group::rw-", "group::r--")
+            return device()
+
+        host.device = device_with_restriction
+        commands.calls.clear()
+        self.assertFalse(kvm.restore(host, store, commands)["success"])
+        self.assertIn("group::r--", host.acl)
+        self.assertFalse(any(stage == "restore-acl" for stage, *_ in commands.calls))
 
     def test_changed_device_refuses_restore_and_does_not_mutate_replacement(self):
         host, store, commands = self.fixture("changed-device")

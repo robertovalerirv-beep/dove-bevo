@@ -284,12 +284,40 @@ def verify(host, state, acl):
     return current
 
 
+def require_owned_acl_domain(state, current):
+    """A full reset is safe only while every other principal is unchanged.
+
+    setfacl normally updates an ACL atomically. For a failed grant, allow only
+    the strict partial domain: the runner entry and mask can each be either
+    their original value (including absence) or their intended granted value.
+    Unknown restrictions or additions must survive; never overwrite them by
+    restoring a stale snapshot. This is a read-back fence, not an atomic CAS.
+    """
+    original, granted, actual = rules(state["original_acl"]), rules(state["grant_acl"]), rules(current)
+    mutable = {("user", str(state["uid"])), ("mask", "")}
+    for key in (set(original) | set(actual)) - mutable:
+        if actual.get(key) != original.get(key):
+            raise AccessFailure("Unrelated KVM ACL drift; refusing full restoration")
+    for key in mutable:
+        if actual.get(key) not in (original.get(key), granted.get(key)):
+            raise AccessFailure("Unknown runner or mask ACL drift; refusing full restoration")
+    old_mask = bits(original.get(("mask", ""), "rwx"))
+    current_mask = bits(actual.get(("mask", ""), "rwx"))
+    for (kind, principal), value in original.items():
+        if kind == "group" or (kind == "user" and principal and principal != str(state["uid"])):
+            if bits(value) & old_mask != bits(value) & current_mask:
+                raise AccessFailure("Other principal's effective ACL changed; refusing full restoration")
+
+
 def restore_owned(host, store, commands, state):
     validate_state(state, host)
     same_device(state["device"], host.device())
     current = read_acl(commands, cleanup=True)
     if not state["restored"] and state["mutation_attempted"] and current != state["original_acl"]:
+        require_owned_acl_domain(state, current)
         same_device(state["device"], host.device())
+        if read_acl(commands, cleanup=True) != current:
+            raise AccessFailure("KVM ACL changed during restoration preflight; no write attempted")
         commands.run("restore-acl", privileged(["--set-file=-"]), input=state["original_acl"].encode("ascii"), cleanup=True)
     after = read_acl(commands, cleanup=True)
     if after != state["original_acl"]:

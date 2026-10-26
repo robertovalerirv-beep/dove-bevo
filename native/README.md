@@ -167,6 +167,11 @@ attempt is used. Read-only boot/provider readiness
 polling stays within the overall work deadline. The active valid WebView must be installed,
 enabled and finished preparing, with Chromium 111 or newer; it is never updated or switched.
 
+The owned server uses the vendor-supported `-L tcp:localhost:<port>` loopback listener.
+Clients and `ADB_SERVER_SOCKET` keep literal `127.0.0.1` to prevent missing-server autostart;
+the two forms are deliberately different. IPv4 loopback address, PID and socket inode
+ownership are verified; wildcard and foreign listeners are rejected.
+
 Evidence binds the actual compiled/copied APK hash, checkout, API/image/tool versions, install
 result, exact component and surviving foreground PID after 25 seconds, plus PNG dimensions/hash.
 Only tracked process groups and guarded temporary homes are cleaned. Missing ownership or
@@ -194,7 +199,7 @@ available iPhone's explicit runtime/type pairing, preferring the current SDK; it
 no runtime and fails if it cannot establish a reliable compatible stable pair at iOS 16.4+.
 It creates one uniquely named job-owned simulator, boots/installs/launches the preview, checks
 the returned PID still belongs to the installed executable after 25 seconds, and captures
-one PNG. The installed-container lookup has a 30-second stage cap; the launch cap is 60 seconds.
+one PNG. The installed-container lookup and launch each have a 60-second stage cap.
 A 420-second overall deadline reserves 60 seconds for exact-UDID cleanup inside the
 eight-minute workflow step. The observed combined slow-start scenario fits; simultaneous
 maximum durations of every stage do not. Existing simulators are never booted, shut down or deleted.

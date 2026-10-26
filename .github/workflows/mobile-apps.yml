@@ -136,7 +136,7 @@ jobs:
   ios:
     name: iOS simulator tests and unsigned device archive
     runs-on: macos-15
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
@@ -158,6 +158,14 @@ jobs:
       - name: Run unit and live application tests
         timeout-minutes: 10
         run: bash mobile-apps/ios/scripts/test-simulator.sh
+      - name: Verify live map on 13-inch iPad and capture store screenshots
+        timeout-minutes: 8
+        run: bash mobile-apps/ios/scripts/capture-ipad.sh
+      - name: Verify live map on large iPhone and capture store screenshots
+        timeout-minutes: 8
+        env:
+          STORE_CAPTURE_DEVICE: iphone-large
+        run: bash mobile-apps/ios/scripts/capture-ipad.sh
       - name: Compile unsigned device archive
         run: bash mobile-apps/ios/scripts/archive-unsigned.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -168,6 +176,12 @@ jobs:
             mobile-apps/ios/.build/DoveBevo.xcarchive
             mobile-apps/ios/.build/TestResults.xcresult
             mobile-apps/ios/.build/Screenshots/
+            mobile-apps/ios/.build/Screenshots-iPad/
+            mobile-apps/ios/.build/iPadScreenshots.xcresult
+            mobile-apps/ios/.build/iPadSimulatorInventory.json
+            mobile-apps/ios/.build/Screenshots-iPhoneLarge/
+            mobile-apps/ios/.build/iPhoneLargeScreenshots.xcresult
+            mobile-apps/ios/.build/iPhoneLargeSimulatorInventory.json
             mobile-apps/ios/.build/SimulatorDiagnostics/
             mobile-apps/ios/.build/DerivedData/Build/Products/Debug-iphonesimulator/*.app
           retention-days: 7

@@ -438,7 +438,7 @@ def run_launch(root, sdk, evidence, runner, host, settle=time.sleep):
         adb, emu = str(sdk / "platform-tools/adb"), str(sdk / "emulator/emulator")
         prefix = [adb, "-H", HOST, "-P", str(host.server_port)]
         # The vendor launcher selects a separate headless engine. Keep probes
-        # consistent with startup so GUI-only dependencies cannot block them.
+        # consistent with startup instead of selecting the GUI engine for probes.
         emulator_version = runner.text("emulator-version", [emu, "-no-window", "-version"])
         actual_emulator_version = re.search(r"Android emulator version (\d+\.\d+\.\d+(?:\.\d+)?)\b", emulator_version)
         if not actual_emulator_version or ".".join(actual_emulator_version.group(1).split(".")[:3]) != result["runtime_packages"]["emulator"]:

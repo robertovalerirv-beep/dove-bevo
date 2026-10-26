@@ -137,3 +137,24 @@ badging so an inferred required hardware feature cannot silently filter supporte
 manifest/permission/hardware fixtures. APK hashing and packaged-asset checks run before this
 manifest check, preserving their evidence even when a manifest policy fails. A new APK must be
 built before the corrected hardware declarations can be verified in packaged output.
+
+### Bounded iOS Simulator startup evidence
+
+After the locked unsigned build, the existing macOS job runs
+`scripts/mobile-ci-ios-launch.py` once. It uses installed Simulator help/inventory and an
+available iPhone's explicit runtime/type pairing, preferring the current SDK; it downloads
+no runtime and fails if it cannot establish a reliable compatible stable pair at iOS 16.4+.
+It creates one uniquely named job-owned simulator, boots/installs/launches the preview, checks
+the returned PID still belongs to the installed executable after 25 seconds, and captures
+one PNG. A 330-second overall deadline reserves 30 seconds for exact-UDID cleanup inside the
+six-minute workflow step. Existing simulators are never booted, shut down or deleted.
+
+The launch evidence folder records the checkout SHA, a deterministic app-tree hash, selected
+runtime/device, bounded command/failure logs, launch PID, screenshot/hash and cleanup result.
+Root must inspect the PNG: a live PID or valid PNG does not establish a functional UI. Pure
+selection/error/deadline tests use fake subprocesses and are not simulator evidence. This phase
+does not exercise real Turnstile, backend contributions, location consent, physical devices or
+production signing; those remain separate gates. Existing one-day artifact retention applies.
+The 25-second wait accommodates the native config request's 20-second timeout so an unavailable
+preview can render its closed failure state. The PNG may still show loading and requires
+inspection; this is OS/limited-shell startup evidence, not a claim that the map app is ready.

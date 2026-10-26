@@ -6,15 +6,6 @@ final class BrowserSmokeTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        addUIInterruptionMonitor(withDescription: "First-use keyboard typing introduction") { interruption in
-            let introduction = interruption.staticTexts.matching(
-                NSPredicate(format: "label BEGINSWITH %@", "Speed up your typing")
-            ).firstMatch
-            let continueButton = interruption.buttons["Continue"]
-            guard introduction.exists && continueButton.exists else { return false }
-            continueButton.tap()
-            return true
-        }
         app.launch()
     }
 
@@ -124,6 +115,9 @@ final class BrowserSmokeTests: XCTestCase {
         guard introduction.waitForExistence(timeout: 2) else { return }
         let continueButton = app.buttons["Continue"]
         XCTAssertTrue(continueButton.waitForExistence(timeout: 5), "Keyboard introduction has no Continue action")
-        continueButton.tap()
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: continueButton)
+        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed, "Keyboard introduction is not on screen; inspect renderer diagnostics")
+        // Re-query after readiness; one handler owns this transient control.
+        app.buttons["Continue"].tap()
     }
 }

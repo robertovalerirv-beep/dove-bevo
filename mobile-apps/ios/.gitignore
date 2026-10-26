@@ -12,3 +12,5 @@ DerivedData/
 *.p8
 ExportOptions.plist
 .DS_Store
+__pycache__/
+*.pyc

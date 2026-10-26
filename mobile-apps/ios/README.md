@@ -34,8 +34,10 @@ bash mobile-apps/ios/scripts/archive-unsigned.sh
 ```
 
 Set `DEVELOPER_DIR` to choose an installed Xcode. Set `IOS_SIMULATOR_ID` to an
-available iPhone simulator UDID to choose a particular device. Tests otherwise
-choose an available iPhone. Open the generated `mobile-apps/ios/DoveBevo.xcodeproj`
+available iPhone simulator UDID to choose a particular device, including an older
+OS for explicit compatibility checks. Tests otherwise choose the newest installed
+available iOS runtime matching the selected Xcode SDK major version and print its
+device, OS and SDK. Missing matching runtimes fail clearly. Open the generated `mobile-apps/ios/DoveBevo.xcodeproj`
 to run interactively. `project.yml` is the reproducible source of the project;
 generated Xcode projects, tools and build outputs are ignored.
 
@@ -43,6 +45,8 @@ Outputs stay under `mobile-apps/ios/.build/`: the simulator app is
 `DerivedData/Build/Products/Debug-iphonesimulator/DoveBevo.app`, device archive is
 `DoveBevo.xcarchive`, and test evidence is `TestResults*.xcresult` plus exported
 `Screenshots/`. `last-test-result-path.txt` records the latest result bundle.
+`SimulatorDiagnostics/` retains bounded process-termination diagnostics without
+logging website URLs or session values from application code.
 Reruns preserve previous result bundles. An unsigned archive cannot be installed
 on a physical device or uploaded as a signed App Store build.
 

@@ -421,6 +421,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        NSLog("DoveBevo: WebKit content process terminated; recovery already used: %@", recoveredRenderer ? "yes" : "no")
         // One automatic recovery per controller lifetime; repeated failures
         // require an explicit retry so a broken page cannot reload forever.
         guard !recoveredRenderer else {

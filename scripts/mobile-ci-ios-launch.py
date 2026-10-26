@@ -15,7 +15,7 @@ import uuid
 IDENTITY = "com.dovebevo.app.preview"
 MINIMUM = (16, 4, 0)
 TOTAL_SECONDS = 330  # Leaves 30 seconds of margin inside the workflow's six-minute cap.
-CLEANUP_RESERVE = 30
+CLEANUP_RESERVE = 60  # Inventory recovery (8), shutdown (20), delete (30), and small overhead.
 SETTLE_SECONDS = 25  # Native config may take its full 20-second network timeout before UI renders.
 MAX_LOG_BYTES = 65536
 
@@ -90,6 +90,7 @@ class CommandRunner:
         self.invoke, self.clock = invoke, clock
         self.started = clock()
         self.deadline = self.started + TOTAL_SECONDS
+        self.stages = []
 
     def remaining(self, cleanup=False):
         available = self.deadline - self.clock() - (0 if cleanup else CLEANUP_RESERVE)
@@ -106,17 +107,33 @@ class CommandRunner:
         (self.evidence / (stage + ".log")).write_bytes((body + ("\n[truncated]\n" if truncated else "")).encode("utf-8"))
 
     def run(self, stage, argv, timeout=10, cleanup=False, merge_output=False):
-        limit = min(timeout, self.remaining(cleanup))
+        started = self.clock()
+        record = {"stage": stage, "requested_timeout_seconds": timeout,
+                  "effective_timeout_seconds": 0, "started_elapsed_seconds": round(started - self.started, 3),
+                  "elapsed_seconds": 0, "outcome": "deadline-exhausted", "exit_code": None}
         try:
-            result = self.invoke(argv, capture_output=True, text=True, timeout=limit, check=False)
-        except subprocess.TimeoutExpired as error:
-            self.log(stage, error.output, error.stderr)
-            raise LaunchFailure(stage + " timed out") from None
-        self.log(stage, result.stdout, result.stderr)
-        if result.returncode != 0:
-            raise LaunchFailure(stage + " failed with exit " + str(result.returncode))
-        output = result.stdout + ("\n" + result.stderr if merge_output else "")
-        return output.strip()
+            limit = min(timeout, self.remaining(cleanup))
+            record["effective_timeout_seconds"] = round(limit, 3)
+            record["outcome"] = "failed"
+            try:
+                result = self.invoke(argv, capture_output=True, text=True, timeout=limit, check=False)
+            except subprocess.TimeoutExpired as error:
+                record["outcome"] = "timed-out"
+                self.log(stage, error.output, error.stderr)
+                raise LaunchFailure(stage + " timed out") from None
+            except OSError:
+                record["outcome"] = "invocation-failed"
+                raise LaunchFailure(stage + " could not start") from None
+            record["exit_code"] = result.returncode
+            self.log(stage, result.stdout, result.stderr)
+            if result.returncode != 0:
+                raise LaunchFailure(stage + " failed with exit " + str(result.returncode))
+            record["outcome"] = "completed"
+            output = result.stdout + ("\n" + result.stderr if merge_output else "")
+            return output.strip()
+        finally:
+            record["elapsed_seconds"] = round(self.clock() - started, 3)
+            self.stages.append(record)
 
 
 def app_info_and_hash(app, runner):
@@ -194,7 +211,7 @@ def run_launch(app, evidence, runner, settle=time.sleep):
         result["owned_udid"] = owned
         runner.run("boot", ["xcrun", "simctl", "boot", owned], timeout=20)
         runner.run("bootstatus", ["xcrun", "simctl", "bootstatus", owned, "-b"], timeout=180)
-        runner.run("install", ["xcrun", "simctl", "install", owned, str(app)], timeout=40)
+        runner.run("install", ["xcrun", "simctl", "install", owned, str(app)], timeout=90)
         launched = runner.run("launch", ["xcrun", "simctl", "launch", "--terminate-running-process", owned, IDENTITY], timeout=20)
         pid_match = re.fullmatch(re.escape(IDENTITY) + r":\s*([1-9]\d*)", launched)
         if not pid_match:
@@ -231,16 +248,17 @@ def run_launch(app, evidence, runner, settle=time.sleep):
                 result["cleanup"] = "uncertain-creation-not-touched"
         if owned is not None:
             try:
-                runner.run("shutdown", ["xcrun", "simctl", "shutdown", owned], timeout=8, cleanup=True)
+                runner.run("shutdown", ["xcrun", "simctl", "shutdown", owned], timeout=20, cleanup=True)
             except Exception as error:
                 result["shutdown_warning"] = str(error)[:2048]
             try:
-                runner.run("delete", ["xcrun", "simctl", "delete", owned], timeout=12, cleanup=True)
+                runner.run("delete", ["xcrun", "simctl", "delete", owned], timeout=30, cleanup=True)
                 result["cleanup"] = "deleted-job-owned-simulator"
             except Exception as error:
                 result["cleanup_failure"] = str(error)[:2048]
                 result["cleanup"] = "failed"
         result["elapsed_seconds"] = round(runner.clock() - runner.started, 3)
+        result["stages"] = runner.stages
         result["success"] = result["status"] == "launched-process-and-captured-png" and result.get("cleanup") == "deleted-job-owned-simulator"
         (evidence / "launch-result.json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print("Simulator startup evidence: " + ("captured; PNG requires human review" if result["success"] else "failed; inspect launch-result.json and bounded logs"))

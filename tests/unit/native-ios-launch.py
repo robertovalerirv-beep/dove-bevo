@@ -41,8 +41,9 @@ class Clock:
 
 
 class FakeProcess:
-    def __init__(self, clock, app, mode="success"):
+    def __init__(self, clock, app, mode="success", durations=None):
         self.clock, self.app, self.mode = clock, app, mode
+        self.durations = durations or {}
         self.calls = []
         self.runtimes, self.types, self.devices = inventory()
         self.created_name = None
@@ -51,7 +52,17 @@ class FakeProcess:
 
     def __call__(self, argv, **kwargs):
         self.calls.append((list(argv), kwargs["timeout"]))
-        self.clock.advance(0.1)
+        stage = argv[2] if argv[:2] == ["xcrun", "simctl"] else argv[0]
+        if stage == "list":
+            stage += "-" + argv[3]
+        duration = self.durations.get(stage, 0.1)
+        if (stage == "create" and self.mode == "create-timeout") or (stage == "bootstatus" and self.mode in ("boot-timeout", "boot-large-timeout")):
+            duration = kwargs["timeout"]
+        self.clock.advance(min(duration, kwargs["timeout"]))
+        timed_out = duration > kwargs["timeout"]
+        # Creation may have taken effect even when simctl never returns its UDID.
+        if timed_out and stage != "create":
+            raise subprocess.TimeoutExpired(argv, kwargs["timeout"], output="")
         output = ""
         if argv[:3] == ["git", "rev-parse", "HEAD"]:
             output = "a" * 40
@@ -72,17 +83,13 @@ class FakeProcess:
             if self.mode == "existing-id":
                 return SimpleNamespace(returncode=0, stdout=SOURCE_ID, stderr="")
             self.devices["devices"][RUNTIME].append({"udid": OWN_ID, "name": argv[3], "deviceTypeIdentifier": TYPE, "isAvailable": True})
-            if self.mode == "create-timeout":
-                self.clock.advance(kwargs["timeout"])
+            if self.mode == "create-timeout" or timed_out:
                 raise subprocess.TimeoutExpired(argv, kwargs["timeout"], output="")
             output = OWN_ID
         elif argv[:3] == ["xcrun", "simctl", "bootstatus"]:
             if self.mode in ("boot-timeout", "boot-large-timeout"):
-                self.clock.advance(kwargs["timeout"])
                 output = "Waiting on BackBoard" if self.mode == "boot-timeout" else "Waiting on BackBoard\n" * 10000
                 raise subprocess.TimeoutExpired(argv, kwargs["timeout"], output=output)
-            if self.mode == "budget":
-                self.clock.advance(300)
         elif argv[:3] == ["xcrun", "simctl", "launch"]:
             output = "com.dovebevo.app.preview: 4242"
         elif argv[:3] == ["xcrun", "simctl", "get_app_container"]:
@@ -128,7 +135,7 @@ class SelectionTests(unittest.TestCase):
 
 
 class OrchestratorTests(unittest.TestCase):
-    def run_fake(self, mode):
+    def run_fake(self, mode, durations=None):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         root = Path(temp.name)
@@ -139,7 +146,7 @@ class OrchestratorTests(unittest.TestCase):
             plistlib.dump({"CFBundleIdentifier": "com.dovebevo.app.preview", "DTPlatformName": "iphonesimulator", "MinimumOSVersion": "16.4", "CFBundleExecutable": "App"}, output)
         evidence = root / "evidence"
         clock = Clock()
-        fake = FakeProcess(clock, app, mode)
+        fake = FakeProcess(clock, app, mode, durations)
         runner = launch.CommandRunner(evidence, invoke=fake, clock=clock.now)
         result = launch.run_launch(app, evidence, runner, settle=clock.advance)
         metadata = json.loads((evidence / "launch-result.json").read_text())
@@ -199,11 +206,61 @@ class OrchestratorTests(unittest.TestCase):
         self.assert_owned_cleanup(fake)
 
     def test_global_budget_leaves_cleanup_time(self):
-        code, fake, clock, metadata = self.run_fake("budget")
+        code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 180, "install": 300, "shutdown": 15, "delete": 20})
         self.assertEqual(code, 1)
-        self.assertIn("deadline", metadata["failure"])
+        self.assertIn("install timed out", metadata["failure"])
         self.assert_owned_cleanup(fake)
         self.assertLess(clock.value, 330)
+
+    def test_slow_boot_install_and_cleanup_fit_without_short_stage_timeouts(self):
+        code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 86, "install": 55, "shutdown": 15, "delete": 20})
+        self.assertEqual(code, 0)
+        self.assert_owned_cleanup(fake)
+        self.assertEqual(metadata["total_deadline_seconds"], 330)
+        self.assertEqual(metadata["cleanup_reserve_seconds"], 60)
+        self.assertEqual(metadata["settle_seconds"], 25)
+        self.assertTrue(metadata["success"])
+        self.assertLess(clock.value, 330)
+        stages = {entry["stage"]: entry for entry in metadata["stages"]}
+        for stage, elapsed, cap in (("bootstatus", 86, 180), ("install", 55, 90), ("shutdown", 15, 20), ("delete", 20, 30)):
+            self.assertEqual(stages[stage]["elapsed_seconds"], elapsed)
+            self.assertEqual(stages[stage]["effective_timeout_seconds"], cap)
+            self.assertEqual(stages[stage]["outcome"], "completed")
+        self.assertEqual(len(metadata["screenshot"]["sha256"]), 64)
+
+    def test_exhausted_install_records_shortened_budget_and_keeps_cleanup_reserve(self):
+        code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 180, "install": 300, "shutdown": 15, "delete": 20})
+        self.assertEqual(code, 1)
+        stages = {entry["stage"]: entry for entry in metadata["stages"]}
+        install = stages["install"]
+        self.assertEqual(install["outcome"], "timed-out")
+        self.assertLess(install["effective_timeout_seconds"], 90)
+        self.assertAlmostEqual(install["started_elapsed_seconds"] + install["elapsed_seconds"], 270, places=3)
+        self.assertEqual(metadata["cleanup"], "deleted-job-owned-simulator")
+        self.assertFalse(any(argv[:3] == ["xcrun", "simctl", "launch"] for argv, _ in fake.calls))
+        self.assert_owned_cleanup(fake)
+        self.assertLessEqual(clock.value, 330)
+
+    def test_timed_uncertain_create_recovers_exact_owned_device_with_realistic_cleanup(self):
+        code, fake, clock, metadata = self.run_fake("success", {"create": 25, "list-devices": 5, "shutdown": 15, "delete": 20})
+        self.assertEqual(code, 1)
+        self.assertIn("create timed out", metadata["failure"])
+        self.assertEqual(metadata["cleanup"], "deleted-job-owned-simulator")
+        self.assert_owned_cleanup(fake)
+        stages = {entry["stage"]: entry for entry in metadata["stages"]}
+        self.assertEqual(stages["cleanup-inventory"]["outcome"], "completed")
+        self.assertEqual(stages["cleanup-inventory"]["elapsed_seconds"], 5)
+        self.assertLess(clock.value, 330)
+
+    def test_stage_metadata_records_exit_failure_without_command_or_log_contents(self):
+        code, _, _, metadata = self.run_fake("delete-failed")
+        self.assertEqual(code, 1)
+        stage = metadata["stages"][-1]
+        self.assertEqual(stage["stage"], "delete")
+        self.assertEqual(stage["outcome"], "failed")
+        self.assertEqual(stage["exit_code"], 1)
+        for entry in metadata["stages"]:
+            self.assertEqual(set(entry), {"stage", "requested_timeout_seconds", "effective_timeout_seconds", "started_elapsed_seconds", "elapsed_seconds", "outcome", "exit_code"})
 
     def test_pid_reuse_or_immediate_app_exit_is_failure_and_cleans_up(self):
         code, fake, _, metadata = self.run_fake("crashed")
@@ -215,6 +272,41 @@ class OrchestratorTests(unittest.TestCase):
         code, _, _, metadata = self.run_fake("delete-failed")
         self.assertEqual(code, 1)
         self.assertEqual(metadata["cleanup"], "failed")
+
+
+class CleanupDeadlineTests(unittest.TestCase):
+    def test_invocation_failure_records_stage_without_untrusted_exception_details(self):
+        with tempfile.TemporaryDirectory() as temp:
+            clock = Clock()
+
+            def unavailable(*args, **kwargs):
+                raise OSError("private invocation detail")
+
+            runner = launch.CommandRunner(Path(temp), invoke=unavailable, clock=clock.now)
+            with self.assertRaisesRegex(launch.LaunchFailure, "^install could not start$"):
+                runner.run("install", ["xcrun", "simctl", "install", OWN_ID, "private app path"], timeout=90)
+            self.assertEqual(runner.stages[-1]["outcome"], "invocation-failed")
+            self.assertEqual(runner.stages[-1]["effective_timeout_seconds"], 90)
+            self.assertNotIn("private", json.dumps(runner.stages))
+
+    def test_near_deadline_cleanup_is_clipped_and_no_command_runs_after_deadline(self):
+        with tempfile.TemporaryDirectory() as temp:
+            clock = Clock()
+            fake = FakeProcess(clock, Path(temp), durations={"shutdown": 15, "delete": 20})
+            runner = launch.CommandRunner(Path(temp), invoke=fake, clock=clock.now)
+            clock.advance(305)
+            runner.run("shutdown", ["xcrun", "simctl", "shutdown", OWN_ID], timeout=20, cleanup=True)
+            with self.assertRaisesRegex(launch.LaunchFailure, "delete timed out"):
+                runner.run("delete", ["xcrun", "simctl", "delete", OWN_ID], timeout=30, cleanup=True)
+            self.assertEqual(fake.calls[-1][1], 10)
+            self.assertEqual(clock.value, 330)
+            with self.assertRaisesRegex(launch.LaunchFailure, "deadline"):
+                runner.run("delete", ["xcrun", "simctl", "delete", OWN_ID], timeout=30, cleanup=True)
+            self.assertEqual(len(fake.calls), 2)
+            self.assertEqual(runner.stages[-2]["effective_timeout_seconds"], 10)
+            self.assertEqual(runner.stages[-2]["outcome"], "timed-out")
+            self.assertEqual(runner.stages[-1]["effective_timeout_seconds"], 0)
+            self.assertEqual(runner.stages[-1]["outcome"], "deadline-exhausted")
 
 
 if __name__ == "__main__":

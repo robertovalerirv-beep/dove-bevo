@@ -2,6 +2,11 @@
 import { isValidWeek, type WeekHours } from "../../shared/hours";
 import type { MetricRow } from "../../shared/metrics";
 import { publicCellBody } from "./public-cell";
+import {
+  RESTRICTION_CAPACITY,
+  type ContributionRestriction,
+} from "../../shared/contribution-restrictions";
+
 import type {
   CellPrices,
   HistoryRow,
@@ -10,6 +15,73 @@ import type {
   VenueKind,
   VenuePrices,
 } from "../../shared/api-types";
+
+export async function listContributionRestrictions(db: D1Database, now: number) {
+  const { results } = await db
+    .prepare(
+      "SELECT family, target, day, expires_at FROM contribution_restrictions WHERE expires_at > ?1 ORDER BY expires_at, family, target",
+    )
+    .bind(now)
+    .all<ContributionRestriction>();
+  return results;
+}
+
+/** The count and insert share one SQLite statement, so concurrent admin requests cannot exceed cap. */
+export async function addContributionRestriction(
+  db: D1Database,
+  ref: ContributionRestriction,
+  now: number,
+) {
+  const row = await db
+    .prepare(
+      `INSERT INTO contribution_restrictions (family, target, day, expires_at)
+    SELECT ?1, ?2, ?3, ?4 WHERE (SELECT COUNT(*) FROM contribution_restrictions WHERE expires_at > ?5) < ?6
+    OR EXISTS (SELECT 1 FROM contribution_restrictions WHERE family = ?1 AND target = ?2 AND day = ?3)
+    ON CONFLICT (family, target, day) DO UPDATE SET expires_at = contribution_restrictions.expires_at
+    RETURNING target`,
+    )
+    .bind(ref.family, ref.target, ref.day, ref.expires_at, now, RESTRICTION_CAPACITY)
+    .first();
+  return row !== null;
+}
+
+export async function removeContributionRestriction(
+  db: D1Database,
+  ref: Omit<ContributionRestriction, "expires_at">,
+) {
+  await db
+    .prepare("DELETE FROM contribution_restrictions WHERE family = ?1 AND target = ?2 AND day = ?3")
+    .bind(ref.family, ref.target, ref.day)
+    .run();
+}
+
+export async function purgeContributionRestrictions(db: D1Database, now = Date.now()) {
+  await db.prepare("DELETE FROM contribution_restrictions WHERE expires_at <= ?1").bind(now).run();
+}
+
+export async function matchesDedup(
+  db: D1Database,
+  keys: string[],
+  days: string[],
+): Promise<boolean> {
+  if (keys.length === 0) return false;
+  const marks = keys.map(() => "?").join(",");
+  return (
+    (await db
+      .prepare(`SELECT 1 FROM dedup WHERE k IN (${marks}) AND day IN (?, ?) LIMIT 1`)
+      .bind(...keys, ...days)
+      .first()) !== null
+  );
+}
+
+export async function userVenueExists(db: D1Database, key: string): Promise<boolean> {
+  return (
+    (await db
+      .prepare("SELECT 1 FROM venues_user WHERE id = ?1")
+      .bind(Number(key.slice(1)))
+      .first()) !== null
+  );
+}
 
 interface PriceDbRow {
   venue_key: string;
@@ -584,7 +656,7 @@ export async function listMetrics(db: D1Database, since: string): Promise<Metric
   return results;
 }
 
-/** Nightly cleanup of the day-salted keys (SPEC 8, 14): only the last days survive. */
+/** Hourly scheduled cleanup of active day-salted rows (SPEC 8, 14). */
 export async function purgeOldKeys(db: D1Database, before: string): Promise<void> {
   await db.batch([
     db.prepare("DELETE FROM counters WHERE day < ?1").bind(before),

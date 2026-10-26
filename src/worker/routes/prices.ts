@@ -24,6 +24,7 @@ import { resolveVenue } from "../lib/venues";
 import { publicCellBody } from "../lib/public-cell";
 import { VenueKey } from "./venues";
 import type { AppEnv } from "../types";
+import { requireContributionAllowed } from "../lib/contribution-restrictions";
 
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
 const EDGE_TTL = "public, max-age=60";
@@ -124,6 +125,7 @@ type Planned = Result | { confirmAt: number };
 // the cell's peers, the items decided in memory in order (a repeated drink sees the one before), one
 // write batch: a few D1 round trips instead of up to six per item (ADR 0025).
 prices.post("/", async (c) => {
+  await requireContributionAllowed(c);
   const body = await readJson(c, PriceBody);
   for (const item of body.items) if (!findDrink(item.drink)) throw new ApiError("bad_request");
   const where = await resolveVenue(c.env, body.venue, body.cell);
@@ -195,6 +197,7 @@ prices.post("/", async (c) => {
 
 // POST /api/prices/confirm — "Confermo", one per session per price (SPEC 7.2, M2-11).
 prices.post("/confirm", async (c) => {
+  await requireContributionAllowed(c);
   const body = await readJson(c, ConfirmBody);
   const k: PriceKey = { venue: body.venue, drink: body.drink, hh: body.hh };
   const existing = await getCurrentPrice(c.env.DB, k);

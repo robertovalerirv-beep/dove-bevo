@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { requireContributionAllowed } from "../lib/contribution-restrictions";
 import { z } from "zod";
 import { it } from "../../app/i18n/it";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
@@ -60,6 +61,7 @@ venues.get("/:key/prices", async (c) => {
 // POST /api/venues — a bar the user cannot find. Pending until the admin approves it (SPEC 7.5).
 // The point is the pin the user confirmed (the bar's position, never the device's).
 venues.post("/", async (c) => {
+  await requireContributionAllowed(c);
   const body = await readJson(c, Proposal);
   const lat = round5(body.lat);
   const lon = round5(body.lon);

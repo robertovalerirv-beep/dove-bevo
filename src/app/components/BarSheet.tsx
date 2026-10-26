@@ -1,3 +1,4 @@
+import { ContributionRestrictedError } from "../lib/contribution-error";
 import { useEffect, useState } from "preact/hooks";
 import type { PriceRow, VenuePrices } from "../../shared/api-types";
 import { it } from "../i18n/it";
@@ -74,6 +75,7 @@ function PriceItem({
   const [, drink, hh, cents, day, confirmations] = row;
   const id = `${row[0]}|${rowId(row)}|${String(cents)}`;
   const [count, setCount] = useState(confirmations);
+  const [failure, setFailure] = useState<string>(it.actions.failed);
   const [state, setState] = useState<"idle" | "busy" | "done" | "already" | "failed">(() => {
     const seen = confirmedHere();
     return seen.has(`${id}|1`) ? "done" : seen.has(`${id}|0`) ? "already" : "idle";
@@ -88,7 +90,12 @@ function PriceItem({
       setCount(result.count);
       rememberConfirmed(id, result.counted);
       setState(result.counted ? "done" : "already");
-    } catch {
+    } catch (error) {
+      setFailure(
+        error instanceof ContributionRestrictedError
+          ? it.errors.contribution_restricted
+          : it.actions.failed,
+      );
       setState("failed");
     }
   }
@@ -156,7 +163,7 @@ function PriceItem({
       )}
       {state === "failed" && (
         <span class="error" role="alert">
-          {it.actions.failed}
+          {failure}
         </span>
       )}
     </li>

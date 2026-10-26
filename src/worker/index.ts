@@ -10,7 +10,7 @@ import { rateLimit, readLimit } from "./lib/rate-limit";
 import { securityHeaders } from "./lib/security-headers";
 import { KEEP_DAYS } from "./config";
 import { romeDay } from "./lib/day";
-import { purgeMobileCodes, purgeOldKeys } from "./lib/db";
+import { purgeMobileCodes, purgeOldKeys, purgeContributionRestrictions } from "./lib/db";
 import { requireAccess } from "./lib/access";
 import { admin } from "./routes/admin";
 import { events } from "./routes/events";
@@ -89,6 +89,7 @@ export default {
     const oldestKept = new Date(today - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10);
     await purgeOldKeys(env.DB, oldestKept);
     await purgeMobileCodes(env.DB);
+    await purgeContributionRestrictions(env.DB);
   },
   /** Consumer of the "dovebevo-tasks" queue: validate, log only a code and the id, ack or retry. */
   queue(batch: MessageBatch): void {

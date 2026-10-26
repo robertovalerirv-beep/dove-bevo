@@ -8,6 +8,7 @@ import { MetricsSection } from "./Metrics";
 import { formatDate, formatDistance, formatPrice, todayRome } from "../lib/format";
 import { CATALOG } from "../../shared/catalog";
 import { STALE_DAYS } from "../../shared/config";
+import { ContributionRestrictions } from "./ContributionRestrictions";
 
 // /admin (SPEC 7.9, D-19): behind Cloudflare Access; the Worker verifies the JWT on /api/admin/*.
 
@@ -169,6 +170,24 @@ export function AdminPage() {
             onIgnore={(key) => act("reports/dismiss", { venue: key })}
           />
           <PriceQueue prices={data.prices} act={act} />
+          <ContributionRestrictions
+            version={version}
+            act={act}
+            targets={[
+              ...data.prices.map((p) => ({
+                family: "price" as const,
+                venue: p.venue_key,
+                drink: p.drink,
+                hh: p.hh,
+                label: `${it.admin.restrictions.price} · ${p.venue_key} · ${it.drinks[p.drink] ?? p.drink}${p.hh ? " HH" : ""}`,
+              })),
+              ...data.venues.map((v) => ({
+                family: "proposal" as const,
+                venue: `u${String(v.id)}`,
+                label: `${it.admin.restrictions.proposal} · ${v.name} · u${String(v.id)}`,
+              })),
+            ]}
+          />
           <h2 class="admin__tools">{it.admin.toolsTitle}</h2>
           <FindBars
             onDelete={(v) =>

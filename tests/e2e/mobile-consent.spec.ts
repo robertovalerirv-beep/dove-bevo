@@ -247,7 +247,9 @@ test("public privacy describes sponsorship, anonymous daily metrics and both ver
   await expect(main).toContainText("conteggi aggregati per giorno");
   await expect(main).toContainText("Sul sito");
   await expect(main).toContainText("Nell'app");
-  await expect(main).toContainText("Roberto, che per ora ne è personalmente responsabile");
+  await expect(main).toContainText("Roberto Valeri, che ne è personalmente responsabile");
+  await expect(main).toContainText("codici già usati per un prezzo o una proposta di oggi o ieri");
+  await expect(main).toContainText("altre persone sulla rete condivisa");
   await expect(page.getByRole("link", { name: "dovebevo@gmail.com", exact: true })).toHaveAttribute(
     "href",
     "mailto:dovebevo@gmail.com",

@@ -11,6 +11,7 @@ const STATUS = {
   payload_too_large: 413,
   unsupported_media_type: 415,
   rate_limited: 429,
+  contribution_restricted: 429,
   busy: 503,
   internal: 500,
 } as const;

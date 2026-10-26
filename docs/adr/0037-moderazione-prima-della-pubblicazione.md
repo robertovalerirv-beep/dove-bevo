@@ -2,7 +2,7 @@
 
 - **Stato:** correzione sorgente autorizzata per la preparazione mobile; distribuzione non eseguita.
 - **Data:** 2026-10-26.
-- **Responsabile operativo:** Roberto; contatto esistente: `supportemaildovebevo@gmail.com`.
+- **Responsabile operativo:** Roberto Valeri; contatto esistente: `dovebevo@gmail.com`.
 
 ## Decisione implementata
 
@@ -39,3 +39,7 @@ Il codice attuale consente queste sole conclusioni:
 **Possibile fase successiva, solo dopo scelta esplicita:** aggiungere una sospensione giornaliera per abuso osservabile nella richiesta in corso, memorizzando soltanto contatori HMAC giornalieri di sessione/IP in `counters`. Un evento concreto potrebbe essere la ripetizione di proposte con nomi già rifiutati dal validatore per link o caratteri di controllo. La regola, la soglia e le rotte interessate vanno fissate prima del codice, distinguendo errori di digitazione, retry e incompatibilità dei client. Il controllo del contatore precederebbe le scritture web e mobile; oltre soglia, `429` con scadenza al giorno di Roma e la pulizia esistente. Nessuna riga del contenuto avrebbe una chiave autore. Questo limita richieste della sessione/rete osservata, non consente all'admin di bloccare retroattivamente l'autore di un contenuto e non identifica una persona durevolmente.
 
 **Un pulsante admin che blocchi l'autore richiederebbe un'altra decisione di architettura e privacy.** Il minimo tecnico sarebbe un legame tra l'esatta revisione del contributo e un identificatore di abuso a scadenza; oggi tale legame è vietato, non esiste e non è ricostruibile dai marcatori. Non si propone un nuovo periodo di conservazione o un'identità legale inventata. Prima di autorizzarlo servirebbero vincoli espliciti su ambito, scadenza, revoca, errori su reti condivise, informativa e test di isolamento. Non chiamare nessuna delle opzioni correnti «ban permanente dell'utente».
+
+## Seguito autorizzato
+
+ADR 0038 aggiunge un controllo di appartenenza del candidato in arrivo ai marcatori già presenti, senza invertirli e senza attribuire un autore. La distinzione corregge un limite di questa analisi iniziale: non si può recuperare chi ha scritto, ma si può confrontare una richiesta futura con un gruppo contenuto/giorno. Le opzioni di attribuzione descritte sopra non vengono implementate.

@@ -31,6 +31,8 @@ export const it = {
     payload_too_large: "Il contenuto inviato è troppo grande.",
     unsupported_media_type: "Formato non supportato.",
     rate_limited: "Troppe richieste: riprova più tardi.",
+    contribution_restricted:
+      "I contributi sono temporaneamente limitati per questa sessione o rete. Puoi ancora segnalare contenuti o scrivere a dovebevo@gmail.com.",
     conflict: "Questo bar esiste già.",
     busy: "Troppe richieste in verifica: riprova più tardi.",
     internal: "Si è verificato un errore. Riprova tra poco.",
@@ -235,6 +237,23 @@ export const it = {
     already: "Avevi già segnalato questo errore.",
   },
   admin: {
+    restrictions: {
+      title: "Limiti temporanei ai contributi",
+      help: "Scegli un prezzo segnalato o una proposta e il giorno originale degli invii: oggi o ieri, ora di Roma. Imposta il limite prima di rimuovere il contenuto o ignorare le segnalazioni: dopo la decisione può sparire dalle scelte. I limiti già creati restano visibili e revocabili. Il giorno mostrato nella coda può essere cambiato da conferme o modifiche e non identifica chi ha scritto. Segnalazioni e assistenza restano disponibili.",
+      warning:
+        "Il limite riguarda tutte le sessioni e le reti che hanno scritto quel prezzo o proposto quel locale nel giorno scelto, anche proposte duplicate e persone sulla stessa rete. Non identifica un autore. Vale per nuovi prezzi, conferme e proposte su qualsiasi locale, fino alla mezzanotte di Roma dopo il giorno successivo agli invii. Cambiare sia sessione sia rete può evitarlo.",
+      target: "Contenuto di riferimento",
+      day: "Giorno degli invii da limitare (Roma)",
+      choose: "Scegli…",
+      price: "Prezzo",
+      proposal: "Proposta di locale",
+      add: "Limita questo gruppo temporaneamente",
+      revoke: "Revoca limite",
+      expires: (date: string) => `Scadenza: ${date} (Roma)`,
+      capacity: (used: number, max: number) =>
+        `${String(used)} riferimenti attivi su ${String(max)}. A capacità piena, revoca un limite prima di aggiungerne un altro.`,
+      failed: "Non riesco a caricare i limiti. Ricarica la pagina prima di gestirli.",
+    },
     title: "Amministrazione",
     loading: "Carico…",
     denied:
@@ -446,7 +465,7 @@ export const it = {
         {
           heading: "Chi è responsabile",
           paragraphs: [
-            "Dove bevo è gestita da Roberto, che per ora ne è personalmente responsabile. Per richieste sui contenuti o sulla privacy scrivi a dovebevo@gmail.com.",
+            "Dove bevo è gestita da Roberto Valeri, che ne è personalmente responsabile. Per assistenza e richieste sui contenuti o sulla privacy scrivi a dovebevo@gmail.com.",
           ],
         },
         {
@@ -467,6 +486,7 @@ export const it = {
           paragraphs: [
             "Salviamo il bar, il drink, il prezzo e il giorno. Non salviamo chi l'ha segnato: nessun nome, nessun identificativo di sessione, nessun indirizzo IP insieme al prezzo.",
             "Per limitare i bot e i troppi invii usiamo codici temporanei derivati dall’indirizzo IP e dalla verifica della sessione, con un calcolo che cambia ogni giorno. Questi controlli sono separati dai prezzi pubblicati.",
+            "Per moderare gli abusi possiamo anche confrontare una richiesta con i codici già usati per un prezzo o una proposta di oggi o ieri. Questo può limitare temporaneamente nuovi prezzi, conferme e proposte della stessa sessione o rete, comprese altre persone sulla rete condivisa. Il limite scade alla mezzanotte di Roma dopo il giorno successivo agli invii di riferimento. Non creiamo account o identificativi permanenti e non conserviamo un elenco delle persone che corrispondono al controllo. Segnalazioni e assistenza a dovebevo@gmail.com restano disponibili.",
           ],
         },
         {
@@ -510,10 +530,16 @@ export const it = {
     },
     rules: {
       title: "Regole",
-      updated: "Ultimo aggiornamento: 25 ottobre 2026",
+      updated: "Ultimo aggiornamento: 26 ottobre 2026",
       intro:
         "Dove bevo è fatta di prezzi veri, segnati da persone che ci sono state. Poche regole per tenerla utile.",
       sections: [
+        {
+          heading: "Chi gestisce il servizio",
+          paragraphs: [
+            "Roberto Valeri è personalmente responsabile di Dove bevo. Per assistenza, contenuti e privacy scrivi a dovebevo@gmail.com.",
+          ],
+        },
         {
           heading: "Cosa si segna",
           paragraphs: [
@@ -529,7 +555,8 @@ export const it = {
         {
           heading: "Come si segnala un errore",
           paragraphs: [
-            "Dalla scheda del bar tocca «Segnala un errore» e scegli il motivo. Se più persone segnalano lo stesso prezzo, esce dalla mappa e lo controlliamo noi. Niente sparisce da solo senza un controllo.",
+            "Dalla scheda del bar tocca «Segnala un errore» e scegli il motivo. Ogni segnalazione arriva a Roberto Valeri per il controllo. Con più di tre segnalazioni distinte lo stesso prezzo esce automaticamente dalla mappa e va in revisione; possiamo intervenire anche dalla prima segnalazione.",
+            "Per limitare gli abusi possiamo sospendere temporaneamente prezzi, conferme e proposte di sessioni o reti che hanno contribuito allo stesso contenuto oggi o ieri. Il controllo usa i codici giornalieri già presenti e può coinvolgere altre persone sulla stessa rete. Non è un blocco permanente: termina al più tardi alla mezzanotte di Roma dopo il giorno successivo agli invii di riferimento. Puoi ancora segnalare contenuti e contattarci.",
           ],
         },
         {

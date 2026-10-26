@@ -37,6 +37,14 @@ import { osmVenue, publicVenueName, resolveVenue } from "../lib/venues";
 import { forgetCell } from "../lib/cell-cache";
 import type { AppEnv } from "../types";
 import { Lat, Lon, VenueKey, VenueName } from "./venues";
+import { RESTRICTION_CAPACITY } from "../../shared/contribution-restrictions";
+import { retainedRestrictionDays, restrictionExpiry } from "../lib/contribution-restrictions";
+import {
+  addContributionRestriction,
+  listContributionRestrictions,
+  removeContributionRestriction,
+  userVenueExists,
+} from "../lib/db";
 
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
 const OsmKey = z.string().regex(/^[nwr][1-9]\d{0,14}$/);
@@ -66,6 +74,55 @@ const Hours = z
 const Verified = z.strictObject({ venue: VenueKey, cell: Cell, hours: Hours });
 
 export const admin = new Hono<AppEnv>();
+
+const RestrictionInput = z.discriminatedUnion("family", [
+  z.strictObject({
+    family: z.literal("price"),
+    ...PriceStatus.omit({ status: true }).shape,
+    day: z.string(),
+  }),
+  z.strictObject({
+    family: z.literal("proposal"),
+    venue: z.string().regex(/^u[1-9]\d{0,14}$/),
+    day: z.string(),
+  }),
+]);
+const restrictionRef = (body: z.infer<typeof RestrictionInput>) => ({
+  family: body.family,
+  target: body.family === "price" ? `${body.venue}|${body.drink}|${String(body.hh)}` : body.venue,
+  day: body.day,
+});
+
+admin.get("/restrictions", async (c) => {
+  const now = Date.now();
+  c.header("Cache-Control", "no-store");
+  return c.json({
+    days: retainedRestrictionDays(now),
+    restrictions: await listContributionRestrictions(c.env.DB, now),
+    capacity: RESTRICTION_CAPACITY,
+  });
+});
+
+admin.post("/restrictions", async (c) => {
+  const body = await readJson(c, RestrictionInput);
+  const now = Date.now();
+  if (!retainedRestrictionDays(now).includes(body.day)) throw new ApiError("bad_request");
+  const exists =
+    body.family === "price"
+      ? await getCurrentPrice(c.env.DB, body)
+      : await userVenueExists(c.env.DB, body.venue);
+  if (!exists) throw new ApiError("not_found");
+  const ref = { ...restrictionRef(body), expires_at: restrictionExpiry(body.day) };
+  if (!(await addContributionRestriction(c.env.DB, ref, now))) throw new ApiError("busy");
+  return c.json(ref);
+});
+
+admin.post("/restrictions/revoke", async (c) => {
+  const body = await readJson(c, RestrictionInput);
+  if (!retainedRestrictionDays().includes(body.day)) throw new ApiError("bad_request");
+  await removeContributionRestriction(c.env.DB, restrictionRef(body));
+  return c.json({ status: "revoked" });
+});
 
 // Everything the admin page shows, in one request.
 admin.get("/overview", async (c) => {

@@ -91,6 +91,12 @@ async function fakeAdmin(page: Page, allowed = true) {
       return;
     }
     if (request.method() === "GET") {
+      if (new URL(request.url()).pathname === "/api/admin/restrictions") {
+        await route.fulfill({
+          json: { days: ["2026-10-26", "2026-10-25"], restrictions: [], capacity: 16 },
+        });
+        return;
+      }
       const metrics = new URL(request.url()).pathname === "/api/admin/metrics";
       await route.fulfill({ json: metrics ? METRICS : OVERVIEW });
       return;
@@ -102,6 +108,79 @@ async function fakeAdmin(page: Page, allowed = true) {
 }
 
 for (const scheme of ["light", "dark"] as const) {
+  test(`admin selects an explicit cohort day, reads its expiry and revokes it (${scheme})`, async ({
+    page,
+  }, testInfo) => {
+    const posts = await fakeAdmin(page);
+    await page.route("**/api/admin/restrictions", (route) =>
+      route.request().method() === "GET"
+        ? route.fulfill({
+            json: {
+              days: ["2026-10-26", "2026-10-25"],
+              capacity: 16,
+              restrictions: [
+                {
+                  family: "price",
+                  target: "n2420779240|spritz|0",
+                  day: "2026-10-25",
+                  expires_at: Date.parse("2026-10-26T23:00:00Z"),
+                },
+              ],
+            },
+          })
+        : route.fallback(),
+    );
+    await atHour(page, THEME_HOURS[scheme]);
+    await page.goto("/admin");
+    const section = page.locator("#contribution-restrictions");
+    await expect(section).toContainText("persone sulla stessa rete");
+    await expect(section).toContainText("Imposta il limite prima di rimuovere il contenuto");
+    await expect(section).toContainText("Segnalazioni e assistenza restano disponibili");
+    await expect(section).toContainText("27/10/26, 00:00 (Roma)");
+    const add = section.getByRole("button", { name: "Limita questo gruppo temporaneamente" });
+    await expect(add).toBeDisabled();
+    await section.getByLabel("Contenuto di riferimento").selectOption("price|n2420779240|spritz|0");
+    await expect(add).toBeDisabled(); // never derives the cohort day from observed_on/report day
+    await section.getByLabel("Giorno degli invii da limitare (Roma)").selectOption("2026-10-25");
+    page.once("dialog", (dialog) => dialog.accept());
+    await add.click();
+    await expect
+      .poll(() => posts.at(-1))
+      .toEqual({
+        path: "/api/admin/restrictions",
+        body: { family: "price", venue: "n2420779240", drink: "spritz", hh: 0, day: "2026-10-25" },
+      });
+    await section.getByRole("button", { name: "Revoca limite" }).click();
+    await expect
+      .poll(() => posts.at(-1))
+      .toEqual({
+        path: "/api/admin/restrictions/revoke",
+        body: { family: "price", venue: "n2420779240", drink: "spritz", hh: 0, day: "2026-10-25" },
+      });
+    await section.getByLabel("Contenuto di riferimento").selectOption("proposal|u3||");
+    page.once("dialog", (dialog) => dialog.accept());
+    await add.click();
+    await expect
+      .poll(() => posts.at(-1)?.body)
+      .toEqual({ family: "proposal", venue: "u3", day: "2026-10-25" });
+    await expect(page.locator("html")).toHaveAttribute("data-theme", scheme);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    for (const button of await section.getByRole("button").all()) {
+      const box = await button.boundingBox();
+      expect(box?.width).toBeGreaterThanOrEqual(48);
+      expect(box?.height).toBeGreaterThanOrEqual(48);
+    }
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+    await section.screenshot({ path: testInfo.outputPath(`restrictions-${scheme}.png`) });
+  });
   test(`a first reported active price shows evidence and supports review, remove and dismiss (${scheme})`, async ({
     page,
   }, testInfo) => {

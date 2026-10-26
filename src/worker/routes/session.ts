@@ -22,7 +22,7 @@ export const session = new Hono<AppEnv>();
 
 session.post("/", async (c) => {
   const { token } = await readJson(c, Body);
-  // No remoteip: the user's IP is never sent anywhere (SPEC 14).
+  // Do not add remoteip to Siteverify; the browser challenge has its own Cloudflare processing.
   const form = new FormData();
   form.set("secret", c.env.TURNSTILE_SECRET);
   form.set("response", token);

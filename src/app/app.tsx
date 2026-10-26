@@ -1,3 +1,4 @@
+import { isContributionRestriction, ContributionRestrictedError } from "./lib/contribution-error";
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
@@ -590,7 +591,12 @@ export function App({ loadMap }: Props) {
         true,
       );
       if (response.status === 429) {
-        reopen(first, it.add.quota);
+        reopen(
+          first,
+          (await isContributionRestriction(response))
+            ? it.errors.contribution_restricted
+            : it.add.quota,
+        );
         return;
       }
       if (!response.ok) {
@@ -813,7 +819,9 @@ export function App({ loadMap }: Props) {
       } else {
         showToast(
           response.status === 429
-            ? it.propose.quota
+            ? (await isContributionRestriction(response))
+              ? it.errors.contribution_restricted
+              : it.propose.quota
             : response.status === 503
               ? it.errors.busy
               : it.propose.failed,
@@ -833,6 +841,7 @@ export function App({ loadMap }: Props) {
         drink: row[1],
         hh: row[2],
       });
+      if (await isContributionRestriction(response)) throw new ContributionRestrictedError();
       if (!response.ok) throw new Error(String(response.status));
       const body = (await response.json()) as { status: string; confirmations: number };
       if (body.status === "confirmed") track("price_confirmed", { drink: row[1] });

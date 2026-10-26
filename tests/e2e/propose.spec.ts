@@ -34,6 +34,30 @@ async function startProposal(page: Page, name: string) {
   await page.getByRole("button", { name: "Avanti" }).click();
 }
 
+test("a restricted proposal explains the temporary limit and preserves retry", async ({ page }) => {
+  await page.addInitScript(() => {
+    sessionStorage.setItem("dovebevo.session-until", String(Date.now() + 3_600_000));
+  });
+  let attempts = 0;
+  await page.route("**/api/venues", (route) => {
+    attempts++;
+    return route.fulfill({ status: 429, json: { error: { code: "contribution_restricted" } } });
+  });
+  await page.goto("/");
+  await goToMilano(page);
+  await startProposal(page, "Bar Temporaneo");
+  const confirm = page.getByRole("button", { name: "Conferma e invia" });
+  await expect(mapRegion(page)).toHaveAttribute("data-zoom", /^1[6-9]|^2/);
+  await dragMap(page);
+  await expect(confirm).not.toHaveAttribute("aria-disabled", "true");
+  await confirm.click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "I contributi sono temporaneamente limitati" }),
+  ).toBeVisible();
+  await expect(confirm).not.toHaveAttribute("aria-disabled", "true");
+  expect(attempts).toBe(1);
+});
+
 test("M3-11 a proposed bar: pin, send, then its price can be added at once", async ({ page }) => {
   await page.route("https://challenges.cloudflare.com/**", (route) => {
     void route.fulfill({ contentType: "text/javascript", body: TURNSTILE_STUB });

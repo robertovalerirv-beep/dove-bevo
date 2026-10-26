@@ -173,6 +173,14 @@ Only tracked process groups and guarded temporary homes are cleaned. Missing own
 cleanup evidence fails the job. Deadlines are soft subprocess limits with an outer margin;
 this is not a hardened process sandbox. One-day artifact retention applies.
 
+Owned ADB/emulator stdout and stderr are drained continuously with 64 KiB retained per
+stream; excess bytes are discarded and counted. Sanitized startup logs and bounded process
+identity/private-port observations are retained before and after cleanup. `ADB_TRACE` is
+removed from child environments to avoid enabling authentication/key tracing. Healthy open
+streams are expected before cleanup; unknown observations, reader errors or incomplete final
+EOF cannot establish successful proof. These diagnostics do not infer the cause of a failed
+startup or relax ownership checks.
+
 Root must inspect the actual PNG. The unavailable/retry screen is expected until the isolated
 backend exists; it proves limited OS startup rather than maps, challenge completion, device
 permissions, contribution delivery, physical-device compatibility or store readiness. Fake

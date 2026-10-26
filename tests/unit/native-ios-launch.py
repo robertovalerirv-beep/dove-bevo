@@ -242,6 +242,43 @@ class OrchestratorTests(unittest.TestCase):
         self.assert_owned_cleanup(fake)
         self.assertLess(clock.value, 330)
 
+    def test_slow_container_lookup_after_realistic_startup_preserves_settle_png_and_cleanup(self):
+        for container_seconds in (15, 20):
+            with self.subTest(container_seconds=container_seconds):
+                code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 70, "install": 45, "launch": 40, "get_app_container": container_seconds, "shutdown": 21, "delete": 10})
+                self.assertEqual(code, 0)
+                self.assertEqual(metadata["launch_pid"], 4242)
+                self.assertEqual(metadata["total_deadline_seconds"], 330)
+                self.assertEqual(metadata["cleanup_reserve_seconds"], 60)
+                self.assertEqual(metadata["settle_seconds"], 25)
+                stages = {entry["stage"]: entry for entry in metadata["stages"]}
+                container = stages["installed-container"]
+                self.assertEqual(container["effective_timeout_seconds"], 30)
+                self.assertEqual(container["elapsed_seconds"], container_seconds)
+                self.assertEqual(container["outcome"], "completed")
+                self.assertGreater(container["started_elapsed_seconds"], 150)
+                self.assertLess(container["started_elapsed_seconds"], 170)
+                self.assertAlmostEqual(stages["post-launch-process"]["started_elapsed_seconds"] - container["started_elapsed_seconds"] - container_seconds, 25, places=3)
+                self.assertEqual(len(metadata["screenshot"]["sha256"]), 64)
+                self.assertEqual(metadata["shutdown_warning"], "shutdown timed out")
+                self.assert_owned_cleanup(fake)
+                self.assertLess(clock.value, 330)
+
+    def test_container_lookup_is_clipped_and_produces_no_startup_evidence_after_timeout(self):
+        code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 170, "install": 45, "launch": 40, "get_app_container": 20, "shutdown": 15, "delete": 20})
+        self.assertEqual(code, 1)
+        self.assertEqual(metadata["failure"], "installed-container timed out")
+        self.assertFalse(metadata["success"])
+        self.assertNotIn("screenshot", metadata)
+        self.assertFalse((fake.app.parent / "evidence/launch.png").exists())
+        stage = next(entry for entry in metadata["stages"] if entry["stage"] == "installed-container")
+        self.assertEqual(stage["requested_timeout_seconds"], 30)
+        self.assertLess(stage["effective_timeout_seconds"], 20)
+        self.assertAlmostEqual(stage["started_elapsed_seconds"] + stage["elapsed_seconds"], 270, places=3)
+        self.assertFalse(any(argv[:2] == ["ps", "-p"] or argv[:3] == ["xcrun", "simctl", "io"] for argv, _ in fake.calls))
+        self.assert_owned_cleanup(fake)
+        self.assertLess(clock.value, 330)
+
     def test_exhausted_install_records_shortened_budget_and_keeps_cleanup_reserve(self):
         code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 180, "install": 300, "shutdown": 15, "delete": 20})
         self.assertEqual(code, 1)

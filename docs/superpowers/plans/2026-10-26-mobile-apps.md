@@ -95,11 +95,11 @@
 
 - [x] Make every price/venue report actionable from the first report through protected admin review/removal/dismissal.
 - [x] Keep pending venue names out of public cell APIs, old D1/edge cache bodies and other contributors’ selectors; preserve the proposer’s local acknowledgement.
-- [ ] Implement temporary contribution restrictions through membership checks against existing daily anti-abuse keys, with no new actor attribution or persistent identifier.
-- [ ] Independently review the restrictions, rerun combined source/browser gates and verify the changed admin interface in both themes.
+- [x] Implement temporary contribution restrictions through membership checks against existing daily anti-abuse keys, with no new actor attribution or persistent identifier.
+- [x] Independently review the restrictions, rerun combined source/browser gates and verify the changed admin interface in both themes.
 - [ ] Reconcile privacy/store worksheets with the actual candidate and test the controls on the isolated service.
 
-The first two corrections are recorded in ADR 0037 and deliberately replace the earlier pending-venue chooser exposure. Temporary restrictions remain bounded by existing marker retention and shared-network limitations; they cannot be described as durable person bans or store approval. Roberto is personally responsible for now and the support/content-report address remains dovebevo@gmail.com.
+The first two corrections are recorded in ADR 0037 and deliberately replace the earlier pending-venue chooser exposure. ADR 0038 records the implemented temporary restrictions, bounded by existing marker retention and shared-network limitations; they cannot be described as durable person bans or store approval. Roberto Valeri is personally responsible for now and the support/content-report address remains dovebevo@gmail.com.
 
 ## Coordination ledger
 

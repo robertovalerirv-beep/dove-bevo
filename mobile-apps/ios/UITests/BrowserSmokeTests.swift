@@ -56,6 +56,12 @@ final class BrowserSmokeTests: XCTestCase {
             NSPredicate(format: "label == %@", "Mappa interattiva dei bar")
         ).firstMatch
         XCTAssertTrue(interactiveMap.waitForExistence(timeout: 45), "Interactive live map did not initialize")
+        let mapReady = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: website.buttons["Esplora la mappa"]
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [mapReady], timeout: 45), .completed, "Map style did not finish loading")
+        XCTAssertFalse(website.staticTexts["La mappa non si carica: controlla la connessione e ricarica la pagina."].exists)
         XCTAssertTrue(app.buttons["browser.share"].isEnabled)
         let mapScreenshot = XCTAttachment(screenshot: app.screenshot())
         mapScreenshot.name = "DoveBevo-live-Milano-map"

@@ -1,0 +1,53 @@
+{
+  "source_commit": "722c070a169be6a7b070abf410553d98564cc234",
+  "source_icon": "mobile-apps/ios/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+  "source_icon_sha256": "207de06f188d2f29c09bf7fde414207a10baebc0c585de08bb77cb29c6389e9d",
+  "source_font": "public/fonts/bricolage-grotesque-latin-wght-normal.woff2",
+  "source_font_sha256": "a97804dc9fbe5fc972a08018c5eda4dab7ef2346f64c57e61419d05e6de4ea1c",
+  "pillow_version": "12.3.0",
+  "feature_important_content_bounds": [
+    123,
+    128,
+    823,
+    372
+  ],
+  "minimum_safe_margin_px": 64,
+  "text_bounds": [
+    [
+      392.0,
+      167.5,
+      822.5,
+      229.0
+    ],
+    [
+      396.0,
+      268.0,
+      735.5,
+      296.5
+    ]
+  ],
+  "files": {
+    "google-play-icon-512.png": {
+      "bytes": 50610,
+      "sha256": "708e7153300bea5bdef14c2ee7918a1fbb6fd40a9a36bc13a4c539da3f1d8658",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA"
+    },
+    "google-play-feature-1024x500.png": {
+      "bytes": 51725,
+      "sha256": "1ba1dbe1c38d3040484d36d65ff8a0b8b5c7d2ab91179709b72d10160a6aadcf",
+      "size": [
+        1024,
+        500
+      ],
+      "mode": "RGB"
+    },
+    "google-play-feature.svg": {
+      "bytes": 122138,
+      "sha256": "4731a1bd90b0abdff4d9d12a570f635a48ac78f9e399c4e94c80df10acb5c17b"
+    }
+  }
+}

@@ -7,7 +7,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private let progressView = UIProgressView(progressViewStyle: .bar)
     private let offlineLabel = UILabel()
     private let loadingView = UIStackView()
-    private let errorView = UIStackView()
+    private let errorView = UIScrollView()
+    private let errorContent = UIStackView()
     private let errorTitle = UILabel()
     private let errorMessage = UILabel()
     private let retryButton = UIButton(type: .system)
@@ -155,8 +156,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         retryButton.accessibilityIdentifier = "browser.retry"
         retryButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         retryButton.addTarget(self, action: #selector(retry), for: .touchUpInside)
-        [image, errorTitle, errorMessage, retryButton].forEach(errorView.addArrangedSubview)
-        configureOverlay(errorView)
+        [image, errorTitle, errorMessage, retryButton].forEach(errorContent.addArrangedSubview)
+        configureErrorOverlay()
         errorView.accessibilityIdentifier = "browser.error"
         errorView.isHidden = true
     }
@@ -177,6 +178,47 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             stack.widthAnchor.constraint(lessThanOrEqualToConstant: 400),
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: webView.leadingAnchor, constant: 16),
             stack.trailingAnchor.constraint(lessThanOrEqualTo: webView.trailingAnchor, constant: -16)
+        ])
+    }
+
+    private func configureErrorOverlay() {
+        // Keep recovery controls reachable in landscape and at the largest
+        // accessibility text sizes, without covering the native navigation.
+        errorView.translatesAutoresizingMaskIntoConstraints = false
+        errorView.backgroundColor = .systemBackground
+        let content = UIView()
+        content.translatesAutoresizingMaskIntoConstraints = false
+        errorView.addSubview(content)
+        errorContent.axis = .vertical
+        errorContent.alignment = .fill
+        errorContent.spacing = 16
+        errorContent.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(errorContent)
+        view.addSubview(errorView)
+        let preferredHeight = content.heightAnchor.constraint(equalTo: errorView.frameLayoutGuide.heightAnchor)
+        preferredHeight.priority = .defaultLow
+        let preferredWidth = errorContent.widthAnchor.constraint(equalTo: content.widthAnchor, constant: -32)
+        preferredWidth.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            errorView.topAnchor.constraint(equalTo: webView.topAnchor),
+            errorView.bottomAnchor.constraint(equalTo: webView.bottomAnchor),
+            errorView.leadingAnchor.constraint(equalTo: webView.leadingAnchor),
+            errorView.trailingAnchor.constraint(equalTo: webView.trailingAnchor),
+            content.topAnchor.constraint(equalTo: errorView.contentLayoutGuide.topAnchor),
+            content.bottomAnchor.constraint(equalTo: errorView.contentLayoutGuide.bottomAnchor),
+            content.leadingAnchor.constraint(equalTo: errorView.contentLayoutGuide.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: errorView.contentLayoutGuide.trailingAnchor),
+            content.widthAnchor.constraint(equalTo: errorView.frameLayoutGuide.widthAnchor),
+            content.heightAnchor.constraint(greaterThanOrEqualTo: errorView.frameLayoutGuide.heightAnchor),
+            preferredHeight,
+            errorContent.centerXAnchor.constraint(equalTo: content.centerXAnchor),
+            errorContent.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+            errorContent.topAnchor.constraint(greaterThanOrEqualTo: content.topAnchor, constant: 16),
+            errorContent.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -16),
+            errorContent.leadingAnchor.constraint(greaterThanOrEqualTo: content.leadingAnchor, constant: 16),
+            errorContent.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -16),
+            errorContent.widthAnchor.constraint(lessThanOrEqualToConstant: 400),
+            preferredWidth
         ])
     }
 

@@ -28,6 +28,8 @@ Per contrastare abusi il servizio elabora l'indirizzo IP e, dove necessario, ide
 
 Il browser integrato conserva anche dati del sito, come la data del primo utilizzo e il conteggio locale dei contributi, per la Tessera. Questi dati restano finché vengono rimossi dal dispositivo. Rimuovere l'app elimina normalmente i suoi dati locali; non cancella automaticamente un contributo pubblico già inviato.
 
+Prima di aprire il servizio online, l'app mostra le regole d'uso per maggiorenni. Se le accetti, salva solo la versione accettata sul dispositivo. Non invia questa conferma al servizio e non la usa come identificatore. Leggere regole e Privacy o rifiutare non apre il sito. L'accettazione delle regole non concede il permesso di posizione.
+
 ## Conteggi e sponsorizzazioni
 
 Il servizio registra conteggi giornalieri di utilizzo e azioni, come apertura dell'app, contributi e conferme, con categorie limitate. Per i locali sponsorizzati può contare le aperture della scheda per locale e giorno. La tabella dei conteggi non associa questi numeri a un profilo personale. Le richieste di rete possono comunque includere normali dati tecnici e cookie di sessione; non descriviamo tutti i dati di sicurezza come irreversibilmente anonimi.

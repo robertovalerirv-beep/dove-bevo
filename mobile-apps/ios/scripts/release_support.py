@@ -199,7 +199,7 @@ def verify_app(app, entitlements, codesign_details, metadata, build, embedded_pr
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", choices=["private-dir", "decode", "profile", "identity", "options", "install", "cleanup-profile", "keychain-list", "verify", "manifest", "upload-receipt", "cleanup-private"])
+    parser.add_argument("operation", choices=["private-dir", "decode", "profile", "identity", "options", "install", "cleanup-profile", "keychain-list", "verify", "manifest", "upload-attempt", "upload-receipt", "cleanup-private"])
     parser.add_argument("args", nargs="*")
     parsed = parser.parse_args()
     operation, args = parsed.operation, parsed.args
@@ -231,10 +231,10 @@ def main():
         metadata = json.loads(Path(metadata_path).read_text())
         manifest = {"bundleIdentifier": BUNDLE, "teamIdentifier": TEAM, "buildNumber": build, "sourceCommit": commit, "ipaSHA256": hashlib.sha256(Path(ipa).read_bytes()).hexdigest(), "profileUUID": metadata["uuid"], "profileExpiresAt": metadata["expiresAt"], "signingCertificateSHA1": metadata["certificateSHA1"], "signaturesVerified": True, "uploadRequested": False}
         Path(output).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-    elif operation == "upload-receipt":
+    elif operation in ("upload-attempt", "upload-receipt"):
         path = Path(args[0])
         manifest = json.loads(path.read_text())
-        manifest.update(uploadRequested=True, uploadCommandSucceeded=True, appStoreProcessingVerified=False)
+        manifest.update(uploadRequested=True, uploadCommandSucceeded=True if operation == "upload-receipt" else None, appStoreProcessingVerified=False)
         path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     elif operation == "cleanup-private":
         directory, base = Path(args[0]), private_base(args[1], args[2])

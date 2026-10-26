@@ -50,7 +50,7 @@ def tree():
 def find(label, exact=True):
     for node in tree().iter("node"):
         values = (node.get("text", ""), node.get("content-desc", ""))
-        if any(value == label if exact else label.lower() in value.lower() for value in values):
+        if any(value.casefold() == label.casefold() if exact else label.casefold() in value.casefold() for value in values):
             return node
     return None
 
@@ -80,6 +80,19 @@ def map_ready():
             and not any("La mappa non si carica" in value for value in labels))
 
 
+def city_result(ui, name):
+    candidates = []
+    for node in ui.iter("node"):
+        descendants = list(node.iter("node"))
+        if node.get("clickable") != "true" or any(n.get("class") == "android.widget.EditText" for n in descendants):
+            continue
+        labels = " ".join(value for n in descendants
+                          for value in (n.get("text", ""), n.get("content-desc", ""))).casefold()
+        if name.casefold() in labels and "città ·" in labels:
+            candidates.append((len(descendants), node))
+    return min(candidates, key=lambda entry: entry[0])[1] if candidates else None
+
+
 def main():
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     HOME.mkdir(parents=True, exist_ok=True)
@@ -104,6 +117,22 @@ def main():
         if "Error" in launched:
             raise RuntimeError(launched)
         result["checks"].append("production package launched")
+        accept_rules = wait_for("native adult usage rules", lambda: find("Ho almeno 18 anni e accetto"), 15)
+        if any(n.get("class") == "android.webkit.WebView" for n in tree().iter("node")):
+            raise RuntimeError("The online WebView was created before explicit rules acceptance")
+        screenshot("00-native-rules.png")
+        tap(wait_for("native privacy before acceptance", lambda: find("Privacy"), 10))
+        privacy_text = ET.tostring(tree(), encoding="unicode")
+        if "dovebevo@gmail.com" not in privacy_text or "Roberto Valeri" not in privacy_text:
+            raise RuntimeError("The bundled native privacy text did not load")
+        tap(wait_for("close native privacy", lambda: find("Chiudi"), 10))
+        tap(wait_for("decline native rules", lambda: find("Esci"), 10))
+        adb("shell", "am", "start", "-W", "-n", "com.dovebevo.app/.MainActivity")
+        accept_rules = wait_for("declining must not persist acceptance", lambda: find("Ho almeno 18 anni e accetto"), 15)
+        if any(n.get("class") == "android.webkit.WebView" for n in tree().iter("node")):
+            raise RuntimeError("Declining the rules opened the online service")
+        tap(accept_rules)
+        result["checks"].append("offline privacy and declined rules retain the gate; explicit acceptance opens service")
         search = wait_for("live website city-search control", lambda: find("Cerca città o bar"), 90)
         result["checks"].append("live website rendered inside WebView")
         screenshot("01-live-home.png")
@@ -112,9 +141,7 @@ def main():
                            if n.get("class") == "android.widget.EditText" and n.get("enabled") == "true"), None))
         tap(edit)
         adb("shell", "input", "text", "Milano")
-        milano = wait_for("real Milano result", lambda: find("Città ·", exact=False))
-        if "Milano" not in (ET.tostring(tree(), encoding="unicode")):
-            raise RuntimeError("City result is missing Milano")
+        milano = wait_for("clickable Milano city result", lambda: city_result(tree(), "Milano"))
         screenshot("02-milano-search.png")
         tap(milano)
         wait_for("live map initialized after city selection", map_ready)
@@ -124,6 +151,12 @@ def main():
         adb("shell", "am", "start", "-W", "-n", "com.dovebevo.app/.MainActivity")
         wait_for("app resumed", lambda: find("Cerca città o bar"))
         result["checks"].append("background and resume")
+        adb("shell", "am", "force-stop", "com.dovebevo.app")
+        adb("shell", "am", "start", "-W", "-n", "com.dovebevo.app/.MainActivity")
+        wait_for("accepted app restarts into live service", lambda: find("Cerca città o bar"), 90)
+        if find("Ho almeno 18 anni e accetto") is not None:
+            raise RuntimeError("Explicit rules acceptance did not survive a process restart")
+        result["checks"].append("accepted rules survive a process restart")
         result["result"] = "passed"
     finally:
         (EVIDENCE / "smoke-result.json").write_text(json.dumps(result, indent=2) + "\n")

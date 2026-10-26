@@ -148,6 +148,7 @@ if [[ "$UPLOAD" == true ]]; then
         --p8-file-path "$ASC_KEY" --output-format json \
         >"$private_dir/upload-validation.json" 2>"$private_dir/upload-validation-error.txt" \
         || fail 'App Store Connect rejected IPA validation; no upload attempted'
+    python3 "$SUPPORT" upload-attempt "$RELEASE_ROOT/release-manifest.json"
     xcrun altool --upload-app -f "$IPA" -t ios \
         --apiKey "$DOVEBEVO_ASC_KEY_ID" --apiIssuer "$DOVEBEVO_ASC_ISSUER_ID" \
         --p8-file-path "$ASC_KEY" --output-format json \

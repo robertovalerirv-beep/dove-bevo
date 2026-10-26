@@ -3,8 +3,11 @@
 import datetime as dt
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
+import tempfile
 import unittest
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location("release_support", Path(__file__).resolve().parents[1] / "release_support.py")
 release = importlib.util.module_from_spec(SPEC)
@@ -120,6 +123,26 @@ class ReleaseProfileTests(unittest.TestCase):
         self.assertEqual(options["signingCertificate"], FINGERPRINT)
         self.assertEqual(options["provisioningProfiles"], {"com.dovebevo.app": profile()["UUID"]})
         self.assertFalse(options["manageAppVersionAndBuildNumber"])
+
+
+class UploadOutcomeTests(unittest.TestCase):
+    def test_attempt_remains_uncertain_until_command_success_is_recorded(self):
+        directory = Path(__file__).resolve().parents[2] / ".build" / "metadata-tests"
+        directory.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=directory) as working:
+            manifest = Path(working) / "manifest.json"
+            manifest.write_text(json.dumps({"uploadRequested": False}), encoding="utf-8")
+            with patch.object(release.sys, "argv", ["release_support.py", "upload-attempt", str(manifest)]):
+                release.main()
+            attempted = json.loads(manifest.read_text())
+            self.assertTrue(attempted["uploadRequested"])
+            self.assertIsNone(attempted["uploadCommandSucceeded"])
+            self.assertFalse(attempted["appStoreProcessingVerified"])
+            with patch.object(release.sys, "argv", ["release_support.py", "upload-receipt", str(manifest)]):
+                release.main()
+            succeeded = json.loads(manifest.read_text())
+            self.assertTrue(succeeded["uploadCommandSucceeded"])
+            self.assertFalse(succeeded["appStoreProcessingVerified"])
 
 
 if __name__ == "__main__":

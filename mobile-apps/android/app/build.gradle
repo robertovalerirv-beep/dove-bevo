@@ -1,18 +1,27 @@
+import javax.inject.Inject
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.FileSystemOperations
+import org.gradle.api.file.RegularFileProperty
+
 plugins { id 'com.android.application' }
 
-def commonPrivacyPolicy = layout.projectDirectory.file('../../privacy.md')
-def generatedPrivacyAssets = layout.buildDirectory.dir('generated/privacyAssets')
-def generatePrivacyAssets = tasks.register('generatePrivacyAssets') {
-    inputs.file(commonPrivacyPolicy).withPropertyName('commonPrivacyPolicy')
-    outputs.file(generatedPrivacyAssets.map { it.file('privacy.md') })
-    doLast {
-        File policy = commonPrivacyPolicy.asFile
+abstract class GeneratePrivacyAssets extends DefaultTask {
+    @InputFile @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getPolicyFile()
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
+    @Inject
+    abstract FileSystemOperations getFileSystemOperations()
+
+    @TaskAction
+    void generate() {
+        File policy = policyFile.get().asFile
         if (!policy.isFile() || policy.length() == 0 || policy.length() > 131072)
             throw new GradleException('The common mobile privacy policy is missing, empty or too large.')
         // Copy exactly this document; never expose the parent source directory as app assets.
-        copy {
+        fileSystemOperations.sync {
             from(policy)
-            into(generatedPrivacyAssets)
+            into(outputDirectory)
         }
     }
 }
@@ -39,11 +48,19 @@ android {
             signingConfig = null
         }
     }
-    sourceSets.main.assets.srcDir(generatedPrivacyAssets)
     lint { abortOnError = true; checkReleaseBuilds = true }
 }
 
-tasks.named('preBuild').configure { dependsOn(generatePrivacyAssets) }
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        def generatePrivacyAssets = tasks.register("generate${variant.name.capitalize()}PrivacyAssets", GeneratePrivacyAssets) {
+            policyFile.set(layout.projectDirectory.file('../../privacy.md'))
+            outputDirectory.set(layout.buildDirectory.dir("generated/privacyAssets/${variant.name}"))
+        }
+        variant.sources.assets.addGeneratedSourceDirectory(generatePrivacyAssets) { it.outputDirectory }
+        tasks.named('preBuild').configure { dependsOn(generatePrivacyAssets) }
+    }
+}
 
 dependencies {
     implementation 'androidx.activity:activity:1.11.0'

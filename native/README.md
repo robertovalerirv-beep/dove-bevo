@@ -117,9 +117,9 @@ The pinned Capacitor 8 plugins still use the old Android DSL and external `kotli
 the documented temporary `android.newDsl=false` and `android.builtInKotlin=false` migration
 opt-outs preserve those scripts without patching `node_modules`. They do not suppress AAR/API
 metadata checks. Full native-plugin migration is required before those AGP compatibility
-opt-outs are removed. A hosted build has compiled a debug APK with this toolchain; the corrected
-optional-hardware declarations still require a new packaged-manifest check. Source configuration
-and compilation alone do not establish successful installation or device behavior.
+opt-outs are removed. Hosted debug APKs have passed the corrected packaged-manifest and
+optional-hardware checks; see `docs/PROGRESS.md` for source-bound artifact evidence. Compilation
+and package inspection alone do not establish successful installation or device behavior.
 
 ### Android merged manifest checks
 
@@ -136,8 +136,35 @@ hardware are explicitly `required=false`; the helper checks both the merged XML 
 badging so an inferred required hardware feature cannot silently filter supported devices.
 `scripts/mobile-ci-android-check.py` validates real merged output and is exercised with negative
 manifest/permission/hardware fixtures. APK hashing and packaged-asset checks run before this
-manifest check, preserving their evidence even when a manifest policy fails. A new APK must be
-built before the corrected hardware declarations can be verified in packaged output.
+manifest check, preserving their evidence even when a manifest policy fails. The inspected hosted
+APKs include these declarations; future source changes still require a fresh package check.
+
+### Bounded Android emulator startup evidence
+
+The Android job prepares Google's stable API 36 Google APIs x86_64 image and emulator through
+the official SDK manager, then runs `scripts/mobile-ci-android-launch.py launch` after APK
+inspection. Setup and launch have separate nine-minute workflow steps and 480-second helper
+budgets; launch reserves 60 seconds for cleanup. The runner must already have the Android SDK
+licence: stdin is closed and no licence-acceptance command runs. Installed emulator/image
+revisions are checked explicitly, so changing SDK metadata requires review.
+
+Startup requires available KVM, one uniquely owned temporary AVD, a private foreground ADB
+server and explicit serial/ports. It checks the installed ADB's closed-port behavior, process
+identity and socket ownership; no shared server, physical device, permission change, CPU
+fallback or second boot/install/launch attempt is used. Read-only boot/provider readiness
+polling stays within the overall work deadline. The active valid WebView must be installed,
+enabled and finished preparing, with Chromium 111 or newer; it is never updated or switched.
+
+Evidence binds the actual compiled/copied APK hash, checkout, API/image/tool versions, install
+result, exact component and surviving foreground PID after 25 seconds, plus PNG dimensions/hash.
+Only tracked process groups and guarded temporary homes are cleaned. Missing ownership or
+cleanup evidence fails the job. Deadlines are soft subprocess limits with an outer margin;
+this is not a hardened process sandbox. One-day artifact retention applies.
+
+Root must inspect the actual PNG. The unavailable/retry screen is expected until the isolated
+backend exists; it proves limited OS startup rather than maps, challenge completion, device
+permissions, contribution delivery, physical-device compatibility or store readiness. Fake
+subprocess tests establish orchestration behavior only. See `docs/PROGRESS.md` for actual runs.
 
 ### Bounded iOS Simulator startup evidence
 
@@ -147,7 +174,7 @@ available iPhone's explicit runtime/type pairing, preferring the current SDK; it
 no runtime and fails if it cannot establish a reliable compatible stable pair at iOS 16.4+.
 It creates one uniquely named job-owned simulator, boots/installs/launches the preview, checks
 the returned PID still belongs to the installed executable after 25 seconds, and captures
-one PNG. A 330-second overall deadline reserves 30 seconds for exact-UDID cleanup inside the
+one PNG. A 330-second overall deadline reserves 60 seconds for exact-UDID cleanup inside the
 six-minute workflow step. Existing simulators are never booted, shut down or deleted.
 
 The launch evidence folder records the checkout SHA, a deterministic app-tree hash, selected

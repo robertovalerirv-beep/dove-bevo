@@ -13,6 +13,16 @@ const workflows = {
 const clone = () => structuredClone(real);
 
 describe("deploy configuration guard (ADR 0021)", () => {
+  it("rejects an unreviewed standalone preview deployment workflow", () => {
+    expect(
+      checkConfig(real, {
+        "mobile-preview-deploy.yml":
+          "on: pull_request\nrun: node scripts/mobile-preview-deploy.mjs",
+      }),
+    ).toContain(
+      "mobile-preview-deploy.yml: differs from the reviewed standalone deployment workflow",
+    );
+  });
   it("accepts the real wrangler.jsonc and the real deploy workflow", () => {
     expect(checkConfig(real, workflows)).toEqual([]);
   });

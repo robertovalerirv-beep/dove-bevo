@@ -1,0 +1,57 @@
+# Default off. Owner approval is an authorization attestation, not proof of provider write access.
+name: Deploy isolated mobile preview
+
+on:
+  push:
+    branches: [codex/mobile-launch-20261026]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-preview-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/codex/mobile-launch-20261026' &&
+      vars.MOBILE_PREVIEW_DEPLOY_ENABLED == 'true' &&
+      vars.MOBILE_PREVIEW_APPROVED_SHA == github.sha
+    environment: mobile-preview
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts
+      - name: Check reviewed deployment source
+        run: |
+          npx vitest run --project unit tests/unit/check-config.test.ts tests/unit/mobile-preview-deploy.test.ts
+          node scripts/check-config.mjs
+      - name: Build the isolated disabled profile without credentials
+        run: node scripts/mobile-preview-build.mjs --database-id "$MOBILE_PREVIEW_DATABASE_ID"
+        env:
+          MOBILE_PREVIEW_DATABASE_ID: ${{ vars.MOBILE_PREVIEW_DATABASE_ID }}
+      - name: Verify ownership, migrate, and upload the approved preview
+        run: node scripts/mobile-preview-deploy.mjs
+        env:
+          MOBILE_PREVIEW_DEPLOY_ENABLED: ${{ vars.MOBILE_PREVIEW_DEPLOY_ENABLED }}
+          MOBILE_PREVIEW_APPROVED_SHA: ${{ vars.MOBILE_PREVIEW_APPROVED_SHA }}
+          MOBILE_PREVIEW_OWNER_APPROVED_SHA: ${{ vars.MOBILE_PREVIEW_OWNER_APPROVED_SHA }}
+          MOBILE_PREVIEW_PREVIOUS_SHA: ${{ vars.MOBILE_PREVIEW_PREVIOUS_SHA }}
+          MOBILE_PREVIEW_ACCOUNT_ID: ${{ vars.MOBILE_PREVIEW_ACCOUNT_ID }}
+          MOBILE_PREVIEW_ZONE_ID: ${{ vars.MOBILE_PREVIEW_ZONE_ID }}
+          MOBILE_PREVIEW_DATABASE_ID: ${{ vars.MOBILE_PREVIEW_DATABASE_ID }}
+          MOBILE_PREVIEW_TURNSTILE_SITE_KEY: ${{ vars.MOBILE_PREVIEW_TURNSTILE_SITE_KEY }}
+          MOBILE_PREVIEW_API_TOKEN: ${{ secrets.MOBILE_PREVIEW_API_TOKEN }}
+          MOBILE_PREVIEW_SESSION_HMAC_KEY: ${{ secrets.MOBILE_PREVIEW_SESSION_HMAC_KEY }}
+          MOBILE_PREVIEW_HASH_KEY: ${{ secrets.MOBILE_PREVIEW_HASH_KEY }}
+          MOBILE_PREVIEW_TURNSTILE_SECRET: ${{ secrets.MOBILE_PREVIEW_TURNSTILE_SECRET }}

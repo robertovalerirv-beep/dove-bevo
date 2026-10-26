@@ -2,7 +2,8 @@
 // on its own (environments do not inherit bindings or vars) and must never carry the development
 // placeholders of the top level (ADR 0021, red-team audit 22/10/2026).
 import { createMobilePreviewConfig, MOBILE_PREVIEW_CONFIG_PATH } from "./mobile-preview-config.ts";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
+import { PREVIEW_WORKFLOW_SHA256, workflowDigest } from "./mobile-preview-deploy-policy.ts";
 
 type Json = Record<string, unknown>;
 
@@ -193,8 +194,18 @@ export function checkConfig(
     problems.push(...checkMobilePreviewConfig(standalonePreview, config));
 
   // The preview helper is build-only: a Vite selector does not bind a later Wrangler deployment.
-  // All deploying workflows retain the existing named-environment guard until a separate deploy path is reviewed.
+  // The separate deployment helper has an exact reviewed workflow and its own strict runtime target guard.
   for (const [file, text] of Object.entries(workflows)) {
+    if (
+      basename(file) === "mobile-preview-deploy.yml" ||
+      text.includes("mobile-preview-deploy.mjs")
+    ) {
+      if (
+        basename(file) !== "mobile-preview-deploy.yml" ||
+        workflowDigest(text) !== PREVIEW_WORKFLOW_SHA256
+      )
+        problems.push(`${file}: differs from the reviewed standalone deployment workflow`);
+    }
     if (!/wrangler\s+deploy/.test(text)) continue;
     const named = [...text.matchAll(/CLOUDFLARE_ENV:\s*["']?([\w-]+)/g)].map((m) => m[1] ?? "");
     if (named.length === 0) problems.push(`${file}: wrangler deploy without CLOUDFLARE_ENV`);

@@ -28,10 +28,10 @@
       "/napoli",
     ],
   },
-  // Invocation logs off: we log only what we write ourselves (SPEC 13.8).
-  // Nightly cleanup of counters and dedup (SPEC 8), 02:30 UTC.
+  // Invocation logs disabled; custom logs and runtime errors may still be captured.
+  // Hourly cleanup of expired codes and daily counters/dedup (SPEC 8).
   "triggers": { "crons": ["0 * * * *"] },
-  // 10 % sampling is enough to debug; query strings (geohash cells) never reach the logs.
+  // Redact request query strings from automatic logs/traces; custom log content stays allowlisted.
   "observability": {
     "enabled": true,
     "head_sampling_rate": 0.1,

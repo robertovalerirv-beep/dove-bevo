@@ -1,6 +1,6 @@
 # Store submission drafts
 
-Prepared 26 October 2026 from source `320d128`. These files are a review pack, not submitted declarations. The current native build is an isolated preview with fixture data and a preview identity; it must not be uploaded as the production product described below. Compiler, real device, signing and live service gates remain in [the mobile plan](../superpowers/plans/2026-10-26-mobile-apps.md).
+Prepared 26 October 2026 from source `7ac5ccc`. These files are a review pack, not submitted declarations. The current native build is an isolated preview with fixture data and a preview identity; it must not be uploaded as the production product described below. Compiler, real device, signing and live service gates remain in [the mobile plan](../superpowers/plans/2026-10-26-mobile-apps.md).
 
 ## Copy ready for review
 
@@ -24,8 +24,8 @@ Field counts include spaces, punctuation and description line breaks after JSON 
 
 ## Facts needed before the pack can be submitted
 
-- **Responsibility is settled:** Roberto is personally responsible for Dove bevo for now, with `dovebevo@gmail.com` for privacy, support and content reports. A future company needs a deliberate policy update. The store publishing organization and the privacy controller are distinct; do not substitute the publisher into the policy or infer Roberto's full legal identity from an account name.
-- **Identity and policy completion:** obtain Roberto's approved full legal identity and any address/trader details the actual distribution requires; complete retention/removal and partner practices, then verify the final public `/privacy` and `/regole` in the app and browser. These drafts invent none of those facts.
+- **Responsibility is settled:** the owner confirmed the full legal name **Roberto Valeri**, personally responsible for Dove bevo for now, with `dovebevo@gmail.com` for privacy, support and content reports. A future company needs a deliberate policy update. The store publishing organization and the privacy controller are distinct; do not substitute the publisher into the policy.
+- **Policy completion:** obtain any address/trader details the actual distribution requires; complete retention/removal and partner settings, then verify the final public `/privacy` and `/regole` in the app and browser. These drafts invent no address or company details.
 - **Moderation:** Roberto is the content-report owner through the existing mailbox/admin workflow. Define response coverage and prove the abusive-contributor blocking design. Existing report/removal/quotas are documented in the review pack, but do not close that gap.
 - **Disclosures:** finalize each evidence-matrix row, app/SDK privacy manifests, encryption/deletion answers, sponsorship classification and content-rating questionnaires against the production binary and service. Empty manifest arrays are not a no-data declaration.
 - **Review access and assets:** choose a real populated supported area; capture screenshots from the production candidate. Confirm a reachable anti-bot service and return-to-app path. Supply no fabricated reviewer credentials. Pricing, availability countries and final category are not set by these files; Food & Drink is a candidate to check in each console.

@@ -83,6 +83,7 @@ jobs:
           path: |
             mobile-apps/ios/.build/DoveBevo.xcarchive
             mobile-apps/ios/.build/TestResults.xcresult
+            mobile-apps/ios/.build/Screenshots/
             mobile-apps/ios/.build/DerivedData/Build/Products/Debug-iphonesimulator/*.app
           retention-days: 7
           if-no-files-found: error

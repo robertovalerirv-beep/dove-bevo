@@ -192,22 +192,12 @@ export function checkConfig(
   if (standalonePreview !== undefined)
     problems.push(...checkMobilePreviewConfig(standalonePreview, config));
 
-  // Existing deploys must still name their environment. A standalone preview cannot impersonate staging.
+  // The preview helper is build-only: a Vite selector does not bind a later Wrangler deployment.
+  // All deploying workflows retain the existing named-environment guard until a separate deploy path is reviewed.
   for (const [file, text] of Object.entries(workflows)) {
     if (!/wrangler\s+deploy/.test(text)) continue;
     const named = [...text.matchAll(/CLOUDFLARE_ENV:\s*["']?([\w-]+)/g)].map((m) => m[1] ?? "");
-    const standalone = [
-      ...text.matchAll(/CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH:\s*["']?([^\s"']+)/g),
-    ].map((m) => m[1] ?? "");
-    if (standalone.length > 0) {
-      if (
-        standalone.length !== 1 ||
-        standalone[0] !== MOBILE_PREVIEW_CONFIG_PATH ||
-        named.length !== 0 ||
-        standalonePreview === undefined
-      )
-        problems.push(`${file}: unverified standalone preview configuration`);
-    } else if (named.length === 0) problems.push(`${file}: wrangler deploy without CLOUDFLARE_ENV`);
+    if (named.length === 0) problems.push(`${file}: wrangler deploy without CLOUDFLARE_ENV`);
     for (const target of named) {
       if (!(target in environments)) {
         problems.push(`${file}: CLOUDFLARE_ENV ${target} is not an env of wrangler.jsonc`);

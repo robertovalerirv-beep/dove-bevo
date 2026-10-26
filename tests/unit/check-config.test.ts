@@ -75,26 +75,22 @@ describe("deploy configuration guard (ADR 0021)", () => {
     expect(checkConfig({}, {})).toEqual(["wrangler.jsonc: no env.* defined"]);
   });
 
-  it("recognizes only a separately validated, explicitly selected standalone preview", () => {
+  it("checks a generated disabled profile without creating a deployment exception", () => {
     const preview = createMobilePreviewConfig("76543210-abcd-4abc-8abc-123456789abc", real);
-    const text =
-      "CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH: .mobile-preview.wrangler.json\nrun: wrangler deploy";
-    expect(checkConfig(real, { "preview.yml": text }, preview)).toEqual([]);
-    expect(checkConfig(real, { "preview.yml": text })).toContain(
-      "preview.yml: unverified standalone preview configuration",
+    expect(checkConfig(real, workflows, preview)).toEqual([]);
+    expect(checkConfig(real, workflows, { ...preview, workers_dev: true })).toContain(
+      "mobile preview: workers_dev differs from the reviewed disabled profile",
     );
-    expect(
-      checkConfig(real, { "preview.yml": `${text}\nCLOUDFLARE_ENV: staging` }, preview),
-    ).toContain("preview.yml: unverified standalone preview configuration");
-    expect(
-      checkConfig(
-        real,
-        { "preview.yml": text.replace(".mobile-preview.wrangler.json", "other.json") },
-        preview,
-      ),
-    ).toContain("preview.yml: unverified standalone preview configuration");
-    expect(
-      checkConfig(real, { "preview.yml": text }, { ...preview, workers_dev: true }).length,
-    ).toBeGreaterThan(0);
+  });
+
+  it.each([
+    "run: wrangler deploy --config wrangler.jsonc --env staging",
+    "run: node scripts/mobile-preview-build.mjs --database-id 76543210-abcd-4abc-8abc-123456789abc\nrun: wrangler deploy",
+  ])("a preview Vite selector cannot authorize a differently targeted deployment: %s", (deploy) => {
+    const preview = createMobilePreviewConfig("76543210-abcd-4abc-8abc-123456789abc", real);
+    const workflow = `CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH: .mobile-preview.wrangler.json\n${deploy}`;
+    expect(checkConfig(real, { "preview.yml": workflow }, preview)).toEqual([
+      "preview.yml: wrangler deploy without CLOUDFLARE_ENV",
+    ]);
   });
 });

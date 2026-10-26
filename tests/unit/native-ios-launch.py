@@ -285,7 +285,7 @@ class OrchestratorTests(unittest.TestCase):
                 self.assertEqual(metadata["settle_seconds"], 25)
                 stages = {entry["stage"]: entry for entry in metadata["stages"]}
                 container = stages["installed-container"]
-                self.assertEqual(container["effective_timeout_seconds"], 30)
+                self.assertEqual(container["effective_timeout_seconds"], 60)
                 self.assertEqual(container["elapsed_seconds"], container_seconds)
                 self.assertEqual(container["outcome"], "completed")
                 self.assertGreater(container["started_elapsed_seconds"], 150)
@@ -296,18 +296,60 @@ class OrchestratorTests(unittest.TestCase):
                 self.assert_owned_cleanup(fake)
                 self.assertLess(clock.value, 420)
 
+    def test_variable_container_query_after_observed_startup_keeps_full_evidence_and_cleanup(self):
+        # Hosted bb632db reached the query after a 71.539s bootstatus,
+        # 74.773s install and 13.390s launch, then exhausted its 30s query cap.
+        # Replay that prelude and 40-50s metadata queries with the observed
+        # soft-timeout overhead; the unchanged global work deadline still fits.
+        for container_seconds in (40, 50):
+            with self.subTest(container_seconds=container_seconds):
+                durations = {"git": 0.037, "help": 0.35, "xcrun": 2.15,
+                             "list-runtimes": 0.18, "list-devicetypes": 0.179, "list-devices": 0.25,
+                             "create": 0.267, "boot": 9.325, "bootstatus": 71.539, "install": 74.773,
+                             "launch": 13.390, "get_app_container": container_seconds, "ps": 10,
+                             "io": 20, "shutdown": 22.206, "delete": 17.7}
+                code, fake, clock, metadata = self.run_fake("success", durations, {"get_app_container": 3.615, "shutdown": 2.206})
+                self.assertEqual(code, 0)
+                self.assertTrue(metadata["success"])
+                self.assertEqual(metadata["launch_pid"], 4242)
+                self.assertEqual(metadata["total_deadline_seconds"], 420)
+                self.assertEqual(metadata["cleanup_reserve_seconds"], 60)
+                stages = {entry["stage"]: entry for entry in metadata["stages"]}
+                container = stages["installed-container"]
+                self.assertGreater(container["started_elapsed_seconds"], 170)
+                self.assertLess(container["started_elapsed_seconds"], 185)
+                self.assertEqual(container["requested_timeout_seconds"], 60)
+                self.assertEqual(container["effective_timeout_seconds"], 60)
+                self.assertEqual(container["outcome"], "completed")
+                self.assertAlmostEqual(container["elapsed_seconds"], container_seconds + 3.615, places=3)
+                self.assertAlmostEqual(stages["post-launch-process"]["started_elapsed_seconds"] - container["started_elapsed_seconds"] - container["elapsed_seconds"], 25, places=3)
+                self.assertEqual(stages["post-launch-process"]["outcome"], "completed")
+                self.assertEqual(stages["post-launch-process"]["effective_timeout_seconds"], 10)
+                self.assertEqual(stages["screenshot"]["outcome"], "completed")
+                self.assertEqual(stages["screenshot"]["effective_timeout_seconds"], 20)
+                self.assertLess(stages["screenshot"]["started_elapsed_seconds"] + stages["screenshot"]["elapsed_seconds"], 360)
+                self.assertEqual(len(metadata["screenshot"]["sha256"]), 64)
+                self.assertEqual(sum(argv[:3] == ["xcrun", "simctl", "launch"] for argv, _ in fake.calls), 1)
+                self.assertEqual(sum(argv[:3] == ["xcrun", "simctl", "get_app_container"] for argv, _ in fake.calls), 1)
+                self.assertEqual(metadata["shutdown_warning"], "shutdown timed out")
+                self.assertEqual(metadata["cleanup"], "deleted-job-owned-simulator")
+                self.assert_owned_cleanup(fake)
+                self.assertLess(clock.value, 420)
+
     def test_container_lookup_is_clipped_and_produces_no_startup_evidence_after_timeout(self):
-        code, fake, clock, metadata = self.run_fake("success", {"help": 8, "bootstatus": 170, "install": 45, "launch": 40, "get_app_container": 20, "shutdown": 15, "delete": 20})
+        code, fake, clock, metadata = self.run_fake("success", {"help": 8, "bootstatus": 170, "install": 45, "launch": 40, "get_app_container": 50, "shutdown": 15, "delete": 20})
         self.assertEqual(code, 1)
         self.assertEqual(metadata["failure"], "installed-container timed out")
         self.assertFalse(metadata["success"])
         self.assertNotIn("screenshot", metadata)
         self.assertFalse((fake.app.parent / "evidence/launch.png").exists())
         stage = next(entry for entry in metadata["stages"] if entry["stage"] == "installed-container")
-        self.assertEqual(stage["requested_timeout_seconds"], 30)
+        self.assertEqual(stage["requested_timeout_seconds"], 60)
         self.assertLess(stage["effective_timeout_seconds"], 20)
         self.assertAlmostEqual(stage["started_elapsed_seconds"] + stage["elapsed_seconds"], 360, places=3)
+        self.assertEqual(sum(argv[:3] == ["xcrun", "simctl", "get_app_container"] for argv, _ in fake.calls), 1)
         self.assertFalse(any(argv[:2] == ["ps", "-p"] or argv[:3] == ["xcrun", "simctl", "io"] for argv, _ in fake.calls))
+        self.assertEqual(metadata["cleanup"], "deleted-job-owned-simulator")
         self.assert_owned_cleanup(fake)
         self.assertLess(clock.value, 420)
 

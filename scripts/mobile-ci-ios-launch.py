@@ -218,7 +218,7 @@ def run_launch(app, evidence, runner, settle=time.sleep):
             raise LaunchFailure("Simulator launch did not return the expected app PID")
         pid = int(pid_match.group(1))
         result["launch_pid"] = pid
-        installed = runner.run("installed-container", ["xcrun", "simctl", "get_app_container", owned, IDENTITY, "app"], timeout=30)
+        installed = runner.run("installed-container", ["xcrun", "simctl", "get_app_container", owned, IDENTITY, "app"], timeout=60)
         expected = str(Path(installed) / executable)
         if runner.remaining() <= SETTLE_SECONDS:
             raise LaunchFailure("Insufficient overall deadline for startup settling")

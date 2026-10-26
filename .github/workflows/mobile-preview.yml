@@ -60,14 +60,22 @@ jobs:
       - run: npm run native:sync -- android
       - name: Compile and inspect debug APK and merged manifest
         run: bash scripts/mobile-ci-android.sh
+      - name: Prepare temporary runner-only KVM access
+        id: kvm_access
+        timeout-minutes: 2
+        run: python3 scripts/mobile-ci-android-kvm.py prepare
       - name: Install one reviewed stable Android emulator runtime
         timeout-minutes: 9
         run: python3 scripts/mobile-ci-android-launch.py setup
       - name: Launch one owned Android emulator and capture startup evidence
         timeout-minutes: 9
         run: python3 scripts/mobile-ci-android-launch.py launch
+      - name: Restore the original KVM ACL and verify it
+        if: ${{ always() && steps.kvm_access.outcome != 'skipped' }}
+        timeout-minutes: 2
+        run: python3 scripts/mobile-ci-android-kvm.py restore
       - name: Retain Android compile evidence for one day
-        if: ${{ !cancelled() }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android-preview-debug

@@ -41,9 +41,10 @@ class Clock:
 
 
 class FakeProcess:
-    def __init__(self, clock, app, mode="success", durations=None):
+    def __init__(self, clock, app, mode="success", durations=None, overheads=None):
         self.clock, self.app, self.mode = clock, app, mode
         self.durations = durations or {}
+        self.overheads = overheads or {}
         self.calls = []
         self.runtimes, self.types, self.devices = inventory()
         self.created_name = None
@@ -58,7 +59,9 @@ class FakeProcess:
         duration = self.durations.get(stage, 0.1)
         if (stage == "create" and self.mode == "create-timeout") or (stage == "bootstatus" and self.mode in ("boot-timeout", "boot-large-timeout")):
             duration = kwargs["timeout"]
-        self.clock.advance(min(duration, kwargs["timeout"]))
+        # Process creation/wait overhead can exceed subprocess.run's soft cap;
+        # the finite operation itself still obeys the requested timeout.
+        self.clock.advance(min(duration, kwargs["timeout"]) + self.overheads.get(stage, 0))
         timed_out = duration > kwargs["timeout"]
         # Creation may have taken effect even when simctl never returns its UDID.
         if timed_out and stage != "create":
@@ -135,7 +138,7 @@ class SelectionTests(unittest.TestCase):
 
 
 class OrchestratorTests(unittest.TestCase):
-    def run_fake(self, mode, durations=None):
+    def run_fake(self, mode, durations=None, overheads=None):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         root = Path(temp.name)
@@ -146,7 +149,7 @@ class OrchestratorTests(unittest.TestCase):
             plistlib.dump({"CFBundleIdentifier": "com.dovebevo.app.preview", "DTPlatformName": "iphonesimulator", "MinimumOSVersion": "16.4", "CFBundleExecutable": "App"}, output)
         evidence = root / "evidence"
         clock = Clock()
-        fake = FakeProcess(clock, app, mode, durations)
+        fake = FakeProcess(clock, app, mode, durations, overheads)
         runner = launch.CommandRunner(evidence, invoke=fake, clock=clock.now)
         result = launch.run_launch(app, evidence, runner, settle=clock.advance)
         metadata = json.loads((evidence / "launch-result.json").read_text())
@@ -167,14 +170,14 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(len(metadata["app_tree_sha256"]), 64)
         self.assertEqual(sum(argv[:3] == ["xcrun", "simctl", "create"] for argv, _ in fake.calls), 1)
         self.assert_owned_cleanup(fake)
-        self.assertLess(clock.value, 330)
+        self.assertLess(clock.value, 420)
 
     def test_boot_timeout_preserves_log_and_cleans_only_owned_device(self):
         code, fake, clock, metadata = self.run_fake("boot-timeout")
         self.assertEqual(code, 1)
         self.assertIn("bootstatus timed out", metadata["failure"])
         self.assert_owned_cleanup(fake)
-        self.assertLess(clock.value, 330)
+        self.assertLess(clock.value, 420)
         self.assertIn("Waiting on BackBoard", (fake.app.parent / "evidence/bootstatus.log").read_text())
 
     def test_failure_logs_are_bounded(self):
@@ -210,17 +213,17 @@ class OrchestratorTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("install timed out", metadata["failure"])
         self.assert_owned_cleanup(fake)
-        self.assertLess(clock.value, 330)
+        self.assertLess(clock.value, 420)
 
     def test_slow_boot_install_and_cleanup_fit_without_short_stage_timeouts(self):
         code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 86, "install": 55, "launch": 40, "shutdown": 15, "delete": 20})
         self.assertEqual(code, 0)
         self.assert_owned_cleanup(fake)
-        self.assertEqual(metadata["total_deadline_seconds"], 330)
+        self.assertEqual(metadata["total_deadline_seconds"], 420)
         self.assertEqual(metadata["cleanup_reserve_seconds"], 60)
         self.assertEqual(metadata["settle_seconds"], 25)
         self.assertTrue(metadata["success"])
-        self.assertLess(clock.value, 330)
+        self.assertLess(clock.value, 420)
         stages = {entry["stage"]: entry for entry in metadata["stages"]}
         for stage, elapsed, cap in (("bootstatus", 86, 180), ("install", 55, 90), ("launch", 40, 60), ("shutdown", 15, 20), ("delete", 20, 30)):
             self.assertEqual(stages[stage]["elapsed_seconds"], elapsed)
@@ -228,8 +231,37 @@ class OrchestratorTests(unittest.TestCase):
             self.assertEqual(stages[stage]["outcome"], "completed")
         self.assertEqual(len(metadata["screenshot"]["sha256"]), 64)
 
+    def test_observed_combined_slow_startup_keeps_full_launch_settle_evidence_and_cleanup(self):
+        # Hosted 49bf reached launch at 218.948s: bootstatus 110.506s and
+        # install 95.097s despite its 90s soft cap. Replay a 218.745s prelude,
+        # allow the full existing launch cap, then a previously observed 20s
+        # container query and the full process/PNG caps after 25s settling.
+        durations = {"git": 0.047, "help": 0.55, "xcrun": 3.132,
+                     "list-runtimes": 0.28, "list-devicetypes": 0.278, "list-devices": 0.451,
+                     "create": 0.578, "boot": 2.326, "bootstatus": 110.506, "install": 89.9,
+                     "launch": 60, "get_app_container": 20, "ps": 10, "io": 20,
+                     "shutdown": 13.243, "delete": 0.828}
+        code, fake, clock, metadata = self.run_fake("success", durations, {"install": 5.197, "launch": 2.37})
+        self.assertEqual(code, 0)
+        self.assertEqual(metadata["total_deadline_seconds"], 420)
+        self.assertEqual(metadata["cleanup_reserve_seconds"], 60)
+        self.assertEqual(metadata["launch_pid"], 4242)
+        stages = {entry["stage"]: entry for entry in metadata["stages"]}
+        self.assertAlmostEqual(stages["launch"]["started_elapsed_seconds"], 218.745, places=3)
+        self.assertEqual(stages["launch"]["effective_timeout_seconds"], 60)
+        self.assertEqual(stages["install"]["effective_timeout_seconds"], 90)
+        self.assertEqual(stages["install"]["elapsed_seconds"], 95.097)
+        self.assertAlmostEqual(stages["post-launch-process"]["started_elapsed_seconds"] - stages["installed-container"]["started_elapsed_seconds"], 45, places=3)
+        self.assertEqual(stages["post-launch-process"]["effective_timeout_seconds"], 10)
+        self.assertEqual(stages["screenshot"]["effective_timeout_seconds"], 20)
+        self.assertLess(stages["screenshot"]["started_elapsed_seconds"] + stages["screenshot"]["elapsed_seconds"], 360)
+        self.assertEqual(len(metadata["screenshot"]["sha256"]), 64)
+        self.assertEqual(sum(argv[:3] == ["xcrun", "simctl", "launch"] for argv, _ in fake.calls), 1)
+        self.assert_owned_cleanup(fake)
+        self.assertLess(clock.value, 420)
+
     def test_launch_is_clipped_at_work_deadline_without_success_or_lost_cleanup_reserve(self):
-        code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 180, "install": 55, "launch": 40, "shutdown": 15, "delete": 20})
+        code, fake, clock, metadata = self.run_fake("success", {"help": 8, "bootstatus": 180, "install": 55, "launch": 40, "shutdown": 15, "delete": 20})
         self.assertEqual(code, 1)
         self.assertEqual(metadata["failure"], "launch timed out")
         self.assertFalse(metadata["success"])
@@ -237,10 +269,10 @@ class OrchestratorTests(unittest.TestCase):
         stage = next(entry for entry in metadata["stages"] if entry["stage"] == "launch")
         self.assertEqual(stage["requested_timeout_seconds"], 60)
         self.assertLess(stage["effective_timeout_seconds"], 40)
-        self.assertAlmostEqual(stage["started_elapsed_seconds"] + stage["elapsed_seconds"], 270, places=3)
+        self.assertAlmostEqual(stage["started_elapsed_seconds"] + stage["elapsed_seconds"], 360, places=3)
         self.assertEqual(sum(argv[:3] == ["xcrun", "simctl", "launch"] for argv, _ in fake.calls), 1)
         self.assert_owned_cleanup(fake)
-        self.assertLess(clock.value, 330)
+        self.assertLess(clock.value, 420)
 
     def test_slow_container_lookup_after_realistic_startup_preserves_settle_png_and_cleanup(self):
         for container_seconds in (15, 20):
@@ -248,7 +280,7 @@ class OrchestratorTests(unittest.TestCase):
                 code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 70, "install": 45, "launch": 40, "get_app_container": container_seconds, "shutdown": 21, "delete": 10})
                 self.assertEqual(code, 0)
                 self.assertEqual(metadata["launch_pid"], 4242)
-                self.assertEqual(metadata["total_deadline_seconds"], 330)
+                self.assertEqual(metadata["total_deadline_seconds"], 420)
                 self.assertEqual(metadata["cleanup_reserve_seconds"], 60)
                 self.assertEqual(metadata["settle_seconds"], 25)
                 stages = {entry["stage"]: entry for entry in metadata["stages"]}
@@ -262,10 +294,10 @@ class OrchestratorTests(unittest.TestCase):
                 self.assertEqual(len(metadata["screenshot"]["sha256"]), 64)
                 self.assertEqual(metadata["shutdown_warning"], "shutdown timed out")
                 self.assert_owned_cleanup(fake)
-                self.assertLess(clock.value, 330)
+                self.assertLess(clock.value, 420)
 
     def test_container_lookup_is_clipped_and_produces_no_startup_evidence_after_timeout(self):
-        code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 170, "install": 45, "launch": 40, "get_app_container": 20, "shutdown": 15, "delete": 20})
+        code, fake, clock, metadata = self.run_fake("success", {"help": 8, "bootstatus": 170, "install": 45, "launch": 40, "get_app_container": 20, "shutdown": 15, "delete": 20})
         self.assertEqual(code, 1)
         self.assertEqual(metadata["failure"], "installed-container timed out")
         self.assertFalse(metadata["success"])
@@ -274,23 +306,23 @@ class OrchestratorTests(unittest.TestCase):
         stage = next(entry for entry in metadata["stages"] if entry["stage"] == "installed-container")
         self.assertEqual(stage["requested_timeout_seconds"], 30)
         self.assertLess(stage["effective_timeout_seconds"], 20)
-        self.assertAlmostEqual(stage["started_elapsed_seconds"] + stage["elapsed_seconds"], 270, places=3)
+        self.assertAlmostEqual(stage["started_elapsed_seconds"] + stage["elapsed_seconds"], 360, places=3)
         self.assertFalse(any(argv[:2] == ["ps", "-p"] or argv[:3] == ["xcrun", "simctl", "io"] for argv, _ in fake.calls))
         self.assert_owned_cleanup(fake)
-        self.assertLess(clock.value, 330)
+        self.assertLess(clock.value, 420)
 
     def test_exhausted_install_records_shortened_budget_and_keeps_cleanup_reserve(self):
-        code, fake, clock, metadata = self.run_fake("success", {"bootstatus": 180, "install": 300, "shutdown": 15, "delete": 20})
+        code, fake, clock, metadata = self.run_fake("success", {"help": 9, "bootstatus": 180, "install": 300, "shutdown": 15, "delete": 20})
         self.assertEqual(code, 1)
         stages = {entry["stage"]: entry for entry in metadata["stages"]}
         install = stages["install"]
         self.assertEqual(install["outcome"], "timed-out")
         self.assertLess(install["effective_timeout_seconds"], 90)
-        self.assertAlmostEqual(install["started_elapsed_seconds"] + install["elapsed_seconds"], 270, places=3)
+        self.assertAlmostEqual(install["started_elapsed_seconds"] + install["elapsed_seconds"], 360, places=3)
         self.assertEqual(metadata["cleanup"], "deleted-job-owned-simulator")
         self.assertFalse(any(argv[:3] == ["xcrun", "simctl", "launch"] for argv, _ in fake.calls))
         self.assert_owned_cleanup(fake)
-        self.assertLessEqual(clock.value, 330)
+        self.assertLessEqual(clock.value, 420)
 
     def test_timed_uncertain_create_recovers_exact_owned_device_with_realistic_cleanup(self):
         code, fake, clock, metadata = self.run_fake("success", {"create": 25, "list-devices": 5, "shutdown": 15, "delete": 20})
@@ -301,7 +333,7 @@ class OrchestratorTests(unittest.TestCase):
         stages = {entry["stage"]: entry for entry in metadata["stages"]}
         self.assertEqual(stages["cleanup-inventory"]["outcome"], "completed")
         self.assertEqual(stages["cleanup-inventory"]["elapsed_seconds"], 5)
-        self.assertLess(clock.value, 330)
+        self.assertLess(clock.value, 420)
 
     def test_stage_metadata_records_exit_failure_without_command_or_log_contents(self):
         code, _, _, metadata = self.run_fake("delete-failed")
@@ -331,11 +363,11 @@ class CleanupDeadlineTests(unittest.TestCase):
             clock = Clock()
             fake = FakeProcess(clock, Path(temp), durations={"launch": 40})
             runner = launch.CommandRunner(Path(temp), invoke=fake, clock=clock.now)
-            clock.advance(260)
+            clock.advance(350)
             with self.assertRaisesRegex(launch.LaunchFailure, "launch timed out"):
                 runner.run("launch", ["xcrun", "simctl", "launch", "--terminate-running-process", OWN_ID, launch.IDENTITY], timeout=60)
             self.assertEqual(fake.calls[-1][1], 10)
-            self.assertEqual(clock.value, 270)
+            self.assertEqual(clock.value, 360)
             with self.assertRaisesRegex(launch.LaunchFailure, "deadline"):
                 runner.run("launch", ["xcrun", "simctl", "launch", "--terminate-running-process", OWN_ID, launch.IDENTITY], timeout=60)
             self.assertEqual(len(fake.calls), 1)
@@ -362,12 +394,12 @@ class CleanupDeadlineTests(unittest.TestCase):
             clock = Clock()
             fake = FakeProcess(clock, Path(temp), durations={"shutdown": 15, "delete": 20})
             runner = launch.CommandRunner(Path(temp), invoke=fake, clock=clock.now)
-            clock.advance(305)
+            clock.advance(395)
             runner.run("shutdown", ["xcrun", "simctl", "shutdown", OWN_ID], timeout=20, cleanup=True)
             with self.assertRaisesRegex(launch.LaunchFailure, "delete timed out"):
                 runner.run("delete", ["xcrun", "simctl", "delete", OWN_ID], timeout=30, cleanup=True)
             self.assertEqual(fake.calls[-1][1], 10)
-            self.assertEqual(clock.value, 330)
+            self.assertEqual(clock.value, 420)
             with self.assertRaisesRegex(launch.LaunchFailure, "deadline"):
                 runner.run("delete", ["xcrun", "simctl", "delete", OWN_ID], timeout=30, cleanup=True)
             self.assertEqual(len(fake.calls), 2)

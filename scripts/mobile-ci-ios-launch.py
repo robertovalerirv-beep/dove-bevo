@@ -14,7 +14,7 @@ import uuid
 
 IDENTITY = "com.dovebevo.app.preview"
 MINIMUM = (16, 4, 0)
-TOTAL_SECONDS = 330  # Leaves 30 seconds of margin inside the workflow's six-minute cap.
+TOTAL_SECONDS = 420  # Observed slow stages fit with cleanup, plus 60s inside the eight-minute workflow cap.
 CLEANUP_RESERVE = 60  # Inventory recovery (8), shutdown (20), delete (30), and small overhead.
 SETTLE_SECONDS = 25  # Native config may take its full 20-second network timeout before UI renders.
 MAX_LOG_BYTES = 65536

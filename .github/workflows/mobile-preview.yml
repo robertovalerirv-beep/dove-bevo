@@ -107,7 +107,7 @@ jobs:
       - name: Compile unsigned simulator app using only resolved versions
         run: bash scripts/mobile-ci-ios.sh build
       - name: Launch one installed iPhone simulator and capture startup evidence
-        timeout-minutes: 6
+        timeout-minutes: 8
         run: python3 scripts/mobile-ci-ios-launch.py
       - name: Retain iOS compile evidence and app workspace lock for one day
         if: ${{ !cancelled() }}

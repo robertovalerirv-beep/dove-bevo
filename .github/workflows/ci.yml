@@ -43,8 +43,12 @@ jobs:
 
   e2e:
     name: E2E (Chromium, WebKit) and security tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
+    # Official matching browsers and OS dependencies; avoid slow apt mirrors per run.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f
+      options: --shm-size=1gb
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,8 +58,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium webkit
-        timeout-minutes: 8
+      - name: Verify Playwright matches bundled browsers
+        run: node -e "require('node:assert/strict').equal(require('@playwright/test/package.json').version, '1.64.0')"
       # All Playwright projects (chromium, webkit, security) share one build and server.
       - run: npx playwright test
 

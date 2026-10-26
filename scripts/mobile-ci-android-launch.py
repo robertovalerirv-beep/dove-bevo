@@ -20,6 +20,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 IDENTITY = "com.dovebevo.app.preview"
@@ -30,6 +31,7 @@ TOTAL_SECONDS = 480
 CLEANUP_RESERVE = 60
 SETTLE_SECONDS = 25
 MAX_LOG_BYTES = 65536
+MAX_PROC_BYTES = 1024 * 1024  # Bounded kernel input; only exact-port LISTEN rows are retained.
 MAX_PNG_BYTES = 24 * 1024 * 1024
 HOST = "127.0.0.1"  # Literal IP is deliberate: adb must not auto-start a local daemon.
 
@@ -42,11 +44,92 @@ class WebViewPreparing(LaunchFailure):
     pass
 
 
+def probe_error(error):
+    """Never persist arbitrary OS exception text, paths, buffers or arguments."""
+    value = {"type": type(error).__name__[:64]}
+    if type(getattr(error, "errno", None)) is int:
+        value["errno"] = error.errno
+    return value
+
+
+def safe_startup_log(data):
+    lines, private = [], False
+    sensitive = re.compile(r"authorization|\bbearer\b|\btoken\b|(?:access|refresh)[_-]?token|private[_ -]?key|password|secret|adbkey|ADB_VENDOR_KEYS|ADB_TRACE|\bkey\s*[:=]", re.I)
+    for line in data.decode("utf-8", errors="replace").splitlines():
+        if re.search(r"-----BEGIN .*KEY-----", line):
+            private = True
+        if private or sensitive.search(line) or re.fullmatch(r"[A-Za-z0-9+/=_-]{128,}", line.strip()):
+            lines.append("[redacted sensitive startup line]")
+        else:
+            lines.append(line)
+        if re.search(r"-----END .*KEY-----", line):
+            private = False
+    output = ("\n".join(lines) + "\n").encode("utf-8")
+    return output[:MAX_LOG_BYTES] + (b"\n[bounded output]\n" if len(output) > MAX_LOG_BYTES else b"")
+
+
+def safe_failure(error):
+    if isinstance(error, LaunchFailure):
+        return safe_startup_log(str(error).encode("utf-8"))[:2048].decode("utf-8", errors="replace").strip()
+    return json.dumps(probe_error(error), sort_keys=True)
+
+
+class BoundedCapture:
+    """Drain a live pipe to a fixed first-byte buffer; discard excess indefinitely.
+
+    No live log file grows on disk. The daemon reader cannot hold helper exit;
+    incomplete final EOF is an explicit failure after a bounded join.
+    """
+    def __init__(self, stream):
+        self.stream, self.data = stream, bytearray()
+        self.discarded, self.eof, self.finished, self.error = 0, False, False, None
+        self.lock = threading.Lock()
+        self.thread = threading.Thread(target=self.drain, daemon=True)
+        self.thread.start()
+
+    def drain(self):
+        try:
+            while True:
+                chunk = self.stream.read(4096)
+                if not chunk:
+                    with self.lock:
+                        self.eof = True
+                    break
+                if not isinstance(chunk, bytes):
+                    raise TypeError("Expected a binary startup pipe")
+                with self.lock:
+                    retained = min(len(chunk), MAX_LOG_BYTES - len(self.data))
+                    self.data.extend(chunk[:retained])
+                    self.discarded += len(chunk) - retained
+        except Exception as error:
+            with self.lock:
+                self.error = probe_error(error)
+        finally:
+            try:
+                self.stream.close()
+            except Exception as error:
+                with self.lock:
+                    self.error = probe_error(error)
+            with self.lock:
+                self.finished = True
+
+    def snapshot(self):
+        with self.lock:
+            status = "failed" if self.error else ("finished" if self.eof and self.finished else "active")
+            return bytes(self.data), {"status": status, "eof": self.eof,
+                                      "retained_bytes": len(self.data), "discarded_bytes": self.discarded,
+                                      "reader_error": self.error}
+
+    def finish(self, timeout):
+        self.thread.join(timeout=max(0, timeout))
+        return not self.thread.is_alive()
+
+
 def execute(stage, argv, timeout, env, output=None):
     """Capture only known commands, with EOF stdin and an owned process group.
 
     Temporary output is not an artifact until the bounded runner log is written.
-    Long-lived emulator/server stdout and stderr go to DEVNULL, never logcat.
+    Long-lived emulator/server pipes use BoundedCapture separately, never logcat.
     """
     with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
         process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=stdout,
@@ -210,6 +293,41 @@ def process_start_ticks(pid):
     return int(Path("/proc", str(pid), "stat").read_text(encoding="utf-8").rsplit(")", 1)[1].split()[19])
 
 
+def observe_process(process, read_ticks=process_start_ticks, read_group=None):
+    result = {"pid": process.pid, "expected_start_ticks": process.owned_start_ticks,
+              "observed_start_ticks": None, "exit_code": None, "process_group": None,
+              "identity": "unknown", "probe_errors": {}}
+    try:
+        result["exit_code"] = process.poll()
+    except Exception as error:
+        result["probe_errors"]["exit_status"] = probe_error(error)
+    try:
+        result["observed_start_ticks"] = read_ticks(process.pid)
+        result["identity"] = "matches" if process.owned_start_ticks is not None and result["observed_start_ticks"] == process.owned_start_ticks else "mismatch"
+    except Exception as error:
+        result["probe_errors"]["start_ticks"] = probe_error(error)
+        if isinstance(error, FileNotFoundError) and type(result["exit_code"]) is int:
+            result["identity"] = "exited"
+    try:
+        result["process_group"] = (read_group or os.getpgid)(process.pid)
+    except Exception as error:
+        result["probe_errors"]["process_group"] = probe_error(error)
+    return result
+
+
+def selected_port_rows(contents, port, inodes):
+    private_listener_present(contents, port)  # Validate shape before interpreting any row.
+    rows = []
+    for line in contents.splitlines()[1:]:
+        fields = line.split()
+        if fields and fields[3].upper() == "0A" and int(fields[1].rsplit(":", 1)[1], 16) == port:
+            if len(rows) >= 16:
+                raise LaunchFailure("Private-port diagnostic row bound exceeded")
+            rows.append({"local_address": fields[1], "state": fields[3], "inode": fields[9],
+                         "owned_by_tracked_process": None if inodes is None else fields[9] in inodes})
+    return rows
+
+
 def package_versions(sdk):
     emulator = properties(sdk / "emulator/source.properties")
     image = properties(sdk / "system-images/android-36/google_apis/x86_64/source.properties")
@@ -287,13 +405,82 @@ class ProcessHost:
         return any(states)
 
     def start(self, stage, argv, env):
-        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                                   stderr=subprocess.DEVNULL, start_new_session=True, env=env)
+        child_env = dict(env)
+        child_env.pop("ADB_TRACE", None)  # Default startup diagnostics must not enable key/auth tracing.
+        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, bufsize=0, start_new_session=True, env=child_env)
+        process.owned_captures, process.owned_capture_errors = {}, {}
         try:
             process.owned_start_ticks = process_start_ticks(process.pid)
         except (OSError, ValueError, IndexError):
             process.owned_start_ticks = None
+        # Return the tracked child even if a drainer cannot start, so its cleanup
+        # remains possible. A missing/failed capture can never yield success.
+        for name in ("stdout", "stderr"):
+            try:
+                process.owned_captures[name] = BoundedCapture(getattr(process, name))
+            except Exception as error:
+                process.owned_capture_errors[name] = probe_error(error)
         return process
+
+    def snapshot(self, process, stage, runner, after_cleanup=False):
+        if stage not in ("adb-server", "emulator"):
+            raise LaunchFailure("Unexpected tracked startup diagnostic stage")
+        result = observe_process(process)
+        result["streams"] = {}
+        for name in ("stdout", "stderr"):
+            capture = process.owned_captures.get(name)
+            if capture is None:
+                result["streams"][name] = {"status": "unavailable", "error": process.owned_capture_errors.get(name)}
+                body = b"[startup capture unavailable]\n"
+            else:
+                body, result["streams"][name] = capture.snapshot()
+            (runner.evidence / (stage + "-startup." + name + ".log")).write_bytes(safe_startup_log(body))
+        inodes = None
+        try:
+            inodes = set()
+            for count, fd in enumerate(Path("/proc", str(process.pid), "fd").iterdir()):
+                if count >= 1024:
+                    raise LaunchFailure("Tracked process FD diagnostic bound exceeded")
+                try:
+                    match = re.fullmatch(r"socket:\[(\d+)\]", os.readlink(fd))
+                    if match:
+                        inodes.add(match.group(1))
+                except FileNotFoundError:
+                    pass
+        except Exception as error:
+            inodes = None
+            result["probe_errors"]["socket_inodes"] = probe_error(error)
+        listener = {"status": "known", "scope": "LISTEN on exact private port", "rows": []}
+        try:
+            for path in (Path("/proc/net/tcp"), Path("/proc/net/tcp6")):
+                with path.open("rb") as source:
+                    data = source.read(MAX_PROC_BYTES + 1)
+                if len(data) > MAX_PROC_BYTES:
+                    raise LaunchFailure("Kernel listener diagnostic byte bound exceeded")
+                listener["rows"].extend(selected_port_rows(data.decode("ascii"), self.server_port, inodes))
+        except Exception as error:
+            listener["status"], listener["error"] = "unknown", probe_error(error)
+        result["listener"] = listener
+        streams_ok = all(value["status"] in (("finished",) if after_cleanup else ("active", "finished")) for value in result["streams"].values())
+        listeners = [row for row in listener["rows"] if row["state"].upper() == "0A"]
+        if after_cleanup:
+            expected_exited_errors = all(value["type"] in ("FileNotFoundError", "ProcessLookupError") for value in result["probe_errors"].values())
+            result["acceptable"] = streams_ok and type(result["exit_code"]) is int and result["identity"] in ("matches", "exited") and expected_exited_errors and listener["status"] == "known" and not listeners
+        else:
+            result["acceptable"] = streams_ok and not result["probe_errors"] and result["exit_code"] is None and result["identity"] == "matches" and result["process_group"] == process.pid and listener["status"] == "known" and (stage != "adb-server" or any(row["owned_by_tracked_process"] is True for row in listeners))
+        phase = "after-cleanup" if after_cleanup else "before-cleanup"
+        (runner.evidence / (stage + "-process-" + phase + ".json")).write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        return result
+
+    def finish_capture(self, process, runner):
+        complete = not process.owned_capture_errors
+        for capture in process.owned_captures.values():
+            try:
+                complete = capture.finish(min(0.5, runner.remaining(cleanup=True))) and complete
+            except Exception:
+                complete = False
+        return complete
 
     def alive(self, process):
         try:
@@ -401,12 +588,12 @@ def run_setup(sdk, evidence, runner, host):
         result["runtime_packages"] = package_versions(sdk)
         result["success"] = True
     except Exception as error:
-        result["failure"] = str(error)[:2048]
+        result["failure"] = safe_failure(error)
     finally:
         try:
             host.remove()
         except Exception as error:
-            result["cleanup_failure"] = str(error)[:2048]
+            result["cleanup_failure"] = safe_failure(error)
             result["success"] = False
         result["stages"] = runner.stages
         result["elapsed_seconds"] = round(runner.clock() - runner.started, 3)
@@ -573,15 +760,41 @@ def run_launch(root, sdk, evidence, runner, host, settle=time.sleep):
             raise LaunchFailure("APK evidence changed during startup")
         result["status"] = "launched-process-and-captured-png"
     except Exception as error:
-        result["failure"] = str(error)[:2048]
+        result["failure"] = safe_failure(error)
     finally:
-        cleanup_errors = []
+        cleanup_errors, diagnostic_errors = [], []
+        tracked = [(name, process) for name, process in (("emulator", emulator), ("adb-server", server)) if process is not None]
+        result["process_diagnostics"] = {}
+        for name, process in tracked:
+            try:
+                before = host.snapshot(process, name, runner)
+                result["process_diagnostics"][name] = {"before_cleanup": before}
+                if not before["acceptable"]:
+                    diagnostic_errors.append(name + " pre-cleanup observation was not acceptable")
+            except Exception as error:
+                diagnostic_errors.append(name + " pre-cleanup diagnostic failed: " + json.dumps(probe_error(error), sort_keys=True))
         for name, process in (("emulator", emulator), ("adb-server", server)):
             if process is not None:
                 try:
                     host.stop(process, runner)
                 except Exception:
                     cleanup_errors.append(name + " owned process group cleanup failed")
+        for name, process in tracked:
+            try:
+                capture_finished = host.finish_capture(process, runner)
+            except Exception as error:
+                capture_finished = False
+                diagnostic_errors.append(name + " startup drain failed: " + json.dumps(probe_error(error), sort_keys=True))
+            if not capture_finished:
+                diagnostic_errors.append(name + " startup pipes did not finish within the cleanup join bound")
+                cleanup_errors.append(name + " startup EOF was not verified")
+            try:
+                after = host.snapshot(process, name, runner, after_cleanup=True)
+                result["process_diagnostics"].setdefault(name, {})["after_cleanup"] = after
+                if not after["acceptable"]:
+                    diagnostic_errors.append(name + " post-cleanup observation was not acceptable")
+            except Exception as error:
+                diagnostic_errors.append(name + " post-cleanup diagnostic failed: " + json.dumps(probe_error(error), sort_keys=True))
         if host.server_port is not None:
             try:
                 if host.listener_present():
@@ -596,7 +809,8 @@ def run_launch(root, sdk, evidence, runner, host, settle=time.sleep):
                 cleanup_errors.append("owned temporary directory cleanup failed")
         if cleanup_errors:
             result["cleanup"], result["cleanup_failures"] = "failed", cleanup_errors
-        result["success"] = result["status"] == "launched-process-and-captured-png" and not cleanup_errors
+        result["diagnostic_failures"] = diagnostic_errors
+        result["success"] = result["status"] == "launched-process-and-captured-png" and not cleanup_errors and not diagnostic_errors
         result["stages"] = runner.stages
         result["elapsed_seconds"] = round(runner.clock() - runner.started, 3)
         (runner.evidence / "launch-result.json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")

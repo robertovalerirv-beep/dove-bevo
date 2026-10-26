@@ -3,11 +3,14 @@
 import base64
 import hashlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -83,10 +86,10 @@ class Host:
         return stage
 
     def alive(self, process):
-        return not (self.mode == "server-lost" and process == "adb-server") and not (getattr(self, "lost_during_install", False) and process == "adb-server")
+        return not (self.mode in ("server-lost", "server-exit", "pid-mismatch") and process == "adb-server") and not (getattr(self, "lost_during_install", False) and process == "adb-server")
 
     def listener_owned(self, process):
-        return self.mode != "foreign-listener"
+        return self.alive(process) and self.mode != "foreign-listener"
 
     def stop(self, process, runner):
         self.stopped.append(process)
@@ -98,6 +101,20 @@ class Host:
 
     def remove(self):
         self.removed = True
+
+    def snapshot(self, process, stage, runner, after_cleanup=False):
+        result = {"pid": 4321, "exit_code": 2 if self.mode == "server-exit" else (0 if after_cleanup else None),
+                  "expected_start_ticks": 100, "observed_start_ticks": 200 if self.mode == "pid-mismatch" else (None if after_cleanup else 100),
+                  "identity": "mismatch" if self.mode == "pid-mismatch" else ("exited" if after_cleanup else "matches"),
+                  "listener": {"status": "unknown" if self.mode == "diagnostic-probe-error" else "known", "rows": []},
+                  "streams": {"stdout": {"status": "finished" if after_cleanup else "active", "discarded_bytes": 0},
+                              "stderr": {"status": "finished" if after_cleanup else "active", "discarded_bytes": 0}},
+                  "acceptable": self.mode not in ("diagnostic-probe-error", "pid-mismatch", "capture-incomplete")}
+        (runner.evidence / (stage + "-startup.stderr.log")).write_text("owned child startup exit diagnostic\n")
+        return result
+
+    def finish_capture(self, process, runner):
+        return self.mode != "capture-incomplete"
 
 
 class Commands:
@@ -310,6 +327,46 @@ class LaunchTests(unittest.TestCase):
         self.assertEqual(len(host.started), 2)
         self.assertEqual(host.stopped, ["emulator", "adb-server"])
 
+    def test_failed_child_exit_pid_mismatch_and_lost_listener_have_precleanup_diagnostics(self):
+        for mode in ("server-exit", "pid-mismatch", "foreign-listener"):
+            code, result, commands, host, _ = self.run_fake(mode)
+            self.assertEqual(code, 1)
+            self.assertFalse(result["success"])
+            before = result["process_diagnostics"]["adb-server"]["before_cleanup"]
+            if mode == "server-exit":
+                self.assertEqual(before["exit_code"], 2)
+            if mode == "pid-mismatch":
+                self.assertEqual(before["identity"], "mismatch")
+            self.assertTrue((host.root / "mobile-evidence/android/launch/adb-server-startup.stderr.log").exists())
+            self.assertFalse(any(stage == "install" for stage, *_ in commands.calls))
+
+    def test_open_precleanup_streams_are_expected_but_unknown_probes_or_incomplete_final_drain_fail(self):
+        code, result, _, _, _ = self.run_fake()
+        self.assertEqual(code, 0)
+        before = result["process_diagnostics"]["adb-server"]["before_cleanup"]
+        self.assertEqual(before["streams"]["stdout"]["status"], "active")
+        self.assertEqual(result["process_diagnostics"]["adb-server"]["after_cleanup"]["streams"]["stdout"]["status"], "finished")
+        for mode in ("diagnostic-probe-error", "capture-incomplete"):
+            code, result, _, host, _ = self.run_fake(mode)
+            self.assertEqual(code, 1)
+            self.assertFalse(result["success"])
+            self.assertTrue(result["diagnostic_failures"])
+            self.assertEqual(host.stopped, ["emulator", "adb-server"])
+
+    def test_diagnostic_write_failure_preserves_original_runtime_failure_and_owned_cleanup(self):
+        root, sdk, evidence, clock, host, _, runner = self.fixture("server-exit")
+
+        def failed_snapshot(*args, **kwargs):
+            raise OSError(5, "secret=fixture-do-not-persist")
+
+        host.snapshot = failed_snapshot
+        self.assertEqual(launch.run_launch(root, sdk, evidence, runner, host, settle=clock.sleep), 1)
+        result = json.loads((runner.evidence / "launch-result.json").read_text())
+        self.assertEqual(result["failure"], "Tracked private adb server failed to own its listener")
+        self.assertEqual(host.stopped, ["adb-server"])
+        self.assertTrue(result["diagnostic_failures"])
+        self.assertNotIn("fixture-do-not-persist", json.dumps(result))
+
     def test_boot_deadline_preserves_cleanup_and_does_not_install(self):
         code, result, commands, host, clock = self.run_fake("boot-never")
         self.assertEqual(code, 1)
@@ -433,6 +490,185 @@ class LaunchTests(unittest.TestCase):
 
 
 class ExecutionTests(unittest.TestCase):
+    def test_real_snapshot_writes_bounded_logs_and_keeps_failed_listener_probes_unknown(self):
+        header = b"sl local_address rem_address st tx_queue rx_queue tr tm retr uid timeout inode\n"
+        row = b"0: 0100007F:9859 00000000:0000 0A 0:0 00:0 0 1000 0 12345\n"
+        process = SimpleNamespace(pid=42, owned_start_ticks=100, owned_capture_errors={},
+                                  owned_captures={"stdout": launch.BoundedCapture(io.BytesIO(b"ordinary startup\n")),
+                                                  "stderr": launch.BoundedCapture(io.BytesIO(b"Authorization: fixture-token\n"))})
+        for capture in process.owned_captures.values():
+            self.assertTrue(capture.finish(1))
+        host = launch.ProcessHost.__new__(launch.ProcessHost)
+        host.server_port = 39001
+        observation = {"pid": 42, "expected_start_ticks": 100, "observed_start_ticks": 100,
+                       "exit_code": None, "process_group": 42, "identity": "matches", "probe_errors": {}}
+        original_open = launch.Path.open
+
+        for fail in (False, True):
+            with tempfile.TemporaryDirectory() as temporary:
+                runner = SimpleNamespace(evidence=Path(temporary))
+
+                def opened(path, *args, **kwargs):
+                    if path.parent.name == "net" and path.name in ("tcp", "tcp6"):
+                        if fail:
+                            raise OSError(5, "secret=fixture-network-probe")
+                        return io.BytesIO(header + (row if path.name == "tcp" else b""))
+                    return original_open(path, *args, **kwargs)
+
+                with patch.object(launch, "observe_process", return_value=json.loads(json.dumps(observation))), patch.object(launch.Path, "iterdir", return_value=iter([Path("fd0")])), patch.object(launch.os, "readlink", return_value="socket:[12345]"), patch.object(launch.Path, "open", new=opened):
+                    snapshot = host.snapshot(process, "adb-server", runner)
+                self.assertEqual(snapshot["acceptable"], not fail)
+                self.assertEqual(snapshot["listener"]["status"], "unknown" if fail else "known")
+                persisted = (runner.evidence / "adb-server-process-before-cleanup.json").read_text()
+                self.assertNotIn("fixture-network-probe", persisted)
+                self.assertNotIn("fixture-token", (runner.evidence / "adb-server-startup.stderr.log").read_text())
+                self.assertTrue((runner.evidence / "adb-server-process-before-cleanup.json").is_file())
+
+    def test_scoped_listener_diagnostics_keep_foreign_ownership_and_malformed_inventory_distinct(self):
+        header = "sl local_address rem_address st tx_queue rx_queue tr tm retr uid timeout inode\n"
+        row = "0: 0100007F:9859 00000000:0000 0A 0:0 00:0 0 1000 0 12345\n"
+        self.assertTrue(launch.selected_port_rows(header + row, 39001, {"12345"})[0]["owned_by_tracked_process"])
+        self.assertFalse(launch.selected_port_rows(header + row, 39001, {"99999"})[0]["owned_by_tracked_process"])
+        self.assertIsNone(launch.selected_port_rows(header + row, 39001, None)[0]["owned_by_tracked_process"])
+        self.assertEqual(launch.selected_port_rows(header + row, 39002, set()), [])
+        for data in ("malformed", header + row * 17):
+            with self.assertRaises(launch.LaunchFailure):
+                launch.selected_port_rows(data, 39001, set())
+
+    def test_tracked_start_drains_both_flooded_pipes_and_explicitly_disables_adb_trace(self):
+        process = SimpleNamespace(pid=42, stdout=io.BytesIO(b"a" * (launch.MAX_LOG_BYTES * 3)), stderr=io.BytesIO(b"b" * (launch.MAX_LOG_BYTES * 4)))
+        host = launch.ProcessHost.__new__(launch.ProcessHost)
+        with patch.object(launch.subprocess, "Popen", return_value=process) as popen, patch.object(launch, "process_start_ticks", return_value=100):
+            self.assertIs(host.start("adb-server", ["never-executed"], {"ADB_TRACE": "auth", "PATH": "fixture"}), process)
+        self.assertEqual(popen.call_args.kwargs["stdout"], subprocess.PIPE)
+        self.assertEqual(popen.call_args.kwargs["stderr"], subprocess.PIPE)
+        self.assertEqual(popen.call_args.kwargs["bufsize"], 0)
+        self.assertNotIn("ADB_TRACE", popen.call_args.kwargs["env"])
+        self.assertTrue(host.finish_capture(process, SimpleNamespace(remaining=lambda **kwargs: 10)))
+        for capture in process.owned_captures.values():
+            body, metadata = capture.snapshot()
+            self.assertEqual(len(body), launch.MAX_LOG_BYTES)
+            self.assertGreaterEqual(metadata["discarded_bytes"], launch.MAX_LOG_BYTES * 2)
+            self.assertTrue(metadata["eof"])
+
+    def test_one_finished_stream_does_not_hide_another_live_pipe_at_final_join(self):
+        event = threading.Event()
+
+        class HeldPipe:
+            def read(self, size):
+                event.wait(2)
+                return b""
+
+            def close(self):
+                pass
+
+        process = SimpleNamespace(owned_capture_errors={}, owned_captures={"stdout": launch.BoundedCapture(io.BytesIO(b"done")), "stderr": launch.BoundedCapture(HeldPipe())})
+        host = launch.ProcessHost.__new__(launch.ProcessHost)
+        started = time.monotonic()
+        self.assertFalse(host.finish_capture(process, SimpleNamespace(remaining=lambda **kwargs: 0.01)))
+        self.assertLess(time.monotonic() - started, 0.2)
+        self.assertTrue(process.owned_captures["stdout"].snapshot()[1]["eof"])
+        self.assertFalse(process.owned_captures["stderr"].snapshot()[1]["eof"])
+        event.set()
+        self.assertTrue(host.finish_capture(process, SimpleNamespace(remaining=lambda **kwargs: 1)))
+
+    def test_capture_preserves_raw_split_utf8_bytes_and_partial_output_before_read_failure(self):
+        class Chunks:
+            def __init__(self, failure=False):
+                self.chunks = iter((b"\xe2", b"\x82", b"\xac", b"\n"))
+                self.failure = failure
+
+            def read(self, size):
+                try:
+                    return next(self.chunks)
+                except StopIteration:
+                    if self.failure:
+                        raise PermissionError(13, "private_key=fixture")
+                    return b""
+
+            def close(self):
+                pass
+
+        for failure in (False, True):
+            capture = launch.BoundedCapture(Chunks(failure))
+            self.assertTrue(capture.finish(1))
+            body, metadata = capture.snapshot()
+            self.assertEqual(body, "€\n".encode())
+            self.assertEqual(metadata["retained_bytes"], 4)
+            self.assertEqual(metadata["discarded_bytes"], 0)
+            self.assertEqual(metadata["eof"], not failure)
+            self.assertEqual(metadata["status"], "failed" if failure else "finished")
+            self.assertNotIn("fixture", json.dumps(metadata))
+
+    def test_process_observation_records_zero_exit_pid_reuse_and_probe_failure_truthfully(self):
+        process = SimpleNamespace(pid=42, owned_start_ticks=100, poll=lambda: 0)
+
+        def absent(pid):
+            raise FileNotFoundError(2, "secret=fixture")
+
+        exited = launch.observe_process(process, read_ticks=absent, read_group=absent)
+        self.assertEqual(exited["exit_code"], 0)
+        self.assertEqual(exited["identity"], "exited")
+        reused = launch.observe_process(process, read_ticks=lambda pid: 200, read_group=lambda pid: 42)
+        self.assertEqual(reused["identity"], "mismatch")
+
+        def failed():
+            raise OSError(5, "secret=fixture")
+
+        process.poll = failed
+        unknown = launch.observe_process(process, read_ticks=absent, read_group=absent)
+        self.assertEqual(unknown["identity"], "unknown")
+        self.assertIn("exit_status", unknown["probe_errors"])
+        self.assertNotIn("fixture", json.dumps(unknown))
+
+    def test_startup_capture_drains_after_cap_and_reports_truncation_without_live_disk_files(self):
+        capture = launch.BoundedCapture(io.BytesIO(b"diagnostic\n" + b"x" * (launch.MAX_LOG_BYTES * 3)))
+        self.assertTrue(capture.finish(1))
+        body, metadata = capture.snapshot()
+        self.assertEqual(len(body), launch.MAX_LOG_BYTES)
+        self.assertGreater(metadata["discarded_bytes"], launch.MAX_LOG_BYTES)
+        self.assertEqual(metadata["status"], "finished")
+
+    def test_live_capture_join_is_bounded_and_reader_errors_do_not_expose_os_messages(self):
+        event = threading.Event()
+
+        class Live:
+            def read(self, size):
+                event.wait(2)
+                return b""
+
+            def close(self):
+                pass
+
+        capture = launch.BoundedCapture(Live())
+        started = time.monotonic()
+        self.assertFalse(capture.finish(0.01))
+        self.assertLess(time.monotonic() - started, 0.2)
+        self.assertEqual(capture.snapshot()[1]["status"], "active")
+        event.set()
+        self.assertTrue(capture.finish(1))
+
+        class Broken:
+            def read(self, size):
+                raise OSError(5, "secret=fixture-do-not-record")
+
+            def close(self):
+                pass
+
+        capture = launch.BoundedCapture(Broken())
+        self.assertTrue(capture.finish(1))
+        metadata = capture.snapshot()[1]
+        self.assertEqual(metadata["status"], "failed")
+        self.assertNotIn("fixture-do-not-record", str(metadata))
+
+    def test_startup_log_redaction_is_bounded_and_preserves_ordinary_exit_reason(self):
+        body = b"adb: invalid server option\nAuthorization: Bearer fixture-token\n-----BEGIN PRIVATE KEY-----\nfixture-key-material\n-----END PRIVATE KEY-----\n" + b"x" * launch.MAX_LOG_BYTES
+        redacted = launch.safe_startup_log(body)
+        self.assertIn(b"adb: invalid server option", redacted)
+        self.assertNotIn(b"fixture-token", redacted)
+        self.assertNotIn(b"fixture-key-material", redacted)
+        self.assertLessEqual(len(redacted), launch.MAX_LOG_BYTES + 64)
+
     def test_private_listener_inventory_distinguishes_time_wait_all_listen_addresses_and_unknown_shape(self):
         header = "sl local_address rem_address st tx_queue rx_queue tr tm retr uid timeout inode\n"
         row = "0: 0100007F:9859 00000000:0000 06 0:0 00:0 0 1000 0 12345\n"

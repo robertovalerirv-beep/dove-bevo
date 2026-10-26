@@ -82,6 +82,70 @@ OneDrive. For a signed archive, run the same Xcode project/scheme with an extern
 App Store export options. Store metadata/privacy declarations, account agreements,
 signed device testing and App Review are separate release steps.
 
+## Protected signed release
+
+After the release workflow's Android and iOS functional checks pass, invoke:
+
+```sh
+bash mobile-apps/ios/scripts/release-ios.sh
+# Explicitly add upload only in the authorized release workflow:
+bash mobile-apps/ios/scripts/release-ios.sh --upload
+```
+
+The separate script leaves ordinary unsigned CI unchanged. It requires macOS,
+Xcode 26+, an iOS 26+ SDK and Python 3.9+ (standard library only). Provide these
+inputs through the platform's protected secrets/environment, never a source file:
+
+| Input | Purpose |
+| --- | --- |
+| `DOVEBEVO_IOS_CERTIFICATE_BASE64` | Base64 of an encrypted Apple Distribution P12 |
+| `DOVEBEVO_SIGNING_PASSWORD` | P12 password |
+| `DOVEBEVO_IOS_PROFILE_BASE64` | Base64 App Store Connect distribution profile |
+| `DOVEBEVO_BUILD_NUMBER` | Optional positive build number; default `1` |
+| `RUNNER_TEMP` | OS temporary directory outside this checkout and OneDrive |
+| `DOVEBEVO_ASC_PRIVATE_KEY` | Upload only: raw PKCS8 PEM App Store Connect team key |
+| `DOVEBEVO_ASC_KEY_ID` | Upload only: approved key ID |
+| `DOVEBEVO_ASC_ISSUER_ID` | Upload only: approved team key issuer UUID |
+
+The script verifies team `9T359CV674`, explicit App ID `com.dovebevo.app`, profile
+expiry, App Store distribution type and the exact valid Apple Distribution
+identity authorized by the profile. It rejects development, ad hoc and enterprise
+profiles. Manual archive/export options pin the profile UUID and certificate
+fingerprint. Both the archive and exported app undergo real `codesign` checks;
+the exported entitlements, embedded profile, bundle/build/platform and actual
+signature certificate must match. Metadata tests do not mock Apple signing:
+
+```sh
+python3 -m unittest discover -s mobile-apps/ios/scripts/tests -v
+```
+
+Signing material is decoded only into a fresh `0700` directory under validated
+`RUNNER_TEMP` with `0600` files, imported into a task-owned ephemeral keychain and
+restricted to Apple signing tools. Only the matching profile is installed in the
+OS Xcode provisioning directory. Existing identical profiles are reused and
+preserved; collisions fail without overwriting. Exit/signal cleanup restores the
+previous keychain search list, removes the task's keychain/profile and deletes
+its private temporary files, including on command failures. A cleanup failure
+fails the release. A killed host cannot run a trap; GitHub-hosted job isolation
+is the additional cleanup boundary.
+
+Outputs are `.build/release/DoveBevo.xcarchive`,
+`.build/release/export/DoveBevo.ipa` and the secret-free
+`.build/release/release-manifest.json`. Existing release output is preserved and
+causes a new invocation to stop. The signed app necessarily contains its public
+distribution profile and certificate chain; no P12, private key or authentication
+file is copied to these outputs.
+
+Upload is disabled unless `--upload` is passed. That mode requires the selected
+Xcode's `altool` to support an explicit `--p8-file-path`, validates the IPA and then
+uploads using the approved API key in the private temporary directory. It never
+uses an Apple Account password, a credential in the user's home directory or an
+Admin provisioning API key. An upload command succeeding does not attest App
+Store processing, TestFlight approval or public release. Apple documents
+[API authentication for altool](https://developer.apple.com/documentation/technotes/tn3147-migrating-to-the-latest-notarization-tool),
+[App Store upload tools](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/)
+and the [Xcode 16+ profile location](https://developer.apple.com/documentation/xcode-release-notes/xcode-16-release-notes).
+
 ## Browser and privacy boundary
 
 Only exact HTTPS `www.dovebevo.com` and `dovebevo.com` origins, without userinfo

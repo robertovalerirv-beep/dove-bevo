@@ -11,10 +11,7 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     override func tearDownWithError() throws {
-        let screenshot = XCTAttachment(screenshot: app.screenshot())
-        screenshot.name = "DoveBevo-\(name)"
-        screenshot.lifetime = .keepAlways
-        add(screenshot)
+        attachScreen(named: "DoveBevo-\(name)")
         app.terminate()
     }
 
@@ -53,11 +50,11 @@ final class BrowserSmokeTests: XCTestCase {
         // containers; keep the exact input label, queried from the application.
         let searchField = app.textFields["Cerca una città o un bar"]
         XCTAssertTrue(searchField.waitForExistence(timeout: 15), "Website city search field missing")
-        dismissKeyboardIntroductionIfPresent()
-        let searchScreenshot = XCTAttachment(screenshot: app.screenshot())
-        searchScreenshot.name = "DoveBevo-live-city-search-before-input"
-        searchScreenshot.lifetime = .keepAlways
-        add(searchScreenshot)
+        dismissKeyboardIntroductionIfPresent(searchField: searchField)
+        XCTAssertTrue(searchField.exists, "The original city search sheet disappeared; do not reopen it after a renderer reset")
+        XCTAssertTrue(searchField.isHittable, "The original city search field must remain reachable before typing")
+        assertNoNativeRecovery()
+        attachScreen(named: "DoveBevo-live-city-search-before-input")
         // Opening the website sheet intentionally focuses this field. A second
         // tap is unnecessary and can collide with the first keyboard intro.
         searchField.typeText("Milano")
@@ -80,10 +77,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [mapReady], timeout: 45), .completed, "Map style did not finish loading")
         XCTAssertFalse(website.staticTexts["La mappa non si carica: controlla la connessione e ricarica la pagina."].exists)
         XCTAssertTrue(app.buttons["browser.share"].isEnabled)
-        let mapScreenshot = XCTAttachment(screenshot: app.screenshot())
-        mapScreenshot.name = "DoveBevo-live-Milano-map"
-        mapScreenshot.lifetime = .keepAlways
-        add(mapScreenshot)
+        attachScreen(named: "DoveBevo-live-Milano-map")
         openPrivacyAndReturn()
         XCTAssertTrue(interactiveMap.exists, "Returning from native privacy must retain the website map")
         XCTAssertTrue(searchButton.exists)
@@ -107,19 +101,50 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 5))
     }
 
-    private func dismissKeyboardIntroductionIfPresent() {
+    private func attachScreen(named name: String) {
+        // Keep the original physical-screen PNG rather than cropping app bounds.
+        let screenshot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenshot.name = name
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+    }
+
+    private func assertNoNativeRecovery() {
+        XCTAssertFalse(app.otherElements["browser.loading"].exists, "Native loading appeared during city search; inspect renderer diagnostics")
+        XCTAssertFalse(app.otherElements["browser.error"].exists, "Native recovery/error UI replaced city search")
+    }
+
+    private func dismissKeyboardIntroductionIfPresent(searchField: XCUIElement) {
         // A fresh simulator may show this system tutorial instead of keys.
         // Handle only its observed prompt, never an arbitrary Continue button.
         let introduction = app.staticTexts.matching(
             NSPredicate(format: "label BEGINSWITH %@", "Speed up your typing")
         ).firstMatch
         guard introduction.waitForExistence(timeout: 2) else { return }
+        attachScreen(named: "DoveBevo-keyboard-introduction-before-continue")
         let continueButton = app.buttons["Continue"]
         XCTAssertTrue(continueButton.waitForExistence(timeout: 5), "Keyboard introduction has no Continue action")
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: continueButton)
-        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed, "Keyboard introduction is not on screen; inspect renderer diagnostics")
-        // Re-query after readiness; one handler owns this transient control.
-        app.buttons["Continue"].tap()
+        let appFrame = app.frame
+        let buttonFrame = continueButton.frame
+        let dimensions = [appFrame.minX, appFrame.minY, appFrame.width, appFrame.height,
+                          buttonFrame.minX, buttonFrame.minY, buttonFrame.width, buttonFrame.height]
+        guard dimensions.allSatisfy({ $0.isFinite }), !appFrame.isEmpty,
+              !buttonFrame.isEmpty, appFrame.contains(buttonFrame) else {
+            XCTFail("The observed keyboard Continue action has no finite, visible frame")
+            return
+        }
+        XCTAssertTrue(introduction.exists, "The keyboard tutorial disappeared before its scoped action")
+        XCTAssertTrue(searchField.exists, "City search disappeared before dismissing the keyboard tutorial")
+        assertNoNativeRecovery()
+        // Cache the observed frame once. A coordinate tap avoids XCTest scrolling
+        // or re-resolving this transient keyboard element as its process changes.
+        let offset = CGVector(dx: buttonFrame.midX - appFrame.minX, dy: buttonFrame.midY - appFrame.minY)
+        app.coordinate(withNormalizedOffset: .zero).withOffset(offset).tap()
+        attachScreen(named: "DoveBevo-keyboard-introduction-after-continue")
+        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: introduction)
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 10), .completed, "The observed keyboard tutorial did not dismiss")
+        XCTAssertTrue(searchField.exists, "The original city search sheet was lost while dismissing the tutorial")
+        assertNoNativeRecovery()
     }
 
     private func acceptBundledRulesIfShown() {

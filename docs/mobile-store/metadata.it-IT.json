@@ -1,0 +1,23 @@
+{
+  "status": "draft-not-submitted",
+  "reviewed_source_commit": "320d12861a18e5be59f852961277b6551a517bad",
+  "locale": "it-IT",
+  "apple": {
+    "name": "Dove bevo",
+    "subtitle": "Prezzi dei drink sulla mappa",
+    "promotional_text": "Guarda i prezzi segnalati nei bar, confronta i drink e aiuta a tenere la mappa aggiornata. Senza account.",
+    "keywords": "bar,pub,birra,spritz,cocktail,analcolico,locali,happy hour,confronto",
+    "description": "Quanto costa qui? Dove bevo mette sulla mappa i prezzi dei drink segnalati dalle persone che sono passate al bar.\n\nCerca una città o un locale, scegli i drink e guarda i prezzi disponibili. Apri la scheda del bar per vedere quando un prezzo è stato segnato e quante persone lo hanno confermato. Trovi birra media, spritz, cocktail, calice di vino, analcolico e acqua.\n\nSe ci sei stato, segna il prezzo che hai pagato davvero. Puoi confermare un prezzo, indicare che è cambiato o segnalare un errore. Manca un locale? Proponi nome, tipo e punto sulla mappa: la proposta viene controllata prima della pubblicazione.\n\nUsa «Vicino a me» per centrare la mappa, oppure cerca senza attivare la posizione. La posizione del telefono resta sul dispositivo; le richieste della mappa descrivono l'area che stai consultando. Condividi la scheda di un locale con gli strumenti del telefono.\n\nNon serve un account. Prima di inviare un contributo può aprirsi una breve verifica anti-bot nel browser.\n\nI prezzi sono segnalazioni della comunità: possono essere incompleti o cambiati. I locali con una posizione a pagamento nell'Elenco sono indicati come «Sponsorizzato»; la sponsorizzazione non cambia i prezzi.\n\nDove bevo è un servizio per maggiorenni. Non vende né consegna bevande.\n\nPer assistenza, privacy o segnalazioni sui contenuti: dovebevo@gmail.com."
+  },
+  "google_play": {
+    "title": "Dove bevo",
+    "short_description": "Scopri i bar sulla mappa e confronta i prezzi dei drink segnalati dagli utenti.",
+    "full_description": "Quanto costa qui? Dove bevo mette sulla mappa i prezzi dei drink segnalati dalle persone che sono passate al bar.\n\nCerca una città o un locale, scegli i drink e guarda i prezzi disponibili. Apri la scheda del bar per vedere quando un prezzo è stato segnato e quante persone lo hanno confermato. Trovi birra media, spritz, cocktail, calice di vino, analcolico e acqua.\n\nSe ci sei stato, segna il prezzo che hai pagato davvero. Puoi confermare un prezzo, indicare che è cambiato o segnalare un errore. Manca un locale? Proponi nome, tipo e punto sulla mappa: la proposta viene controllata prima della pubblicazione.\n\nUsa «Vicino a me» per centrare la mappa, oppure cerca senza attivare la posizione. La posizione del telefono resta sul dispositivo; le richieste della mappa descrivono l'area che stai consultando. Condividi la scheda di un locale con gli strumenti del telefono.\n\nNon serve un account. Prima di inviare un contributo può aprirsi una breve verifica anti-bot nel browser.\n\nI prezzi sono segnalazioni della comunità: possono essere incompleti o cambiati. I locali con una posizione a pagamento nell'Elenco sono indicati come «Sponsorizzato»; la sponsorizzazione non cambia i prezzi.\n\nDove bevo è un servizio per maggiorenni. Non vende né consegna bevande.\n\nPer assistenza, privacy o segnalazioni sui contenuti: dovebevo@gmail.com."
+  },
+  "contact": {
+    "support_email": "dovebevo@gmail.com",
+    "website": "https://www.dovebevo.com/",
+    "privacy_policy_url_to_verify": "https://www.dovebevo.com/privacy",
+    "rules_url_to_verify": "https://www.dovebevo.com/regole"
+  }
+}

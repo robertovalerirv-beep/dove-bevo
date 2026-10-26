@@ -78,7 +78,8 @@
       "vars": {
         "DATA_VERSION": "none",
         "TURNSTILE_SITE_KEY": "0x4AAAAAAFUazHbuU79qVX5f",
-        "TURNSTILE_HOSTNAME": "dovebevo-staging.dovebevo.workers.dev",
+        // Public site: www.dovebevo.com is served by this Worker; the siteverify hostname must match it.
+        "TURNSTILE_HOSTNAME": "www.dovebevo.com",
         // Cloudflare Access application "dovebevo-staging" (/admin, /api/admin/*): public identifiers.
         "ACCESS_TEAM_DOMAIN": "broad-sunset-c81e.cloudflareaccess.com",
         "ACCESS_AUD": "f5e9f3e8eaeacbf04b818344e936e612f70c2b46b73ca9be08fdab7a45d944ef", // gitleaks:allow (public audience id, not a secret)

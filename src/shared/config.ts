@@ -1,6 +1,6 @@
-// Single source for the product name and domain (SPEC 1). The domain is a placeholder until M6.
+// Single source for the product name and domain (SPEC 1). The domain is the public one (dovebevo.com redirects to www).
 export const APP_NAME = "Dove bevo";
-export const APP_DOMAIN = "dovebevo.example";
+export const APP_DOMAIN = "www.dovebevo.com";
 /** Where owners and users write (rules, privacy): the mailbox of the project, not a personal address. */
 export const CONTACT_EMAIL = "dovebevo@gmail.com";
 

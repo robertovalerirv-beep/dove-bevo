@@ -35,7 +35,8 @@ final class URLPolicyTests: XCTestCase {
         for value in [
             "https://maps.apple.com/?ll=45.46,9.19", "https://www.google.com/maps/",
             "https://www.openstreetmap.org/", "https://example.org/privacy",
-            "mailto:ciao@example.org", "tel:+3902123456"
+            "mailto:ciao@example.org", "mailto:ciao@example.org?subject=Assistenza",
+            "tel:+3902123456"
         ] {
             XCTAssertEqual(destination(value, userLink: true), .external, value)
             XCTAssertEqual(destination(value), .blocked, "Automatic handoff: \(value)")
@@ -48,7 +49,9 @@ final class URLPolicyTests: XCTestCase {
             "http://example.org/", "http://www.dovebevo.com/", "file:///etc/passwd",
             "javascript:alert(1)", "data:text/html,hello", "blob:https://www.dovebevo.com/id",
             "intent://example.org/", "custom-app://action", "about:blank",
-            "https://user:password@example.org/", "mailto:", "tel:"
+            "https://user:password@example.org/", "mailto:", "tel:",
+            "mailto:?subject=Assistenza", "tel:?number=123", "mailto://example.org/",
+            "tel://123", "mailto:%0d%0a@example.org", "tel:%20"
         ] {
             XCTAssertEqual(destination(value, userLink: true), .blocked, value)
         }

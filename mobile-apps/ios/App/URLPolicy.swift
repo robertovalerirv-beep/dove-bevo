@@ -51,7 +51,16 @@ enum URLPolicy {
         case "https":
             return url.host(percentEncoded: false)?.isEmpty == false ? .external : .blocked
         case "mailto", "tel":
-            return url.path(percentEncoded: false).isEmpty ? .blocked : .external
+            // These are opaque URIs, so URL.path(percentEncoded:) can be empty
+            // even when a recipient or phone number is present. Read the
+            // scheme-specific destination, stopping before query/fragment data.
+            let resource = url.absoluteString.dropFirst((url.scheme?.count ?? 0) + 1)
+            let destination = resource.prefix { $0 != "?" && $0 != "#" }
+            guard !destination.isEmpty, !destination.hasPrefix("//"),
+                  let decoded = String(destination).removingPercentEncoding,
+                  !decoded.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  decoded.rangeOfCharacter(from: .controlCharacters) == nil else { return .blocked }
+            return .external
         default:
             // No arbitrary app schemes, local files, javascript URLs or HTTP.
             return .blocked

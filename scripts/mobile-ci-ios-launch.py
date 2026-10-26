@@ -212,7 +212,7 @@ def run_launch(app, evidence, runner, settle=time.sleep):
         runner.run("boot", ["xcrun", "simctl", "boot", owned], timeout=20)
         runner.run("bootstatus", ["xcrun", "simctl", "bootstatus", owned, "-b"], timeout=180)
         runner.run("install", ["xcrun", "simctl", "install", owned, str(app)], timeout=90)
-        launched = runner.run("launch", ["xcrun", "simctl", "launch", "--terminate-running-process", owned, IDENTITY], timeout=20)
+        launched = runner.run("launch", ["xcrun", "simctl", "launch", "--terminate-running-process", owned, IDENTITY], timeout=60)
         pid_match = re.fullmatch(re.escape(IDENTITY) + r":\s*([1-9]\d*)", launched)
         if not pid_match:
             raise LaunchFailure("Simulator launch did not return the expected app PID")

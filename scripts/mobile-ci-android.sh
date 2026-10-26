@@ -13,7 +13,8 @@ mkdir -p "$evidence"
 } 2>&1 | tee "$evidence/toolchain.txt"
 # Use the official preinstalled command-line tools and already accepted runner SDK licences.
 sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-"$sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' 2>&1 | tee "$evidence/sdk-install.log"
+# Google's stable API 37 platform package includes the minor-version suffix.
+"$sdkmanager" 'platforms;android-37.0' 'build-tools;36.0.0' 2>&1 | tee "$evidence/sdk-install.log"
 "$sdkmanager" --list_installed > "$evidence/sdk-packages.txt"
 # Keep every Gradle module's output and project cache outside the checkout.
 cat > "$RUNNER_TEMP/mobile-android.init.gradle" <<'GRADLE'
@@ -23,6 +24,7 @@ allprojects {
 GRADLE
 bash android/gradlew -p android --no-daemon --console=plain --max-workers=2 \
   --project-cache-dir "$RUNNER_TEMP/mobile-android-cache" \
+  -Pkotlin.project.persistent.dir="$RUNNER_TEMP/mobile-kotlin-cache" \
   --init-script "$RUNNER_TEMP/mobile-android.init.gradle" :app:assembleDebug 2>&1 | tee "$evidence/build.log"
 appbuild="$RUNNER_TEMP/mobile-android-build/_app"
 apk="$appbuild/outputs/apk/debug/app-debug.apk"

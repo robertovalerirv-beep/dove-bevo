@@ -1,6 +1,8 @@
 ext {
     minSdkVersion = 24
-    compileSdkVersion = 36
+    // OkHttp's supported Android 5.5.1 artifact requires compile API 37.
+    // Keep target/min independent: no new runtime behavior or device minimum.
+    compileSdkVersion = 37
     targetSdkVersion = 36
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'

@@ -34,6 +34,28 @@ describe("generated native platform boundaries (source checks, not device proof)
     expect(read("android/variables.gradle")).toMatch(/targetSdkVersion = 36/);
   });
 
+  it("retains the Android OkHttp security release with a compatible compile toolchain", () => {
+    const sdk = read("android/variables.gradle");
+    expect(sdk).toMatch(/compileSdkVersion = 37/);
+    expect(sdk).toMatch(/targetSdkVersion = 36/);
+    expect(sdk).toMatch(/minSdkVersion = 24/);
+    const build = read("android/build.gradle");
+    expect(build).toContain("com.android.tools.build:gradle:9.1.1");
+    expect(build).toContain("kotlin_version = '2.4.21'");
+    expect(read("android/gradle/wrapper/gradle-wrapper.properties")).toContain(
+      "gradle-9.3.1-all.zip",
+    );
+    const app = read("android/app/build.gradle");
+    expect(app).toContain("com.squareup.okhttp3:okhttp:5.5.1");
+    expect(app).not.toContain("okhttp-jvm");
+    expect(app).toContain("proguard-android-optimize.txt");
+    const properties = read("android/gradle.properties");
+    expect(properties).toContain("android.builtInKotlin=false");
+    expect(properties).toContain("android.newDsl=false");
+    expect(properties).not.toMatch(/suppressUnsupportedCompileSdk|disable.*[Aa]ar/);
+    expect(read("scripts/mobile-ci-android.sh")).toContain("'platforms;android-37.0'");
+  });
+
   it("retains the iOS scene lifecycle and preview callback without background location", () => {
     const plist = read("ios/App/App/Info.plist");
     expect(plist).toContain("UIApplicationSceneManifest");

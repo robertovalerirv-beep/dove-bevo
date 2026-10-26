@@ -20,6 +20,22 @@ spec.loader.exec_module(launch)
 PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+yh9sAAAAASUVORK5CYII=")
 
 
+def webview_dump(version="136.0.7103.60"):
+    return "\n".join([
+        "Current WebView Update Service state",
+        "  Current WebView package (name, version): (com.google.android.webview, " + version + ")",
+        "  Minimum WebView version code: 661308838",
+        "  Number of relros started: 1",
+        "  Number of relros finished: 1",
+        "  WebView package dirty: false",
+        "  Any WebView package installed: true",
+        "  Preferred WebView package (name, version): (com.google.android.webview, " + version + ")",
+        "  WebView packages:",
+        "    Valid package com.google.android.webview (versionName: " + version + ", versionCode: 710306033, targetSdkVersion: 36) is  installed/enabled for all users",
+        "    com.google.android.webview.beta is NOT installed.",
+    ])
+
+
 class Clock:
     def __init__(self):
         self.value = 0
@@ -51,7 +67,14 @@ class Host:
             raise launch.LaunchFailure("Chosen private ports are not free; no retry")
 
     def free_server_port(self):
+        if self.mode == "time-wait" and "adb-server" in self.stopped:
+            return False
         return not self.listener
+
+    def listener_present(self):
+        if self.mode == "malformed-net-inventory":
+            raise launch.LaunchFailure("Unrecognized private listener inventory")
+        return self.listener
 
     def start(self, stage, argv, env):
         self.started.append((stage, argv, env))
@@ -83,6 +106,7 @@ class Commands:
         self.calls = []
         self.boot_calls = 0
         self.pid_calls = 0
+        self.webview_calls = 0
 
     def __call__(self, stage, argv, timeout, env, output=None):
         self.calls.append((stage, argv, timeout, env))
@@ -118,8 +142,26 @@ class Commands:
         elif stage == "android-api":
             text = "35" if self.mode == "wrong-api" else "36"
         elif stage == "webview":
+            self.webview_calls += 1
             major = "110" if self.mode == "old-webview" else "136"
-            text = "Current WebView package (name, version): (com.google.android.webview, " + major + ".0.7103.60)"
+            text = webview_dump(major + ".0.7103.60")
+            changes = {
+                "webview-current-only": lambda value: value.splitlines()[1],
+                "webview-dirty": lambda value: value.replace("dirty: false", "dirty: true"),
+                "webview-invalid": lambda value: value.replace("Valid package", "Invalid package"),
+                "webview-not-installed": lambda value: value.replace("    Valid package com.google.android.webview (versionName: " + major + ".0.7103.60, versionCode: 710306033, targetSdkVersion: 36) is  installed/enabled for all users", "    com.google.android.webview is NOT installed."),
+                "webview-disabled": lambda value: value.replace("is  installed/enabled", "is NOT installed/enabled"),
+                "webview-any-false": lambda value: value.replace("package installed: true", "package installed: false"),
+                "webview-relro-pending": lambda value: value.replace("relros finished: 1", "relros finished: 0"),
+                "webview-relro-placeholder": lambda value: value.replace("relros started: 1", "relros started: 2147483647").replace("relros finished: 1", "relros finished: 2147483647"),
+                "webview-wrong-version": lambda value: value.replace("versionName: 136.0.7103.60", "versionName: 135.0.7103.60"),
+                "webview-missing-flag": lambda value: value.replace("  WebView package dirty: false\n", ""),
+                "webview-duplicate-flag": lambda value: value + "\n  WebView package dirty: false",
+            }
+            if self.mode in changes:
+                text = changes[self.mode](text)
+            if self.mode == "webview-becomes-ready" and self.webview_calls == 1:
+                text = text.replace("dirty: false", "dirty: true").replace("relros finished: 1", "relros finished: 0")
         elif stage == "install":
             text = "Failure [INSTALL_FAILED_INVALID_APK]" if self.mode == "install-failed" else "Performing Streamed Install\nSuccess"
             if self.mode == "server-lost-during-install":
@@ -259,6 +301,33 @@ class LaunchTests(unittest.TestCase):
             self.assertFalse(any(stage == "install" for stage, *_ in commands.calls))
             self.assertNotIn("update", str([argv for _, argv, *_ in commands.calls if argv[-1] != "webviewupdate"]))
 
+    def test_current_webview_alone_or_invalid_service_readiness_never_permits_install(self):
+        for mode in ("webview-current-only", "webview-dirty", "webview-invalid", "webview-not-installed", "webview-disabled", "webview-any-false", "webview-relro-pending", "webview-relro-placeholder", "webview-wrong-version", "webview-missing-flag", "webview-duplicate-flag"):
+            with self.subTest(mode=mode):
+                code, result, commands, host, clock = self.run_fake(mode)
+                self.assertEqual(code, 1)
+                self.assertFalse(result["success"])
+                self.assertFalse(any(stage == "install" for stage, *_ in commands.calls))
+                self.assertEqual(host.stopped, ["emulator", "adb-server"])
+                self.assertLess(clock.value, 480)
+
+    def test_read_only_webview_readiness_transition_is_bounded_and_keeps_exact_provider(self):
+        code, result, commands, _, _ = self.run_fake("webview-becomes-ready")
+        self.assertEqual(code, 0)
+        self.assertGreaterEqual(commands.webview_calls, 2)
+        self.assertEqual(result["webview"]["relros_started"], result["webview"]["relros_finished"])
+        self.assertEqual(result["webview"]["package"], "com.google.android.webview")
+
+    def test_time_wait_does_not_claim_a_listener_but_unknown_inventory_prevents_success(self):
+        code, result, _, host, _ = self.run_fake("time-wait")
+        self.assertEqual(code, 0)
+        self.assertTrue(result["success"])
+        self.assertTrue(host.removed)
+        code, result, _, host, _ = self.run_fake("malformed-net-inventory")
+        self.assertEqual(code, 1)
+        self.assertFalse(result["success"])
+        self.assertFalse(host.removed)
+
     def test_install_launch_process_foreground_and_screenshot_fail_closed(self):
         for mode in ("install-failed", "launch-failed", "stale-pid", "multiple-pids", "wrong-process", "wrong-foreground", "invalid-png", "install-timeout", "launch-timeout", "screenshot-stale-pid", "screenshot-wrong-foreground"):
             with self.subTest(mode=mode):
@@ -340,6 +409,16 @@ class LaunchTests(unittest.TestCase):
 
 
 class ExecutionTests(unittest.TestCase):
+    def test_private_listener_inventory_distinguishes_time_wait_all_listen_addresses_and_unknown_shape(self):
+        header = "sl local_address rem_address st tx_queue rx_queue tr tm retr uid timeout inode\n"
+        row = "0: 0100007F:9859 00000000:0000 06 0:0 00:0 0 1000 0 12345\n"
+        self.assertFalse(launch.private_listener_present(header + row, 39001))
+        for address in ("0100007F", "00000000", "00000000000000000000000000000000", "00000000000000000000000001000000"):
+            self.assertTrue(launch.private_listener_present(header + row.replace("0100007F", address).replace(" 06 ", " 0A "), 39001))
+        for malformed in ("", "unknown\n" + row, header + "unparseable row\n", header + row.replace(" 06 ", " XX ")):
+            with self.assertRaises(launch.LaunchFailure):
+                launch.private_listener_present(malformed, 39001)
+
     def test_listener_parser_requires_exact_ipv4_port_state_and_process_inode(self):
         header = "sl local_address rem_address st tx_queue rx_queue tr tm retr uid timeout inode\n"
         row = "0: 0100007F:9859 00000000:0000 0A 0:0 00:0 0 1000 0 12345\n"

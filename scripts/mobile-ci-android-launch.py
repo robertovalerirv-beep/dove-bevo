@@ -38,6 +38,10 @@ class LaunchFailure(Exception):
     pass
 
 
+class WebViewPreparing(LaunchFailure):
+    pass
+
+
 def execute(stage, argv, timeout, env, output=None):
     """Capture only known commands, with EOF stdin and an owned process group.
 
@@ -140,6 +144,67 @@ def listener_inodes_match(contents, inodes, port):
     return False
 
 
+def private_listener_present(contents, port):
+    """Read LISTEN state, not bindability: closed sockets may remain in TIME_WAIT.
+
+    Inspect both proc tables at the call site. Any listener on the exact private
+    port, including IPv6/wildcard addresses, prevents claiming complete cleanup.
+    Unknown inventory is an error rather than evidence of an absent listener.
+    """
+    lines = contents.splitlines()
+    if not lines or not {"local_address", "st", "inode"}.issubset(lines[0].split()):
+        raise LaunchFailure("Unrecognized private listener inventory header")
+    present = False
+    for line in lines[1:]:
+        if not line.strip():
+            continue
+        fields = line.split()
+        if len(fields) < 10 or not re.fullmatch(r"(?:[0-9A-Fa-f]{8}|[0-9A-Fa-f]{32}):[0-9A-Fa-f]{4}", fields[1]) or not re.fullmatch(r"[0-9A-Fa-f]{2}", fields[3]) or not fields[9].isdigit():
+            raise LaunchFailure("Unrecognized private listener inventory row")
+        if fields[3].upper() == "0A" and int(fields[1].rsplit(":", 1)[1], 16) == port:
+            present = True
+    return present
+
+
+def webview_readiness(contents):
+    """Require the API 36 service's usable provider and completed preparation.
+
+    android16-release WebViewUpdateServiceImpl2 can report a current provider
+    while it is still preparing. Its readiness predicate requires a clean
+    package, finished RELRO creation and an installed provider. Its separate
+    package listing also proves this same version is valid/enabled for all users.
+    """
+    lines = [line.strip() for line in contents.splitlines()]
+
+    def field(label, pattern):
+        values = [line[len(label):] for line in lines if line.startswith(label)]
+        if len(values) != 1 or not re.fullmatch(pattern, values[0]):
+            raise LaunchFailure("Missing, duplicated or malformed WebView readiness field")
+        return values[0]
+
+    current = field("Current WebView package (name, version): ", r"\([A-Za-z0-9_.]+, \d+(?:\.\d+){1,3}\)")
+    package, version = current[1:-1].split(", ")
+    if int(version.split(".")[0]) < 111:
+        raise LaunchFailure("Actual active WebView Chromium is older than 111; no update attempted")
+    dirty = field("WebView package dirty: ", r"true|false")
+    installed = field("Any WebView package installed: ", r"true|false")
+    started = int(field("Number of relros started: ", r"\d+"))
+    finished = int(field("Number of relros finished: ", r"\d+"))
+    # API 36 WebViewLibraryLoader starts at most one 32-bit and one 64-bit
+    # creator. Reject impossible counts and Integer.MAX_VALUE's unknown sentinel.
+    if not 0 <= finished <= started <= 2:
+        raise LaunchFailure("Invalid or placeholder WebView RELRO counts")
+    package_lines = [line for line in lines if re.match(r"(?:(?:Valid|Invalid) package )?" + re.escape(package) + r"(?:\s|$)", line)]
+    valid = r"Valid package " + re.escape(package) + r" \(versionName: " + re.escape(version) + r", versionCode: [1-9]\d*, targetSdkVersion: \d+\) is[ \t]+installed/enabled for all users"
+    if len(package_lines) != 1 or not re.fullmatch(valid, package_lines[0]):
+        raise LaunchFailure("Current WebView version is not valid, installed and enabled for all users")
+    if dirty != "false" or installed != "true" or started != finished:
+        raise WebViewPreparing("Installed WebView preparation is not ready")
+    return {"package": package, "version": version, "package_dirty": False,
+            "installed_and_enabled_for_all_users": True, "any_package_installed": True,
+            "relros_started": started, "relros_finished": finished}
+
+
 def process_start_ticks(pid):
     # /proc comm can contain spaces or parentheses; split after its closing ')'.
     return int(Path("/proc", str(pid), "stat").read_text(encoding="utf-8").rsplit(")", 1)[1].split()[19])
@@ -213,6 +278,13 @@ class ProcessHost:
             return True
         except OSError:
             return False
+
+    def listener_present(self):
+        # Read both files even if the first contains a listener; malformed or
+        # unavailable kernel read-back can never attest successful cleanup.
+        states = [private_listener_present(path.read_text(encoding="ascii"), self.server_port)
+                  for path in (Path("/proc/net/tcp"), Path("/proc/net/tcp6"))]
+        return any(states)
 
     def start(self, stage, argv, env):
         process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -445,11 +517,15 @@ def run_launch(root, sdk, evidence, runner, host, settle=time.sleep):
         if device("android-api", ["shell", "getprop", "ro.build.version.sdk"]) != "36":
             raise LaunchFailure("Actual booted Android API is not 36")
         result["android_api"] = 36
-        webview = device("webview", ["shell", "dumpsys", "webviewupdate"])
-        match = re.search(r"Current WebView package \(name, version\): \(([A-Za-z0-9_.]+), (\d+(?:\.\d+){1,3})\)", webview)
-        if not match or int(match.group(2).split(".")[0]) < 111:
-            raise LaunchFailure("Actual active WebView Chromium is missing or older than 111; no update attempted")
-        result["webview"] = {"package": match.group(1), "version": match.group(2)}
+        webview_deadline = runner.clock() + min(60, runner.remaining())
+        while True:
+            try:
+                result["webview"] = webview_readiness(device("webview", ["shell", "dumpsys", "webviewupdate"]))
+                break
+            except WebViewPreparing:
+                if runner.clock() + 2 >= webview_deadline:
+                    raise LaunchFailure("Installed WebView readiness deadline reached; no update or switch attempted") from None
+                settle(2)
         installed = device("install", ["install", "--no-incremental", str(apk)], timeout=120)
         if not re.search(r"(?m)^Success$", installed) or "Failure" in installed:
             raise LaunchFailure("APK install did not return Success")
@@ -504,8 +580,12 @@ def run_launch(root, sdk, evidence, runner, host, settle=time.sleep):
                     host.stop(process, runner)
                 except Exception:
                     cleanup_errors.append(name + " owned process group cleanup failed")
-        if host.server_port is not None and not host.free_server_port():
-            cleanup_errors.append("private adb listener remains; an unowned listener is never signalled")
+        if host.server_port is not None:
+            try:
+                if host.listener_present():
+                    cleanup_errors.append("private adb listener remains; an unowned listener is never signalled")
+            except Exception:
+                cleanup_errors.append("private adb listener absence could not be verified")
         if not cleanup_errors:
             try:
                 host.remove()

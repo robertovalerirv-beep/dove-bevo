@@ -7,6 +7,7 @@ final class BrowserSmokeTests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launch()
+        acceptBundledRulesIfShown()
     }
 
     override func tearDownWithError() throws {
@@ -119,5 +120,20 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed, "Keyboard introduction is not on screen; inspect renderer diagnostics")
         // Re-query after readiness; one handler owns this transient control.
         app.buttons["Continue"].tap()
+    }
+
+    private func acceptBundledRulesIfShown() {
+        let accept = app.buttons["welcome.accept"]
+        guard accept.exists else { return }
+        XCTAssertFalse(app.webViews.firstMatch.exists, "The website must not be created before rules acceptance")
+        let scroll = app.scrollViews["welcome.scroll"]
+        for _ in 0..<30 {
+            if accept.isHittable { break }
+            scroll.swipeUp()
+        }
+        XCTAssertTrue(accept.isHittable, "The full bundled rules must leave the acceptance action reachable")
+        XCTAssertEqual(accept.label, "Ho almeno 18 anni e accetto")
+        accept.tap()
+        XCTAssertTrue(app.buttons["browser.more"].waitForExistence(timeout: 10))
     }
 }

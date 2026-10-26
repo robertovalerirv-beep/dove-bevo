@@ -5,6 +5,12 @@ It opens `https://www.dovebevo.com/` directly in a persistent `WKWebView`.
 The website, API, authentication, database and Cloudflare configuration are unchanged.
 There are no third-party runtime SDKs or native JavaScript bridges.
 
+A native first-launch screen shows the bundled `mobile-apps/terms.md` before a
+web view is constructed. Privacy is available offline. «Ho almeno 18 anni e
+accetto» stores only accepted rules version `2026-10-26` in this app's preferences
+and opens the website once. Missing or stale acceptance returns to welcome;
+declining leaves welcome available without starting the website or location.
+
 The native controls provide back, forward, home, sharing, reload, browser handoff,
 location-permission help, accessible loading/progress, offline information and retry.
 The More menu also opens a native, scrollable Privacy screen from the shared
@@ -92,7 +98,8 @@ agent, cookie extraction or native backend proxy are present.
 The native shell has no analytics SDK, tracking SDK, native account database or
 background location collection. `WKWebsiteDataStore.default()` retains the
 website's normal cookies/local storage in the app sandbox, separate from Safari.
-The included privacy manifest describes the native shell; the website's own
-privacy policy and accurate store disclosures still require owner review before
-submission. The 1024 px icon is the existing approved mobile preview brand asset;
+The included privacy manifest also covers the controlled website's audited data
+flows conservatively as linked data, without tracking, and declares the app-only
+UserDefaults reason `CA92.1` for rules acceptance. Store disclosures still require
+owner review before submission. The 1024 px icon is the existing approved mobile preview brand asset;
 no public website/brand source was modified.

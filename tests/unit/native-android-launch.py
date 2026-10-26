@@ -156,6 +156,35 @@ class Commands:
         elif stage == "adb-server-status":
             version = "35.0.0" if self.mode == "server-version" else "37.0.1"
             text = 'version: "' + version + '"\nexecutable_absolute_path: "' + str(self.host.root / "sdk/platform-tools/adb").replace("\\", "\\\\") + '"\n'
+        elif stage == "create-avd":
+            avd_home = Path(env["ANDROID_AVD_HOME"])
+            self.avd_home_existed = avd_home.is_dir()
+            # AndroidLocations memoizes its fallback if the override is absent
+            # when first queried, even if --path later creates that directory.
+            self.cached_avd_home = avd_home if self.avd_home_existed else Path(env["ANDROID_USER_HOME"]) / "avd"
+            data = Path(argv[argv.index("--path") + 1])
+            if self.mode != "avd-missing-data":
+                if self.mode == "avd-data-file":
+                    data.write_text("not a directory")
+                else:
+                    data.mkdir(parents=True)
+            self.cached_avd_home.mkdir(parents=True, exist_ok=True)
+            ini = self.cached_avd_home / (self.host.name + ".ini")
+            body = "avd.ini.encoding=UTF-8\npath=" + str(data) + "\ntarget=android-36\n"
+            changes = {
+                "avd-malformed": lambda value: value + "malformed line\n",
+                "avd-duplicate": lambda value: value + "path=" + str(data) + "\n",
+                "avd-wrong-path": lambda value: value.replace(str(data), str(self.host.root / "unrelated.avd")),
+                "avd-relative-path": lambda value: value.replace(str(data), "avds/" + self.host.name + ".avd"),
+                "avd-wrong-target": lambda value: value.replace("android-36", "android-35"),
+                "avd-unknown-key": lambda value: value + "path.rel=avd/other.avd\n",
+                "avd-wrong-encoding": lambda value: value.replace("UTF-8", "UTF-16"),
+                "avd-oversized": lambda value: value + "x" * 8193,
+            }
+            if self.mode == "avd-ini-directory":
+                ini.mkdir()
+            elif self.mode != "avd-missing-ini":
+                ini.write_bytes(b"\xff" if self.mode == "avd-invalid-utf8" else changes.get(self.mode, lambda value: value)(body).encode())
         elif stage == "ownership-devices":
             serial = "emulator-5554" if self.mode == "wrong-serial" else "emulator-5560"
             text = "List of devices attached\n" + serial + "\tdevice\n"
@@ -333,6 +362,73 @@ class LaunchTests(unittest.TestCase):
         for _, _, env in host.started:
             self.assertEqual(env["ADB_SERVER_SOCKET"], "tcp:127.0.0.1:39001")
         self.assertEqual(result["adb_closed_port_no_autostart_probe"], "nonzero-and-port-remained-closed")
+
+    def test_avd_home_exists_before_manager_caches_location_and_exact_private_ini_is_proven(self):
+        code, result, commands, host, _ = self.run_fake()
+        self.assertEqual(code, 0)
+        self.assertTrue(commands.avd_home_existed, "missing override would cache private prefs fallback")
+        self.assertEqual(commands.cached_avd_home, host.work / "avds")
+        proof = result["owned_avd_preflight"]
+        self.assertEqual(proof["target"], "android-36")
+        self.assertEqual(proof["data_path"], "avds/" + host.name + ".avd")
+        self.assertEqual(proof["ini_path"], "avds/" + host.name + ".ini")
+        ini = host.work / proof["ini_path"]
+        self.assertEqual(proof["ini_sha256"], hashlib.sha256(ini.read_bytes()).hexdigest())
+
+    def test_unproven_avd_configuration_fails_before_adb_emulator_or_wait(self):
+        for mode in ("avd-missing-ini", "avd-malformed", "avd-duplicate", "avd-wrong-path", "avd-relative-path",
+                     "avd-wrong-target", "avd-unknown-key", "avd-wrong-encoding", "avd-oversized", "avd-invalid-utf8",
+                     "avd-missing-data", "avd-data-file", "avd-ini-directory"):
+            with self.subTest(mode=mode):
+                code, result, commands, host, clock = self.run_fake(mode)
+                self.assertEqual(code, 1)
+                self.assertFalse(result["success"])
+                self.assertEqual(host.started, [])
+                self.assertFalse(any(stage == "wait-for-device" for stage, *_ in commands.calls))
+                self.assertLess(clock.value, 30)
+
+    def test_avd_preflight_rejects_symlink_metadata_and_unknown_reads_without_following(self):
+        _, _, _, _, host, _, _ = self.fixture()
+        avds = host.work / "avds"
+        avds.mkdir()
+        data = avds / (host.name + ".avd")
+        data.mkdir()
+        ini = avds / (host.name + ".ini")
+        ini.write_text("avd.ini.encoding=UTF-8\npath=" + str(data) + "\ntarget=android-36\n")
+        original_lstat = Path.lstat
+        for linked in (avds, data, ini):
+            def lstat(path, *args, **kwargs):
+                return SimpleNamespace(st_mode=launch.stat.S_IFLNK) if path == linked else original_lstat(path, *args, **kwargs)
+            with self.subTest(linked=linked.name), patch.object(Path, "lstat", lstat):
+                with self.assertRaises(launch.LaunchFailure):
+                    launch.validate_owned_avd(host.work, host.name)
+        with patch.object(launch.os, "open", side_effect=PermissionError("fixture private content must not be printed")):
+            with self.assertRaises(launch.LaunchFailure):
+                launch.validate_owned_avd(host.work, host.name)
+
+    def test_avd_pointer_read_is_bounded_even_if_stat_claims_a_small_regular_file(self):
+        _, _, _, _, host, _, _ = self.fixture()
+        avds = host.work / "avds"
+        avds.mkdir()
+        data = avds / (host.name + ".avd")
+        data.mkdir()
+        ini = avds / (host.name + ".ini")
+        ini.write_bytes(b"small claimed file")
+        metadata = ini.lstat()
+
+        class Oversized(io.BytesIO):
+            def fileno(self):
+                return 998
+
+            def read(self, size=-1):
+                self.requested = size
+                return super().read(size)
+
+        source = Oversized(b"x" * (launch.MAX_AVD_INI_BYTES * 2))
+        with patch.object(launch.os, "open", return_value=998), patch.object(launch.os, "fdopen", return_value=source), patch.object(launch.os, "fstat", return_value=metadata):
+            with self.assertRaises(launch.LaunchFailure):
+                launch.validate_owned_avd(host.work, host.name)
+        self.assertEqual(source.requested, launch.MAX_AVD_INI_BYTES + 1)
 
     def test_wrong_ownership_never_installs_launches_or_screenshots(self):
         for mode in ("wrong-serial", "wrong-avd", "foreign-listener", "server-lost", "server-version"):

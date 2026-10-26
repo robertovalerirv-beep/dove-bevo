@@ -33,6 +33,7 @@ SETTLE_SECONDS = 25
 MAX_LOG_BYTES = 65536
 MAX_PROC_BYTES = 1024 * 1024  # Bounded kernel input; only exact-port LISTEN rows are retained.
 MAX_PNG_BYTES = 24 * 1024 * 1024
+MAX_AVD_INI_BYTES = 8192
 HOST = "127.0.0.1"  # Literal IP is deliberate: adb must not auto-start a local daemon.
 
 
@@ -348,6 +349,10 @@ def isolated_environment(sdk, work, source):
     home.mkdir(exist_ok=True)
     temporary = work / "tmp"
     temporary.mkdir(exist_ok=True)
+    # AndroidLocations ignores a nonexistent override and memoizes its fallback.
+    avds = work / "avds"
+    avds.mkdir(exist_ok=True)
+    require_direct_directory(avds)
     env.update({"HOME": str(home), "TMPDIR": str(temporary), "ANDROID_HOME": str(sdk),
                 "ANDROID_SDK_ROOT": str(sdk), "ANDROID_SDK_HOME": str(home),
                 "ANDROID_USER_HOME": str(home / ".android"),
@@ -355,6 +360,55 @@ def isolated_environment(sdk, work, source):
                 "ANDROID_AVD_HOME": str(work / "avds"), "ADB_MDNS": "0",
                 "ADB_MDNS_AUTO_CONNECT": "", "ADB_MDNS_OPENSCREEN": "0"})
     return env
+
+
+def require_direct_directory(path):
+    if not stat.S_ISDIR(path.lstat().st_mode) or path.resolve(strict=True) != path:
+        raise LaunchFailure("Owned AVD directory is not a direct canonical directory")
+
+
+def validate_owned_avd(work, name):
+    """Read only the exact created AVD pointer; never search or adopt a fallback."""
+    try:
+        if not re.fullmatch(r"DoveBevoPreview-[A-Za-z0-9-]+", name):
+            raise LaunchFailure("Unrecognized owned AVD name")
+        require_direct_directory(work)
+        avds = work / "avds"
+        data, ini = avds / (name + ".avd"), avds / (name + ".ini")
+        require_direct_directory(avds)
+        require_direct_directory(data)
+        before = ini.lstat()
+        if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_AVD_INI_BYTES:
+            raise LaunchFailure("Owned AVD pointer is not a bounded regular file")
+
+        def identity(value):
+            return (value.st_dev, value.st_ino, value.st_mode, value.st_size, value.st_mtime_ns)
+
+        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+        with os.fdopen(os.open(ini, flags), "rb") as source:
+            opened = os.fstat(source.fileno())
+            if identity(opened) != identity(before):
+                raise LaunchFailure("Owned AVD pointer changed before reading")
+            body = source.read(MAX_AVD_INI_BYTES + 1)
+            if len(body) > MAX_AVD_INI_BYTES or identity(os.fstat(source.fileno())) != identity(opened):
+                raise LaunchFailure("Owned AVD pointer changed or exceeded its read bound")
+        if identity(ini.lstat()) != identity(before):
+            raise LaunchFailure("Owned AVD pointer changed after reading")
+        values = {}
+        for line in body.decode("utf-8").splitlines():
+            if not line.strip():
+                continue
+            key, separator, value = line.partition("=")
+            if not separator or not re.fullmatch(r"[A-Za-z0-9_.-]+", key) or key in values or not value:
+                raise LaunchFailure("Malformed or duplicate owned AVD pointer field")
+            values[key] = value
+        if values != {"avd.ini.encoding": "UTF-8", "path": str(data), "target": "android-36"}:
+            raise LaunchFailure("Owned AVD pointer fields differ from exact private API 36 target")
+        require_direct_directory(data)
+        return {"ini_path": "avds/" + ini.name, "data_path": "avds/" + data.name,
+                "ini_sha256": hashlib.sha256(body).hexdigest(), "target": "android-36"}
+    except (OSError, ValueError, RuntimeError):
+        raise LaunchFailure("Owned AVD preflight could not verify exact private files") from None
 
 
 class ProcessHost:
@@ -642,6 +696,7 @@ def run_launch(root, sdk, evidence, runner, host, settle=time.sleep):
         runner.run("create-avd", [str(sdk / "cmdline-tools/latest/bin/avdmanager"), "create", "avd",
                    "--name", host.name, "--package", IMAGE, "--device", "pixel_6",
                    "--path", str(host.work / "avds" / (host.name + ".avd"))], timeout=30)
+        result["owned_avd_preflight"] = validate_owned_avd(host.work, host.name)
         # ADB's listener accepts localhost for IPv4 loopback; numeric HOST stays
         # client-only so a missing private server cannot trigger auto-start.
         server = host.start("adb-server", [adb, "-L", "tcp:localhost:" + str(host.server_port), "server", "nodaemon"], runner.env)

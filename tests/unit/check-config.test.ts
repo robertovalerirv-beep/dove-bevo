@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { checkConfig } from "../../scripts/check-config.ts";
+import { createMobilePreviewConfig } from "../../scripts/mobile-preview-config.ts";
 
 type Config = { env: Record<string, Record<string, unknown>> };
 const real = ts.parseConfigFileTextToJson("wrangler.jsonc", readFileSync("wrangler.jsonc", "utf8"))
@@ -72,5 +73,28 @@ describe("deploy configuration guard (ADR 0021)", () => {
 
   it("rejects a config without any environment", () => {
     expect(checkConfig({}, {})).toEqual(["wrangler.jsonc: no env.* defined"]);
+  });
+
+  it("recognizes only a separately validated, explicitly selected standalone preview", () => {
+    const preview = createMobilePreviewConfig("76543210-abcd-4abc-8abc-123456789abc", real);
+    const text =
+      "CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH: .mobile-preview.wrangler.json\nrun: wrangler deploy";
+    expect(checkConfig(real, { "preview.yml": text }, preview)).toEqual([]);
+    expect(checkConfig(real, { "preview.yml": text })).toContain(
+      "preview.yml: unverified standalone preview configuration",
+    );
+    expect(
+      checkConfig(real, { "preview.yml": `${text}\nCLOUDFLARE_ENV: staging` }, preview),
+    ).toContain("preview.yml: unverified standalone preview configuration");
+    expect(
+      checkConfig(
+        real,
+        { "preview.yml": text.replace(".mobile-preview.wrangler.json", "other.json") },
+        preview,
+      ),
+    ).toContain("preview.yml: unverified standalone preview configuration");
+    expect(
+      checkConfig(real, { "preview.yml": text }, { ...preview, workers_dev: true }).length,
+    ).toBeGreaterThan(0);
   });
 });

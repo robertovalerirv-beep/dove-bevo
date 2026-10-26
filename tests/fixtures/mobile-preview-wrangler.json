@@ -1,0 +1,118 @@
+{
+  "configPath": ".mobile-preview.wrangler.json",
+  "userConfigPath": ".mobile-preview.wrangler.json",
+  "topLevelName": "dovebevo-mobile-preview",
+  "definedEnvironments": [],
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "jsx_factory": "React.createElement",
+  "jsx_fragment": "React.Fragment",
+  "rules": [
+    {
+      "type": "ESModule",
+      "globs": ["**/*.js", "**/*.mjs"]
+    }
+  ],
+  "name": "dovebevo-mobile-preview",
+  "main": "index.js",
+  "triggers": {
+    "crons": ["0 * * * *"]
+  },
+  "assets": {
+    "directory": "../client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "DATA_VERSION": "fixture",
+    "TURNSTILE_SITE_KEY": "",
+    "TURNSTILE_HOSTNAME": "mobile-preview.dovebevo.com",
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+    "MOBILE_PREVIEW_ENABLED": "false"
+  },
+  "durable_objects": {
+    "bindings": []
+  },
+  "workflows": [],
+  "migrations": [],
+  "exports": {},
+  "kv_namespaces": [],
+  "cloudchamber": {},
+  "send_email": [],
+  "queues": {
+    "producers": [],
+    "consumers": []
+  },
+  "connect": [],
+  "r2_buckets": [],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dovebevo-mobile-preview",
+      "database_id": "76543210-abcd-4abc-8abc-123456789abc",
+      "migrations_dir": "../../../migrations"
+    }
+  ],
+  "vectorize": [],
+  "ai_search_namespaces": [],
+  "ai_search": [],
+  "agent_memory": [],
+  "hyperdrive": [],
+  "services": [],
+  "analytics_engine_datasets": [],
+  "dispatch_namespaces": [],
+  "mtls_certificates": [],
+  "pipelines": [],
+  "k2": [],
+  "secrets_store_secrets": [],
+  "artifacts": [],
+  "unsafe_hello_world": [],
+  "flagship": [],
+  "worker_loaders": [],
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "2026102601",
+      "simple": {
+        "limit": 20,
+        "period": 10
+      }
+    },
+    {
+      "name": "READ_LIMITER",
+      "namespace_id": "2026102602",
+      "simple": {
+        "limit": 100,
+        "period": 60
+      }
+    }
+  ],
+  "vpc_services": [],
+  "vpc_networks": [],
+  "logfwdr": {
+    "bindings": []
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "redact_query_string": true,
+    "logs": {
+      "invocation_logs": false
+    }
+  },
+  "python_modules": {
+    "exclude": ["**/*.pyc"]
+  },
+  "dev": {
+    "ip": "127.0.0.1",
+    "local_protocol": "http",
+    "upstream_protocol": "http",
+    "enable_containers": true,
+    "generate_types": false
+  },
+  "no_bundle": true
+}

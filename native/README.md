@@ -26,6 +26,32 @@ backend origins are rejected. `node scripts/native-build.mjs --release` always f
 production resources, HTTPS app links, signing and device validation are separately approved.
 The preview identity and custom callback must never be shipped as a production release.
 
+The backend has a separate build-only, disabled configuration prerequisite:
+
+```sh
+node scripts/mobile-preview-build.mjs --local-proof
+```
+
+This selects `.mobile-preview.wrangler.json` at Vite build time without borrowing the `staging`
+environment. It builds into `.wrangler/mobile-preview-build`, checks the flattened Worker and
+byte-compares every fixture asset, then removes its local-only synthetic configuration and executable
+outputs. The remaining `.wrangler/mobile-preview-build-proof.json` contains hashes and check counts.
+The helper restores Vite's deployment redirect and leaves ordinary web/native build outputs alone.
+It refuses local env/secret files, inherited environment/config selections and pre-existing preview
+artifacts rather than overwriting them. It makes no remote API calls, migrations or deployments.
+
+After a new preview D1 database is separately provisioned and verified, the same helper accepts
+`--database-id <new-D1-UUID>` and retains the checked disabled config/output for inspection. It rejects
+every database UUID found in the ordinary config and the reserved local-only identifiers. An explicit
+UUID is an input requirement, not proof that its owner/account is correct: provisioning receipts and
+provider read-back are still required before any deployment. `node scripts/check-config.mjs` also
+checks this generated config when present. Its only reviewed profile has fixture data, mobile auth
+disabled, an empty public sitekey and Access identifiers, no routes/queues/extra bindings, and both
+`workers_dev` and `preview_urls` disabled. Independent rate-limit namespaces `2026102601` and
+`2026102602` avoid the website's configured namespaces; account-wide availability still needs live
+verification. Real Turnstile/secrets, enabling mobile auth, attaching the exact preview host and a
+trusted deployment job require a further reviewed change. No deploy workflow is added here.
+
 Android: open `android/` in compatible Android Studio, with JDK 21, compile SDK 37 and Build Tools
 36.0.0. The checked-in project targets API 36 (minimum 24). `android/gradlew assembleDebug` builds a package signed
 with the local development debug key once the toolchain is installed. Location is foreground only and optional. Backups,

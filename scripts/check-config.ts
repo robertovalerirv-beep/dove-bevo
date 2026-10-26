@@ -1,6 +1,9 @@
 // Pure check behind scripts/check-config.mjs: every deployable environment of wrangler.jsonc must stand
 // on its own (environments do not inherit bindings or vars) and must never carry the development
 // placeholders of the top level (ADR 0021, red-team audit 22/10/2026).
+import { createMobilePreviewConfig, MOBILE_PREVIEW_CONFIG_PATH } from "./mobile-preview-config.ts";
+import { resolve } from "node:path";
+
 type Json = Record<string, unknown>;
 
 const PLACEHOLDER = "local-dev-only";
@@ -23,7 +26,123 @@ const MAX_LIMIT = 200;
 const isObject = (value: unknown): value is Json =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-export function checkConfig(config: unknown, workflows: Record<string, string>): string[] {
+/** Exact disabled profile; a future enabled/routed profile requires its own reviewed change. */
+export function checkMobilePreviewConfig(
+  config: unknown,
+  base: unknown,
+  localProof = false,
+): string[] {
+  if (!isObject(config)) return ["mobile preview: configuration must be an object"];
+  const databases = Array.isArray(config.d1_databases) ? config.d1_databases.filter(isObject) : [];
+  const id = databases[0]?.database_id;
+  if (typeof id !== "string") return ["mobile preview: explicit new database UUID missing"];
+  let expected: Json;
+  try {
+    expected = createMobilePreviewConfig(id, base, localProof);
+  } catch (error) {
+    return [
+      `mobile preview: ${error instanceof Error ? error.message : "invalid database configuration"}`,
+    ];
+  }
+  const equal = (a: unknown, b: unknown): boolean => {
+    if (isObject(a) && isObject(b)) {
+      const keys = Object.keys(a);
+      return keys.length === Object.keys(b).length && keys.every((key) => equal(a[key], b[key]));
+    }
+    if (Array.isArray(a) && Array.isArray(b))
+      return a.length === b.length && a.every((entry: unknown, i) => equal(entry, b[i]));
+    return a === b;
+  };
+  return [...new Set([...Object.keys(config), ...Object.keys(expected)])]
+    .filter((key) => !equal(config[key], expected[key]))
+    .map((key) => `mobile preview: ${key} differs from the reviewed disabled profile`);
+}
+
+/** The pinned Vite plugin adds these inert defaults. Any newly introduced binding fails closed. */
+export function checkMobilePreviewBuildConfig(
+  config: unknown,
+  base: unknown,
+  localProof = false,
+): string[] {
+  if (!isObject(config)) return ["mobile preview build: configuration must be an object"];
+  const metadata: Json = {
+    configPath: resolve(MOBILE_PREVIEW_CONFIG_PATH),
+    userConfigPath: resolve(MOBILE_PREVIEW_CONFIG_PATH),
+    topLevelName: "dovebevo-mobile-preview",
+    definedEnvironments: [],
+    jsx_factory: "React.createElement",
+    jsx_fragment: "React.Fragment",
+    rules: [{ type: "ESModule", globs: ["**/*.js", "**/*.mjs"] }],
+    durable_objects: { bindings: [] },
+    workflows: [],
+    migrations: [],
+    exports: {},
+    kv_namespaces: [],
+    cloudchamber: {},
+    send_email: [],
+    queues: { producers: [], consumers: [] },
+    connect: [],
+    r2_buckets: [],
+    vectorize: [],
+    ai_search_namespaces: [],
+    ai_search: [],
+    agent_memory: [],
+    hyperdrive: [],
+    services: [],
+    analytics_engine_datasets: [],
+    dispatch_namespaces: [],
+    mtls_certificates: [],
+    pipelines: [],
+    k2: [],
+    secrets_store_secrets: [],
+    artifacts: [],
+    unsafe_hello_world: [],
+    flagship: [],
+    worker_loaders: [],
+    vpc_services: [],
+    vpc_networks: [],
+    logfwdr: { bindings: [] },
+    python_modules: { exclude: ["**/*.pyc"] },
+    dev: {
+      ip: "127.0.0.1",
+      local_protocol: "http",
+      upstream_protocol: "http",
+      enable_containers: true,
+      generate_types: false,
+    },
+    no_bundle: true,
+  };
+  const normalized: Json = Object.fromEntries(
+    Object.entries(config).filter(([key]) => !(key in metadata)),
+  );
+  const problems: string[] = [];
+  for (const [key, value] of Object.entries(metadata)) {
+    if (JSON.stringify(config[key]) !== JSON.stringify(value))
+      problems.push(`mobile preview build: unexpected ${key}`);
+  }
+  if (normalized.main !== "index.js")
+    problems.push("mobile preview build: unexpected Worker entry");
+  normalized.main = "src/worker/index.ts";
+  const assets = isObject(normalized.assets) ? normalized.assets : {};
+  if (assets.directory !== "../client")
+    problems.push("mobile preview build: unexpected assets directory");
+  normalized.assets = { ...assets, directory: "./dist/client" };
+  const databases = Array.isArray(normalized.d1_databases) ? normalized.d1_databases : [];
+  normalized.d1_databases = databases.map((database: unknown) => {
+    if (!isObject(database)) return database;
+    if (database.migrations_dir !== "../../../migrations")
+      problems.push("mobile preview build: unexpected migrations directory");
+    return { ...database, migrations_dir: "migrations" };
+  });
+  normalized.$schema = "./node_modules/wrangler/config-schema.json";
+  return [...problems, ...checkMobilePreviewConfig(normalized, base, localProof)];
+}
+
+export function checkConfig(
+  config: unknown,
+  workflows: Record<string, string>,
+  standalonePreview?: unknown,
+): string[] {
   const problems: string[] = [];
   const environments = isObject(config) && isObject(config.env) ? config.env : {};
   if (Object.keys(environments).length === 0) problems.push("wrangler.jsonc: no env.* defined");
@@ -70,11 +189,25 @@ export function checkConfig(config: unknown, workflows: Record<string, string>):
     }
   }
 
-  // A deploy builds for one named environment: without it the top level (placeholders) ships.
+  if (standalonePreview !== undefined)
+    problems.push(...checkMobilePreviewConfig(standalonePreview, config));
+
+  // Existing deploys must still name their environment. A standalone preview cannot impersonate staging.
   for (const [file, text] of Object.entries(workflows)) {
     if (!/wrangler\s+deploy/.test(text)) continue;
     const named = [...text.matchAll(/CLOUDFLARE_ENV:\s*["']?([\w-]+)/g)].map((m) => m[1] ?? "");
-    if (named.length === 0) problems.push(`${file}: wrangler deploy without CLOUDFLARE_ENV`);
+    const standalone = [
+      ...text.matchAll(/CLOUDFLARE_VITE_WRANGLER_CONFIG_PATH:\s*["']?([^\s"']+)/g),
+    ].map((m) => m[1] ?? "");
+    if (standalone.length > 0) {
+      if (
+        standalone.length !== 1 ||
+        standalone[0] !== MOBILE_PREVIEW_CONFIG_PATH ||
+        named.length !== 0 ||
+        standalonePreview === undefined
+      )
+        problems.push(`${file}: unverified standalone preview configuration`);
+    } else if (named.length === 0) problems.push(`${file}: wrangler deploy without CLOUDFLARE_ENV`);
     for (const target of named) {
       if (!(target in environments)) {
         problems.push(`${file}: CLOUDFLARE_ENV ${target} is not an env of wrangler.jsonc`);

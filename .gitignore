@@ -23,3 +23,4 @@ docs/materiali/
 *.mobileprovision
 *.p12
 android/local.properties
+.mobile-preview.wrangler.json

@@ -44,12 +44,13 @@ describe("GET /api/prices/:cell (M1-08)", () => {
       u: [["u7", "Bar Nuovo", 1, 45.4641, 9.1901]],
       pend: [["u8", "Bar In Attesa", 0, 45.4642, 9.1902, 1]],
       h: [],
+      g: [],
     });
   });
 
   it("returns empty arrays for a cell without data", async () => {
     const body: CellPrices = await (await get("/api/prices/u0ndf")).json();
-    expect(body).toEqual({ p: [], u: [], pend: [], h: [] });
+    expect(body).toEqual({ p: [], u: [], pend: [], h: [], g: [] });
   });
 
   for (const cell of ["u0nda", "u0nd", "u0nd9x", "U0ND9", "u0nd%27"]) {

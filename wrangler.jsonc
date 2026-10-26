@@ -78,7 +78,6 @@
       "vars": {
         "DATA_VERSION": "none",
         "TURNSTILE_SITE_KEY": "0x4AAAAAAFUazHbuU79qVX5f",
-        // Public site: www.dovebevo.com is served by this Worker; the siteverify hostname must match it.
         "TURNSTILE_HOSTNAME": "www.dovebevo.com",
         // Cloudflare Access application "dovebevo-staging" (/admin, /api/admin/*): public identifiers.
         "ACCESS_TEAM_DOMAIN": "broad-sunset-c81e.cloudflareaccess.com",

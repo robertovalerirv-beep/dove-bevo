@@ -4,7 +4,8 @@ const PORT = Number(process.env.E2E_PORT ?? 4173); // another checkout may hold 
 const viewport = { width: 390, height: 844 };
 // Chromium refuses a service worker behind a self-signed certificate unless told otherwise (PWA e2e).
 const CHROMIUM_LAUNCH = { args: ["--ignore-certificate-errors"] };
-const WRITES = "**/contribute.spec.ts";
+// The tests that write to the shared local D1: prices, and a bar made «Gestore verificato» (MD-07).
+const WRITES = "**/{contribute,verified-writes}.spec.ts";
 // Proposed bars stay in the shared local D1 and would join the "5 nearest bars" of the writes above.
 const PROPOSALS = "**/propose.spec.ts";
 

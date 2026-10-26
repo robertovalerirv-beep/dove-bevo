@@ -356,6 +356,30 @@ test("M2-13 reporting uses closed reasons", async ({ page, browserName }) => {
   ).toBeVisible();
 });
 
+test("a bar report from a cold start: Turnstile gets a widget that is still in the page", async ({
+  page,
+  browserName,
+}) => {
+  // A widget whose host left the page never answers: the report used to wait forever, with no message.
+  await page.route("https://challenges.cloudflare.com/**", (route) => {
+    void route.fulfill({
+      contentType: "text/javascript",
+      body: `window.turnstile = {
+        render(el, o) { setTimeout(() => { if (el.isConnected) o.callback("XXXX.DUMMY.TOKEN.XXXX"); }, 100); return "w"; },
+        remove() {}, reset() {},
+      };`,
+    });
+  });
+  await page.goto(
+    browserName === "webkit" ? "/bar/n13001337602?c=u0nd9" : "/bar/n5471678323?c=u0nd9",
+  );
+  await page.getByRole("button", { name: "Segnala un errore" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "Segnala un errore" });
+  await dialog.getByRole("radio", { name: "Bar chiuso definitivamente" }).check();
+  await dialog.getByRole("button", { name: "Invia" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "la verifichiamo" })).toBeVisible();
+});
+
 test("M2-09 a quarantined price is shown in 'In verifica' and not on the map", async ({ page }) => {
   await page.goto("/bar/w549495264?c=u0nd9"); // Motta: gin tonic 20,00 € quarantined (seed)
   const sheet = page.getByRole("dialog", { name: "Motta" });

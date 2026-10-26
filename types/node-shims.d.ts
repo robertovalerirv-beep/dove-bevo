@@ -10,9 +10,13 @@ declare module "node:fs" {
 }
 declare module "node:path" {
   export function join(...parts: string[]): string;
+  export function dirname(path: string): string;
+}
+declare module "node:url" {
+  export function fileURLToPath(url: string): string;
 }
 
-declare const process: { env: Record<string, string | undefined> };
+declare const process: { env: Record<string, string | undefined>; execPath: string };
 declare module "node:zlib" {
   export function gzipSync(data: string): { length: number };
 }
@@ -20,4 +24,15 @@ declare module "node:crypto" {
   export function createHash(algorithm: "sha256"): {
     update(data: string): { digest(encoding: "hex"): string };
   };
+}
+declare module "node:child_process" {
+  export function execFileSync(
+    file: string,
+    args: readonly string[],
+    options?: {
+      encoding?: "utf8";
+      stdio?: "ignore" | "pipe";
+      env?: Record<string, string | undefined>;
+    },
+  ): string;
 }

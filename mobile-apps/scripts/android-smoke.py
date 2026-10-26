@@ -303,7 +303,9 @@ def main():
         if any(port_open(port) for port in (5041, 5554, 5555)):
             raise RuntimeError("Private runtime ports are already occupied")
         manager = SDK / "cmdline-tools/latest/bin/avdmanager"
-        run(str(manager), "create", "avd", "--force", "--name", "dove-live",
+        # The SDK's normal mode can report only a null creation error. Retain
+        # its official verbose exception diagnostics within the existing bounds.
+        run(str(manager), "--verbose", "create", "avd", "--force", "--name", "dove-live",
             "--package", "system-images;android-36;google_apis;x86_64", "--device", "pixel_6",
             input=b"no\n", timeout=60)
         # AOSP commandline.cpp rejects -L combined with -H/-P. socket_spec.cpp

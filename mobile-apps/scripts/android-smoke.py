@@ -72,6 +72,14 @@ def screenshot(name):
     (EVIDENCE / name).write_bytes(data)
 
 
+def map_ready():
+    labels = [value for node in tree().iter("node")
+              for value in (node.get("text", ""), node.get("content-desc", ""))]
+    return ("Mappa interattiva dei bar" in labels
+            and "Esplora la mappa" not in labels
+            and not any("La mappa non si carica" in value for value in labels))
+
+
 def main():
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     HOME.mkdir(parents=True, exist_ok=True)
@@ -109,7 +117,7 @@ def main():
             raise RuntimeError("City result is missing Milano")
         screenshot("02-milano-search.png")
         tap(milano)
-        wait_for("map returned after city selection", lambda: find("Elenco"))
+        wait_for("live map initialized after city selection", map_ready)
         screenshot("03-milano-map.png")
         result["checks"].append("live city search and result selection")
         adb("shell", "input", "keyevent", "3")

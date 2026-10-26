@@ -6,6 +6,17 @@
   height: 100dvh;
 }
 
+.native-startup {
+  min-height: 100dvh;
+  padding: calc(env(safe-area-inset-top, 0px) + var(--space-4))
+    calc(env(safe-area-inset-right, 0px) + var(--space-4))
+    calc(env(safe-area-inset-bottom, 0px) + var(--space-4))
+    calc(env(safe-area-inset-left, 0px) + var(--space-4));
+}
+.native-startup p {
+  margin: 0 0 var(--space-4);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

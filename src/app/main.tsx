@@ -64,12 +64,16 @@ function start(): void {
 
 async function startNative(): Promise<void> {
   if (!root) return;
+  root.classList.add("native-startup");
   root.textContent = it.native.loading;
   try {
     const { initializeNative } = await import("./lib/native");
     setNativeDataVersion(await initializeNative());
+    root.replaceChildren();
+    root.classList.remove("native-startup");
     start();
   } catch {
+    root.classList.add("native-startup");
     const message = document.createElement("p");
     message.setAttribute("role", "status");
     message.textContent = it.native.unavailable;

@@ -72,6 +72,8 @@ They exist for real-phone checks when hosted graphics or network challenges
 block the live suite. No tester invitations or public review submissions are
 sent automatically. `mobile-release/v*` keeps its full Android/iOS live gates.
 Both tag families share this workflow's build-number counter.
+Use a new unique tag after an accepted upload: rerunning an existing workflow
+reuses its build number and is not a new distribution attempt.
 
 `URLPolicyTests` covers exact HTTPS origins, deceptive hosts/ports/userinfo,
 programmatic external navigation, maps/mail/phone handoff, unsafe schemes and

@@ -30,7 +30,7 @@ fi
 mkdir -p "$IOS_ROOT/.build"
 SDK_VERSION="$(xcrun --sdk iphonesimulator --show-sdk-version)"
 xcrun simctl list --json > "$INVENTORY"
-SIMULATOR_ID="$(python3 - "$INVENTORY" "$SDK_VERSION" "$CAPTURE_DEVICE" <<'PY'
+SIMULATOR_ID="$(python3 - "$INVENTORY" "$SDK_VERSION" "$CAPTURE_DEVICE" "${IOS_SIMULATOR_RUNTIME:-}" <<'PY'
 import json
 from pathlib import Path
 import re
@@ -38,12 +38,24 @@ import sys
 import uuid
 
 
-def select_device(inventory, sdk_version, capture_device):
+def parse_runtime_version(value):
+    if value is None:
+        return None
+    if (not isinstance(value, str) or len(value) > 11
+            or not re.fullmatch(r"(?:0|[1-9][0-9]{0,2})(?:\.(?:0|[1-9][0-9]{0,2})){0,2}", value)):
+        raise ValueError("Requested iOS runtime version is invalid")
+    return tuple(map(int, value.split(".")))
+
+
+def select_device(inventory, sdk_version, capture_device, runtime_version=None):
     if capture_device not in ("ipad", "iphone-large"):
         raise ValueError("Capture device must be ipad or iphone-large")
     if not re.fullmatch(r"\d+(?:\.\d+)*", sdk_version):
         raise ValueError("The selected Xcode simulator SDK version is invalid")
     sdk_major = int(sdk_version.split(".")[0])
+    pinned = parse_runtime_version(runtime_version)
+    if pinned is not None and pinned[0] != sdk_major:
+        raise ValueError("Requested iOS runtime does not match the selected Xcode iOS SDK major version")
     family = "iPad" if capture_device == "ipad" else "iPhone"
     name_pattern = (r"\b13\s*[-\u2010-\u2015]?\s*inch\b" if capture_device == "ipad"
                     else r"\b(?:Pro\s*Max|Plus)\b|^iPhone\s+Air\b")
@@ -60,7 +72,9 @@ def select_device(inventory, sdk_version, capture_device):
                 and runtime.get("identifier", "").startswith("com.apple.CoreSimulator.SimRuntime.iOS-")
                 and re.fullmatch(r"\d+(?:\.\d+)*", version)
                 and int(version.split(".")[0]) == sdk_major):
-            runtimes[runtime["identifier"]] = tuple(map(int, version.split(".")))
+            parsed = tuple(map(int, version.split(".")))
+            if pinned is None or parsed == pinned:
+                runtimes[runtime["identifier"]] = parsed
     candidates = []
     for runtime_id, devices in inventory["devices"].items():
         if runtime_id not in runtimes:
@@ -74,7 +88,8 @@ def select_device(inventory, sdk_version, capture_device):
                 candidates.append((runtimes[runtime_id], device_type, device))
     if not candidates:
         label = "13-inch iPad" if capture_device == "ipad" else "large iPhone (Pro Max, Plus or iPhone Air)"
-        raise ValueError(f"No installed available {label} simulator matches the selected Xcode iOS SDK major version")
+        constraint = "requested iOS runtime version" if pinned is not None else "selected Xcode iOS SDK major version"
+        raise ValueError(f"No installed available {label} simulator matches the {constraint}")
     newest = max(item[0] for item in candidates)
     matches = [item for item in candidates if item[0] == newest]
     matches.sort(key=lambda item: (
@@ -84,7 +99,7 @@ def select_device(inventory, sdk_version, capture_device):
 
 
 try:
-    version, device_type, device = select_device(json.loads(Path(sys.argv[1]).read_text()), sys.argv[2], sys.argv[3])
+    version, device_type, device = select_device(json.loads(Path(sys.argv[1]).read_text()), sys.argv[2], sys.argv[3], sys.argv[4] or None)
     print(f'{sys.argv[3]} capture: {device_type["name"]} | {device["name"]} | '
           f'iOS {".".join(map(str, version))} | {device["udid"]} | selected SDK {sys.argv[2]}', file=sys.stderr)
     print(device["udid"])

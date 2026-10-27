@@ -5,8 +5,15 @@ if [[ ! -d "$IOS_ROOT/DoveBevo.xcodeproj" ]]; then
     bash "$IOS_ROOT/scripts/generate-project.sh"
 fi
 SDK_VERSION="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+SELECTOR_ARGS=(--sdk-version "$SDK_VERSION")
+if [[ -n "${IOS_SIMULATOR_ID:-}" ]]; then
+    SELECTOR_ARGS+=(--device-id "$IOS_SIMULATOR_ID")
+fi
+if [[ -n "${IOS_SIMULATOR_RUNTIME:-}" ]]; then
+    SELECTOR_ARGS+=(--runtime-version "$IOS_SIMULATOR_RUNTIME")
+fi
 SIMULATOR_ID="$(xcrun simctl list devices available --json | python3 "$IOS_ROOT/scripts/select_simulator.py" \
-    --sdk-version "$SDK_VERSION" ${IOS_SIMULATOR_ID:+--device-id "$IOS_SIMULATOR_ID"})"
+    "${SELECTOR_ARGS[@]}")"
 SIMULATOR_ARCH="$(uname -m)"
 RESULT_BUNDLE="$IOS_ROOT/.build/TestResults.xcresult"
 COUNTER=1

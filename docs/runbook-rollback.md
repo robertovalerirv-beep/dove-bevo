@@ -17,7 +17,7 @@ npx wrangler deployments list --env staging
 npx wrangler rollback --env staging
 ```
 
-Per un'altra versione: `npx wrangler rollback <version-id> --env staging`. In produzione si usa `--env production`.
+Per un'altra versione: `npx wrangler rollback <version-id> --env staging`. Oggi l'ambiente vivo è `staging` (ADR 0036): è quello che serve `www.dovebevo.com`. Solo se un giorno esisterà un ambiente separato si userà anche `--env production`.
 
 Il comando riporta Worker e **asset** (cioè anche i file dei bar di quella versione). La variabile `DATA_VERSION` è quella della versione ripristinata.
 
@@ -40,7 +40,9 @@ Le migrazioni D1 **non tornano indietro**: sono solo additive (regola del proget
 - Annota in `docs/PROGRESS.md` cosa è successo, la versione ripristinata e il motivo.
 - Il tag `v0.x.y` difettoso non si cancella: se ne pubblica uno nuovo con la correzione.
 
-## Prova in staging (M6-03: da fare prima del lancio)
+## Prova su `staging`, l'ambiente vivo (M6-03: da fare prima del tag)
+
+**Attenzione:** `staging` serve il dominio vero. Durante la prova `www.dovebevo.com` mostra per qualche minuto la versione precedente del codice e dei file dei bar (il D1 non cambia). Falla in un momento con pochi utenti.
 
 1. `npx wrangler deployments list --env staging` e prendi nota della versione attuale.
 2. Fai un deploy qualsiasi (basta un merge su `main`), poi `npx wrangler rollback --env staging`.

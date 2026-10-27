@@ -1,6 +1,8 @@
 # Dove bevo — Specifica della Fase 0
 
-> **Versione 1.9 · 25/10/2026 · la 1.9 aggiunge l'offerta «Gestore verificato» per i gestori dei locali: spunta blu con «Gestore verificato» e «Sponsorizzato» accanto al nome, posto in cima all'Elenco e orari di apertura scritti nella scheda prima dello scontrino, attivati e scritti solo dall'admin; l'utente continua a non pagare e a non registrarsi (D-34, 7.10, MD-01…MD-11, ADR 0033); è decisa da Roberto il 25/10/2026 in chat, e vale con il tag `spec-approved-10`. Storico: versione 1.8 · 24/10/2026 · la 1.8 aggiunge sulla mappa un pallino piccolo della posizione, che compare solo dopo «Vicino a me» e resta fermo finché non lo si ritocca, e riduce le attribuzioni a una sola riga piccola nell'angolo, sempre visibili (7.1, D-33, MC-05, ADR 0031); è decisa da Roberto il 24/10/2026 in chat, e valeva con il tag `spec-approved-9`. Storico: versione 1.7 · 21/10/2026 · la 1.7 toglie dalla mappa la frase della zona senza prezzi («Qui nessuno ha ancora segnato un prezzo…»): appesantisce la schermata e non dà valore (7.1, D-28, MB-13); è decisa da Roberto il 21/10/2026 in chat, e valeva con il tag `spec-approved-8`. Storico: versione 1.6 · 21/10/2026 · la 1.6 sostituisce la lista dei drink con i nove voluti da Roberto, senza formati né millilitri in nessun punto (ADR 0028), e al posto della riga di chip mette un solo menu «Scegli cosa bere» a caselle multiple, con il prezzo più basso tra i drink scelti sul segnaposto (7.1, 6, D-04, M1-09, MC-01…MC-04); è decisa da Roberto il 21/10/2026 in chat, e valeva con il tag `spec-approved-7`. Storico: versione 1.5 · 21/10/2026 · la 1.5 porta l'Annulla da 10 a 5 secondi, riduce la barra della mappa ai soli due tasti "Aggiungi prezzo" e "Aggiungi locale mancante" ("Elenco" diventa un'icona sulla mappa, "Manda la mappa a un amico" sparisce) e fissa che la mappa non cambia mai altezza (ADR 0027, D-15, D-28, M1-16); è decisa da Roberto il 21/10/2026 in chat, e vale con il tag `spec-approved-6` (la 1.4 e il tag `spec-approved-5` stanno sul ramo `brand-v2-map`, non unito a `main`). Storico: versione 1.3 · 16/10/2026 · la 1.3 aggiunge la brand identity v1 (ADR 0023) e la ricerca dei bar per nome in tutta Italia (ADR 0024); è approvata da Roberto il 16/10/2026 in chat, e vale con il tag `spec-approved-4`. Storico: versione 1.2 · 15/10/2026 · la 1.2 aggiunge la dashboard di copertura in `/admin` (ADR 0022, M5-11…M5-16) ed è autorizzata da Roberto il 15/10/2026 in chat, e valeva con il tag `spec-approved-3`; versione 1.1 · 14/10/2026 · la 1.0 è approvata da Roberto l'11/10/2026 (tag `spec-approved`); la 1.1 è autorizzata da Roberto il 13/10/2026 (prompt v3.2) e il 14/10/2026 in chat, e valeva con il tag `spec-approved-2`.**
+> **Versione 1.10 · 27/10/2026 · la 1.10 sceglie un solo ambiente vivo: l'ambiente `staging` (Worker `dovebevo-staging`, il suo D1, i suoi segreti, il dominio `www.dovebevo.com`) è il sito in produzione; il secondo ambiente `production` non esiste e si crea più avanti, solo se Roberto lo decide (ADR 0036, che completa l'ADR 0035); cambiano le righe M6-02, M6-04 e M6-05 e i testi di ambienti, CI/CD, prerequisiti e milestone M6; nessuna modifica a schema, API, interfaccia e scritture; è decisa da Roberto il 27/10/2026 in chat, e vale con il tag `spec-approved-11`. Storico: versione 1.9 · 25/10/2026 · la 1.9 aggiunge l'offerta «Gestore verificato» per i gestori dei locali: spunta blu con «Gestore verificato» e «Sponsorizzato» accanto al nome, posto in cima all'Elenco e orari di apertura scritti nella scheda prima dello scontrino, attivati e scritti solo dall'admin; l'utente continua a non pagare e a non registrarsi (D-34, 7.10, MD-01…MD-11, ADR 0033); è decisa da Roberto il 25/10/2026 in chat, e valeva con il tag `spec-approved-10`. Storico: versione 1.8 · 24/10/2026 · la 1.8 aggiunge sulla mappa un pallino piccolo della posizione, che compare solo dopo «Vicino a me» e resta fermo finché non lo si ritocca, e riduce le attribuzioni a una sola riga piccola nell'angolo, sempre visibili (7.1, D-33, MC-05, ADR 0031); è decisa da Roberto il 24/10/2026 in chat, e valeva con il tag `spec-approved-9`. Storico: versione 1.7 · 21/10/2026 · la 1.7 toglie dalla mappa la frase della zona senza prezzi («Qui nessuno ha ancora segnato un prezzo…»): appesantisce la schermata e non dà valore (7.1, D-28, MB-13); è decisa da Roberto il 21/10/2026 in chat, e valeva con il tag `spec-approved-8`. Storico: versione 1.6 · 21/10/2026 · la 1.6 sostituisce la lista dei drink con i nove voluti da Roberto, senza formati né millilitri in nessun punto (ADR 0028), e al posto della riga di chip mette un solo menu «Scegli cosa bere» a caselle multiple, con il prezzo più basso tra i drink scelti sul segnaposto (7.1, 6, D-04, M1-09, MC-01…MC-04); è decisa da Roberto il 21/10/2026 in chat, e valeva con il tag `spec-approved-7`. Storico: versione 1.5 · 21/10/2026 · la 1.5 porta l'Annulla da 10 a 5 secondi, riduce la barra della mappa ai soli due tasti "Aggiungi prezzo" e "Aggiungi locale mancante" ("Elenco" diventa un'icona sulla mappa, "Manda la mappa a un amico" sparisce) e fissa che la mappa non cambia mai altezza (ADR 0027, D-15, D-28, M1-16); è decisa da Roberto il 21/10/2026 in chat, e vale con il tag `spec-approved-6` (la 1.4 e il tag `spec-approved-5` stanno sul ramo `brand-v2-map`, non unito a `main`). Storico: versione 1.3 · 16/10/2026 · la 1.3 aggiunge la brand identity v1 (ADR 0023) e la ricerca dei bar per nome in tutta Italia (ADR 0024); è approvata da Roberto il 16/10/2026 in chat, e vale con il tag `spec-approved-4`. Storico: versione 1.2 · 15/10/2026 · la 1.2 aggiunge la dashboard di copertura in `/admin` (ADR 0022, M5-11…M5-16) ed è autorizzata da Roberto il 15/10/2026 in chat, e valeva con il tag `spec-approved-3`; versione 1.1 · 14/10/2026 · la 1.0 è approvata da Roberto l'11/10/2026 (tag `spec-approved`); la 1.1 è autorizzata da Roberto il 13/10/2026 (prompt v3.2) e il 14/10/2026 in chat, e valeva con il tag `spec-approved-2`.**
+>
+> **Registro delle modifiche 1.10:** (1) un solo ambiente vivo (ADR 0036): `staging` serve il dominio `www.dovebevo.com` ed è il sito in produzione; ogni merge su `main` con CI verde lo aggiorna (16); (2) il blocco `env.production`, il D1 `dovebevo-production`, i secret e l'environment GitHub `production` non si creano ora: restano un passo futuro, a decisione di Roberto, con il modello `docs/templates/deploy-production.yml.example`; (3) M6-02 riguarda i segreti dell'ambiente vivo, M6-04 il tag `v0.1.0` su `main` senza un secondo deploy, M6-05 lo smoke test sul dominio vivo; (4) la prova del rollback (M6-03) si fa sull'ambiente vivo: per qualche minuto il dominio serve la versione precedente.
 >
 > **Registro delle modifiche 1.9:** (1) «Gestore verificato» (D-34, 7.10): un gestore che ha firmato con Roberto ottiene, finché l'admin lo tiene attivo, la spunta blu con «Gestore verificato» e «Sponsorizzato» accanto al nome nell'Elenco e nella scheda, il posto in cima all'Elenco e i suoi orari scritti nella scheda prima dello scontrino; (2) si attiva, si disattiva e si scrivono gli orari solo da `/admin`: contratti, pagamenti, scadenze e dati dei gestori restano fuori dall'app e dal codice; (3) tabella `venues_verified` (migrazione `0008`), campo `g` nella risposta della cella e `o` nella scheda (9.2); (4) aperture della scheda dei soli bar verificati contate per giorno (12, 14); (5) `/regole` spiega la spunta, «Sponsorizzato» e l'ordine dell'Elenco; (6) nuove voci MD-01…MD-11 e milestone MD. Prezzi, pin, ricerca, «I più economici qui», mediane, colori e pagine per i motori di ricerca non cambiano.
 >
@@ -24,7 +26,7 @@
 **Dove bevo** è una mappa gratuita dei bar italiani con i prezzi reali di birre e drink, inseriti dagli utenti. Entro in un bar, ordino uno spritz, apro l'app e in pochi secondi registro quanto l'ho pagato. Chiunque vede dove si beve a quale prezzo, vicino a sé o in qualsiasi città.
 
 - Nome in una sola costante: `APP_NAME = "Dove bevo"` in `src/shared/config.ts`.
-- Dominio in una sola costante: `APP_DOMAIN = "dovebevo.example"` (segnaposto fino a M6). Staging su `*.workers.dev`.
+- Dominio in una sola costante: `APP_DOMAIN = "dovebevo.example"` (dalla 1.10 `www.dovebevo.com`, ADR 0035). Staging su `*.workers.dev`.
 - Utente tipo: 20–45 anni, telefono in mano, poco tempo. Servizio destinato a maggiorenni.
 - Rischio principale: **mappa vuota**. Ogni scelta riduce il costo di un contributo (pochi tocchi, più drink per bar, inserimento da listino dell'admin) e mostra valore anche con pochi prezzi (bar sempre visibili, freschezza chiara).
 
@@ -47,7 +49,7 @@ Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → ac
 
 | ID | Tema | Decisione |
 |---|---|---|
-| D-01 | Dominio | Segnaposto `dovebevo.example` in `APP_DOMAIN`; il dominio vero arriva in M6. Cache API inattiva su `workers.dev` (accettato). |
+| D-01 | Dominio | Segnaposto `dovebevo.example` in `APP_DOMAIN`; il dominio vero arriva in M6. Cache API inattiva su `workers.dev` (accettato). Dal 25/10/2026 il dominio è `www.dovebevo.com`, collegato al Worker `dovebevo-staging` (ADR 0035). |
 | D-02 | Repository | GitHub **pubblico**: Actions, Dependabot e secret scanning gratuiti. |
 | D-03 | Dati OSM | I file dei bar sono **generati a ogni deploy** dal job CI (sezione 5.3). Il PBF scaricato è messo in cache di Actions con chiave = data del file Geofabrik, così più deploy nello stesso giorno non lo riscaricano. In locale e negli e2e si usa un **fixture versionato** (alcune celle di Milano) in `tests/fixtures/data/`. |
 | D-04 | Catalogo | 9 drink e limiti della sezione 6, senza formati. Le voci del menu «Scegli cosa bere» della mappa sono le stesse che si possono inserire (sezione 6). |
@@ -93,7 +95,7 @@ Ordine di priorità in caso di conflitto: vincoli → sicurezza e privacy → ac
   "observability": { "enabled": true, "logs": { "invocation_logs": false } }
   ```
   Le richieste agli asset non eseguono il Worker. I log di invocazione sono spenti: si logga solo ciò che scriviamo noi (13.8).
-- **Ambienti:** `staging` e `production`, ciascuno con Worker, D1 e segreti propri. Un Cron Trigger giornaliero per ambiente.
+- **Ambienti (1.10, ADR 0036):** oggi un solo ambiente vivo, `staging`, con Worker, D1, segreti e Cron Trigger propri; serve il dominio `www.dovebevo.com` ed è il sito in produzione. Un secondo ambiente `production` (Worker, D1, segreti e Cron Trigger propri) si aggiunge solo su decisione di Roberto; il codice e i controlli di configurazione sono pronti ad accoglierlo.
 - **Binding e variabili:** `ASSETS`, `DB` (D1), `RATE_LIMITER` (se disponibile), vars `DATA_VERSION`, `TURNSTILE_SITE_KEY`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`; segreti `TURNSTILE_SECRET`, `SESSION_HMAC_KEY`, `HASH_KEY`.
 - **Frontend:** Vite + Preact + TypeScript strict, CSS con custom properties, niente Tailwind. Nessun router di terze parti: le viste (mappa, scheda bar, aggiungi prezzo, revisione listino, ricerca, privacy, regole, admin) sono gestite con `history` nativa.
 - **Mappa:** MapLibre GL JS, stili derivati da OpenFreeMap `positron` (Bancone) e `dark` (Fuori orario), D-27. Import dinamico avviato subito in parallelo alla shell; worker di MapLibre servito da noi con `setWorkerUrl` (niente `blob:`). Clustering nativo della sorgente GeoJSON.
@@ -384,8 +386,8 @@ Header presenti e CSP senza violazioni · 401 senza sessione · token Turnstile 
 
 - **PR:** lint, typecheck, unit, e2e (Chromium e WebKit, viewport 390×844, geolocalizzazione simulata, dati fixture), sicurezza, Lighthouse CI, `npm audit`, scansione segreti, guardia della feature list (D-21).
 - **Merge su `main`** → import OSM (5.3), migrazioni D1 su staging, deploy in **staging**, smoke test (`/api/health`, una cella, header).
-- **Produzione** solo da tag `v0.x.y` approvato da Roberto (environment GitHub con approvazione). Migrazioni prima in staging.
-- Rollback (`wrangler rollback` alla versione precedente) documentato in `docs/runbook-rollback.md` e provato in staging prima di M6.
+- **Produzione (1.10, ADR 0036):** l'ambiente `staging` è il sito vivo; il tag `v0.x.y` segna sul `main` con CI verde la versione rilasciata, senza un secondo deploy. Con un ambiente `production` separato (decisione futura di Roberto) il deploy tornerebbe a partire solo da un tag `v0.x.y`, con l'approvazione dell'environment GitHub, e le migrazioni passerebbero prima da staging.
+- Rollback (`wrangler rollback` alla versione precedente) documentato in `docs/runbook-rollback.md` e provato su `staging` (l'ambiente vivo) prima del tag `v0.1.0`.
 - Deploy, segreti e scritture sul D1 remoto: solo Roberto o la CI, mai Claude Code.
 
 ## 17. Struttura del repository
@@ -566,10 +568,10 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | ID | Funzionalità | Verifica |
 |---|---|---|
 | M6-01 | Dominio di produzione | `APP_DOMAIN` aggiornato; HTTPS e header 13.1 verificati sul dominio; Cache API attiva (header `cf-cache-status` o test di hit) |
-| M6-02 | Segreti di produzione | checklist firmata da Roberto in PROGRESS (impostati da lui) |
+| M6-02 | Segreti dell'ambiente vivo | checklist firmata da Roberto in PROGRESS: `TURNSTILE_SECRET`, `SESSION_HMAC_KEY` e `HASH_KEY` dell'ambiente `staging`, che serve il dominio, sono impostati da lui e diversi dai valori di sviluppo (ADR 0036) |
 | M6-03 | Rollback provato | esecuzione in staging documentata in `docs/runbook-rollback.md` con esito |
-| M6-04 | Rilascio `v0.1.0` | tag `v0.1.0` approvato, deploy di produzione verde, `CHANGELOG.md` aggiornato |
-| M6-05 | Smoke test in produzione | `/api/health`, una cella, header e CSP verificati in produzione; feature list tutta a `passes: true` |
+| M6-04 | Rilascio `v0.1.0` | tag `v0.1.0` approvato da Roberto su un commit di `main` con CI e deploy dell'ambiente vivo verdi, `CHANGELOG.md` aggiornato (ADR 0036) |
+| M6-05 | Smoke test sul dominio vivo | `/api/health`, una cella, header e CSP verificati su `www.dovebevo.com`; feature list tutta a `passes: true` |
 
 ## 19. Milestone
 
@@ -585,7 +587,7 @@ Le verifiche "e2e" sono test Playwright a 390×844 su Chromium e WebKit con dati
 | **MC** | Menu «Scegli cosa bere», catalogo di 9 drink senza formati (v1.6, ADR 0028), pallino della posizione (v1.8) | MC-01…MC-05 |
 | **MD** | «Gestore verificato»: spunta, «Sponsorizzato», posto in cima all'Elenco, orari nella scheda, solo da admin (v1.9, ADR 0033) | MD-01…MD-11 |
 | **M5** | Eventi e `/admin`, dashboard di copertura, pagine legali, a11y e performance, ASVS L1, test con 5 persone | M5-01…M5-16 |
-| **M6** | Dominio, segreti di produzione, rollback, `v0.1.0`, smoke test | M6-01…M6-05 |
+| **M6** | Dominio, segreti dell'ambiente vivo, rollback, `v0.1.0`, smoke test sul dominio vivo (v1.10, ADR 0036) | M6-01…M6-05 |
 
 Ciclo di ogni milestone: plan mode e ok di Roberto → una funzionalità alla volta (test prima, poi codice, poi verifica con prove) → `/code-review`, `/security-review`, subagent `spec-reviewer` (solo correttezza, sicurezza, requisiti mancanti) → test verdi, PROGRESS, commit, PR verso `main`, riepilogo → stop. Se lo stesso errore si ripete due volte: stop e proposta di `/clear` con istruzione migliore.
 
@@ -599,12 +601,12 @@ Ciclo di ogni milestone: plan mode e ok di Roberto → una funzionalità alla vo
 
 | Quando | Cosa |
 |---|---|
-| M0 | Creare il repo GitHub pubblico (o autorizzare Claude a crearlo con `gh`); account Cloudflare; API token Cloudflare con permessi Workers/D1 come secret della CI; creare i D1 `dovebevo-staging` e `dovebevo-production` (o autorizzare la CI) |
+| M0 | Creare il repo GitHub pubblico (o autorizzare Claude a crearlo con `gh`); account Cloudflare; API token Cloudflare con permessi Workers/D1 come secret della CI; creare il D1 `dovebevo-staging` (o autorizzare la CI); `dovebevo-production` solo se un giorno si crea l'ambiente separato (1.10) |
 | M0 | Approvare il design system |
-| M2 | Widget Turnstile (site key e secret) per staging e produzione |
+| M2 | Widget Turnstile (site key e secret) per l'ambiente vivo `staging` (e per `production`, se un giorno esiste) |
 | M3 | Provare "Vicino a me" su iPhone e Android; approvare i bar proposti dagli utenti da `/admin` |
 | M5 | Cloudflare Access (team, applicazione su `/admin*` e `/api/admin/*`, `aud`); revisione di `PRIVACY-NOTES.md` e informativa iubenda; esecuzione del test con 5 persone |
-| M6 | Dominio, segreti di produzione, approvazione del tag `v0.1.0`, `preload` HSTS |
+| M6 | Dominio, segreti dell'ambiente vivo, approvazione del tag `v0.1.0`, `preload` HSTS |
 
 ## 22. Rischi e verifiche aperte
 

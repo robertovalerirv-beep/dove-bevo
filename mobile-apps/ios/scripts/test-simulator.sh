@@ -12,7 +12,10 @@ fi
 if [[ -n "${IOS_SIMULATOR_RUNTIME:-}" ]]; then
     SELECTOR_ARGS+=(--runtime-version "$IOS_SIMULATOR_RUNTIME")
 fi
-SIMULATOR_ID="$(xcrun simctl list devices available --json | python3 "$IOS_ROOT/scripts/select_simulator.py" \
+if [[ -n "${IOS_SIMULATOR_MODEL:-}" ]]; then
+    SELECTOR_ARGS+=(--device-model "$IOS_SIMULATOR_MODEL")
+fi
+SIMULATOR_ID="$(xcrun simctl list --json | python3 "$IOS_ROOT/scripts/select_simulator.py" \
     "${SELECTOR_ARGS[@]}")"
 SIMULATOR_ARCH="$(uname -m)"
 RESULT_BUNDLE="$IOS_ROOT/.build/TestResults.xcresult"

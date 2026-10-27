@@ -242,6 +242,9 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
     const html = await (await get("/copertura")).text();
     expect(html).toContain("Milano: 2 bar con prezzo, 2 prezzi");
     expect(html).toContain('"@type":"Dataset"');
+    // Search Console flags a Dataset without these two fields.
+    expect(html).toContain('"license":"https://opendatacommons.org/licenses/odbl/1-0/"');
+    expect(html).toContain('"creator":{"@type":"Organization"');
   });
 
   it("without D1 the page is the plain shell, with no error", async () => {

@@ -44,7 +44,10 @@ Set `DEVELOPER_DIR` to choose an installed Xcode. Set `IOS_SIMULATOR_ID` to an
 available iPhone simulator UDID to choose a particular device, including an older
 OS for explicit compatibility checks. Set `IOS_SIMULATOR_RUNTIME` to an exact
 installed version such as `26.2` to pin the main tests and both store captures;
-an unavailable pin or a conflicting device selection fails. Tests otherwise choose the newest installed
+an unavailable pin or a conflicting device selection fails. `IOS_SIMULATOR_MODEL`
+selects an exact actual iPhone type from `simctl`, independent of a device's
+editable name. CI selects iPhone 17 to retain a medium Dynamic Island screenshot,
+alongside the separate large-iPhone and 13-inch iPad captures. Tests otherwise choose the newest installed
 available iOS runtime matching the selected Xcode SDK major version and print its
 device, OS and SDK. Missing matching runtimes fail clearly. Open the generated `mobile-apps/ios/DoveBevo.xcodeproj`
 to run interactively. `project.yml` is the reproducible source of the project;

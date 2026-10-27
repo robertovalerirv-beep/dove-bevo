@@ -51,8 +51,10 @@ weaken the live map checks to satisfy a store requirement.
 The next candidate tests the supported ARM macOS 26 host while retaining pinned
 Xcode 26.3 and iOS 26.2. Simulator Metal uses the host graphics implementation;
 this is a test of the observed host abort path, not an established crash fix.
-The runner may supply a different iPhone model, which will be reported rather
-than treated as an identical hardware comparison. The runtime pin must fail
+The main test selects the actual iPhone 17 type for a medium Dynamic Island
+capture; separate large-iPhone and 13-inch iPad checks remain required. This
+differs from the preceding iPhone 16 and is not an identical hardware comparison.
+The runtime and model pins must fail
 instead of silently selecting a newer OS. Supported inventory and compatibility:
 [GitHub runner](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md),
 [Apple Xcode requirements](https://developer.apple.com/xcode/system-requirements),

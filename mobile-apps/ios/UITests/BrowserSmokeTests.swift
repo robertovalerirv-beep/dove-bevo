@@ -42,14 +42,30 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(website.waitForExistence(timeout: 20), "WKWebView did not appear")
         let searchButton = website.buttons["Cerca città o bar"]
         XCTAssertTrue(searchButton.waitForExistence(timeout: 90), "Live website did not become ready; inspect screenshot and network/challenge state")
-        XCTAssertFalse(app.descendants(matching: .any)["browser.error"].exists)
+        let shareButton = app.buttons["browser.share"]
+        let loading = app.descendants(matching: .any)["browser.loading"]
+        let error = app.descendants(matching: .any)["browser.error"]
+        // Web content can enter the accessibility tree before WKNavigation's
+        // didFinish. Require both native load completion and a reachable action.
+        let ready = NSPredicate { _, _ in
+            shareButton.isEnabled && !loading.exists && !error.exists &&
+                searchButton.exists && searchButton.isHittable
+        }
+        let readiness = XCTNSPredicateExpectation(predicate: ready, object: nil)
+        let readinessResult = XCTWaiter.wait(for: [readiness], timeout: 30)
+        attachState(named: "DoveBevo-live-before-search-tap")
+        XCTAssertEqual(readinessResult, .completed, "Native loading and the website search action did not become ready together")
         XCTAssertTrue(website.buttons["Vicino a me"].exists)
+        XCTAssertTrue(ready.evaluate(with: nil), "Page readiness changed before the single search tap")
         searchButton.tap()
+        attachState(named: "DoveBevo-live-after-search-tap")
 
         // The HTML modal and keyboard can change WebKit's nested accessibility
         // containers; keep the exact input label, queried from the application.
         let searchField = app.textFields["Cerca una città o un bar"]
-        XCTAssertTrue(searchField.waitForExistence(timeout: 15), "Website city search field missing")
+        let fieldAppeared = searchField.waitForExistence(timeout: 15)
+        if !fieldAppeared { attachState(named: "DoveBevo-live-search-field-missing") }
+        XCTAssertTrue(fieldAppeared, "Website city search field missing")
         dismissKeyboardIntroductionIfPresent(searchField: searchField)
         XCTAssertTrue(searchField.exists, "The original city search sheet disappeared; do not reopen it after a renderer reset")
         XCTAssertTrue(searchField.isHittable, "The original city search field must remain reachable before typing")
@@ -107,6 +123,16 @@ final class BrowserSmokeTests: XCTestCase {
         screenshot.name = name
         screenshot.lifetime = .keepAlways
         add(screenshot)
+    }
+
+    private func attachState(named name: String) {
+        attachScreen(named: name)
+        // This test opens the public service without account credentials.
+        // Retain a bounded hierarchy at the actual interaction boundary.
+        let hierarchy = XCTAttachment(string: String(app.debugDescription.prefix(32_768)))
+        hierarchy.name = "\(name)-accessibility"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
     }
 
     private func assertNoNativeRecovery() {

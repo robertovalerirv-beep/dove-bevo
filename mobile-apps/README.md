@@ -4,7 +4,9 @@ The canonical project is [Roberto's GitHub repository](https://github.com/robert
 
 - Android: `android/`, package `com.dovebevo.app`.
 - iOS: `ios/`, bundle identifier `com.dovebevo.app`.
-- Functional checks and retained build evidence: the **Mobile apps** pull request workflow.
+- Functional checks and retained build evidence: the **Mobile apps** workflow for pull requests and release tags.
+
+See [release status](RELEASE_STATUS.md) for verified build, store and submission progress.
 
 The native browser owns cookies and website authentication. The apps have no native API proxy, token exchange, generic privileged JavaScript bridge, preview host or fixture dependency. Location is requested in the foreground for the existing nearby search. Sharing and external maps use operating-system controls.
 

@@ -108,7 +108,7 @@ jobs:
       github.event_name == 'push' && github.ref_type == 'tag' &&
       startsWith(github.ref, 'refs/tags/mobile-release/v') &&
       github.repository == 'robertovalerirv-beep/dove-bevo'
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 25
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
@@ -141,10 +141,11 @@ jobs:
 
   ios:
     name: iOS simulator tests and unsigned device archive
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 50
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "26.2"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

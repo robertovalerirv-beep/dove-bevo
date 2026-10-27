@@ -25,7 +25,8 @@ landscape and iPad share popovers use UIKit defaults.
 
 Requirements: macOS, Xcode 16.4 or later with an installed iOS simulator, command-line
 tools selected with `xcode-select`, Python 3 and network access for the build tool
-and the live-site smoke test. CI uses Xcode 26.3. No Node or CocoaPods installation
+and the live-site smoke test. CI uses Xcode 26.3 on the ARM macOS 26 runner with
+the iOS 26.2 simulator pinned explicitly. No Node or CocoaPods installation
 is needed. The build-tool source is [XcodeGen 2.44.1](https://github.com/yonaskolb/XcodeGen/releases/tag/2.44.1)
 (MIT). The generation script downloads its official release ZIP, verifies the
 pinned SHA-256 before extraction/execution and checks the executable's version.
@@ -41,7 +42,9 @@ bash mobile-apps/ios/scripts/archive-unsigned.sh
 
 Set `DEVELOPER_DIR` to choose an installed Xcode. Set `IOS_SIMULATOR_ID` to an
 available iPhone simulator UDID to choose a particular device, including an older
-OS for explicit compatibility checks. Tests otherwise choose the newest installed
+OS for explicit compatibility checks. Set `IOS_SIMULATOR_RUNTIME` to an exact
+installed version such as `26.2` to pin the main tests and both store captures;
+an unavailable pin or a conflicting device selection fails. Tests otherwise choose the newest installed
 available iOS runtime matching the selected Xcode SDK major version and print its
 device, OS and SDK. Missing matching runtimes fail clearly. Open the generated `mobile-apps/ios/DoveBevo.xcodeproj`
 to run interactively. `project.yml` is the reproducible source of the project;

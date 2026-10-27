@@ -4,6 +4,21 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-27 · Un solo ambiente vivo: `staging` è la produzione (branch `m5-chiusura-codice`) · SPEC 1.10, ADR 0036 · M6
+
+**Richiesta di Roberto:** niente doppio ambiente per ora; `staging` diventa il sito in produzione; aggiornare M6 e il resto; l'ambiente separato, se serve, lo deciderà più avanti.
+
+**Fatto**
+- SPEC 1.10: ambienti (4), CI/CD (16), D-01, prerequisiti (21), milestone M6 e righe M6-02, M6-04, M6-05 riscritte; `docs/feature_list.json` allineato (cambiano solo `descrizione` e `verifica` di quelle tre voci, autorizzate da Roberto in chat; `passes` invariati).
+- ADR 0036 (completa l'ADR 0035); `docs/release-checklist.md` riscritta con la sezione «Se un giorno serve l'ambiente separato»; `docs/runbook-rollback.md` avverte che la prova tocca il dominio vivo; modello `deploy-production.yml.example` marcato «non in uso»; CHANGELOG; commento di `deploy-staging.yml`.
+- Guardia della feature list ora sul tag `spec-approved-11` (`scripts/check-feature-list.mjs`, CLAUDE.md, `ci.yml`).
+
+**Non fatto, di Roberto**
+- Creare il tag `spec-approved-11` sul commit di questa modifica: finché manca, la guardia della feature list è rossa in CI e nel hook di push.
+- M6-02 (firma dei segreti di `staging`), prova del rollback, tag `v0.1.0`, `preload` HSTS, regola WAF: vedi `docs/release-checklist.md`.
+
+---
+
 ## 2026-10-25 · Dominio www.dovebevo.com sul Worker esistente (branch `claude/cloudflare-domain-setup-beb3b8`) · M6-01 in parte
 
 **Richiesta di Roberto:** portare il sito vero (bar e prezzi già inseriti) sul dominio comprato, sostituendo l'indirizzo `workers.dev`. ADR 0035: nessuna copia del D1, il dominio si collega al Worker `dovebevo-staging`.

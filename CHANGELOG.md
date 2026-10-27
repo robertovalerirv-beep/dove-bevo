@@ -4,6 +4,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/it-IT/1.1.0/). Versioni `
 
 ## [Non rilasciato] — verso 0.1.0
 
+Il sito vivo è l'ambiente `staging` su `www.dovebevo.com` (ADR 0035 e 0036): il tag `v0.1.0` segna la versione su `main`, senza un secondo deploy.
+
 ### Aggiunto
 - Mappa dei bar italiani con i prezzi inseriti dagli utenti, senza registrazione e senza tracciamento.
 - «Scegli cosa bere»: nove drink, prezzo più basso tra quelli scelti, colori Affare, Giusto, Salato rispetto alla mediana della zona.

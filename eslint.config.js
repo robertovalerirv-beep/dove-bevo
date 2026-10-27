@@ -7,6 +7,7 @@ export default defineConfig(
     ignores: [
       "dist/",
       "docs/materiali/", // local marketing material, not in the repository
+      ".claude/worktrees/", // other sessions' checkouts of this repository (local only)
       "backup-*/",
       ".wrangler/",
       "public/data/",

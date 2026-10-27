@@ -1,4 +1,4 @@
-# Deploy to staging after a green CI run on main (SPEC 16). Production: tag v0.x.y, from M6.
+# Deploy to staging after a green CI run on main (SPEC 16). `staging` is the live environment (ADR 0036): a tag v0.x.y only marks a release on main.
 name: Deploy staging
 
 on:

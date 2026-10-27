@@ -98,12 +98,16 @@ def prepare_runtime():
         (RUNTIME / name).mkdir(mode=0o700)
     ENV = dict(os.environ, HOME=str(RUNTIME / "home"), ANDROID_USER_HOME=str(RUNTIME / "android"),
                ANDROID_AVD_HOME=str(RUNTIME / "avd"), ANDROID_EMULATOR_HOME=str(RUNTIME / "android"),
-               ANDROID_SDK_HOME=str(RUNTIME / "home"), ADB_VENDOR_KEYS=str(RUNTIME / "keys"),
+               ADB_VENDOR_KEYS=str(RUNTIME / "keys"),
                TMPDIR=str(RUNTIME / "tmp"), XDG_CONFIG_HOME=str(RUNTIME / "config"),
                XDG_CACHE_HOME=str(RUNTIME / "cache"), XDG_DATA_HOME=str(RUNTIME / "data"),
                ADB_SERVER_SOCKET="tcp:127.0.0.1:5041", ANDROID_ADB_SERVER_ADDRESS="127.0.0.1",
                ANDROID_ADB_SERVER_PORT="5041",
                ADB_MDNS_AUTO_CONNECT="0")
+    # avdmanager rejects conflicting legacy and modern preferences locations.
+    # Keep the private ANDROID_USER_HOME authoritative, including on hosts that
+    # inherited the deprecated parent-of-.android variable.
+    ENV.pop("ANDROID_SDK_HOME", None)
     # Startup logs must not inherit verbose authentication/key diagnostics.
     ENV.pop("ADB_TRACE", None)
 

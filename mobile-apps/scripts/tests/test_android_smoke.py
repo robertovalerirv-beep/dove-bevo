@@ -97,7 +97,7 @@ class AndroidSmokeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'outside the checkout'):
                 m.prepare_runtime()
 
-    def test_isolated_runtime(self):
+    def test_isolated_runtime_excludes_inherited_legacy_sdk_home(self):
         runner = self.base / 'runner'
         runner.mkdir()
         original = pathlib.Path.stat
@@ -111,13 +111,17 @@ class AndroidSmokeTests(unittest.TestCase):
                 values[0] = stat.S_IFDIR | 0o700
                 return os.stat_result(values)
             return v
-        env = {'GITHUB_ACTIONS': 'true', 'RUNNER_ENVIRONMENT': 'github-hosted', 'ANDROID_HOME': str(m.SDK), 'RUNNER_TEMP': str(runner), 'ADB_TRACE': 'auth', 'ADB_VENDOR_KEYS': 'untrusted-key'}
+        env = {'GITHUB_ACTIONS': 'true', 'RUNNER_ENVIRONMENT': 'github-hosted', 'ANDROID_HOME': str(m.SDK), 'RUNNER_TEMP': str(runner), 'ANDROID_SDK_HOME': str(self.base / 'host-preferences'), 'ADB_TRACE': 'auth', 'ADB_VENDOR_KEYS': 'untrusted-key'}
         with mock.patch.object(m.sys, 'platform', 'linux'), mock.patch.object(m.os, 'getuid', return_value=OWNER_UID, create=True), mock.patch.dict(os.environ, env, clear=True), mock.patch.object(pathlib.Path, 'stat', posix_stat):
             m.prepare_runtime()
+            self.assertEqual(os.environ['ANDROID_SDK_HOME'], env['ANDROID_SDK_HOME'])
+        self.assertNotIn('ANDROID_SDK_HOME', m.ENV)
+        self.assertEqual(m.ENV['ANDROID_HOME'], str(m.SDK))
         self.assertTrue(m.RUNTIME.is_relative_to(runner))
         self.assertFalse(m.RUNTIME.is_relative_to(m.EVIDENCE))
-        for key in ['HOME', 'ANDROID_USER_HOME', 'ANDROID_AVD_HOME', 'ANDROID_EMULATOR_HOME', 'ANDROID_SDK_HOME', 'ADB_VENDOR_KEYS', 'TMPDIR', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME']:
+        for key in ['HOME', 'ANDROID_USER_HOME', 'ANDROID_AVD_HOME', 'ANDROID_EMULATOR_HOME', 'ADB_VENDOR_KEYS', 'TMPDIR', 'XDG_CONFIG_HOME', 'XDG_CACHE_HOME', 'XDG_DATA_HOME']:
             self.assertTrue(pathlib.Path(m.ENV[key]).is_relative_to(m.RUNTIME), key)
+            self.assertFalse(pathlib.Path(m.ENV[key]).is_relative_to(m.EVIDENCE), key)
         self.assertTrue(pathlib.Path(m.ENV['ANDROID_AVD_HOME']).is_dir())
         self.assertNotIn('ADB_TRACE', m.ENV)
 

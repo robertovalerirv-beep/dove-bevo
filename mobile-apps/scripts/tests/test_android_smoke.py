@@ -142,6 +142,37 @@ class AndroidSmokeTests(unittest.TestCase):
         self.assertLessEqual(len(v.encode()), 16384)
         self.assertLessEqual(len(m.safe_text('€' * 10000).encode()), 16384)
 
+    def test_adb_public_key_lines_are_omitted(self):
+        fabricated_key = 'FABRICATED_ADB_PUBLIC_KEY_BYTES_ONLY'
+        for key_line in [
+                f'emulator: INFO | Sending adb public key [{fabricated_key} fixture@host]',
+                f'SENDING\tADB PUBLIC KEY {fabricated_key}',
+                f'kernel parameters: console=ttyS0 androidboot.qemu.adb.pubkey={fabricated_key} qemu=1',
+                f'qemu arguments: "androidboot.qemu.adb.pubkey={fabricated_key}" console=ttyS0']:
+            with self.subTest(key_line=key_line):
+                sanitized = m.safe_text(f'listener ready\n{key_line}\nboot completed')
+                self.assertNotIn(fabricated_key, sanitized)
+                self.assertEqual(sanitized.splitlines(), [
+                    'listener ready', '[sensitive diagnostic line omitted]', 'boot completed'])
+
+    def test_startup_public_key_redaction_preserves_capture_bounds_and_exit(self):
+        fabricated_key = b'FABRICATED_INLINE_ADB_PUBLIC_KEY_BYTES_ONLY'
+        stdout = (b'emulator kernel arguments: androidboot.qemu.adb.pubkey=' + fabricated_key
+                  + b' qemu=1\nboot diagnostic retained\n' + b'x' * 50000)
+        capture = m.BoundedLog(Proc(code=7, out=stdout, err=b'useful emulator failure'), 'emulator')
+        capture.finish()
+        retained = (m.EVIDENCE / 'emulator-startup.json').read_text()
+        self.assertFalse(fabricated_key.decode() in retained, 'Startup evidence retained the fabricated public key')
+        result = json.loads(retained)['emulator']
+        self.assertEqual(result['returncode'], 7)
+        self.assertEqual(result['streams']['stderr']['text'], 'useful emulator failure')
+        stream = result['streams']['stdout']
+        self.assertIn('boot diagnostic retained', stream['text'])
+        self.assertEqual(stream['bytes'], len(stdout))
+        self.assertEqual(stream['truncated_bytes'], len(stdout) - 16384)
+        self.assertEqual(len(capture.parts['stdout']['data']), 16384)
+        self.assertLessEqual(len(stream['text'].encode()), 16384)
+
     def test_failure_streams(self):
         with mock.patch.object(m.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, b'O' * 50000, b'useful error')):
             with self.assertRaises(subprocess.CalledProcessError):

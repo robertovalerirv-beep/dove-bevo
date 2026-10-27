@@ -37,8 +37,10 @@ def safe_text(value):
     text = raw[:DIAGNOSTIC_LIMIT].decode("utf-8", "replace")
     text = re.sub(r"-----BEGIN [^\n]*KEY-----[\s\S]*?(?:-----END [^\n]*KEY-----|$)",
                   "[private key block omitted]", text)
+    # The emulator can embed an ADB public key in a longer kernel-argument line.
     text = "\n".join("[sensitive diagnostic line omitted]" if re.search(
-        r"private.?key|\btoken\b|authorization:|BEGIN .*KEY|ADB_TRACE|ADB_VENDOR_KEYS", line, re.I
+        r"private.?key|\btoken\b|authorization:|BEGIN .*KEY|ADB_TRACE|ADB_VENDOR_KEYS|"
+        r"\bsending\s+adb\s+public\s+key\b|\bandroidboot\.qemu\.adb\.pubkey\b", line, re.I
     ) else line for line in text.splitlines())
     for path, label in ((RUNTIME, "<private-runtime>"), (ROOT, "<checkout>")):
         if path is not None:

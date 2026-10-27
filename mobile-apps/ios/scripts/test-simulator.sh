@@ -17,6 +17,63 @@ done
 mkdir -p "$IOS_ROOT/.build"
 printf '%s\n' "$RESULT_BUNDLE" > "$IOS_ROOT/.build/last-test-result-path.txt"
 TEST_STARTED_AT="$(date +%s)"
+DIAGNOSTICS="$IOS_ROOT/.build/SimulatorDiagnostics"
+mkdir -p "$DIAGNOSTICS"
+COLLECTOR_PID=''
+BOOTED_BY_SCRIPT=false
+simulator_state() {
+    xcrun simctl list devices --json | python3 -c '
+import json, sys
+devices = [d for group in json.load(sys.stdin)["devices"].values() for d in group if d["udid"] == sys.argv[1]]
+if len(devices) != 1:
+    sys.exit("Selected simulator state is unavailable")
+print(devices[0]["state"])
+' "$SIMULATOR_ID"
+}
+finish() {
+    local status=$?
+    trap - EXIT INT TERM
+    set +e
+    if [[ -n "$COLLECTOR_PID" ]]; then
+        kill -TERM "$COLLECTOR_PID" 2>/dev/null
+        wait "$COLLECTOR_PID" \
+            || printf 'Native lifecycle collection was unavailable; test status is retained.\n' >&2
+    fi
+    if [[ "$BOOTED_BY_SCRIPT" == true ]]; then
+        local current_state
+        if ! current_state="$(simulator_state)"; then
+            printf 'Owned simulator state was unavailable; test status is retained.\n' >&2
+        elif [[ "$current_state" != Shutdown ]]; then
+            xcrun simctl shutdown "$SIMULATOR_ID" >/dev/null 2>&1 \
+                || printf 'Owned simulator shutdown was unavailable; test status is retained.\n' >&2
+        fi
+    fi
+    python3 "$IOS_ROOT/scripts/collect-diagnostics.py" --since "$TEST_STARTED_AT" \
+        || printf 'Host crash metadata was unavailable; test status is retained.\n' >&2
+    if [[ -d "$RESULT_BUNDLE" ]]; then
+        xcrun xcresulttool export attachments --path "$RESULT_BUNDLE" \
+            --output-path "$IOS_ROOT/.build/Screenshots" \
+            || printf 'Attachment export was unavailable; test status is retained.\n' >&2
+    fi
+    exit "$status"
+}
+trap finish EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# bootstatus -b boots only this selected device if needed and waits for readiness.
+# Capture during the test: Xcode may shut the simulator down before returning.
+SELECTED_STATE="$(simulator_state)"
+case "$SELECTED_STATE" in
+    Shutdown) BOOTED_BY_SCRIPT=true ;;
+    Booted|Booting) ;;
+    *) printf 'Selected simulator is in an unsupported transition state.\n' >&2; exit 1 ;;
+esac
+printf 'Selected simulator initial state: %s; boot owned by script: %s\n' "$SELECTED_STATE" "$BOOTED_BY_SCRIPT"
+xcrun simctl bootstatus "$SIMULATOR_ID" -b
+python3 "$IOS_ROOT/scripts/collect-native-lifecycle.py" --device "$SIMULATOR_ID" \
+    --output "$DIAGNOSTICS/native-lifecycle-$(basename "$RESULT_BUNDLE" .xcresult).json" &
+COLLECTOR_PID=$!
 set +e
 xcodebuild \
     -project "$IOS_ROOT/DoveBevo.xcodeproj" \
@@ -28,16 +85,4 @@ xcodebuild \
     CODE_SIGNING_ALLOWED=NO test
 TEST_STATUS=$?
 set -e
-mkdir -p "$IOS_ROOT/.build/SimulatorDiagnostics"
-xcrun simctl spawn "$SIMULATOR_ID" log show --style compact --last 15m \
-    --predicate 'process == "DoveBevo" AND (eventMessage BEGINSWITH "DoveBevo:" OR eventMessage CONTAINS "processDidTerminate" OR eventMessage CONTAINS "terminated" OR eventMessage CONTAINS "crash")' \
-    >"$IOS_ROOT/.build/SimulatorDiagnostics/browser-process.txt" \
-    2>"$IOS_ROOT/.build/SimulatorDiagnostics/log-collection.txt" \
-    || printf 'Simulator process diagnostics were unavailable; test status is retained.\n' >&2
-python3 "$IOS_ROOT/scripts/collect-diagnostics.py" --since "$TEST_STARTED_AT" \
-    || printf 'Host crash metadata was unavailable; test status is retained.\n' >&2
-if [[ -d "$RESULT_BUNDLE" ]]; then
-    xcrun xcresulttool export attachments --path "$RESULT_BUNDLE" \
-        --output-path "$IOS_ROOT/.build/Screenshots"
-fi
 exit "$TEST_STATUS"

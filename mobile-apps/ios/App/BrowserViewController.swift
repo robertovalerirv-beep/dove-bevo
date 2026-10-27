@@ -391,12 +391,24 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        #if DEBUG
+        NSLog("DoveBevo: navigation provisional-start")
+        #endif
         errorView.isHidden = true
         loadingView.isHidden = hasLoadedPage
         progressView.setProgress(0, animated: false)
     }
 
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        #if DEBUG
+        NSLog("DoveBevo: navigation commit")
+        #endif
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        #if DEBUG
+        NSLog("DoveBevo: navigation finish")
+        #endif
         hasLoadedPage = true
         loadingView.isHidden = true
         errorView.isHidden = true
@@ -413,6 +425,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func handleNavigationError(_ error: Error) {
         let error = error as NSError
+        #if DEBUG
+        NSLog("DoveBevo: navigation failed code=%ld", error.code)
+        #endif
         guard !(error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled) else { return }
         let message = isOffline || (error.domain == NSURLErrorDomain && error.code == NSURLErrorNotConnectedToInternet)
             ? "Controlla la connessione, poi tocca Riprova. La mappa e i prezzi richiedono internet."
@@ -421,7 +436,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        NSLog("DoveBevo: WebKit content process terminated; recovery already used: %@", recoveredRenderer ? "yes" : "no")
+        #if DEBUG
+        NSLog("DoveBevo: renderer terminated recovered=%@", recoveredRenderer ? "yes" : "no")
+        #endif
         // One automatic recovery per controller lifetime; repeated failures
         // require an explicit retry so a broken page cannot reload forever.
         guard !recoveredRenderer else {

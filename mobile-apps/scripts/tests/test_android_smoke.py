@@ -35,6 +35,16 @@ class Proc:
     def wait(self, timeout):
         return self.returncode
 
+class Clock:
+    def __init__(self):
+        self.now = 0
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.now += seconds
+
 class AndroidSmokeTests(unittest.TestCase):
 
     def setUp(self):
@@ -210,10 +220,91 @@ class AndroidSmokeTests(unittest.TestCase):
         self.assertEqual(events, [('stop', 9101), ('stop', 9102), ('remove', runtime)])
 
     def test_unstopped_group_retains_state(self):
-        self.fake_runtime()
-        with mock.patch.object(m.os, 'killpg', return_value=None, create=True), mock.patch.object(m, 'port_open', return_value=False), mock.patch.object(m.shutil, 'rmtree') as rm:
-            self.assertTrue(m.cleanup_runtime(Proc(), []))
-            rm.assert_not_called()
+        for emulator, adb, label, pid in [(Proc(), None, 'emulator', 9101), (None, Proc(9102), 'ADB', 9102)]:
+            self.fake_runtime()
+            m.ADB_OWNER = adb
+            clock = Clock()
+            with self.subTest(label=label), mock.patch.object(m.os, 'killpg', return_value=None, create=True) as kill, mock.patch.object(m.time, 'monotonic', clock.monotonic), mock.patch.object(m.time, 'sleep', clock.sleep), mock.patch.object(m, 'port_open', return_value=False), mock.patch.object(m.shutil, 'rmtree') as rm:
+                self.assertEqual(m.cleanup_runtime(emulator, []), [f'Owned {label} process group did not stop'])
+                rm.assert_not_called()
+            self.assertGreaterEqual(clock.now, 15)
+            self.assertLessEqual(clock.now, 15.01)
+            self.assertEqual({call.args[0] for call in kill.call_args_list}, {pid})
+
+    def test_early_leader_exit_still_waits_for_group_before_escalation(self):
+        clock = Clock()
+        def kill(pid, sig):
+            if sig == 0 and clock.now >= 0.3:
+                raise ProcessLookupError()
+        with mock.patch.object(m.os, 'killpg', side_effect=kill, create=True) as action, mock.patch.object(m.time, 'monotonic', clock.monotonic), mock.patch.object(m.time, 'sleep', clock.sleep):
+            self.assertEqual(m.cleanup_runtime(Proc(), []), [])
+        self.assertGreaterEqual(clock.now, 0.3)
+        self.assertEqual([call.args for call in action.call_args_list if call.args[1] != 0], [(9101, signal.SIGTERM)])
+
+    def test_group_remaining_after_term_is_escalated_then_observed_until_gone(self):
+        clock = Clock()
+        def kill(pid, sig):
+            if sig == 0 and clock.now >= 10.3:
+                raise ProcessLookupError()
+        with mock.patch.object(m.os, 'killpg', side_effect=kill, create=True) as action, mock.patch.object(m.time, 'monotonic', clock.monotonic), mock.patch.object(m.time, 'sleep', clock.sleep):
+            self.assertEqual(m.cleanup_runtime(Proc(), []), [])
+        self.assertGreaterEqual(clock.now, 10.3)
+        self.assertEqual([call.args for call in action.call_args_list if call.args[1] != 0], [(9101, signal.SIGTERM), (9101, signal.SIGKILL)])
+
+    def test_decline_waits_for_nonempty_foreground_change_before_one_launch(self):
+        clock = Clock()
+        events = []
+        packages = iter(['com.dovebevo.app', 'com.dovebevo.app', 'com.google.android.apps.nexuslauncher'])
+        def hierarchy():
+            package = next(packages)
+            events.append(package)
+            return m.ET.fromstring(f'<hierarchy><node package="{package}" /></hierarchy>')
+        with mock.patch.object(m, 'tree', side_effect=hierarchy), mock.patch.object(m, 'launch_app', side_effect=lambda stage: events.append(stage)) as launch, mock.patch.object(m.time, 'monotonic', clock.monotonic), mock.patch.object(m.time, 'sleep', clock.sleep):
+            m.relaunch_after_decline()
+        launch.assert_called_once_with('after_decline')
+        self.assertEqual(events[-2:], ['com.google.android.apps.nexuslauncher', 'after_decline'])
+        self.assertEqual(clock.now, 4)
+
+    def test_decline_never_launches_while_app_or_empty_window_remains(self):
+        for xml in ['<hierarchy />', '<hierarchy><node /></hierarchy>', '<hierarchy><node package="com.dovebevo.app" /></hierarchy>']:
+            clock = Clock()
+            with self.subTest(xml=xml), mock.patch.object(m, 'tree', return_value=m.ET.fromstring(xml)), mock.patch.object(m, 'launch_app') as launch, mock.patch.object(m.time, 'monotonic', clock.monotonic), mock.patch.object(m.time, 'sleep', clock.sleep):
+                with self.assertRaisesRegex(RuntimeError, 'declined Activity leaves foreground'):
+                    m.relaunch_after_decline()
+                launch.assert_not_called()
+
+    def test_launch_diagnostics_are_fixed_stage_bounded_and_sanitized(self):
+        m.RUNTIME = self.base / 'private-runtime'
+        payload = str(m.RUNTIME).encode() + b'\ntoken omitted-value\n' + b'x' * 50000
+        completed = subprocess.CompletedProcess([], 0, payload, b'intent delivered to existing activity')
+        with mock.patch.object(m, 'adb', return_value=completed) as adb:
+            for stage in ['initial', 'after_decline', 'resume', 'after_restart']:
+                m.launch_app(stage)
+            for stage in ['initial', 'arbitrary-stage']:
+                with self.assertRaisesRegex(RuntimeError, 'launch stage'):
+                    m.launch_app(stage)
+        self.assertEqual(adb.call_count, 4)
+        for call in adb.call_args_list:
+            self.assertEqual(call.args, ('shell', 'am', 'start', '-W', '-n', 'com.dovebevo.app/.MainActivity'))
+            self.assertEqual(call.kwargs, {'check': False})
+        launches = json.loads((m.EVIDENCE / 'emulator-startup.json').read_text())['launches']
+        self.assertEqual(len(launches), 4)
+        for outcome in launches.values():
+            self.assertEqual(outcome['returncode'], 0)
+            self.assertLessEqual(len(outcome['stdout'].encode()), m.DIAGNOSTIC_LIMIT)
+            self.assertNotIn('omitted-value', outcome['stdout'])
+            self.assertNotIn(str(m.RUNTIME), outcome['stdout'])
+            self.assertEqual(outcome['stderr'], 'intent delivered to existing activity')
+
+    def test_failed_launch_keeps_outcome_before_raising_and_does_not_retry(self):
+        with mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 9, b'launch detail', b'failure')) as adb:
+            with self.assertRaises(subprocess.CalledProcessError):
+                m.launch_app('after_decline')
+        adb.assert_called_once()
+        outcome = json.loads((m.EVIDENCE / 'emulator-startup.json').read_text())['launches']['after_decline']
+        self.assertEqual(outcome['returncode'], 9)
+        self.assertEqual(outcome['stdout'], 'launch detail')
+        self.assertEqual(outcome['stderr'], 'failure')
 
     def test_identity_change_retains_state(self):
         self.fake_runtime()

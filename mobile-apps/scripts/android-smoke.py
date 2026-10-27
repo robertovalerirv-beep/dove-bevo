@@ -28,6 +28,7 @@ STARTUP = {}
 DIAGNOSTIC_ERRORS = []
 DIAGNOSTIC_LIMIT = 16_384
 SERIAL = "emulator-5554"
+LAUNCH_STAGES = ("initial", "after_decline", "resume", "after_restart")
 
 
 def safe_text(value):
@@ -171,10 +172,29 @@ class BoundedLog:
             raise RuntimeError("Emulator diagnostic streams did not complete after cleanup")
 
 
+def group_disappeared(process, seconds):
+    deadline = time.monotonic() + seconds
+    try:
+        process.wait(timeout=seconds)
+    except subprocess.TimeoutExpired:
+        pass
+    # The owned leader can exit before its descendants. Observe the group
+    # through the same signal deadline rather than immediately escalating.
+    while True:
+        try:
+            os.killpg(process.pid, 0)
+        except ProcessLookupError:
+            return True
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        time.sleep(min(0.1, remaining))
+
+
 def cleanup_runtime(emulator, captures):
     global ADB_OWNER
     errors = []
-    for process in (emulator, ADB_OWNER):
+    for process, label in ((emulator, "emulator"), (ADB_OWNER, "ADB")):
         if process is None:
             continue
         try:
@@ -183,16 +203,10 @@ def cleanup_runtime(emulator, captures):
                     os.killpg(process.pid, sig)
                 except ProcessLookupError:
                     break
-                try:
-                    process.wait(timeout=seconds)
-                except subprocess.TimeoutExpired:
-                    continue
-                try:
-                    os.killpg(process.pid, 0)
-                except ProcessLookupError:
+                if group_disappeared(process, seconds):
                     break
             else:
-                raise RuntimeError("Owned runtime process group did not stop")
+                raise RuntimeError(f"Owned {label} process group did not stop")
         except (OSError, subprocess.SubprocessError, RuntimeError) as error:
             errors.append(safe_text(error))
     ADB_OWNER = None
@@ -230,6 +244,35 @@ def adb(*args, timeout=30, check=True):
     return result
 
 
+def record_launch(stage, outcome):
+    STARTUP["launches"][stage] = outcome
+    try:
+        (EVIDENCE / "emulator-startup.json").write_text(json.dumps(STARTUP, indent=2) + "\n")
+    except OSError as error:
+        DIAGNOSTIC_ERRORS.append(safe_text(error))
+
+
+def launch_app(stage):
+    launches = STARTUP.setdefault("launches", {})
+    if stage not in LAUNCH_STAGES or stage in launches:
+        raise RuntimeError("Unexpected or repeated app launch stage")
+    launches[stage] = {"state": "started"}
+    try:
+        outcome = adb("shell", "am", "start", "-W", "-n", "com.dovebevo.app/.MainActivity", check=False)
+    except (subprocess.SubprocessError, OSError, RuntimeError) as error:
+        record_launch(stage, {"error": safe_text(error),
+                              "stdout": safe_text(getattr(error, "stdout", b"") or b""),
+                              "stderr": safe_text(getattr(error, "stderr", b"") or b"")})
+        raise
+    record_launch(stage, {"returncode": outcome.returncode, "stdout": safe_text(outcome.stdout),
+                          "stderr": safe_text(outcome.stderr)})
+    if outcome.returncode:
+        raise subprocess.CalledProcessError(outcome.returncode, "app launch", outcome.stdout, outcome.stderr)
+    if b"Error" in outcome.stdout:
+        raise RuntimeError(safe_text(outcome.stdout))
+    return outcome
+
+
 def wait_for(description, probe, timeout=70):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -248,6 +291,18 @@ def tree():
     data = adb("exec-out", "cat", "/sdcard/dove-ui.xml").stdout
     (EVIDENCE / "latest-ui.xml").write_bytes(data)
     return ET.fromstring(data)
+
+
+def app_not_foreground():
+    # UIAutomator dumps the active window. An empty/unknown hierarchy is not
+    # evidence that the asynchronously finishing Activity has left it.
+    packages = {node.get("package") for node in tree().iter("node") if node.get("package")}
+    return bool(packages) and "com.dovebevo.app" not in packages
+
+
+def relaunch_after_decline():
+    wait_for("declined Activity leaves foreground", app_not_foreground, 15)
+    launch_app("after_decline")
 
 
 def find(label, exact=True):
@@ -330,9 +385,7 @@ def main():
         adb("shell", "input", "keyevent", "82")
         apk = ROOT / "mobile-apps/android/app/build/outputs/apk/debug/app-debug.apk"
         adb("install", "-r", str(apk), timeout=60)
-        launched = adb("shell", "am", "start", "-W", "-n", "com.dovebevo.app/.MainActivity").stdout.decode()
-        if "Error" in launched:
-            raise RuntimeError(launched)
+        launch_app("initial")
         result["checks"].append("production package launched")
         accept_rules = wait_for("native adult usage rules", lambda: find("Ho almeno 18 anni e accetto"), 15)
         if any(n.get("class") == "android.webkit.WebView" for n in tree().iter("node")):
@@ -344,7 +397,7 @@ def main():
             raise RuntimeError("The bundled native privacy text did not load")
         tap(wait_for("close native privacy", lambda: find("Chiudi"), 10))
         tap(wait_for("decline native rules", lambda: find("Esci"), 10))
-        adb("shell", "am", "start", "-W", "-n", "com.dovebevo.app/.MainActivity")
+        relaunch_after_decline()
         accept_rules = wait_for("declining must not persist acceptance", lambda: find("Ho almeno 18 anni e accetto"), 15)
         if any(n.get("class") == "android.webkit.WebView" for n in tree().iter("node")):
             raise RuntimeError("Declining the rules opened the online service")
@@ -365,11 +418,11 @@ def main():
         screenshot("03-milano-map.png")
         result["checks"].append("live city search and result selection")
         adb("shell", "input", "keyevent", "3")
-        adb("shell", "am", "start", "-W", "-n", "com.dovebevo.app/.MainActivity")
+        launch_app("resume")
         wait_for("app resumed", lambda: find("Cerca città o bar"))
         result["checks"].append("background and resume")
         adb("shell", "am", "force-stop", "com.dovebevo.app")
-        adb("shell", "am", "start", "-W", "-n", "com.dovebevo.app/.MainActivity")
+        launch_app("after_restart")
         wait_for("accepted app restarts into live service", lambda: find("Cerca città o bar"), 90)
         if find("Ho almeno 18 anni e accetto") is not None:
             raise RuntimeError("Explicit rules acceptance did not survive a process restart")

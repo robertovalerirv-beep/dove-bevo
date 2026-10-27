@@ -421,6 +421,10 @@ export async function buildCoveragePage(env: Env, origin: string): Promise<SeoPa
         name: seoText.coverageTitle,
         description: seoText.coverageDescription,
         inLanguage: "it-IT",
+        url: `${origin}/copertura`,
+        // Counts mix our price reports with OSM bars, so the OSM licence (ODbL) is the one to declare.
+        license: "https://opendatacommons.org/licenses/odbl/1-0/",
+        creator: { "@type": "Organization", name: APP_NAME, url: origin },
       },
     ],
     html:

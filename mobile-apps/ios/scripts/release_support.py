@@ -117,8 +117,8 @@ def select_identity(metadata, identities):
     return matches[0]
 
 
-def export_options(metadata, identity):
-    return {
+def export_options(metadata, identity, internal_only=False):
+    options = {
         "method": "app-store-connect",
         "destination": "export",
         "teamID": TEAM,
@@ -129,6 +129,9 @@ def export_options(metadata, identity):
         "stripSwiftSymbols": True,
         "uploadSymbols": True,
     }
+    if internal_only:
+        options["testFlightInternalTestingOnly"] = True
+    return options
 
 
 def install_profile(directory, metadata, checkout):
@@ -198,11 +201,14 @@ def verify_app(app, entitlements, codesign_details, metadata, build, embedded_pr
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument("operation", choices=["private-dir", "decode", "profile", "identity", "options", "install", "cleanup-profile", "keychain-list", "verify", "manifest", "upload-attempt", "upload-receipt", "cleanup-private"])
     parser.add_argument("args", nargs="*")
+    parser.add_argument("--internal-only", action="count", default=0)
     parsed = parser.parse_args()
     operation, args = parsed.operation, parsed.args
+    if parsed.internal_only > 1 or (parsed.internal_only and operation not in ("options", "manifest")):
+        parser.error("--internal-only is allowed once for options or manifest")
     if operation == "private-dir":
         print(tempfile.mkdtemp(prefix="dovebevo-signing-", dir=private_base(args[0], args[1])))
     elif operation == "decode":
@@ -213,7 +219,8 @@ def main():
     elif operation == "identity":
         print(select_identity(json.loads(Path(args[0]).read_text()), Path(args[1]).read_text()))
     elif operation == "options":
-        Path(args[2]).write_bytes(plistlib.dumps(export_options(json.loads(Path(args[0]).read_text()), args[1])))
+        Path(args[2]).write_bytes(plistlib.dumps(export_options(json.loads(Path(args[0]).read_text()), args[1],
+                                                             internal_only=bool(parsed.internal_only))))
     elif operation == "install":
         install_profile(Path(args[0]), json.loads(Path(args[1]).read_text()), args[2])
     elif operation == "cleanup-profile":
@@ -230,6 +237,7 @@ def main():
         ipa, output, metadata_path, build, commit = args
         metadata = json.loads(Path(metadata_path).read_text())
         manifest = {"bundleIdentifier": BUNDLE, "teamIdentifier": TEAM, "buildNumber": build, "sourceCommit": commit, "ipaSHA256": hashlib.sha256(Path(ipa).read_bytes()).hexdigest(), "profileUUID": metadata["uuid"], "profileExpiresAt": metadata["expiresAt"], "signingCertificateSHA1": metadata["certificateSHA1"], "signaturesVerified": True, "uploadRequested": False}
+        manifest["distributionScope"] = "internal-only" if parsed.internal_only else "app-store"
         Path(output).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     elif operation in ("upload-attempt", "upload-receipt"):
         path = Path(args[0])

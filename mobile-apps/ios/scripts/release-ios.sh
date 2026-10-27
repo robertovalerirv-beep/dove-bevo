@@ -9,11 +9,21 @@ REPO_ROOT="$(git -C "$IOS_ROOT" rev-parse --show-toplevel)"
 SUPPORT="$IOS_ROOT/scripts/release_support.py"
 RELEASE_ROOT="$IOS_ROOT/.build/release"
 UPLOAD=false
-if [[ "${1:-}" == "--upload" && "$#" == 1 ]]; then
-    UPLOAD=true
-elif [[ "$#" != 0 ]]; then
-    printf 'Usage: bash mobile-apps/ios/scripts/release-ios.sh [--upload]\n' >&2
+INTERNAL_ONLY=false
+usage() {
+    printf 'Usage: bash mobile-apps/ios/scripts/release-ios.sh [--internal-only] [--upload]\n' >&2
     exit 2
+}
+for argument in "$@"; do
+    case "$argument" in
+        --upload) [[ "$UPLOAD" == false ]] || usage; UPLOAD=true ;;
+        --internal-only) [[ "$INTERNAL_ONLY" == false ]] || usage; INTERNAL_ONLY=true ;;
+        *) usage ;;
+    esac
+done
+RELEASE_MODE_ARGS=()
+if [[ "$INTERNAL_ONLY" == true ]]; then
+    RELEASE_MODE_ARGS+=(--internal-only)
 fi
 fail() { printf 'iOS release failed: %s\n' "$1" >&2; exit 1; }
 [[ "$(uname -s)" == Darwin ]] || fail 'macOS with Xcode is required'
@@ -28,6 +38,13 @@ SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
 XCODE_VERSION="$(xcodebuild -version | head -n 1 | awk '{print $2}')"
 [[ "${XCODE_VERSION%%.*}" -ge 26 ]] || fail 'App Store uploads require Xcode 26 or later'
 [[ ! -e "$RELEASE_ROOT" ]] || fail 'The release output already exists; preserve it before starting a separate release'
+if [[ "$INTERNAL_ONLY" == true ]]; then
+    XCODEBUILD_HELP="$(xcodebuild -help 2>&1)" \
+        || fail 'Cannot verify internal-only export support in the selected Xcode'
+    grep -Eq '^[[:space:]]*testFlightInternalTestingOnly[[:space:]]*:[[:space:]]*Bool([[:space:]]|$)' <<< "$XCODEBUILD_HELP" \
+        || fail 'Selected Xcode does not advertise the internal-only export option; no signing attempted'
+    unset XCODEBUILD_HELP
+fi
 
 private_dir=''
 task_keychain=''
@@ -99,7 +116,8 @@ security list-keychains -d user >"$private_dir/original-keychains.txt"
 search_list_changed=true
 python3 "$SUPPORT" keychain-list "$private_dir/original-keychains.txt" "$task_keychain" >/dev/null
 python3 "$SUPPORT" install "$private_dir" "$private_dir/profile.json" "$REPO_ROOT"
-python3 "$SUPPORT" options "$private_dir/profile.json" "$IDENTITY" "$private_dir/ExportOptions.plist"
+# Alternate-value expansion also handles an empty array in macOS system Bash.
+python3 "$SUPPORT" options "$private_dir/profile.json" "$IDENTITY" "$private_dir/ExportOptions.plist" ${RELEASE_MODE_ARGS[@]+"${RELEASE_MODE_ARGS[@]}"}
 PROFILE_UUID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["uuid"])' "$private_dir/profile.json")"
 
 bash "$IOS_ROOT/scripts/generate-project.sh"
@@ -131,7 +149,7 @@ security cms -D -i "$EXPORTED_APP/embedded.mobileprovision" \
 python3 "$SUPPORT" verify "$private_dir" "$BUILD_NUMBER"
 COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 python3 "$SUPPORT" manifest "$IPA" "$RELEASE_ROOT/release-manifest.json" \
-    "$private_dir/profile.json" "$BUILD_NUMBER" "$COMMIT"
+    "$private_dir/profile.json" "$BUILD_NUMBER" "$COMMIT" ${RELEASE_MODE_ARGS[@]+"${RELEASE_MODE_ARGS[@]}"}
 
 if [[ "$UPLOAD" == true ]]; then
     ASC_KEY="$private_dir/private_keys/AuthKey_${DOVEBEVO_ASC_KEY_ID}.p8"

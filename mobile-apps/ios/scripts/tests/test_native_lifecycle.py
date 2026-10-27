@@ -164,6 +164,46 @@ class LifecycleTests(unittest.TestCase):
 
 
 class ShellCleanupTests(unittest.TestCase):
+    def test_simulator_unit_filter_is_explicit_and_unknown_arguments_fail_before_tools(self):
+        git_bash = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe"
+        bash = str(git_bash) if git_bash.is_file() else shutil.which("bash")
+        if not bash:
+            self.skipTest("Bash is unavailable")
+        script = Path(__file__).resolve().parents[1] / "test-simulator.sh"
+        source = script.read_text()
+        prefix = source.split('\nIOS_ROOT=', 1)[0]
+        invocation = '\nxcodebuild \\\n' + source.split('\nxcodebuild \\\n', 1)[1].split('\nTEST_STATUS=', 1)[0]
+        root = script.parent.parent / ".build" / "native-lifecycle-tests"
+        root.mkdir(parents=True, exist_ok=True)
+        for arguments, expected in [([], []), (["--unit-only"], ['-only-testing:DoveBevoTests']),
+                                    (["--unknown"], None), (["--unit-only", "--unit-only"], None),
+                                    (["--unit-only", "unexpected"], None)]:
+            with self.subTest(arguments=arguments), tempfile.TemporaryDirectory(dir=root) as working:
+                folder = Path(working)
+                fixture = prefix + '''
+IOS_ROOT=fixture-ios-root
+SIMULATOR_ID=fixture-selected-device
+SIMULATOR_ARCH=arm64
+RESULT_BUNDLE=fixture-result.xcresult
+xcodebuild() { printf '%s\\n' "$@" > "$PWD/arguments.txt"; }
+''' + invocation + '\n'
+                (folder / "fixture.sh").write_text(fixture, encoding="utf-8", newline="\n")
+                result = subprocess.run([bash, "fixture.sh"] + arguments, cwd=folder,
+                                        capture_output=True, text=True, timeout=10)
+                if expected is None:
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertFalse((folder / "arguments.txt").exists())
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    actual = (folder / "arguments.txt").read_text().splitlines()
+                    self.assertEqual(actual, [
+                        '-project', 'fixture-ios-root/DoveBevo.xcodeproj', '-scheme', 'DoveBevo',
+                        '-configuration', 'Debug', '-destination',
+                        'platform=iOS Simulator,id=fixture-selected-device,arch=arm64',
+                        '-derivedDataPath', 'fixture-ios-root/.build/DerivedData',
+                        '-resultBundlePath', 'fixture-result.xcresult', '-parallel-testing-enabled', 'NO',
+                    ] + expected + ['CODE_SIGNING_ALLOWED=NO', 'test'])
+
     def run_cleanup(self, *, owned, state, status):
         # Exercise the actual EXIT handler with shell functions replacing every
         # process/SDK operation. No simulator or collector process is started.

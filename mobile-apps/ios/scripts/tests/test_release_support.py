@@ -1,10 +1,16 @@
 """Metadata guard tests; these do not simulate successful Apple signing."""
 
+from contextlib import redirect_stderr
 import datetime as dt
 import hashlib
 import importlib.util
+import io
 import json
+import os
 from pathlib import Path
+import plistlib
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -16,7 +22,8 @@ SPEC.loader.exec_module(release)
 NOW = dt.datetime(2026, 10, 26, tzinfo=dt.timezone.utc)
 # Public fixture bytes exercise matching, never represent a valid certificate.
 # The actual pipeline separately requires security's valid identity listing and
-# real codesign verification; no Apple CLI is mocked by this test suite.
+# real codesign verification. Shell fixtures below exercise only argument and
+# preflight boundaries, never successful Apple signing.
 CERTIFICATE = b"public metadata fixture; not a signing certificate"
 FINGERPRINT = hashlib.sha1(CERTIFICATE).hexdigest().upper()
 
@@ -123,6 +130,173 @@ class ReleaseProfileTests(unittest.TestCase):
         self.assertEqual(options["signingCertificate"], FINGERPRINT)
         self.assertEqual(options["provisioningProfiles"], {"com.dovebevo.app": profile()["UUID"]})
         self.assertFalse(options["manageAppVersionAndBuildNumber"])
+
+    def test_internal_export_is_explicit_and_adds_only_the_internal_restriction(self):
+        metadata = release.validated_profile(profile(), NOW)
+        production = {
+            "method": "app-store-connect", "destination": "export", "teamID": release.TEAM,
+            "signingStyle": "manual", "signingCertificate": FINGERPRINT,
+            "provisioningProfiles": {release.BUNDLE: profile()["UUID"]},
+            "manageAppVersionAndBuildNumber": False, "stripSwiftSymbols": True, "uploadSymbols": True,
+        }
+        self.assertEqual(release.export_options(metadata, FINGERPRINT), production)
+        self.assertEqual(release.export_options(metadata, FINGERPRINT, internal_only=False), production)
+        self.assertEqual(release.export_options(metadata, FINGERPRINT, internal_only=True),
+                         dict(production, testFlightInternalTestingOnly=True))
+
+
+class DistributionModeTests(unittest.TestCase):
+    def test_helper_rejects_duplicate_abbreviated_unknown_and_misplaced_mode_flags(self):
+        for arguments in [["options", "--internal-only", "--internal-only"],
+                          ["options", "--internal"], ["options", "--unknown"],
+                          ["decode", "--internal-only"]]:
+            with self.subTest(arguments=arguments), patch.object(release.sys, "argv", ["release_support.py"] + arguments), \
+                    patch.object(release, "decode_secrets") as decode, redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as failure:
+                    release.main()
+                self.assertEqual(failure.exception.code, 2)
+                decode.assert_not_called()
+
+    def test_cli_options_and_manifest_agree_on_explicit_distribution_scope(self):
+        directory = Path(__file__).resolve().parents[2] / ".build" / "metadata-tests"
+        directory.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=directory) as working:
+            folder = Path(working)
+            metadata = release.validated_profile(profile(), NOW)
+            metadata_file = folder / "profile.json"
+            metadata_file.write_text(json.dumps(metadata), encoding="utf-8")
+            ipa = folder / "fixture.ipa"
+            ipa.write_bytes(b"public fixture bytes; not a signed IPA")
+            for internal in [False, True]:
+                with self.subTest(internal=internal):
+                    flag = ["--internal-only"] if internal else []
+                    options_file, manifest_file = folder / "options.plist", folder / "manifest.json"
+                    with patch.object(release.sys, "argv", ["release_support.py", "options", str(metadata_file),
+                                                           FINGERPRINT, str(options_file)] + flag):
+                        release.main()
+                    options = plistlib.loads(options_file.read_bytes())
+                    self.assertEqual(options.get("testFlightInternalTestingOnly", False), internal)
+                    if not internal:
+                        self.assertNotIn("testFlightInternalTestingOnly", options)
+                    with patch.object(release.sys, "argv", ["release_support.py", "manifest", str(ipa),
+                                                           str(manifest_file), str(metadata_file), "19", "a" * 40] + flag):
+                        release.main()
+                    manifest = json.loads(manifest_file.read_text())
+                    self.assertEqual(manifest, {
+                        "bundleIdentifier": release.BUNDLE, "teamIdentifier": release.TEAM,
+                        "buildNumber": "19", "sourceCommit": "a" * 40,
+                        "ipaSHA256": hashlib.sha256(ipa.read_bytes()).hexdigest(),
+                        "profileUUID": metadata["uuid"], "profileExpiresAt": metadata["expiresAt"],
+                        "signingCertificateSHA1": metadata["certificateSHA1"],
+                        "signaturesVerified": True, "uploadRequested": False,
+                        "distributionScope": "internal-only" if internal else "app-store",
+                    })
+
+
+class ReleaseShellModeTests(unittest.TestCase):
+    def run_mode(self, arguments, help_text="testFlightInternalTestingOnly : Bool", help_status=0, whole_script=False):
+        # Exercise the real argument/preflight prefix and forwarding calls only.
+        # No certificate decoder, keychain, signing, Apple binary or upload runs.
+        git_bash = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe"
+        bash = str(git_bash) if git_bash.is_file() else shutil.which("bash")
+        if not bash:
+            self.skipTest("Bash is unavailable")
+        script = Path(__file__).resolve().parents[1] / "release-ios.sh"
+        source = script.read_text()
+        prefix = source.split("\nprivate_dir=''", 1)[0]
+        options_call = next(line for line in source.splitlines() if line.startswith('python3 "$SUPPORT" options '))
+        manifest_call = 'python3 "$SUPPORT" manifest ' + source.split('python3 "$SUPPORT" manifest ', 1)[1].split('\n\nif [[ "$UPLOAD"', 1)[0]
+        root = script.parent.parent / ".build" / "release-mode-tests"
+        root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as working:
+            folder = Path(working)
+            fixture = '''#!/usr/bin/env bash
+record() { printf '%s\\n' "$*" >> "$PWD/actions.txt"; }
+uname() { printf 'Darwin\\n'; }
+git() { printf '%s\\n' "$PWD"; }
+xcrun() { record "xcrun $*"; printf '26.2\\n'; }
+xcodebuild() {
+    record "xcodebuild $*"
+    if [[ "$1" == -version ]]; then printf 'Xcode 26.3\\n'; return 0; fi
+    printf '%s\\n' "$FIXTURE_HELP"
+    return "$FIXTURE_HELP_STATUS"
+}
+python3() { record "python3 $*"; return "$FIXTURE_PYTHON_STATUS"; }
+security() { record 'unexpected security operation'; return 99; }
+openssl() { record 'unexpected openssl operation'; return 99; }
+codesign() { record 'unexpected codesign operation'; return 99; }
+ditto() { record 'unexpected ditto operation'; return 99; }
+'''
+            mode_fixture = prefix + '''
+printf 'accepted upload=%s internal=%s\\n' "$UPLOAD" "$INTERNAL_ONLY"
+private_dir=private-fixture
+IDENTITY=public-fingerprint-fixture
+BUILD_NUMBER=19
+COMMIT=public-commit-fixture
+IPA=public-ipa-fixture
+''' + options_call + '\n' + manifest_call + '\n'
+            fixture += source if whole_script else mode_fixture
+            (folder / "fixture.sh").write_text(fixture, encoding="utf-8", newline="\n")
+            env = {key: os.environ[key] for key in ["PATH", "SystemRoot", "WINDIR"] if key in os.environ}
+            env.update(RUNNER_TEMP=str(folder), FIXTURE_HELP=help_text, FIXTURE_HELP_STATUS=str(help_status),
+                       FIXTURE_PYTHON_STATUS='97' if whole_script else '0')
+            result = subprocess.run([bash, "fixture.sh"] + arguments, cwd=folder, env=env,
+                                    capture_output=True, text=True, timeout=10)
+            actions = (folder / "actions.txt").read_text() if (folder / "actions.txt").exists() else ""
+            return result, actions
+
+    def test_default_and_both_internal_upload_orders_forward_the_exact_mode(self):
+        for arguments, internal, upload in [([], False, False), (["--upload"], False, True),
+                                            (["--internal-only"], True, False),
+                                            (["--internal-only", "--upload"], True, True),
+                                            (["--upload", "--internal-only"], True, True)]:
+            with self.subTest(arguments=arguments):
+                result, actions = self.run_mode(arguments)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(f'accepted upload={str(upload).lower()} internal={str(internal).lower()}', result.stdout)
+                self.assertEqual('xcodebuild -help' in actions, internal)
+                calls = [line for line in actions.splitlines() if line.startswith('python3 ')]
+                self.assertEqual(len(calls), 2)
+                for call in calls:
+                    self.assertEqual(call.endswith(' --internal-only'), internal)
+
+    def test_unknown_and_duplicate_release_flags_fail_before_tool_calls(self):
+        for arguments in [["--unknown"], ["--upload", "--upload"], ["--internal-only", "--internal-only"],
+                          ["--upload", "--internal-only", "--upload"]]:
+            with self.subTest(arguments=arguments):
+                result, actions = self.run_mode(arguments)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertEqual(actions, "")
+
+    def test_internal_mode_requires_successful_exact_installed_help_before_credentials(self):
+        for help_text, status in [("unsupported", 0), ("someOtherKey : Bool", 0),
+                                  ("testFlightInternalTestingOnlySuffix : Bool", 0),
+                                  ("testFlightInternalTestingOnly : String", 0),
+                                  ("testFlightInternalTestingOnly : Bool", 1)]:
+            with self.subTest(help_text=help_text, status=status):
+                result, actions = self.run_mode(["--internal-only"], help_text, status)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('xcodebuild -help', actions)
+                self.assertNotIn('python3 ', actions)
+                self.assertNotIn('unexpected ', actions)
+
+    def test_whole_release_script_stops_before_private_dir_or_signing_when_help_is_unsupported(self):
+        for help_text, status in [('unsupported', 0), ('testFlightInternalTestingOnly : Bool', 1)]:
+            with self.subTest(help_text=help_text, status=status):
+                result, actions = self.run_mode(['--internal-only', '--upload'], help_text, status, whole_script=True)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn('xcodebuild -help', actions)
+                self.assertNotIn('python3 ', actions)
+                self.assertNotIn('unexpected ', actions)
+                self.assertNotIn('-project', actions)
+                self.assertNotIn('-exportArchive', actions)
+        result, actions = self.run_mode(['--internal-only', '--upload'], whole_script=True)
+        self.assertEqual(result.returncode, 97, result.stderr)
+        python_calls = [line for line in actions.splitlines() if line.startswith('python3 ')]
+        self.assertEqual(len(python_calls), 1)
+        self.assertIn(' private-dir ', python_calls[0])
+        self.assertNotIn(' decode ', actions)
+        self.assertNotIn('unexpected ', actions)
 
 
 class UploadOutcomeTests(unittest.TestCase):

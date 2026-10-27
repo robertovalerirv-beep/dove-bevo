@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
+TEST_ARGS=(-parallel-testing-enabled NO)
+if [[ "$#" == 1 && "$1" == --unit-only ]]; then
+    TEST_ARGS+=(-only-testing:DoveBevoTests)
+elif [[ "$#" != 0 ]]; then
+    printf 'Usage: bash mobile-apps/ios/scripts/test-simulator.sh [--unit-only]\n' >&2
+    exit 2
+fi
 IOS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ ! -d "$IOS_ROOT/DoveBevo.xcodeproj" ]]; then
     bash "$IOS_ROOT/scripts/generate-project.sh"
@@ -91,7 +98,7 @@ xcodebuild \
     -destination "platform=iOS Simulator,id=$SIMULATOR_ID,arch=$SIMULATOR_ARCH" \
     -derivedDataPath "$IOS_ROOT/.build/DerivedData" \
     -resultBundlePath "$RESULT_BUNDLE" \
-    -parallel-testing-enabled NO \
+    "${TEST_ARGS[@]}" \
     CODE_SIGNING_ALLOWED=NO test
 TEST_STATUS=$?
 set -e

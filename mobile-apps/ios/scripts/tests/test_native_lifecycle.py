@@ -25,6 +25,65 @@ def summary():
 
 
 class LifecycleTests(unittest.TestCase):
+    def test_witnessed_webkit_formats_retain_only_allowlisted_reason_and_source(self):
+        reasons = ('ExceededMemoryLimit', 'ExceededCPULimit', 'RequestedByClient', 'IdleExit',
+                   'Unresponsive', 'Crash', 'ExceededProcessCountLimit', 'NavigationSwap',
+                   'RequestedByNetworkProcess', 'RequestedByGPUProcess', 'RequestedByModelProcess',
+                   'GPUProcessCrashedTooManyTimes', 'ModelProcessCrashedTooManyTimes',
+                   'NonMainFrameWebContentProcessCrash')
+        formats = [('WebProcessProxy', 'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason='),
+                   ('WebPageProxy', 'WebPageProxy::processDidTerminate: (pid 994), reason='),
+                   ('WebPageProxy', 'WebPageProxy::dispatchProcessDidTerminate: reason=')]
+        for source, message in formats:
+            for reason in reasons:
+                with self.subTest(message=message, reason=reason):
+                    line = f'private prefix 0x121138300 [pageProxyID=9, PID=994] {message}{reason}\n'.encode()
+                    self.assertEqual(collector.event_from_line(line),
+                                     {'event': 'webkit_process_terminated', 'source': source, 'reason': reason})
+
+    def test_numeric_webkit_reason_is_bounded_without_enum_mapping(self):
+        for code in [0, 3, -1, -(1 << 63), (1 << 63) - 1]:
+            line = f'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason={code}\n'.encode()
+            self.assertEqual(collector.event_from_line(line),
+                             {'event': 'webkit_process_terminated', 'source': 'WebProcessProxy', 'reasonCode': code})
+
+    def test_webkit_unknown_noise_and_private_suffixes_are_discarded(self):
+        messages = [
+            'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=UnknownFutureReason',
+            'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=Crash https://private.example/',
+            'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=Crash stack=private-frame',
+            'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=Crash, PID=994',
+            'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=9223372036854775808',
+            'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=-9223372036854775809',
+            'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=3.0',
+            'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=Crash\nextra',
+            'WebProcessProxy::processDidTerminateOrFailedToLaunch: reason=crash',
+            'WebProcessProxy::dispatchProcessDidTerminate: reason=Crash',
+            'WebPageProxy::processDidTerminateOrFailedToLaunch: reason=Crash',
+            'WebPageProxy::processDidTerminate: reason=Crash',
+            'WebPageProxy::processDidTerminate: (pid private), reason=Crash',
+            'OtherProxy::processDidTerminateOrFailedToLaunch: reason=Crash',
+            'WebProcessProxy::didClose: (web process 0 crash)',
+        ]
+        for message in messages:
+            with self.subTest(message=message):
+                self.assertIsNone(collector.event_from_line((message + '\n').encode()))
+
+    def test_webkit_and_native_events_share_caps_without_retaining_raw_metadata(self):
+        webkit = b'private prefix PID=994 WebPageProxy::dispatchProcessDidTerminate: reason=Crash\n'
+        native = b'DoveBevo: navigation finish\n'
+        source = io.BytesIO(b'private ' * collector.MAX_LINE + webkit + (webkit + native) * collector.MAX_EVENTS)
+        result = summary()
+        collector.read_events(source, result, lambda: None)
+        self.assertEqual(result['oversizeOrIncompleteLines'], 1)
+        self.assertEqual(len(result['events']), collector.MAX_EVENTS)
+        self.assertEqual(result['droppedEvents'], collector.MAX_EVENTS)
+        self.assertEqual({event['event'] for event in result['events']}, {'webkit_process_terminated', 'finish'})
+        self.assertNotIn('private', json.dumps(result))
+        self.assertNotIn('PID', json.dumps(result))
+        self.assertNotIn('pageProxyID', json.dumps(result))
+        self.assertEqual(source.read(), b'')
+
     def test_only_exact_fixed_events_and_numeric_codes_are_retained(self):
         for message, expected in collector.EVENTS.items():
             self.assertEqual(collector.event_from_line(f"private-prefix DoveBevo: {message}\n".encode()), {"event": expected})
@@ -82,6 +141,14 @@ class LifecycleTests(unittest.TestCase):
             self.assertTrue(spawn.call_args.kwargs["start_new_session"])
             self.assertEqual(spawn.call_args.kwargs["stderr"], subprocess.DEVNULL)
             self.assertEqual(spawn.call_args.args[0][:4], ["xcrun", "simctl", "spawn", "actual-simctl-id"])
+            predicate = spawn.call_args.args[0][-1]
+            self.assertEqual(spawn.call_args.args[0][-2], '--predicate')
+            self.assertTrue(predicate.startswith('process == "DoveBevo" AND ('))
+            self.assertTrue(predicate.endswith(')'))
+            self.assertEqual(predicate.count('process =='), 1)
+            for method in ['WebProcessProxy::processDidTerminateOrFailedToLaunch: ',
+                           'WebPageProxy::processDidTerminate: ', 'WebPageProxy::dispatchProcessDidTerminate: ']:
+                self.assertIn(method, predicate)
             self.assertEqual(json.loads(output.read_text()), result)
             self.assertTrue(process.stdout.closed)
             self.assertTrue(result["cleanupSucceeded"])

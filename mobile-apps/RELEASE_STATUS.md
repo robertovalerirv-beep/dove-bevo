@@ -16,41 +16,39 @@ from source and OneDrive.
 
 ## Last completed release candidate
 
-`mobile-release/v1.0.0-rc.4` identifies source
-`6cad77ab511ecaa1ff9a0eedcfdccc27a80a2fa0` and
-[workflow run 40427026872](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40427026872).
+`mobile-release/v1.0.0-rc.5` identifies source
+`6672962bbb16d89712f55d70863c45bfb3a468eb` and
+[workflow run 40431293096](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40431293096).
 
 - Android APK and unsigned bundle compilation, twenty unit tests, lint and
   runner guards passed. The API 36 emulator booted and displayed the native
-  rules screen, confirming the preferences-location correction worked in this
-  run. The decline/relaunch check timed out on the launcher and owned process
-  group cleanup failed. Website navigation and acceptance persistence remain
-  unverified. A reviewed correction now waits for the declined activity to
-  leave the foreground before one relaunch, and for all tracked process-group
-  members to exit within the existing cleanup deadlines; hosted verification is
-  pending.
+  rules screen. Offline privacy, decline/relaunch, explicit acceptance and owned
+  runtime cleanup passed. The live website wait failed because the WebView
+  displayed Cloudflare's human-verification challenge. No search or live map
+  check completed. This does not establish what normal users will experience,
+  or justify altering the website's security configuration.
 - iOS simulator compilation, ten unit tests and both native privacy/navigation
   UI tests passed. The live search opened the correct city field and first-run
-  keyboard prompt. The retained app console then records repeated WebKit GPU
-  crashes and `GPUProcessCrashedTooManyTimes`; renderer recovery discarded the
-  city sheet before its Continue action could complete. Linked graphics crash
-  reports record three SimMetalHost aborts in the host Metal argument encoder
-  and WebKit GPU termination with Metal code 102 after its simulator host
-  connection was interrupted. The underlying graphics assertion is unavailable.
-  The suite finished normally with a failed assertion, and the bounded lifecycle
-  collector confirmed cleanup.
+  keyboard. The exact city field exists in post-tap accessibility evidence,
+  then the native collector records `GPUProcessCrashedTooManyTimes` and renderer
+  recovery. The city sheet is lost and the live assertion fails. This recurred
+  on macOS 26.6.2 ARM with pinned Xcode 26.3/iOS 26.2 and a real iPhone 17
+  simulator; changing the host did not prevent it. Cleanup passed. The preceding
+  candidate's linked graphics reports established SimMetalHost aborts and WebKit
+  GPU Metal code 102; the underlying graphics assertion remains unavailable.
 - Both signing/upload jobs were correctly skipped because live tests failed.
-- The retained iOS image is 1178 by 2556 pixels. It is not an accepted
-  store asset, and no successful iPad or large-iPhone capture exists yet.
+- The retained iPhone 17 images are 1206 by 2622 pixels, but are failed-test
+  evidence, not approved store assets. No successful iPad or large-iPhone capture
+  exists yet.
 
 The complete iOS suite has twenty minutes inside a fifty-minute job. Individual
 assertions, eight-minute device captures and mandatory signing dependencies
 remain enforced. Do not resize failed-test screenshots, reopen a lost sheet or
 weaken the live map checks to satisfy a store requirement.
 
-The next candidate tests the supported ARM macOS 26 host while retaining pinned
-Xcode 26.3 and iOS 26.2. Simulator Metal uses the host graphics implementation;
-this is a test of the observed host abort path, not an established crash fix.
+The host comparison retained pinned Xcode 26.3 and iOS 26.2. Simulator Metal uses
+the host graphics implementation; this was a test of the observed host abort
+path, not an established crash fix.
 The main test selects the actual iPhone 17 type for a medium Dynamic Island
 capture; separate large-iPhone and 13-inch iPad checks remain required. This
 differs from the preceding iPhone 16 and is not an identical hardware comparison.
@@ -80,8 +78,16 @@ current responsible person; support remains `dovebevo@gmail.com`.
 
 ## Next release gate
 
-Diagnose and correct the emulator and live-search failures. Run the required
+An explicitly separate internal-testing path is being prepared for real-phone
+checks on normal networks. It requires fresh unit tests, lint/build checks and
+signing guards. Its iOS export is restricted to TestFlight Internal Only; Android
+bundles are for the Play internal track. It does not submit a production release
+or invite testers automatically. Both paths use the same workflow's increasing
+build counter. This path has not run or uploaded a binary yet.
+
+Production remains gated on required live Android and iOS verification,
+including successful genuine phone and iPad store screenshots. Run the required
 Android and iOS tests against one reviewed source commit, including actual iPad
-and large-iPhone simulator screenshots. Only then sign and upload, verify each provider's
+and large-iPhone screenshots. Then verify each provider's
 processing result, complete the remaining store checks and submit for review.
 An upload, successful processing and public store approval are separate states.

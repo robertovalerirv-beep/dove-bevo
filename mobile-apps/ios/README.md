@@ -64,6 +64,15 @@ on a physical device or uploaded as a signed App Store build.
 
 ## Verification and release boundaries
 
+`mobile-testing/v*` tags prepare a separate internal-testing build after fresh
+unit and signing-boundary checks. The iOS export must set
+`testFlightInternalTestingOnly`; the installed Xcode must advertise that option
+before credentials are decoded. These builds cannot be submitted to customers.
+They exist for real-phone checks when hosted graphics or network challenges
+block the live suite. No tester invitations or public review submissions are
+sent automatically. `mobile-release/v*` keeps its full Android/iOS live gates.
+Both tag families share this workflow's build-number counter.
+
 `URLPolicyTests` covers exact HTTPS origins, deceptive hosts/ports/userinfo,
 programmatic external navigation, maps/mail/phone handoff, unsafe schemes and
 Cloudflare/blank subframes. `BrowserSmokeTests` checks native accessibility, then

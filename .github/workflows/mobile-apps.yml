@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "mobile-release/v*"
+      - "mobile-testing/v*"
   pull_request:
     paths:
       - "mobile-apps/**"
@@ -23,6 +24,7 @@ defaults:
 jobs:
   android:
     name: Android production app build and tests
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/mobile-release/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
@@ -141,6 +143,7 @@ jobs:
 
   ios:
     name: iOS simulator tests and unsigned device archive
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/mobile-release/v')
     runs-on: macos-26
     timeout-minutes: 50
     env:
@@ -193,4 +196,141 @@ jobs:
             mobile-apps/ios/.build/SimulatorDiagnostics/
             mobile-apps/ios/.build/DerivedData/Build/Products/Debug-iphonesimulator/*.app
           retention-days: 7
+          if-no-files-found: error
+
+  internal-android-checks:
+    name: Android checks for internal testing
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/mobile-apps/android/.gradle-user-home
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Run unit tests, lint and unsigned compilation
+        working-directory: mobile-apps/android
+        run: bash gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - name: Verify signing and private-runtime guards without credentials
+        run: |
+          python3 -B mobile-apps/android/tests/release_android_test.py -q
+          python3 -B -m unittest discover -s mobile-apps/scripts/tests -p 'test_android_smoke.py' -q
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-android-internal-checks-${{ github.sha }}
+          path: mobile-apps/android/app/build/reports/
+          retention-days: 7
+          if-no-files-found: error
+
+  internal-ios-checks:
+    name: iOS unit checks for internal testing
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: macos-26
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "26.2"
+      IOS_SIMULATOR_MODEL: iPhone 17
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Generate pinned native Xcode project
+        run: bash mobile-apps/ios/scripts/generate-project.sh
+      - name: Verify native release and simulator guards without credentials
+        run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
+      - name: Run native unit tests for internal testing
+        timeout-minutes: 15
+        run: bash mobile-apps/ios/scripts/test-simulator.sh --unit-only
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-internal-checks-${{ github.sha }}
+          path: |
+            mobile-apps/ios/.build/TestResults.xcresult
+            mobile-apps/ios/.build/SimulatorDiagnostics/
+          retention-days: 7
+          if-no-files-found: error
+
+  internal-android-build:
+    name: Sign Android bundle for internal testing only
+    needs: [internal-android-checks, internal-ios-checks]
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Sign and verify internal-test bundle
+        env:
+          DOVEBEVO_ANDROID_KEYSTORE_BASE64: ${{ secrets.DOVEBEVO_ANDROID_KEYSTORE_BASE64 }}
+          DOVEBEVO_SIGNING_PASSWORD: ${{ secrets.DOVEBEVO_SIGNING_PASSWORD }}
+          DOVEBEVO_ANDROID_CERT_SHA256: ${{ secrets.DOVEBEVO_ANDROID_CERT_SHA256 }}
+          DOVEBEVO_BUILD_NUMBER: ${{ github.run_number }}
+          GRADLE_USER_HOME: ${{ github.workspace }}/mobile-apps/android/.gradle-user-home
+        run: bash mobile-apps/scripts/release-android.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dove-bevo-android-internal-${{ github.sha }}
+          path: mobile-apps/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 14
+          if-no-files-found: error
+
+  internal-ios-build:
+    name: Sign and upload TestFlight Internal Only build
+    needs: [internal-android-checks, internal-ios-checks]
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: macos-26
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Sign, verify and upload internal-only build
+        env:
+          DOVEBEVO_IOS_CERTIFICATE_BASE64: ${{ secrets.DOVEBEVO_IOS_CERTIFICATE_BASE64 }}
+          DOVEBEVO_SIGNING_PASSWORD: ${{ secrets.DOVEBEVO_SIGNING_PASSWORD }}
+          DOVEBEVO_IOS_PROFILE_BASE64: ${{ secrets.DOVEBEVO_IOS_PROFILE_BASE64 }}
+          DOVEBEVO_ASC_PRIVATE_KEY: ${{ secrets.DOVEBEVO_ASC_PRIVATE_KEY }}
+          DOVEBEVO_ASC_KEY_ID: ${{ secrets.DOVEBEVO_ASC_KEY_ID }}
+          DOVEBEVO_ASC_ISSUER_ID: ${{ secrets.DOVEBEVO_ASC_ISSUER_ID }}
+          DOVEBEVO_BUILD_NUMBER: ${{ github.run_number }}
+        run: bash mobile-apps/ios/scripts/release-ios.sh --upload --internal-only
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-internal-${{ github.sha }}
+          path: |
+            mobile-apps/ios/.build/release/export/*.ipa
+            mobile-apps/ios/.build/release/release-manifest.json
+          retention-days: 14
           if-no-files-found: error

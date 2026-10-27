@@ -142,7 +142,7 @@ jobs:
   ios:
     name: iOS simulator tests and unsigned device archive
     runs-on: macos-15
-    timeout-minutes: 35
+    timeout-minutes: 50
     env:
       DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
     steps:
@@ -162,7 +162,7 @@ jobs:
       - name: Build simulator app
         run: bash mobile-apps/ios/scripts/build-simulator.sh
       - name: Run unit and live application tests
-        timeout-minutes: 10
+        timeout-minutes: 20
         run: bash mobile-apps/ios/scripts/test-simulator.sh
       - name: Verify live map on 13-inch iPad and capture store screenshots
         timeout-minutes: 8

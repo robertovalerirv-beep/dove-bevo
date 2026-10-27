@@ -16,23 +16,29 @@ from source and OneDrive.
 
 ## Last completed release candidate
 
-`mobile-release/v1.0.0-rc.2` identifies source
-`c8c456d6fca1888854b06b6430a1f1478db27fad` and
-[workflow run 40421141558](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40421141558).
+`mobile-release/v1.0.0-rc.3` identifies source
+`c83f9d864f1bfbeb3459cec6bb3058073df94a01` and
+[workflow run 40425106605](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40425106605).
 
 - Android APK and unsigned bundle compilation, unit tests, lint and runner guards
   passed. AVD creation failed before an emulator or application could start.
-- iOS simulator compilation, ten unit tests and two native UI tests passed.
-  The required live city-search test failed because its search field did not
-  appear. The recorded tap coordinates overlap the search button's frame in
-  the later failure hierarchy; the cause remains unconfirmed.
+  Verbose output identifies conflicting deprecated `ANDROID_SDK_HOME` and
+  modern `ANDROID_USER_HOME` preferences locations.
+- iOS simulator compilation, ten unit tests and the native privacy UI test
+  passed according to the job log. The overall ten-minute test-step limit
+  interrupted the live search log just after its field wait began. No completed
+  field-assertion outcome is recorded. The result bundle is unfinished, so
+  complete test results and diagnostic cleanup are unverified.
 - Both signing/upload jobs were correctly skipped because live tests failed.
-- The retained iOS screenshots are 1178 by 2556 pixels. They are not accepted
-  store assets, and no successful iPad or large-iPhone capture exists yet.
+- The retained iOS image is 1178 by 2556 pixels. It is not an accepted
+  store asset, and no successful iPad or large-iPhone capture exists yet.
 
-Subsequent diagnostic changes must pass fresh live tests before a release is
-considered ready. Do not resize failed-test screenshots or weaken the live map
-checks to satisfy a store requirement.
+The next candidate removes the conflicting legacy environment variable,
+including inherited values, and gives the complete iOS suite twenty minutes
+inside a fifty-minute job. Individual assertions, eight-minute device captures
+and mandatory signing dependencies remain unchanged. These corrections require
+fresh live verification. Do not resize failed-test screenshots or weaken the
+live map checks to satisfy a store requirement.
 
 ## Store preparation
 

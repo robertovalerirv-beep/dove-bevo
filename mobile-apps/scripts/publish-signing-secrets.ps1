@@ -1,6 +1,6 @@
 param(
     [switch]$Apply,
-    [ValidateSet('ios-distribution.p12', 'ios-distribution-apple.p12', IgnoreCase = $false)]
+    [ValidateSet('ios-distribution.p12', 'ios-distribution-apple.p12', 'ios-distribution-apple-3des.p12', IgnoreCase = $false)]
     [string]$IosCertificateFile = 'ios-distribution.p12',
     [switch]$IosCertificateOnly
 )

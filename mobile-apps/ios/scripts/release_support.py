@@ -19,6 +19,22 @@ import uuid
 
 TEAM = "9T359CV674"
 BUNDLE = "com.dovebevo.app"
+MAX_IMPORT_DIAGNOSTIC_BYTES = 16 * 1024
+# Exact English messages/statuses from Apple's public Security/base/SecBase.h.
+# These classify a reported API error, never its underlying cause or CLI exit.
+# https://github.com/apple-oss-distributions/Security/blob/main/base/SecBase.h
+# https://github.com/apple-oss-distributions/SecurityTool/blob/main/keychain_import.c
+IMPORT_FAILURE_MESSAGES = {
+    "MAC verification failed during PKCS12 import (wrong password?)": ("pkcs12-verification-failed", -25264),
+    "Unable to decode the provided data.": ("data-decode-failed", -26275),
+    "Unknown format in import.": ("import-format-unknown", -25257),
+    "Import/Export format unsupported.": ("import-format-unsupported", -25256),
+    "User interaction is not allowed.": ("interaction-not-allowed", -25308),
+    "The user name or passphrase you entered is not correct.": ("authentication-failed", -25293),
+    "The specified keychain could not be found.": ("keychain-not-found", -25294),
+    "The specified keychain is not a valid keychain file.": ("invalid-keychain", -25295),
+    "The specified item already exists in the keychain.": ("duplicate-item", -25299),
+}
 
 
 class ReleaseValidationError(ValueError):
@@ -28,6 +44,27 @@ class ReleaseValidationError(ValueError):
 def require(condition, message):
     if not condition:
         raise ReleaseValidationError(message)
+
+
+def classify_import_failure(raw):
+    if len(raw) > MAX_IMPORT_DIAGNOSTIC_BYTES:
+        return {"classification": "diagnostic-too-large"}
+    prefix = "security: SecKeychainItemImport: "
+    matches = {IMPORT_FAILURE_MESSAGES[line[len(prefix):]]
+               for line in raw.decode("utf-8", "replace").splitlines()
+               if line.startswith(prefix) and line[len(prefix):] in IMPORT_FAILURE_MESSAGES}
+    if len(matches) != 1:
+        return {"classification": "unclassified-import-failure"}
+    classification, status = matches.pop()
+    return {"classification": classification, "osStatus": status}
+
+
+def import_failure_summary(path):
+    try:
+        with Path(path).open("rb") as stream:
+            return classify_import_failure(stream.read(MAX_IMPORT_DIAGNOSTIC_BYTES + 1))
+    except OSError:
+        return {"classification": "diagnostic-unavailable"}
 
 
 def validated_profile(profile, now=None):
@@ -202,7 +239,7 @@ def verify_app(app, entitlements, codesign_details, metadata, build, embedded_pr
 
 def main():
     parser = argparse.ArgumentParser(allow_abbrev=False)
-    parser.add_argument("operation", choices=["private-dir", "decode", "profile", "identity", "options", "install", "cleanup-profile", "keychain-list", "verify", "manifest", "upload-attempt", "upload-receipt", "cleanup-private"])
+    parser.add_argument("operation", choices=["private-dir", "decode", "profile", "identity", "options", "install", "cleanup-profile", "keychain-list", "verify", "manifest", "upload-attempt", "upload-receipt", "cleanup-private", "import-failure"])
     parser.add_argument("args", nargs="*")
     parser.add_argument("--internal-only", action="count", default=0)
     parsed = parser.parse_args()
@@ -213,6 +250,8 @@ def main():
         print(tempfile.mkdtemp(prefix="dovebevo-signing-", dir=private_base(args[0], args[1])))
     elif operation == "decode":
         decode_secrets(Path(args[0]), len(args) > 1 and args[1] == "upload")
+    elif operation == "import-failure":
+        print(json.dumps(import_failure_summary(Path(args[0])), sort_keys=True))
     elif operation == "profile":
         metadata = validated_profile(plistlib.loads(Path(args[0]).read_bytes()))
         Path(args[1]).write_text(json.dumps(metadata), encoding="utf-8")

@@ -103,9 +103,12 @@ security create-keychain -p "$task_keychain_password" "$task_keychain" >/dev/nul
     || fail 'Cannot create the ephemeral signing keychain'
 security set-keychain-settings -lut 21600 "$task_keychain" >/dev/null 2>&1
 security unlock-keychain -p "$task_keychain_password" "$task_keychain" >/dev/null 2>&1
-security import "$private_dir/distribution.p12" -k "$task_keychain" \
-    -P "$DOVEBEVO_SIGNING_PASSWORD" -T /usr/bin/codesign >/dev/null 2>&1 \
-    || fail 'Cannot import the signing identity into its private keychain'
+if ! { security import "$private_dir/distribution.p12" -k "$task_keychain" \
+    -P "$DOVEBEVO_SIGNING_PASSWORD" -T /usr/bin/codesign >/dev/null 2>"$private_dir/security-import-error.txt"; } 2>/dev/null; then
+    python3 "$SUPPORT" import-failure "$private_dir/security-import-error.txt" >&2 \
+        || printf 'iOS signing import diagnostic unavailable\n' >&2
+    fail 'Cannot import the signing identity into its private keychain'
+fi
 unset DOVEBEVO_SIGNING_PASSWORD
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
     -k "$task_keychain_password" "$task_keychain" >/dev/null 2>&1 \

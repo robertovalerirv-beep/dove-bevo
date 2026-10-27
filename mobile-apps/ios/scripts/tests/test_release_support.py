@@ -145,6 +145,136 @@ class ReleaseProfileTests(unittest.TestCase):
                          dict(production, testFlightInternalTestingOnly=True))
 
 
+class ImportFailureTests(unittest.TestCase):
+    def test_exact_apple_messages_emit_only_fixed_classification_and_catalog_status(self):
+        cases = [
+            ('MAC verification failed during PKCS12 import (wrong password?)', 'pkcs12-verification-failed', -25264),
+            ('Unable to decode the provided data.', 'data-decode-failed', -26275),
+            ('Unknown format in import.', 'import-format-unknown', -25257),
+            ('Import/Export format unsupported.', 'import-format-unsupported', -25256),
+            ('User interaction is not allowed.', 'interaction-not-allowed', -25308),
+            ('The user name or passphrase you entered is not correct.', 'authentication-failed', -25293),
+            ('The specified keychain could not be found.', 'keychain-not-found', -25294),
+            ('The specified keychain is not a valid keychain file.', 'invalid-keychain', -25295),
+            ('The specified item already exists in the keychain.', 'duplicate-item', -25299),
+        ]
+        for message, classification, status in cases:
+            with self.subTest(classification=classification):
+                raw = ('FABRICATED_PASSWORD_ONLY /private/fixture Identity Name\n'
+                       f'security: SecKeychainItemImport: {message}\n'
+                       '-----BEGIN PRIVATE KEY-----\nFABRICATED_KEY_ONLY\n-----END PRIVATE KEY-----\n').encode()
+                self.assertEqual(release.classify_import_failure(raw),
+                                 {'classification': classification, 'osStatus': status})
+
+    def test_unknown_private_suffixes_spoofed_prefixes_and_conflicting_messages_are_discarded(self):
+        known = b'security: SecKeychainItemImport: Unknown format in import.'
+        for raw in [b'password=FABRICATED_PASSWORD_ONLY issuer=Fixture Name /private/fixture',
+                    known + b' FABRICATED_PASSWORD_ONLY', b'private-prefix ' + known,
+                    b'security: SecKeychainItemImport: Unknown error -12345678',
+                    known + b'\nsecurity: SecKeychainItemImport: User interaction is not allowed.',
+                    b'\xff\x00private data']:
+            with self.subTest(raw=raw):
+                self.assertEqual(release.classify_import_failure(raw), {'classification': 'unclassified-import-failure'})
+
+    def test_oversize_input_and_unavailable_file_never_echo_raw_diagnostics(self):
+        raw = b'security: SecKeychainItemImport: Unknown format in import.\n' + b'X' * 16384
+        self.assertEqual(release.classify_import_failure(raw), {'classification': 'diagnostic-too-large'})
+        class BoundedStream(io.BytesIO):
+            def read(self, count):
+                self.count = count
+                return super().read(count)
+        stream = BoundedStream(raw)
+        with patch.object(Path, 'open', return_value=stream):
+            self.assertEqual(release.import_failure_summary(Path('fabricated-private-file')),
+                             {'classification': 'diagnostic-too-large'})
+        self.assertEqual(stream.count, 16385)
+        with patch.object(Path, 'open', side_effect=OSError('FABRICATED_PASSWORD_ONLY /private/fixture')):
+            self.assertEqual(release.import_failure_summary(Path('fabricated-private-file')),
+                             {'classification': 'diagnostic-unavailable'})
+
+
+class ImportFailureShellTests(unittest.TestCase):
+    def test_actual_import_failure_block_hides_raw_output_stops_and_cleans_even_if_classifier_fails(self):
+        git_bash = Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'Git/bin/bash.exe'
+        bash = str(git_bash) if git_bash.is_file() else shutil.which('bash')
+        if not bash:
+            self.skipTest('Bash is unavailable')
+        script = Path(__file__).resolve().parents[1] / 'release-ios.sh'
+        source = script.read_text()
+        handler = 'cleanup() {' + source.split('cleanup() {', 1)[1].split('\ntrap cleanup EXIT', 1)[0]
+        import_block = 'if ! { security import ' + source.split('if ! { security import ', 1)[1].split('\nunset DOVEBEVO_SIGNING_PASSWORD', 1)[0]
+        fail = next(line for line in source.splitlines() if line.startswith('fail() {'))
+        root = script.parent.parent / '.build' / 'import-failure-tests'
+        root.mkdir(parents=True, exist_ok=True)
+        for classifier_failure in [False, True]:
+            with self.subTest(classifier_failure=classifier_failure), tempfile.TemporaryDirectory(dir=root) as working:
+                folder = Path(working).resolve()
+                self.assertTrue(folder.is_relative_to(root.resolve()))
+                private = folder / 'private'
+                private.mkdir()
+                (private / 'dovebevo.keychain-db').write_bytes(b'public fixture; not a keychain')
+                fixture = '''#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+record() { printf '%s\\n' "$*" >> "$PWD/actions.txt"; }
+private_dir="$PWD/private"
+task_keychain="$private_dir/dovebevo.keychain-db"
+keychain_attempted=true
+search_list_changed=false
+RUNNER_TEMP="$PWD"
+REPO_ROOT="$PWD"
+DOVEBEVO_SIGNING_PASSWORD=FABRICATED_PASSWORD_ONLY
+security() {
+    case "$1" in
+        import)
+            record 'security import'
+            [[ "$#" == 8 && "$2" == "$private_dir/distribution.p12" && "$3" == -k && "$4" == "$task_keychain"
+               && "$5" == -P && "$6" == FABRICATED_PASSWORD_ONLY && "$7" == -T && "$8" == /usr/bin/codesign ]] || return 99
+            printf 'FABRICATED_STDOUT_ONLY\\n'
+            printf 'FABRICATED_PASSWORD_ONLY /private/fixture Identity Name\\nsecurity: SecKeychainItemImport: Unknown format in import.\\n' >&2
+            return 1 ;;
+        delete-keychain)
+            record 'security delete-keychain'
+            [[ "$2" == "$PWD/private/dovebevo.keychain-db" ]] || return 99
+            rm -- "$2" ;;
+        *) record 'unexpected security operation'; return 99 ;;
+    esac
+}
+python3() {
+    case "$2" in
+        import-failure)
+            record 'classify import failure'
+            if [[ "$FIXTURE_CLASSIFIER_FAILURE" == true ]]; then return 91; fi
+            "$FIXTURE_PYTHON" "$SUPPORT" import-failure "$3" ;;
+        cleanup-profile) record 'cleanup-profile' ;;
+        cleanup-private)
+            record 'cleanup-private'
+            [[ "$3" == "$PWD/private" ]] || return 99
+            rm -f -- "$3/security-import-error.txt"
+            rmdir -- "$3" ;;
+        *) record 'unexpected helper operation'; return 99 ;;
+    esac
+}
+''' + fail + '\n' + handler + '\ntrap cleanup EXIT\n' + import_block + "\nrecord 'unexpected build continued'\n"
+                (folder / 'fixture.sh').write_text(fixture, encoding='utf-8', newline='\n')
+                env = {key: os.environ[key] for key in ['PATH', 'SystemRoot', 'WINDIR'] if key in os.environ}
+                env.update(SUPPORT=Path(release.__file__).resolve().as_posix(), FIXTURE_PYTHON=release.sys.executable.replace('\\', '/'),
+                           FIXTURE_CLASSIFIER_FAILURE=str(classifier_failure).lower())
+                result = subprocess.run([bash, 'fixture.sh'], cwd=folder, env=env,
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                public_output = result.stdout + result.stderr
+                for private_value in ['FABRICATED_', '/private/fixture', 'Identity Name', str(folder)]:
+                    self.assertNotIn(private_value, public_output)
+                if not classifier_failure:
+                    self.assertIn('"classification": "import-format-unknown"', public_output)
+                    self.assertIn('"osStatus": -25257', public_output)
+                self.assertEqual((folder / 'actions.txt').read_text().splitlines(),
+                                 ['security import', 'classify import failure', 'cleanup-profile',
+                                  'security delete-keychain', 'cleanup-private'])
+                self.assertFalse(private.exists())
+
+
 class DistributionModeTests(unittest.TestCase):
     def test_helper_rejects_duplicate_abbreviated_unknown_and_misplaced_mode_flags(self):
         for arguments in [["options", "--internal-only", "--internal-only"],

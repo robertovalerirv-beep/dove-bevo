@@ -60,6 +60,7 @@ export const en: Dict = {
     actions: "Map actions",
     retry: "Try again",
     explore: "Explore the map",
+    start: "Tap the map or search for a city",
     loadingMap: "Loading the map…",
     mapError: "The map won't load: check your connection and reload the page.",
     attribution: {

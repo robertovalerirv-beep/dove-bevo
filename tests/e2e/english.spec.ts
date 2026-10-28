@@ -3,7 +3,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { en } from "../../src/app/i18n/en";
 import { it as italian } from "../../src/app/i18n/it";
 import { test } from "./fixtures";
-import { atHour, mapRegion, mapStatus, THEME_HOURS } from "./helpers";
+import { atHour, mapRegion, mapStatus, THEME_HOURS, tapMap } from "./helpers";
 
 // ME-01…ME-08 (SPEC 1.11, D-36, ADR 0038): the public interface also in English, the choice kept only
 // in memory. 390×844, like every e2e.
@@ -73,7 +73,10 @@ test("ME-02 the menu is a 48 px button top left, opposite the list; the status s
   expect(lang.y).toBeCloseTo(list.y, 0);
   expect(lang.x - region.x).toBeCloseTo(region.x + region.width - (list.x + list.width), 0);
   expect(lang.x).toBeLessThan(list.x);
-  // The status line starts after the menu and stops before the list, whatever it says.
+  // The status line starts after the menu and stops before the list, whatever it says. It comes after
+  // the first tap: until then the button in the centre speaks (D-37).
+  await tapMap(page);
+  await expect(mapStatus(page)).toBeVisible();
   for (const state of ["initial", "english"] as const) {
     if (state === "english") await chooseEnglish(page);
     const status = await box(mapStatus(page));
@@ -119,7 +122,7 @@ test("ME-02 switching keeps the map open, where it was, and does not resize it",
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await tapMap(page);
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
   const canvas = page.locator("canvas.maplibregl-canvas");
   await canvas.evaluate((c) => {
@@ -225,6 +228,9 @@ test("ME-04 the map screen and the drink menu are in English", async ({ page }, 
   await expect(page.getByRole("button", { name: "Explore the map" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add a price" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add a missing place" })).toBeVisible();
+  // The picture speaks from the centre; the message of the top comes after the first tap (D-37).
+  await expect(mapStatus(page)).toHaveCount(0);
+  await page.getByRole("button", { name: "Tap the map or search for a city" }).click();
   await expect(mapStatus(page)).toHaveText("Zoom in to see prices, or search for a city.");
   const menu = page.getByRole("button", { name: /^Choose what to drink/ });
   await expect(menu).toContainText("Medium beer");
@@ -369,7 +375,7 @@ test.describe("ME-04 a denied position", () => {
     await context.clearPermissions();
     await page.goto("/");
     // The map is already running: a message of «Vicino a me» lasts until the map moves.
-    await page.getByRole("button", { name: "Esplora la mappa" }).click();
+    await tapMap(page);
     await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
     await page.getByRole("button", { name: "Vicino a me" }).click();
     const search = page.getByRole("dialog", { name: "Cerca" });
@@ -477,9 +483,8 @@ for (const scheme of ["light", "dark"] as const) {
     await atHour(page, THEME_HOURS[scheme]);
     await page.goto("/");
     await chooseEnglish(page);
-    // The attribution is small by design (SPEC 1.8, 2.8): as in the other axe tests of the map, the
-    // 24 px target rule leaves it out.
-    const onMap = () => new AxeBuilder({ page }).withTags(AXE).exclude(".map__attribution");
+    // The attribution links are 24 px targets (SPEC 1.13, MG-01): axe leaves nothing out.
+    const onMap = () => new AxeBuilder({ page }).withTags(AXE);
     expect((await onMap().analyze()).violations).toEqual([]);
     // With the menu open.
     await langButton(page).click();

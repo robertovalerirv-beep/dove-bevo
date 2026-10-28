@@ -4,6 +4,45 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-28 · SPEC 1.13: pulsante centrale, attribuzioni da 24 px, titolo neutro (branch `m6-chiusura-inglese`) · ADR 0040 · MG, MH, ME
+
+**Richiesta di Roberto:** una PR sola per (1) i test che mancano alle voci ME-03, ME-04, ME-06, ME-07; (2) le attribuzioni della mappa troppo piccole per `axe`; (3) dopo la sua prova su iPhone (il download in anticipo non aiuta Safari): il pulsante centrale «Clicca sulla mappa o cerca una città» all'apertura. I test devono passare davvero, niente `--no-verify`.
+
+**Fatto in questo commit (solo specifica)**
+- SPEC 1.13: D-37, 7.1, 7.11, registro 1.13; ME-03 e M1-07 riscritte; nuove voci MG-01, MH-01, MH-02 (tutte `passes: false`); milestone MG e MH.
+- ADR 0040. Guardia sul tag `spec-approved-14` (`scripts/check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`, `.claude/agents/spec-reviewer.md`).
+- `docs/feature_list.json`: cambiano solo `verifica` di ME-03 e M1-07 (autorizzate da Roberto in chat) e le tre voci nuove; `passes` invariati.
+
+**Non fatto, di Roberto**
+- Creare e pubblicare il tag `spec-approved-14` su questo commit: finché manca, la guardia è rossa.
+
+**Prossimi passi (stesso ramo, dopo il tag):** test prima (ME-03/04/06/07, MG-01, MH-01/02), poi il codice (pulsante centrale, attribuzioni), `npm run verify` per intero, CI verde con WebKit, revisioni, `passes: true`.
+
+
+### Fase 1 · pulsante centrale (MH-01, MH-02) e attribuzioni da 24 px (MG-01)
+**Fatto**
+- `src/app/app.tsx`: nuovo `<button class="btn btn--primary map__start">` fratello del pulsante `map__preview`, visibile solo con `!ready && !mapWanted && !pinning`, stesso `ensureMap`; la pillola `status` non si disegna mentre la mappa è la foto ferma e dice «Avvicinati…» (offline ed errori si dicono lo stesso); `it.ts`/`en.ts`: `map.start` («Clicca sulla mappa o cerca una città» / «Tap the map or search for a city»), tipizzata dal dizionario.
+- `src/app/styles/app.css`: `.map__start` centrato con `inset:0; margin:auto` (senza `transform`, che il pulsante premuto usa); `.map__attribution a` a 24 px (`inline-block; min-height/line-height: 24px`), `.map__attribution` senza padding verticale (la riga resta a 24 px).
+- Il download in anticipo (ADR 0039) è rimasto com'è.
+
+**Test scritti prima, falliti per il motivo giusto** (log: link delle attribuzioni alti 13 px invece di 24; pulsante «Clicca sulla mappa…» non trovato; `tsc -b` TS2339 su `it.map.start`): `tests/e2e/map-start.spec.ts` (MH-01 due temi × 390/360 px: centrato ±2 px, ≥ 48 px, testo intero, non copre menu lingua/Elenco/attribuzioni, `axe` senza violazioni, screenshot; tocco sul pulsante e tocco sulla mappa; altezza di mappa e barra uguale prima e dopo; niente pulsante con `?at=`; nessuna richiesta `/api`/`/data`; MH-02 in inglese e dal vivo), `brand-map.spec.ts` (MG-01 due temi: link ≥ 24×24 px, testo ≤ 13 px, riga ≤ 26 px, `axe` senza esclusioni), `tests/unit/voice.test.ts` (frase nuova).
+
+**Test esistenti cambiati perché il requisito cambia (dichiarati)**
+- `map.spec.ts` M1-07: «Avvicinati…» si attende dopo il primo tocco (prima: al centro c'è il pulsante, la pillola non c'è). `english.spec.ts`: ME-04 (stesso motivo) e ME-02 (la riga di stato si misura dopo il primo tocco); ME-07: tolta l'esclusione `.exclude(".map__attribution")` dall'`axe`.
+- `brand-map.spec.ts` SPEC 2.8: soglia della riga di attribuzioni «≤ 20 px per riga» → «≤ 26 px per riga» (ora è 24 px).
+- `tapMap(page)` in `helpers.ts`: i test che «toccano la mappa» cliccavano il centro della foto, che ora è il nuovo pulsante (Playwright rifiuta il clic perché è coperto); toccano un punto della foto fuori dal pulsante (`map.spec.ts`, `english.spec.ts`, `map-warmup.spec.ts`, `position-dot.spec.ts`).
+- Localizzatori «il pulsante Cerca» della mappa → «Cerca città o bar» (`helpers.ts`, `drink-menu`, `legal`, `propose`, `map`, `a11y-views`): il nuovo testo contiene «cerca» e Playwright confronta i nomi per parte. Quelli di `/admin` non sono cambiati (lì il pulsante si chiama davvero «Cerca»).
+- Nessun test saltato o indebolito.
+
+**Prove** (ambiente cloud, Chromium e WebKit)
+- `npx tsc -b`, `npm run lint`, `npm run format:check`: puliti. `npm run test`: 57 file, 636 test verdi.
+- `E2E_PORT=4199 npx playwright test --workers=2` (tutti i progetti, compresi scrittura, bar proposti e sicurezza): **397 passati, 0 falliti** (12,7 min). Prima dell'aggiustamento dei test: 26 falliti (13 × 2 motori), tutti per il pulsante che copre il centro della foto, per i localizzatori «Cerca» e per la riga di stato che non c'è più all'apertura.
+- Pagina iniziale (`node scripts/check-bundle-size.mjs`): 39.821 B (limite 51.200; erano 39.724 B, +97 B).
+- Lighthouse (3 giri ciascuno, `--no-sandbox`, Chromium di Playwright, stesso container): **prima** (`main`) Performance 0,96 / 0,96 / 0,96, LCP 2,25–2,29 s, TBT 128–146 ms, CLS 0, **Accessibility 0,96** (i link piccoli delle attribuzioni), Best Practices e SEO 1; **dopo** Performance 0,96 / 0,98 / 0,97, LCP 2,25–2,27 s, TBT 90–152 ms, CLS 0, **Accessibility 1**, Best Practices e SEO 1. Nessun peggioramento, e l'accessibilità sale da 0,96 a 1.
+- `npm run verify`: non lanciato per intero (il passo `check-feature-list` è rosso finché Roberto non crea `spec-approved-14`; i passi sono stati eseguiti uno per uno).
+
+---
+
 ## 2026-10-28 · Mappa pronta al primo tocco: file scaricati in anticipo con `fetch` (branch `m6-mappa-prefetch`) · SPEC 1.12 (tag `spec-approved-13`), ADR 0039, MF-01…MF-03
 
 **Richiesta di Roberto:** il primo tocco sulla mappa aspetta il download di MapLibre (circa 440 KB compressi). Si scaricano i file in anticipo, senza eseguirli. Scelta di Roberto dopo la misura su WebKit: `fetch(url, { priority: "low" })` al posto di `<link rel="prefetch">`, perché Safari/iPhone ignora il prefetch.

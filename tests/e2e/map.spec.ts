@@ -10,6 +10,7 @@ import {
   waitForBars,
   zoomOf,
   chooseDrinks,
+  tapMap,
 } from "./helpers";
 
 test("M1-06 opens on Italy with the attributions visible", async ({ page }, info) => {
@@ -32,7 +33,7 @@ test("M1-06 opens on Italy with the attributions visible", async ({ page }, info
   expect(mapLibre.every((url) => new URL(url).pathname.startsWith("/assets/"))).toBe(true);
   await page.screenshot({ path: info.outputPath("m1-06-italia-statica.png") });
   // …then the interactive map on the same view at the first touch.
-  await preview.click();
+  await tapMap(page);
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
   expect(await zoomOf(page)).toBeLessThan(7);
   const attribution = page.locator(".map__attribution");
@@ -51,6 +52,10 @@ test("M1-07 loads at most 12 cells from zoom 13 and nothing below", async ({ pag
     void route.continue();
   });
   await page.goto("/");
+  // While the map is a picture the button in the centre speaks (D-37); the message of the top comes
+  // after the first tap (SPEC 1.13).
+  await expect(mapStatus(page)).toHaveCount(0);
+  await page.getByRole("button", { name: "Clicca sulla mappa o cerca una città" }).click();
   await expect(mapStatus(page)).toHaveText("Avvicinati per vedere i prezzi, o cerca una città.");
   expect(priceRequests).toEqual([]);
 
@@ -156,7 +161,7 @@ test.describe("M3-15 with a position that never answers", () => {
 
 test("M1-11 the city search moves the map and loads the cells", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Cerca" }).click();
+  await page.getByRole("button", { name: "Cerca città o bar" }).click();
   await page.getByRole("combobox", { name: "Cerca una città o un bar" }).fill("milano");
   const first = page.getByRole("listbox", { name: "Risultati" }).getByRole("option").first();
   await expect(first).toContainText("Milano");
@@ -238,7 +243,7 @@ test("axe finds no violations on the map screen, before and after the map starts
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Esplora la mappa" })).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await tapMap(page);
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
@@ -298,7 +303,7 @@ test('slow tiles do not keep the map on "Carico la mappa…"', async ({ page }) 
     await route.continue();
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await tapMap(page);
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 10_000 });
   await expect(mapStatus(page)).not.toHaveText("Carico la mappa…");
 });
@@ -311,7 +316,7 @@ test("one failed request for the tile list does not leave the map dead", async (
     return route.fallback();
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await tapMap(page);
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 15_000 });
   await expect(mapStatus(page)).not.toHaveText(/non si carica/);
   expect(calls).toBeGreaterThanOrEqual(2);

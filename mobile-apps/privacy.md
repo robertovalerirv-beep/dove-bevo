@@ -6,7 +6,7 @@ Questa informativa riguarda le app Dove bevo per Android e iOS, identificate da 
 
 ## Come funziona l'app
 
-Puoi consultare la mappa e cercare città o bar senza creare un account. L'app usa il sito nel browser integrato del telefono e aggiunge navigazione, condivisione, apertura delle mappe e gestione dei permessi. Non aggiunge SDK pubblicitari, identificatori pubblicitari o un sistema di analisi nativo. Il servizio comprende conteggi aggregati e può mostrare locali sponsorizzati.
+Puoi consultare la mappa e cercare città o bar senza creare un account. L'app usa il sito nel browser integrato del telefono e aggiunge navigazione, preferiti, confronto dei prezzi, condivisione, apertura delle mappe e gestione dei permessi. Non aggiunge SDK pubblicitari, identificatori pubblicitari o un sistema di analisi nativo. Il servizio comprende conteggi aggregati e può mostrare locali sponsorizzati.
 
 ## Posizione e richieste di rete
 
@@ -38,7 +38,9 @@ Il browser integrato conserva anche dati del sito, come la data del primo utiliz
 
 Prima di aprire il servizio online, l'app mostra le regole d'uso per maggiorenni. Se le accetti, salva solo la versione accettata sul dispositivo. Non invia questa conferma al servizio e non la usa come identificatore. Leggere regole e Privacy o rifiutare non apre il sito. L'accettazione delle regole non concede il permesso di posizione.
 
-Se salvi un locale nei preferiti, l'app conserva nella propria memoria locale il collegamento pubblico del locale e il nome associato. Non salva automaticamente la cronologia, i prezzi o la posizione GPS nei preferiti e non invia l'elenco al servizio. Puoi consultare l'elenco senza connessione e rimuoverne le voci dall'elenco dei preferiti; riaprire un locale richiede le normali richieste di rete descritte sopra. Il salvataggio non rende disponibili offline mappa e prezzi. Su iOS l'archivio dei preferiti è escluso dal backup di sistema; su Android restano le impostazioni di backup dell'app e gli eventuali trasferimenti tra dispositivi dipendono dal sistema. Questa funzione non aggiunge una sincronizzazione tra telefoni.
+Se salvi un locale nei preferiti, l'app conserva nella propria memoria locale il collegamento pubblico del locale e il nome associato. Non salva automaticamente la cronologia, i prezzi o la posizione GPS nei preferiti. Puoi consultare i nomi senza connessione e rimuovere le voci. Questa funzione non crea un account o una sincronizzazione tra telefoni; cancellare i dati dell'app può eliminare i preferiti. Su iOS l'archivio scritto dall'app è escluso dal backup di sistema; su Android l'app disabilita il backup, mentre eventuali trasferimenti tra dispositivi dipendono anche dal sistema.
+
+Quando apri Preferiti o aggiorni il confronto, l'app richiede al servizio i dati pubblici delle celle geografiche dei locali salvati e i relativi prezzi. Non carica un unico elenco dei preferiti, ma queste richieste e l'indirizzo IP possono rivelare le zone dei locali che confronti. Per queste letture non invia cookie del browser, l'identificatore usato per i consigli o la posizione GPS del telefono. I risultati del confronto restano temporaneamente nella memoria dell'app; non sono una copia offline dei prezzi. Se manca una connessione o il servizio non risponde, i nomi salvati restano disponibili ma l'app indica che i prezzi non sono disponibili. Riaprire un locale richiede le normali richieste del browser descritte sopra. Il salvataggio non rende disponibili offline mappa e prezzi.
 
 ## Conteggi e sponsorizzazioni
 

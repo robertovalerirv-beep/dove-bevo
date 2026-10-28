@@ -166,18 +166,24 @@ xcodebuild -exportArchive -archivePath "$RELEASE_ROOT/DoveBevo.xcarchive" \
     -exportPath "$RELEASE_ROOT/export" -exportOptionsPlist "$private_dir/ExportOptions.plist"
 IPA="$RELEASE_ROOT/export/DoveBevo.ipa"
 [[ -f "$IPA" ]] || fail 'The signed IPA was not exported'
-ditto -x -k "$IPA" "$private_dir/ipa"
+ditto -x -k "$IPA" "$private_dir/ipa" >"$private_dir/ipa-unpack.txt" 2>&1 \
+    || fail 'Cannot unpack the exported IPA'
 EXPORTED_APP="$private_dir/ipa/Payload/DoveBevo.app"
 [[ -d "$EXPORTED_APP" ]] || fail 'The exported IPA has no DoveBevo app'
 codesign --verify --deep --strict "$EXPORTED_APP" >/dev/null 2>&1 \
     || fail 'The exported IPA code signature failed verification'
-codesign -d --entitlements :- "$EXPORTED_APP" >"$private_dir/entitlements.plist" 2>"$private_dir/entitlements-info.txt"
-codesign -dvv "$EXPORTED_APP" >"$private_dir/codesign-details.txt" 2>&1
-codesign -d --extract-certificates "$private_dir/signature-cert-" "$EXPORTED_APP" \
-    >"$private_dir/signature-extract.txt" 2>&1
+codesign -d --entitlements - --xml "$EXPORTED_APP" >"$private_dir/entitlements.plist" 2>"$private_dir/entitlements-info.txt" \
+    || fail 'Cannot extract the exported app entitlements as XML'
+codesign -dvv "$EXPORTED_APP" >"$private_dir/codesign-details.txt" 2>&1 \
+    || fail 'Cannot inspect the exported app code signature'
+codesign -d "--extract-certificates=$private_dir/signature-cert-" "$EXPORTED_APP" \
+    >"$private_dir/signature-extract.txt" 2>&1 \
+    || fail 'Cannot extract the exported app signing certificates'
 security cms -D -i "$EXPORTED_APP/embedded.mobileprovision" \
-    >"$private_dir/embedded-profile.plist" 2>"$private_dir/embedded-profile-decode.txt"
-python3 "$SUPPORT" verify "$private_dir" "$BUILD_NUMBER"
+    >"$private_dir/embedded-profile.plist" 2>"$private_dir/embedded-profile-decode.txt" \
+    || fail 'Cannot decode the exported app provisioning profile'
+python3 "$SUPPORT" verify "$private_dir" "$BUILD_NUMBER" >"$private_dir/export-verification.txt" 2>&1 \
+    || fail 'The exported app failed certificate, profile or entitlement validation'
 COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 python3 "$SUPPORT" manifest "$IPA" "$RELEASE_ROOT/release-manifest.json" \
     "$private_dir/profile.json" "$BUILD_NUMBER" "$COMMIT" ${RELEASE_MODE_ARGS[@]+"${RELEASE_MODE_ARGS[@]}"}

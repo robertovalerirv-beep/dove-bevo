@@ -851,6 +851,169 @@ bash() { record 'generate-project'; }
         self.assertIn('cleanup could not confirm removal', result.stderr)
 
 
+class ExportValidationShellTests(unittest.TestCase):
+    def run_export_validation(self, failure='', cleanup_failure=False):
+        # Execute the actual post-export block and EXIT handler. Only the
+        # platform tools are faked; Python checks inspect public fixture data.
+        git_bash = Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'Git/bin/bash.exe'
+        bash = str(git_bash) if git_bash.is_file() else shutil.which('bash')
+        if not bash:
+            self.skipTest('Bash is unavailable')
+        script = Path(__file__).resolve().parents[1] / 'release-ios.sh'
+        source = script.read_text()
+        handler = 'cleanup() {' + source.split('cleanup() {', 1)[1].split('\ntrap cleanup EXIT', 1)[0]
+        block = 'ditto -x -k ' + source.split('ditto -x -k ', 1)[1].split('\nif [[ "$UPLOAD"', 1)[0]
+        fail = next(line for line in source.splitlines() if line.startswith('fail() {'))
+        root = script.parent.parent / '.build' / 'export-validation-tests'
+        root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as working:
+            folder = Path(working)
+            private = folder / 'private fixture'
+            app = private / 'ipa/Payload/DoveBevo.app'
+            app.mkdir(parents=True)
+            output = folder / 'release'
+            output.mkdir()
+            ipa = output / 'DoveBevo.ipa'
+            ipa.write_bytes(b'public IPA fixture; never a signed app')
+            original = profile()
+            (private / 'profile.json').write_text(json.dumps(release.validated_profile(original, NOW)))
+            embedded = profile()
+            if failure == 'profile-mismatch':
+                embedded['UUID'] = '11111111-1111-1111-1111-111111111111'
+            (private / 'embedded-source.plist').write_bytes(plistlib.dumps(embedded))
+            entitlements = dict(original['Entitlements'])
+            if failure == 'debug-entitlement':
+                entitlements['get-task-allow'] = True
+            (private / 'entitlements-source.plist').write_bytes(plistlib.dumps(entitlements))
+            (app / 'Info.plist').write_bytes(plistlib.dumps({
+                'CFBundleIdentifier': release.BUNDLE, 'CFBundleVersion': '19',
+                'CFBundleSupportedPlatforms': ['iPhoneOS']}))
+            fixture = r'''#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+record() { printf '%s\n' "$*" >> "$PWD/actions.txt"; }
+tool_failure() { printf 'FABRICATED_PRIVATE_TOOL_OUTPUT\n'; printf 'FABRICATED_PRIVATE_TOOL_ERROR\n' >&2; return 97; }
+private_dir="$PWD/private fixture"
+RELEASE_ROOT="$PWD/release"
+EXPORTED_APP="$private_dir/ipa/Payload/DoveBevo.app"
+IPA="$RELEASE_ROOT/DoveBevo.ipa"
+BUILD_NUMBER=19
+REPO_ROOT="$PWD"
+RUNNER_TEMP="$PWD"
+task_keychain=''
+keychain_attempted=false
+search_list_changed=false
+RELEASE_MODE_ARGS=(--internal-only)
+git() { printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n'; }
+ditto() { record 'unpack'; [[ "$FIXTURE_FAILURE" != unpack ]] || tool_failure; }
+codesign() {
+    if [[ "$1" == --verify ]]; then
+        record 'verify-signature'
+        [[ "$#" == 4 && "$2" == --deep && "$3" == --strict && "$4" == "$EXPORTED_APP" ]] || return 98
+        [[ "$FIXTURE_FAILURE" != verify-signature ]] || tool_failure
+    elif [[ "$1" == -d && "$2" == --entitlements ]]; then
+        record 'entitlements'
+        printf '%s\0' "$@" > "$PWD/entitlement-args.bin"
+        [[ "$#" == 5 && "$3" == - && "$4" == --xml && "$5" == "$EXPORTED_APP" ]] || { tool_failure; return 97; }
+        [[ "$FIXTURE_FAILURE" != entitlements ]] || { tool_failure; return 97; }
+        cat "$private_dir/entitlements-source.plist"
+    elif [[ "$1" == -dvv ]]; then
+        record 'details'
+        [[ "$FIXTURE_FAILURE" != details ]] || { tool_failure; return 97; }
+        printf 'TeamIdentifier=9T359CV674\nIdentifier=com.dovebevo.app\nFABRICATED_PRIVATE_DETAILS\n'
+    elif [[ "$1" == -d && "$2" == --extract-certificates* ]]; then
+        record 'certificates'
+        printf '%s\0' "$@" > "$PWD/certificate-args.bin"
+        # Optional long-option values must be attached; a separate prefix is
+        # another code operand, rather than the requested destination prefix.
+        [[ "$#" == 3 && "$2" == "--extract-certificates=$private_dir/signature-cert-" && "$3" == "$EXPORTED_APP" ]] || { tool_failure; return 97; }
+        [[ "$FIXTURE_FAILURE" != certificates ]] || { tool_failure; return 97; }
+        if [[ "$FIXTURE_FAILURE" == certificate-mismatch ]]; then printf 'other public certificate' > "$private_dir/signature-cert-0"
+        else printf '%s' "$FIXTURE_CERTIFICATE" > "$private_dir/signature-cert-0"; fi
+    else record 'unexpected codesign'; return 99; fi
+}
+security() {
+    record 'embedded-profile'
+    [[ "$#" == 4 && "$1" == cms && "$2" == -D && "$3" == -i && "$4" == "$EXPORTED_APP/embedded.mobileprovision" ]] || return 98
+    [[ "$FIXTURE_FAILURE" != embedded-profile ]] || { tool_failure; return 97; }
+    cat "$private_dir/embedded-source.plist"
+}
+python3() {
+    record "$2"
+    case "$2" in
+        cleanup-profile) return "$FIXTURE_CLEANUP_STATUS" ;;
+        cleanup-private) return 0 ;;
+        *) "$FIXTURE_PYTHON" "$@" ;;
+    esac
+}
+''' + fail + '\n' + handler + '\ntrap cleanup EXIT\n' + block + "\nrecord 'upload boundary reached'\n"
+            (folder / 'fixture.sh').write_text(fixture, encoding='utf-8', newline='\n')
+            env = {key: os.environ[key] for key in ['PATH', 'SystemRoot', 'WINDIR'] if key in os.environ}
+            env.update(SUPPORT=Path(release.__file__).resolve().as_posix(),
+                       FIXTURE_PYTHON=release.sys.executable.replace('\\', '/'), FIXTURE_FAILURE=failure,
+                       FIXTURE_CERTIFICATE=CERTIFICATE.decode(), FIXTURE_CLEANUP_STATUS='93' if cleanup_failure else '0')
+            result = subprocess.run([bash, 'fixture.sh'], cwd=folder, env=env,
+                                    capture_output=True, text=True, timeout=10)
+            actions = (folder / 'actions.txt').read_text().splitlines()
+            manifest = output / 'release-manifest.json'
+            arguments = {}
+            for name in ['entitlement', 'certificate']:
+                path = folder / (name + '-args.bin')
+                arguments[name] = path.read_bytes().decode().rstrip('\0').split('\0') if path.exists() else []
+            return result, actions, json.loads(manifest.read_text()) if manifest.exists() else None, arguments
+
+    def test_actual_postexport_block_extracts_xml_and_exact_certificate_before_manifest(self):
+        result, actions, manifest, arguments = self.run_export_validation()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(actions, ['unpack', 'verify-signature', 'entitlements', 'details', 'certificates',
+                                   'embedded-profile', 'verify', 'manifest', 'upload boundary reached',
+                                   'cleanup-profile', 'cleanup-private'])
+        self.assertEqual(arguments['entitlement'][1:4], ['--entitlements', '-', '--xml'])
+        self.assertIn('/private fixture/signature-cert-', arguments['certificate'][1])
+        self.assertEqual(manifest['signingCertificateSHA1'], FINGERPRINT)
+        self.assertTrue(manifest['signaturesVerified'])
+        self.assertEqual(manifest['distributionScope'], 'internal-only')
+        self.assertFalse(manifest['uploadRequested'])
+        self.assertNotIn('FABRICATED_', result.stdout + result.stderr)
+
+    def test_each_platform_failure_stops_with_fixed_private_diagnostics_and_cleans(self):
+        messages = {'unpack': 'Cannot unpack the exported IPA',
+                    'verify-signature': 'The exported IPA code signature failed verification',
+                    'entitlements': 'Cannot extract the exported app entitlements as XML',
+                    'details': 'Cannot inspect the exported app code signature',
+                    'certificates': 'Cannot extract the exported app signing certificates',
+                    'embedded-profile': 'Cannot decode the exported app provisioning profile'}
+        for stage, message in messages.items():
+            with self.subTest(stage=stage):
+                result, actions, manifest, arguments = self.run_export_validation(stage)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn(message, result.stderr)
+                self.assertIsNone(manifest)
+                self.assertNotIn('upload boundary reached', actions)
+                self.assertEqual(actions[-2:], ['cleanup-profile', 'cleanup-private'])
+                self.assertNotIn('FABRICATED_', result.stdout + result.stderr)
+
+    def test_real_export_checks_still_reject_changed_certificate_profile_or_debug_entitlement(self):
+        for tampering in ['certificate-mismatch', 'profile-mismatch', 'debug-entitlement']:
+            with self.subTest(tampering=tampering):
+                result, actions, manifest, arguments = self.run_export_validation(tampering)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertIn('The exported app failed certificate, profile or entitlement validation', result.stderr)
+                self.assertIsNone(manifest)
+                self.assertNotIn('manifest', actions)
+                self.assertNotIn('upload boundary reached', actions)
+                self.assertEqual(actions[-2:], ['cleanup-profile', 'cleanup-private'])
+                self.assertNotIn('Traceback', result.stderr)
+                self.assertNotIn('FABRICATED_', result.stdout + result.stderr)
+
+    def test_cleanup_failure_remains_fatal_after_validated_export(self):
+        result, actions, manifest, arguments = self.run_export_validation(cleanup_failure=True)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertTrue(manifest['signaturesVerified'])
+        self.assertIn('cleanup could not confirm removal', result.stderr)
+        self.assertEqual(actions[-2:], ['cleanup-profile', 'cleanup-private'])
+
+
 class UploadOutcomeTests(unittest.TestCase):
     def test_attempt_remains_uncertain_until_command_success_is_recorded(self):
         directory = Path(__file__).resolve().parents[2] / ".build" / "metadata-tests"

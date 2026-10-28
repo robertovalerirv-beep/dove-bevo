@@ -123,7 +123,13 @@ The app now explicitly protects public submissions on devices reporting the
 documented Firebase Test Lab flag. Its transparent native banner, local method
 interception and external-action restrictions are documented in
 `android/TEST_LAB_SAFETY.md`. Independent review and pure policy tests passed;
-the isolated real WebView/service-worker runtime gate is still pending. The
+the two isolated real WebView/service-worker runtime cases also passed on API
+36 with Google's WebView provider. Read-only page and worker POSTs returned
+local 403 responses and reached zero local submission sinks; the normal-mode
+negative controls returned 200 and reached one local sink each. Safe GETs
+returned 200 and both fixture workers unregistered. All fixture traffic used
+a reserved `.invalid` origin and in-memory responses. This verifies the tested
+callback paths, not a general network firewall or every review environment. The
 known automatic Play pre-launch crawl is why the older unguarded bundle has
 not been promoted to production.
 
@@ -134,8 +140,9 @@ profile has now been created using the same certificate and bundle, preserving
 the original active profile. Both CMS layers verified to official Apple roots;
 the DER and XML metadata/entitlements agree and the certificate digest matches.
 This verification does not include a revocation check. Only the verified
-profile secret was updated. Exact Apple-supplied UUID casing is being preserved
-before the next hosted signing attempt; a successful iOS archive is not yet
+profile secret was updated. Exact Apple-supplied UUID casing is now preserved
+in signing pins, installed filenames and export mapping; 77 iOS script guards
+and 26 profile-planner tests pass. A successful iOS archive is not yet
 established.
 
 ## Internal build evidence

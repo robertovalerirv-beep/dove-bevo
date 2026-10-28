@@ -54,6 +54,7 @@ android {
         targetSdk = 36
         versionCode = appVersionCode
         versionName = '1.0.0'
+        testInstrumentationRunner = 'androidx.test.runner.AndroidJUnitRunner'
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -95,4 +96,6 @@ androidComponents {
 dependencies {
     implementation 'androidx.activity:activity:1.11.0'
     testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test:runner:1.7.0'
 }

@@ -247,6 +247,33 @@ public final class NativeUsabilityRuntimeTest {
         assertTrue("A dismissed UI must not commit a late bookmark", store.load().isEmpty());
     }
 
+    @Test public void openingFavoritesAndRemovingCannotBeUndoneByAnEarlierSaveCallback() throws Exception {
+        navigate(ONE);
+        assertEquals(SavedVenueStore.Result.SAVED, store.save(ONE, "Previously saved venue"));
+        AtomicReference<Consumer<SavedVenueCapture.Venue>> pending = new AtomicReference<>();
+        onMain(() -> {
+            savedUi.dismiss();
+            savedUi = new SavedVenuesUi(activity, store, () -> (String) invoke("eligibleSavedVenue"),
+                    pending::set, url -> invoke("navigate", new Class<?>[]{String.class}, url));
+            set("savedVenues", savedUi);
+            savedUi.saveCurrent();
+            assertNotNull(pending.get());
+            // This is the real list/detail/remove path, not explicit dismissal
+            // of the object whose save callback is waiting.
+            savedUi.showList();
+        });
+        instrumentation.waitForIdleSync();
+        onMain(() -> currentDialog().getListView().performItemClick(null, 0, 0));
+        instrumentation.waitForIdleSync();
+        onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_NEUTRAL).performClick());
+        instrumentation.waitForIdleSync();
+        assertTrue(store.load().isEmpty());
+        onMain(() -> pending.get().accept(new SavedVenueCapture(ONE, 1)
+                .complete(ONE, "Locale di prova", "n123", ONE, 1)));
+        assertTrue("Removing a favorite must win over its older pending save", store.load().isEmpty());
+        assertTrue("The committed file must remain empty", new SavedVenueStore(new SavedVenueFile(fixtureDirectory)).load().isEmpty());
+    }
+
     @Test public void sameDocumentHistoryControlsAndNativeSavedStateRestoreAForwardEntry() throws Exception {
         navigate(BrowserPolicy.HOME);
         tapOwnedVenueButton();

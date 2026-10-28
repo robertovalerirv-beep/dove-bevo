@@ -48,6 +48,7 @@ final class SavedVenuesUi {
     }
 
     void showList() {
+        saveRequest++;
         List<SavedVenueStore.Venue> venues;
         try { venues = store.load(); }
         catch (IOException error) { message(R.string.saved_venues_storage_error); return; }
@@ -67,6 +68,7 @@ final class SavedVenuesUi {
     }
 
     private void showVenue(SavedVenueStore.Venue venue) {
+        saveRequest++;
         AlertDialog dialog = new AlertDialog.Builder(activity).setTitle(venue.label)
                 .setMessage(R.string.saved_venues_online_note)
                 .setPositiveButton(R.string.open_saved_venue, (ignored, which) -> {
@@ -80,6 +82,7 @@ final class SavedVenuesUi {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setId(R.id.open_saved_venue);
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setId(R.id.remove_saved_venue);
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> {
+                saveRequest++;
                 SavedVenueStore.Result result = store.remove(venue.url);
                 if (result == SavedVenueStore.Result.REMOVED || result == SavedVenueStore.Result.NOT_FOUND) {
                     dialog.dismiss();

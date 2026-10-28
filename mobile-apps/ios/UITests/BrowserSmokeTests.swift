@@ -121,10 +121,24 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func hasVisiblePositiveCoverage() -> Bool {
-        app.webViews["browser.website"].staticTexts.matching(
+        let website = app.webViews["browser.website"]
+        guard website.exists else { return false }
+        let websiteFrame = website.frame
+        let appFrame = app.frame
+        return website.staticTexts.matching(
             NSPredicate(format: "label MATCHES %@", Self.liveCoveragePattern)
         ).allElementsBoundByIndex.contains { element in
-            element.exists && element.isHittable && Self.hasPositiveCoverage(element.label)
+            guard element.exists else { return false }
+            let frame = element.frame
+            // The read-only status intentionally has pointer-events:none.
+            // Require visible finite geometry rather than a tappable hit point.
+            let frames = [frame, websiteFrame, appFrame]
+            return frames.allSatisfy({ rectangle in
+                rectangle.width > 0 && rectangle.height > 0 &&
+                    [rectangle.minX, rectangle.minY, rectangle.maxX, rectangle.maxY,
+                     rectangle.width, rectangle.height].allSatisfy { $0.isFinite }
+            }) && websiteFrame.contains(frame) && appFrame.contains(frame) &&
+                Self.hasPositiveCoverage(element.label)
         }
     }
 

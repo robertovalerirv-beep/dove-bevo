@@ -46,7 +46,12 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertIn("withPrice > 0 && total >= withPrice", check)
         visibility = self.source.split("private func hasVisiblePositiveCoverage()", 1)[1].split("\n    }", 1)[0]
         self.assertIn('app.webViews["browser.website"]', visibility)
-        self.assertIn("element.isHittable", visibility)
+        self.assertNotIn("isHittable", visibility)
+        self.assertIn("element.exists", visibility)
+        self.assertIn("rectangle.width > 0 && rectangle.height > 0", visibility)
+        self.assertIn("rectangle.minX, rectangle.minY, rectangle.maxX, rectangle.maxY", visibility)
+        self.assertIn("allSatisfy { $0.isFinite }", visibility)
+        self.assertIn("websiteFrame.contains(frame) && appFrame.contains(frame)", visibility)
         self.assertIn("Self.hasPositiveCoverage(element.label)", visibility)
 
     def test_final_capture_follows_semantic_and_postprivacy_checks(self):

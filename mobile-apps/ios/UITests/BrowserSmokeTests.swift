@@ -2,6 +2,11 @@ import XCTest
 
 final class BrowserSmokeTests: XCTestCase {
     private var app: XCUIApplication!
+    private static let liveMapLabels = [
+        "Mappa interattiva dei bar",
+        "Mappa interattiva dei bar, region"
+    ]
+    private static let liveCoveragePattern = #"^([0-9]+) bar su ([0-9]+) qui hanno un prezzo$"#
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -82,22 +87,56 @@ final class BrowserSmokeTests: XCTestCase {
         city.tap()
 
         XCTAssertTrue(searchButton.waitForExistence(timeout: 15), "City search did not return to the map")
-        let interactiveMap = website.descendants(matching: .any).matching(
-            NSPredicate(format: "label == %@", "Mappa interattiva dei bar")
-        ).firstMatch
-        XCTAssertTrue(interactiveMap.waitForExistence(timeout: 45), "Interactive live map did not initialize")
+        XCTAssertTrue(interactiveMap().waitForExistence(timeout: 45), "Interactive live map did not initialize")
         let mapReady = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"),
-            object: website.buttons["Esplora la mappa"]
+            object: app.webViews["browser.website"].buttons["Esplora la mappa"]
         )
         XCTAssertEqual(XCTWaiter.wait(for: [mapReady], timeout: 45), .completed, "Map style did not finish loading")
-        XCTAssertFalse(website.staticTexts["La mappa non si carica: controlla la connessione e ricarica la pagina."].exists)
+        let coverageReady = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in self.hasVisiblePositiveCoverage() }, object: nil
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [coverageReady], timeout: 45), .completed,
+                       "The live map must show a positive valid count of priced venues in the current view")
+        XCTAssertFalse(app.webViews["browser.website"].staticTexts["La mappa non si carica: controlla la connessione e ricarica la pagina."].exists)
+        assertNoNativeRecovery()
+        XCTAssertTrue(app.buttons["browser.share"].isEnabled)
+        openPrivacyAndReturn()
+        XCTAssertTrue(interactiveMap().exists, "Returning from native privacy must retain the website map")
+        XCTAssertTrue(hasVisiblePositiveCoverage(), "Returning from native privacy must retain live price coverage")
+        XCTAssertTrue(app.webViews["browser.website"].buttons["Cerca città o bar"].exists)
+        XCTAssertFalse(app.webViews["browser.website"].buttons["Esplora la mappa"].exists)
+        XCTAssertFalse(app.webViews["browser.website"].staticTexts["La mappa non si carica: controlla la connessione e ricarica la pagina."].exists)
+        assertNoNativeRecovery()
         XCTAssertTrue(app.buttons["browser.share"].isEnabled)
         attachScreen(named: "DoveBevo-live-Milano-map")
-        openPrivacyAndReturn()
-        XCTAssertTrue(interactiveMap.exists, "Returning from native privacy must retain the website map")
-        XCTAssertTrue(searchButton.exists)
-        XCTAssertTrue(app.buttons["browser.share"].isEnabled)
+    }
+
+    private func interactiveMap() -> XCUIElement {
+        // WebKit exposes the observed region role in the accessible label.
+        // Accept only that exact variant and the website's original label.
+        app.webViews["browser.website"].descendants(matching: .any).matching(
+            NSPredicate(format: "label IN %@", Self.liveMapLabels as NSArray)
+        ).firstMatch
+    }
+
+    private func hasVisiblePositiveCoverage() -> Bool {
+        app.webViews["browser.website"].staticTexts.matching(
+            NSPredicate(format: "label MATCHES %@", Self.liveCoveragePattern)
+        ).allElementsBoundByIndex.contains { element in
+            element.exists && element.isHittable && Self.hasPositiveCoverage(element.label)
+        }
+    }
+
+    private static func hasPositiveCoverage(_ label: String) -> Bool {
+        let range = NSRange(label.startIndex..<label.endIndex, in: label)
+        guard label.count <= 120,
+              let regex = try? NSRegularExpression(pattern: liveCoveragePattern),
+              let match = regex.firstMatch(in: label, range: range), match.range == range,
+              let pricedRange = Range(match.range(at: 1), in: label),
+              let totalRange = Range(match.range(at: 2), in: label),
+              let withPrice = Int(label[pricedRange]), let total = Int(label[totalRange]) else { return false }
+        return withPrice > 0 && total >= withPrice
     }
 
     private func openPrivacyAndReturn() {

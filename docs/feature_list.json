@@ -814,8 +814,8 @@
   {
     "id": "M6-02",
     "milestone": "M6",
-    "descrizione": "Segreti di produzione",
-    "verifica": "checklist firmata da Roberto in PROGRESS (impostati da lui)",
+    "descrizione": "Segreti dell'ambiente vivo",
+    "verifica": "checklist firmata da Roberto in PROGRESS: `TURNSTILE_SECRET`, `SESSION_HMAC_KEY` e `HASH_KEY` dell'ambiente `staging`, che serve il dominio, sono impostati da lui e diversi dai valori di sviluppo (ADR 0036)",
     "passes": false
   },
   {
@@ -829,14 +829,14 @@
     "id": "M6-04",
     "milestone": "M6",
     "descrizione": "Rilascio `v0.1.0`",
-    "verifica": "tag `v0.1.0` approvato, deploy di produzione verde, `CHANGELOG.md` aggiornato",
+    "verifica": "tag `v0.1.0` approvato da Roberto su un commit di `main` con CI e deploy dell'ambiente vivo verdi, `CHANGELOG.md` aggiornato (ADR 0036)",
     "passes": false
   },
   {
     "id": "M6-05",
     "milestone": "M6",
-    "descrizione": "Smoke test in produzione",
-    "verifica": "`/api/health`, una cella, header e CSP verificati in produzione; feature list tutta a `passes: true`",
+    "descrizione": "Smoke test sul dominio vivo",
+    "verifica": "`/api/health`, una cella, header e CSP verificati su `www.dovebevo.com`; feature list tutta a `passes: true`",
     "passes": false
   }
 ]

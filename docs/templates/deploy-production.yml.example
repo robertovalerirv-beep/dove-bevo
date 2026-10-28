@@ -1,3 +1,4 @@
+# NOT IN USE (ADR 0036): `staging` is the live environment; copy this only if Roberto creates a separate production one.
 # Deploy to production from a tag v0.x.y, after Roberto approves the "production" environment (SPEC 16, M6).
 # Needs, before the first run: the "production" block in wrangler.jsonc (docs/release-checklist.md), the
 # GitHub environment "production" with a required reviewer, and the Cloudflare secrets set by Roberto.

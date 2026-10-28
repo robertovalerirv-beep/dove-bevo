@@ -6,7 +6,7 @@
 Roberto ha comprato `dovebevo.com` su Cloudflare. Ha voluto portare il sito vero lì con tutti i bar, i prezzi e le conferme già presenti, senza errori e senza passaggi in più.
 
 ## Decisione
-- Il dominio si collega al Worker `dovebevo-staging` che c'è già, con il suo D1: nessuna copia dei dati, nessuna migrazione, nessun nuovo ambiente. Produzione separata (D1, Worker, segreti e tag `v0.x.y` di SPEC 16) resta rimandata finché ci sono altri utenti da proteggere dalle prove.
+- Il dominio si collega al Worker `dovebevo-staging` che c'è già, con il suo D1: nessuna copia dei dati, nessuna migrazione, nessun nuovo ambiente. Produzione separata (D1, Worker, segreti e tag `v0.x.y` di SPEC 16) resta rimandata finché ci sono altri utenti da proteggere dalle prove (confermato e formalizzato dall'ADR 0036).
 - Indirizzo canonico: `www.dovebevo.com`. L'indirizzo senza `www` reindirizza lì con una Redirect Rule di Cloudflare (nessun codice); Roberto ha scelto questa direzione in chat.
 - `TURNSTILE_HOSTNAME` (un solo valore, confrontato con quello di siteverify) passa a `www.dovebevo.com`: l'indirizzo `workers.dev` resta raggiungibile ma non salva più prezzi. Access e hostname del widget Turnstile si aggiungono nella dashboard (public hostname `admin` e `api/admin/*` su `www.dovebevo.com`, hostname del widget `www.dovebevo.com`); l'AUD non cambia.
 - `APP_DOMAIN = "www.dovebevo.com"`. Le guide puntano al nuovo indirizzo.

@@ -255,7 +255,15 @@ public final class NativeUsabilityRuntimeTest {
         });
         hold.set(false); release.countDown();
         int beforeRetry = documentResponses.get();
-        onMain(() -> activity.findViewById(R.id.retry).performClick());
+        onMain(() -> {
+            activity.findViewById(R.id.retry).performClick();
+            // Before the replacement's page-start callback, the old stopped
+            // request may still report finish with this identical URL.
+            actualClient.onPageFinished(web, HOLD);
+            assertTrue("An old finish before replacement start must keep loading active", (Boolean) get("loading"));
+            assertTrue((Boolean) get("awaitingDocumentStart"));
+            assertNull(invoke("eligibleSavedVenue"));
+        });
         awaitOwnedResponse(beforeRetry + 1);
         await(() -> HOLD.equals(invoke("eligibleSavedVenue")));
         onMain(() -> {
@@ -468,6 +476,7 @@ public final class NativeUsabilityRuntimeTest {
                 + " canBack=" + web.canGoBack() + " backEnabled=" + ((Button) get("backButton")).isEnabled()
                 + " canForward=" + web.canGoForward() + " forwardEnabled=" + ((Button) get("forwardButton")).isEnabled()
                 + " loading=" + get("loading") + " failed=" + get("failed") + " usable=" + get("hasUsablePage")
+                + " awaitingStart=" + get("awaitingDocumentStart") + " prepared=" + get("preparedNavigationUrl")
                 + " stopped=" + get("stoppedUrl") + " httpError=" + get("documentHasHttpError")));
         fail("Native fixture state did not become ready within 15 seconds: " + state.get() + " events=" + String.join(" | ", events));
     }

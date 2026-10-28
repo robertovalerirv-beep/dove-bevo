@@ -74,6 +74,7 @@ public final class MainActivity extends ComponentActivity {
     private boolean loading;
     private boolean hasUsablePage;
     private boolean documentHasHttpError;
+    private boolean awaitingDocumentStart;
     private String stoppedUrl;
     private String preparedNavigationUrl;
     private String locationOrigin;
@@ -334,6 +335,7 @@ public final class MainActivity extends ComponentActivity {
         if (loading && website != null) {
             // navigate() records its target before WebView exposes a new URL.
             stoppedUrl = lastTrustedUrl;
+            awaitingDocumentStart = false;
             cancelLocation();
             website.stopLoading();
             setLoading(false);
@@ -347,6 +349,7 @@ public final class MainActivity extends ComponentActivity {
         BackNavigation.perform(website != null && website.canGoBack(), () -> {
             failed = false;
             preparedNavigationUrl = null;
+            awaitingDocumentStart = false;
             stoppedUrl = null;
             documentHasHttpError = false;
             cancelLocation();
@@ -362,6 +365,7 @@ public final class MainActivity extends ComponentActivity {
         if (website == null || !website.canGoForward()) return;
         failed = false;
         preparedNavigationUrl = null;
+        awaitingDocumentStart = false;
         stoppedUrl = null;
         documentHasHttpError = false;
         cancelLocation();
@@ -384,6 +388,7 @@ public final class MainActivity extends ComponentActivity {
         stoppedUrl = null;
         lastTrustedUrl = url;
         preparedNavigationUrl = url;
+        awaitingDocumentStart = true;
     }
 
     private boolean isCurrentDocument(WebView source, String url) {
@@ -403,14 +408,14 @@ public final class MainActivity extends ComponentActivity {
         if (backButton == null) return;
         backButton.setEnabled(website != null && website.canGoBack());
         forwardButton.setEnabled(website != null && website.canGoForward());
-        shareButton.setEnabled(website != null && hasUsablePage && !failed && !loading);
+        shareButton.setEnabled(website != null && hasUsablePage && !failed && !loading && !awaitingDocumentStart);
         int action = loading ? R.string.stop_loading : R.string.refresh;
         refreshButton.setText(action);
         refreshButton.setContentDescription(getString(action));
     }
 
     private String eligibleSavedVenue() {
-        if (destroyed || website == null || failed || loading || !hasUsablePage
+        if (destroyed || website == null || failed || loading || awaitingDocumentStart || !hasUsablePage
                 || documentHasHttpError || stoppedUrl != null) return null;
         return SavedVenueUrl.canonicalize(website.getUrl());
     }
@@ -437,7 +442,7 @@ public final class MainActivity extends ComponentActivity {
 
     private boolean handleNavigation(String url) {
         BrowserPolicy.Target target = BrowserPolicy.target(url);
-        if (target == BrowserPolicy.Target.INTERNAL) { prepareNavigation(url); return false; }
+        if (target == BrowserPolicy.Target.INTERNAL) return false;
         if (target == BrowserPolicy.Target.EXTERNAL || target == BrowserPolicy.Target.EMAIL || target == BrowserPolicy.Target.MAP) openExternal(url);
         else toast(R.string.blocked_link);
         return true;
@@ -564,10 +569,11 @@ public final class MainActivity extends ComponentActivity {
             if (!url.equals(preparedNavigationUrl)) prepareNavigation(url);
             lastTrustedUrl = url;
             preparedNavigationUrl = null;
+            awaitingDocumentStart = false;
             setLoading(!failed);
         }
         @Override public void onPageFinished(WebView view, String url) {
-            if (view != website || destroyed || url.equals(stoppedUrl) || !url.equals(lastTrustedUrl)) return;
+            if (view != website || destroyed || awaitingDocumentStart || url.equals(stoppedUrl) || !url.equals(lastTrustedUrl)) return;
             preparedNavigationUrl = null;
             setLoading(false);
             if (!failed && BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL) {

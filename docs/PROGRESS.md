@@ -4,6 +4,24 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-28 · SPEC 1.11: mappa pronta al primo tocco e interfaccia in inglese (branch `spec-1-11`) · ADR 0037, 0038 · MF, ME
+
+**Richiesta di Roberto:** (1) la mappa si carica solo al primo tocco e ha latenza: scelta l'opzione B (scaricare il file in anticipo, senza banner); (2) pagina utente in inglese, stesso database, formati `it-IT`, menu a tendina in alto a sinistra di fronte all'Elenco, admin italiano, lingua non salvata, si parte sempre dall'italiano, privacy e regole tradotte come bozza.
+
+**Fatto (solo specifica, nessun codice)**
+- SPEC 1.11: intestazione e registro modifiche, D-35 (mappa pronta), D-36 (lingua), 7.1, nuova 7.11, sezione 14 (la lingua non è salvata), 15, 17, voci MF-01…MF-03 e ME-01…ME-08 (sezione 18), milestone MF e ME (19).
+- `docs/feature_list.json`: 11 voci nuove a `passes: false`, nessun'altra riga toccata (diff solo di righe aggiunte).
+- ADR 0037 (mappa scaricata in anticipo, completa il 0014) e ADR 0038 (inglese).
+- Guardia della feature list ora sul tag `spec-approved-12` (`scripts/check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`, `.claude/agents/spec-reviewer.md`); `CLAUDE.md` aggiornato sul file dei testi.
+
+**Non fatto, di Roberto**
+- Creare e pubblicare il tag `spec-approved-12` su questo commit: finché manca, la guardia della feature list è rossa in locale, nel hook di push e in CI.
+- Rileggere la traduzione inglese di privacy e regole quando sarà scritta (ME-05).
+
+**Prossimi passi (dopo il tag):** rami in parallelo `m6-mappa-prefetch` (MF) e `m6-inglese` (ME), come da piano.
+
+---
+
 ## 2026-10-27 · Un solo ambiente vivo: `staging` è la produzione (branch `m5-chiusura-codice`) · SPEC 1.10, ADR 0036 · M6
 
 **Richiesta di Roberto:** niente doppio ambiente per ora; `staging` diventa il sito in produzione; aggiornare M6 e il resto; l'ambiente separato, se serve, lo deciderà più avanti.

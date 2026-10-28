@@ -693,6 +693,83 @@
     "passes": true
   },
   {
+    "id": "MF-01",
+    "milestone": "MF",
+    "descrizione": "Prefetch del file della mappa solo nella pagina della mappa",
+    "verifica": "unit + e2e Chromium e WebKit 390×844: la build scrive in `index.html` un `<meta>` con i percorsi del file, del CSS e del worker di MapLibre; dopo `load` e un momento libero sulla pagina `/` parte un `prefetch` di quei file; nessuna esecuzione: finché non si tocca la mappa restano la foto e nessun canvas; su `/privacy`, `/regole` e `/admin` nessuna richiesta a `maplibre`; in sviluppo nessun prefetch",
+    "passes": false
+  },
+  {
+    "id": "MF-02",
+    "milestone": "MF",
+    "descrizione": "Il primo tocco non riscarica la mappa",
+    "verifica": "e2e: dopo il prefetch il tocco su «Esplora la mappa» non genera nuove richieste di rete per i file di MapLibre (serviti dalla cache del browser) e la mappa è pronta; il service worker non ha voci in più nella cache (`pwa.spec.ts` invariato); nessuna richiesta a `/api/*` o `/data/*` in più; CSP senza violazioni",
+    "passes": false
+  },
+  {
+    "id": "MF-03",
+    "milestone": "MF",
+    "descrizione": "Budget invariati",
+    "verifica": "Lighthouse CI mobile: Performance ≥ 90, altre ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip (un `prefetch` non conta nel peso: test unit su `scripts/bundle-size.ts`); misure prima e dopo in PROGRESS",
+    "passes": false
+  },
+  {
+    "id": "ME-01",
+    "milestone": "ME",
+    "descrizione": "Dizionario inglese completo e agganciato ai tipi",
+    "verifica": "unit: `src/app/i18n/en.ts` ha le stesse sezioni pubbliche di `it.ts` (tutte tranne `admin`), con gli stessi nomi e le stesse funzioni; `tsc -b` fallisce se manca una frase; ogni funzione dà un testo non vuoto con gli argomenti di prova; il testo dell'Annulla riporta i secondi da `UNDO_MS`",
+    "passes": false
+  },
+  {
+    "id": "ME-02",
+    "milestone": "ME",
+    "descrizione": "Menu della lingua in alto a sinistra",
+    "verifica": "e2e Chromium e WebKit 390×844: bottone «IT/EN» da 48×48 px in alto a sinistra, di fronte all'Elenco; la riga di stato parte dopo di lui e va a capo senza coprire l'Elenco; altezza della mappa, centro e zoom non cambiano (M1-16); scegliendo English la mappa resta aperta e dov'era; tastiera ed Esc; axe senza violazioni nei due temi; in `/privacy` e `/regole` il menu è nell'intestazione della pagina",
+    "passes": false
+  },
+  {
+    "id": "ME-03",
+    "milestone": "ME",
+    "descrizione": "Nessun dato salvato, si riparte sempre dall'italiano",
+    "verifica": "e2e + unit: scegliendo English `localStorage`, `sessionStorage` e i cookie non cambiano (restano solo le due chiavi di oggi, MB-12); ricaricando o riaprendo il sito è in italiano; `html lang` e il titolo della pagina seguono la lingua mentre la pagina è aperta; nessuna richiesta a `/api/*` in più; il file inglese è un file a richiesta",
+    "passes": false
+  },
+  {
+    "id": "ME-04",
+    "milestone": "ME",
+    "descrizione": "Tutte le viste pubbliche in inglese",
+    "verifica": "e2e: in English sono in inglese mappa, menu «Scegli cosa bere» (drink compresi), ricerca, Elenco, scheda bar, Aggiungi prezzo (Timbro, Annulla, Tessera), bar mancante, segnalazioni, invito all'installazione, messaggi di «Vicino a me» e di errore; nessun testo italiano residuo nelle viste pubbliche; screenshot 390×844 senza testi che escono dal bordo",
+    "passes": false
+  },
+  {
+    "id": "ME-05",
+    "milestone": "ME",
+    "descrizione": "Privacy e Regole in inglese (bozza)",
+    "verifica": "e2e: `/privacy` e `/regole` in English mostrano le stesse sezioni dell'italiano e la stessa lista dei dati sul dispositivo; la traduzione è segnata in PROGRESS come da rileggere prima del rilascio",
+    "passes": false
+  },
+  {
+    "id": "ME-06",
+    "milestone": "ME",
+    "descrizione": "Formati italiani, admin italiano",
+    "verifica": "e2e: in English prezzi, date e distanze restano nel formato `it-IT`; `/admin` e `/admin/verificati` restano in italiano anche dopo aver scelto English; messaggi d'errore dell'API, pagine per i motori di ricerca, manifest e `lang` di `index.html` invariati (test worker esistenti)",
+    "passes": false
+  },
+  {
+    "id": "ME-07",
+    "milestone": "ME",
+    "descrizione": "Accessibilità in inglese",
+    "verifica": "e2e: axe senza violazioni nei due temi con English; target ≥ 48×48 px; `lang=\"en\"` sulla pagina mentre l'inglese è scelto",
+    "passes": false
+  },
+  {
+    "id": "ME-08",
+    "milestone": "ME",
+    "descrizione": "Peso e dipendenze",
+    "verifica": "build: shell ≤ 50 KB gzip invariata (`en.ts` è un file a richiesta), misura prima e dopo in PROGRESS; nessuna dipendenza nuova (`dependencies.test.ts`)",
+    "passes": false
+  },
+  {
     "id": "M5-01",
     "milestone": "M5",
     "descrizione": "Eventi anonimi",

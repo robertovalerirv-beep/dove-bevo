@@ -134,7 +134,8 @@ final class BrowserSmokeTests: XCTestCase {
             // Require visible finite geometry rather than a tappable hit point.
             let frames = [frame, websiteFrame, appFrame]
             return frames.allSatisfy({ rectangle in
-                rectangle.width > 0 && rectangle.height > 0 &&
+                !rectangle.isNull && !rectangle.isInfinite &&
+                    rectangle.size.width > 0 && rectangle.size.height > 0 &&
                     [rectangle.minX, rectangle.minY, rectangle.maxX, rectangle.maxY,
                      rectangle.width, rectangle.height].allSatisfy { $0.isFinite }
             }) && websiteFrame.contains(frame) && appFrame.contains(frame) &&

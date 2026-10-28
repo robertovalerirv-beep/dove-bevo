@@ -655,7 +655,7 @@ IPA=public-ipa-fixture
 
 
 class ArchiveAuthenticationTests(unittest.TestCase):
-    def run_archive_boundary(self, arguments, cleanup_failure=False):
+    def run_archive_boundary(self, arguments, cleanup_failure=False, search_identity='matching'):
         # Run the real script up to a simulated archive failure and its EXIT
         # trap. Apple tools and private decoding are replaced at their command
         # boundaries; all files are public fixtures in the selected workspace.
@@ -672,6 +672,7 @@ class ArchiveAuthenticationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=root) as working:
             folder = Path(working)
             (folder / 'private fixture').mkdir()
+            (folder / 'private fixture' / 'profile.json').write_text(json.dumps(release.validated_profile(profile(), NOW)))
             fixture = r'''#!/usr/bin/env bash
 record() { printf '%s\n' "$*" >> "$PWD/actions.txt"; }
 uname() { printf 'Darwin\n'; }
@@ -682,6 +683,7 @@ xcodebuild() {
     if [[ "$1" == -help ]]; then printf '%s\n' "$FIXTURE_HELP"; return 0; fi
     [[ -z "${DOVEBEVO_ASC_PRIVATE_KEY+x}" && -z "${DOVEBEVO_IOS_CERTIFICATE_BASE64+x}"
        && -z "${DOVEBEVO_IOS_PROFILE_BASE64+x}" && -z "${DOVEBEVO_SIGNING_PASSWORD+x}" ]] || return 88
+    record 'archive'
     printf '%s\0' "$@" > "$PWD/archive-args.bin"
     return 77
 }
@@ -697,13 +699,31 @@ python3() {
     case "$2" in
         private-dir) printf '%s/private fixture\n' "$PWD" ;;
         decode|profile|install|keychain-list|options) record "$2" ;;
-        identity) printf 'public-certificate-fingerprint\n' ;;
+        identity)
+            if [[ "$4" == "$private_dir/search-list-identities.txt" ]]; then
+                record 'validate-user-search-list-identity'
+                if [[ "$FIXTURE_SEARCH_IDENTITY" == different ]]; then printf '0000000000000000000000000000000000000000\n'; return 0; fi
+                if [[ "$FIXTURE_SEARCH_IDENTITY" == helper-error ]]; then printf 'FABRICATED_HELPER_PRIVATE_ONLY\n' >&2; return 95; fi
+            fi
+            "$FIXTURE_PYTHON" "$FIXTURE_SUPPORT" identity "$3" "$4" ;;
         cleanup-profile) record 'cleanup-profile'; return "$FIXTURE_CLEANUP_STATUS" ;;
         cleanup-private) record 'cleanup-private' ;;
         *) record 'unexpected helper'; return 99 ;;
     esac
 }
 security() {
+    if [[ "$1" == find-identity ]]; then
+        if [[ "$#" == 4 ]]; then
+            record 'query-user-search-list-identity'
+            case "$FIXTURE_SEARCH_IDENTITY" in
+                missing) printf '0 valid identities found\n'; return 0 ;;
+                ambiguous) printf '1) %s "Apple Distribution: Public Fixture (9T359CV674)"\n' "$FIXTURE_FINGERPRINT" ;;
+                security-error) printf 'FABRICATED_SECURITY_PRIVATE_ONLY\n' >&2; return 94 ;;
+            esac
+        fi
+        printf '1) %s "Apple Distribution: Public Fixture (9T359CV674)"\n' "$FIXTURE_FINGERPRINT"
+        return 0
+    fi
     case "$1" in
         cms|create-keychain|set-keychain-settings|unlock-keychain|import|set-key-partition-list|find-identity|list-keychains) return 0 ;;
         *) record 'unexpected security'; return 99 ;;
@@ -720,7 +740,10 @@ bash() { record 'generate-project'; }
                        DOVEBEVO_ASC_PRIVATE_KEY='FABRICATED_KEY_ONLY',
                        DOVEBEVO_IOS_CERTIFICATE_BASE64='FABRICATED_CERTIFICATE_ONLY',
                        DOVEBEVO_IOS_PROFILE_BASE64='FABRICATED_PROFILE_ONLY',
-                       DOVEBEVO_SIGNING_PASSWORD='FABRICATED_PASSWORD_ONLY')
+                       DOVEBEVO_SIGNING_PASSWORD='FABRICATED_PASSWORD_ONLY',
+                       FIXTURE_SEARCH_IDENTITY=search_identity, FIXTURE_FINGERPRINT=FINGERPRINT,
+                       FIXTURE_PYTHON=release.sys.executable.replace('\\', '/'),
+                       FIXTURE_SUPPORT=Path(release.__file__).resolve().as_posix())
             if '--upload' in arguments:
                 env.update(DOVEBEVO_ASC_KEY_ID='PUBLIC1234',
                            DOVEBEVO_ASC_ISSUER_ID='00000000-0000-0000-0000-000000000001')
@@ -737,7 +760,7 @@ bash() { record 'generate-project'; }
                 result, argv, actions = self.run_archive_boundary(arguments)
                 self.assertEqual(result.returncode, 77, result.stderr)
                 for pin in ['CODE_SIGN_STYLE=Manual', 'DEVELOPMENT_TEAM=9T359CV674',
-                            'CODE_SIGN_IDENTITY=public-certificate-fingerprint',
+                            f'CODE_SIGN_IDENTITY={FINGERPRINT}',
                             'PROVISIONING_PROFILE_SPECIFIER=672E3C73-21B8-4B46-9ECF-A39A0CBCB4B9',
                             'CODE_SIGNING_ALLOWED=YES', 'CODE_SIGNING_REQUIRED=YES']:
                     self.assertIn(pin, argv)
@@ -756,6 +779,32 @@ bash() { record 'generate-project'; }
                     self.assertNotIn('validated existing private key path', actions)
                 self.assertEqual([action for action in actions if action.startswith('cleanup-')], ['cleanup-profile', 'cleanup-private'])
                 self.assertNotIn('FABRICATED_', result.stdout + result.stderr + '\n'.join(argv))
+
+    def test_default_user_search_list_must_expose_the_same_unique_validated_identity(self):
+        result, argv, actions = self.run_archive_boundary(['--upload'])
+        self.assertEqual(result.returncode, 77, result.stderr)
+        self.assertTrue(argv)
+        for action in ['query-user-search-list-identity', 'validate-user-search-list-identity', 'archive']:
+            self.assertIn(action, actions)
+        self.assertLess(actions.index('keychain-list'), actions.index('query-user-search-list-identity'))
+        self.assertLess(actions.index('query-user-search-list-identity'), actions.index('validate-user-search-list-identity'))
+        self.assertLess(actions.index('validate-user-search-list-identity'), actions.index('archive'))
+        self.assertIn('"userSearchListIdentityMatch":true', result.stdout)
+        for private_value in [FINGERPRINT, 'Apple Distribution:', 'Public Fixture', 'FABRICATED_']:
+            self.assertNotIn(private_value, result.stdout + result.stderr)
+
+    def test_missing_ambiguous_failed_or_different_search_identity_blocks_archive_and_still_cleans(self):
+        for identity in ['missing', 'ambiguous', 'different', 'security-error', 'helper-error']:
+            with self.subTest(identity=identity):
+                result, argv, actions = self.run_archive_boundary(['--upload'], search_identity=identity)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertEqual(argv, [])
+                self.assertNotIn('archive', actions)
+                self.assertNotIn('generate-project', actions)
+                self.assertEqual([action for action in actions if action.startswith('cleanup-')], ['cleanup-profile', 'cleanup-private'])
+                self.assertIn('not uniquely visible in the user keychain search list', result.stderr)
+                for private_value in [FINGERPRINT, 'Apple Distribution:', 'Public Fixture', 'FABRICATED_']:
+                    self.assertNotIn(private_value, result.stdout + result.stderr)
 
     def test_cleanup_failure_remains_fatal_after_authenticated_archive(self):
         result, argv, actions = self.run_archive_boundary(['--upload'], cleanup_failure=True)

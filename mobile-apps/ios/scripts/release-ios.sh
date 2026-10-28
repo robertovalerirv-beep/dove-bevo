@@ -126,6 +126,14 @@ IDENTITY="$(python3 "$SUPPORT" identity "$private_dir/profile.json" "$private_di
 security list-keychains -d user >"$private_dir/original-keychains.txt"
 search_list_changed=true
 python3 "$SUPPORT" keychain-list "$private_dir/original-keychains.txt" "$task_keychain" >/dev/null
+if ! security find-identity -v -p codesigning >"$private_dir/search-list-identities.txt" 2>&1 \
+    || ! SEARCH_LIST_IDENTITY="$(python3 "$SUPPORT" identity "$private_dir/profile.json" "$private_dir/search-list-identities.txt" \
+        2>"$private_dir/search-list-identity-check.txt")" \
+    || [[ "$SEARCH_LIST_IDENTITY" != "$IDENTITY" ]]; then
+    fail 'The validated distribution identity is not uniquely visible in the user keychain search list'
+fi
+unset SEARCH_LIST_IDENTITY
+printf '{"userSearchListIdentityMatch":true}\n'
 python3 "$SUPPORT" install "$private_dir" "$private_dir/profile.json" "$REPO_ROOT"
 # Alternate-value expansion also handles an empty array in macOS system Bash.
 python3 "$SUPPORT" options "$private_dir/profile.json" "$IDENTITY" "$private_dir/ExportOptions.plist" ${RELEASE_MODE_ARGS[@]+"${RELEASE_MODE_ARGS[@]}"}

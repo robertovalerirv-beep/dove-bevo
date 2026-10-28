@@ -8,6 +8,7 @@ on:
       - "mobile-capture/v*"
       - "mobile-beta/v*"
       - "mobile-ipad-capture/v*"
+      - "mobile-quality/v*"
   pull_request:
     paths:
       - "mobile-apps/**"
@@ -25,6 +26,51 @@ defaults:
     shell: bash
 
 jobs:
+  ios-quality:
+    name: iOS native update tests without signing or upload
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-quality/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "27.0"
+      IOS_SIMULATOR_MODEL: iPhone 17
+    steps:
+      - name: Verify the known working Apple toolchain
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Generate the pinned Xcode project
+        run: bash mobile-apps/ios/scripts/generate-project.sh
+      - name: Verify existing native release and simulator guards
+        run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
+      - name: Run native unit and phone UI tests
+        timeout-minutes: 18
+        run: bash mobile-apps/ios/scripts/test-simulator.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-quality-${{ github.sha }}
+          path: |
+            mobile-apps/ios/.build/TestResults*.xcresult
+            mobile-apps/ios/.build/Screenshots/
+            mobile-apps/ios/.build/SimulatorDiagnostics/
+          retention-days: 7
+          if-no-files-found: error
+
   android:
     name: Android production app build and tests
     if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/mobile-release/v')

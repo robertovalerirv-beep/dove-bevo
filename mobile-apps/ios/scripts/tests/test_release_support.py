@@ -326,7 +326,8 @@ class ProfileInstallationTests(unittest.TestCase):
         with self.assertRaisesRegex(release.ReleaseValidationError, "inside the checkout"):
             self.storage_guard(self.checkout / "profiles", self.checkout)
         with self.assertRaisesRegex(release.ReleaseValidationError, "OneDrive"):
-            self.storage_guard(self.targets[0].parent, self.checkout)
+            # Hosted macOS checkouts are outside OneDrive; name it explicitly.
+            self.storage_guard(self.home / "OneDrive - Public Fixture" / "profiles", self.checkout)
 
     def test_uuid_cannot_override_fixed_profile_destination(self):
         self.metadata["uuid"] = "../../another-profile"

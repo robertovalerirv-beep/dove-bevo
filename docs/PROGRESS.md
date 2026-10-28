@@ -4,6 +4,32 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-28 · Interfaccia pubblica in inglese (branch `m6-inglese`, da `spec-approved-12`) · SPEC 1.11, ADR 0038 · ME-01…ME-08
+
+**Richiesta di Roberto:** sito utente in inglese, stesso database; menu in alto a sinistra di fronte all'Elenco; scelta non salvata, si parte sempre dall'italiano; formati `it-IT`; admin italiano; privacy e regole tradotte come bozza.
+
+**Fatto**
+- `src/app/i18n/lang.ts` (lingua in memoria, `it` come legame vivo, `setLang` che scarica `en.ts` solo se scelto, `subscribeLang`), `src/app/lib/use-lang.ts` (hook), `src/app/i18n/en.ts` (tutte le sezioni pubbliche di `it.ts`, senza `admin`, tipo derivato: una frase mancante non compila), `src/app/components/LangMenu.tsx` (bottone «IT/EN» 48×48 con elenco Italiano/English).
+- `it.ts`: nuovo gruppo `lang` (nomi delle lingue). Nei file pubblici (`app.tsx`, `components/*`, `LegalPage`, `maplibre-map.ts`) cambia l'import di `it` verso `i18n/lang`; admin e Worker restano su `it.ts` (test `lang.test.ts`).
+- `app.tsx`: si ridisegna al cambio lingua; il messaggio di «Vicino a me» e il suggerimento di ricerca sono chiavi (seguono la lingua), il testo di copertura è calcolato una volta; `cheapest` dipende dalla lingua; etichetta del canvas aggiornata (`VenueMap.setLabel`) senza rifare la mappa; Turnstile riceve la lingua della pagina.
+- CSS: la riga di stato parte dopo il bottone (`left = 2×space-3 + target`, larghezza ridotta di un altro target); menu nell'intestazione di `/privacy` e `/regole` (l'intestazione va a capo se serve).
+- `PRIVACY-NOTES.md`, CHANGELOG. `passes: true` solo per ME-01 e ME-08 (vedi sotto).
+
+**Prove** (Chromium; WebKit non è installato in questo ambiente, lo esegue la CI)
+- Test prima del codice: `npx vitest run --project unit tests/unit/lang.test.ts` → 12 fallite (modulo `en`/`lang` assenti, file ancora su `it.ts`).
+- `npx vitest run` → 56 file, 624 test + i nuovi: unit 407/407, worker verdi. `npx tsc -b` pulito (un primo tentativo faceva entrare preact nel progetto TypeScript del Worker, che include `src/app/i18n`: l'hook è stato spostato in `lib/` e `lang.test.ts` ora lo vieta). `npm run lint` e `format:check` puliti.
+- `npx playwright test` (progetti chromium, writes, proposals, security; WebKit escluso) → **192 passati**, tra cui `tests/e2e/english.spec.ts` (16 test: menu a sinistra speculare all'Elenco e stato che parte dopo di lui, tastiera/Esc/tocco fuori, la mappa resta aperta e non si ridimensiona, nulla salvato in `localStorage`/`sessionStorage`/cookie e nessuna richiesta `/api/*`, un solo scaricamento di `en`, ricarica → italiano, tutte le viste pubbliche senza testi italiani residui — con controllo non vacuo —, Privacy e Regole con le stesse sezioni, formati `it-IT`, `/admin` italiano, axe nei due temi, nessuna violazione CSP). Screenshot: `docs/screenshots/english/rules-{light,dark}.png`; gli altri in `test-results/` (non versionati).
+- `ME-01` verificato anche con prova negativa: togliendo `common.close` da `en.ts`, `tsc -b` dà TS2741.
+- **Misure della shell** (`npm run build && node scripts/check-bundle-size.mjs`): prima (`spec-approved-12`) 38.513 B; dopo 39.408 B (+895 B, limite 51.200 B); `en.ts` è un file a richiesta di 5.213 B gzip.
+
+**Non fatto / da fare**
+- ME-02…ME-07 restano `passes: false`: la loro verifica chiede anche WebKit (SPEC 18), che qui non c'è. Se la CI della PR è verde su Chromium e WebKit, si portano a `true` con quella prova.
+- `/code-review`, `/security-review`, `spec-reviewer` e `ux-a11y-reviewer` non eseguiti da questa sessione (non può avviare altri agenti): da lanciare prima del merge.
+- Lighthouse non eseguito in locale (lo fa la CI).
+- **Da verificare a mano (Roberto):** rileggere la traduzione inglese di Privacy e Regole (bozza, ADR 0038) e dei testi `en.ts`; provare il menu su iPhone e Android (posizione dell'elenco sotto il bottone, tastiera); guardare lo stato in alto con testi lunghi a 360 px.
+
+---
+
 ## 2026-10-28 · SPEC 1.11: mappa pronta al primo tocco e interfaccia in inglese (branch `spec-1-11`) · ADR 0037, 0038 · MF, ME
 
 **Richiesta di Roberto:** (1) la mappa si carica solo al primo tocco e ha latenza: scelta l'opzione B (scaricare il file in anticipo, senza banner); (2) pagina utente in inglese, stesso database, formati `it-IT`, menu a tendina in alto a sinistra di fronte all'Elenco, admin italiano, lingua non salvata, si parte sempre dall'italiano, privacy e regole tradotte come bozza.

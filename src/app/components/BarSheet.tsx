@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import type { PriceRow, VenuePrices } from "../../shared/api-types";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { loadCell, loadVenuePrices, type Venue } from "../lib/data";
 import { formatDate, formatPrice, todayRome } from "../lib/format";
 import { isStale, type Tier } from "../lib/tiers";

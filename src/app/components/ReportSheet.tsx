@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { Sheet } from "./Sheet";
 
 export type Reason = keyof typeof it.report.reasons;

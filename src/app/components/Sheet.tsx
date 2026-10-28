@@ -1,6 +1,6 @@
 import type { ComponentChildren } from "preact";
 import { useId, useLayoutEffect, useRef } from "preact/hooks";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { Icon } from "./Icon";
 
 interface Props {

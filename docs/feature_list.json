@@ -718,7 +718,7 @@
     "milestone": "ME",
     "descrizione": "Dizionario inglese completo e agganciato ai tipi",
     "verifica": "unit: `src/app/i18n/en.ts` ha le stesse sezioni pubbliche di `it.ts` (tutte tranne `admin`), con gli stessi nomi e le stesse funzioni; `tsc -b` fallisce se manca una frase; ogni funzione dà un testo non vuoto con gli argomenti di prova; il testo dell'Annulla riporta i secondi da `UNDO_MS`",
-    "passes": false
+    "passes": true
   },
   {
     "id": "ME-02",
@@ -767,7 +767,7 @@
     "milestone": "ME",
     "descrizione": "Peso e dipendenze",
     "verifica": "build: shell ≤ 50 KB gzip invariata (`en.ts` è un file a richiesta), misura prima e dopo in PROGRESS; nessuna dipendenza nuova (`dependencies.test.ts`)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-01",

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "preact/hooks";
 import { CATALOG, findDrink } from "../../shared/catalog";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import type { Venue } from "../lib/data";
 import { distanceMeters, searchKey } from "../../shared/venue";
 import { formatDistance, formatPrice } from "../lib/format";

@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState } from "preact/hooks";
 import type { Place } from "../../shared/api-types";
 import { searchKey, searchWords } from "../../shared/venue";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { loadPlaces, type Venue } from "../lib/data";
 import { formatDate, formatPrice } from "../lib/format";
 import { searchBars, type Hit } from "../lib/search";

@@ -1,4 +1,4 @@
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 
 /** Privacy and rules: the footer of the bar receipt and of the search sheet (SPEC 7.8). */
 export function LegalLinks() {

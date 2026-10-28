@@ -4,31 +4,22 @@ Last verified: 28 October 2026 (UTC).
 
 Both public store releases are submitted: Google Play's production changes are
 **in review**, and Apple confirms iOS version 1.0.0, build 26, **Waiting for
-Review**. The corrected native update, build **32**, is now available in Google Play
-internal testing and **Testing** in TestFlight for the existing owner and Roberto
-groups. Roberto's tester row reads **Invited**; email delivery and installation
-are not established.
+Review**. The latest native update, build **34**, is now **Available to internal testers** in Google Play and **Testing** in TestFlight for the existing owner and Roberto groups. It adds shared drink recommendations and retains automatic-name private bookmarks. Email delivery and Roberto's installation are not established. The owner subsequently reports that build 34 opens the existing venue name, all nine recommendation categories and shared totals, scrolls and returns with Back on his personal iPhone. That is a limited human-reported check; public vote/undo and Android physical installation remain unverified.
 Internal build 21 is installed on the owner's iPhone. Physical evidence
 currently covers map/price rendering and reported venue Back behavior; neither
 store state establishes an approved public release.
 
-See the separate [native usability update testing release](docs/2026-10-28-native-update-status.md) for signed artifacts, fresh hosted checks, provider readback and physical-device limits. Its testing distribution does not replace the Android 20/iOS 26 public submissions or establish a public launch.
+See [public drink recommendation delivery](docs/2026-10-28-drink-recommendations-status.md) for the exact build-34 source, tests, signed artifacts, deployed shared service and provider readback. The [earlier native usability update](docs/2026-10-28-native-update-status.md) retains build-31/32 evidence. Testing distribution does not replace the Android 20/iOS 26 public submissions or establish a public launch.
 
-The owner's later physical screenshots exposed build 31's confusing naming form. Corrected build 32 at `9b54a44733e4626eaafee4976c2534f77a939cab` keeps private bookmarks but uses the existing venue name automatically, without naming or rename forms. On a venue, use **⋯ at the top right → Salva nei preferiti**; **Preferiti** reopens it. Public prices still use the website's orange **Aggiungi un prezzo qui** button. [Beta run 40760373576](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40760373576) passed both checks and signers: 47 Android units, 98 iOS guards, 35 Swift units and 4 phone UI cases. Separate Android native runtime and independent live browsing checks passed. Both stores' corrected testing availability is now verified; physical acceptance of the corrected flow remains open.
+The owner's later physical screenshots exposed build 31's confusing naming form. Corrected build 32 at `9b54a44733e4626eaafee4976c2534f77a939cab` keeps private bookmarks but uses the existing venue name automatically, without naming or rename forms. On a venue, use **â‹¯ at the top right â†’ Salva nei preferiti**; **Preferiti** reopens it. Public prices still use the website's orange **Aggiungi un prezzo qui** button. [Beta run 40760373576](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40760373576) passed both checks and signers: 47 Android units, 98 iOS guards, 35 Swift units and 4 phone UI cases. Separate Android native runtime and independent live browsing checks passed. Both stores' corrected testing availability is now verified; physical acceptance of the corrected flow remains open.
 
 ## Source and scope
 
-The canonical repository is `robertovalerirv-beep/dove-bevo`; the submitted-release
-branch is `codex/mobile-internal-testing-20261027`. The native update is saved on
-`codex/mobile-usability-20261028`, with corrected signed build 32 at `9b54a44733e4626eaafee4976c2534f77a939cab`; earlier signed build 31 was at `e07a8b8596b8248e710db0587c7587a5f772d80c`.
-Owner baseline
-`8094d3c2494851a2e29a5c0b6f5eb8d4dcb88e50` is incorporated without conflicts. Mobile additions are
-confined to `mobile-apps/` and `.github/workflows/mobile-apps.yml`; the website,
-backend, schema, deployment and website security settings are unchanged.
-PR #62 remains an older draft at head `722c`; it has not been updated or merged.
-The mobile work has not been merged to main. An independent literal tree
-comparison confirms every tracked file outside the mobile allowlist equals
-that owner main; the owner's new website changes are preserved.
+The canonical repository is `robertovalerirv-beep/dove-bevo`; the submitted-release branch `codex/mobile-internal-testing-20261027` remains the reference for public Android 20/iOS 26. Latest mobile source and evidence are saved on `codex/mobile-drink-recommendations-20261028`, with signed build 34 frozen at `388e200844ced599be4212e6d6af5c23744fe3f1` and tag `mobile-beta/v1.0.0-drink-recommendations.2`.
+
+The initial mobile additions were app-only at owner baseline `8094d3c2494851a2e29a5c0b6f5eb8d4dcb88e50`. The owner's later narrow apps-only shared-voting exception adds one API and table in the existing Worker/D1: [PR 73](https://github.com/robertovalerirv-beep/dove-bevo/pull/73), merged and deployed at `1a58d7332d4275e0a56ed21c60240459afab1a5e`. The website interface, existing prices, price confirmations and session/security boundaries retain their behavior. See [ADR 0041](../docs/adr/0041-app-drink-recommendations.md). No new Cloudflare resource, secret or browser-cookie bridge was created.
+
+Older PR 62 remains an unchanged draft and the native source has not been merged to main. Prior outside-mobile tree-equality checks describe the earlier app-only release; the explicit shared-vote exception and its separate green backend PR describe the current change.
 
 Project source, worktrees, builds and evidence remain in the selected OneDrive
 project folder. Cloud synchronization is unverified. Credentials remain in
@@ -127,7 +118,7 @@ This source change is separate from the already uploaded internal build.
 (workflow number 22), which **failed**. All eight other jobs were skipped; no
 credentials were supplied. The actual host used macOS 27.0.1, Xcode 27.1 and an
 iOS 27.0 iPhone 17 simulator. Ten unit tests and both native UI tests passed.
-After selecting Milano Città, the live case failed its 45-second wait for the
+After selecting Milano CittÃ , the live case failed its 45-second wait for the
 map's accessibility label (`BrowserSmokeTests.swift:88`). No GPU-termination
 line appeared in the job log; the underlying cause remains unknown. The iPad
 capture and final PNG-validation steps were skipped.

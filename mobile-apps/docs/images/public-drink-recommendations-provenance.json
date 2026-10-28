@@ -1,0 +1,34 @@
+{
+  "purpose": "Original Debug native QA screenshots; not physical phones, signed installations or store-listing captures",
+  "production_source": "388e200844ced599be4212e6d6af5c23744fe3f1",
+  "images": [
+    {
+      "file": "android-public-drink-recommendations.png",
+      "sha256": "08da56b0f2a0af1f7050afc373541d406c80f32bd39c8503445cde25e9b7eacd",
+      "bytes": 192911,
+      "unedited": true,
+      "platform": "Android owned API36 emulator",
+      "native_writes_during_live_QA": 0
+    },
+    {
+      "file": "ios-public-drink-recommendations.png",
+      "sha256": "6ca9280b287f32696a99e76eb2bba90a71fb0d9ad730c4c06baceca6f8d28d4b",
+      "bytes": 222557,
+      "unedited": true,
+      "platform": "iPhone17 iOS27 simulator",
+      "native_writes_during_live_QA": 0
+    }
+  ],
+  "Android": {
+    "central_debug_source": "bff3aecce104104dfd5fd0f0306f0d8185e505e1",
+    "scope": "Normal production shell outside fixture runner; Android source/privacy/terms match signed source byte for byte"
+  },
+  "iOS": {
+    "workflow_run": 40778935536,
+    "build": 34,
+    "artifact": 12857331006,
+    "provider_zip_sha256": "5723b472fb2701d733a252c89309ce39e546d371ec154efc2a9aa6ecac4d36ae",
+    "original_exported_file": "B641AB9A-46D0-4BD7-9B11-3E11A5AD5852.png",
+    "associated_with_failure": false
+  }
+}

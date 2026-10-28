@@ -61,7 +61,9 @@ Owner: iOS lane. Exclusive paths: mobile-apps/ios/**.
 
 - [x] Independently review each frozen slice, resolve contract/security issues with its owner, and integrate without touching existing website UI.
 - [x] Update public/bundled privacy and app-specific docs for anonymous public recommendations and retention; verify current store-disclosure category fit.
-- [ ] Run fresh integrated backend and native gates; map requirements to actual evidence, preserve failures and exact source identity.
+- [x] Run fresh integrated backend and native gates; map requirements to actual evidence, preserve failures and exact source identity.
 - [x] Create narrow additive backend PR; verify exact-head green checks before authorized main merge. Observe migration, deploy and public GET readback.
-- [ ] Produce one gated signed beta for both native apps, verify actual artifacts and provider availability, preserve public review builds.
-- [ ] Finish root checkpoint, one canonical handoff publication/close, and separate backup/provider attempts with honest limits.
+- [x] Produce one gated signed beta for both native apps, verify actual artifacts and provider availability, preserve public review builds.
+- [x] Record source, failures, fresh checks, actual testing availability and the remaining physical/public-review boundary for handoff.
+
+Canonical continuity and backup outcomes are verified separately through the journal-bound handoff, sealed publication receipt and derived-provider receipts; this app checklist does not attest a memory publication or cloud synchronization.

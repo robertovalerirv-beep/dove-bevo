@@ -24,4 +24,9 @@
     <item name="open_saved_venue" type="id" />
     <item name="remove_saved_venue" type="id" />
     <item name="location_help" type="id" />
+    <item name="recommendation_entry" type="id" />
+    <item name="recommendation_status" type="id" />
+    <item name="recommendation_refresh" type="id" />
+    <item name="recommendation_rows" type="id" />
+    <item name="recommendation_row" type="id" />
 </resources>

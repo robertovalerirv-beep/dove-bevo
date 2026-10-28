@@ -65,6 +65,10 @@ public final class MainActivity extends ComponentActivity {
     private Button refreshButton;
     private Button shareButton;
     private SavedVenuesUi savedVenues;
+    private RecommendationsUi recommendations;
+    private Button recommendationButton;
+    private long recommendationCapture;
+    private boolean recommendationCapturing;
     private long venueCaptureEpoch;
     private AlertDialog locationHelpDialog;
     private String lastTrustedUrl = BrowserPolicy.HOME;
@@ -194,6 +198,9 @@ public final class MainActivity extends ComponentActivity {
         more.setOnClickListener(this::showMenu);
         tools.addView(more, new LinearLayout.LayoutParams(dp(48), -2));
         shell.addView(tools, new LinearLayout.LayoutParams(-1, -2));
+        recommendationButton = button(R.id.recommendation_entry, R.string.recommendation_entry, this::showRecommendations);
+        recommendationButton.setVisibility(View.GONE);
+        shell.addView(recommendationButton, new LinearLayout.LayoutParams(-1, -2));
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(true);
         progress.setContentDescription(getString(R.string.loading));
@@ -225,6 +232,9 @@ public final class MainActivity extends ComponentActivity {
         monitorNetwork();
         savedVenues = new SavedVenuesUi(this, new SavedVenueStore(new SavedVenueFile(getFilesDir())),
                 this::eligibleSavedVenue, this::readSavedVenue, this::navigate);
+        recommendations = new RecommendationsUi(this,
+                new RecommendationsClient(new RecommendationVoter(new RecommendationVoterFile(getNoBackupFilesDir())), testLabPolicy),
+                testLabPolicy, this::eligibleSavedVenue);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() { goBack(); }
         });
@@ -418,6 +428,28 @@ public final class MainActivity extends ComponentActivity {
         int action = loading ? R.string.stop_loading : R.string.refresh;
         refreshButton.setText(action);
         refreshButton.setContentDescription(getString(action));
+        if (recommendationButton != null) {
+            recommendationButton.setVisibility(eligibleSavedVenue() == null ? View.GONE : View.VISIBLE);
+            recommendationButton.setEnabled(foreground && !recommendationCapturing);
+        }
+        if (recommendations != null) recommendations.contextChanged();
+    }
+
+    private void showRecommendations() {
+        if (!foreground || recommendations == null || eligibleSavedVenue() == null || recommendationCapturing) return;
+        long request = ++recommendationCapture;
+        recommendationCapturing = true; updateToolbar();
+        recommendationButton.postDelayed(() -> {
+            if (request != recommendationCapture || !recommendationCapturing) return;
+            recommendationCapture++; recommendationCapturing = false; updateToolbar();
+            if (foreground) toast(R.string.recommendation_venue_unavailable);
+        }, 5000);
+        readSavedVenue(venue -> {
+            if (request != recommendationCapture || !recommendationCapturing || !foreground) return;
+            recommendationCapture++; recommendationCapturing = false; updateToolbar();
+            if (venue == null) toast(R.string.recommendation_venue_unavailable);
+            else recommendations.show(venue);
+        });
     }
 
     private String eligibleSavedVenue() {
@@ -755,11 +787,15 @@ public final class MainActivity extends ComponentActivity {
         super.onResume();
         foreground = true;
         if (website != null) website.onResume();
+        if (recommendations != null) recommendations.resume();
+        updateToolbar();
         resolveLocationResult();
     }
     @Override protected void onPause() {
         venueCaptureEpoch++;
         foreground = false;
+        recommendationCapture++; recommendationCapturing = false;
+        if (recommendations != null) recommendations.pause();
         // The system permission dialog may pause us. Only deliver its result
         // after resume; an actual stop or navigation invalidates the callback.
         if (!requestingLocationPermission) cancelLocation();
@@ -786,6 +822,8 @@ public final class MainActivity extends ComponentActivity {
     @Override protected void onDestroy() {
         venueCaptureEpoch++;
         destroyed = true;
+        recommendationCapture++; recommendationCapturing = false;
+        if (recommendations != null) recommendations.close();
         if (privacyDialog != null) privacyDialog.dismiss();
         if (locationHelpDialog != null) locationHelpDialog.dismiss();
         if (savedVenues != null) savedVenues.dismiss();

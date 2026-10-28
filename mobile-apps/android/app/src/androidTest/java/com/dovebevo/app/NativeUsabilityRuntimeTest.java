@@ -40,6 +40,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -212,6 +213,48 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_NEUTRAL).performClick());
         instrumentation.waitForIdleSync();
         assertTrue(store.load().isEmpty());
+    }
+
+    @Test public void visibleRecommendationEntryUsesActualVenueReaderAndOnlyInjectedApi() throws Exception {
+        AtomicReference<String> requested = new AtomicReference<>();
+        AtomicReference<RecommendationsUi> nativeUi = new AtomicReference<>();
+        AtomicInteger posts = new AtomicInteger();
+        onMain(() -> {
+            RecommendationsUi.Api api = new RecommendationsUi.Api() {
+                public DrinkRecommendations get(String canonical, RecommendationsClient.Cancellation cancellation) throws IOException {
+                    cancellation.check(); requested.set(canonical); return RecommendationsRuntimeTest.fixtureSnapshot(false);
+                }
+                public DrinkRecommendations set(String canonical, RecommendationDrink drink, boolean selected, RecommendationsClient.Cancellation cancellation) throws IOException {
+                    posts.incrementAndGet(); return RecommendationsRuntimeTest.fixtureSnapshot(selected);
+                }
+            };
+            RecommendationsUi ui = new RecommendationsUi(activity, api, TestLabPolicy.detect(() -> null), () -> (String) invoke("eligibleSavedVenue"));
+            nativeUi.set(ui); set("recommendations", ui);
+            Button entry = new Button(activity); entry.setId(R.id.recommendation_entry); entry.setText(R.string.recommendation_entry);
+            entry.setOnClickListener(view -> invoke("showRecommendations")); set("recommendationButton", entry);
+            ((LinearLayout) ((FrameLayout) get("content")).getParent()).addView(entry, 0); invoke("updateToolbar");
+            assertEquals(View.GONE, entry.getVisibility());
+        });
+        navigate(ONE);
+        onMain(() -> {
+            Button entry = activity.findViewById(R.id.recommendation_entry);
+            assertEquals(View.VISIBLE, entry.getVisibility()); assertTrue(entry.isEnabled()); entry.performClick();
+        });
+        await(() -> ONE.equals(requested.get()));
+        onMain(() -> {
+            try {
+                Field field = RecommendationsUi.class.getDeclaredField("dialog"); field.setAccessible(true);
+                AlertDialog dialog = (AlertDialog) field.get(nativeUi.get());
+                assertNotNull(dialog); assertTrue(dialog.isShowing());
+                ArrayList<View> names = new ArrayList<>(); dialog.getWindow().getDecorView().findViewsWithText(names, "Locale di prova", View.FIND_VIEWS_WITH_TEXT);
+                assertEquals(1, names.size());
+                assertSame(web, get("website"));
+                nativeUi.get().dismiss();
+            } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+        });
+        navigate(BrowserPolicy.HOME);
+        onMain(() -> assertEquals(View.GONE, activity.findViewById(R.id.recommendation_entry).getVisibility()));
+        assertEquals("Entry/GET must not publish a recommendation", 0, posts.get());
     }
 
     @Test public void actualHeadingReaderRejectsUncommittedSelectionOverlayAndHiddenHeading() throws Exception {

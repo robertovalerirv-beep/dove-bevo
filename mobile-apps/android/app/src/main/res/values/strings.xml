@@ -46,4 +46,22 @@
     <string name="no_resubmit">L’invio non è stato ripetuto. Riapri la pagina per continuare.</string>
     <string name="test_lab_read_only_banner">Test automatico in sola lettura: invii pubblici, collegamenti esterni e condivisioni sono disabilitati per proteggere i dati reali.</string>
     <string name="test_lab_external_disabled">Durante il test automatico i collegamenti esterni e le condivisioni sono disabilitati.</string>
+    <string name="recommendation_entry">👍 Drink consigliati</string>
+    <string name="recommendation_title">Drink consigliati</string>
+    <string name="recommendation_explanation">Consiglia i drink che hai provato qui. Le categorie non indicano la disponibilità del locale. Ogni installazione può dare o togliere un consiglio per drink.</string>
+    <string name="recommendation_refresh">Aggiorna consigli</string>
+    <string name="recommendation_loading">Aggiornamento in corso…</string>
+    <string name="recommendation_ready">Consigli condivisi aggiornati.</string>
+    <string name="recommendation_zero">Ancora nessun consiglio</string>
+    <plurals name="recommendation_count">
+        <item quantity="one">%1$d consiglio</item>
+        <item quantity="other">%1$d consigli</item>
+    </plurals>
+    <string name="recommendation_add">👍 Consiglia</string>
+    <string name="recommendation_undo">👍 Consigliato · Annulla consiglio</string>
+    <string name="recommendation_unknown">Esito del consiglio non verificato. Aggiorna prima di riprovare.</string>
+    <string name="recommendation_unavailable">Consigli non disponibili. Aggiorna per riprovare.</string>
+    <string name="recommendation_paused">Aggiornamento necessario al ritorno nell’app.</string>
+    <string name="recommendation_read_only">Test automatico: consigli in sola lettura.</string>
+    <string name="recommendation_venue_unavailable">Apri un locale e attendi il caricamento per vedere i consigli.</string>
 </resources>

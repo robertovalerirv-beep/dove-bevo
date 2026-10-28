@@ -118,10 +118,11 @@ capture and final PNG-validation steps were skipped.
 The exporter reported 69 attachments and a manifest, but the always-run artifact
 upload reported no files, and the provider lists zero artifacts. Hidden
 `.build` exclusion is the leading explanation for that separate upload failure.
-A narrowly scoped hidden-file opt-in is being prepared for the existing
-credential-free artifact allowlist. The follow-up capture is not yet launched;
-no diagnostic download, successful live result or store-ready iOS capture is
-established. Keep the live assertions and original image dimensions unchanged.
+A narrowly scoped hidden-file opt-in is implemented and independently reviewed
+for the existing credential-free artifact allowlist. The follow-up tag
+`mobile-capture/v1.0.0-xcode27.1-2` has no verified result yet. No diagnostic
+download, successful live result or store-ready iOS capture is established.
+Keep the live assertions and original image dimensions unchanged.
 
 ## Retained failure history and remaining gates
 

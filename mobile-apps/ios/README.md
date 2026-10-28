@@ -82,8 +82,9 @@ sent automatically. `mobile-release/v*` keeps its full Android/iOS live gates.
 genuine phone/iPad exports must pass the final manifest, PNG and dimension gate.
 The first trial failed its live map accessibility assertion; iPad capture and
 PNG validation were skipped. Its diagnostic artifact upload also found no files;
-the hidden `.build` exclusion is being addressed separately. No successful
-store capture is established yet. See [release status](../RELEASE_STATUS.md).
+the capture job now includes its narrowly allowlisted hidden `.build` outputs.
+The follow-up result and successful store captures remain unverified. See
+[release status](../RELEASE_STATUS.md).
 All tag families share this workflow's build-number counter.
 Use a new unique tag after an accepted upload: rerunning an existing workflow
 reuses its build number and is not a new distribution attempt.

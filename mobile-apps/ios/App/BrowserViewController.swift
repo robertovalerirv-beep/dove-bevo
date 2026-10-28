@@ -23,6 +23,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private let savedVenues: SavedVenueStore
     private var saveMenuEnabled = false
     private let bookmarkCapture: VenueBookmarkCapture
+    private let recommendationClient: RecommendationServing
     private var bookmarkTimeout: DispatchWorkItem?
     private var bookmarkLifecycleActive = true
 
@@ -31,10 +32,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private lazy var homeButton = item("Home", symbol: "house", action: #selector(goHome), id: "browser.home")
     private lazy var shareButton = item("Condividi", symbol: "square.and.arrow.up", action: #selector(sharePage), id: "browser.share")
     private lazy var reloadButton = item("Ricarica", symbol: "arrow.clockwise", action: #selector(reloadPage), id: "browser.reload")
+    private lazy var recommendationsButton = item("Drink consigliati", symbol: "hand.thumbsup", action: #selector(showRecommendations), id: "browser.recommendations")
 
-    init(savedVenues: SavedVenueStore = SavedVenueStore(), bookmarkCapture: VenueBookmarkCapture = VenueBookmarkCapture()) {
+    init(savedVenues: SavedVenueStore = SavedVenueStore(), bookmarkCapture: VenueBookmarkCapture = VenueBookmarkCapture(),
+         recommendationClient: RecommendationServing = RecommendationClient()) {
         self.savedVenues = savedVenues
         self.bookmarkCapture = bookmarkCapture
+        self.recommendationClient = recommendationClient
         super.init(nibName: nil, bundle: nil)
         observeBookmarkLifecycle()
     }
@@ -88,6 +92,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         moreButton.accessibilityLabel = "Altre opzioni"
         moreButton.accessibilityIdentifier = "browser.more"
         navigationItem.rightBarButtonItem = moreButton
+        recommendationsButton.isEnabled = false
+        recommendationsButton.accessibilityHint = "Apri un locale per vedere e dare consigli sui drink"
+        navigationItem.leftBarButtonItem = recommendationsButton
 
         toolbar.tintColor = .label
         toolbar.accessibilityIdentifier = "browser.toolbar"
@@ -99,6 +106,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func moreMenu() -> UIMenu {
         UIMenu(children: [
+            UIAction(title: "Drink consigliati", image: UIImage(systemName: "hand.thumbsup"), attributes: canSaveCurrentVenue ? [] : [.disabled]) { [weak self] _ in
+                self?.showRecommendations()
+            },
             UIAction(title: "Salva nei preferiti", image: UIImage(systemName: "bookmark"), attributes: canSaveCurrentVenue ? [] : [.disabled]) { [weak self] _ in
                 self?.saveCurrentVenue()
             },
@@ -175,6 +185,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func updateMoreMenu() {
         let enabled = canSaveCurrentVenue
+        recommendationsButton.isEnabled = enabled
         guard enabled != saveMenuEnabled else { return }
         saveMenuEnabled = enabled
         navigationItem.rightBarButtonItem?.menu = moreMenu()
@@ -183,8 +194,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private func configureWebView() {
         let configuration = WKWebViewConfiguration()
         // Keep WebKit's ordinary persistent cookies and local storage. There is
-        // no native API client, cookie copy or message handler. A user-requested
-        // bookmark reads only the visible public venue name in an isolated world.
+        // no cookie copy or message handler. The separate recommendation client
+        // has its own ephemeral session. Both native venue actions read only the
+        // public venue name in an isolated world, after an explicit user tap.
         configuration.websiteDataStore = .default()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         webView = WKWebView(frame: .zero, configuration: configuration)
@@ -423,9 +435,33 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func saveCurrentVenue() {
+        readCurrentVenue(failureTitle: "Preferito non salvato") { [weak self] venue in
+            guard let self else { return }
+            do {
+                try self.savedVenues.save(url: venue.url, label: venue.label)
+                self.showSavedVenues()
+                UIAccessibility.post(notification: .announcement, argument: "Locale aggiunto ai preferiti")
+            } catch SavedVenueStore.StoreError.capacityReached {
+                self.showBookmarkError("Hai già 50 preferiti. Rimuovine uno dalla lista e riprova.")
+            } catch {
+                self.showBookmarkError("Non riesco a salvare questo locale. I preferiti precedenti sono stati mantenuti. Riprova.")
+            }
+        }
+    }
+
+    @objc private func showRecommendations() {
+        readCurrentVenue(failureTitle: "Consigli non disponibili") { [weak self] venue in
+            guard let self else { return }
+            self.invalidateBookmarkCapture()
+            self.navigationItem.backButtonTitle = "Torna al locale"
+            self.navigationController?.pushViewController(RecommendationsViewController(venue: venue, client: self.recommendationClient), animated: true)
+        }
+    }
+
+    private func readCurrentVenue(failureTitle: String, onRead: @escaping (SavedVenue) -> Void) {
         guard canSaveCurrentVenue, let url = usableVenueURL,
               let request = bookmarkCapture.begin(url: url) else {
-            showBookmarkError("Apri un locale e attendi che il suo nome sia visibile, poi scegli «Salva nei preferiti».")
+            showVenueReadError(title: failureTitle, message: "Apri un locale e attendi che il suo nome sia visibile, poi riprova.")
             return
         }
         updateMoreMenu()
@@ -433,7 +469,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             guard let self, self.bookmarkCapture.contains(request) else { return }
             self.invalidateBookmarkCapture()
             guard self.isBookmarkInteractionActive else { return }
-            self.showBookmarkError("Non riesco a leggere il nome del locale. Attendi che la scheda sia caricata e riprova.")
+            self.showVenueReadError(title: failureTitle, message: "Non riesco a leggere il nome del locale. Attendi che la scheda sia caricata e riprova.")
         }
         bookmarkTimeout = timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: timeout)
@@ -448,16 +484,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             do {
                 let value = try result.get()
                 let venue = try self.bookmarkCapture.complete(request, value: value, currentUsableURL: self.usableVenueURL)
-                try self.savedVenues.save(url: venue.url, label: venue.label)
                 self.updateMoreMenu()
-                self.showSavedVenues()
-                UIAccessibility.post(notification: .announcement, argument: "Locale aggiunto ai preferiti")
-            } catch SavedVenueStore.StoreError.capacityReached {
-                self.invalidateBookmarkCapture()
-                self.showBookmarkError("Hai già 50 preferiti. Rimuovine uno dalla lista e riprova.")
+                onRead(venue)
             } catch {
                 self.invalidateBookmarkCapture()
-                self.showBookmarkError("Non riesco a salvare questo locale. Attendi che il suo nome sia visibile e riprova. I preferiti precedenti sono stati mantenuti.")
+                self.showVenueReadError(title: failureTitle, message: "Non riesco a leggere questo locale. Attendi che la scheda sia caricata e riprova.")
             }
         }
     }
@@ -470,8 +501,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func showBookmarkError(_ message: String) {
+        showVenueReadError(title: "Preferito non salvato", message: message)
+    }
+
+    private func showVenueReadError(title: String, message: String) {
         guard navigationController?.topViewController === self, isBookmarkInteractionActive else { return }
-        showAlert(title: "Preferito non salvato", message: message)
+        showAlert(title: title, message: message)
     }
 
     func showSavedVenues() {

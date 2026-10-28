@@ -22,7 +22,7 @@ final class BrowserSmokeTests: XCTestCase {
 
     func testNativeNavigationAndInformationAreAccessible() {
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
-        for identifier in ["browser.back", "browser.forward", "browser.home", "browser.share", "browser.reload", "browser.more"] {
+        for identifier in ["browser.back", "browser.forward", "browser.home", "browser.share", "browser.reload", "browser.more", "browser.recommendations"] {
             XCTAssertTrue(app.buttons[identifier].exists, identifier)
         }
         XCTAssertEqual(app.buttons["browser.home"].label, "Home")
@@ -47,6 +47,7 @@ final class BrowserSmokeTests: XCTestCase {
         app.buttons["browser.more"].tap()
         XCTAssertTrue(app.buttons["Salva nei preferiti"].exists)
         XCTAssertFalse(app.buttons["Salva nei preferiti"].isEnabled, "The initial home/map page is not a venue to save")
+        XCTAssertFalse(app.buttons["browser.recommendations"].isEnabled, "Recommendations require an open venue")
         app.buttons["Preferiti"].tap()
         XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tables["savedVenues.list"].exists)
@@ -183,6 +184,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 30))
         XCTAssertTrue(website.staticTexts[publicName].waitForExistence(timeout: 15))
         waitForNativePageReady()
+        verifyLiveRecommendationsReadOnly(venueName: publicName)
         saveCurrentVenueInOneTap()
         let savedTable = app.tables["savedVenues.list"]
         let savedRow = savedTable.cells.matching(NSPredicate(format: "label == %@", publicName)).firstMatch
@@ -242,6 +244,33 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertFalse(website.staticTexts["La mappa non si carica: controlla la connessione e ricarica la pagina."].exists)
         assertNoNativeRecovery()
         XCTAssertTrue(app.buttons["browser.share"].isEnabled)
+    }
+
+    private func verifyLiveRecommendationsReadOnly(venueName: String) {
+        // This real public-service flow performs GET only. Recommend/undo is
+        // exercised with owned native transports in unit/controller tests.
+        let entry = app.buttons["browser.recommendations"]
+        XCTAssertTrue(entry.exists && entry.isEnabled)
+        entry.tap()
+        XCTAssertTrue(app.navigationBars["Drink consigliati"].waitForExistence(timeout: 10))
+        let table = app.tables["recommendations.list"]
+        XCTAssertTrue(table.waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["recommendations.venueName"].label, venueName)
+        let expected = Set(["beer_draft", "spritz", "negroni", "sbagliato", "gin_tonic", "gin_lemon", "wine_glass", "alcohol_free", "water"].map { "recommendations.row.\($0)" })
+        var observed = Set<String>()
+        for _ in 0..<12 {
+            observed.formUnion(table.cells.allElementsBoundByIndex.map(\.identifier).filter { expected.contains($0) })
+            if observed == expected && app.staticTexts["recommendations.loaded"].exists { break }
+            table.swipeUp()
+        }
+        XCTAssertEqual(observed, expected)
+        XCTAssertTrue(app.staticTexts["recommendations.loaded"].waitForExistence(timeout: 30), "Only an authoritative successful GET counts as loaded recommendations")
+        XCTAssertFalse(app.staticTexts["recommendations.unavailable"].exists)
+        attachScreen(named: "DoveBevo-live-native-recommendations-read-only")
+        app.navigationBars["Drink consigliati"].buttons["Torna al locale"].tap()
+        XCTAssertTrue(app.webViews["browser.website"].staticTexts[venueName].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.webViews["browser.website"].links["Indicazioni"].exists)
+        assertNoNativeRecovery()
     }
 
     private func waitForNativePageReady() {

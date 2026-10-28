@@ -138,7 +138,11 @@ final class BrowserSmokeTests: XCTestCase {
         app.buttons["Locali salvati"].tap()
         XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 10))
         let initialSavedTable = app.tables["savedVenues.list"]
-        guard initialSavedTable.exists, initialSavedTable.cells.count == 0,
+        let emptyMessage = initialSavedTable.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH[c] %@", "Non hai ancora salvato un locale.")
+        ).firstMatch
+        let emptyMessageAppeared = emptyMessage.waitForExistence(timeout: 5)
+        guard initialSavedTable.exists, initialSavedTable.cells.count == 0, emptyMessageAppeared,
               !app.buttons["savedVenues.retry"].exists else {
             XCTFail("Live saved-venue QA requires an owned empty installation; existing local data was left unchanged")
             return

@@ -17,6 +17,7 @@ import android.view.View;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.webkit.ServiceWorkerController;
+import android.webkit.ServiceWorkerClient;
 import android.webkit.WebBackForwardList;
 import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
@@ -102,6 +103,8 @@ public final class NativeUsabilityRuntimeTest {
 
     @Before public void setUp() throws Exception {
         Assume.assumeTrue("Fixture delegates require WebView.getWebViewClient on API 26+", Build.VERSION.SDK_INT >= 26);
+        assertTrue("Run native fixtures with NativeFixtureRunner and its isolated WebView profile",
+                NativeFixtureRunner.isolatedProfileReady);
         rules = instrumentation.getTargetContext().getSharedPreferences("dovebevo_rules", 0);
         hadRulesVersion = rules.contains("accepted_rules_version");
         oldRulesVersion = rules.getString("accepted_rules_version", null);
@@ -198,6 +201,7 @@ public final class NativeUsabilityRuntimeTest {
         instrumentation.waitForIdleSync();
         onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick());
         await(() -> ONE.equals(web.getUrl()) && (Boolean) get("hasUsablePage") && !(Boolean) get("loading"));
+        assertOwnedDocument(1);
         onMain(() -> {
             assertSame(original, get("website"));
             savedUi.showList();
@@ -278,12 +282,14 @@ public final class NativeUsabilityRuntimeTest {
         navigate(BrowserPolicy.HOME);
         tapOwnedVenueButton();
         await(() -> ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
+        assertOwnedDocument(1);
         onMain(() -> {
             assertFalse(((Button) get("forwardButton")).isEnabled());
             assertEquals(ONE, invoke("eligibleSavedVenue"));
             ((Button) get("backButton")).performClick();
         });
         await(() -> BrowserPolicy.HOME.equals(web.getUrl()) && ((Button) get("forwardButton")).isEnabled());
+        assertOwnedDocument(1);
         Bundle activityState = new Bundle();
         onMain(() -> {
             invoke("onSaveInstanceState", new Class<?>[]{Bundle.class}, activityState);
@@ -295,12 +301,14 @@ public final class NativeUsabilityRuntimeTest {
             assertEquals(Boolean.TRUE, invoke("restoreHistory", new Class<?>[]{Bundle.class}, activityState));
         });
         await(() -> BrowserPolicy.HOME.equals(web.getUrl()) && !(Boolean) get("loading"));
+        assertOwnedDocument(1);
         onMain(() -> {
             assertFalse(((Button) get("backButton")).isEnabled());
             assertTrue(((Button) get("forwardButton")).isEnabled());
             ((Button) get("forwardButton")).performClick();
         });
         await(() -> ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
+        assertOwnedDocument(1);
     }
 
     @Test public void firstLoadStopOffersRetryAndARealServerFailureStillShowsRecovery() throws Exception {
@@ -468,14 +476,41 @@ public final class NativeUsabilityRuntimeTest {
     }
 
     private void navigate(String url) throws Exception {
+        int minimumToken = documentResponses.get() + 1;
         onMain(() -> invoke("navigate", new Class<?>[]{String.class}, url));
         await(() -> url.equals(web.getUrl()) && !(Boolean) get("loading") && (Boolean) get("hasUsablePage"));
+        assertOwnedDocument(minimumToken);
+    }
+
+    private void assertOwnedDocument(int minimumToken) throws Exception {
+        CountDownLatch measured = new CountDownLatch(1);
+        AtomicReference<String> identity = new AtomicReference<>();
+        onMain(() -> web.evaluateJavascript("(() => {const m=document.querySelector('meta[name=owned-response]');const c=navigator.serviceWorker.controller;const u=c?new URL(c.scriptURL):null;return [m?Number(m.content):-1,u?u.origin+u.pathname:null];})()",
+                value -> { identity.set(value); measured.countDown(); }));
+        assertTrue("Owned document identity callback missing", measured.await(5, TimeUnit.SECONDS));
+        JSONArray actual = new JSONArray(identity.get());
+        assertTrue("Navigation must render the owned main document; marker/controller=" + identity.get(),
+                actual.getInt(0) >= minimumToken);
+        assertTrue("Owned documents must not have a controlling service worker: " + identity.get(), actual.isNull(1));
+        onMain(() -> {
+            assertTrue(web.getSettings().getBlockNetworkLoads());
+            assertTrue(ServiceWorkerController.getInstance().getServiceWorkerWebSettings().getBlockNetworkLoads());
+        });
     }
 
     private void installFixtureWebView() {
         invoke("createWebsite");
         web = (WebView) get("website");
         web.getSettings().setBlockNetworkLoads(true);
+        // createWebsite installs the app's worker policy. Replace it only in
+        // this isolated fixture profile, before any navigation, and on restore.
+        ServiceWorkerController.getInstance().setServiceWorkerClient(new ServiceWorkerClient() {
+            @Override public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
+                record("denied-fixture-worker=" + request.getMethod());
+                return new WebResourceResponse("text/plain", "UTF-8", 403, "Forbidden",
+                        Collections.singletonMap("Cache-Control", "no-store"), new ByteArrayInputStream(new byte[0]));
+            }
+        });
         actualClient = web.getWebViewClient();
         WebViewClient delegate = actualClient;
         WebChromeClient actualChrome = web.getWebChromeClient();
@@ -577,7 +612,7 @@ public final class NativeUsabilityRuntimeTest {
             onMain(() -> web.evaluateJavascript("(function(){const m=document.querySelector('meta[name=owned-response]');return m ? Number(m.content) : -1;})()",
                     result -> { response.set(result); measured.countDown(); }));
             assertTrue("Owned response marker callback missing", measured.await(5, TimeUnit.SECONDS));
-            if (Integer.toString(token).equals(response.get())) return;
+            if (Integer.toString(token).equals(response.get())) { assertOwnedDocument(token); return; }
             SystemClock.sleep(25);
         }
         fail("Replacement owned response " + token + " was not rendered; events=" + String.join(" | ", events));

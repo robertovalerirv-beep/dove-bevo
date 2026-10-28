@@ -28,7 +28,9 @@
       "captureTestStatus": "passed",
       "sourceAttachment": "D2C11CF3-1343-4A1C-AA9A-92E5C514997D.png",
       "isAssociatedWithFailure": false,
-      "workflowStatus": "failed: separate iPad runner AX initialization; phone test passed"
+      "workflowStatus": "failed: separate iPad runner AX initialization; phone test passed",
+      "storePlacement": "iPhone with Dynamic Island (medium display)",
+      "storeUploadReadback": "1 of 10 App Screenshots, persisted after refresh; submission validation no longer requires the phone screenshot"
     }
   ]
 }

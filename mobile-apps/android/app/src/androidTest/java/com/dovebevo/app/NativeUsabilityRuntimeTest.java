@@ -257,6 +257,35 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals("Entry/GET must not publish a recommendation", 0, posts.get());
     }
 
+    @Test public void nativeFavoritesKeepBrowserHistoryAndLateBrowserFailureBehindTheSelectedTab() throws Exception {
+        navigate(ONE);
+        WebView original=web;
+        AtomicInteger publicReads=new AtomicInteger();
+        AtomicReference<FavoritesScreen> nativeFavorites=new AtomicReference<>();
+        onMain(()->{
+            FavoritesLoader loader=new FavoritesLoader(new FavoritePricesClient((url,max,call)->{publicReads.incrementAndGet();throw new IOException("Owned empty-list transport must not be used");},()->"2026-10-29"),task->activity.runOnUiThread(task));
+            FavoritesScreen screen=new FavoritesScreen(activity,store,url->invoke("navigate",new Class<?>[]{String.class},url),()->(Boolean)get("foreground"),loader);
+            nativeFavorites.set(screen);set("favorites",screen);((FrameLayout)get("content")).addView(screen.view(),new FrameLayout.LayoutParams(-1,-1));screen.view().setVisibility(View.GONE);
+            int historySize=web.copyBackForwardList().getSize(),historyIndex=web.copyBackForwardList().getCurrentIndex();
+            invoke("showFavorites");
+            assertTrue((Boolean)get("favoritesVisible"));assertEquals(View.VISIBLE,screen.view().getVisibility());assertEquals(View.GONE,web.getVisibility());
+            assertEquals(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS,web.getImportantForAccessibility());assertNull(invoke("eligibleSavedVenue"));
+            // A genuine app-client callback must update browser state without exposing its hidden document.
+            actualClient.onPageFinished(web,ONE);assertEquals(View.GONE,web.getVisibility());
+            actualClient.onReceivedHttpError(web,mainFrameRequest(ONE),new WebResourceResponse("text/html","UTF-8",500,"Service Unavailable",Collections.emptyMap(),new ByteArrayInputStream(new byte[0])));
+            assertTrue((Boolean)get("failed"));assertEquals(View.GONE,((View)get("errorPanel")).getVisibility());assertEquals(View.VISIBLE,screen.view().getVisibility());
+            assertEquals(historySize,web.copyBackForwardList().getSize());assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
+            invoke("goBack"); // System Back selects Mappa before touching retained browser history.
+            assertFalse((Boolean)get("favoritesVisible"));assertEquals(View.GONE,screen.view().getVisibility());assertEquals(View.VISIBLE,((View)get("errorPanel")).getVisibility());
+            assertSame(original,get("website"));assertEquals(historySize,web.copyBackForwardList().getSize());assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
+            invoke("showFavorites"); // An already presented map failure must also stay behind the selected native destination.
+            assertEquals(View.GONE,((View)get("errorPanel")).getVisibility());assertEquals(View.VISIBLE,screen.view().getVisibility());assertTrue((Boolean)get("failed"));
+            invoke("goBack");assertEquals(View.VISIBLE,((View)get("errorPanel")).getVisibility());assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
+            nativeFavorites.get().close();set("favorites",null);
+        });
+        assertEquals(0,publicReads.get());
+    }
+
     @Test public void actualHeadingReaderRejectsUncommittedSelectionOverlayAndHiddenHeading() throws Exception {
         navigate(ONE);
         assertEquals("Locale di prova", readVenue().name);

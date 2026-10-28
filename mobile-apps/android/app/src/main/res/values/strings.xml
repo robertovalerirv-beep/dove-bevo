@@ -22,7 +22,7 @@
     <string name="cancel">Annulla</string>
     <string name="save_venue_unavailable">Apri la scheda di un locale e attendi il caricamento del suo nome prima di salvarlo nei preferiti.</string>
     <string name="saved_venue_saved">Salvato nei preferiti</string>
-    <string name="saved_venues_empty">Non hai preferiti. Apri un locale e scegli «Salva nei preferiti» da Altre opzioni. I preferiti restano privati nell’app: non aggiungono prezzi o locali al servizio.</string>
+    <string name="saved_venues_empty">Non hai preferiti. Apri un locale nella Mappa e tocca Salva nei preferiti. I preferiti restano privati nell’app: non aggiungono prezzi o locali al servizio.</string>
     <string name="saved_venues_online_note">Questo preferito è privato e conservato nell’app. Per aprire la mappa e vedere i prezzi aggiornati serve una connessione.</string>
     <string name="saved_venues_storage_error">Non è stato possibile leggere o salvare i preferiti. La modifica non è stata confermata. Riprova.</string>
     <string name="saved_venues_full">Hai già 50 preferiti. Rimuovine uno prima di aggiungerne un altro.</string>
@@ -46,7 +46,7 @@
     <string name="no_resubmit">L’invio non è stato ripetuto. Riapri la pagina per continuare.</string>
     <string name="test_lab_read_only_banner">Test automatico in sola lettura: invii pubblici, collegamenti esterni e condivisioni sono disabilitati per proteggere i dati reali.</string>
     <string name="test_lab_external_disabled">Durante il test automatico i collegamenti esterni e le condivisioni sono disabilitati.</string>
-    <string name="recommendation_entry">👍 Drink consigliati</string>
+    <string name="recommendation_entry">Drink consigliati</string>
     <string name="recommendation_title">Drink consigliati</string>
     <string name="recommendation_explanation">Consiglia i drink che hai provato qui. Le categorie non indicano la disponibilità del locale. Ogni installazione può dare o togliere un consiglio per drink.</string>
     <string name="recommendation_refresh">Aggiorna consigli</string>
@@ -57,11 +57,29 @@
         <item quantity="one">%1$d consiglio</item>
         <item quantity="other">%1$d consigli</item>
     </plurals>
-    <string name="recommendation_add">👍 Consiglia</string>
-    <string name="recommendation_undo">👍 Consigliato · Annulla consiglio</string>
+    <string name="recommendation_add">Consiglia</string>
+    <string name="recommendation_undo">Consigliato · Annulla consiglio</string>
     <string name="recommendation_unknown">Esito del consiglio non verificato. Aggiorna prima di riprovare.</string>
     <string name="recommendation_unavailable">Consigli non disponibili. Aggiorna per riprovare.</string>
     <string name="recommendation_paused">Aggiornamento necessario al ritorno nell’app.</string>
     <string name="recommendation_read_only">Test automatico: consigli in sola lettura.</string>
     <string name="recommendation_venue_unavailable">Apri un locale e attendi il caricamento per vedere i consigli.</string>
+    <string name="map_destination">Mappa</string>
+    <string name="favorites_explanation">Scegli un drink e una fascia per confrontare i prezzi segnalati nei tuoi preferiti. Il nome salvato resta leggibile senza connessione; i prezzi richiedono internet.</string>
+    <string name="favorites_drink">Drink da confrontare</string>
+    <string name="favorites_band">Fascia di prezzo</string>
+    <string name="favorites_normal">Normale</string>
+    <string name="favorites_happy_hour">Happy hour</string>
+    <string name="favorites_refresh">Aggiorna prezzi</string>
+    <string name="favorites_loading">Caricamento dei prezzi…</string>
+    <string name="favorites_loaded">Aggiornamento terminato. Dove disponibili, i prezzi di questo drink e fascia sono ordinati dal più basso. Controlla la data e i messaggi di ciascun locale.</string>
+    <string name="favorites_paused">Prezzi da aggiornare al ritorno nell’app.</string>
+    <string name="favorites_unavailable">Locale o prezzi non verificabili. Riprova con Aggiorna prezzi.</string>
+    <string name="favorites_missing">Nessun prezzo segnalato per questo drink e questa fascia.</string>
+    <string name="favorites_saved_name">Nome salvato su questo telefono; nome attuale non verificato.</string>
+    <string name="favorites_observed">Segnalato il %1$s</string>
+    <plurals name="favorites_confirmations"><item quantity="one">%1$d conferma del prezzo</item><item quantity="other">%1$d conferme del prezzo</item></plurals>
+    <string name="favorites_old">Prezzo datato: oltre 90 giorni.</string>
+    <string name="favorites_open_named">Apri %1$s nella Mappa</string>
+    <string name="favorites_remove_named">Rimuovi %1$s dai preferiti</string>
 </resources>

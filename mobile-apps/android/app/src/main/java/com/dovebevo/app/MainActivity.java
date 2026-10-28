@@ -65,6 +65,10 @@ public final class MainActivity extends ComponentActivity {
     private Button refreshButton;
     private Button shareButton;
     private SavedVenuesUi savedVenues;
+    private FavoritesScreen favorites;
+    private boolean favoritesVisible;
+    private Button mapDestination,favoritesDestination,saveButton;
+    private View browserTools,venueTools;
     private RecommendationsUi recommendations;
     private Button recommendationButton;
     private long recommendationCapture;
@@ -182,6 +186,7 @@ public final class MainActivity extends ComponentActivity {
         WebView.setWebContentsDebuggingEnabled(false);
         LinearLayout shell = createShell();
         LinearLayout tools = new LinearLayout(this);
+        browserTools=tools;
         tools.setGravity(Gravity.CENTER_VERTICAL);
         backButton = button(R.id.back, R.string.back, this::goBack);
         forwardButton = button(R.id.forward, R.string.forward, this::goForward);
@@ -198,9 +203,13 @@ public final class MainActivity extends ComponentActivity {
         more.setOnClickListener(this::showMenu);
         tools.addView(more, new LinearLayout.LayoutParams(dp(48), -2));
         shell.addView(tools, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout venueActions=new LinearLayout(this);venueTools=venueActions;
+        saveButton=button(R.id.save_venue,R.string.save_venue,this::saveCurrentVenue);
+        saveButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.native_bookmark,0,0,0);
         recommendationButton = button(R.id.recommendation_entry, R.string.recommendation_entry, this::showRecommendations);
-        recommendationButton.setVisibility(View.GONE);
-        shell.addView(recommendationButton, new LinearLayout.LayoutParams(-1, -2));
+        recommendationButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.native_thumb,0,0,0);
+        for(Button action:new Button[]{saveButton,recommendationButton}){action.setTextSize(16);action.setMaxLines(4);venueActions.addView(action,new LinearLayout.LayoutParams(0,-2,1));}
+        venueActions.setVisibility(View.GONE);shell.addView(venueActions,new LinearLayout.LayoutParams(-1,-2));
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(true);
         progress.setContentDescription(getString(R.string.loading));
@@ -213,6 +222,13 @@ public final class MainActivity extends ComponentActivity {
         shell.addView(offline, new LinearLayout.LayoutParams(-1, -2));
         content = new FrameLayout(this);
         shell.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
+        LinearLayout destinations=new LinearLayout(this);
+        mapDestination=button(R.id.map_destination,R.string.map_destination,this::showMap);
+        favoritesDestination=button(R.id.favorites_destination,R.string.saved_venues,this::showFavorites);
+        mapDestination.setCompoundDrawablesWithIntrinsicBounds(0,R.drawable.native_map,0,0);
+        favoritesDestination.setCompoundDrawablesWithIntrinsicBounds(0,R.drawable.native_bookmark,0,0);
+        for(Button destination:new Button[]{mapDestination,favoritesDestination}){destination.setTextSize(16);destination.setMinHeight(dp(64));destinations.addView(destination,new LinearLayout.LayoutParams(0,-2,1));}
+        shell.addView(destinations,new LinearLayout.LayoutParams(-1,-2));
         errorPanel = new LinearLayout(this);
         errorPanel.setId(R.id.load_error);
         errorPanel.setOrientation(LinearLayout.VERTICAL);
@@ -230,8 +246,12 @@ public final class MainActivity extends ComponentActivity {
         setContentView(shell);
         shell.requestApplyInsets();
         monitorNetwork();
-        savedVenues = new SavedVenuesUi(this, new SavedVenueStore(new SavedVenueFile(getFilesDir())),
+        SavedVenueStore savedStore=new SavedVenueStore(new SavedVenueFile(getFilesDir()));
+        savedVenues = new SavedVenuesUi(this, savedStore,
                 this::eligibleSavedVenue, this::readSavedVenue, this::navigate);
+        favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed);
+        content.addView(favorites.view(),new FrameLayout.LayoutParams(-1,-1));favorites.view().setVisibility(View.GONE);
+        if(state!=null)favorites.restoreSelection(state.getString("favorite_drink"),state.getInt("favorite_band",0));
         recommendations = new RecommendationsUi(this,
                 new RecommendationsClient(new RecommendationVoter(new RecommendationVoterFile(getNoBackupFilesDir())), testLabPolicy),
                 testLabPolicy, this::eligibleSavedVenue);
@@ -243,6 +263,7 @@ public final class MainActivity extends ComponentActivity {
         createWebsite();
         if (!restoreHistory(state)) navigate(lastTrustedUrl);
         updateToolbar();
+        if(state!=null&&state.getBoolean("favorites_visible",false))showFavorites();
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
@@ -358,6 +379,7 @@ public final class MainActivity extends ComponentActivity {
         navigate(BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL ? url : lastTrustedUrl);
     }
     private void goBack() {
+        if(favoritesVisible){showMap();return;}
         BackNavigation.perform(website != null && website.canGoBack(), () -> {
             venueCaptureEpoch++;
             failed = false;
@@ -393,7 +415,7 @@ public final class MainActivity extends ComponentActivity {
     private void setLoading(boolean value) {
         if (value && !loading) venueCaptureEpoch++;
         loading = value;
-        progress.setVisibility(value ? View.VISIBLE : View.GONE);
+        progress.setVisibility(value&&!favoritesVisible ? View.VISIBLE : View.GONE);
         updateToolbar();
     }
 
@@ -432,11 +454,40 @@ public final class MainActivity extends ComponentActivity {
             recommendationButton.setVisibility(eligibleSavedVenue() == null ? View.GONE : View.VISIBLE);
             recommendationButton.setEnabled(foreground && !recommendationCapturing);
         }
+        if(venueTools!=null)venueTools.setVisibility(!favoritesVisible&&eligibleSavedVenue()!=null?View.VISIBLE:View.GONE);
+        if(saveButton!=null)saveButton.setEnabled(foreground&&eligibleSavedVenue()!=null);
+        if(browserTools!=null)browserTools.setVisibility(favoritesVisible?View.GONE:View.VISIBLE);
+        if(mapDestination!=null){mapDestination.setSelected(!favoritesVisible);favoritesDestination.setSelected(favoritesVisible);
+            mapDestination.setTypeface(null,favoritesVisible?android.graphics.Typeface.NORMAL:android.graphics.Typeface.BOLD);
+            favoritesDestination.setTypeface(null,favoritesVisible?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL);}
         if (recommendations != null) recommendations.contextChanged();
+    }
+
+    private void showFavorites(){
+        if(destroyed||favorites==null||favoritesVisible)return;
+        venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
+        cancelLocation();disposePopup();
+        if(savedVenues!=null)savedVenues.dismiss();if(recommendations!=null)recommendations.dismiss();
+        favoritesVisible=true;
+        if(website!=null){website.setVisibility(View.GONE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
+        errorPanel.setVisibility(View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        progress.setVisibility(View.GONE);favorites.view().setVisibility(View.VISIBLE);favorites.view().bringToFront();favorites.show();updateToolbar();
+    }
+    private void showMap(){
+        if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}
+        favoritesVisible=false;
+        if(website!=null){website.setVisibility(failed?View.GONE:View.VISIBLE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);}
+        if(errorPanel!=null){errorPanel.setVisibility(failed?View.VISIBLE:View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);}
+        if(progress!=null)progress.setVisibility(loading?View.VISIBLE:View.GONE);updateToolbar();
+    }
+    private void saveCurrentVenue(){
+        if(savedVenues==null||eligibleSavedVenue()==null)return;
+        recommendationCapture++;recommendationCapturing=false;savedVenues.saveCurrent();updateToolbar();
     }
 
     private void showRecommendations() {
         if (!foreground || recommendations == null || eligibleSavedVenue() == null || recommendationCapturing) return;
+        if(savedVenues!=null)savedVenues.dismiss();
         long request = ++recommendationCapture;
         recommendationCapturing = true; updateToolbar();
         recommendationButton.postDelayed(() -> {
@@ -453,7 +504,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private String eligibleSavedVenue() {
-        if (destroyed || website == null || failed || loading || awaitingDocumentStart || !hasUsablePage
+        if (destroyed || favoritesVisible || website == null || failed || loading || awaitingDocumentStart || !hasUsablePage
                 || documentHasHttpError || stoppedUrl != null) return null;
         return SavedVenueUrl.canonicalize(website.getUrl());
     }
@@ -527,8 +578,8 @@ public final class MainActivity extends ComponentActivity {
         menu.getMenu().add(Menu.NONE, R.id.privacy, Menu.NONE, R.string.privacy);
         menu.getMenu().add(Menu.NONE, R.id.support, Menu.NONE, R.string.support);
         menu.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.save_venue) { savedVenues.saveCurrent(); return true; }
-            if (item.getItemId() == R.id.saved_venues) { savedVenues.showList(); return true; }
+            if (item.getItemId() == R.id.save_venue) { saveCurrentVenue(); return true; }
+            if (item.getItemId() == R.id.saved_venues) { showFavorites(); return true; }
             if (item.getItemId() == R.id.location_help) { showLocationHelp(); return true; }
             if (item.getItemId() == R.id.privacy) { showPrivacy(); return true; }
             if (item.getItemId() == R.id.support) { openExternal("mailto:dovebevo@gmail.com"); return true; }
@@ -589,8 +640,8 @@ public final class MainActivity extends ComponentActivity {
         errorTitle.setText(title);
         errorMessage.setText(message);
         if (website != null) website.setVisibility(View.GONE);
-        errorPanel.setVisibility(View.VISIBLE);
-        errorPanel.bringToFront();
+        errorPanel.setVisibility(favoritesVisible?View.GONE:View.VISIBLE);
+        if(!favoritesVisible)errorPanel.bringToFront();
     }
 
     private void rejectSslFailure(WebView source, String errorUrl, Runnable cancel) {
@@ -632,7 +683,7 @@ public final class MainActivity extends ComponentActivity {
             if (!failed && BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL) {
                 hasUsablePage = !documentHasHttpError;
                 errorPanel.setVisibility(View.GONE);
-                view.setVisibility(View.VISIBLE);
+                view.setVisibility(favoritesVisible?View.GONE:View.VISIBLE);
             }
             updateToolbar();
         }
@@ -684,7 +735,7 @@ public final class MainActivity extends ComponentActivity {
         @Override public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
             cancelLocation();
             String current = website == null ? null : website.getUrl();
-            if (!foreground || !BrowserPolicy.isLocationOrigin(origin) || BrowserPolicy.target(current) != BrowserPolicy.Target.INTERNAL) {
+            if (!foreground || favoritesVisible || !BrowserPolicy.isLocationOrigin(origin) || BrowserPolicy.target(current) != BrowserPolicy.Target.INTERNAL) {
                 callback.invoke(origin, false, false);
                 return;
             }
@@ -788,6 +839,7 @@ public final class MainActivity extends ComponentActivity {
         foreground = true;
         if (website != null) website.onResume();
         if (recommendations != null) recommendations.resume();
+        if(favorites!=null)favorites.resume();
         updateToolbar();
         resolveLocationResult();
     }
@@ -796,6 +848,8 @@ public final class MainActivity extends ComponentActivity {
         foreground = false;
         recommendationCapture++; recommendationCapturing = false;
         if (recommendations != null) recommendations.pause();
+        if(savedVenues!=null)savedVenues.dismiss();
+        if(favorites!=null)favorites.pause();
         // The system permission dialog may pause us. Only deliver its result
         // after resume; an actual stop or navigation invalidates the callback.
         if (!requestingLocationPermission) cancelLocation();
@@ -808,6 +862,8 @@ public final class MainActivity extends ComponentActivity {
         super.onStop();
     }
     @Override protected void onSaveInstanceState(Bundle state) {
+        state.putBoolean("favorites_visible",favoritesVisible);
+        if(favorites!=null){state.putString("favorite_drink",favorites.selectedDrink());state.putInt("favorite_band",favorites.selectedBand());}
         state.putString("trusted_url", lastTrustedUrl);
         if (website != null && !failed) {
             try {
@@ -824,6 +880,7 @@ public final class MainActivity extends ComponentActivity {
         destroyed = true;
         recommendationCapture++; recommendationCapturing = false;
         if (recommendations != null) recommendations.close();
+        if(favorites!=null)favorites.close();
         if (privacyDialog != null) privacyDialog.dismiss();
         if (locationHelpDialog != null) locationHelpDialog.dismiss();
         if (savedVenues != null) savedVenues.dismiss();

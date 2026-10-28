@@ -29,4 +29,14 @@
     <item name="recommendation_refresh" type="id" />
     <item name="recommendation_rows" type="id" />
     <item name="recommendation_row" type="id" />
+    <item name="map_destination" type="id" />
+    <item name="favorites_destination" type="id" />
+    <item name="favorites_screen" type="id" />
+    <item name="favorites_drink" type="id" />
+    <item name="favorites_band" type="id" />
+    <item name="favorites_status" type="id" />
+    <item name="favorites_refresh" type="id" />
+    <item name="favorites_rows" type="id" />
+    <item name="favorite_open" type="id" />
+    <item name="favorite_remove" type="id" />
 </resources>

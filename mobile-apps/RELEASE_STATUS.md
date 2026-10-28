@@ -3,10 +3,12 @@
 Last verified: 28 October 2026 (UTC).
 
 Neither mobile app has been submitted for store review or released publicly.
-The last saved Google Play read-back marks Android build 10 available to internal
-testers, with no selected testers and an inactive track summary. That provider
-state has not yet been refreshed on 28 October; no installation is established.
-No signed iOS binary has been uploaded.
+The 28 October Google Play dashboard shows 10 of 11 setup items complete;
+Store Listing remains outstanding. Internal-testing setup is 2 of 3, with tester
+selection missing. A locally derived, signed Android build 14 APK is installed
+on an account-free emulator; this is not a Play-installed or physical-device
+test. No signed iOS binary has been uploaded, and TestFlight still asks for a
+build before testing can begin.
 Store setup and successful build steps are preparation, not a launch.
 
 ## Source and scope
@@ -68,23 +70,27 @@ instead of silently selecting a newer OS. Supported inventory and compatibility:
 ## Store preparation
 
 - Google Play: app record, content rating and data-safety declarations saved;
-  listing text, icon and feature graphic saved as a draft. Actual phone
-  screenshots, completed device testing and submission remain outstanding.
+  listing text, icon and feature graphic saved as a draft. The fresh dashboard
+  shows **10 of 11 setup items complete**, with **Store Listing** outstanding,
+  and **2 of 3 internal-testing steps**, with **Select testers** outstanding.
+  Actual app screenshots, completed device testing and submission remain open.
   Signed version 1.0.0, versionCode 10, was published to internal testing
   with Italian test notes. Google reports no selected testers and no
   deobfuscation file; this build deliberately has minification disabled. The
   last saved release read-back is **Available to internal testers / Released / Not
   reviewed**, while the track summary remains **Inactive** with no selected
   testers. A saved provider screenshot records this distinction. No tester
-  invitations were sent; no installation or public availability is claimed.
+  invitations were sent; no Play-delivered installation or public availability
+  is established.
   Production availability is saved for 178 countries/regions pending review;
   the production track remains inactive.
 - App Store Connect: app record, published privacy label, free pricing and
-  mobile distribution settings saved. A processed signed build, valid device
-  screenshots, remaining account verification and submission are outstanding.
-- The account holder explicitly resumed Apple trader-contact verification on
-  28 October. The current OTP step remains unverified. No automatic morning
-  retry is scheduled; account verification remains a release requirement.
+  mobile distribution settings saved. Digital Services Act trader status is
+  **Active in 27 countries**, verified on 28 October. Retained evidence is
+  `test-evidence/store-readback-20261028/apple-trader-active.jpg`.
+  Fresh TestFlight read-back says **Submit a build to start testing**. A
+  processed signed build, valid screenshots, device testing and submission
+  remain outstanding.
 
 The app privacy and deletion pages are publicly readable on the preserved
 `codex/mobile-store-disclosures-20261026` branch. Roberto Valeri is the service's
@@ -140,7 +146,7 @@ importer returned fixed catalog classification `import-format-unknown`,
 OSStatus `-25257`, before archive, export or upload. The original certificate,
 key and password were not changed.
 
-## Active internal retry and next release gate
+## Completed signing retries
 
 A separate encrypted 3DES compatibility container was privately verified against
 the same certificate, key and password. The original container and the AES trial
@@ -151,13 +157,58 @@ profile, API key and Android identity are unchanged.
 `mobile-testing/v1.0.0-internal.4` identifies merged source
 `bbc6aa21709904ea001160a36a2f8b0792ab5cbc` and
 [workflow run 40664068073](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40664068073)
-(build number 14). It is running with fresh checks. Apple import, archive, IPA
-export, upload and provider processing have not yet been verified for this
-container. A successful check job alone establishes none of those steps.
+(build number 14). Apple imported the 3DES container and selected the matching
+valid distribution identity. Archive then failed because Xcode could not find
+the pinned profile UUID for the approved team. No IPA was exported or uploaded.
+
+`mobile-testing/v1.0.0-internal.5` at
+`5ab25c23486f39c358877973aae79e58421a583f` ran as
+[40668057999](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40668057999).
+The pure guard suite stopped on a test fixture that assumed a OneDrive checkout,
+before native unit tests or signing. The portable fixture fix is
+`13848c75146ef12e367be77dd751c8ce7de62e31`.
+
+Internal.6 again passed Apple import and exact identity matching, but installing
+the same validated profile in both current and legacy OS discovery locations
+did not resolve Xcode's profile-not-found archive failure.
+
+`mobile-testing/v1.0.0-internal.7` at
+`05363cee0657f35490c046ea0290d4717a60878b` ran as
+[40673414558](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40673414558).
+All check jobs passed. The upload-only authenticated manual-provisioning
+download trial still failed archive with the same pinned profile-not-found
+error. No signed IPA, upload or TestFlight build resulted. The team, certificate,
+profile UUID and post-export validation gates remain pinned.
 
 The secret publisher still defaults to `ios-distribution.p12`. The compatibility
 container requires explicit `-IosCertificateFile ios-distribution-apple-3des.p12`
 with `-IosCertificateOnly`; this selects only the existing iOS certificate secret.
+
+## Local Android acceptance progress
+
+A universal release APK, versionCode 14, was derived locally and verified with
+the approved signer. Its SHA-256 is
+`7e1324f830b9861a03d6d5888155fbee983194738e519c5f59dff2d5db8fab6b`.
+It is installed on an account-free Android 16 / API 36 emulator
+(`sdk_gphone64_x86_64`, `ranchu`), using WHPX acceleration and SwiftShader
+graphics. No host security setting was changed.
+
+The native rules, scrolling, Privacy before acceptance and decline/exit were
+observed. Adult terms confirmation is **pending**; live browsing, city search,
+map, location and subsequent navigation remain **untested**. Emulator evidence
+does not establish physical-device behavior. Follow
+[the acceptance checklist](PHYSICAL_TEST_CHECKLIST.md) and retain original
+screenshots with their dimensions.
+
+The owner's iPhone 16 Plus on iOS 27.0.1 remains in use until a signed TestFlight
+build is ready. Phone Link cannot control its apps; no physical iPhone test has
+been completed.
+
+## Next release gate
+
+The next prepared source check verifies that the same validated signing identity
+is visible in the configured user keychain search list. Its hosted result is
+unverified; it does not establish that Xcode can discover the pinned profile.
 
 Production remains gated on required live Android and iOS verification,
 including successful genuine phone and iPad store screenshots. Run the required

@@ -144,10 +144,13 @@ python3 -m unittest discover -s mobile-apps/ios/scripts/tests -v
 
 The original P12 and the AES256/SHA1-MAC trial are retained in the secure signing
 store. Internal.3's AES trial failed Apple's importer with
-`import-format-unknown` / OSStatus `-25257`, before archive or export. A separate
+`import-format-unknown` / OSStatus `-25257`, before archive or export. The separate
 encrypted 3DES compatibility container preserves the certificate, private key
-and password; its actual Apple import is pending Internal.4's result. Local
-container verification does not establish Apple importer compatibility.
+and password. Internal.4 and Internal.6 proved Apple import and matching valid
+identity selection, then failed archive because Xcode could not find the pinned
+profile UUID. Internal.7's authenticated manual-provisioning download trial
+passed its check jobs but did not resolve that archive error. No signed IPA or
+TestFlight build is available. See [release status](../RELEASE_STATUS.md).
 
 `mobile-apps/scripts/publish-signing-secrets.ps1` still defaults to
 `ios-distribution.p12`. To select the compatibility container for an authorized
@@ -163,13 +166,15 @@ identity. No signing material belongs in the source tree or OneDrive.
 
 Signing material is decoded only into a fresh `0700` directory under validated
 `RUNNER_TEMP` with `0600` files, imported into a task-owned ephemeral keychain and
-restricted to Apple signing tools. Only the matching profile is installed in the
-OS Xcode provisioning directory. Existing identical profiles are reused and
-preserved; collisions fail without overwriting. Exit/signal cleanup restores the
-previous keychain search list, removes the task's keychain/profile and deletes
-its private temporary files, including on command failures. A cleanup failure
-fails the release. A killed host cannot run a trap; GitHub-hosted job isolation
-is the additional cleanup boundary.
+restricted to Apple signing tools. Only the same validated profile bytes and
+UUID are installed in the two fixed current and legacy OS provisioning
+locations. Existing identical profiles are reused and preserved; collisions
+fail without overwriting. Owned files are journalled before writing; cleanup
+requires matching inode, device and hash and preserves replacements. Exit/signal
+cleanup restores the previous keychain search list, removes owned signing
+material and deletes private temporary files, including on command failures.
+A cleanup failure fails the release. A killed host cannot run a trap;
+GitHub-hosted job isolation is the additional cleanup boundary.
 
 Outputs are `.build/release/DoveBevo.xcarchive`,
 `.build/release/export/DoveBevo.ipa` and the secret-free
@@ -178,15 +183,27 @@ causes a new invocation to stop. The signed app necessarily contains its public
 distribution profile and certificate chain; no P12, private key or authentication
 file is copied to these outputs.
 
-Upload is disabled unless `--upload` is passed. That mode requires the selected
-Xcode's `altool` to support an explicit `--p8-file-path`, validates the IPA and then
-uploads using the approved API key in the private temporary directory. It never
+Upload is disabled unless `--upload` is passed. Before decoding credentials,
+that mode requires the selected Xcode to advertise `-allowProvisioningUpdates`
+and all three authentication-key flags. The archive uses the existing private
+P8 file for the manual profile-download trial while retaining exact team,
+certificate and profile UUID pins. Local signing without upload has no API-key
+requirement. The prepared search-list diagnostic validates the same identity
+after configuring the user search list; its hosted result is still unverified.
+
+Upload also requires Xcode's `altool` to support an explicit `--p8-file-path`,
+validates the IPA and then uploads using the approved API key in private storage. It never
 uses an Apple Account password, a credential in the user's home directory or an
 Admin provisioning API key. An upload command succeeding does not attest App
 Store processing, TestFlight approval or public release. Apple documents
 [API authentication for altool](https://developer.apple.com/documentation/technotes/tn3147-migrating-to-the-latest-notarization-tool),
 [App Store upload tools](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/)
 and the [Xcode 16+ profile location](https://developer.apple.com/documentation/xcode-release-notes/xcode-16-release-notes).
+
+Apple's Digital Services Act trader status was verified Active in 27 countries
+on 28 October. TestFlight still shows **Submit a build to start testing**.
+Physical iPhone checks await a processed signed build; the owner's iPhone 16 Plus
+on iOS 27.0.1 remains in use, and Phone Link cannot control its apps.
 
 ## Browser and privacy boundary
 

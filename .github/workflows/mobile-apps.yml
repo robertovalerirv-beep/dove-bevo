@@ -6,6 +6,7 @@ on:
       - "mobile-release/v*"
       - "mobile-testing/v*"
       - "mobile-capture/v*"
+      - "mobile-beta/v*"
   pull_request:
     paths:
       - "mobile-apps/**"
@@ -319,7 +320,8 @@ jobs:
     name: Android checks for internal testing
     if: >-
       github.event_name == 'push' && github.ref_type == 'tag' &&
-      startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
+      (startsWith(github.ref, 'refs/tags/mobile-testing/v') ||
+       startsWith(github.ref, 'refs/tags/mobile-beta/v')) &&
       github.repository == 'robertovalerirv-beep/dove-bevo'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
@@ -353,7 +355,8 @@ jobs:
     name: iOS unit checks for internal testing
     if: >-
       github.event_name == 'push' && github.ref_type == 'tag' &&
-      startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
+      (startsWith(github.ref, 'refs/tags/mobile-testing/v') ||
+       startsWith(github.ref, 'refs/tags/mobile-beta/v')) &&
       github.repository == 'robertovalerirv-beep/dove-bevo'
     runs-on: xcode-27
     timeout-minutes: 25
@@ -468,6 +471,54 @@ jobs:
         if: always()
         with:
           name: dove-bevo-ios-internal-${{ github.sha }}
+          path: |
+            mobile-apps/ios/.build/release/export/*.ipa
+            mobile-apps/ios/.build/release/release-manifest.json
+          retention-days: 14
+          if-no-files-found: error
+
+  ios-external-beta-build:
+    name: Sign and upload candidate for external TestFlight testing
+    needs: [internal-android-checks, internal-ios-checks]
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-beta/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+    steps:
+      - name: Verify exact external-beta toolchain without credentials
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          sw_vers
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Sign, verify and upload external-beta candidate
+        env:
+          DOVEBEVO_IOS_CERTIFICATE_BASE64: ${{ secrets.DOVEBEVO_IOS_CERTIFICATE_BASE64 }}
+          DOVEBEVO_SIGNING_PASSWORD: ${{ secrets.DOVEBEVO_SIGNING_PASSWORD }}
+          DOVEBEVO_IOS_PROFILE_BASE64: ${{ secrets.DOVEBEVO_IOS_PROFILE_BASE64 }}
+          DOVEBEVO_ASC_PRIVATE_KEY: ${{ secrets.DOVEBEVO_ASC_PRIVATE_KEY }}
+          DOVEBEVO_ASC_KEY_ID: ${{ secrets.DOVEBEVO_ASC_KEY_ID }}
+          DOVEBEVO_ASC_ISSUER_ID: ${{ secrets.DOVEBEVO_ASC_ISSUER_ID }}
+          DOVEBEVO_BUILD_NUMBER: ${{ github.run_number }}
+        run: bash mobile-apps/ios/scripts/release-ios.sh --upload
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-external-beta-${{ github.sha }}
+          include-hidden-files: true
           path: |
             mobile-apps/ios/.build/release/export/*.ipa
             mobile-apps/ios/.build/release/release-manifest.json

@@ -3,8 +3,9 @@
 Last verified: 28 October 2026 (UTC).
 
 Google Play's production changes are **in review**. iOS build 21 is **Ready to
-Test** in TestFlight for internal testing. Neither state establishes an approved
-public release or a successful physical-device test.
+Test** in TestFlight and is installed on the owner's iPhone. Physical evidence
+currently covers map/price rendering and reported venue Back behavior; neither
+store state establishes an approved public release.
 
 ## Source and scope
 
@@ -76,14 +77,25 @@ The verified IPA SHA-256 is
 
 App Store Connect shows build **21 Ready to Test**, after the factual
 OS-framework-only encryption question was answered. A manually distributed
-internal group contains one build and one existing Account Holder, whose tester
-status is **Invited**. No other testers, users or roles were added. The owner's
-real-iPhone test request is pending; no accepted invitation, installation or
-physical-phone pass is established.
+internal group contains one build and one existing Account Holder. The last
+provider read-back showed **Invited**; installation on the owner's iPhone 16
+Plus is now observed, but server-side **Accepted** status has not been read back.
+No other testers, users or roles were added.
+
+The owner's original 590 by 1280 JPEG shows the native iOS controls, rendered
+Milano tiles and price pins. The owner reports that Back works within venue
+selection. These are limited physical checks: location, offline recovery,
+sharing, directions and Forward remain untested on the phone. Source inspection
+confirms city selection changes the map camera without adding browser history,
+while opening a venue uses `pushState`; no Back defect is established.
+The image SHA-256 is
+`4358090143f04ad67ddb318d32b75af1afd10b882e37ff36939b15df5f72df50`.
+It is QA evidence, not an accepted medium-iPhone or iPad store screenshot. Do not
+resize or upscale it to satisfy store dimensions.
 
 Build 21 is **TestFlight Internal Only** and cannot be submitted for public App
 Store distribution. A production-eligible IPA, genuine iOS store captures and
-physical-device verification remain required. Digital Services Act trader
+the remaining physical checks are required. Digital Services Act trader
 status was verified **Active in 27 countries** on 28 October.
 
 The source now declares `ITSAppUsesNonExemptEncryption=false` (commit
@@ -93,17 +105,23 @@ This source change is separate from the already uploaded internal build.
 ## iOS live capture trial
 
 `mobile-capture/v1.0.0-xcode27.1-1` at source
-`99a35f2a5bf5b368409432dbbf28e1767e462dc9` is running as
+`99a35f2a5bf5b368409432dbbf28e1767e462dc9` ran as
 [40699367667](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40699367667)
-(workflow number 22). The isolated capture job is running; all eight other jobs
-are verified skipped and no credentials are supplied.
+(workflow number 22), which **failed**. All eight other jobs were skipped; no
+credentials were supplied. The actual host used macOS 27.0.1, Xcode 27.1 and an
+iOS 27.0 iPhone 17 simulator. Ten unit tests and both native UI tests passed.
+After selecting Milano Città, the live case failed its 45-second wait for the
+map's accessibility label (`BrowserSmokeTests.swift:88`). No GPU-termination
+line appeared in the job log; the underlying cause remains unknown. The iPad
+capture and final PNG-validation steps were skipped.
 
-It pins Xcode 27.1 / SDK 27.1 and iOS 27.0, runs the full iPhone 17 unit/live
-suite, then the existing 13-inch iPad live capture. A final gate requires each
-export's final Milano-map attachment, contained original PNG and accepted
-phone/iPad dimensions. Diagnostics are retained on failure. No capture output
-or successful iOS 27 live result has been verified yet. Images must be visually
-reviewed before store use; failed-test images must not be resized or relabeled.
+The exporter reported 69 attachments and a manifest, but the always-run artifact
+upload reported no files, and the provider lists zero artifacts. Hidden
+`.build` exclusion is the leading explanation for that separate upload failure.
+A narrowly scoped hidden-file opt-in is being prepared for the existing
+credential-free artifact allowlist. The follow-up capture is not yet launched;
+no diagnostic download, successful live result or store-ready iOS capture is
+established. Keep the live assertions and original image dimensions unchanged.
 
 ## Retained failure history and remaining gates
 
@@ -126,8 +144,8 @@ silent command was not established; reviewed extraction compatibility repairs
 preceded Internal.11's successful end-to-end verification. Full older details
 remain in Git history and retained evidence.
 
-Next owners must read back Google's review decision, obtain the owner's iPhone
-test, and verify genuine iOS captures
+Next owners must read back Google's review decision, complete the remaining
+iPhone checks, and verify genuine iOS captures
 before preparing a production-eligible iOS submission. Use
 [the device checklist](PHYSICAL_TEST_CHECKLIST.md). Upload, processing, review
 approval and public availability are separate states; none imply the next.

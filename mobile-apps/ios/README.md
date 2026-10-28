@@ -80,7 +80,10 @@ block the live suite. No tester invitations or public review submissions are
 sent automatically. `mobile-release/v*` keeps its full Android/iOS live gates.
 `mobile-capture/v*` runs only the credential-free iOS 27 live/capture job; its
 genuine phone/iPad exports must pass the final manifest, PNG and dimension gate.
-The first such trial is running; no successful capture is established yet.
+The first trial failed its live map accessibility assertion; iPad capture and
+PNG validation were skipped. Its diagnostic artifact upload also found no files;
+the hidden `.build` exclusion is being addressed separately. No successful
+store capture is established yet. See [release status](../RELEASE_STATUS.md).
 All tag families share this workflow's build-number counter.
 Use a new unique tag after an accepted upload: rerunning an existing workflow
 reuses its build number and is not a new distribution attempt.
@@ -210,9 +213,14 @@ and the [Xcode 16+ profile location](https://developer.apple.com/documentation/x
 
 Apple's Digital Services Act trader status was verified Active in 27 countries
 on 28 October. Internal-only build 21 is **Ready to Test**. A manual internal
-group contains that build and one existing Account Holder with status **Invited**;
-no other testers or roles were added. The owner's real-iPhone test is pending;
-invitation acceptance, installation and physical-device behavior are unverified.
+group contains that build and one existing Account Holder, last read back as
+**Invited**; no other testers or roles were added. The owner has installed build
+21 on an iPhone 16 Plus. The supplied image confirms native controls and live
+Milano map/price rendering, and the owner reports venue Back works. Remaining
+physical cases and server-side **Accepted** status are unverified. City selection
+changes the camera without adding history; venue opening adds `pushState`, so no
+Back defect is established. The original 590 by 1280 JPEG is QA evidence and
+must not be resized into an iPhone/iPad store asset.
 Phone Link cannot control iPhone apps. Source now declares
 `ITSAppUsesNonExemptEncryption=false` for OS-framework-only encryption, separately
 from the already uploaded internal build.

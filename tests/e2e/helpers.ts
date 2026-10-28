@@ -102,3 +102,64 @@ export async function tapMap(page: Page) {
     .getByRole("button", { name: "Esplora la mappa" })
     .click({ position: { x: 40, y: 160 } });
 }
+
+/** Targets under 48 px: inline links in a text, the map attribution and MapLibre's own controls are exempt. */
+export async function smallTargets(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const out: string[] = [];
+    const sel =
+      'button, a[href], select, textarea, input:not([type="checkbox"]):not([type="radio"]), [role="option"]';
+    for (const el of document.querySelectorAll<HTMLElement>(sel)) {
+      if (el.closest(".maplibregl-ctrl, .map__attribution, .sr-only, [inert]")) continue;
+      if (el.matches("p a, li > a:not(.btn)") && el.closest("p")) continue;
+      const box = el.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) continue; // not shown
+      if (box.width < 47.5 || box.height < 47.5)
+        out.push(
+          `${el.tagName.toLowerCase()} "${(el.getAttribute("aria-label") ?? el.textContent).trim().slice(0, 30)}" ${String(Math.round(box.width))}×${String(Math.round(box.height))}`,
+        );
+    }
+    return out;
+  });
+}
+
+// Turnstile is Cloudflare's script: replaced by a stub that answers with the public dummy token.
+// The local Worker verifies it with Cloudflare's always-pass test secret (wrangler.jsonc vars).
+const TURNSTILE_STUB = `window.turnstile = {
+  render(el, o) { setTimeout(() => o.callback("XXXX.DUMMY.TOKEN.XXXX"), 50); return "w"; },
+  remove() {}, reset() {},
+};`;
+
+export async function stubTurnstile(page: Page): Promise<string[]> {
+  const requests: string[] = [];
+  await page.route("https://challenges.cloudflare.com/**", (route) => {
+    requests.push(route.request().url());
+    void route.fulfill({ contentType: "text/javascript", body: TURNSTILE_STUB });
+  });
+  return requests;
+}
+
+/**
+ * Answers `POST /api/session` and `POST /api/prices` in place of the Worker, so a test can walk the whole
+ * saving flow (and its errors) without writing to the shared local D1. The bodies sent are collected.
+ */
+export async function stubWrites(
+  page: Page,
+  answer: () => { status: number; json: unknown } = () => ({
+    status: 200,
+    json: { results: [{ status: "active" }] },
+  }),
+): Promise<unknown[]> {
+  const sent: unknown[] = [];
+  await page.route("**/api/session", (route) =>
+    route.request().method() === "POST"
+      ? route.fulfill({ status: 200, json: {} })
+      : route.continue(),
+  );
+  await page.route("**/api/prices", (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    sent.push(route.request().postDataJSON());
+    return route.fulfill(answer());
+  });
+  return sent;
+}

@@ -1,33 +1,20 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
-import { atHour, drinkMenuButton, goToMilano, openDrinkMenu, THEME_HOURS } from "./helpers";
+import {
+  atHour,
+  drinkMenuButton,
+  goToMilano,
+  openDrinkMenu,
+  smallTargets,
+  THEME_HOURS,
+} from "./helpers";
 
 // MB-14 and M5-05: every view of the app, in both themes, has no axe violation, every target is at
 // least 48×48 px, nothing scrolls sideways, the keyboard reaches and leaves the sheets, and the
 // motion stops with prefers-reduced-motion. Read-only: nothing is saved.
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-
-/** Targets under 48 px: inline links in a text, the map attribution and MapLibre's own controls are exempt. */
-async function smallTargets(page: Page): Promise<string[]> {
-  return page.evaluate(() => {
-    const out: string[] = [];
-    const sel =
-      'button, a[href], select, textarea, input:not([type="checkbox"]):not([type="radio"]), [role="option"]';
-    for (const el of document.querySelectorAll<HTMLElement>(sel)) {
-      if (el.closest(".maplibregl-ctrl, .map__attribution, .sr-only, [inert]")) continue;
-      if (el.matches("p a, li > a:not(.btn)") && el.closest("p")) continue;
-      const box = el.getBoundingClientRect();
-      if (box.width === 0 || box.height === 0) continue; // not shown
-      if (box.width < 47.5 || box.height < 47.5)
-        out.push(
-          `${el.tagName.toLowerCase()} "${(el.getAttribute("aria-label") ?? el.textContent).trim().slice(0, 30)}" ${String(Math.round(box.width))}×${String(Math.round(box.height))}`,
-        );
-    }
-    return out;
-  });
-}
 
 async function check(page: Page, name: string) {
   const axe = await new AxeBuilder({ page }).withTags(TAGS).analyze();

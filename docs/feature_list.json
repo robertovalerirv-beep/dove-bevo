@@ -695,22 +695,22 @@
   {
     "id": "MF-01",
     "milestone": "MF",
-    "descrizione": "Prefetch del file della mappa solo nella pagina della mappa",
-    "verifica": "unit + e2e Chromium e WebKit 390×844: la build scrive in `index.html` un `<meta>` con i percorsi del file, del CSS e del worker di MapLibre; dopo `load` e un momento libero sulla pagina `/` parte un `prefetch` di quei file; nessuna esecuzione: finché non si tocca la mappa restano la foto e nessun canvas; su `/privacy`, `/regole` e `/admin` nessuna richiesta a `maplibre`; in sviluppo nessun prefetch",
+    "descrizione": "Download in anticipo del file della mappa solo nella pagina della mappa",
+    "verifica": "unit + e2e Chromium e WebKit 390×844: la build scrive in `index.html` un `<meta>` con i percorsi del file, del CSS e del worker di MapLibre; dopo `load` e un momento libero sulla pagina `/` parte un `fetch` a bassa priorità di quei tre file (anche su WebKit); nessuna esecuzione: finché non si tocca la mappa restano la foto e nessun canvas, nessun `modulepreload`; con il risparmio dati (`Save-Data`) non parte; su `/privacy`, `/regole` e `/admin` nessuna richiesta a `maplibre`; in sviluppo nessun download in anticipo",
     "passes": false
   },
   {
     "id": "MF-02",
     "milestone": "MF",
-    "descrizione": "Il primo tocco non riscarica la mappa",
-    "verifica": "e2e: dopo il prefetch il tocco su «Esplora la mappa» non genera nuove richieste di rete per i file di MapLibre (serviti dalla cache del browser) e la mappa è pronta; il service worker non ha voci in più nella cache (`pwa.spec.ts` invariato); nessuna richiesta a `/api/*` o `/data/*` in più; CSP senza violazioni",
+    "descrizione": "Il primo tocco riusa i file già scaricati",
+    "verifica": "e2e: i tre file di MapLibre hanno `Cache-Control` con cache lunga (`immutable`) e dopo il tocco su «Esplora la mappa» non c'è nessuna richiesta di rete nuova oltre a quelle già viste; la mappa è pronta; il service worker non ha voci in più nella cache (`pwa.spec.ts` invariato); nessuna richiesta a `/api/*` o `/data/*` in più; CSP senza violazioni. La prova che il tocco non riscarica nulla (cache del browser, che con il certificato autofirmato dei test non si può ottenere) è una verifica a mano su telefono con rete lenta",
     "passes": false
   },
   {
     "id": "MF-03",
     "milestone": "MF",
     "descrizione": "Budget invariati",
-    "verifica": "Lighthouse CI mobile: Performance ≥ 90, altre ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip (un `prefetch` non conta nel peso: test unit su `scripts/bundle-size.ts`); misure prima e dopo in PROGRESS",
+    "verifica": "Lighthouse CI mobile: Performance ≥ 90, altre ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip (il download in anticipo non conta nel peso: test unit su `scripts/bundle-size.ts`); misure prima e dopo in PROGRESS",
     "passes": false
   },
   {

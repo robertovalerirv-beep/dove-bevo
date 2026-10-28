@@ -4,6 +4,21 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-28 · SPEC 1.12: download in anticipo con `fetch`, non `prefetch` (branch `spec-1-12`) · ADR 0039 · MF
+
+**Richiesta di Roberto:** il Ramo A ha misurato con WebKit che `rel=prefetch` non scarica nulla su Safari/iPhone; scelta di Roberto: `fetch` a bassa priorità.
+
+**Fatto (solo specifica)**
+- SPEC 1.12: D-35, MF-01, MF-02 e MF-03 riscritte (`prefetch` → `fetch`, Save-Data, cache lunga su `/assets/*`, MF-02 con prova a mano per la cache vera); registro 1.12; ADR 0039.
+- `docs/feature_list.json`: cambiano solo `descrizione` e `verifica` di MF-01, MF-02, MF-03 (autorizzate da Roberto in chat); `passes` invariati.
+- Guardia sul tag `spec-approved-13` (`scripts/check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`, `.claude/agents/spec-reviewer.md`).
+
+**Non fatto, di Roberto**
+- Creare e pubblicare il tag `spec-approved-13` sul commit di questa modifica: finché manca, la guardia è rossa.
+- Prova su iPhone reale con rete lenta: tocco sulla mappa dopo 5-10 secondi dall'apertura.
+
+---
+
 ## 2026-10-28 · SPEC 1.11: mappa pronta al primo tocco e interfaccia in inglese (branch `spec-1-11`) · ADR 0037, 0038 · MF, ME
 
 **Richiesta di Roberto:** (1) la mappa si carica solo al primo tocco e ha latenza: scelta l'opzione B (scaricare il file in anticipo, senza banner); (2) pagina utente in inglese, stesso database, formati `it-IT`, menu a tendina in alto a sinistra di fronte all'Elenco, admin italiano, lingua non salvata, si parte sempre dall'italiano, privacy e regole tradotte come bozza.

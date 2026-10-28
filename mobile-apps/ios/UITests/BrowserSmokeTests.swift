@@ -199,7 +199,23 @@ final class BrowserSmokeTests: XCTestCase {
         let savedKey = String(savedRow.identifier.dropFirst("savedVenue.".count))
         XCTAssertFalse(savedKey.isEmpty)
         attachScreen(named: "DoveBevo-live-native-saved-venue")
-        savedRow.tap()
+        // Leave the venue before reopening it. Merely popping the native list
+        // without loading its link must not satisfy the reopen proof.
+        app.navigationBars["Locali salvati"].buttons["Torna alla mappa"].tap()
+        XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
+        let initialCloseBar = website.buttons["Chiudi"]
+        XCTAssertTrue(initialCloseBar.waitForExistence(timeout: 10))
+        initialCloseBar.tap()
+        let venueClosed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: website.links["Indicazioni"])
+        XCTAssertEqual(XCTWaiter.wait(for: [venueClosed], timeout: 15), .completed)
+        XCTAssertTrue(interactiveMap().waitForExistence(timeout: 15))
+        XCTAssertTrue(hasVisiblePositiveCoverage(), "Returning from the original venue must preserve the Milano map")
+        app.buttons["browser.more"].tap()
+        app.buttons["Locali salvati"].tap()
+        XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 10))
+        let reopenRow = app.tables["savedVenues.list"].cells.matching(NSPredicate(format: "label == %@", qaName)).firstMatch
+        XCTAssertTrue(reopenRow.waitForExistence(timeout: 10))
+        reopenRow.tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
         XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 45), "Reopening the saved link must load the real venue")
         waitForNativePageReady()
@@ -212,13 +228,19 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(reopenedName.waitForExistence(timeout: 10))
         XCTAssertEqual(reopenedName.placeholderValue, "Locale \(savedKey)")
         XCTAssertEqual(reopenedName.value as? String, qaName, "Reopen must return to the exact saved venue URL")
+        let cancelledMarker = "-cancel"
+        reopenedName.tap()
+        reopenedName.typeText(cancelledMarker)
+        XCTAssertNotEqual(reopenedName.value as? String, qaName, "Actually edit the name before testing Cancel")
+        XCTAssertTrue((reopenedName.value as? String)?.contains(cancelledMarker) == true)
         app.buttons["savedVenue.cancel"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
         app.buttons["browser.more"].tap()
         app.buttons["Locali salvati"].tap()
         XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 10))
         let qaRow = app.tables["savedVenues.list"].cells.matching(NSPredicate(format: "label == %@", qaName)).firstMatch
-        XCTAssertTrue(qaRow.waitForExistence(timeout: 10))
+        XCTAssertTrue(qaRow.waitForExistence(timeout: 10), "Cancel must preserve the original saved name")
+        XCTAssertEqual(app.tables["savedVenues.list"].cells.matching(NSPredicate(format: "label CONTAINS %@", cancelledMarker)).count, 0)
         qaRow.swipeLeft()
         let remove = app.buttons["Rimuovi"]
         XCTAssertTrue(remove.waitForExistence(timeout: 5))

@@ -67,6 +67,13 @@ for (const [name, command] of steps) {
     const first = lines.findIndex((line) => /^\s*1\) /.test(line));
     console.error((first >= 0 ? lines.slice(first, first + 60) : lines.slice(-60)).join("\n"));
     console.error("\nLog completo: test-results/verify-last.log");
+    // The most common local cause, and it is not a bug: Playwright was updated (Dependabot) and its
+    // browsers were not downloaded again. Say what to run instead of leaving a wall of failures.
+    if (/Executable doesn't exist|npx playwright install/.test(output))
+      console.error(
+        "\n→ Mancano i browser di Playwright (o sono di una versione vecchia). Non è un errore del codice.\n" +
+          "  Esegui:  npx playwright install chromium webkit\n  poi riprova il push.",
+      );
     if (name.startsWith("Lighthouse"))
       spawnSync("node scripts/lighthouse-summary.mjs", { shell: true, stdio: "inherit" });
     console.error(`\n✗ ${name} fallito: push bloccato. Correggi e riprova.`);

@@ -303,6 +303,7 @@ jobs:
         if: always()
         with:
           name: dove-bevo-ios-capture-${{ github.sha }}
+          include-hidden-files: true
           path: |
             mobile-apps/ios/.build/TestResults*.xcresult
             mobile-apps/ios/.build/last-test-result-path.txt

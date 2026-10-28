@@ -17,6 +17,10 @@ enum SavedVenuePolicy {
 
     static func canonicalURL(_ url: URL?) -> URL? {
         guard let url, URLPolicy.isWebsite(url),
+              let scheme = url.scheme,
+              ["www.dovebevo.com", "dovebevo.com", "www.dovebevo.com:443", "dovebevo.com:443"].contains(
+                url.absoluteString.dropFirst(scheme.count + 3).prefix { $0 != "/" && $0 != "?" && $0 != "#" }.lowercased()
+              ),
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let host = components.percentEncodedHost?.lowercased(),
               ["www.dovebevo.com", "dovebevo.com"].contains(host),

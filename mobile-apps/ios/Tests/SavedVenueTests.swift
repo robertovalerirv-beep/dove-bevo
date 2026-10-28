@@ -10,6 +10,8 @@ final class SavedVenueTests: XCTestCase {
             XCTAssertEqual(result.absoluteString, "https://www.dovebevo.com/bar/\(prefix)123?c=u0nd9")
         }
         XCTAssertNotNil(SavedVenuePolicy.canonicalURL(URL(string: "https://www.dovebevo.com/bar/n123456789012345?c=012bz")))
+        XCTAssertEqual(SavedVenuePolicy.canonicalURL(URL(string: "HTTPS://WWW.DOVEBEVO.COM/bar/u7?c=u0nd9"))?.absoluteString,
+                       "https://www.dovebevo.com/bar/u7?c=u0nd9")
     }
 
     func testNonVenueAndAmbiguousLinksCannotBeSaved() {
@@ -25,6 +27,7 @@ final class SavedVenueTests: XCTestCase {
             "https://www.dovebevo.com/bar/n123?c=u0nda", "https://www.dovebevo.com/bar/n123?c=u0nd99",
             "https://www.dovebevo.com/bar/n123?c=u0nd9%0A", "https://www.dovebevo.com/bar/n123",
             "http://www.dovebevo.com/bar/n123?c=u0nd9", "https://www.dovebevo.com:8443/bar/n123?c=u0nd9",
+            "https://www.dovebevo.com:/bar/n123?c=u0nd9", "https://www.dovebevo.com:0443/bar/n123?c=u0nd9",
             "https://user@www.dovebevo.com/bar/n123?c=u0nd9", "https://www.dovebevo.com.evil.example/bar/n123?c=u0nd9",
             "https://www.dovebevo.com./bar/n123?c=u0nd9", "https://www.dovebevo%2Ecom/bar/n123?c=u0nd9",
             "file:///bar/n123?c=u0nd9", "javascript:alert(1)", "/bar/n123?c=u0nd9"
@@ -125,12 +128,31 @@ final class SavedVenueTests: XCTestCase {
         }
     }
 
+    func testRawUnpairedSurrogatesAreNeverExposedAsSavedLabels() throws {
+        try withStore { store, directory in
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            for label in [#"\uD800"#, #"\uDC00"#, #"\uD800\u0061"#] {
+                let raw = Data("[{\"url\":\"\(venueURL(1).absoluteString)\",\"label\":\"\(label)\"}]".utf8)
+                try raw.write(to: store.fileURL)
+                do {
+                    XCTAssertTrue(try store.load().isEmpty, "Malformed scalar records must be discarded if the JSON reader does not reject them")
+                } catch {
+                    // Rejecting the complete malformed JSON payload is safe too.
+                }
+                XCTAssertEqual(try Data(contentsOf: store.fileURL), raw)
+            }
+        }
+    }
+
     func testSaveAndRemoveFailureKeepPreviousDiskRecords() throws {
         try withStore { store, directory in
             try store.save(url: venueURL(1), label: "Primo")
             let previous = try Data(contentsOf: store.fileURL)
             try FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: directory.path)
             defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: directory.path) }
+            if FileManager.default.isWritableFile(atPath: directory.path) {
+                throw XCTSkip("This filesystem does not enforce directory write permissions; real permission-failure coverage is unavailable")
+            }
             XCTAssertThrowsError(try store.save(url: venueURL(2), label: "Secondo"))
             XCTAssertThrowsError(try store.remove(url: venueURL(1)))
             XCTAssertEqual(try Data(contentsOf: store.fileURL), previous)

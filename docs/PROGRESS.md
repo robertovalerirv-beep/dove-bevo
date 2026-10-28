@@ -4,6 +4,22 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-28 · SPEC 1.13: pulsante centrale, attribuzioni da 24 px, titolo neutro (branch `m6-chiusura-inglese`) · ADR 0040 · MG, MH, ME
+
+**Richiesta di Roberto:** una PR sola per (1) i test che mancano alle voci ME-03, ME-04, ME-06, ME-07; (2) le attribuzioni della mappa troppo piccole per `axe`; (3) dopo la sua prova su iPhone (il download in anticipo non aiuta Safari): il pulsante centrale «Clicca sulla mappa o cerca una città» all'apertura. I test devono passare davvero, niente `--no-verify`.
+
+**Fatto in questo commit (solo specifica)**
+- SPEC 1.13: D-37, 7.1, 7.11, registro 1.13; ME-03 e M1-07 riscritte; nuove voci MG-01, MH-01, MH-02 (tutte `passes: false`); milestone MG e MH.
+- ADR 0040. Guardia sul tag `spec-approved-14` (`scripts/check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`, `.claude/agents/spec-reviewer.md`).
+- `docs/feature_list.json`: cambiano solo `verifica` di ME-03 e M1-07 (autorizzate da Roberto in chat) e le tre voci nuove; `passes` invariati.
+
+**Non fatto, di Roberto**
+- Creare e pubblicare il tag `spec-approved-14` su questo commit: finché manca, la guardia è rossa.
+
+**Prossimi passi (stesso ramo, dopo il tag):** test prima (ME-03/04/06/07, MG-01, MH-01/02), poi il codice (pulsante centrale, attribuzioni), `npm run verify` per intero, CI verde con WebKit, revisioni, `passes: true`.
+
+---
+
 ## 2026-10-28 · Mappa pronta al primo tocco: file scaricati in anticipo con `fetch` (branch `m6-mappa-prefetch`) · SPEC 1.12 (tag `spec-approved-13`), ADR 0039, MF-01…MF-03
 
 **Richiesta di Roberto:** il primo tocco sulla mappa aspetta il download di MapLibre (circa 440 KB compressi). Si scaricano i file in anticipo, senza eseguirli. Scelta di Roberto dopo la misura su WebKit: `fetch(url, { priority: "low" })` al posto di `<link rel="prefetch">`, perché Safari/iPhone ignora il prefetch.

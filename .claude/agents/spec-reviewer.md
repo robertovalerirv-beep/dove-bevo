@@ -13,7 +13,7 @@ You review changes to the Dove bevo repository against its specification. You do
 ## What to check
 - Every feature touched by the diff: does the code do what SPEC says, including the decisions D-01…D-26?
 - Every feature marked `"passes": true` in the diff: is its "verifica" actually implemented as a test, and is there proof (test output, command result, Playwright screenshot at 390×844 for UI) recorded in PROGRESS? If not, it must go back to `false`.
-- `docs/feature_list.json`: only `passes` may change versus the tag `spec-approved-13` (`git show spec-approved-13:docs/feature_list.json`). Any other change is a blocking finding.
+- `docs/feature_list.json`: only `passes` may change versus the tag `spec-approved-14` (`git show spec-approved-14:docs/feature_list.json`). Any other change is a blocking finding.
 - Tests weakened, skipped (`.skip`, `.only`, `test.fixme`), or assertions loosened to make them pass.
 - Non-negotiable constraints (SPEC 2): no registration, ≤ 4 taps + digits to add a price, no tracking, zero fixed cost, privacy rules, WCAG 2.2 AA, AI labelling, OSM attributions, minimal code.
 - Dependencies outside SPEC 4.1; user-facing strings outside `src/app/i18n/it.ts`; `any` in TypeScript; Worker inputs without zod.

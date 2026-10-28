@@ -36,8 +36,24 @@ final class BrowserSmokeTests: XCTestCase {
     func testBundledPrivacyContactAndNativeBack() {
         XCTAssertTrue(app.buttons["browser.more"].waitForExistence(timeout: 10))
         openPrivacyAndReturn()
-        XCTAssertTrue(app.webViews.firstMatch.exists)
+        // The website is deliberately excluded from accessibility while native
+        // recovery covers it; this native-only case does not require internet.
         XCTAssertTrue(app.buttons["browser.home"].exists)
+        XCTAssertTrue(app.buttons["browser.reload"].exists)
+    }
+
+    func testNativeSavedVenuesListReturnsToTheExistingBrowser() {
+        XCTAssertTrue(app.buttons["browser.more"].waitForExistence(timeout: 10))
+        app.buttons["browser.more"].tap()
+        XCTAssertTrue(app.buttons["Salva locale"].exists)
+        XCTAssertFalse(app.buttons["Salva locale"].isEnabled, "The initial home/map page is not a venue to save")
+        app.buttons["Locali salvati"].tap()
+        XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tables["savedVenues.list"].exists)
+        app.navigationBars["Locali salvati"].buttons["Torna alla mappa"].tap()
+        XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["browser.home"].exists)
+        XCTAssertTrue(app.buttons["browser.reload"].exists)
     }
 
     /// This deliberately requires live HTTPS website readiness. A native

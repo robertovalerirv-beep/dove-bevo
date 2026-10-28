@@ -459,6 +459,64 @@ export async function addToCounter(
   return row !== null;
 }
 
+export interface MobileRecommendationRow {
+  drink: string;
+  count: number;
+  recommended: number;
+}
+
+/** One indexed venue scan; the supplied pair-scoped claims disclose no installation identity. */
+function mobileRecommendationSnapshot(
+  db: D1Database,
+  venue: string,
+  claims: readonly string[],
+): D1PreparedStatement {
+  const slots = claims.map((_, i) => `?${String(i + 2)}`).join(", ") || "NULL";
+  return db
+    .prepare(
+      `SELECT drink, COUNT(*) AS count, MAX(CASE WHEN claim IN (${slots}) THEN 1 ELSE 0 END) AS recommended
+     FROM mobile_recommendations WHERE venue_key = ?1 GROUP BY drink`,
+    )
+    .bind(venue, ...claims);
+}
+
+export async function getMobileRecommendations(
+  db: D1Database,
+  venue: string,
+  claims: readonly string[],
+): Promise<MobileRecommendationRow[]> {
+  const { results } = await mobileRecommendationSnapshot(
+    db,
+    venue,
+    claims,
+  ).all<MobileRecommendationRow>();
+  return results;
+}
+
+/** D1 batches are transactions: set/undo and the returned full snapshot share one commit. */
+export async function setMobileRecommendation(
+  db: D1Database,
+  venue: string,
+  drink: string,
+  claim: string,
+  recommended: boolean,
+  claims: readonly string[],
+): Promise<MobileRecommendationRow[]> {
+  const mutation = db
+    .prepare(
+      recommended
+        ? "INSERT OR IGNORE INTO mobile_recommendations (venue_key, drink, claim) VALUES (?1, ?2, ?3)"
+        : "DELETE FROM mobile_recommendations WHERE venue_key = ?1 AND drink = ?2 AND claim = ?3",
+    )
+    .bind(venue, drink, claim);
+  const [, snapshot] = await db.batch<MobileRecommendationRow>([
+    mutation,
+    mobileRecommendationSnapshot(db, venue, claims),
+  ]);
+  if (!snapshot) throw new Error("Missing recommendation snapshot");
+  return snapshot.results;
+}
+
 /** Every user bar of a cell, for the duplicate check (index vu_cell). */
 export async function venuesInCell(db: D1Database, cell: string) {
   const { results } = await db

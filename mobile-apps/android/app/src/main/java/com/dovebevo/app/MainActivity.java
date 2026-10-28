@@ -16,6 +16,7 @@ import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Message;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.View;
@@ -24,6 +25,8 @@ import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
 import android.webkit.RenderProcessGoneDetail;
+import android.webkit.ServiceWorkerClient;
+import android.webkit.ServiceWorkerController;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -66,9 +69,13 @@ public final class MainActivity extends ComponentActivity {
     private ConnectivityManager connectivity;
     private ConnectivityManager.NetworkCallback networkCallback;
     private AlertDialog privacyDialog;
+    private TestLabPolicy testLabPolicy;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        // Firebase's documented signal, read once before any WebView can be created.
+        testLabPolicy = TestLabPolicy.detect(
+                () -> Settings.System.getString(getContentResolver(), "firebase.test.lab"));
         SharedPreferences rules = getSharedPreferences("dovebevo_rules", MODE_PRIVATE);
         RulesAcceptance.route(rules.getString("accepted_rules_version", null),
                 () -> showWelcome(state, rules), () -> showWebsiteShell(state));
@@ -78,6 +85,12 @@ public final class MainActivity extends ComponentActivity {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
         shell.setBackgroundColor(getColor(R.color.shell_background));
+        if (testLabPolicy.isReadOnly()) {
+            TextView banner = text(R.string.test_lab_read_only_banner, 14);
+            banner.setPadding(dp(12), dp(8), dp(12), dp(8));
+            banner.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
+            shell.addView(banner, new LinearLayout.LayoutParams(-1, -2));
+        }
         shell.setOnApplyWindowInsetsListener((view, insets) -> {
             if (Build.VERSION.SDK_INT >= 30) {
                 android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
@@ -222,15 +235,12 @@ public final class MainActivity extends ComponentActivity {
 
     @SuppressLint("SetJavaScriptEnabled")
     private void createWebsite() {
-        website = new WebView(this);
+        website = configuredWebView();
         website.setId(R.id.website);
         WebSettings settings = website.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setGeolocationEnabled(true);
-        settings.setAllowFileAccess(false);
-        settings.setAllowContentAccess(false);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setMediaPlaybackRequiresUserGesture(true);
@@ -239,10 +249,50 @@ public final class MainActivity extends ComponentActivity {
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
         cookies.setAcceptThirdPartyCookies(website, true);
-        website.setWebViewClient(new WebsiteClient());
+        website.setWebViewClient(new WebsiteClient(testLabPolicy));
         website.setWebChromeClient(new ChromeClient());
         website.setDownloadListener((url, userAgent, disposition, mime, length) -> openExternal(url));
         content.addView(website, 0, new FrameLayout.LayoutParams(-1, -1));
+    }
+
+    /** Only called after rules acceptance, for the website and every popup WebView. */
+    private WebView configuredWebView() {
+        final TestLabPolicy policy = testLabPolicy;
+        // minSdk is 24. Install before a WebView/page can start a service worker.
+        // Also replace any previous activity's policy with normal pass-through when appropriate.
+        // Capture only immutable policy: the process-wide client must not retain this activity.
+        ServiceWorkerController.getInstance().setServiceWorkerClient(new TestLabServiceWorkerClient(policy));
+        WebView view = new WebView(this);
+        WebSettings settings = view.getSettings();
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        view.setWebViewClient(new TestLabClient(policy));
+        return view;
+    }
+
+    private static WebResourceResponse testLabResponse(TestLabPolicy policy, WebResourceRequest request) {
+        TestLabResponse response = TestLabResponse.forRequest(policy, request == null ? null : request.getMethod());
+        if (response == null) return null;
+        // A fixed in-memory response prevents dispatch; never forward or replay the blocked request.
+        return new WebResourceResponse(response.mimeType(), response.encoding(), response.statusCode(),
+                response.reasonPhrase(), response.headers(), response.openBody());
+    }
+
+    private static class TestLabClient extends WebViewClient {
+        private final TestLabPolicy policy;
+        TestLabClient(TestLabPolicy policy) { this.policy = policy; }
+        @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+            return testLabResponse(policy, request);
+        }
+    }
+
+    private static final class TestLabServiceWorkerClient extends ServiceWorkerClient {
+        private final TestLabPolicy policy;
+        TestLabServiceWorkerClient(TestLabPolicy policy) { this.policy = policy; }
+        @Override public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
+            return testLabResponse(policy, request);
+        }
     }
 
     private void navigate(String url) {
@@ -276,6 +326,7 @@ public final class MainActivity extends ComponentActivity {
         return true;
     }
     private void openExternal(String url) {
+        if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
         BrowserPolicy.Target target = BrowserPolicy.target(url);
         if (target != BrowserPolicy.Target.EXTERNAL && target != BrowserPolicy.Target.EMAIL && target != BrowserPolicy.Target.MAP) {
             toast(R.string.blocked_link);
@@ -287,6 +338,7 @@ public final class MainActivity extends ComponentActivity {
         catch (ActivityNotFoundException | SecurityException error) { toast(R.string.external_unavailable); }
     }
     private void share() {
+        if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
         String url = BrowserPolicy.shareUrl(website == null ? null : website.getUrl());
         Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url)
                 .putExtra(Intent.EXTRA_TITLE, getString(R.string.app_name));
@@ -341,7 +393,8 @@ public final class MainActivity extends ComponentActivity {
         errorPanel.bringToFront();
     }
 
-    private final class WebsiteClient extends WebViewClient {
+    private final class WebsiteClient extends TestLabClient {
+        WebsiteClient(TestLabPolicy policy) { super(policy); }
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             // Challenge iframes remain browser content; only top-level links open apps.
             return request.isForMainFrame() && handleNavigation(request.getUrl().toString());
@@ -410,12 +463,9 @@ public final class MainActivity extends ComponentActivity {
         @Override public boolean onCreateWindow(WebView view, boolean dialog, boolean userGesture, Message result) {
             if (!foreground || !userGesture || destroyed) return false;
             disposePopup();
-            popup = new WebView(MainActivity.this);
+            popup = configuredWebView();
             WebView created = popup;
-            created.getSettings().setAllowFileAccess(false);
-            created.getSettings().setAllowContentAccess(false);
-            created.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-            created.setWebViewClient(new WebViewClient() {
+            created.setWebViewClient(new TestLabClient(testLabPolicy) {
                 private boolean handled;
                 private boolean dispatch(String url) {
                     if ("about:blank".equals(url)) return false;

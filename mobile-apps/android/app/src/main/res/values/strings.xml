@@ -25,4 +25,6 @@
     <string name="external_unavailable">Nessuna app disponibile per questo collegamento.</string>
     <string name="blocked_link">Questo collegamento non può essere aperto.</string>
     <string name="no_resubmit">L’invio non è stato ripetuto. Riapri la pagina per continuare.</string>
+    <string name="test_lab_read_only_banner">Test automatico in sola lettura: invii pubblici, collegamenti esterni e condivisioni sono disabilitati per proteggere i dati reali.</string>
+    <string name="test_lab_external_disabled">Durante il test automatico i collegamenti esterni e le condivisioni sono disabilitati.</string>
 </resources>

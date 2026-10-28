@@ -4,7 +4,7 @@ protocol RecommendationVoterProviding {
     func identity() throws -> String
 }
 
-/// A random installation identity, never a browser credential or device ID.
+/// A random installation identity, never a browser credential, hardware ID or advertising ID.
 /// Excluded from backup so another installation does not inherit this vote key.
 final class RecommendationVoterStore: RecommendationVoterProviding {
     private let directory: URL
@@ -28,16 +28,15 @@ final class RecommendationVoterStore: RecommendationVoterProviding {
         Self.lock.lock()
         defer { Self.lock.unlock() }
         do {
-            if fileManager.fileExists(atPath: directory.path) {
-                let values = try directory.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
-                guard values.isDirectory == true, values.isSymbolicLink != true else { throw RecommendationError.identityUnavailable }
+            if let attributes = try entryAttributes(directory) {
+                guard attributes[.type] as? FileAttributeType == .typeDirectory else { throw RecommendationError.identityUnavailable }
             } else {
                 try fileManager.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             }
             try excludeFromBackup(directory)
-            if fileManager.fileExists(atPath: fileURL.path) {
-                let values = try fileURL.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
-                guard values.isRegularFile == true, values.isSymbolicLink != true, values.fileSize == 36 else {
+            if let attributes = try entryAttributes(fileURL) {
+                guard attributes[.type] as? FileAttributeType == .typeRegular,
+                      (attributes[.size] as? NSNumber)?.int64Value == 36 else {
                     throw RecommendationError.identityUnavailable
                 }
                 let handle = try FileHandle(forReadingFrom: fileURL)
@@ -56,6 +55,24 @@ final class RecommendationVoterStore: RecommendationVoterProviding {
             try excludeFromBackup(fileURL)
             return value
         } catch { throw RecommendationError.identityUnavailable }
+    }
+
+    private func entryAttributes(_ url: URL) throws -> [FileAttributeKey: Any]? {
+        do {
+            // This lookup does not traverse the terminal symlink. A dangling
+            // entry must be rejected, never treated as a missing installation.
+            return try fileManager.attributesOfItem(atPath: url.path)
+        } catch let error as NSError {
+            let missing = Int(POSIXErrorCode.ENOENT.rawValue)
+            if error.domain == NSPOSIXErrorDomain, error.code == missing { return nil }
+            if error.domain == NSCocoaErrorDomain,
+               [NSFileNoSuchFileError, NSFileReadNoSuchFileError].contains(error.code),
+               let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError,
+               underlying.domain == NSPOSIXErrorDomain, underlying.code == missing { return nil }
+            // Permission, malformed-path and unsupported metadata errors must
+            // preserve the identity, just like backup-exclusion failures.
+            throw error
+        }
     }
 
     private func excludeFromBackup(_ url: URL) throws {

@@ -31,6 +31,9 @@ class RecommendationContractTests(unittest.TestCase):
         source = (IOS / "App/RecommendationVoterStore.swift").read_text(encoding="utf-8")
         self.assertIn("isExcludedFromBackup = true", source)
         self.assertIn("UUID().uuidString.lowercased()", source)
+        self.assertIn("attributesOfItem(atPath:", source)
+        self.assertIn("POSIXErrorCode.ENOENT", source)
+        self.assertNotIn("fileExists(atPath:", source)
         self.assertNotIn("identifierForVendor", source)
         self.assertNotIn("UserDefaults", source)
 

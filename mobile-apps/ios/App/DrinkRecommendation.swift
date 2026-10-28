@@ -57,12 +57,14 @@ struct RecommendationSnapshot: Equatable {
             guard Set(row.keys) == ["drink", "count", "recommended"],
                   let code = row["drink"] as? String, codes.contains(code), seen.insert(code).inserted,
                   let count = row["count"] as? NSNumber, CFGetTypeID(count) != CFBooleanGetTypeID(),
-                  count.doubleValue.isFinite, count.doubleValue >= 0, count.doubleValue <= 9_007_199_254_740_991,
-                  count.doubleValue.rounded(.towardZero) == count.doubleValue,
+                  // The service emits integer counts. Reject floating/decimal
+                  // representations before a fraction or underflow can round.
+                  ["c", "C", "s", "S", "i", "I", "l", "L", "q", "Q"].contains(String(cString: count.objCType)),
+                  count.int64Value >= 0, count.int64Value <= 9_007_199_254_740_991,
                   let selected = row["recommended"] as? NSNumber, CFGetTypeID(selected) == CFBooleanGetTypeID() else {
                 throw RecommendationError.invalidResponse
             }
-            parsed.append(DrinkRecommendation(drink: code, count: count.intValue, recommended: selected.boolValue))
+            parsed.append(DrinkRecommendation(drink: code, count: Int(count.int64Value), recommended: selected.boolValue))
         }
         guard seen == codes else { throw RecommendationError.invalidResponse }
         return RecommendationSnapshot(venueKey: venueKey, drinks: parsed)

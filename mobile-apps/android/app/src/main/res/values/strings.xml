@@ -2,13 +2,36 @@
 <resources>
     <string name="app_name">Dove bevo</string>
     <string name="back">Indietro</string>
+    <string name="forward">Avanti</string>
     <string name="home">Home</string>
     <string name="share">Condividi</string>
     <string name="refresh">Ricarica</string>
+    <string name="stop_loading">Interrompi</string>
+    <string name="loading_stopped_title">Caricamento interrotto</string>
+    <string name="loading_stopped_body">Tocca Riprova quando vuoi caricare Dove bevo.</string>
     <string name="more_options">Altre opzioni</string>
     <string name="more_symbol" translatable="false">⋮</string>
     <string name="privacy">Privacy</string>
     <string name="support">Contatta l’assistenza</string>
+    <string name="location_help">Permessi posizione</string>
+    <string name="location_help_title">Posizione vicino a te</string>
+    <string name="location_help_body">Tocca «Vicino a me» nella mappa per scegliere se consentire la posizione, anche approssimativa. Se hai negato il permesso, puoi cambiarlo nelle Impostazioni di Android. Controlla anche che la posizione del telefono sia attiva. Puoi sempre cercare una città senza condividere la posizione.</string>
+    <string name="open_settings">Apri Impostazioni</string>
+    <string name="save_venue">Salva locale</string>
+    <string name="saved_venues">Locali salvati</string>
+    <string name="save">Salva</string>
+    <string name="cancel">Annulla</string>
+    <string name="save_venue_unavailable">Apri un locale e attendi il caricamento prima di salvarlo.</string>
+    <string name="saved_venue_name_hint">Nome del locale (facoltativo)</string>
+    <string name="saved_venue_name_help">Scegli un nome di massimo 80 caratteri. Lascia vuoto per usare il codice del locale. Il collegamento e il nome vengono salvati nell’app, senza inviarli al servizio.</string>
+    <string name="saved_venue_name_invalid">Usa al massimo 80 caratteri, senza a capo o caratteri di controllo.</string>
+    <string name="saved_venue_saved">Locale salvato</string>
+    <string name="saved_venues_empty">Non hai ancora salvato locali. Apri un locale sulla mappa e scegli «Salva locale» da Altre opzioni.</string>
+    <string name="saved_venues_online_note">Il collegamento e il nome sono conservati nell’app. Per aprire la mappa e vedere i prezzi aggiornati serve una connessione.</string>
+    <string name="saved_venues_storage_error">Non è stato possibile leggere o salvare i locali. La modifica non è stata confermata. Riprova.</string>
+    <string name="saved_venues_full">Hai già salvato 50 locali. Rimuovine uno prima di aggiungerne un altro.</string>
+    <string name="open_saved_venue">Apri locale</string>
+    <string name="remove_saved_venue">Rimuovi</string>
     <string name="close">Chiudi</string>
     <string name="privacy_unavailable">Non è stato possibile leggere l’informativa inclusa nell’app. Chiudi e riprova, oppure contatta l’assistenza.</string>
     <string name="welcome_title">Benvenuto in Dove bevo</string>

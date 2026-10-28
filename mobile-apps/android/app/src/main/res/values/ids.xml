@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="back" type="id" />
+    <item name="forward" type="id" />
     <item name="home" type="id" />
     <item name="share" type="id" />
     <item name="refresh" type="id" />
@@ -17,4 +18,11 @@
     <item name="website" type="id" />
     <item name="offline" type="id" />
     <item name="load_error" type="id" />
+    <item name="save_venue" type="id" />
+    <item name="saved_venues" type="id" />
+    <item name="saved_venue_name" type="id" />
+    <item name="saved_venues_list" type="id" />
+    <item name="open_saved_venue" type="id" />
+    <item name="remove_saved_venue" type="id" />
+    <item name="location_help" type="id" />
 </resources>

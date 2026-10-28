@@ -35,6 +35,7 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebBackForwardList;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
@@ -57,11 +58,23 @@ public final class MainActivity extends ComponentActivity {
     private LinearLayout errorPanel;
     private TextView offline;
     private ProgressBar progress;
+    private TextView errorTitle;
+    private TextView errorMessage;
+    private Button backButton;
+    private Button forwardButton;
+    private Button refreshButton;
+    private Button shareButton;
+    private SavedVenuesUi savedVenues;
+    private AlertDialog locationHelpDialog;
     private String lastTrustedUrl = BrowserPolicy.HOME;
     private boolean foreground;
     private boolean failed;
     private boolean destroyed;
     private boolean websiteStarted;
+    private boolean loading;
+    private boolean hasUsablePage;
+    private boolean documentHasHttpError;
+    private String stoppedUrl;
     private String locationOrigin;
     private GeolocationPermissions.Callback locationCallback;
     private boolean requestingLocationPermission;
@@ -163,10 +176,15 @@ public final class MainActivity extends ComponentActivity {
         LinearLayout shell = createShell();
         LinearLayout tools = new LinearLayout(this);
         tools.setGravity(Gravity.CENTER_VERTICAL);
-        tools.addView(button(R.id.back, R.string.back, this::goBack), toolSize());
+        backButton = button(R.id.back, R.string.back, this::goBack);
+        forwardButton = button(R.id.forward, R.string.forward, this::goForward);
+        shareButton = button(R.id.share, R.string.share, this::share);
+        refreshButton = button(R.id.refresh, R.string.refresh, this::refresh);
+        tools.addView(backButton, toolSize());
+        tools.addView(forwardButton, toolSize());
         tools.addView(button(R.id.home, R.string.home, () -> navigate(BrowserPolicy.HOME)), toolSize());
-        tools.addView(button(R.id.share, R.string.share, this::share), toolSize());
-        tools.addView(button(R.id.refresh, R.string.refresh, this::refresh), toolSize());
+        tools.addView(shareButton, toolSize());
+        tools.addView(refreshButton, toolSize());
         Button more = button(R.id.more, R.string.more_options, () -> {});
         more.setText(R.string.more_symbol);
         more.setTextSize(24);
@@ -191,22 +209,27 @@ public final class MainActivity extends ComponentActivity {
         errorPanel.setGravity(Gravity.CENTER);
         errorPanel.setPadding(dp(24), dp(24), dp(24), dp(24));
         errorPanel.setBackgroundColor(getColor(R.color.shell_background));
-        errorPanel.addView(text(R.string.unavailable_title, 22));
-        TextView message = text(R.string.unavailable_body, 16);
-        message.setPadding(0, dp(16), 0, dp(16));
-        errorPanel.addView(message);
+        errorTitle = text(R.string.unavailable_title, 22);
+        errorPanel.addView(errorTitle);
+        errorMessage = text(R.string.unavailable_body, 16);
+        errorMessage.setPadding(0, dp(16), 0, dp(16));
+        errorPanel.addView(errorMessage);
         errorPanel.addView(button(R.id.retry, R.string.retry, () -> navigate(lastTrustedUrl)), new LinearLayout.LayoutParams(-2, -2));
         content.addView(errorPanel, new FrameLayout.LayoutParams(-1, -1));
         errorPanel.setVisibility(View.GONE);
         setContentView(shell);
         shell.requestApplyInsets();
         monitorNetwork();
+        savedVenues = new SavedVenuesUi(this, new SavedVenueStore(new SavedVenueFile(getFilesDir())),
+                this::eligibleSavedVenue, this::navigate);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() { goBack(); }
         });
         if (state != null && BrowserPolicy.target(state.getString("trusted_url")) == BrowserPolicy.Target.INTERNAL)
             lastTrustedUrl = state.getString("trusted_url");
-        navigate(lastTrustedUrl);
+        createWebsite();
+        if (!restoreHistory(state)) navigate(lastTrustedUrl);
+        updateToolbar();
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
@@ -229,6 +252,7 @@ public final class MainActivity extends ComponentActivity {
         button.setMinHeight(dp(48));
         button.setMinimumHeight(dp(48));
         button.setPadding(dp(2), dp(4), dp(2), dp(4));
+        button.setMaxLines(2);
         button.setOnClickListener(view -> action.run());
         return button;
     }
@@ -300,22 +324,94 @@ public final class MainActivity extends ComponentActivity {
         cancelLocation();
         if (website == null) createWebsite();
         failed = false;
+        documentHasHttpError = false;
+        stoppedUrl = null;
         lastTrustedUrl = url;
         errorPanel.setVisibility(View.GONE);
         website.setVisibility(View.VISIBLE);
-        progress.setVisibility(View.VISIBLE);
+        setLoading(true);
         website.loadUrl(url); // Explicit GET: never replay a form submission on retry.
     }
     private void refresh() {
+        if (loading && website != null) {
+            // navigate() records its target before WebView exposes a new URL.
+            stoppedUrl = lastTrustedUrl;
+            cancelLocation();
+            website.stopLoading();
+            setLoading(false);
+            if (!hasUsablePage) showFailure(R.string.loading_stopped_title, R.string.loading_stopped_body);
+            return;
+        }
         String url = website == null ? null : website.getUrl();
         navigate(BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL ? url : lastTrustedUrl);
     }
     private void goBack() {
         BackNavigation.perform(website != null && website.canGoBack(), () -> {
             failed = false;
-            progress.setVisibility(View.VISIBLE);
+            stoppedUrl = null;
+            documentHasHttpError = false;
+            cancelLocation();
+            errorPanel.setVisibility(View.GONE);
+            website.setVisibility(View.VISIBLE);
+            setLoading(false); // Same-document history may not emit a page-start callback.
             website.goBack();
+            website.post(this::updateToolbar);
         }, this::finish);
+    }
+
+    private void goForward() {
+        if (website == null || !website.canGoForward()) return;
+        failed = false;
+        stoppedUrl = null;
+        documentHasHttpError = false;
+        cancelLocation();
+        errorPanel.setVisibility(View.GONE);
+        website.setVisibility(View.VISIBLE);
+        setLoading(false);
+        website.goForward();
+        website.post(this::updateToolbar);
+    }
+
+    private void setLoading(boolean value) {
+        loading = value;
+        progress.setVisibility(value ? View.VISIBLE : View.GONE);
+        updateToolbar();
+    }
+
+    private void updateToolbar() {
+        if (backButton == null) return;
+        backButton.setEnabled(website != null && website.canGoBack());
+        forwardButton.setEnabled(website != null && website.canGoForward());
+        shareButton.setEnabled(website != null && hasUsablePage && !failed && !loading);
+        int action = loading ? R.string.stop_loading : R.string.refresh;
+        refreshButton.setText(action);
+        refreshButton.setContentDescription(getString(action));
+    }
+
+    private String eligibleSavedVenue() {
+        if (destroyed || website == null || failed || loading || !hasUsablePage
+                || documentHasHttpError || stoppedUrl != null) return null;
+        return SavedVenueUrl.canonicalize(website.getUrl());
+    }
+
+    private boolean restoreHistory(Bundle state) {
+        if (state == null || website == null) return false;
+        WebView restoring = website;
+        try {
+            Bundle historyState = state.getBundle("browser_history");
+            WebBackForwardList history = BrowserHistoryState.restore(restoring, historyState);
+            if (history == null) return false;
+            lastTrustedUrl = history.getCurrentItem().getUrl();
+            setLoading(true);
+            return true;
+        } catch (RuntimeException invalid) {
+            // Recreate rather than unblocking an invalid, partially restored view.
+            content.removeView(restoring);
+            restoring.destroy();
+            website = null;
+            createWebsite();
+            return false;
+        }
     }
 
     private boolean handleNavigation(String url) {
@@ -348,14 +444,36 @@ public final class MainActivity extends ComponentActivity {
     private void toast(int message) { Toast.makeText(this, message, Toast.LENGTH_SHORT).show(); }
     private void showMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
+        menu.getMenu().add(Menu.NONE, R.id.save_venue, Menu.NONE, R.string.save_venue).setEnabled(eligibleSavedVenue() != null);
+        menu.getMenu().add(Menu.NONE, R.id.saved_venues, Menu.NONE, R.string.saved_venues);
+        menu.getMenu().add(Menu.NONE, R.id.location_help, Menu.NONE, R.string.location_help);
         menu.getMenu().add(Menu.NONE, R.id.privacy, Menu.NONE, R.string.privacy);
         menu.getMenu().add(Menu.NONE, R.id.support, Menu.NONE, R.string.support);
         menu.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == R.id.save_venue) { savedVenues.saveCurrent(); return true; }
+            if (item.getItemId() == R.id.saved_venues) { savedVenues.showList(); return true; }
+            if (item.getItemId() == R.id.location_help) { showLocationHelp(); return true; }
             if (item.getItemId() == R.id.privacy) { showPrivacy(); return true; }
             if (item.getItemId() == R.id.support) { openExternal("mailto:dovebevo@gmail.com"); return true; }
             return false;
         });
         menu.show();
+    }
+
+    private void showLocationHelp() {
+        if (destroyed) return;
+        cancelLocation();
+        locationHelpDialog = new AlertDialog.Builder(this).setTitle(R.string.location_help_title)
+                .setMessage(R.string.location_help_body).setNegativeButton(R.string.close, null)
+                .setPositiveButton(R.string.open_settings, (dialog, which) -> {
+                    if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", getPackageName(), null));
+                    try { startActivity(intent); }
+                    catch (ActivityNotFoundException | SecurityException error) { toast(R.string.external_unavailable); }
+                }).create();
+        locationHelpDialog.setOnDismissListener(dialog -> locationHelpDialog = null);
+        locationHelpDialog.show();
     }
     private void showPrivacy() {
         if (destroyed) return;
@@ -383,11 +501,15 @@ public final class MainActivity extends ComponentActivity {
         privacyDialog.setOnDismissListener(dialog -> privacyDialog = null);
         privacyDialog.show();
     }
-    private void showFailure() {
+    private void showFailure() { showFailure(R.string.unavailable_title, R.string.unavailable_body); }
+
+    private void showFailure(int title, int message) {
         if (destroyed) return;
         failed = true;
         cancelLocation();
-        progress.setVisibility(View.GONE);
+        setLoading(false);
+        errorTitle.setText(title);
+        errorMessage.setText(message);
         if (website != null) website.setVisibility(View.GONE);
         errorPanel.setVisibility(View.VISIBLE);
         errorPanel.bringToFront();
@@ -400,6 +522,8 @@ public final class MainActivity extends ComponentActivity {
             return request.isForMainFrame() && handleNavigation(request.getUrl().toString());
         }
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
+            if (view != website || destroyed) return;
+            if (url.equals(stoppedUrl)) { view.stopLoading(); return; }
             cancelLocation();
             if (BrowserPolicy.target(url) != BrowserPolicy.Target.INTERNAL) {
                 view.stopLoading();
@@ -408,22 +532,39 @@ public final class MainActivity extends ComponentActivity {
             }
             lastTrustedUrl = url;
             failed = false;
-            progress.setVisibility(View.VISIBLE);
+            documentHasHttpError = false;
+            stoppedUrl = null;
+            setLoading(true);
         }
         @Override public void onPageFinished(WebView view, String url) {
-            progress.setVisibility(View.GONE);
+            if (view != website || destroyed || url.equals(stoppedUrl) || !url.equals(lastTrustedUrl)) return;
+            setLoading(false);
             if (!failed && BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL) {
+                hasUsablePage = !documentHasHttpError;
                 errorPanel.setVisibility(View.GONE);
                 view.setVisibility(View.VISIBLE);
             }
+            updateToolbar();
+        }
+        @Override public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
+            if (view != website || destroyed || BrowserPolicy.target(url) != BrowserPolicy.Target.INTERNAL) return;
+            if (!loading && !failed) lastTrustedUrl = url;
+            updateToolbar();
         }
         @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-            if (request.isForMainFrame()) showFailure();
+            // Chromium's explicit aborted-navigation marker is cancellation,
+            // not a new document failure, even if it arrives after Retry.
+            if (BrowserFailurePolicy.isCancelled(error.getErrorCode(), error.getDescription())) return;
+            if (view == website && request.isForMainFrame() && !request.getUrl().toString().equals(stoppedUrl)
+                    && request.getUrl().toString().equals(lastTrustedUrl)) showFailure();
         }
         @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
             // Cloudflare can serve an interactive browser challenge as HTTP 403.
             // Keep 4xx pages visible instead of hiding the existing challenge UI.
-            if (request.isForMainFrame() && response.getStatusCode() >= 500) showFailure();
+            if (view == website && request.isForMainFrame() && request.getUrl().toString().equals(lastTrustedUrl)) {
+                documentHasHttpError = response.getStatusCode() >= 400;
+                if (response.getStatusCode() >= 500) showFailure();
+            }
         }
         @Override public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
             handler.cancel();
@@ -437,6 +578,7 @@ public final class MainActivity extends ComponentActivity {
             if (view == website) {
                 content.removeView(view);
                 website = null;
+                hasUsablePage = false;
                 view.destroy();
                 showFailure();
             }
@@ -569,11 +711,21 @@ public final class MainActivity extends ComponentActivity {
     }
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putString("trusted_url", lastTrustedUrl);
+        if (website != null && !failed) {
+            try {
+                Bundle history = BrowserHistoryState.capture(website);
+                if (history != null) state.putBundle("browser_history", history);
+            } catch (RuntimeException unavailable) {
+                // Keep only the validated URL fallback when state is unavailable.
+            }
+        }
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
         destroyed = true;
         if (privacyDialog != null) privacyDialog.dismiss();
+        if (locationHelpDialog != null) locationHelpDialog.dismiss();
+        if (savedVenues != null) savedVenues.dismiss();
         cancelLocation();
         disposePopup();
         if (connectivity != null && networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback);

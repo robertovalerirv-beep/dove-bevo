@@ -7,6 +7,7 @@ on:
       - "mobile-testing/v*"
       - "mobile-capture/v*"
       - "mobile-beta/v*"
+      - "mobile-ipad-capture/v*"
   pull_request:
     paths:
       - "mobile-apps/**"
@@ -103,6 +104,119 @@ jobs:
           name: dove-bevo-android-release-${{ github.sha }}
           path: mobile-apps/android/app/build/outputs/bundle/release/*.aab
           retention-days: 14
+          if-no-files-found: error
+
+  ios-ipad-capture:
+    name: iOS 27 live test and genuine 13-inch iPad capture
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-ipad-capture/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: xcode-27
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "27.0"
+    steps:
+      - name: Verify exact iPad-capture toolchain without credentials
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          sw_vers
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Generate pinned native Xcode project
+        run: bash mobile-apps/ios/scripts/generate-project.sh
+      - name: Verify native release and simulator guards without credentials
+        run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
+      - name: Verify live map on 13-inch iPad and capture store screenshots
+        timeout-minutes: 15
+        env:
+          STORE_CAPTURE_DEVICE: ipad
+        run: bash mobile-apps/ios/scripts/capture-ipad.sh
+      - name: Require the genuine exported live iPad PNG
+        timeout-minutes: 2
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import re
+          import struct
+          import subprocess
+          import sys
+
+          def require(condition):
+              if not condition:
+                  raise ValueError("iPad capture evidence is invalid")
+
+          def verify_ipad_capture():
+              workspace = Path.cwd().resolve(strict=True)
+              root = Path("mobile-apps/ios/.build/Screenshots-iPad")
+              require(all(not parent.is_symlink() for parent in [root, *root.parents]))
+              require(root.is_dir())
+              root = root.resolve(strict=True)
+              require(root.is_relative_to(workspace))
+              manifest = root / "manifest.json"
+              require(manifest.is_file() and not manifest.is_symlink() and manifest.stat().st_size <= 2_000_000)
+              require(manifest.resolve(strict=True).parent == root)
+              entries = json.loads(manifest.read_text(encoding="utf-8"))
+              require(isinstance(entries, list) and len(entries) <= 10_000)
+              matches = []
+              for entry in entries:
+                  require(isinstance(entry, dict))
+                  if entry.get("testIdentifier") != "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()":
+                      continue
+                  require(entry.get("isAssociatedWithFailure", False) is False)
+                  attachments = entry.get("attachments")
+                  require(isinstance(attachments, list) and len(attachments) <= 1_000)
+                  for attachment in attachments:
+                      require(isinstance(attachment, dict) and attachment.get("isAssociatedWithFailure") is False)
+                      name = attachment.get("suggestedHumanReadableName", "")
+                      if isinstance(name, str) and name.startswith("DoveBevo-live-Milano-map"):
+                          matches.append(attachment)
+              require(len(matches) == 1)
+              filename = matches[0].get("exportedFileName")
+              require(isinstance(filename, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*\.png", filename) is not None)
+              image = root / filename
+              require(image.is_file() and not image.is_symlink() and image.resolve(strict=True).parent == root)
+              require(image.stat().st_nlink == 1 and 24 <= image.stat().st_size <= 64_000_000)
+              with image.open("rb") as stream:
+                  header = stream.read(24)
+              require(header[:16] == b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+              dimensions = struct.unpack(">II", header[16:24])
+              require(dimensions in {(2048, 2732), (2064, 2752)})
+              inspection = subprocess.run(["sips", "-g", "format", "-g", "pixelWidth", "-g", "pixelHeight", str(image)],
+                                          check=True, capture_output=True, text=True, timeout=15)
+              fields = dict(re.findall(r"^\s*(format|pixelWidth|pixelHeight):\s*(\S+)\s*$", inspection.stdout, re.MULTILINE))
+              require(fields.get("format") == "png" and (int(fields["pixelWidth"]), int(fields["pixelHeight"])) == dimensions)
+              return {"width": dimensions[0], "height": dimensions[1], "sha256": hashlib.sha256(image.read_bytes()).hexdigest()}
+
+          try:
+              ipad = verify_ipad_capture()
+          except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+              sys.exit("iPad capture validation failed; a genuine live 13-inch iPad PNG is required")
+          print(json.dumps({"liveIPadCaptureExportVerified": True, "ipad": ipad}, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-ipad-capture-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            mobile-apps/ios/.build/iPadScreenshots.xcresult
+            mobile-apps/ios/.build/Screenshots-iPad/
+            mobile-apps/ios/.build/iPadSimulatorInventory.json
+            mobile-apps/ios/.build/SimulatorDiagnostics/
+          retention-days: 7
           if-no-files-found: error
 
   release-ios:

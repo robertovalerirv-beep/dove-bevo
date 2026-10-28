@@ -732,14 +732,14 @@
     "milestone": "ME",
     "descrizione": "Nessun dato salvato, si riparte sempre dall'italiano",
     "verifica": "e2e + unit: scegliendo English `localStorage`, `sessionStorage` e i cookie non cambiano (restano solo le due chiavi di oggi, MB-12); ricaricando o riaprendo il sito è in italiano; `html lang` segue la lingua mentre la pagina è aperta; il titolo della pagina segue la lingua in `/privacy` e `/regole`, sulla mappa resta «Dove bevo» in entrambe le lingue; nessuna richiesta a `/api/*` in più; il file inglese è un file a richiesta",
-    "passes": false
+    "passes": true
   },
   {
     "id": "ME-04",
     "milestone": "ME",
     "descrizione": "Tutte le viste pubbliche in inglese",
     "verifica": "e2e: in English sono in inglese mappa, menu «Scegli cosa bere» (drink compresi), ricerca, Elenco, scheda bar, Aggiungi prezzo (Timbro, Annulla, Tessera), bar mancante, segnalazioni, invito all'installazione, messaggi di «Vicino a me» e di errore; nessun testo italiano residuo nelle viste pubbliche; screenshot 390×844 senza testi che escono dal bordo",
-    "passes": false
+    "passes": true
   },
   {
     "id": "ME-05",
@@ -753,14 +753,14 @@
     "milestone": "ME",
     "descrizione": "Formati italiani, admin italiano",
     "verifica": "e2e: in English prezzi, date e distanze restano nel formato `it-IT`; `/admin` e `/admin/verificati` restano in italiano anche dopo aver scelto English; messaggi d'errore dell'API, pagine per i motori di ricerca, manifest e `lang` di `index.html` invariati (test worker esistenti)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "ME-07",
     "milestone": "ME",
     "descrizione": "Accessibilità in inglese",
     "verifica": "e2e: axe senza violazioni nei due temi con English; target ≥ 48×48 px; `lang=\"en\"` sulla pagina mentre l'inglese è scelto",
-    "passes": false
+    "passes": true
   },
   {
     "id": "ME-08",
@@ -774,21 +774,21 @@
     "milestone": "MG",
     "descrizione": "Attribuzioni con link da almeno 24 px",
     "verifica": "e2e Chromium e WebKit 390×844, nei due temi: i link delle attribuzioni misurano almeno 24×24 px; la riga resta una sola a 390 px (non oltre 26 px di altezza) e al massimo due righe a 320 px; non si sovrappone a legenda e barra; con la spaziatura del testo WCAG 1.4.12 resta dentro la mappa, sotto la legenda; `axe` (wcag2a, 2aa, 21a, 21aa, 22aa) senza violazioni e senza escludere le attribuzioni; screenshot",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MH-01",
     "milestone": "MH",
     "descrizione": "Pulsante centrale all'apertura",
     "verifica": "e2e Chromium e WebKit 390×844, nei due temi: all'apertura al centro della mappa c'è il pulsante «Clicca sulla mappa o cerca una città» (almeno 48 px, centrato, testo intero visibile) e in alto non c'è il messaggio «Avvicinati…»; toccando il pulsante o la mappa la mappa parte, il pulsante sparisce e in alto compare «Carico la mappa…» e poi «Avvicinati per vedere i prezzi, o cerca una città.»; non copre menu della lingua, Elenco e attribuzioni; altezza della mappa e della barra identiche prima e dopo il tocco (M1-16); con un indirizzo con coordinate (la mappa parte subito) il pulsante non compare; nessuna richiesta di rete in più; `axe` senza violazioni; screenshot a 390 e 360 px",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MH-02",
     "milestone": "MH",
     "descrizione": "Pulsante centrale in inglese",
     "verifica": "unit/e2e: il testo italiano e quello inglese («Tap the map or search for a city») stanno in `it.ts` e `en.ts`; scegliendo English il pulsante cambia dal vivo e non resta testo italiano; la frase italiana passa il test delle parole vietate (D-31)",
-    "passes": false
+    "passes": true
   },
   {
     "id": "M5-01",

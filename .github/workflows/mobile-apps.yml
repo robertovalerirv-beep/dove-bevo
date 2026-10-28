@@ -563,7 +563,8 @@ jobs:
     needs: [internal-android-checks, internal-ios-checks]
     if: >-
       github.event_name == 'push' && github.ref_type == 'tag' &&
-      startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
+      (startsWith(github.ref, 'refs/tags/mobile-testing/v') ||
+       startsWith(github.ref, 'refs/tags/mobile-beta/v')) &&
       github.repository == 'robertovalerirv-beep/dove-bevo'
     runs-on: ubuntu-24.04
     timeout-minutes: 20

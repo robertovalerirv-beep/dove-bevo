@@ -65,14 +65,14 @@
     <string name="recommendation_read_only">Test automatico: consigli in sola lettura.</string>
     <string name="recommendation_venue_unavailable">Apri un locale e attendi il caricamento per vedere i consigli.</string>
     <string name="map_destination">Mappa</string>
-    <string name="favorites_explanation">Scegli un drink e una fascia per confrontare i prezzi segnalati nei tuoi preferiti. Il nome salvato resta leggibile senza connessione; i prezzi richiedono internet.</string>
+    <string name="favorites_explanation">Confronta prezzi per drink e fascia.</string>
     <string name="favorites_drink">Drink da confrontare</string>
     <string name="favorites_band">Fascia di prezzo</string>
     <string name="favorites_normal">Normale</string>
     <string name="favorites_happy_hour">Happy hour</string>
     <string name="favorites_refresh">Aggiorna prezzi</string>
     <string name="favorites_loading">Caricamento dei prezzi…</string>
-    <string name="favorites_loaded">Aggiornamento terminato. Dove disponibili, i prezzi di questo drink e fascia sono ordinati dal più basso. Controlla la data e i messaggi di ciascun locale.</string>
+    <string name="favorites_loaded">Prezzi dal più basso, dove disponibili.</string>
     <string name="favorites_paused">Prezzi da aggiornare al ritorno nell’app.</string>
     <string name="favorites_unavailable">Locale o prezzi non verificabili. Riprova con Aggiorna prezzi.</string>
     <string name="favorites_missing">Nessun prezzo segnalato per questo drink e questa fascia.</string>

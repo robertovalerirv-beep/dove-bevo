@@ -457,10 +457,19 @@ public final class MainActivity extends ComponentActivity {
         if(venueTools!=null)venueTools.setVisibility(!favoritesVisible&&eligibleSavedVenue()!=null?View.VISIBLE:View.GONE);
         if(saveButton!=null)saveButton.setEnabled(foreground&&eligibleSavedVenue()!=null);
         if(browserTools!=null)browserTools.setVisibility(favoritesVisible?View.GONE:View.VISIBLE);
-        if(mapDestination!=null){mapDestination.setSelected(!favoritesVisible);favoritesDestination.setSelected(favoritesVisible);
-            mapDestination.setTypeface(null,favoritesVisible?android.graphics.Typeface.NORMAL:android.graphics.Typeface.BOLD);
-            favoritesDestination.setTypeface(null,favoritesVisible?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL);}
+        if(mapDestination!=null){styleDestination(mapDestination,!favoritesVisible);styleDestination(favoritesDestination,favoritesVisible);}
         if (recommendations != null) recommendations.contextChanged();
+    }
+
+    private void styleDestination(Button button,boolean selected){
+        button.setSelected(selected);
+        int ink=getColor(selected?R.color.colorPrimaryDark:R.color.shell_text);
+        button.setTextColor(ink);
+        button.setTypeface(null,selected?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL);
+        // Tint the existing native background so its touch ripple remains; remove only the raised elevation.
+        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColor(selected?R.color.colorPrimary:R.color.shell_background)));
+        button.setStateListAnimator(null);button.setElevation(0);
+        for(android.graphics.drawable.Drawable icon:button.getCompoundDrawables())if(icon!=null)icon.mutate().setTint(ink);
     }
 
     private void showFavorites(){

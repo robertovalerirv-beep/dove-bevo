@@ -20,14 +20,24 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var isOffline = false
     private var recoveredRenderer = false
     private var navigationState = BrowserNavigationState()
-    private let savedVenues = SavedVenueStore()
+    private let savedVenues: SavedVenueStore
     private var saveMenuEnabled = false
+    private let bookmarkCapture: VenueBookmarkCapture
+    private var bookmarkTimeout: DispatchWorkItem?
 
     private lazy var backButton = item("Indietro", symbol: "chevron.backward", action: #selector(goBack), id: "browser.back")
     private lazy var forwardButton = item("Avanti", symbol: "chevron.forward", action: #selector(goForward), id: "browser.forward")
     private lazy var homeButton = item("Home", symbol: "house", action: #selector(goHome), id: "browser.home")
     private lazy var shareButton = item("Condividi", symbol: "square.and.arrow.up", action: #selector(sharePage), id: "browser.share")
     private lazy var reloadButton = item("Ricarica", symbol: "arrow.clockwise", action: #selector(reloadPage), id: "browser.reload")
+
+    init(savedVenues: SavedVenueStore = SavedVenueStore(), bookmarkCapture: VenueBookmarkCapture = VenueBookmarkCapture()) {
+        self.savedVenues = savedVenues
+        self.bookmarkCapture = bookmarkCapture
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { return nil }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -40,8 +50,19 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     deinit {
+        bookmarkTimeout?.cancel()
         monitor.cancel()
         observations.forEach { $0.invalidate() }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        invalidateBookmarkCapture()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        updateMoreMenu()
     }
 
     private func configureChrome() {
@@ -69,10 +90,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func moreMenu() -> UIMenu {
         UIMenu(children: [
-            UIAction(title: "Salva locale", image: UIImage(systemName: "bookmark"), attributes: canSaveCurrentVenue ? [] : [.disabled]) { [weak self] _ in
+            UIAction(title: "Salva nei preferiti", image: UIImage(systemName: "bookmark"), attributes: canSaveCurrentVenue ? [] : [.disabled]) { [weak self] _ in
                 self?.saveCurrentVenue()
             },
-            UIAction(title: "Locali salvati", image: UIImage(systemName: "bookmark.fill")) { [weak self] _ in
+            UIAction(title: "Preferiti", image: UIImage(systemName: "bookmark.fill")) { [weak self] _ in
                 self?.showSavedVenues()
             },
             UIAction(title: "Apri nel browser", image: UIImage(systemName: "safari")) { [weak self] _ in
@@ -91,9 +112,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private var canSaveCurrentVenue: Bool {
+        !bookmarkCapture.isPending && usableVenueURL != nil
+    }
+
+    private var usableVenueURL: URL? {
         guard let webView, hasLoadedPage, !webView.isLoading, !navigationState.isStopped,
-              errorView.isHidden else { return false }
-        return SavedVenuePolicy.canonicalURL(webView.url) != nil
+              errorView.isHidden, navigationController?.topViewController === self else { return nil }
+        return SavedVenuePolicy.canonicalURL(webView.url)
     }
 
     private func updateMoreMenu() {
@@ -106,7 +131,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private func configureWebView() {
         let configuration = WKWebViewConfiguration()
         // Keep WebKit's ordinary persistent cookies and local storage. There is
-        // no native API client, cookie copy, message handler or injected script.
+        // no native API client, cookie copy or message handler. A user-requested
+        // bookmark reads only the visible public venue name in an isolated world.
         configuration.websiteDataStore = .default()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         webView = WKWebView(frame: .zero, configuration: configuration)
@@ -261,13 +287,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             },
             webView.observe(\.isLoading, options: [.new]) { [weak self] webView, _ in
                 guard let self else { return }
+                if webView.isLoading { self.invalidateBookmarkCapture() }
                 let loading = webView.isLoading && !self.navigationState.isStopped && self.errorView.isHidden
                 self.progressView.isHidden = !loading
                 self.updateLoadingControl(loading)
                 self.updateMoreMenu()
             },
             webView.observe(\.url, options: [.new]) { [weak self] _, _ in
-                self?.updateMoreMenu()
+                self?.invalidateBookmarkCapture()
             },
             webView.observe(\.canGoBack, options: [.new]) { [weak self] webView, _ in
                 self?.backButton.isEnabled = webView.canGoBack
@@ -291,6 +318,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func loadWebsite(_ url: URL) {
         guard URLPolicy.isWebsite(url) else { return }
+        invalidateBookmarkCapture()
         lastWebsiteURL = url
         setErrorVisible(false)
         loadingView.isHidden = hasLoadedPage
@@ -304,16 +332,19 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     @objc private func goBack() {
         guard webView.canGoBack else { return }
+        invalidateBookmarkCapture()
         navigationState.begin(webView.goBack())
     }
     @objc private func goForward() {
         guard webView.canGoForward else { return }
+        invalidateBookmarkCapture()
         navigationState.begin(webView.goForward())
     }
     @objc private func goHome() { loadWebsite(URLPolicy.homeURL) }
     @objc private func retry() { loadWebsite(lastWebsiteURL) }
 
     @objc private func reloadPage() {
+        invalidateBookmarkCapture()
         if errorView.isHidden && webView.isLoading && !navigationState.isStopped {
             navigationState.stop()
             webView.stopLoading()
@@ -340,20 +371,56 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func saveCurrentVenue() {
-        guard canSaveCurrentVenue, let url = SavedVenuePolicy.canonicalURL(webView.url) else {
-            showAlert(title: "Apri un locale", message: "Apri un bar nella mappa e attendi il caricamento, poi scegli Salva locale.")
+        guard canSaveCurrentVenue, let url = usableVenueURL,
+              let request = bookmarkCapture.begin(url: url) else {
+            showBookmarkError("Apri un locale e attendi che il suo nome sia visibile, poi scegli «Salva nei preferiti».")
             return
         }
-        navigationItem.backButtonTitle = "Torna alla mappa"
-        let form = SaveVenueViewController(url: url, store: savedVenues) { [weak self] in
-            guard let self else { return }
-            self.navigationController?.popToViewController(self, animated: false)
-            self.showSavedVenues()
+        updateMoreMenu()
+        let timeout = DispatchWorkItem { [weak self] in
+            guard let self, self.bookmarkCapture.contains(request) else { return }
+            self.invalidateBookmarkCapture()
+            self.showBookmarkError("Non riesco a leggere il nome del locale. Attendi che la scheda sia caricata e riprova.")
         }
-        navigationController?.pushViewController(form, animated: true)
+        bookmarkTimeout = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: timeout)
+        webView.evaluateJavaScript(VenueNameReader.script, in: nil, in: .defaultClient) { [weak self] result in
+            guard let self, self.bookmarkCapture.contains(request) else { return }
+            self.bookmarkTimeout?.cancel()
+            self.bookmarkTimeout = nil
+            do {
+                let value = try result.get()
+                let venue = try self.bookmarkCapture.complete(request, value: value, currentUsableURL: self.usableVenueURL)
+                try self.savedVenues.save(url: venue.url, label: venue.label)
+                self.updateMoreMenu()
+                self.showSavedVenues()
+                UIAccessibility.post(notification: .announcement, argument: "Locale aggiunto ai preferiti")
+            } catch SavedVenueStore.StoreError.capacityReached {
+                self.invalidateBookmarkCapture()
+                self.showBookmarkError("Hai già 50 preferiti. Rimuovine uno dalla lista e riprova.")
+            } catch {
+                self.invalidateBookmarkCapture()
+                self.showBookmarkError("Non riesco a salvare questo locale. Attendi che il suo nome sia visibile e riprova. I preferiti precedenti sono stati mantenuti.")
+            }
+        }
     }
 
-    private func showSavedVenues() {
+    private func invalidateBookmarkCapture() {
+        bookmarkTimeout?.cancel()
+        bookmarkTimeout = nil
+        bookmarkCapture.invalidate()
+        updateMoreMenu()
+    }
+
+    private func showBookmarkError(_ message: String) {
+        guard navigationController?.topViewController === self else { return }
+        showAlert(title: "Preferito non salvato", message: message)
+    }
+
+    func showSavedVenues() {
+        // Opening the private list is a new user intent. Cancel before pushing,
+        // not only in viewWillDisappear, so removal cannot race an older save.
+        invalidateBookmarkCapture()
         navigationItem.backButtonTitle = "Torna alla mappa"
         let list = SavedVenuesViewController(store: savedVenues) { [weak self] url in
             guard let self, let canonical = SavedVenuePolicy.canonicalURL(url) else { return }
@@ -425,6 +492,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func setErrorVisible(_ visible: Bool) {
+        if visible { invalidateBookmarkCapture() }
         errorView.isHidden = !visible
         // The recovery overlay covers the website, but the native toolbar and
         // retry action must remain reachable to VoiceOver.
@@ -490,6 +558,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         guard navigationState.begin(navigation) else { return }
+        invalidateBookmarkCapture()
         #if DEBUG
         NSLog("DoveBevo: navigation provisional-start")
         #endif

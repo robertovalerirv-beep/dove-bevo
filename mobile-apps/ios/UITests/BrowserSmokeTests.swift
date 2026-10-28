@@ -45,12 +45,12 @@ final class BrowserSmokeTests: XCTestCase {
     func testNativeSavedVenuesListReturnsToTheExistingBrowser() {
         XCTAssertTrue(app.buttons["browser.more"].waitForExistence(timeout: 10))
         app.buttons["browser.more"].tap()
-        XCTAssertTrue(app.buttons["Salva locale"].exists)
-        XCTAssertFalse(app.buttons["Salva locale"].isEnabled, "The initial home/map page is not a venue to save")
-        app.buttons["Locali salvati"].tap()
-        XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Salva nei preferiti"].exists)
+        XCTAssertFalse(app.buttons["Salva nei preferiti"].isEnabled, "The initial home/map page is not a venue to save")
+        app.buttons["Preferiti"].tap()
+        XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tables["savedVenues.list"].exists)
-        app.navigationBars["Locali salvati"].buttons["Torna alla mappa"].tap()
+        app.navigationBars["Preferiti"].buttons["Torna alla mappa"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["browser.home"].exists)
         XCTAssertTrue(app.buttons["browser.reload"].exists)
@@ -131,77 +131,68 @@ final class BrowserSmokeTests: XCTestCase {
 
     private func verifyLiveSavedVenueRoundTrip() {
         let website = app.webViews["browser.website"]
-        // This QA flow may remove only its own new record. Verify the owned
-        // installation has an empty, successfully read list through real UI;
-        // do not seed/clear preferences or touch a populated installation.
+        // A fresh owned installation lets this test remove only its own entry.
+        // Never clear preferences, overwrite an existing choice or contribute data.
         app.buttons["browser.more"].tap()
-        app.buttons["Locali salvati"].tap()
-        XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 10))
+        app.buttons["Preferiti"].tap()
+        XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 10))
         let initialSavedTable = app.tables["savedVenues.list"]
         let emptyMessage = initialSavedTable.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH[c] %@", "Non hai ancora salvato un locale.")
+            NSPredicate(format: "label BEGINSWITH[c] %@", "Non hai ancora preferiti.")
         ).firstMatch
-        let emptyMessageAppeared = emptyMessage.waitForExistence(timeout: 5)
-        guard initialSavedTable.exists, initialSavedTable.cells.count == 0, emptyMessageAppeared,
-              !app.buttons["savedVenues.retry"].exists else {
-            XCTFail("Live saved-venue QA requires an owned empty installation; existing local data was left unchanged")
+        guard initialSavedTable.waitForExistence(timeout: 5), initialSavedTable.cells.count == 0,
+              emptyMessage.waitForExistence(timeout: 5), !app.buttons["savedVenues.retry"].exists else {
+            XCTFail("Live bookmark QA requires an owned empty installation; existing records were left unchanged")
             return
         }
-        app.navigationBars["Locali salvati"].buttons["Torna alla mappa"].tap()
+        app.navigationBars["Preferiti"].buttons["Torna alla mappa"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
-        XCTAssertTrue(hasVisiblePositiveCoverage(), "Opening the native saved list must preserve the live map")
+        XCTAssertTrue(hasVisiblePositiveCoverage(), "The native list must preserve the live map")
         let listButton = website.buttons["Elenco"]
         XCTAssertTrue(listButton.waitForExistence(timeout: 10))
         XCTAssertTrue(listButton.isHittable)
         listButton.tap()
         let listTitle = website.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Bar nella zona")).firstMatch
         XCTAssertTrue(listTitle.waitForExistence(timeout: 10))
-        // These are actual visible website venue links with existing prices,
-        // not seeded records, invented URLs or public contribution actions.
         let pricedLinks = website.links.matching(NSPredicate(format: "label CONTAINS %@", "€"))
-        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20), "Positive map coverage must have an existing priced venue in Elenco")
+        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20))
         var visibleVenue: XCUIElement?
         for _ in 0..<12 {
             if let venue = pricedLinks.allElementsBoundByIndex.first(where: { $0.exists && $0.isHittable }) {
                 visibleVenue = venue
                 break
             }
-            XCTAssertTrue(listTitle.exists, "Keep scrolling only the real open venue list")
+            XCTAssertTrue(listTitle.exists, "Scroll only the real open venue list")
             website.swipeUp()
         }
         guard let visibleVenue else {
             attachState(named: "DoveBevo-live-priced-venue-not-hittable")
-            XCTFail("No existing priced venue became reachable in the open Elenco")
+            XCTFail("No existing priced venue became reachable in Elenco")
+            return
+        }
+        // ListSheet puts the existing public venue name before price/address.
+        // Derive the expected name independently from this real accessible link.
+        let publicNameText = visibleVenue.staticTexts.firstMatch
+        XCTAssertTrue(publicNameText.exists)
+        let publicName = publicNameText.label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !publicName.isEmpty, publicName.utf16.count <= 120, !publicName.contains("€") else {
+            XCTFail("The existing venue link did not expose its actual bounded name")
             return
         }
         visibleVenue.tap()
-        XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 30), "The selected real bar must load its venue sheet")
+        XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 30))
+        XCTAssertTrue(website.staticTexts[publicName].waitForExistence(timeout: 15))
         waitForNativePageReady()
-        openNativeSaveForm()
-        let name = app.textFields["savedVenue.name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 10))
-        let initialName = name.value as? String ?? ""
-        guard initialName.isEmpty || initialName == name.placeholderValue else {
-            // Do not overwrite/remove somebody's existing local saved choice.
-            XCTFail("The live QA flow requires an unsaved venue; the existing saved name was left unchanged")
-            return
-        }
-        let qaName = "Dove Bevo QA \(UUID().uuidString)"
-        name.tap()
-        name.typeText(qaName)
-        XCTAssertEqual(name.value as? String, qaName)
-        app.buttons["savedVenue.confirm"].tap()
-        XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 10))
+        saveCurrentVenueInOneTap()
         let savedTable = app.tables["savedVenues.list"]
-        let savedRow = savedTable.cells.matching(NSPredicate(format: "label == %@", qaName)).firstMatch
-        XCTAssertTrue(savedRow.waitForExistence(timeout: 10), "A successful native save must appear in the real native list")
+        let savedRow = savedTable.cells.matching(NSPredicate(format: "label == %@", publicName)).firstMatch
+        XCTAssertTrue(savedRow.waitForExistence(timeout: 10), "One menu action must save the existing name without a naming form")
+        XCTAssertEqual(savedTable.cells.count, 1)
+        XCTAssertFalse(app.textFields["savedVenue.name"].exists)
         XCTAssertTrue(savedRow.identifier.hasPrefix("savedVenue."))
-        let savedKey = String(savedRow.identifier.dropFirst("savedVenue.".count))
-        XCTAssertFalse(savedKey.isEmpty)
+        let savedIdentity = savedRow.identifier
         attachScreen(named: "DoveBevo-live-native-saved-venue")
-        // Leave the venue before reopening it. Merely popping the native list
-        // without loading its link must not satisfy the reopen proof.
-        app.navigationBars["Locali salvati"].buttons["Torna alla mappa"].tap()
+        app.navigationBars["Preferiti"].buttons["Torna alla mappa"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
         let initialCloseBar = website.buttons["Chiudi"]
         XCTAssertTrue(initialCloseBar.waitForExistence(timeout: 10))
@@ -209,49 +200,34 @@ final class BrowserSmokeTests: XCTestCase {
         let venueClosed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: website.links["Indicazioni"])
         XCTAssertEqual(XCTWaiter.wait(for: [venueClosed], timeout: 15), .completed)
         XCTAssertTrue(interactiveMap().waitForExistence(timeout: 15))
-        XCTAssertTrue(hasVisiblePositiveCoverage(), "Returning from the original venue must preserve the Milano map")
+        XCTAssertTrue(hasVisiblePositiveCoverage())
         app.buttons["browser.more"].tap()
-        app.buttons["Locali salvati"].tap()
-        XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 10))
-        let reopenRow = app.tables["savedVenues.list"].cells.matching(NSPredicate(format: "label == %@", qaName)).firstMatch
+        app.buttons["Preferiti"].tap()
+        XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 10))
+        let reopenRow = app.tables["savedVenues.list"].cells[savedIdentity]
         XCTAssertTrue(reopenRow.waitForExistence(timeout: 10))
+        XCTAssertEqual(reopenRow.label, publicName)
         reopenRow.tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
-        XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 45), "Reopening the saved link must load the real venue")
+        XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 45))
+        XCTAssertTrue(website.staticTexts[publicName].waitForExistence(timeout: 15), "Reopen must show the actual saved venue name")
         waitForNativePageReady()
-
-        // The native form derives its placeholder from the current canonical
-        // venue key and pre-fills only a saved record with that exact URL. This
-        // checks the reopened route through real UI without extracting the DOM.
-        openNativeSaveForm()
-        let reopenedName = app.textFields["savedVenue.name"]
-        XCTAssertTrue(reopenedName.waitForExistence(timeout: 10))
-        XCTAssertEqual(reopenedName.placeholderValue, "Locale \(savedKey)")
-        XCTAssertEqual(reopenedName.value as? String, qaName, "Reopen must return to the exact saved venue URL")
-        let cancelledMarker = "-cancel"
-        reopenedName.tap()
-        reopenedName.typeText(cancelledMarker)
-        XCTAssertNotEqual(reopenedName.value as? String, qaName, "Actually edit the name before testing Cancel")
-        XCTAssertTrue((reopenedName.value as? String)?.contains(cancelledMarker) == true)
-        app.buttons["savedVenue.cancel"].tap()
-        XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
-        app.buttons["browser.more"].tap()
-        app.buttons["Locali salvati"].tap()
-        XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 10))
-        let qaRow = app.tables["savedVenues.list"].cells.matching(NSPredicate(format: "label == %@", qaName)).firstMatch
-        XCTAssertTrue(qaRow.waitForExistence(timeout: 10), "Cancel must preserve the original saved name")
-        XCTAssertEqual(app.tables["savedVenues.list"].cells.matching(NSPredicate(format: "label CONTAINS %@", cancelledMarker)).count, 0)
+        // Saving the reopened venue must update that same record, not create a
+        // different URL/key or ask the tester to provide an invented name.
+        saveCurrentVenueInOneTap()
+        XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 1)
+        let qaRow = app.tables["savedVenues.list"].cells[savedIdentity]
+        XCTAssertTrue(qaRow.waitForExistence(timeout: 10))
+        XCTAssertEqual(qaRow.label, publicName)
         qaRow.swipeLeft()
         let remove = app.buttons["Rimuovi"]
         XCTAssertTrue(remove.waitForExistence(timeout: 5))
         remove.tap()
         let removed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: qaRow)
-        XCTAssertEqual(XCTWaiter.wait(for: [removed], timeout: 10), .completed, "Remove only the unique local QA record")
-        app.navigationBars["Locali salvati"].buttons["Torna alla mappa"].tap()
+        XCTAssertEqual(XCTWaiter.wait(for: [removed], timeout: 10), .completed, "Remove only the test's private bookmark")
+        XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 0)
+        app.navigationBars["Preferiti"].buttons["Torna alla mappa"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
-
-        // The website's own close action returns this public bar to its map;
-        // it handles both SPA history and a directly reopened saved link.
         let closeBar = website.buttons["Chiudi"]
         XCTAssertTrue(closeBar.waitForExistence(timeout: 10))
         closeBar.tap()
@@ -260,9 +236,9 @@ final class BrowserSmokeTests: XCTestCase {
         let mapReady = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"), object: website.buttons["Esplora la mappa"]
         )
-        XCTAssertEqual(XCTWaiter.wait(for: [mapReady], timeout: 45), .completed, "The map must finish loading after closing the reopened venue")
+        XCTAssertEqual(XCTWaiter.wait(for: [mapReady], timeout: 45), .completed)
         let coverage = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in self.hasVisiblePositiveCoverage() }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [coverage], timeout: 45), .completed, "The final screenshot still requires genuine positive price coverage")
+        XCTAssertEqual(XCTWaiter.wait(for: [coverage], timeout: 45), .completed, "The final map still requires genuine positive price coverage")
         XCTAssertFalse(website.staticTexts["La mappa non si carica: controlla la connessione e ricarica la pagina."].exists)
         assertNoNativeRecovery()
         XCTAssertTrue(app.buttons["browser.share"].isEnabled)
@@ -277,13 +253,14 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 45), .completed, "Native page loading must finish before saving the current venue")
     }
 
-    private func openNativeSaveForm() {
+    private func saveCurrentVenueInOneTap() {
         app.buttons["browser.more"].tap()
-        let save = app.buttons["Salva locale"]
+        let save = app.buttons["Salva nei preferiti"]
         let enabled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in save.exists && save.isEnabled }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed, "The actual current website venue must be eligible for native saving")
         save.tap()
-        XCTAssertTrue(app.navigationBars["Salva locale"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.textFields["savedVenue.name"].exists)
     }
 
     private func interactiveMap() -> XCUIElement {

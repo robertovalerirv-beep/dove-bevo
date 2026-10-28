@@ -8,7 +8,9 @@ struct SavedVenue: Equatable {
 /// A saved venue is a public website link, never a generic page or a copy of
 /// location, price, session or authentication data.
 enum SavedVenuePolicy {
-    static let maximumLabelScalars = 80
+    // Keep every valid previous 80-scalar label, while accepting the website's
+    // existing OSM venue names (at most 120 UTF-16 units) without truncation.
+    static let maximumLabelScalars = 120
 
     enum ValidationError: Error {
         case invalidURL

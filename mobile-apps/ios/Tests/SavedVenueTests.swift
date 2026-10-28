@@ -41,10 +41,10 @@ final class SavedVenueTests: XCTestCase {
         let venue = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
         XCTAssertEqual(try SavedVenuePolicy.venue(url: venue, label: " \u{2003} ").label, "Locale n123")
         XCTAssertEqual(try SavedVenuePolicy.venue(url: venue, label: "  Caffè 🍹  ").label, "Caffè 🍹")
-        let eightyScalars = String(repeating: "🍹", count: 80)
-        XCTAssertEqual(try SavedVenuePolicy.venue(url: venue, label: eightyScalars).label, eightyScalars)
-        XCTAssertThrowsError(try SavedVenuePolicy.venue(url: venue, label: eightyScalars + "a"))
-        XCTAssertThrowsError(try SavedVenuePolicy.venue(url: venue, label: String(repeating: "e\u{301}", count: 41)))
+        let maximumScalars = String(repeating: "🍹", count: 120)
+        XCTAssertEqual(try SavedVenuePolicy.venue(url: venue, label: maximumScalars).label, maximumScalars)
+        XCTAssertThrowsError(try SavedVenuePolicy.venue(url: venue, label: maximumScalars + "a"))
+        XCTAssertThrowsError(try SavedVenuePolicy.venue(url: venue, label: String(repeating: "e\u{301}", count: 61)))
         for label in ["Bar\nNuovo", "Bar\tNuovo", "Bar\u{7f}", "Bar\u{85}", "Bar\u{0}"] {
             XCTAssertThrowsError(try SavedVenuePolicy.venue(url: venue, label: label), label)
         }

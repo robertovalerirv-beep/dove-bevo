@@ -71,12 +71,15 @@ public final class NativeUsabilityRuntimeTest {
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <meta http-equiv="Content-Security-Policy"
               content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
+            <meta name="owned-response" content="OWNED_RESPONSE">
             <title>Owned native fixture</title><p>Local browser fixture</p>
             <button id="open-venue" style="min-height:64px;width:240px"
               onclick="history.pushState({inApp:true},'', '/bar/n123?c=u0nd9')">Open owned venue fixture</button>
             """;
     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
     private final AtomicBoolean hold = new AtomicBoolean();
+    private final AtomicBoolean serverFailure = new AtomicBoolean(true);
+    private final AtomicInteger documentResponses = new AtomicInteger();
     private final CountDownLatch release = new CountDownLatch(1);
     private final CountDownLatch holdStarted = new CountDownLatch(1);
     private MainActivity activity;
@@ -251,8 +254,10 @@ public final class NativeUsabilityRuntimeTest {
             assertNull(invoke("eligibleSavedVenue"));
         });
         hold.set(false); release.countDown();
+        int beforeRetry = documentResponses.get();
         onMain(() -> activity.findViewById(R.id.retry).performClick());
-        await(() -> HOLD.equals(web.getUrl()) && !(Boolean) get("loading") && !(Boolean) get("failed"));
+        awaitOwnedResponse(beforeRetry + 1);
+        await(() -> HOLD.equals(invoke("eligibleSavedVenue")));
         onMain(() -> {
             assertEquals(View.GONE, ((LinearLayout) get("errorPanel")).getVisibility());
             assertEquals(HOLD, invoke("eligibleSavedVenue"));
@@ -262,6 +267,16 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> {
             assertEquals(View.VISIBLE, ((LinearLayout) get("errorPanel")).getVisibility());
             assertNull(invoke("eligibleSavedVenue"));
+        });
+        serverFailure.set(false);
+        int beforeServerRetry = documentResponses.get();
+        onMain(() -> activity.findViewById(R.id.retry).performClick());
+        awaitOwnedResponse(beforeServerRetry + 1);
+        await(() -> FAILURE.equals(invoke("eligibleSavedVenue")));
+        onMain(() -> {
+            assertFalse((Boolean) get("documentHasHttpError"));
+            assertEquals(View.GONE, ((LinearLayout) get("errorPanel")).getVisibility());
+            assertEquals(FAILURE, invoke("eligibleSavedVenue"));
         });
     }
 
@@ -408,7 +423,8 @@ public final class NativeUsabilityRuntimeTest {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 WebResourceResponse guarded = delegate.shouldInterceptRequest(view, request);
                 if (guarded != null) return guarded;
-                byte[] bytes = FIXTURE_HTML.getBytes(StandardCharsets.UTF_8);
+                int responseToken = request.isForMainFrame() ? documentResponses.incrementAndGet() : 0;
+                byte[] bytes = FIXTURE_HTML.replace("OWNED_RESPONSE", Integer.toString(responseToken)).getBytes(StandardCharsets.UTF_8);
                 InputStream body = new ByteArrayInputStream(bytes);
                 if (hold.get() && HOLD.equals(request.getUrl().toString())) body = new ByteArrayInputStream(bytes) {
                     @Override public synchronized int read(byte[] buffer, int offset, int length) {
@@ -417,8 +433,9 @@ public final class NativeUsabilityRuntimeTest {
                         return super.read(buffer, offset, length);
                     }
                 };
-                int status = !"GET".equals(request.getMethod()) ? 403 : FAILURE.equals(request.getUrl().toString()) ? 500 : 200;
-                record("response=" + status + " main=" + request.isForMainFrame() + " url=" + request.getUrl());
+                int status = !"GET".equals(request.getMethod()) ? 403
+                        : FAILURE.equals(request.getUrl().toString()) && serverFailure.get() ? 500 : 200;
+                record("response=" + status + " token=" + responseToken + " main=" + request.isForMainFrame() + " url=" + request.getUrl());
                 return new WebResourceResponse("text/html", "UTF-8", status,
                         status == 200 ? "OK" : status == 500 ? "Service Unavailable" : "Forbidden",
                         Collections.singletonMap("Cache-Control", "no-store"), body);
@@ -456,6 +473,20 @@ public final class NativeUsabilityRuntimeTest {
     }
 
     private void record(String event) { if (events.size() < 100) events.add(event); }
+
+    private void awaitOwnedResponse(int token) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+        while (System.nanoTime() < deadline) {
+            CountDownLatch measured = new CountDownLatch(1);
+            AtomicReference<String> response = new AtomicReference<>();
+            onMain(() -> web.evaluateJavascript("(function(){const m=document.querySelector('meta[name=owned-response]');return m ? Number(m.content) : -1;})()",
+                    result -> { response.set(result); measured.countDown(); }));
+            assertTrue("Owned response marker callback missing", measured.await(5, TimeUnit.SECONDS));
+            if (Integer.toString(token).equals(response.get())) return;
+            SystemClock.sleep(25);
+        }
+        fail("Replacement owned response " + token + " was not rendered; events=" + String.join(" | ", events));
+    }
 
     private void tapOwnedVenueButton() throws Exception {
         CountDownLatch measured = new CountDownLatch(1);

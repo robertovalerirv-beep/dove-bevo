@@ -75,6 +75,7 @@ public final class MainActivity extends ComponentActivity {
     private boolean hasUsablePage;
     private boolean documentHasHttpError;
     private String stoppedUrl;
+    private String preparedNavigationUrl;
     private String locationOrigin;
     private GeolocationPermissions.Callback locationCallback;
     private boolean requestingLocationPermission;
@@ -323,10 +324,7 @@ public final class MainActivity extends ComponentActivity {
         if (destroyed || BrowserPolicy.target(url) != BrowserPolicy.Target.INTERNAL) return;
         cancelLocation();
         if (website == null) createWebsite();
-        failed = false;
-        documentHasHttpError = false;
-        stoppedUrl = null;
-        lastTrustedUrl = url;
+        prepareNavigation(url);
         errorPanel.setVisibility(View.GONE);
         website.setVisibility(View.VISIBLE);
         setLoading(true);
@@ -348,6 +346,7 @@ public final class MainActivity extends ComponentActivity {
     private void goBack() {
         BackNavigation.perform(website != null && website.canGoBack(), () -> {
             failed = false;
+            preparedNavigationUrl = null;
             stoppedUrl = null;
             documentHasHttpError = false;
             cancelLocation();
@@ -362,6 +361,7 @@ public final class MainActivity extends ComponentActivity {
     private void goForward() {
         if (website == null || !website.canGoForward()) return;
         failed = false;
+        preparedNavigationUrl = null;
         stoppedUrl = null;
         documentHasHttpError = false;
         cancelLocation();
@@ -376,6 +376,27 @@ public final class MainActivity extends ComponentActivity {
         loading = value;
         progress.setVisibility(value ? View.VISIBLE : View.GONE);
         updateToolbar();
+    }
+
+    private void prepareNavigation(String url) {
+        failed = false;
+        documentHasHttpError = false;
+        stoppedUrl = null;
+        lastTrustedUrl = url;
+        preparedNavigationUrl = url;
+    }
+
+    private boolean isCurrentDocument(WebView source, String url) {
+        if (source != website || url == null || url.equals(stoppedUrl)) return false;
+        String expected = preparedNavigationUrl != null ? preparedNavigationUrl : source.getUrl();
+        return url.equals(expected) && BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL;
+    }
+
+    private void retainEarlyDocumentFailure(String url) {
+        // Some providers deliver the main HTTP/network failure before the
+        // corresponding onPageStarted. Preserve it through that start event.
+        lastTrustedUrl = url;
+        preparedNavigationUrl = url;
     }
 
     private void updateToolbar() {
@@ -401,7 +422,7 @@ public final class MainActivity extends ComponentActivity {
             Bundle historyState = state.getBundle("browser_history");
             WebBackForwardList history = BrowserHistoryState.restore(restoring, historyState);
             if (history == null) return false;
-            lastTrustedUrl = history.getCurrentItem().getUrl();
+            prepareNavigation(history.getCurrentItem().getUrl());
             setLoading(true);
             return true;
         } catch (RuntimeException invalid) {
@@ -416,7 +437,7 @@ public final class MainActivity extends ComponentActivity {
 
     private boolean handleNavigation(String url) {
         BrowserPolicy.Target target = BrowserPolicy.target(url);
-        if (target == BrowserPolicy.Target.INTERNAL) return false;
+        if (target == BrowserPolicy.Target.INTERNAL) { prepareNavigation(url); return false; }
         if (target == BrowserPolicy.Target.EXTERNAL || target == BrowserPolicy.Target.EMAIL || target == BrowserPolicy.Target.MAP) openExternal(url);
         else toast(R.string.blocked_link);
         return true;
@@ -519,8 +540,10 @@ public final class MainActivity extends ComponentActivity {
         // Rejection is unconditional, including stale or stopped requests.
         // Only the matching active document may replace the native UI.
         cancel.run();
-        if (source == website && errorUrl != null && errorUrl.equals(lastTrustedUrl)
-                && !errorUrl.equals(stoppedUrl)) showFailure();
+        if (isCurrentDocument(source, errorUrl)) {
+            retainEarlyDocumentFailure(errorUrl);
+            showFailure();
+        }
     }
 
     private final class WebsiteClient extends TestLabClient {
@@ -538,14 +561,14 @@ public final class MainActivity extends ComponentActivity {
                 showFailure();
                 return;
             }
+            if (!url.equals(preparedNavigationUrl)) prepareNavigation(url);
             lastTrustedUrl = url;
-            failed = false;
-            documentHasHttpError = false;
-            stoppedUrl = null;
-            setLoading(true);
+            preparedNavigationUrl = null;
+            setLoading(!failed);
         }
         @Override public void onPageFinished(WebView view, String url) {
             if (view != website || destroyed || url.equals(stoppedUrl) || !url.equals(lastTrustedUrl)) return;
+            preparedNavigationUrl = null;
             setLoading(false);
             if (!failed && BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL) {
                 hasUsablePage = !documentHasHttpError;
@@ -563,14 +586,16 @@ public final class MainActivity extends ComponentActivity {
             // Chromium's explicit aborted-navigation marker is cancellation,
             // not a new document failure, even if it arrives after Retry.
             if (BrowserFailurePolicy.isCancelled(error.getErrorCode(), error.getDescription())) return;
-            if (view == website && request.isForMainFrame() && !request.getUrl().toString().equals(stoppedUrl)
-                    && request.getUrl().toString().equals(lastTrustedUrl)) showFailure();
+            if (request.isForMainFrame() && isCurrentDocument(view, request.getUrl().toString())) {
+                retainEarlyDocumentFailure(request.getUrl().toString());
+                showFailure();
+            }
         }
         @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
             // Cloudflare can serve an interactive browser challenge as HTTP 403.
             // Keep 4xx pages visible instead of hiding the existing challenge UI.
-            if (view == website && request.isForMainFrame() && !request.getUrl().toString().equals(stoppedUrl)
-                    && request.getUrl().toString().equals(lastTrustedUrl)) {
+            if (request.isForMainFrame() && isCurrentDocument(view, request.getUrl().toString())) {
+                retainEarlyDocumentFailure(request.getUrl().toString());
                 documentHasHttpError = response.getStatusCode() >= 400;
                 if (response.getStatusCode() >= 500) showFailure();
             }

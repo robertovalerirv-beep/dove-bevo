@@ -80,7 +80,10 @@ OS-framework-only encryption question was answered. A manually distributed
 internal group contains one build and one existing Account Holder. The last
 provider read-back showed **Invited**; installation on the owner's iPhone 16
 Plus is now observed, but server-side **Accepted** status has not been read back.
-No other testers, users or roles were added.
+The separate external group **Roberto feedback** now contains only the
+owner-requested Roberto email tester. No App Store Connect team roles or public
+invitation link were added. The provider currently says **No Builds Available**;
+registration alone does not establish that an invitation was sent.
 
 The owner's original 590 by 1280 JPEG shows the native iOS controls, rendered
 Milano tiles and price pins. The owner reports that Back works within venue
@@ -93,8 +96,8 @@ The image SHA-256 is
 It is QA evidence, not an accepted medium-iPhone or iPad store screenshot. Do not
 resize or upscale it to satisfy store dimensions.
 
-Build 21 is **TestFlight Internal Only** and cannot be submitted for public App
-Store distribution. A production-eligible IPA, genuine iOS store captures and
+Build 21 is **TestFlight Internal Only** and cannot be submitted for external
+testing or public App Store distribution. A production-eligible IPA, genuine iOS store captures and
 the remaining physical checks are required. Digital Services Act trader
 status was verified **Active in 27 countries** on 28 October.
 
@@ -116,13 +119,39 @@ line appeared in the job log; the underlying cause remains unknown. The iPad
 capture and final PNG-validation steps were skipped.
 
 The exporter reported 69 attachments and a manifest, but the always-run artifact
-upload reported no files, and the provider lists zero artifacts. Hidden
-`.build` exclusion is the leading explanation for that separate upload failure.
-A narrowly scoped hidden-file opt-in is implemented and independently reviewed
-for the existing credential-free artifact allowlist. The follow-up tag
-`mobile-capture/v1.0.0-xcode27.1-2` has no verified result yet. No diagnostic
-download, successful live result or store-ready iOS capture is established.
-Keep the live assertions and original image dimensions unchanged.
+upload reported no files, and the provider lists zero artifacts. The hidden
+`.build` exclusion was corrected with a narrowly scoped hidden-file opt-in for
+the existing credential-free artifact allowlist.
+
+The follow-up tag `mobile-capture/v1.0.0-xcode27.1-2`, source
+`7512b62725496daa106ea7442c718a427c7610ad`, ran as
+[40703342794](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40703342794)
+(workflow number 23). Ten unit tests and both native UI cases passed, but the
+live case failed the same exact-label assertion. Artifact **12823956355** was
+successfully downloaded and its ZIP SHA-256 verified as
+`7718ba103f2e39c3ffed381ac3fc25c635d7dab6508ffb73dbc8205567278706`.
+The genuine original 1206 by 2622 failed-test frame and recording show Milano
+tiles, two price pins and clusters during the assertion wait. The actual
+accessibility hierarchy contains **Mappa interattiva dei bar, region**, whereas
+the test required exact equality with **Mappa interattiva dei bar**. The hierarchy
+also contains the current **2 bar su 43 qui hanno un prezzo** status. This is a
+documented selector mismatch, not evidence of an absent map or a stale hierarchy.
+Lifecycle collection reports no renderer-termination event and the crash summary
+is empty; those collectors are best-effort. The test remains failed, and the
+iPad and final validated-capture steps were skipped.
+
+## External TestFlight candidate
+
+`mobile-beta/v1.0.0-roberto.1`, source
+`b070690a960532e7fd7f40195c62dd2614ed5986`, is running as
+[40707946369](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40707946369)
+(workflow/build number 24). This isolated lane requires fresh Android and iOS
+checks, retains the exact approved toolchain and signing verification, and
+uploads without the Internal Only restriction. It does not submit the public
+App Store version. Upload success, Apple processing, Beta App Review approval
+and an activated Roberto invitation remain separate unverified steps. Beta
+description, feedback address and review instructions have been prepared in
+App Store Connect.
 
 ## Retained failure history and remaining gates
 

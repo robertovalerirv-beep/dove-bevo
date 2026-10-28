@@ -238,13 +238,24 @@ jobs:
       github.event_name == 'push' && github.ref_type == 'tag' &&
       startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
       github.repository == 'robertovalerirv-beep/dove-bevo'
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 25
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      IOS_SIMULATOR_RUNTIME: "26.2"
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "27.0"
       IOS_SIMULATOR_MODEL: iPhone 17
     steps:
+      - name: Verify exact Xcode compatibility trial toolchain without credentials
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          sw_vers
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
@@ -306,11 +317,22 @@ jobs:
       github.event_name == 'push' && github.ref_type == 'tag' &&
       startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
       github.repository == 'robertovalerirv-beep/dove-bevo'
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 25
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
     steps:
+      - name: Verify exact Xcode compatibility trial toolchain without credentials
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          sw_vers
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}

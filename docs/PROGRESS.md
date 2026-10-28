@@ -71,6 +71,8 @@ Prove (CI verde, test in `tests/e2e` e `tests/unit`): MG-01, MH-01, MH-02 → ru
 
 **Non coperto dai test (dichiarato):** invio vero del bar mancante in inglese; data del Timbro in formato it-IT per scelta; nessuna distanza nella scheda del bar.
 
+**Verifica a mano di Roberto, 28/10/2026 (iPhone e Android):** pulsante centrale (tocco sul pulsante e sulla mappa, la mappa parte), menu IT/EN (la mappa resta dov'è, alla riapertura si torna in italiano), traduzione inglese riletta (`/privacy`, `/regole`, «Tap the map or search for a city») e riga di stato su telefono stretto: «tutto perfetto». MF-02 resta `false`: nessuna prova specifica con rete lenta riportata e su Safari il download in anticipo non accelera il primo tocco.
+
 ---
 
 ## 2026-10-28 · Mappa pronta al primo tocco: file scaricati in anticipo con `fetch` (branch `m6-mappa-prefetch`) · SPEC 1.12 (tag `spec-approved-13`), ADR 0039, MF-01…MF-03

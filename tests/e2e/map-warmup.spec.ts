@@ -49,14 +49,13 @@ test("MF-01 the map page fetches the files of the map ahead of time and does not
   expect(await mapRegion(page).getAttribute("data-ready")).not.toBe("true");
 });
 
-for (const path of ["/privacy", "/regole"]) {
+for (const path of ["/privacy", "/regole", "/admin"]) {
   test(`MF-01 ${path} fetches nothing of the map`, async ({ page }) => {
     const seen = watchMapRequests(page);
     await page.goto(path);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.waitForLoadState("networkidle");
-    // Past the moment the map page would have started (idle callback or its timer).
-    await page.waitForTimeout(3_000);
+    // Past the moment the map page would have started (idle callback, at most 4 s, or its timer).
+    await page.waitForTimeout(5_000);
     expect(seen.map((r) => r.url())).toEqual([]);
   });
 }

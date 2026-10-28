@@ -4,7 +4,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
-## 2026-10-28 · Mappa pronta al primo tocco: file scaricati in anticipo con `fetch` (branch `m6-mappa-prefetch`) · SPEC 1.12 (in preparazione), MF-01…MF-03
+## 2026-10-28 · Mappa pronta al primo tocco: file scaricati in anticipo con `fetch` (branch `m6-mappa-prefetch`) · SPEC 1.12 (tag `spec-approved-13`), ADR 0039, MF-01…MF-03
 
 **Richiesta di Roberto:** il primo tocco sulla mappa aspetta il download di MapLibre (circa 440 KB compressi). Si scaricano i file in anticipo, senza eseguirli. Scelta di Roberto dopo la misura su WebKit: `fetch(url, { priority: "low" })` al posto di `<link rel="prefetch">`, perché Safari/iPhone ignora il prefetch.
 
@@ -25,11 +25,26 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - Il riuso della cache **non si può provare con i test automatici**: l'anteprima locale è HTTPS autofirmato e né Chromium né il WebKit di Playwright mettono in cache quelle risposte. Il test MF-02 prova quindi: il fetch parte verso i 3 URL giusti, le risposte hanno cache lunga (`immutable`), dopo il tocco la mappa chiede solo quei file.
 - Il WebKit di Playwright non tiene in cache nemmeno due `fetch()` consecutivi dello stesso file (misura: 5 richieste al server su 4 chiamate, contro 0 in Chromium), quindi su WebKit il riuso non è provabile qui in nessun modo.
 - Per la prova su WebKit su HTTP ho dovuto togliere `upgrade-insecure-requests` dalla CSP **solo nel mio server di prova** (la CSP del progetto non è toccata); non ho potuto fidare il certificato di prova nel sistema (azione negata).
-- `docs/feature_list.json` **non toccato**: le descrizioni di MF-01…MF-03 dicono ancora «prefetch» e vanno riscritte nella SPEC 1.12; `passes` resta `false` finché non esiste il nuovo tag.
+- `docs/feature_list.json`: `passes` resta `false` per MF-01…MF-03 (descrizioni già riscritte nella SPEC 1.12). MF-01 e MF-03 passano a `true` dopo la CI verde su WebKit; MF-02 resta `false` finché Roberto non fa la prova su iPhone.
 
 **Da verificare a mano (Roberto)**
 - Su iPhone reale (Safari) e su Android (Chrome), con rete lenta: aprire il sito, aspettare 5–10 secondi senza toccare, poi toccare la mappa. Deve partire molto più in fretta di prima. Ispezione facoltativa: dalla scheda Rete del browser desktop collegato, i tre file `/assets/maplibre-*` compaiono prima del tocco e dopo il tocco sono «dalla cache».
 - Con il risparmio dati attivo il sito non deve scaricare i file in anticipo.
+
+---
+
+## 2026-10-28 · SPEC 1.12: download in anticipo con `fetch`, non `prefetch` (branch `spec-1-12`) · ADR 0039 · MF
+
+**Richiesta di Roberto:** il Ramo A ha misurato con WebKit che `rel=prefetch` non scarica nulla su Safari/iPhone; scelta di Roberto: `fetch` a bassa priorità.
+
+**Fatto (solo specifica)**
+- SPEC 1.12: D-35, MF-01, MF-02 e MF-03 riscritte (`prefetch` → `fetch`, Save-Data, cache lunga su `/assets/*`, MF-02 con prova a mano per la cache vera); registro 1.12; ADR 0039.
+- `docs/feature_list.json`: cambiano solo `descrizione` e `verifica` di MF-01, MF-02, MF-03 (autorizzate da Roberto in chat); `passes` invariati.
+- Guardia sul tag `spec-approved-13` (`scripts/check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`, `.claude/agents/spec-reviewer.md`).
+
+**Non fatto, di Roberto**
+- Creare e pubblicare il tag `spec-approved-13` sul commit di questa modifica: finché manca, la guardia è rossa.
+- Prova su iPhone reale con rete lenta: tocco sulla mappa dopo 5-10 secondi dall'apertura.
 
 ---
 

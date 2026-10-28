@@ -131,6 +131,21 @@ final class BrowserSmokeTests: XCTestCase {
 
     private func verifyLiveSavedVenueRoundTrip() {
         let website = app.webViews["browser.website"]
+        // This QA flow may remove only its own new record. Verify the owned
+        // installation has an empty, successfully read list through real UI;
+        // do not seed/clear preferences or touch a populated installation.
+        app.buttons["browser.more"].tap()
+        app.buttons["Locali salvati"].tap()
+        XCTAssertTrue(app.navigationBars["Locali salvati"].waitForExistence(timeout: 10))
+        let initialSavedTable = app.tables["savedVenues.list"]
+        guard initialSavedTable.exists, initialSavedTable.cells.count == 0,
+              !app.buttons["savedVenues.retry"].exists else {
+            XCTFail("Live saved-venue QA requires an owned empty installation; existing local data was left unchanged")
+            return
+        }
+        app.navigationBars["Locali salvati"].buttons["Torna alla mappa"].tap()
+        XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
+        XCTAssertTrue(hasVisiblePositiveCoverage(), "Opening the native saved list must preserve the live map")
         let listButton = website.buttons["Elenco"]
         XCTAssertTrue(listButton.waitForExistence(timeout: 10))
         XCTAssertTrue(listButton.isHittable)

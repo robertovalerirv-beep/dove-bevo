@@ -41,6 +41,38 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - Lighthouse (3 giri ciascuno, `--no-sandbox`, Chromium di Playwright, stesso container): **prima** (`main`) Performance 0,96 / 0,96 / 0,96, LCP 2,25–2,29 s, TBT 128–146 ms, CLS 0, **Accessibility 0,96** (i link piccoli delle attribuzioni), Best Practices e SEO 1; **dopo** Performance 0,96 / 0,98 / 0,97, LCP 2,25–2,27 s, TBT 90–152 ms, CLS 0, **Accessibility 1**, Best Practices e SEO 1. Nessun peggioramento, e l'accessibilità sale da 0,96 a 1.
 - `npm run verify`: non lanciato per intero (il passo `check-feature-list` è rosso finché Roberto non crea `spec-approved-14`; i passi sono stati eseguiti uno per uno).
 
+
+### Fase 2 · i test che mancavano alle voci ME-03, ME-04, ME-06, ME-07 (`tests/e2e/english-views.spec.ts`)
+**Cosa copre (Chromium e WebKit, sola lettura: `stubWrites` risponde al posto del Worker a `POST /api/session` e `POST /api/prices`, niente arriva al D1)**
+- **ME-03:** il titolo della pagina sulla mappa è lo stesso in italiano e in inglese e `html lang` segue il menu (andata e ritorno); il titolo che cambia in `/privacy` e `/regole` resta nel test ME-05 già esistente di `english.spec.ts`.
+- **ME-04:** il Timbro dopo «Save» (testo, data nel formato it-IT, Tessera «First price logged.», pulsante «Undo»); i secondi per annullare (`UNDO_MS`, nel passo dei prezzi già visti) e «Undo» che non invia nulla; il secondo prezzo con «2 prices logged.» e l'invito a installare; i messaggi d'errore del salvataggio (prezzo insolito, troppi prezzi oggi, nessuna connessione) e quello del servizio occupato; il passo «pin» del bar mancante; ovunque con il controllo «nessun testo italiano residuo» di `english.spec.ts` (ora in `english-helpers.ts`, già non vacuo). In più un controllo automatico che nessun testo esce dal proprio riquadro né dallo schermo, a **390 e 360 px, su circa 20 viste pubbliche in inglese** (mappa, menu lingua, menu bevande, Elenco, ricerca, scheda, segnalazione, aggiungi prezzo in tre passi, bar mancante, Timbro, `/privacy`, `/regole`).
+- **ME-06:** distanze in inglese col formato it-IT («60 m», «1,2 km», mai «mi» né il punto decimale) nell'Elenco e nei bar vicini; `/admin/verificati` resta in italiano dopo aver scelto English (`html lang="it"`, nessun menu lingua).
+- **ME-07:** su tutte le stesse viste, nei due temi, `axe` (wcag2a/2aa/21a/21aa/22aa) **senza esclusioni** e nessun bersaglio sotto 48 px (`smallTargets`, estratta in `helpers.ts`); il pulsante centrale resta ≥ 48 px in inglese.
+- Helper condivisi invece di copie: `english-helpers.ts` (menu lingua, `expectNoItalian`, `box`), `smallTargets` e `stubTurnstile` in `helpers.ts` (`a11y-views.spec.ts` e `contribute.spec.ts` li importano; comportamento identico), `stubWrites`.
+
+**Difetto trovato e corretto**
+- Il controllo «nessun testo esce dal riquadro» ha trovato un difetto vero: a 360 px il titolo della scheda «Aggiungi prezzo → drink» («Terrazza Duomo 21», con «Back» e «Close» accanto) era più largo del suo spazio (106 px su 87) e sporgeva. Correzione minima: `overflow-wrap: anywhere` su `.sheet__title` (`app.css`). Il test passa su entrambi i motori.
+
+**Prova negativa (i test sanno fallire)**: alterata l'app una cosa alla volta, test rosso, poi ripristinata: «Undone»→«Annullato» (Timbro/Undo), `add.quota` in italiano (errori), «60 m»→«60 mi» (ME-06), titolo che cambia con la lingua (ME-03), pulsanti a 40 px (ME-07: elenca «Search city or bar 266×40», «Near me 40×40», «Language: EN 48×40»); per l'overflow il difetto vero sopra (rosso prima della correzione).
+
+**Falsi allarmi sistemati nel test (non dell'app):** il controllo guarda solo gli elementi con testo proprio (il menu a tendina assoluto dentro il bottone da 48 px non è testo che sporge).
+
+**Traduzioni mie da rileggere:** «Tap the map or search for a city» (Fase 1). Nessun'altra stringa inglese nuova.
+
+**Non coperto:** il passo «pin» è provato nel testo e nei pulsanti, non l'invio (scrive). La data del Timbro resta in formato it-IT («28 OTT») per scelta. Nella scheda del bar non c'è nessuna distanza (si vede solo nell'Elenco e nei bar vicini). Nota: la stringa `add.stampDay` («Stamp of …») è definita in `it.ts`/`en.ts` ma non usata da nessun componente (non toccata).
+
+### Chiusura: `passes: true` per MG-01, MH-01, MH-02, ME-03, ME-04, ME-06, ME-07
+
+Prove (CI verde, test in `tests/e2e` e `tests/unit`): MG-01, MH-01, MH-02 → run 40699790419 sul commit 1f3d077; ME-03, ME-04, ME-06, ME-07 → run 40707950392 (PR #71, ora su `main`). Il file `docs/feature_list.json` cambia solo nel campo `passes` (`check-feature-list`: «only passes changed»).
+
+**Resta `false` (motivo):** MF-02 — la prova che il tocco non riscarica nulla è una verifica a mano su telefono; su iPhone il download in anticipo non migliora il primo tocco.
+
+**Da verificare a mano (Roberto):** tocco della mappa su iPhone/Android con rete lenta; rilettura della traduzione inglese (`/privacy`, `/regole`, `en.ts`, «Tap the map or search for a city»); menu della lingua su telefono vero; riga di stato con testi lunghi a 360 px.
+
+**Non coperto dai test (dichiarato):** invio vero del bar mancante in inglese; data del Timbro in formato it-IT per scelta; nessuna distanza nella scheda del bar.
+
+**Verifica a mano di Roberto, 28/10/2026 (iPhone e Android):** pulsante centrale (tocco sul pulsante e sulla mappa, la mappa parte), menu IT/EN (la mappa resta dov'è, alla riapertura si torna in italiano), traduzione inglese riletta (`/privacy`, `/regole`, «Tap the map or search for a city») e riga di stato su telefono stretto: «tutto perfetto». MF-02 resta `false`: nessuna prova specifica con rete lenta riportata e su Safari il download in anticipo non accelera il primo tocco.
+
 ---
 
 ## 2026-10-28 · Mappa pronta al primo tocco: file scaricati in anticipo con `fetch` (branch `m6-mappa-prefetch`) · SPEC 1.12 (tag `spec-approved-13`), ADR 0039, MF-01…MF-03

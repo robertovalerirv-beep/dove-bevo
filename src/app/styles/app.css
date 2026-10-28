@@ -452,6 +452,11 @@
   flex: 1;
   min-width: 0;
   margin: 0;
+  /* One line: a long name (a bar) ends with «…» instead of running under the buttons beside it, and the
+     sheet does not grow taller on a small screen (SPEC 15, 320×568). */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font: var(--type-title);
   letter-spacing: var(--tracking-title);
 }

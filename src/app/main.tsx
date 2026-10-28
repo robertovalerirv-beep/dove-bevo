@@ -3,6 +3,7 @@ import "./styles/base.css";
 import "./styles/app.css";
 import { App } from "./app";
 import { listenForInstall } from "./lib/install";
+import { warmUpMapWhenIdle } from "./lib/map-warmup";
 import { watchTheme } from "./lib/theme";
 import type * as MapModule from "./lib/maplibre-map";
 
@@ -32,6 +33,7 @@ if (root && /^\/admin\/?$/.test(location.pathname)) {
 } else if (root) {
   listenForInstall();
   render(<App loadMap={loadMap} />, root);
+  warmUpMapWhenIdle(); // the map page only (not /privacy, /regole, /admin); fetches, never runs MapLibre
   // The shell works offline (SPEC 7.7); only in the real build, never under the dev server.
   if (import.meta.env.PROD && "serviceWorker" in navigator) {
     addEventListener("load", () => {

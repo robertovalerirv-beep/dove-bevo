@@ -61,6 +61,18 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 **Non coperto:** il passo «pin» è provato nel testo e nei pulsanti, non l'invio (scrive). La data del Timbro resta in formato it-IT («28 OTT») per scelta. Nella scheda del bar non c'è nessuna distanza (si vede solo nell'Elenco e nei bar vicini). Nota: la stringa `add.stampDay` («Stamp of …») è definita in `it.ts`/`en.ts` ma non usata da nessun componente (non toccata).
 
+### Chiusura: `passes: true` per MG-01, MH-01, MH-02, ME-03, ME-04, ME-06, ME-07
+
+Prove (CI verde, test in `tests/e2e` e `tests/unit`): MG-01, MH-01, MH-02 → run 40699790419 sul commit 1f3d077; ME-03, ME-04, ME-06, ME-07 → run 40707950392 (PR #71, ora su `main`). Il file `docs/feature_list.json` cambia solo nel campo `passes` (`check-feature-list`: «only passes changed»).
+
+**Resta `false` (motivo):** MF-02 — la prova che il tocco non riscarica nulla è una verifica a mano su telefono; su iPhone il download in anticipo non migliora il primo tocco.
+
+**Da verificare a mano (Roberto):** tocco della mappa su iPhone/Android con rete lenta; rilettura della traduzione inglese (`/privacy`, `/regole`, `en.ts`, «Tap the map or search for a city»); menu della lingua su telefono vero; riga di stato con testi lunghi a 360 px.
+
+**Non coperto dai test (dichiarato):** invio vero del bar mancante in inglese; data del Timbro in formato it-IT per scelta; nessuna distanza nella scheda del bar.
+
+**Verifica a mano di Roberto, 28/10/2026 (iPhone e Android):** pulsante centrale (tocco sul pulsante e sulla mappa, la mappa parte), menu IT/EN (la mappa resta dov'è, alla riapertura si torna in italiano), traduzione inglese riletta (`/privacy`, `/regole`, «Tap the map or search for a city») e riga di stato su telefono stretto: «tutto perfetto». MF-02 resta `false`: nessuna prova specifica con rete lenta riportata e su Safari il download in anticipo non accelera il primo tocco.
+
 ---
 
 ## 2026-10-28 · Mappa pronta al primo tocco: file scaricati in anticipo con `fetch` (branch `m6-mappa-prefetch`) · SPEC 1.12 (tag `spec-approved-13`), ADR 0039, MF-01…MF-03

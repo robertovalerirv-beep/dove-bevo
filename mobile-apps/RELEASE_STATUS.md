@@ -11,11 +11,13 @@ store state establishes an approved public release.
 
 The canonical repository is `robertovalerirv-beep/dove-bevo`; the active mobile
 branch is `codex/mobile-internal-testing-20261027`. Owner main
-`abeac75353ad5c2b73f97ee33b98fb2040d79ff4` is preserved. Mobile additions are
+`2338467a795d48d10cdc606c6a6f10b1e9c15e34` is incorporated without conflicts. Mobile additions are
 confined to `mobile-apps/` and `.github/workflows/mobile-apps.yml`; the website,
 backend, schema, deployment and website security settings are unchanged.
 PR #62 remains an older draft at head `722c`; it has not been updated or merged.
-The mobile work has not been merged to main.
+The mobile work has not been merged to main. An independent literal tree
+comparison confirms every tracked file outside the mobile allowlist equals
+that owner main; the owner's new website changes are preserved.
 
 Project source, worktrees, builds and evidence remain in the selected OneDrive
 project folder. Cloud synchronization is unverified. Credentials remain in
@@ -143,15 +145,27 @@ iPad and final validated-capture steps were skipped.
 ## External TestFlight candidate
 
 `mobile-beta/v1.0.0-roberto.1`, source
-`b070690a960532e7fd7f40195c62dd2614ed5986`, is running as
+`b070690a960532e7fd7f40195c62dd2614ed5986`, ran as
 [40707946369](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40707946369)
-(workflow/build number 24). This isolated lane requires fresh Android and iOS
+(workflow/build number 24) and **failed before signing**. Both check jobs passed;
+the signer stopped at its `xcodebuild -version` pipeline with a broken-pipe
+exception. No IPA was created or uploaded. The first-line consumer `head -n 1`
+can close the pipe before Xcode finishes writing its complete version output.
+A full-consumption parser repair and regression controls are being prepared.
+This isolated lane requires fresh Android and iOS
 checks, retains the exact approved toolchain and signing verification, and
 uploads without the Internal Only restriction. It does not submit the public
 App Store version. Upload success, Apple processing, Beta App Review approval
 and an activated Roberto invitation remain separate unverified steps. Beta
-description, feedback address and review instructions have been prepared in
-App Store Connect.
+description, feedback address and review instructions were saved in
+App Store Connect. A third credential-free capture run,
+`mobile-capture/v1.0.0-xcode27.1-3`, source
+`be66b18ceea2ede8a7443f79d8b56462f0ec6872`, is running as
+[40709708958](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40709708958)
+(workflow number 25). Its reviewed test accepts only the base map label and
+the exact observed region suffix, adds positive live-price coverage checks,
+and retains map-style, native-error and privacy-return checks. The coordinator
+reran all 84 local script guards successfully; the hosted outcome is pending.
 
 ## Retained failure history and remaining gates
 

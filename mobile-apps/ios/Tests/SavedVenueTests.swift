@@ -135,7 +135,8 @@ final class SavedVenueTests: XCTestCase {
                 let raw = Data("[{\"url\":\"\(venueURL(1).absoluteString)\",\"label\":\"\(label)\"}]".utf8)
                 try raw.write(to: store.fileURL)
                 do {
-                    XCTAssertTrue(try store.load().isEmpty, "Malformed scalar records must be discarded if the JSON reader does not reject them")
+                    let loaded = try store.load()
+                    XCTAssertTrue(loaded.isEmpty, "Malformed scalar records must be discarded if the JSON reader does not reject them")
                 } catch {
                     // Rejecting the complete malformed JSON payload is safe too.
                 }

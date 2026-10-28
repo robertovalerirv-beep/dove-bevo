@@ -154,7 +154,7 @@ public final class NativeUsabilityRuntimeTest {
             AlertDialog dialog = currentDialog();
             ((EditText) dialog.findViewById(R.id.saved_venue_name)).setText("Locale di prova");
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
-            assertNull(currentDialog());
+            assertFalse(dialog.isShowing());
             assertSame(original, get("website"));
         });
         assertEquals("Locale di prova", new SavedVenueStore(new SavedVenueFile(fixtureDirectory)).load().get(0).label);

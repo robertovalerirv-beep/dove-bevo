@@ -11,23 +11,8 @@ import {
   openDrinkMenu,
   waitForBars,
   chooseDrinks,
+  stubTurnstile,
 } from "./helpers";
-
-// Turnstile is Cloudflare's script: replaced by a stub that answers with the public dummy token.
-// The local Worker verifies it with Cloudflare's always-pass test secret (wrangler.jsonc vars).
-const TURNSTILE_STUB = `window.turnstile = {
-  render(el, o) { setTimeout(() => o.callback("XXXX.DUMMY.TOKEN.XXXX"), 50); return "w"; },
-  remove() {}, reset() {},
-};`;
-
-async function stubTurnstile(page: Page): Promise<string[]> {
-  const requests: string[] = [];
-  await page.route("https://challenges.cloudflare.com/**", (route) => {
-    requests.push(route.request().url());
-    void route.fulfill({ contentType: "text/javascript", body: TURNSTILE_STUB });
-  });
-  return requests;
-}
 
 interface CellFile {
   v: [string, string, number, number, number, string, number][];

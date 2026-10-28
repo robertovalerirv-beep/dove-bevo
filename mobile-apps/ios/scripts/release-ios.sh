@@ -35,7 +35,7 @@ for required in python3 security xcodebuild xcrun openssl codesign ditto; do
 done
 SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
 [[ "${SDK_VERSION%%.*}" -ge 26 ]] || fail 'App Store uploads require the iOS 26 SDK or later'
-XCODE_VERSION="$(xcodebuild -version | head -n 1 | awk '{print $2}')"
+XCODE_VERSION="$(xcodebuild -version | awk 'NR == 1 {print $2}')"
 [[ "${XCODE_VERSION%%.*}" -ge 26 ]] || fail 'App Store uploads require Xcode 26 or later'
 [[ ! -e "$RELEASE_ROOT" ]] || fail 'The release output already exists; preserve it before starting a separate release'
 if [[ "$INTERNAL_ONLY" == true || "$UPLOAD" == true ]]; then

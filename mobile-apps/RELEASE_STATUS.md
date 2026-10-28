@@ -179,9 +179,10 @@ created. The tester still shows **No Builds Available** pending approval;
 invitation delivery and installation are not established. Beta description,
 feedback address and review instructions were saved in App Store Connect.
 The public App Store version also has build 26 selected and saved. Its latest
-submission validation lists two missing assets: the medium Dynamic Island
-iPhone screenshot and the 13-inch iPad screenshot. Public App Review has not
-been submitted.
+submission validation now lists only the 13-inch iPad screenshot as missing.
+The verified original medium Dynamic Island iPhone screenshot is uploaded,
+processed and persists after refresh as **1 of 10 App Screenshots**. Public App
+Review has not been submitted.
 
 The third credential-free capture run,
 `mobile-capture/v1.0.0-xcode27.1-3`, source
@@ -198,8 +199,36 @@ property was not exported; source and frame evidence support a test defect.
 The iPad and validated-capture steps were skipped. Artifact **12827130851** has
 verified SHA-256
 `b6ae550b671f99a15078801a6eabbfbfc8da463a85c565bbe4261ccb06b9f662`.
-A narrow test repair uses finite, nonempty on-screen geometry for this status;
-live hosted verification remains required. No website code was changed.
+A narrow test repair uses finite, nonempty on-screen geometry for this status.
+No website code was changed.
+
+The fourth capture tag `mobile-capture/v1.0.0-xcode27.1-4`, source
+`b1f69e0f338a481dbfaa0278db2d9be3324712a5`, ran as
+[40714924179](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40714924179)
+(workflow number 27). **All ten Swift units and all three iPhone UI cases
+passed**, including the live search/map/positive coverage/Privacy-return case.
+Its final named original PNG is 1206 by 2622, SHA-256
+`4805f62d67d20c209b51fdb87a1b955cbaa0ea5d5afe516bc8febb3d9adf85b0`.
+It is preserved unchanged in `store-assets/ios-screenshots/` with provenance.
+Independent source comparison confirms native app, project, generator and
+bundled resources match uploaded build 26; Debug branches only log diagnostics.
+The capture is an unsigned Debug simulator run, not binary-identical device
+evidence. Actual map tiles and existing price pins were visually inspected.
+
+The separate iPad Air 13-inch M4/iOS 27.0 runner failed before its live test
+started: `XCTDaemonErrorDomain Code=18`, **Timed out waiting for AX loaded
+notification**, followed by the eight-minute step timeout. No iPad screenshot
+was produced and the workflow remains failed. Artifact **12828892348** has
+verified SHA-256
+`dc27593965068f7282939d596a714fe8dd5aeb4c84c89f15f69a44a048805c53`.
+The capture script now explicitly waits for its selected simulator to boot,
+matching the passing phone startup pattern, and shuts down only a device it
+booted. Mocked command controls and independent review pass; effectiveness
+against Apple's AX initialization failure is still unverified. An isolated
+iPad-only capture lane is being prepared without repeating the phone suite.
+The existing AWS real-device connector requires reauthentication, so no free
+minutes or device availability were established and no session or charge was
+created.
 
 ## Retained failure history and remaining gates
 

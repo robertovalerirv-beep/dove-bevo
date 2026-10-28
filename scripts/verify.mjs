@@ -2,6 +2,7 @@
 // failure. Called by the git pre-push hook (.githooks/pre-push): nothing reaches GitHub red.
 // Usage: npm run verify
 import { execSync, spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 
 const steps = [
@@ -57,7 +58,15 @@ for (const [name, command] of steps) {
   });
   if (run.status !== 0) {
     console.log("✗");
-    console.error(`${run.stdout}\n${run.stderr}`.trim().split("\n").slice(-60).join("\n"));
+    // The cause is in the FIRST failure block ("  1) [webkit] › file › test", then its error), not in the
+    // summary that ends the output: keep the whole output in a file and show that block (else the tail).
+    const output = `${run.stdout}\n${run.stderr}`.trim();
+    mkdirSync("test-results", { recursive: true });
+    writeFileSync("test-results/verify-last.log", output);
+    const lines = output.split("\n");
+    const first = lines.findIndex((line) => /^\s*1\) /.test(line));
+    console.error((first >= 0 ? lines.slice(first, first + 60) : lines.slice(-60)).join("\n"));
+    console.error("\nLog completo: test-results/verify-last.log");
     if (name.startsWith("Lighthouse"))
       spawnSync("node scripts/lighthouse-summary.mjs", { shell: true, stdio: "inherit" });
     console.error(`\n✗ ${name} fallito: push bloccato. Correggi e riprova.`);

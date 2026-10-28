@@ -4,7 +4,7 @@ import { Map as MapLibre, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import type { ExpressionSpecification, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { MAP_STYLES } from "./map-styles.generated";
 import { currentTheme, THEME_EVENT } from "./theme";
 import type { Tier } from "./tiers";
@@ -573,6 +573,11 @@ export class VenueMap {
       this.reportRendered();
     });
     this.map.triggerRepaint();
+  }
+
+  /** The name the map has for a screen reader, when the language changes (SPEC 7.11). */
+  setLabel(text: string) {
+    this.map.getCanvas().setAttribute("aria-label", text);
   }
 
   /** The last move asked for, and whether a person has taken the map since. */

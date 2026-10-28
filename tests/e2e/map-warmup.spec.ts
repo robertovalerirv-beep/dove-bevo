@@ -43,7 +43,10 @@ test("MF-01 the map page fetches the files of the map ahead of time and does not
   expect(paths.every((p) => p.startsWith("/assets/"))).toBe(true);
   // No hint tags (they would parse the script or do nothing in Safari) and nothing run: still the
   // picture of Italy, no canvas.
-  expect(await page.locator('link[rel="modulepreload"], link[rel="prefetch"]').count()).toBe(0);
+  // (Vite's own modulepreload of the shell chunks, e.g. the dictionary, are not the map.)
+  expect(
+    await page.locator('link[rel="modulepreload"][href*="maplibre"], link[rel="prefetch"]').count(),
+  ).toBe(0);
   await expect(page.getByRole("button", { name: "Esplora la mappa" })).toBeVisible();
   expect(await page.locator("canvas.maplibregl-canvas").count()).toBe(0);
   expect(await mapRegion(page).getAttribute("data-ready")).not.toBe("true");

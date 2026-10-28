@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import type { Venue } from "../lib/data";
 
 interface Props {

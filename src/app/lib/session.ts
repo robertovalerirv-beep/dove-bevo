@@ -1,5 +1,7 @@
 // Anonymous session on the client (SPEC 13.2): Turnstile is loaded only at the first contribution
 // (M2-02), then POST /api/session sets the HttpOnly cookie. Nothing is stored on the device.
+import { currentLang } from "../i18n/lang";
+
 const TURNSTILE_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
 const SESSION_MS = 29 * 60 * 1000; // a minute less than the cookie
 
@@ -10,6 +12,7 @@ interface Turnstile {
       sitekey: string;
       action: string;
       appearance: "interaction-only";
+      language: "it" | "en";
       callback: (token: string) => void;
       "error-callback": () => void;
     },
@@ -71,6 +74,7 @@ async function start(host: HTMLElement): Promise<void> {
       sitekey: siteKey,
       action,
       appearance: "interaction-only", // visible only when Cloudflare needs an interaction
+      language: currentLang(), // the language of the page (SPEC 7.11)
       callback: (t) => {
         turnstile.remove(id);
         resolve(t);

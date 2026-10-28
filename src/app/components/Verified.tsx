@@ -1,6 +1,6 @@
 import type { WeekHours } from "../../shared/hours";
 import { rangeText } from "../../shared/hours";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { Icon } from "./Icon";
 
 /**

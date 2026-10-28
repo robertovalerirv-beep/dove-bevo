@@ -19,6 +19,12 @@ export const it = {
   common: {
     close: "Chiudi",
   },
+  // The language menu (SPEC 7.11): each language is named in itself, in both dictionaries.
+  lang: {
+    menu: "Lingua",
+    italian: "Italiano",
+    english: "English",
+  },
   map: {
     region: "Mappa",
     canvas: "Mappa interattiva dei bar",

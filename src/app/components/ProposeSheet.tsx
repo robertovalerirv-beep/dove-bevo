@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import { validVenueName } from "../../shared/venue";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { Sheet } from "./Sheet";
 
 export type ProposedKind = 1 | 2 | 4;

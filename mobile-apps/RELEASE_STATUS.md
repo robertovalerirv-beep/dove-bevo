@@ -146,7 +146,7 @@ importer returned fixed catalog classification `import-format-unknown`,
 OSStatus `-25257`, before archive, export or upload. The original certificate,
 key and password were not changed.
 
-## Completed signing retries
+## Signing retries
 
 A separate encrypted 3DES compatibility container was privately verified against
 the same certificate, key and password. The original container and the AES trial
@@ -180,6 +180,12 @@ download trial still failed archive with the same pinned profile-not-found
 error. No signed IPA, upload or TestFlight build resulted. The team, certificate,
 profile UUID and post-export validation gates remain pinned.
 
+`mobile-testing/v1.0.0-internal.8` at
+`e25cbd224a4439c6149a21df0636c5a936a8d545` is running as
+[40675741220](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40675741220).
+Android checks passed; iOS unit tests are running. No final signing, archive or
+upload result is available yet.
+
 The secret publisher still defaults to `ios-distribution.p12`. The compatibility
 container requires explicit `-IosCertificateFile ios-distribution-apple-3des.p12`
 with `-IosCertificateOnly`; this selects only the existing iOS certificate secret.
@@ -193,10 +199,17 @@ It is installed on an account-free Android 16 / API 36 emulator
 (`sdk_gphone64_x86_64`, `ranchu`), using WHPX acceleration and SwiftShader
 graphics. No host security setting was changed.
 
-The native rules, scrolling, Privacy before acceptance and decline/exit were
-observed. Adult terms confirmation is **pending**; live browsing, city search,
-map, location and subsequent navigation remain **untested**. Emulator evidence
-does not establish physical-device behavior. Follow
+The native rules, scrolling, Privacy before acceptance, decline/exit and return
+to the rules on relaunch were observed. After the owner explicitly approved
+adult terms acceptance for this test, the actual acceptance button was tapped.
+The live website and initialized Italy map loaded without a Cloudflare challenge
+on this local connection. Retained evidence is
+`test-evidence/local-android-20261028/after-acceptance.png`.
+
+The city-search sheet opens, but ordinary keyboard entry is being resolved.
+No Milano result, city-map or venue check has passed yet; location and subsequent
+navigation remain untested. Emulator evidence does not establish physical-device
+behavior. Follow
 [the acceptance checklist](PHYSICAL_TEST_CHECKLIST.md) and retain original
 screenshots with their dimensions.
 
@@ -206,9 +219,9 @@ been completed.
 
 ## Next release gate
 
-The next prepared source check verifies that the same validated signing identity
-is visible in the configured user keychain search list. Its hosted result is
-unverified; it does not establish that Xcode can discover the pinned profile.
+Internal.8 tests whether the same validated signing identity is visible in the
+configured user keychain search list. Its hosted result is unverified; it does
+not establish that Xcode can discover the pinned profile.
 
 Production remains gated on required live Android and iOS verification,
 including successful genuine phone and iPad store screenshots. Run the required

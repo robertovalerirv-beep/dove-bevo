@@ -31,7 +31,7 @@ final class SavedVenueFile implements SavedVenueStore.Storage {
             return bytes.toByteArray();
         } catch (FileNotFoundException error) {
             if (file.exists()) throw error;
-            return new byte[0];
+            return null;
         }
     }
 

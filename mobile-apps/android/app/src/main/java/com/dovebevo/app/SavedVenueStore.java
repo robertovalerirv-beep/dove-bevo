@@ -19,6 +19,7 @@ public final class SavedVenueStore {
     private static final int MAGIC = 0x44425631;
 
     public interface Storage {
+        /** Null means no file has been created; empty or malformed files are corruption. */
         byte[] read() throws IOException;
         /** Replace atomically, or throw with the previous contents preserved. */
         void write(byte[] bytes) throws IOException;
@@ -38,21 +39,22 @@ public final class SavedVenueStore {
 
     public List<Venue> load() throws IOException {
         byte[] bytes = storage.read();
-        if (bytes == null || bytes.length == 0 || bytes.length > MAX_BYTES) return Collections.emptyList();
+        if (bytes == null) return Collections.emptyList();
+        if (bytes.length == 0 || bytes.length > MAX_BYTES) throw new IOException("Saved venues are unreadable");
         List<Venue> venues = new ArrayList<>();
         Set<String> seen = new HashSet<>();
         try (DataInputStream input = new DataInputStream(new ByteArrayInputStream(bytes))) {
-            if (input.readInt() != MAGIC) return Collections.emptyList();
+            if (input.readInt() != MAGIC) throw new IOException("Unknown saved venues format");
             int count = input.readInt();
-            if (count < 0 || count > MAX_VENUES) return Collections.emptyList();
+            if (count < 0 || count > MAX_VENUES) throw new IOException("Invalid saved venues count");
             for (int i = 0; i < count; i++) {
                 String url = SavedVenueUrl.canonicalize(input.readUTF());
                 String label = normalizedLabel(input.readUTF());
                 if (url != null && label != null && !label.isEmpty() && seen.add(url)) venues.add(new Venue(url, label));
             }
-            if (input.available() != 0) return Collections.emptyList();
+            if (input.available() != 0) throw new IOException("Unexpected saved venues data");
             return Collections.unmodifiableList(venues);
-        } catch (IOException | RuntimeException malformed) { return Collections.emptyList(); }
+        } catch (IOException | RuntimeException malformed) { throw new IOException("Saved venues are unreadable", malformed); }
     }
 
     public Result save(String rawUrl, String requestedLabel) {

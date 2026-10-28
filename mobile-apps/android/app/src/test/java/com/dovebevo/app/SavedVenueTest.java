@@ -125,10 +125,13 @@ public final class SavedVenueTest {
         SavedVenueStore store = new SavedVenueStore(storage);
         assertEquals(1, store.load().size());
         assertEquals("Uno", store.load().get(0).label);
-        for (byte[] corrupt : new byte[][]{new byte[]{1, 2, 3}, Arrays.copyOf(storage.bytes, 6),
+        for (byte[] corrupt : new byte[][]{new byte[0], new byte[]{1, 2, 3}, Arrays.copyOf(storage.bytes, 6),
                 new byte[SavedVenueStore.MAX_BYTES + 1], encoded(new String[51][2])}) {
             storage.bytes = corrupt;
-            assertTrue(store.load().isEmpty());
+            try { store.load(); fail("Whole-file corruption must not be presented as empty"); }
+            catch (IOException expected) { assertEquals(SavedVenueStore.Result.STORAGE_ERROR, store.save(ONE, "Uno")); }
+            assertEquals(SavedVenueStore.Result.STORAGE_ERROR, store.remove(ONE));
+            assertArrayEquals(corrupt, storage.bytes);
         }
     }
 
@@ -142,11 +145,11 @@ public final class SavedVenueTest {
     }
 
     private static final class MemoryStorage implements SavedVenueStore.Storage {
-        byte[] bytes = new byte[0];
+        byte[] bytes;
         boolean failRead;
         boolean failWrite;
         int writes;
-        @Override public byte[] read() throws IOException { if (failRead) throw new IOException("read failed"); return bytes.clone(); }
+        @Override public byte[] read() throws IOException { if (failRead) throw new IOException("read failed"); return bytes == null ? null : bytes.clone(); }
         @Override public void write(byte[] value) throws IOException {
             if (failWrite) throw new IOException("write failed");
             bytes = value.clone(); writes++;

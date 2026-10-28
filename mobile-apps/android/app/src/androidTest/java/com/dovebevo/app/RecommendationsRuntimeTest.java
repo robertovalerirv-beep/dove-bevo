@@ -123,6 +123,28 @@ public final class RecommendationsRuntimeTest {
             assertEquals("Error paths must close their OS descriptors", 0, identityDescriptors(file));
             try { storage.create(second); fail("Corrupt identity replaced"); } catch (IOException expected) { }
             assertEquals(7, file.length()); assertEquals(1, directory.list().length);
+
+            assertTrue(file.delete());
+            String missing = new File(directory, "missing-target").getAbsolutePath();
+            Os.symlink(missing, file.getAbsolutePath());
+            try { storage.create(second); fail("Dangling identity link replaced"); } catch (IOException expected) { }
+            assertTrue(OsConstants.S_ISLNK(Os.lstat(file.getAbsolutePath()).st_mode));
+            assertEquals(missing, Os.readlink(file.getAbsolutePath()));
+            assertFalse(new File(missing).exists());
+            assertTrue(file.delete());
+
+            RecommendationVoterFile interrupted = new RecommendationVoterFile(directory, (descriptor, bytes) -> {
+                assertEquals(8, Os.write(descriptor, bytes, 0, 8));
+                throw new IOException("Owned partial-write failure");
+            });
+            try { interrupted.create(first); fail("Partial identity claimed success"); } catch (IOException expected) { }
+            assertEquals(8, file.length()); assertEquals(0, identityDescriptors(file));
+            try { storage.create(second); fail("Partial identity regenerated"); } catch (IOException expected) { }
+            try (java.io.FileInputStream input = new java.io.FileInputStream(file)) {
+                byte[] preserved = new byte[8]; assertEquals(8, input.read(preserved));
+                assertEquals(first.substring(0, 8), new String(preserved, StandardCharsets.US_ASCII));
+            }
+            assertEquals(1, directory.list().length);
         } finally { file.delete(); directory.delete(); }
     }
     private static int identityDescriptors(File file) throws ErrnoException {

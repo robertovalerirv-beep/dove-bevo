@@ -6,17 +6,18 @@ import android.system.OsConstants;
 import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /** The caller supplies getNoBackupFilesDir(), never preferences, shared storage or a browser profile. */
 final class RecommendationVoterFile implements RecommendationVoter.Storage {
-    private final File directory;
+    interface Writer { void write(FileDescriptor descriptor, byte[] bytes) throws IOException, ErrnoException; }
     private final File file;
-    RecommendationVoterFile(File directory) {
-        this.directory = directory;
+    private final Writer writer;
+    RecommendationVoterFile(File directory) { this(directory, RecommendationVoterFile::writeAndSync); }
+    RecommendationVoterFile(File directory, Writer writer) {
         file = new File(directory, "recommendation-voter-v1");
+        this.writer = writer;
     }
     @Override public String read() throws IOException {
         FileDescriptor descriptor;
@@ -41,19 +42,37 @@ final class RecommendationVoterFile implements RecommendationVoter.Storage {
     }
     @Override public String create(String value) throws IOException {
         if (!RecommendationVoter.valid(value)) throw new IOException("Installation identity unavailable");
-        File temporary = File.createTempFile("recommendation-voter-", ".tmp", directory);
+        FileDescriptor descriptor;
         try {
-            Os.chmod(temporary.getAbsolutePath(), 0600);
-            try (FileOutputStream output = new FileOutputStream(temporary)) {
-                output.write(value.getBytes(StandardCharsets.US_ASCII)); output.getFD().sync();
-            }
-            // link is create-only: a competing writer can win, but an existing identity is never replaced.
-            try { Os.link(temporary.getAbsolutePath(), file.getAbsolutePath()); }
-            catch (ErrnoException error) { if (error.errno != OsConstants.EEXIST) throw error; }
-            String persisted = read();
-            if (persisted == null) throw new IOException("Installation identity unavailable");
-            return persisted;
+            // Android app SELinux denies hard links. Exclusive creation still never follows/replaces an existing entry.
+            descriptor = Os.open(file.getAbsolutePath(), OsConstants.O_WRONLY | OsConstants.O_CREAT
+                    | OsConstants.O_EXCL | OsConstants.O_NOFOLLOW, 0600);
+        } catch (ErrnoException error) {
+            if (error.errno == OsConstants.EEXIST) return existing();
+            throw new IOException("Installation identity unavailable");
+        }
+        try {
+            writer.write(descriptor, value.getBytes(StandardCharsets.US_ASCII));
         } catch (ErrnoException error) { throw new IOException("Installation identity unavailable"); }
-        finally { temporary.delete(); }
+        finally {
+            // Preserve even an incomplete first file: silently deleting it would permit identity rotation after a failure.
+            try { Os.close(descriptor); }
+            catch (ErrnoException error) { throw new IOException("Installation identity unavailable"); }
+        }
+        return existing();
+    }
+    private String existing() throws IOException {
+        String value = read();
+        if (value == null) throw new IOException("Installation identity unavailable");
+        return value;
+    }
+    private static void writeAndSync(FileDescriptor descriptor, byte[] bytes) throws IOException, ErrnoException {
+        int offset = 0;
+        while (offset < bytes.length) {
+            int count = Os.write(descriptor, bytes, offset, bytes.length - offset);
+            if (count <= 0) throw new IOException("Installation identity unavailable");
+            offset += count;
+        }
+        Os.fsync(descriptor);
     }
 }

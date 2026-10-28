@@ -18,6 +18,7 @@ import { reports } from "./routes/reports";
 import { seo, seoPages } from "./routes/seo";
 import { session } from "./routes/session";
 import { venues } from "./routes/venues";
+import { mobileRecommendations } from "./routes/mobile-recommendations";
 import type { AppEnv } from "./types";
 
 const QueueTask = z.record(z.string(), z.unknown());
@@ -40,6 +41,7 @@ app.get("/api/venues/*", rateLimit);
 // Cell reads hit D1 on every call (the Cache API is inactive on workers.dev): one script must not
 // burn the free-plan quota in minutes (red-team audit 14/10/2026, ADR 0021).
 app.get("/api/prices/*", readLimit);
+app.get("/api/mobile/venues/*", readLimit);
 // Every write needs a session, except creating one (SPEC 9.1; /api/events is exempt by D-06).
 app.on(
   "POST",
@@ -57,6 +59,7 @@ app.route("/api/prices", prices);
 app.route("/api/venues", venues);
 app.route("/api/reports", reports);
 app.route("/api/events", events);
+app.route("/api/mobile/venues", mobileRecommendations);
 app.route("/", seo);
 
 // Pages that run the Worker first (run_worker_first in wrangler.jsonc: the home, /copertura, the main

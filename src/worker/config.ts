@@ -2,6 +2,9 @@
 export const QUOTAS = { price: 30, confirm: 50, venue: 5, report: 20 } as const;
 export type QuotaKind = keyof typeof QUOTAS;
 
+/** Addition attempts, not voter uniqueness. Undo remains available after either daily budget. */
+export const MOBILE_RECOMMENDATION_QUOTAS = { installation: 50, ip: 200 } as const;
+
 /** Proposed bars waiting for the admin: beyond this, proposals are refused politely (SPEC 7.5). */
 export const MAX_PENDING_VENUES = 200;
 /** Pending proposals waiting in one geohash cell: one actor cannot fill the whole queue there (ADR 0021). */

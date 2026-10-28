@@ -2,7 +2,8 @@
 
 Standalone UIKit app, bundle identifier `com.dovebevo.app`, minimum iOS 16.4.
 It opens `https://www.dovebevo.com/` directly in a persistent `WKWebView`.
-The website, API, authentication, database and Cloudflare configuration are unchanged.
+The mobile additions do not change the website, API, authentication, database or
+Cloudflare configuration.
 There are no third-party runtime SDKs or native JavaScript bridges.
 
 A native first-launch screen shows the bundled `mobile-apps/terms.md` before a
@@ -25,8 +26,13 @@ landscape and iPad share popovers use UIKit defaults.
 
 Requirements: macOS, Xcode 16.4 or later with an installed iOS simulator, command-line
 tools selected with `xcode-select`, Python 3 and network access for the build tool
-and the live-site smoke test. CI uses Xcode 26.3 on the ARM macOS 26 runner with
-the iOS 26.2 simulator pinned explicitly. No Node or CocoaPods installation
+and the live-site smoke test. CI pins Xcode 26.3 and the iOS 26.2 simulator.
+The production live-test job uses `macos-15-intel`; RC.6 actually ran on
+macOS 15.7.9 (24G830), `Macmini6,2` / `x86_64h`, with an iPhone 17 `x86_64`
+simulator. Internal checks and signing jobs remain on macOS 26 ARM. The Intel
+trial still failed the live search after a WebKit GPU failure; neither host
+has passed the required live suite. See [release status](../RELEASE_STATUS.md)
+for exact runs and remaining gates. No Node or CocoaPods installation
 is needed. The build-tool source is [XcodeGen 2.44.1](https://github.com/yonaskolb/XcodeGen/releases/tag/2.44.1)
 (MIT). The generation script downloads its official release ZIP, verifies the
 pinned SHA-256 before extraction/execution and checks the executable's version.
@@ -135,6 +141,25 @@ signature certificate must match. Metadata tests do not mock Apple signing:
 ```sh
 python3 -m unittest discover -s mobile-apps/ios/scripts/tests -v
 ```
+
+The original P12 and the AES256/SHA1-MAC trial are retained in the secure signing
+store. Internal.3's AES trial failed Apple's importer with
+`import-format-unknown` / OSStatus `-25257`, before archive or export. A separate
+encrypted 3DES compatibility container preserves the certificate, private key
+and password; its actual Apple import is pending Internal.4's result. Local
+container verification does not establish Apple importer compatibility.
+
+`mobile-apps/scripts/publish-signing-secrets.ps1` still defaults to
+`ios-distribution.p12`. To select the compatibility container for an authorized
+retry, use explicit parameters:
+
+```powershell
+.\mobile-apps\scripts\publish-signing-secrets.ps1 -IosCertificateFile ios-distribution-apple-3des.p12 -IosCertificateOnly
+```
+
+That mode updates only the existing `DOVEBEVO_IOS_CERTIFICATE_BASE64` repository
+secret. It does not replace the signing password, profile, API key or Android
+identity. No signing material belongs in the source tree or OneDrive.
 
 Signing material is decoded only into a fresh `0700` directory under validated
 `RUNNER_TEMP` with `0600` files, imported into a task-owned ephemeral keychain and

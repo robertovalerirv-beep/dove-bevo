@@ -86,3 +86,26 @@ test("MF-02 the files come with a long cache and the first touch asks for nothin
   // The fetch ahead of time added nothing to /api or /data.
   expect(api.filter((p) => /maplibre/.test(p))).toEqual([]);
 });
+
+test("MF-01 with the data saver on nothing of the map is fetched before the touch", async ({
+  page,
+}) => {
+  // `navigator.connection` is a Chromium API (Safari has none): the init script defines it on any
+  // engine, so this also runs on WebKit and checks the same guard.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "connection", {
+      value: { saveData: true },
+      configurable: true,
+    });
+  });
+  const seen = watchMapRequests(page);
+  await page.goto("/");
+  await page.waitForLoadState("networkidle");
+  // Past the moment the map page would have started (idle callback, at most 4 s, or its timer).
+  await page.waitForTimeout(5_000);
+  expect(seen.map((r) => r.url())).toEqual([]);
+  await expect(page.getByRole("button", { name: "Esplora la mappa" })).toBeVisible();
+  // The touch still starts the map as always.
+  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
+});

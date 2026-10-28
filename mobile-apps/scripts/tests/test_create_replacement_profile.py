@@ -104,6 +104,20 @@ class ReplacementTests(unittest.TestCase):
         self.assertEqual(self.api.posts, [])
         self.assertEqual(list(self.store.iterdir()), [])
 
+    def test_old_uuid_comparisons_are_case_insensitive_without_treating_it_as_new(self):
+        for spelling in ['aabbccdd-0000-0000-0000-aabbccddeeff', 'AaBbCcDd-0000-0000-0000-AaBbCcDdEeFf']:
+            with self.subTest(uuid=spelling):
+                context = dict(self.context, uuid=spelling)
+                api = FakeAPI(context, self.store)
+                api.old['attributes']['uuid'] = spelling.swapcase()
+                self.assertTrue(replacement.create_once(api, context, self.store)['planVerified'])
+                candidate = copy.deepcopy(api.created)
+                candidate['attributes']['uuid'] = spelling.swapcase()
+                api.candidates = [candidate]
+                with self.assertRaisesRegex(replacement.SafeError, 'profile-uuid-mismatch'):
+                    replacement.read_profile(api, 'new-id', context, pinned={'bundle': 'bundle-id', 'certificate': 'cert-id'})
+                self.assertEqual(api.posts, [])
+
     def test_apply_posts_exact_existing_one_certificate_bundle_and_preserves_old(self):
         original = copy.deepcopy(self.api.old)
         result = self.run_plan(True)
@@ -423,7 +437,7 @@ class LocalMetadataTests(unittest.TestCase):
     def test_old_cms_uses_existing_metadata_guards_and_exact_approved_certificate(self):
         now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None, microsecond=0)
         certificate = b'public certificate metadata fixture; not a certificate'
-        profile = {'Name': 'Public Old Profile', 'UUID': '11111111-1111-1111-1111-111111111111',
+        profile = {'Name': 'Public Old Profile', 'UUID': 'AaBbCcDd-0000-0000-0000-AaBbCcDdEeFf',
                    'TeamIdentifier': [replacement.TEAM], 'ApplicationIdentifierPrefix': [replacement.TEAM],
                    'Platform': ['iOS'], 'CreationDate': now - dt.timedelta(days=1),
                    'ExpirationDate': now + dt.timedelta(days=365), 'DeveloperCertificates': [certificate],

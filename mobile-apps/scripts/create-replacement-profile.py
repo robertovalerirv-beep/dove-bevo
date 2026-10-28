@@ -234,7 +234,7 @@ def profiles(api):
 def exact_matches(api, name=None, uuid=None):
     matches = [item for item in profiles(api) if
                (name is not None and item.get("attributes", {}).get("name") == name) or
-               (uuid is not None and str(item.get("attributes", {}).get("uuid", "")).upper() == uuid)]
+               (uuid is not None and str(item.get("attributes", {}).get("uuid", "")).casefold() == uuid.casefold())]
     require(len(matches) <= 1, "profile-match-ambiguous")
     return matches
 
@@ -246,7 +246,7 @@ def read_profile(api, profile_id, context, old=False, pinned=None):
     require(attrs.get("name") == (context["name"] if old else NAME), "profile-name-mismatch")
     uuid = attrs.get("uuid", "")
     require(isinstance(uuid, str) and re.fullmatch(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", uuid), "profile-uuid-invalid")
-    require((uuid.upper() == context["uuid"]) == old, "profile-uuid-mismatch")
+    require((uuid.casefold() == context["uuid"].casefold()) == old, "profile-uuid-mismatch")
     created, expires = timestamp(attrs.get("createdDate")), timestamp(attrs.get("expirationDate"))
     now = dt.datetime.now(dt.timezone.utc)
     require(created <= now < expires and created < expires, "profile-dates-invalid")

@@ -94,7 +94,7 @@ def validated_profile(profile, now=None):
     require(isinstance(certificates, list) and len(certificates) == 1, "App Store profile must name one distribution certificate")
     require(isinstance(certificates[0], bytes) and bool(certificates[0]), "Distribution certificate is missing")
     return {
-        "uuid": value.upper(),
+        "uuid": value,
         "team": TEAM,
         "bundle": BUNDLE,
         "expiresAt": expiration.isoformat(),
@@ -245,7 +245,7 @@ def install_profile(directory, metadata, checkout):
     targets = []
     for root in profile_roots():
         validate_profile_storage(root, checkout)
-        target = root / (value.upper() + ".mobileprovision")
+        target = root / (value + ".mobileprovision")
         reject_profile_symlinks(target)
         if target.exists():
             require(target.is_file() and target.read_bytes() == data, "Existing profile UUID collides with another file; preserving it")

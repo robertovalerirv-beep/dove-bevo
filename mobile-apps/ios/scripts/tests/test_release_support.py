@@ -26,6 +26,7 @@ NOW = dt.datetime(2026, 10, 26, tzinfo=dt.timezone.utc)
 # preflight boundaries, never successful Apple signing.
 CERTIFICATE = b"public metadata fixture; not a signing certificate"
 FINGERPRINT = hashlib.sha1(CERTIFICATE).hexdigest().upper()
+UUID_CASES = ['672e3c73-21b8-4b46-9ecf-a39a0cbcb4b9', '672e3C73-21B8-4b46-9EcF-A39A0cBcB4B9']
 
 
 def profile():
@@ -46,6 +47,15 @@ def profile():
 
 
 class ReleaseProfileTests(unittest.TestCase):
+    def test_original_uuid_spelling_is_preserved_in_metadata_and_export_pin(self):
+        for value in UUID_CASES:
+            with self.subTest(uuid=value):
+                source = profile()
+                source['UUID'] = value
+                metadata = release.validated_profile(source, NOW)
+                self.assertEqual(metadata['uuid'], value)
+                self.assertEqual(release.export_options(metadata, FINGERPRINT)['provisioningProfiles'], {release.BUNDLE: value})
+
     def test_exact_app_store_metadata_has_public_selection_fields(self):
         result = release.validated_profile(profile(), NOW)
         self.assertEqual(result["bundle"], "com.dovebevo.app")
@@ -198,6 +208,20 @@ class ProfileInstallationTests(unittest.TestCase):
         release.cleanup_profile(self.private)
         self.assertTrue(all(not path.exists() for path in self.targets))
         release.cleanup_profile(self.private)  # Missing owned files are safe.
+
+    def test_lowercase_and_mixed_uuid_filenames_and_owned_cleanup_preserve_original_spelling(self):
+        for value in UUID_CASES:
+            with self.subTest(uuid=value):
+                source = profile()
+                source['UUID'] = value
+                self.metadata = release.validated_profile(source, NOW)
+                self.install()
+                for target in self.targets:
+                    self.assertEqual([path.name for path in target.parent.iterdir()], [value + '.mobileprovision'])
+                    self.assertEqual((target.parent / (value + '.mobileprovision')).read_bytes(), self.data)
+                self.assertTrue(all(Path(item['path']).name == value + '.mobileprovision' for item in self.journal()['profiles']))
+                release.cleanup_profile(self.private)
+                self.assertTrue(all(not list(target.parent.iterdir()) for target in self.targets))
 
     def test_identical_preexisting_profiles_are_preserved_and_never_owned(self):
         identities = [self.existing(path).st_ino for path in self.targets]
@@ -655,7 +679,7 @@ IPA=public-ipa-fixture
 
 
 class ArchiveAuthenticationTests(unittest.TestCase):
-    def run_archive_boundary(self, arguments, cleanup_failure=False, search_identity='matching'):
+    def run_archive_boundary(self, arguments, cleanup_failure=False, search_identity='matching', profile_uuid=None):
         # Run the real script up to a simulated archive failure and its EXIT
         # trap. Apple tools and private decoding are replaced at their command
         # boundaries; all files are public fixtures in the selected workspace.
@@ -672,7 +696,9 @@ class ArchiveAuthenticationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=root) as working:
             folder = Path(working)
             (folder / 'private fixture').mkdir()
-            (folder / 'private fixture' / 'profile.json').write_text(json.dumps(release.validated_profile(profile(), NOW)))
+            profile_input = profile()
+            profile_input['UUID'] = profile_uuid or profile_input['UUID']
+            (folder / 'private fixture' / 'profile.json').write_text(json.dumps(release.validated_profile(profile_input, NOW)))
             fixture = r'''#!/usr/bin/env bash
 record() { printf '%s\n' "$*" >> "$PWD/actions.txt"; }
 uname() { printf 'Darwin\n'; }
@@ -695,10 +721,11 @@ openssl() {
     record 'validated existing private key path'
 }
 python3() {
-    if [[ "$1" == -c ]]; then printf '672E3C73-21B8-4B46-9ECF-A39A0CBCB4B9\n'; return 0; fi
+    if [[ "$1" == -c ]]; then "$FIXTURE_PYTHON" "$@"; return; fi
     case "$2" in
         private-dir) printf '%s/private fixture\n' "$PWD" ;;
-        decode|profile|install|keychain-list|options) record "$2" ;;
+        decode|profile|install|keychain-list) record "$2" ;;
+        options) record 'options'; shift; "$FIXTURE_PYTHON" "$FIXTURE_SUPPORT" "$@" ;;
         identity)
             if [[ "$4" == "$private_dir/search-list-identities.txt" ]]; then
                 record 'validate-user-search-list-identity'
@@ -752,7 +779,17 @@ bash() { record 'generate-project'; }
             args_file = folder / 'archive-args.bin'
             argv = args_file.read_bytes().decode().rstrip('\0').split('\0') if args_file.exists() else []
             actions = (folder / 'actions.txt').read_text().splitlines() if (folder / 'actions.txt').exists() else []
+            options = folder / 'private fixture' / 'ExportOptions.plist'
+            self.last_export_options = plistlib.loads(options.read_bytes()) if options.exists() else None
             return result, argv, actions
+
+    def test_archive_and_export_use_original_lowercase_and_mixed_uuid_pins(self):
+        for value in UUID_CASES:
+            with self.subTest(uuid=value):
+                result, argv, actions = self.run_archive_boundary(['--upload'], profile_uuid=value)
+                self.assertEqual(result.returncode, 77, result.stderr)
+                self.assertIn('PROVISIONING_PROFILE_SPECIFIER=' + value, argv)
+                self.assertEqual(self.last_export_options['provisioningProfiles'], {release.BUNDLE: value})
 
     def test_only_upload_archive_receives_existing_key_and_provisioning_flags_with_manual_pins(self):
         for arguments in [[], ['--internal-only'], ['--upload'], ['--internal-only', '--upload']]:

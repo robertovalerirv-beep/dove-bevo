@@ -697,7 +697,7 @@
     "milestone": "MF",
     "descrizione": "Download in anticipo del file della mappa solo nella pagina della mappa",
     "verifica": "unit + e2e Chromium e WebKit 390×844: la build scrive in `index.html` un `<meta>` con i percorsi del file, del CSS e del worker di MapLibre; dopo `load` e un momento libero sulla pagina `/` parte un `fetch` a bassa priorità di quei tre file (anche su WebKit); nessuna esecuzione: finché non si tocca la mappa restano la foto e nessun canvas, nessun `modulepreload`; con il risparmio dati (`Save-Data`) non parte; su `/privacy`, `/regole` e `/admin` nessuna richiesta a `maplibre`; in sviluppo nessun download in anticipo",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MF-02",
@@ -711,7 +711,7 @@
     "milestone": "MF",
     "descrizione": "Budget invariati",
     "verifica": "Lighthouse CI mobile: Performance ≥ 90, altre ≥ 95, LCP ≤ 2,5 s, CLS ≤ 0,05; shell ≤ 50 KB gzip (il download in anticipo non conta nel peso: test unit su `scripts/bundle-size.ts`); misure prima e dopo in PROGRESS",
-    "passes": false
+    "passes": true
   },
   {
     "id": "ME-01",

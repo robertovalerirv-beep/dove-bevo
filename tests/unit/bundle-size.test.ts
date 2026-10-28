@@ -64,4 +64,13 @@ describe("initialShellFiles", () => {
     const html = '<script type="module" src="/assets/a.js"></script>';
     expect(initialShellFiles(html, () => 'import"./maplibre-gl-X.js"')).toEqual(["assets/a.js"]);
   });
+
+  it("does not count the map-chunk meta tag nor a prefetch hint (SPEC 1.12, MF-03)", () => {
+    const html = HTML.replace(
+      "</head>",
+      '<meta name="map-chunk" content="/assets/maplibre-map-F.js">' +
+        '<link rel="prefetch" as="script" href="/assets/AdminPage-E.js"></head>',
+    );
+    expect(initialShellFiles(html, read).sort()).toEqual(initialShellFiles(HTML, read).sort());
+  });
 });

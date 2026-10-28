@@ -5,6 +5,7 @@ import preact from "@preact/preset-vite";
 import { defineConfig } from "vite";
 import { it } from "./src/app/i18n/it.ts";
 import { APP_NAME } from "./src/shared/config.ts";
+import { mapWarmupMeta, mapWarmupPaths } from "./scripts/map-warmup.ts";
 import { renderSw } from "./scripts/sw.ts";
 import type { BrandTokens } from "./scripts/tokens.ts";
 
@@ -46,6 +47,19 @@ export default defineConfig({
           .replaceAll("%APP_NAME%", escapeHtml(APP_NAME))
           .replaceAll("%APP_DESCRIPTION%", escapeHtml(it.meta.description))
           .replaceAll("%THEME_COLOR%", THEME_COLOR),
+    },
+    // SPEC 1.12: tells the page which hashed files make the map, so it can fetch them ahead
+    // of time. Build only: under the dev server there is no meta tag and nothing is fetched ahead.
+    {
+      name: "map-warmup",
+      transformIndexHtml: {
+        order: "post",
+        handler(html, ctx) {
+          if (!ctx.bundle) return html;
+          const meta = mapWarmupMeta(mapWarmupPaths(Object.keys(ctx.bundle)));
+          return meta ? html.replace("</head>", `${meta}</head>`) : html;
+        },
+      },
     },
     // SPEC 7.7: a hand-written service worker with the list of shell files of this build.
     {

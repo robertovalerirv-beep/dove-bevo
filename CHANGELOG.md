@@ -7,6 +7,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/it-IT/1.1.0/). Versioni `
 Il sito vivo è l'ambiente `staging` su `www.dovebevo.com` (ADR 0035 e 0036): il tag `v0.1.0` segna la versione su `main`, senza un secondo deploy.
 
 ### Aggiunto
+- Mappa pronta al primo tocco: dopo il caricamento della pagina, a telefono libero, i file della mappa si scaricano in anticipo con un `fetch` (funziona anche su Safari) e cache lunga sui file con hash; salta con il risparmio dati.
 - Specifica 1.11: mappa pronta al primo tocco (file scaricato in anticipo) e interfaccia pubblica in inglese con menu in alto a sinistra, senza salvare la scelta (ADR 0037, 0038). Il codice arriva nei prossimi rami.
 - Interfaccia pubblica in inglese (ADR 0038): menu «IT/EN» in alto a sinistra sulla mappa e nell'intestazione di `/privacy` e `/regole`; la scelta non viene salvata e si riparte sempre dall'italiano; numeri, date e valuta restano `it-IT`; `/admin` resta in italiano. Privacy e regole in inglese sono una bozza da rileggere.
 - Mappa dei bar italiani con i prezzi inseriti dagli utenti, senza registrazione e senza tracciamento.

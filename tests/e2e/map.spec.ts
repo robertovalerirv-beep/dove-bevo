@@ -18,14 +18,18 @@ test("M1-06 opens on Italy with the attributions visible", async ({ page }, info
     if (r.url().includes("maplibre")) mapLibre.push(r.url());
   });
   await page.goto("/");
-  // First a static picture of Italy (ADR 0014), no MapLibre download…
+  // First a static picture of Italy (ADR 0014), MapLibre not running…
   const preview = page.getByRole("button", { name: "Esplora la mappa" });
   await expect(preview.locator("img")).toBeVisible();
   expect(
     await preview.locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth),
   ).toBeGreaterThan(0);
   await page.waitForLoadState("networkidle");
-  expect(mapLibre).toEqual([]);
+  // …SPEC 1.12 changed this line: its files may be fetched ahead of time (map-warmup.spec.ts); nothing
+  // of it runs before the first touch.
+  expect(await page.locator("canvas.maplibregl-canvas").count()).toBe(0);
+  expect(await page.locator('link[rel="modulepreload"][href*="maplibre"]').count()).toBe(0);
+  expect(mapLibre.every((url) => new URL(url).pathname.startsWith("/assets/"))).toBe(true);
   await page.screenshot({ path: info.outputPath("m1-06-italia-statica.png") });
   // …then the interactive map on the same view at the first touch.
   await preview.click();

@@ -4,6 +4,36 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-28 · Mappa pronta al primo tocco: file scaricati in anticipo con `fetch` (branch `m6-mappa-prefetch`) · SPEC 1.12 (tag `spec-approved-13`), ADR 0039, MF-01…MF-03
+
+**Richiesta di Roberto:** il primo tocco sulla mappa aspetta il download di MapLibre (circa 440 KB compressi). Si scaricano i file in anticipo, senza eseguirli. Scelta di Roberto dopo la misura su WebKit: `fetch(url, { priority: "low" })` al posto di `<link rel="prefetch">`, perché Safari/iPhone ignora il prefetch.
+
+**Fatto**
+- Build: il plugin `map-warmup` di `vite.config.ts` scrive in `index.html` un `<meta name="map-chunk">` con i tre file con hash (chunk, CSS, worker). Funzioni in `scripts/map-warmup.ts`.
+- App: `src/app/lib/map-warmup.ts`, avviato da `main.tsx` solo nella pagina mappa. Dopo `load` e un momento libero (`requestIdleCallback`, in WebKit un timer di 2 s) fa un `fetch` a bassa priorità dei tre file, legge il corpo e lo scarta; errori ignorati; salta tutto con il risparmio dati attivo, senza meta (sviluppo) e in `/privacy`, `/regole`, `/admin`. Nessun `import()`, nessun `modulepreload`, `loadMap()` mai chiamato.
+- `public/_headers`: `/assets/*` con `Cache-Control: public, max-age=31536000, immutable` (i nomi hanno l'hash). Senza, al tocco restava una richiesta di conferma per file; con, il server di prova non vede nessuna richiesta.
+- Test: unit `tests/unit/map-warmup.test.ts` e un caso in `bundle-size.test.ts`; e2e `tests/e2e/map-warmup.spec.ts` (MF-01 e MF-02); `tests/e2e/map.spec.ts` M1-06 **cambiato perché il requisito è cambiato** (prima: zero richieste a MapLibre prima del tocco; ora: solo file di `/assets/`, nessun canvas, nessun `modulepreload`).
+
+**Prove** (worktree, Chromium e WebKit di Playwright, 390×844)
+- `npx tsc -b`, `npm run lint`, `npm run format:check`: verdi. `npm run test`: 56 file, 617 test verdi.
+- e2e `map-warmup`, `map`, `legal`, `pwa`, `csp`, `shell` su Chromium **e WebKit**: 72 su 72 verdi. `--project=security`: 23 su 23 verdi.
+- Shell: 38.513 B → 38.814 B (limite 51.200).
+- **Lighthouse, A/B sullo stesso build** (6 giri con il `<meta>`, 6 senza, alternati, macchina poco carica): Performance 0,96–0,97 in entrambi; TBT medio 127 ms con, 118 ms senza; LCP medio 2,36 s con, 2,40 s senza; CLS 0. Nessuna differenza misurabile. Le serie fatte con la macchina molto carica (load 11) davano 0,82–0,93 anche senza la modifica: rumore, non effetto. Base storica ADR 0014: 0,99 (il container è più lento).
+- Misure con un server di prova fuori dal repository (CSP e intestazioni del progetto): Chromium, certificato fidato → prima del tocco arrivano i 3 file, **dopo il tocco zero richieste al server** (JS, CSS e worker dalla cache). WebKit → il `fetch` parte prima del tocco (con `rel=prefetch` non partiva niente).
+
+**Limiti dichiarati**
+- Il riuso della cache **non si può provare con i test automatici**: l'anteprima locale è HTTPS autofirmato e né Chromium né il WebKit di Playwright mettono in cache quelle risposte. Il test MF-02 prova quindi: il fetch parte verso i 3 URL giusti, le risposte hanno cache lunga (`immutable`), dopo il tocco la mappa chiede solo quei file.
+- Il WebKit di Playwright non tiene in cache nemmeno due `fetch()` consecutivi dello stesso file (misura: 5 richieste al server su 4 chiamate, contro 0 in Chromium), quindi su WebKit il riuso non è provabile qui in nessun modo.
+- Per la prova su WebKit su HTTP ho dovuto togliere `upgrade-insecure-requests` dalla CSP **solo nel mio server di prova** (la CSP del progetto non è toccata); non ho potuto fidare il certificato di prova nel sistema (azione negata).
+- Dopo l'unione con l'inglese (PR #68): il controllo «nessun `modulepreload`» del test MF-01 è ristretto ai file di MapLibre, perché Vite ora aggiunge due `modulepreload` per file della shell (dizionario `it-*.js`, `preload-helper`) che non c'entrano con la mappa. e2e `map-warmup` e `map` 44 su 44 su Chromium e WebKit.
+- `docs/feature_list.json`: `passes: true` per MF-01 e MF-03, con la CI della PR #69 verde sul commit `87f7f71` (run 40674405829, https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40674405829: «E2E (Chromium, WebKit) and security tests» e «Lighthouse CI» compresi). MF-02 resta `false` finché Roberto non fa la prova su iPhone.
+
+**Da verificare a mano (Roberto)**
+- Su iPhone reale (Safari) e su Android (Chrome), con rete lenta: aprire il sito, aspettare 5–10 secondi senza toccare, poi toccare la mappa. Deve partire molto più in fretta di prima. Ispezione facoltativa: dalla scheda Rete del browser desktop collegato, i tre file `/assets/maplibre-*` compaiono prima del tocco e dopo il tocco sono «dalla cache».
+- Con il risparmio dati attivo il sito non deve scaricare i file in anticipo.
+
+---
+
 ## 2026-10-28 · Interfaccia pubblica in inglese (branch `m6-inglese`, da `spec-approved-12`) · SPEC 1.11, ADR 0038 · ME-01…ME-08
 
 **Richiesta di Roberto:** sito utente in inglese, stesso database; menu in alto a sinistra di fronte all'Elenco; scelta non salvata, si parte sempre dall'italiano; formati `it-IT`; admin italiano; privacy e regole tradotte come bozza.

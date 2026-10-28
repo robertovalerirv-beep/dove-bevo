@@ -2,8 +2,9 @@
 
 Last verified: 28 October 2026 (UTC).
 
-Google Play's production changes are **in review**. iOS build 21 is **Ready to
-Test** in TestFlight and is installed on the owner's iPhone. Physical evidence
+Google Play's production changes are **in review**. iOS build 26 is **Waiting for
+Review** for external TestFlight testing; Roberto's group contains one tester
+and that build. Internal build 21 is installed on the owner's iPhone. Physical evidence
 currently covers map/price rendering and reported venue Back behavior; neither
 store state establishes an approved public release.
 
@@ -151,21 +152,54 @@ iPad and final validated-capture steps were skipped.
 the signer stopped at its `xcodebuild -version` pipeline with a broken-pipe
 exception. No IPA was created or uploaded. The first-line consumer `head -n 1`
 can close the pipe before Xcode finishes writing its complete version output.
-A full-consumption parser repair and regression controls are being prepared.
+A reviewed full-consumption parser repair now passes the original-failure
+regression, nonzero-producer and minimum-version controls. The coordinator
+reran all 88 script guards successfully.
 This isolated lane requires fresh Android and iOS
 checks, retains the exact approved toolchain and signing verification, and
 uploads without the Internal Only restriction. It does not submit the public
-App Store version. Upload success, Apple processing, Beta App Review approval
-and an activated Roberto invitation remain separate unverified steps. Beta
-description, feedback address and review instructions were saved in
-App Store Connect. A third credential-free capture run,
+App Store version. The corrected tag `mobile-beta/v1.0.0-roberto.2`, source
+`88880558efe638e06f2fef69d74e5e789369b4cd`, succeeded as
+[40710808509](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40710808509)
+(build 26). Both check jobs and signing/upload job `122900311762` passed.
+Artifact **12826177998** has verified ZIP SHA-256
+`060bfeb7af10bcb11b424fcdbc4a93debbaebed9e5ec762b313c7cc376e96860`;
+the IPA SHA-256 is
+`41dbff7ebbe12eb0f79de1117f65431ab9dc0396d83352b02e3ec6ec2dc18218`.
+Independent checks confirm version/build, phone/tablet support, expected public
+profile metadata and `distributionScope=app-store`. The manifest attests strict
+signature validation and successful upload; Windows did not independently run
+Apple codesign or CMS trust verification.
+
+Apple subsequently processed build 26 and displayed **Ready to Submit**.
+Beta App Review was submitted with automatic tester notification selected.
+The provider now displays **Waiting for Review**, with **Roberto feedback**
+containing one tester and one build. No public link or developer-team role was
+created. The tester still shows **No Builds Available** pending approval;
+invitation delivery and installation are not established. Beta description,
+feedback address and review instructions were saved in App Store Connect.
+The public App Store version also has build 26 selected and saved. Its latest
+submission validation lists two missing assets: the medium Dynamic Island
+iPhone screenshot and the 13-inch iPad screenshot. Public App Review has not
+been submitted.
+
+The third credential-free capture run,
 `mobile-capture/v1.0.0-xcode27.1-3`, source
 `be66b18ceea2ede8a7443f79d8b56462f0ec6872`, is running as
 [40709708958](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40709708958)
-(workflow number 25). Its reviewed test accepts only the base map label and
+(workflow number 25), **failed** at the positive-coverage assertion. Its reviewed test accepts only the base map label and
 the exact observed region suffix, adds positive live-price coverage checks,
-and retains map-style, native-error and privacy-return checks. The coordinator
-reran all 84 local script guards successfully; the hosted outcome is pending.
+and retains map-style, native-error and privacy-return checks. The map-label
+and map-style assertions passed. The genuine failed-test frame still shows
+Milano tiles, price pins and 2 priced venues out of 43. The added coverage
+assertion required `isHittable`, although the owner's `.map__status` CSS uses
+`pointer-events:none` for this read-only status. Its actual runtime hit-test
+property was not exported; source and frame evidence support a test defect.
+The iPad and validated-capture steps were skipped. Artifact **12827130851** has
+verified SHA-256
+`b6ae550b671f99a15078801a6eabbfbfc8da463a85c565bbe4261ccb06b9f662`.
+A narrow test repair uses finite, nonempty on-screen geometry for this status;
+live hosted verification remains required. No website code was changed.
 
 ## Retained failure history and remaining gates
 

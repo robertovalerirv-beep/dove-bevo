@@ -64,6 +64,7 @@ jobs:
         if: always()
         with:
           name: dove-bevo-ios-quality-${{ github.sha }}
+          include-hidden-files: true
           path: |
             mobile-apps/ios/.build/TestResults*.xcresult
             mobile-apps/ios/.build/Screenshots/

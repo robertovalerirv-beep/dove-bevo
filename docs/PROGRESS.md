@@ -38,7 +38,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - `npx tsc -b`, `npm run lint`, `npm run format:check`: puliti. `npm run test`: 57 file, 636 test verdi.
 - `E2E_PORT=4199 npx playwright test --workers=2` (tutti i progetti, compresi scrittura, bar proposti e sicurezza): **397 passati, 0 falliti** (12,7 min). Prima dell'aggiustamento dei test: 26 falliti (13 × 2 motori), tutti per il pulsante che copre il centro della foto, per i localizzatori «Cerca» e per la riga di stato che non c'è più all'apertura.
 - Pagina iniziale (`node scripts/check-bundle-size.mjs`): 39.821 B (limite 51.200; erano 39.724 B, +97 B).
-- Lighthouse (3 giri, `--no-sandbox`, Chromium di Playwright, stesso container): dopo Performance 0,96 / 0,98 / 0,97, LCP 2,25–2,27 s, TBT 90–152 ms, CLS 0, Accessibility/Best Practices/SEO 1.
+- Lighthouse (3 giri ciascuno, `--no-sandbox`, Chromium di Playwright, stesso container): **prima** (`main`) Performance 0,96 / 0,96 / 0,96, LCP 2,25–2,29 s, TBT 128–146 ms, CLS 0, **Accessibility 0,96** (i link piccoli delle attribuzioni), Best Practices e SEO 1; **dopo** Performance 0,96 / 0,98 / 0,97, LCP 2,25–2,27 s, TBT 90–152 ms, CLS 0, **Accessibility 1**, Best Practices e SEO 1. Nessun peggioramento, e l'accessibilità sale da 0,96 a 1.
 - `npm run verify`: non lanciato per intero (il passo `check-feature-list` è rosso finché Roberto non crea `spec-approved-14`; i passi sono stati eseguiti uno per uno).
 
 ---

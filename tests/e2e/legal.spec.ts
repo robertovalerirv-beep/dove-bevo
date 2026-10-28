@@ -58,7 +58,7 @@ for (const { path, title, text } of PAGES) {
 
 test("the pages are linked from the search sheet and from the bar receipt", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Cerca" }).click();
+  await page.getByRole("button", { name: "Cerca città o bar" }).click();
   const search = page.getByRole("dialog", { name: "Cerca" });
   await expect(search.getByRole("link", { name: "Privacy" })).toHaveAttribute("href", "/privacy");
   await expect(search.getByRole("link", { name: "Regole" })).toHaveAttribute("href", "/regole");

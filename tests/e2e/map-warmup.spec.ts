@@ -1,6 +1,6 @@
 import { expect, type Page, type Request } from "@playwright/test";
 import { test } from "./fixtures";
-import { mapRegion } from "./helpers";
+import { mapRegion, tapMap } from "./helpers";
 
 // MF-01 / MF-02 (SPEC 1.12): on the map page the files of the map are fetched ahead of time (a plain
 // low-priority fetch, so it works in Safari too), never run until the first touch, and never on the
@@ -82,7 +82,7 @@ test("MF-02 the files come with a long cache and the first touch asks for nothin
     if (/^\/(api|data)\//.test(path)) api.push(path);
   });
   const before = seen.length;
-  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await tapMap(page);
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
   // After the touch the map asks only for the files already fetched, never for another one of its own.
   expect(seen.slice(before).every((r) => ahead.has(new URL(r.url()).pathname))).toBe(true);
@@ -109,6 +109,6 @@ test("MF-01 with the data saver on nothing of the map is fetched before the touc
   expect(seen.map((r) => r.url())).toEqual([]);
   await expect(page.getByRole("button", { name: "Esplora la mappa" })).toBeVisible();
   // The touch still starts the map as always.
-  await page.getByRole("button", { name: "Esplora la mappa" }).click();
+  await tapMap(page);
   await expect(mapRegion(page)).toHaveAttribute("data-ready", "true", { timeout: 30_000 });
 });

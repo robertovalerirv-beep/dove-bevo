@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
-import { atHour, DUOMO, mapRegion, THEME_HOURS, waitForBars } from "./helpers";
+import { atHour, DUOMO, mapRegion, THEME_HOURS, waitForBars, tapMap } from "./helpers";
 
 // MC-05 / D-33: a small dot where "Vicino a me" found the device, static until pressed again.
 const BRERA = { latitude: 45.4719, longitude: 9.1881 };
@@ -86,7 +86,7 @@ test.describe("MC-05 position dot", () => {
 
   test("reading the position for Aggiungi prezzo does not show it", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Esplora la mappa" }).click();
+    await tapMap(page);
     await expect(mapRegion(page)).toHaveAttribute("data-ready", "true");
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
     await expect(page.getByRole("list", { name: "Bar vicini" }).getByRole("button")).toHaveCount(5);

@@ -82,7 +82,8 @@ for (const [scheme, width, lines] of [
     await expect(attribution).toBeVisible();
     await expect(page.locator(".legend")).toBeVisible();
     const line = await attribution.boundingBox();
-    expect(line?.height ?? 99).toBeLessThanOrEqual(20 * lines);
+    // The links are 24 px tall (WCAG 2.5.8, MG-01), so a line is up to 26 px: a little more than before.
+    expect(line?.height ?? 99).toBeLessThanOrEqual(26 * lines);
     const map = await mapRegion(page).boundingBox();
     expect(line && map && line.x >= map.x && line.x + line.width <= map.x + map.width).toBe(true);
     for (const selector of [".legend", ".bottom"]) {
@@ -121,6 +122,36 @@ test("SPEC 2.8 with WCAG 1.4.12 text spacing the attribution wraps inside the ma
     })
     .toBeGreaterThanOrEqual(0);
 });
+
+// MG-01 (SPEC 1.13, ADR 0040): the links of the attribution are at least 24×24 px, and axe no longer leaves them out.
+for (const scheme of ["light", "dark"] as const) {
+  test(`MG-01 ${scheme}: the attribution links are 24 px targets and axe finds nothing`, async ({
+    page,
+  }, info) => {
+    await atHour(page, THEME_HOURS[scheme]);
+    await page.goto("/");
+    await goToMilano(page);
+    await chooseDrinks(page, "Calice di vino");
+    const links = page.locator(".map__attribution a");
+    await expect(links).toHaveCount(3);
+    for (let i = 0; i < 3; i++) {
+      const b = await links.nth(i).boundingBox();
+      expect(b?.width ?? 0, `link ${String(i)} width`).toBeGreaterThanOrEqual(24);
+      expect(b?.height ?? 0, `link ${String(i)} height`).toBeGreaterThanOrEqual(24);
+    }
+    // Still one small line in the corner, and the text is not bigger than before.
+    const line = await page.locator(".map__attribution").boundingBox();
+    expect(line?.height ?? 99).toBeLessThanOrEqual(26);
+    expect(
+      await links.first().evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize)),
+    ).toBeLessThanOrEqual(13);
+    const axe = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+      .analyze();
+    expect(axe.violations.map((v) => v.id)).toEqual([]);
+    await page.screenshot({ path: info.outputPath(`mg-01-${scheme}.png`) });
+  });
+}
 
 for (const scheme of ["light", "dark"] as const) {
   test(`MB-06 MB-14 ${scheme}: own style, no axe violations`, async ({ page }, info) => {

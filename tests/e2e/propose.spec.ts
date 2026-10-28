@@ -143,7 +143,7 @@ test("M3-19 an API answered with the app page is a polite wait, not an error", a
     });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "Cerca" }).click();
+  await page.getByRole("button", { name: "Cerca città o bar" }).click();
   await page.getByRole("combobox", { name: "Cerca una città o un bar" }).fill("milano");
   await page
     .getByRole("listbox", { name: "Risultati" })

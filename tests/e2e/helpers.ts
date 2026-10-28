@@ -18,7 +18,7 @@ export async function waitForBars(page: Page) {
 
 /** Opens the city search and moves the map to Milano. */
 export async function goToMilano(page: Page) {
-  await page.getByRole("button", { name: "Cerca" }).click();
+  await page.getByRole("button", { name: "Cerca città o bar" }).click();
   await milanoFromOpenSearch(page);
 }
 
@@ -91,4 +91,14 @@ export async function chooseDrinks(page: Page, ...names: (typeof DRINK_NAMES)[nu
   for (const name of DRINK_NAMES) if (!names.includes(name)) await toggle(name, false);
   await drinkMenuButton(page).click();
   await expect(list).toBeHidden();
+}
+
+/**
+ * A tap on the picture of the map that starts it, away from the button in the centre (D-37): a tap
+ * in the middle lands on that button, which starts the map too (map-start.spec.ts).
+ */
+export async function tapMap(page: Page) {
+  await page
+    .getByRole("button", { name: "Esplora la mappa" })
+    .click({ position: { x: 40, y: 160 } });
 }

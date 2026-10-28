@@ -370,7 +370,7 @@ export function App({ loadMap }: Props) {
   const shownMessage =
     message === "locating" ? it.map.locating : message ? it.map.position[message] : null;
   const coverageText = it.map.coverage(zoneCoverage.withPrice, zoneCoverage.total);
-  const status =
+  const rawStatus =
     (online ? null : it.map.offline) ??
     (mapFailed ? it.map.mapError : null) ??
     shownMessage ??
@@ -387,6 +387,10 @@ export function App({ loadMap }: Props) {
               : cellsState === "error"
                 ? it.map.loadError
                 : coverageText);
+  // While the map is still the static picture, the button in the centre says what to do (D-37): the
+  // message «Avvicinati…» of the top comes after the first tap. Offline and errors are still told.
+  const picture = !mapWanted && !ready;
+  const status = picture && rawStatus === it.map.zoomIn ? null : rawStatus;
 
   // The coverage bar of the brand (Copertura): only beside the coverage sentence itself.
   const showMeter = status === coverageText;
@@ -912,6 +916,18 @@ export function App({ loadMap }: Props) {
               <img src={`/map-italia-${currentTheme()}.jpg`} alt="" width={780} height={1276} />
             </button>
           )}
+          {/* While the map is a picture, a button in the centre says what to do (SPEC 1.13, D-37). It is a
+              sibling of the picture button, not inside it: a button never holds a button. */}
+          {picture && !pinning && (
+            <button
+              type="button"
+              class="btn btn--primary map__start"
+              onPointerDown={ensureMap}
+              onClick={ensureMap}
+            >
+              {it.map.start}
+            </button>
+          )}
           {/* The language menu faces the list, in the other top corner (SPEC 7.11). */}
           {!pinning && <LangMenu className="map__lang" />}
           {/* The list is an icon on the map, not a button of the bar. */}
@@ -971,15 +987,17 @@ export function App({ loadMap }: Props) {
             )}
           </div>
           {pinning && <div class="map__cross" aria-hidden="true" data-testid="pin-mark" />}
-          <p class="map__status" data-testid="map-status" role="status">
-            {showMeter && (
-              <svg class="meter" viewBox="0 0 64 14" aria-hidden="true">
-                <rect class="meter__fill" x="2" y="2" height="10" rx="5" width={meterWidth} />
-                <rect class="meter__track" x="1" y="1" width="62" height="12" rx="6" />
-              </svg>
-            )}
-            {status}
-          </p>
+          {status && (
+            <p class="map__status" data-testid="map-status" role="status">
+              {showMeter && (
+                <svg class="meter" viewBox="0 0 64 14" aria-hidden="true">
+                  <rect class="meter__fill" x="2" y="2" height="10" rx="5" width={meterWidth} />
+                  <rect class="meter__track" x="1" y="1" width="62" height="12" rx="6" />
+                </svg>
+              )}
+              {status}
+            </p>
+          )}
           {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}
           <p class="map__attribution">
             <a href="https://openfreemap.org" target="_blank" rel="noopener" tabIndex={0}>

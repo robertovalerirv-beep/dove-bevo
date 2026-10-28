@@ -57,6 +57,7 @@ export const it = {
     actions: "Azioni della mappa",
     retry: "Riprova",
     explore: "Esplora la mappa",
+    start: "Clicca sulla mappa o cerca una città",
     loadingMap: "Carico la mappa…",
     mapError: "La mappa non si carica: controlla la connessione e ricarica la pagina.",
     attribution: {

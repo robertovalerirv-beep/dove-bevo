@@ -42,7 +42,8 @@ app.get("/api/venues/*", rateLimit);
 // burn the free-plan quota in minutes (red-team audit 14/10/2026, ADR 0021).
 app.get("/api/prices/*", readLimit);
 app.get("/api/mobile/venues/*", readLimit);
-// Every write needs a session, except creating one (SPEC 9.1; /api/events is exempt by D-06).
+// Website contribution writes need a session (SPEC 9.1; /api/events is exempt by D-06).
+// Apps-only recommendations use their separately validated anonymous installation claim (ADR 0041).
 app.on(
   "POST",
   ["/api/prices", "/api/prices/*", "/api/reports", "/api/venues", "/api/venues/*"],

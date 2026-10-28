@@ -24,6 +24,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var saveMenuEnabled = false
     private let bookmarkCapture: VenueBookmarkCapture
     private var bookmarkTimeout: DispatchWorkItem?
+    private var bookmarkLifecycleActive = true
 
     private lazy var backButton = item("Indietro", symbol: "chevron.backward", action: #selector(goBack), id: "browser.back")
     private lazy var forwardButton = item("Avanti", symbol: "chevron.forward", action: #selector(goForward), id: "browser.forward")
@@ -35,6 +36,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         self.savedVenues = savedVenues
         self.bookmarkCapture = bookmarkCapture
         super.init(nibName: nil, bundle: nil)
+        observeBookmarkLifecycle()
     }
 
     required init?(coder: NSCoder) { return nil }
@@ -51,6 +53,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     deinit {
         bookmarkTimeout?.cancel()
+        NotificationCenter.default.removeObserver(self)
         monitor.cancel()
         observations.forEach { $0.invalidate() }
     }
@@ -62,6 +65,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // The scene may have activated while this view was detached. Refresh
+        // availability from its actual scene without restoring retired work.
+        if UIApplication.shared.applicationState == .active,
+           viewIfLoaded?.window?.windowScene?.activationState == .foregroundActive {
+            bookmarkLifecycleActive = true
+        }
         updateMoreMenu()
     }
 
@@ -117,8 +126,51 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private var usableVenueURL: URL? {
         guard let webView, hasLoadedPage, !webView.isLoading, !navigationState.isStopped,
-              errorView.isHidden, navigationController?.topViewController === self else { return nil }
+              errorView.isHidden, navigationController?.topViewController === self,
+              isBookmarkInteractionActive else { return nil }
         return SavedVenuePolicy.canonicalURL(webView.url)
+    }
+
+    private var isBookmarkInteractionActive: Bool {
+        guard bookmarkLifecycleActive, UIApplication.shared.applicationState == .active,
+              let scene = viewIfLoaded?.window?.windowScene else { return false }
+        return scene.activationState == .foregroundActive
+    }
+
+    private func observeBookmarkLifecycle() {
+        let center = NotificationCenter.default
+        for name in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
+            center.addObserver(self, selector: #selector(bookmarkAppDeactivated), name: name, object: nil)
+        }
+        center.addObserver(self, selector: #selector(bookmarkAppActivated), name: UIApplication.didBecomeActiveNotification, object: nil)
+        for name in [UIScene.willDeactivateNotification, UIScene.didEnterBackgroundNotification] {
+            center.addObserver(self, selector: #selector(bookmarkSceneDeactivated), name: name, object: nil)
+        }
+        center.addObserver(self, selector: #selector(bookmarkSceneActivated), name: UIScene.didActivateNotification, object: nil)
+    }
+
+    @objc private func bookmarkAppDeactivated(_ notification: Notification) {
+        bookmarkLifecycleActive = false
+        invalidateBookmarkCapture()
+    }
+
+    @objc private func bookmarkAppActivated(_ notification: Notification) {
+        bookmarkLifecycleActive = true
+        updateMoreMenu()
+    }
+
+    @objc private func bookmarkSceneDeactivated(_ notification: Notification) {
+        guard let scene = notification.object as? UIWindowScene,
+              scene === viewIfLoaded?.window?.windowScene else { return }
+        bookmarkLifecycleActive = false
+        invalidateBookmarkCapture()
+    }
+
+    @objc private func bookmarkSceneActivated(_ notification: Notification) {
+        guard let scene = notification.object as? UIWindowScene,
+              scene === viewIfLoaded?.window?.windowScene else { return }
+        bookmarkLifecycleActive = true
+        updateMoreMenu()
     }
 
     private func updateMoreMenu() {
@@ -380,12 +432,17 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         let timeout = DispatchWorkItem { [weak self] in
             guard let self, self.bookmarkCapture.contains(request) else { return }
             self.invalidateBookmarkCapture()
+            guard self.isBookmarkInteractionActive else { return }
             self.showBookmarkError("Non riesco a leggere il nome del locale. Attendi che la scheda sia caricata e riprova.")
         }
         bookmarkTimeout = timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: timeout)
         webView.evaluateJavaScript(VenueNameReader.script, in: nil, in: .defaultClient) { [weak self] result in
             guard let self, self.bookmarkCapture.contains(request) else { return }
+            guard self.isBookmarkInteractionActive else {
+                self.invalidateBookmarkCapture()
+                return
+            }
             self.bookmarkTimeout?.cancel()
             self.bookmarkTimeout = nil
             do {
@@ -413,7 +470,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func showBookmarkError(_ message: String) {
-        guard navigationController?.topViewController === self else { return }
+        guard navigationController?.topViewController === self, isBookmarkInteractionActive else { return }
         showAlert(title: "Preferito non salvato", message: message)
     }
 

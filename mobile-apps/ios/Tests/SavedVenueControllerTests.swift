@@ -58,6 +58,46 @@ final class SavedVenueControllerTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testApplicationDeactivationRetiresDelayedSaveAcrossReactivation() throws {
+        try withStore { store in
+            let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+            try store.save(url: url, label: "Preferito precedente")
+            let original = try Data(contentsOf: store.fileURL)
+            let capture = VenueBookmarkCapture()
+            let browser = BrowserViewController(savedVenues: store, bookmarkCapture: capture)
+            let navigation = UINavigationController(rootViewController: browser)
+            let center = NotificationCenter.default
+            defer { center.post(name: UIApplication.didBecomeActiveNotification, object: UIApplication.shared) }
+            // An unrelated scene notification must not retire this controller's
+            // request. UIKit's real scene object is required for scene scoping.
+            let unrelated = try XCTUnwrap(capture.begin(url: url))
+            center.post(name: UIScene.willDeactivateNotification, object: NSObject())
+            XCTAssertTrue(capture.contains(unrelated))
+            capture.invalidate()
+            for notification in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
+                let request = try XCTUnwrap(capture.begin(url: url))
+                XCTAssertTrue(capture.contains(request))
+                // Exercise the actual NotificationCenter subscription, not a
+                // test-only call into the capture's invalidate helper.
+                center.post(name: notification, object: UIApplication.shared)
+                XCTAssertFalse(capture.isPending)
+                center.post(name: UIApplication.didBecomeActiveNotification, object: UIApplication.shared)
+                let delayedCompletion = {
+                    let venue = try capture.complete(request, value: [
+                        "href": url.absoluteString, "name": "Risultato in ritardo", "selectedKey": "n123"
+                    ], currentUsableURL: url)
+                    try store.save(url: venue.url, label: venue.label)
+                }
+                XCTAssertThrowsError(try delayedCompletion())
+                XCTAssertEqual(try Data(contentsOf: store.fileURL), original)
+                XCTAssertTrue(navigation.topViewController === browser)
+                XCTAssertNil(browser.presentedViewController)
+                XCTAssertFalse(browser.isViewLoaded, "This native lifecycle test must not create a website")
+            }
+        }
+    }
+
     private func withStore(_ action: (SavedVenueStore) throws -> Void) throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }

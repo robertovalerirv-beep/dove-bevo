@@ -65,6 +65,7 @@ public final class MainActivity extends ComponentActivity {
     private Button refreshButton;
     private Button shareButton;
     private SavedVenuesUi savedVenues;
+    private long venueCaptureEpoch;
     private AlertDialog locationHelpDialog;
     private String lastTrustedUrl = BrowserPolicy.HOME;
     private boolean foreground;
@@ -223,7 +224,7 @@ public final class MainActivity extends ComponentActivity {
         shell.requestApplyInsets();
         monitorNetwork();
         savedVenues = new SavedVenuesUi(this, new SavedVenueStore(new SavedVenueFile(getFilesDir())),
-                this::eligibleSavedVenue, this::navigate);
+                this::eligibleSavedVenue, this::readSavedVenue, this::navigate);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() { goBack(); }
         });
@@ -333,6 +334,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void refresh() {
         if (loading && website != null) {
+            venueCaptureEpoch++;
             // navigate() records its target before WebView exposes a new URL.
             stoppedUrl = lastTrustedUrl;
             awaitingDocumentStart = false;
@@ -347,6 +349,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void goBack() {
         BackNavigation.perform(website != null && website.canGoBack(), () -> {
+            venueCaptureEpoch++;
             failed = false;
             preparedNavigationUrl = null;
             awaitingDocumentStart = false;
@@ -363,6 +366,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void goForward() {
         if (website == null || !website.canGoForward()) return;
+        venueCaptureEpoch++;
         failed = false;
         preparedNavigationUrl = null;
         awaitingDocumentStart = false;
@@ -377,12 +381,14 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void setLoading(boolean value) {
+        if (value && !loading) venueCaptureEpoch++;
         loading = value;
         progress.setVisibility(value ? View.VISIBLE : View.GONE);
         updateToolbar();
     }
 
     private void prepareNavigation(String url) {
+        venueCaptureEpoch++;
         failed = false;
         documentHasHttpError = false;
         stoppedUrl = null;
@@ -418,6 +424,19 @@ public final class MainActivity extends ComponentActivity {
         if (destroyed || website == null || failed || loading || awaitingDocumentStart || !hasUsablePage
                 || documentHasHttpError || stoppedUrl != null) return null;
         return SavedVenueUrl.canonicalize(website.getUrl());
+    }
+
+    private void readSavedVenue(java.util.function.Consumer<SavedVenueCapture.Venue> completion) {
+        String url = eligibleSavedVenue();
+        if (!foreground || url == null) { completion.accept(null); return; }
+        WebView source = website;
+        SavedVenueCapture capture = new SavedVenueCapture(url, venueCaptureEpoch);
+        try {
+            source.evaluateJavascript(VenueHeadingReader.SCRIPT, result -> {
+                if (!foreground || source != website) { completion.accept(null); return; }
+                completion.accept(VenueHeadingReader.decode(result, capture, eligibleSavedVenue(), venueCaptureEpoch));
+            });
+        } catch (RuntimeException unavailable) { completion.accept(null); }
     }
 
     private boolean restoreHistory(Bundle state) {
@@ -531,6 +550,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void showFailure(int title, int message) {
         if (destroyed) return;
+        venueCaptureEpoch++;
         failed = true;
         cancelLocation();
         setLoading(false);
@@ -559,6 +579,7 @@ public final class MainActivity extends ComponentActivity {
         }
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
             if (view != website || destroyed) return;
+            venueCaptureEpoch++;
             if (url.equals(stoppedUrl)) { view.stopLoading(); return; }
             cancelLocation();
             if (BrowserPolicy.target(url) != BrowserPolicy.Target.INTERNAL) {
@@ -585,6 +606,7 @@ public final class MainActivity extends ComponentActivity {
         }
         @Override public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
             if (view != website || destroyed || BrowserPolicy.target(url) != BrowserPolicy.Target.INTERNAL) return;
+            venueCaptureEpoch++;
             if (!loading && !failed) lastTrustedUrl = url;
             updateToolbar();
         }
@@ -736,6 +758,7 @@ public final class MainActivity extends ComponentActivity {
         resolveLocationResult();
     }
     @Override protected void onPause() {
+        venueCaptureEpoch++;
         foreground = false;
         // The system permission dialog may pause us. Only deliver its result
         // after resume; an actual stop or navigation invalidates the callback.
@@ -761,6 +784,7 @@ public final class MainActivity extends ComponentActivity {
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
+        venueCaptureEpoch++;
         destroyed = true;
         if (privacyDialog != null) privacyDialog.dismiss();
         if (locationHelpDialog != null) locationHelpDialog.dismiss();

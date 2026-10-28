@@ -13,6 +13,17 @@ public final class SavedVenueTest {
     private static final String ONE = "https://www.dovebevo.com/bar/n123?c=u0nd9";
     private static final String TWO = "https://www.dovebevo.com/bar/w9?c=sr2y7";
 
+    @Test public void emptyNamesNeverCreateAnIdPlaceholderOrChangeExistingBookmarks() throws Exception {
+        MemoryStorage storage = new MemoryStorage();
+        SavedVenueStore store = new SavedVenueStore(storage);
+        assertEquals(SavedVenueStore.Result.SAVED, store.save(ONE, "Camparino in Galleria"));
+        byte[] before = storage.bytes.clone();
+        for (String name : new String[]{null, "", "  ", "\u2003"})
+            assertEquals(SavedVenueStore.Result.INVALID_LABEL, store.save(TWO, name));
+        assertArrayEquals(before, storage.bytes);
+        assertEquals(1, storage.writes);
+    }
+
     @Test public void canonicalLinksAcceptBothWebsiteOriginsAndAllVenuePrefixes() {
         for (String prefix : new String[]{"n", "w", "r", "u"}) {
             assertEquals("https://www.dovebevo.com/bar/" + prefix + "123?c=u0nd9",
@@ -39,7 +50,7 @@ public final class SavedVenueTest {
         }
     }
 
-    @Test public void explicitSavePersistsOnlyCanonicalLinkAndChosenLabelAcrossStoreInstances() throws Exception {
+    @Test public void explicitSavePersistsOnlyCanonicalLinkAndActualNameAcrossStoreInstances() throws Exception {
         MemoryStorage storage = new MemoryStorage();
         SavedVenueStore store = new SavedVenueStore(storage);
         assertEquals(SavedVenueStore.Result.SAVED, store.save("https://dovebevo.com/bar/n123?c=u0nd9", "  Bar di prova  "));
@@ -47,9 +58,9 @@ public final class SavedVenueTest {
         assertEquals(1, reopened.load().size());
         assertEquals(ONE, reopened.load().get(0).url);
         assertEquals("Bar di prova", reopened.load().get(0).label);
-        assertEquals(SavedVenueStore.Result.SAVED, reopened.save(TWO, "  "));
-        assertEquals("Locale w9", reopened.load().get(0).label);
-        assertEquals(2, storage.writes);
+        assertEquals(SavedVenueStore.Result.INVALID_LABEL, reopened.save(TWO, "  "));
+        assertEquals(1, reopened.load().size());
+        assertEquals(1, storage.writes);
     }
 
     @Test public void duplicateUpdatesLabelAndMovesToFrontWithoutGrowingTheList() throws Exception {
@@ -64,14 +75,14 @@ public final class SavedVenueTest {
         assertEquals(TWO, venues.get(1).url);
     }
 
-    @Test public void capacityNeverSilentlyEvictsAndAnExistingEntryCanStillBeRenamed() throws Exception {
+    @Test public void capacityNeverSilentlyEvictsAndRebookmarkingCanRefreshAnActualName() throws Exception {
         SavedVenueStore store = new SavedVenueStore(new MemoryStorage());
         for (int i = 1; i <= 50; i++) assertEquals(SavedVenueStore.Result.SAVED,
                 store.save("https://www.dovebevo.com/bar/n" + i + "?c=u0nd9", "Locale " + i));
         assertEquals(SavedVenueStore.Result.FULL, store.save(TWO, "Nuovo"));
         assertEquals(50, store.load().size());
-        assertEquals(SavedVenueStore.Result.SAVED, store.save("https://www.dovebevo.com/bar/n1?c=u0nd9", "Rinominato"));
-        assertEquals("Rinominato", store.load().get(0).label);
+        assertEquals(SavedVenueStore.Result.SAVED, store.save("https://www.dovebevo.com/bar/n1?c=u0nd9", "Nome aggiornato"));
+        assertEquals("Nome aggiornato", store.load().get(0).label);
         assertEquals(50, store.load().size());
     }
 
@@ -80,13 +91,24 @@ public final class SavedVenueTest {
         SavedVenueStore store = new SavedVenueStore(storage);
         store.save(ONE, "Uno");
         byte[] before = storage.bytes.clone();
-        for (String label : new String[]{"x".repeat(81), "Nome\nnota", "Nome\u0000", "Nome\u0085", "Nome\ud800"})
+        for (String label : new String[]{"x".repeat(121), "Nome\nnota", "Nome\u0000", "Nome\u0085", "Nome\ud800"})
             assertEquals(SavedVenueStore.Result.INVALID_LABEL, store.save(TWO, label));
         assertEquals(SavedVenueStore.Result.INVALID_URL, store.save(BrowserPolicy.HOME, "Home"));
         assertArrayEquals(before, storage.bytes);
         assertEquals(1, storage.writes);
         assertEquals(SavedVenueStore.Result.SAVED, store.save(TWO, "🍷".repeat(80)));
         assertEquals(80, store.load().get(0).label.codePointCount(0, store.load().get(0).label.length()));
+    }
+
+    @Test public void existingCustomAndIdLabelsAndLegacyLongEmojiRemainReadableUnchanged() throws Exception {
+        MemoryStorage storage = new MemoryStorage();
+        storage.bytes = encoded(new String[][]{{ONE, "🍷".repeat(80)}, {TWO, "Locale w9"}});
+        SavedVenueStore store = new SavedVenueStore(storage);
+        assertEquals("🍷".repeat(80), store.load().get(0).label);
+        assertEquals("Locale w9", store.load().get(1).label);
+        assertEquals(SavedVenueStore.Result.SAVED, store.save(ONE, "x".repeat(120)));
+        assertEquals("x".repeat(120), store.load().get(0).label);
+        assertEquals("Locale w9", store.load().get(1).label);
     }
 
     @Test public void removingRevalidatesAndNeverChangesAnUnrelatedVenue() throws Exception {

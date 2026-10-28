@@ -20,7 +20,6 @@
     <item name="load_error" type="id" />
     <item name="save_venue" type="id" />
     <item name="saved_venues" type="id" />
-    <item name="saved_venue_name" type="id" />
     <item name="saved_venues_list" type="id" />
     <item name="open_saved_venue" type="id" />
     <item name="remove_saved_venue" type="id" />

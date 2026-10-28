@@ -14,7 +14,7 @@ import java.util.Set;
 /** Bounded explicit choices only; no browsing history, coordinates, cookies or prices. */
 public final class SavedVenueStore {
     public static final int MAX_VENUES = 50;
-    public static final int MAX_LABEL_CODE_POINTS = 80;
+    public static final int MAX_LABEL_CODE_POINTS = 120;
     public static final int MAX_BYTES = 65536;
     private static final int MAGIC = 0x44425631;
 
@@ -61,8 +61,7 @@ public final class SavedVenueStore {
         String url = SavedVenueUrl.canonicalize(rawUrl);
         if (url == null) return Result.INVALID_URL;
         String label = normalizedLabel(requestedLabel == null ? "" : requestedLabel);
-        if (label == null) return Result.INVALID_LABEL;
-        if (label.isEmpty()) label = SavedVenueUrl.defaultLabel(url);
+        if (label == null || label.isEmpty()) return Result.INVALID_LABEL;
         try {
             List<Venue> previous = load();
             List<Venue> next = new ArrayList<>();

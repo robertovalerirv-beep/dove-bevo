@@ -26,10 +26,4 @@ public final class SavedVenueUrl {
         } catch (URISyntaxException error) { return null; }
     }
 
-    public static String defaultLabel(String canonicalUrl) {
-        String safe = canonicalize(canonicalUrl);
-        if (safe == null) return null;
-        int start = safe.indexOf("/bar/") + 5;
-        return "Locale " + safe.substring(start, safe.indexOf('?', start));
-    }
 }

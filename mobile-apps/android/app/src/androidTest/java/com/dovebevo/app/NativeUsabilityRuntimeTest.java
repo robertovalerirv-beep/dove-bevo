@@ -26,7 +26,6 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -49,6 +48,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -74,7 +74,13 @@ public final class NativeUsabilityRuntimeTest {
             <meta name="owned-response" content="OWNED_RESPONSE">
             <title>Owned native fixture</title><p>Local browser fixture</p>
             <button id="open-venue" style="min-height:64px;width:240px"
-              onclick="history.pushState({inApp:true},'', '/bar/n123?c=u0nd9')">Open owned venue fixture</button>
+              onclick="document.querySelector('section.map').setAttribute('data-selected','n123');history.pushState({inApp:true},'', '/bar/n123?c=u0nd9')">Open owned venue fixture</button>
+            <section class="map" data-selected="OWNED_VENUE_KEY"></section>
+            <dialog class="sheet sheet--bare" open aria-label="Locale di prova">
+              <div class="sheet__body"><div class="scontrino"><div class="scontrino__paper">
+                <h2 class="scontrino__name">Locale di prova</h2>
+              </div></div></div>
+            </dialog>
             """;
     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
     private final AtomicBoolean hold = new AtomicBoolean();
@@ -139,6 +145,7 @@ public final class NativeUsabilityRuntimeTest {
                 activity.setContentView(layout);
                 installFixtureWebView();
                 savedUi = new SavedVenuesUi(activity, store, () -> (String) invoke("eligibleSavedVenue"),
+                        callback -> invoke("readSavedVenue", new Class<?>[]{Consumer.class}, callback),
                         url -> invoke("navigate", new Class<?>[]{String.class}, url));
                 set("savedVenues", savedUi);
                 invoke("updateToolbar");
@@ -169,31 +176,22 @@ public final class NativeUsabilityRuntimeTest {
         }
     }
 
-    @Test public void savedVenueNativeDialogsPreserveTheWebViewAndPersistAndRemoveRealFiles() throws Exception {
+    @Test public void oneActionBookmarkUsesActualHeadingWithoutAFormAndPersistsOpensAndRemoves() throws Exception {
         navigate(ONE);
         WebView original = web;
-        AtomicReference<AlertDialog> saveDialog = new AtomicReference<>();
+        onMain(() -> savedUi.saveCurrent());
+        await(() -> "Locale di prova".equals(savedLabel()));
         onMain(() -> {
-            savedUi.saveCurrent();
-            saveDialog.set(currentDialog());
-        });
-        instrumentation.waitForIdleSync();
-        onMain(() -> {
-            AlertDialog dialog = saveDialog.get();
-            ((EditText) dialog.findViewById(R.id.saved_venue_name)).setText("Locale di prova");
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
-        });
-        instrumentation.waitForIdleSync();
-        onMain(() -> {
-            assertFalse(saveDialog.get().isShowing());
+            assertNull(currentDialog());
             assertSame(original, get("website"));
         });
         assertEquals("Locale di prova", new SavedVenueStore(new SavedVenueFile(fixtureDirectory)).load().get(0).label);
         assertEquals(ONE, store.load().get(0).url);
+        // A second explicit bookmark refreshes the actual name without a form.
         onMain(() -> savedUi.saveCurrent());
         instrumentation.waitForIdleSync();
-        onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_NEGATIVE).performClick());
-        instrumentation.waitForIdleSync();
+        assertEquals(1, store.load().size());
+        navigate(BrowserPolicy.HOME);
         onMain(() -> savedUi.showList());
         instrumentation.waitForIdleSync();
         onMain(() -> currentDialog().getListView().performItemClick(null, 0, 0));
@@ -210,6 +208,43 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_NEUTRAL).performClick());
         instrumentation.waitForIdleSync();
         assertTrue(store.load().isEmpty());
+    }
+
+    @Test public void actualHeadingReaderRejectsUncommittedSelectionOverlayAndHiddenHeading() throws Exception {
+        navigate(ONE);
+        assertEquals("Locale di prova", readVenue().name);
+        fixtureJavascript("document.querySelector('section.map').setAttribute('data-selected','w9')");
+        assertNull("Old rendered venue must not be named for a new href", readVenue());
+        fixtureJavascript("document.querySelector('section.map').setAttribute('data-selected','n123');const d=document.createElement('dialog');d.className='sheet';d.open=true;d.id='owned-overlay';document.body.appendChild(d)");
+        assertNull(readVenue());
+        fixtureJavascript("document.getElementById('owned-overlay').remove();document.querySelector('h2').hidden=true");
+        assertNull(readVenue());
+        fixtureJavascript("document.querySelector('h2').hidden=false;document.querySelector('dialog').setAttribute('aria-label','Different name')");
+        assertNull(readVenue());
+        fixtureJavascript("const d=document.querySelector('dialog');d.setAttribute('aria-label','Locale di prova');d.style.maxHeight='200px';d.style.overflow='auto';const receipt=document.createElement('div');receipt.style.height='2000px';receipt.textContent='Owned long receipt';d.querySelector('.scontrino__paper').appendChild(receipt);d.scrollTop=1000");
+        assertEquals("A heading scrolled above the visible receipt still names the venue", "Locale di prova", readVenue().name);
+    }
+
+    @Test public void asynchronousHeadingCaptureCannotSaveAfterNavigationOrUiDismissal() throws Exception {
+        navigate(ONE);
+        AtomicReference<SavedVenueCapture.Venue> captured = new AtomicReference<>();
+        CountDownLatch complete = new CountDownLatch(1);
+        onMain(() -> {
+            Consumer<SavedVenueCapture.Venue> callback = venue -> { captured.set(venue); complete.countDown(); };
+            invoke("readSavedVenue", new Class<?>[]{Consumer.class}, callback);
+            invoke("navigate", new Class<?>[]{String.class}, BrowserPolicy.HOME);
+        });
+        assertTrue(complete.await(5, TimeUnit.SECONDS));
+        assertNull("Navigation invalidates the in-flight read", captured.get());
+        navigate(ONE);
+        AtomicReference<Consumer<SavedVenueCapture.Venue>> pending = new AtomicReference<>();
+        onMain(() -> {
+            SavedVenuesUi delayed = new SavedVenuesUi(activity, store, () -> ONE, pending::set, url -> fail());
+            delayed.saveCurrent();
+            delayed.dismiss();
+            pending.get().accept(new SavedVenueCapture(ONE, 1).complete(ONE, "Locale di prova", "n123", ONE, 1));
+        });
+        assertTrue("A dismissed UI must not commit a late bookmark", store.load().isEmpty());
     }
 
     @Test public void sameDocumentHistoryControlsAndNativeSavedStateRestoreAForwardEntry() throws Exception {
@@ -432,7 +467,9 @@ public final class NativeUsabilityRuntimeTest {
                 WebResourceResponse guarded = delegate.shouldInterceptRequest(view, request);
                 if (guarded != null) return guarded;
                 int responseToken = request.isForMainFrame() ? documentResponses.incrementAndGet() : 0;
-                byte[] bytes = FIXTURE_HTML.replace("OWNED_RESPONSE", Integer.toString(responseToken)).getBytes(StandardCharsets.UTF_8);
+                String key = request.getUrl().getLastPathSegment();
+                byte[] bytes = FIXTURE_HTML.replace("OWNED_RESPONSE", Integer.toString(responseToken))
+                        .replace("OWNED_VENUE_KEY", key == null ? "" : key).getBytes(StandardCharsets.UTF_8);
                 InputStream body = new ByteArrayInputStream(bytes);
                 if (hold.get() && HOLD.equals(request.getUrl().toString())) body = new ByteArrayInputStream(bytes) {
                     @Override public synchronized int read(byte[] buffer, int offset, int length) {
@@ -482,6 +519,28 @@ public final class NativeUsabilityRuntimeTest {
     }
 
     private void record(String event) { if (events.size() < 100) events.add(event); }
+
+    private String savedLabel() {
+        try { return store.load().isEmpty() ? null : store.load().get(0).label; }
+        catch (IOException error) { throw new AssertionError(error); }
+    }
+
+    private SavedVenueCapture.Venue readVenue() throws Exception {
+        AtomicReference<SavedVenueCapture.Venue> value = new AtomicReference<>();
+        CountDownLatch ready = new CountDownLatch(1);
+        onMain(() -> {
+            Consumer<SavedVenueCapture.Venue> callback = venue -> { value.set(venue); ready.countDown(); };
+            invoke("readSavedVenue", new Class<?>[]{Consumer.class}, callback);
+        });
+        assertTrue("Venue heading callback missing", ready.await(5, TimeUnit.SECONDS));
+        return value.get();
+    }
+
+    private void fixtureJavascript(String script) throws Exception {
+        CountDownLatch ready = new CountDownLatch(1);
+        onMain(() -> web.evaluateJavascript("(() => {" + script + "})()", ignored -> ready.countDown()));
+        assertTrue("Owned fixture update missing", ready.await(5, TimeUnit.SECONDS));
+    }
 
     private void awaitOwnedResponse(int token) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);

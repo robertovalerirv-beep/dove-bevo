@@ -2,8 +2,6 @@ package com.dovebevo.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.text.InputType;
-import android.widget.EditText;
 import android.widget.Toast;
 import java.io.IOException;
 import java.util.List;
@@ -15,53 +13,38 @@ final class SavedVenuesUi {
     private final Activity activity;
     private final SavedVenueStore store;
     private final Supplier<String> eligibleUrl;
+    private final Consumer<Consumer<SavedVenueCapture.Venue>> readVenue;
     private final Consumer<String> navigate;
     private AlertDialog currentDialog;
+    private long saveRequest;
 
-    SavedVenuesUi(Activity activity, SavedVenueStore store, Supplier<String> eligibleUrl, Consumer<String> navigate) {
+    SavedVenuesUi(Activity activity, SavedVenueStore store, Supplier<String> eligibleUrl,
+                  Consumer<Consumer<SavedVenueCapture.Venue>> readVenue, Consumer<String> navigate) {
         this.activity = activity;
         this.store = store;
         this.eligibleUrl = eligibleUrl;
+        this.readVenue = readVenue;
         this.navigate = navigate;
     }
 
     void saveCurrent() {
         String url = SavedVenueUrl.canonicalize(eligibleUrl.get());
         if (url == null) { message(R.string.save_venue_unavailable); return; }
-        String existing = "";
-        try {
-            for (SavedVenueStore.Venue venue : store.load()) if (venue.url.equals(url)) existing = venue.label;
-        } catch (IOException error) { message(R.string.saved_venues_storage_error); return; }
-        EditText name = new EditText(activity);
-        name.setId(R.id.saved_venue_name);
-        name.setSingleLine(true);
-        name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        name.setHint(R.string.saved_venue_name_hint);
-        name.setContentDescription(activity.getString(R.string.saved_venue_name_hint));
-        name.setText(existing);
-        int padding = Math.round(20 * activity.getResources().getDisplayMetrics().density);
-        name.setPadding(padding, padding / 2, padding, padding / 2);
-        AlertDialog dialog = new AlertDialog.Builder(activity).setTitle(R.string.save_venue)
-                .setMessage(R.string.saved_venue_name_help).setView(name)
-                .setPositiveButton(R.string.save, null).setNegativeButton(R.string.cancel, null).create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
-            // A redirect or renderer failure while the dialog is open must not
-            // save an earlier page through a fallback URL.
-            if (!url.equals(SavedVenueUrl.canonicalize(eligibleUrl.get()))) {
-                name.setError(activity.getString(R.string.save_venue_unavailable));
+        long request = ++saveRequest;
+        readVenue.accept(venue -> {
+            if (request != saveRequest || activity.isFinishing() || activity.isDestroyed()) return;
+            saveRequest++;
+            if (venue == null || !url.equals(venue.url)
+                    || !url.equals(SavedVenueUrl.canonicalize(eligibleUrl.get()))) {
+                message(R.string.save_venue_unavailable);
                 return;
             }
-            SavedVenueStore.Result result = store.save(url, name.getText().toString());
-            if (result == SavedVenueStore.Result.SAVED) {
-                dialog.dismiss();
-                message(R.string.saved_venue_saved);
-            } else {
-                name.setError(activity.getString(result == SavedVenueStore.Result.INVALID_LABEL
-                        ? R.string.saved_venue_name_invalid : result == SavedVenueStore.Result.FULL
-                        ? R.string.saved_venues_full : R.string.saved_venues_storage_error));
-            }
-        }));
-        present(dialog);
+            SavedVenueStore.Result result = store.save(venue.url, venue.name);
+            message(result == SavedVenueStore.Result.SAVED ? R.string.saved_venue_saved
+                    : result == SavedVenueStore.Result.FULL ? R.string.saved_venues_full
+                    : result == SavedVenueStore.Result.INVALID_LABEL ? R.string.save_venue_unavailable
+                    : R.string.saved_venues_storage_error);
+        });
     }
 
     void showList() {
@@ -118,6 +101,7 @@ final class SavedVenuesUi {
     private void message(int text) { Toast.makeText(activity, text, Toast.LENGTH_LONG).show(); }
 
     void dismiss() {
+        saveRequest++;
         if (currentDialog != null) currentDialog.dismiss();
         currentDialog = null;
     }

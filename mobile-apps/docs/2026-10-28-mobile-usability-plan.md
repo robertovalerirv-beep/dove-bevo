@@ -4,7 +4,7 @@
 
 **Goal:** Add useful local saved venues and improve native navigation/loading/recovery without changing the production website or submitted releases.
 
-**Architecture:** Extend each platform's existing native WebView shell, use strict canonical website venue links, and persist only user-selected labels and links in app-private storage. Both implementations follow the shared design contract rather than sharing runtime or secret access.
+**Architecture:** Extend each platform's existing native WebView shell, use strict canonical website venue links, and persist the selected venue's existing name and link in app-private storage. Both implementations follow the shared design contract rather than sharing runtime or secret access.
 
 **Tech stack:** Existing Java/Android SDK and Swift/UIKit/WebKit; no new dependencies.
 
@@ -14,9 +14,9 @@
 
 - Android 20 and iOS 26 review submissions remain intact.
 - Only `mobile-apps/**` and `.github/workflows/mobile-apps.yml` may change; production website/backend/schema/deployment stay byte-identical to the starting tree.
-- Native saved venues: at most 50 records, label limit 80 characters, exact canonical venue URL contract in the design.
+- Native bookmarks: at most 50 records, automatic names bounded at 120 UTF-16 units, stored labels bounded at 120 Unicode scalars with legacy compatibility, exact canonical venue URL and identity contract in the design.
 - Preserve existing URL, permission, adult-rules, no-public-write test guards and protected credential boundaries.
-- No generic JavaScript bridge, injected website code, background location, added service endpoint or new dependency.
+- No generic JavaScript bridge, page mutations, background location, added service endpoint or new dependency. The automatic-name revision allows only the fixed, bounded read of the current public venue heading/selection marker/URL described in the design.
 
 ## Review focus
 
@@ -60,3 +60,13 @@
 - [x] Push the separate update branch to Roberto's canonical repository and attach any created PR; do not replace pending store submissions.
 
 Canonical UOS continuity and separate backup/provider results are recorded after final source verification. The original public-launch objective remains open until store approval, availability and distributed installation are verified. See [verified update status](2026-10-28-native-update-status.md) for results and limits.
+
+## Real-device feedback revision: automatic venue names
+
+The initial tasks above produced build 31. The owner's subsequent explicit decision retains bookmarks but removes naming and rename forms: use the already displayed venue name automatically. Current correction tasks:
+
+- [ ] Implement one-action private bookmarks on both platforms, using the bounded public heading/URL/selection-marker reader and native generation checks.
+- [ ] Preserve previous valid stored records and test 120-unit imported names, ambiguity, hidden/overlaid sheets, stale callbacks, failures and the pre-route-commit identity gap.
+- [ ] Independently review, integrate and run meaningful native runtime/UI checks without public test contributions.
+- [ ] Sign and distribute the corrected testing build, update the stable public policy wording and verify actual provider availability.
+- [ ] Keep short-card end-of-content behaviour separate from any demonstrated scrolling defect; do not change the website or apply an unproven native scroll workaround.

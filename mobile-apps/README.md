@@ -8,7 +8,7 @@ The canonical project is [Roberto's GitHub repository](https://github.com/robert
 
 See [release status](RELEASE_STATUS.md) for verified build, store and submission progress.
 
-The separate [native usability update](docs/2026-10-28-native-update-status.md) adds explicit local saved venues, Stop/Reload recovery and Android Forward/location-help controls. Use **Altre opzioni → Salva locale** on an open venue, then **Locali salvati** to reopen or remove it. Saved links and names are available locally; opening the map or live prices still needs internet. These additions do not replace the Android 20/iOS 26 binaries already submitted for review.
+The separate [native usability update](docs/2026-10-28-native-update-status.md), build **31**, is available in Android internal testing for the existing owner list, and in TestFlight for the existing owner and Roberto groups. It adds explicit local saved venues, Stop/Reload recovery and Android Forward/location-help controls. Use **Altre opzioni → Salva locale** on an open venue, then **Locali salvati** to reopen or remove it. Saved links and names are available locally; opening the map or live prices still needs internet. These testing releases do not replace the Android 20/iOS 26 public submissions under review.
 
 The native browser owns cookies and website authentication. The apps have no native API proxy, token exchange, generic privileged JavaScript bridge, preview host or fixture dependency. Location is requested in the foreground for the existing nearby search. Sharing and external maps use operating-system controls.
 

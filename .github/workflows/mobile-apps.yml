@@ -545,15 +545,22 @@ jobs:
         run: bash mobile-apps/ios/scripts/generate-project.sh
       - name: Verify native release and simulator guards without credentials
         run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
-      - name: Run native unit tests for internal testing
-        timeout-minutes: 15
-        run: bash mobile-apps/ios/scripts/test-simulator.sh --unit-only
+      - name: Run native unit tests and beta phone UI tests
+        timeout-minutes: 18
+        run: |
+          case "$GITHUB_REF" in
+            refs/tags/mobile-beta/v*) bash mobile-apps/ios/scripts/test-simulator.sh ;;
+            refs/tags/mobile-testing/v*) bash mobile-apps/ios/scripts/test-simulator.sh --unit-only ;;
+            *) printf 'Unexpected testing tag\n' >&2; exit 2 ;;
+          esac
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: dove-bevo-ios-internal-checks-${{ github.sha }}
+          include-hidden-files: true
           path: |
             mobile-apps/ios/.build/TestResults.xcresult
+            mobile-apps/ios/.build/Screenshots/
             mobile-apps/ios/.build/SimulatorDiagnostics/
           retention-days: 7
           if-no-files-found: error

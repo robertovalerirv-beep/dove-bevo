@@ -4,17 +4,22 @@ Last verified: 28 October 2026 (UTC).
 
 Both public store releases are submitted: Google Play's production changes are
 **in review**, and Apple confirms iOS version 1.0.0, build 26, **Waiting for
-Review**. External TestFlight review for Roberto is a separate submission.
+Review**. The native update, build **31**, is now available in Google Play
+internal testing and **Testing** in TestFlight for the existing owner and Roberto
+groups. Roberto's tester row reads **Invited**; email delivery and installation
+are not established.
 Internal build 21 is installed on the owner's iPhone. Physical evidence
 currently covers map/price rendering and reported venue Back behavior; neither
 store state establishes an approved public release.
 
-The source also contains a separate [native usability update candidate](docs/2026-10-28-native-update-status.md), with local saved venues and native navigation/recovery improvements. Its verified Debug/emulator results do not replace the submitted Android 20/iOS 26 binaries or establish a newer TestFlight/public release.
+See the separate [native usability update testing release](docs/2026-10-28-native-update-status.md) for signed artifacts, fresh hosted checks, provider readback and physical-device limits. Its testing distribution does not replace the Android 20/iOS 26 public submissions or establish a public launch.
 
 ## Source and scope
 
-The canonical repository is `robertovalerirv-beep/dove-bevo`; the active mobile
-branch is `codex/mobile-internal-testing-20261027`. Owner main
+The canonical repository is `robertovalerirv-beep/dove-bevo`; the submitted-release
+branch is `codex/mobile-internal-testing-20261027`. The native update is saved on
+`codex/mobile-usability-20261028`, with signed build 31 at `e07a8b8596b8248e710db0587c7587a5f772d80c`.
+Owner baseline
 `8094d3c2494851a2e29a5c0b6f5eb8d4dcb88e50` is incorporated without conflicts. Mobile additions are
 confined to `mobile-apps/` and `.github/workflows/mobile-apps.yml`; the website,
 backend, schema, deployment and website security settings are unchanged.
@@ -81,15 +86,15 @@ profile and entitlement validation, and upload all completed.
 The verified IPA SHA-256 is
 `7ce3c3a552ffb41e8bf30c51782a99d97e7066d0cc7cf5165c806ff740958b23`.
 
-App Store Connect shows build **21 Ready to Test**, after the factual
-OS-framework-only encryption question was answered. A manually distributed
-internal group contains one build and one existing Account Holder. The last
-provider read-back showed **Invited**; installation on the owner's iPhone 16
+App Store Connect showed build **21 Ready to Test**, after the factual
+OS-framework-only encryption question was answered. At that initial setup, the
+manually distributed internal group contained one build and one existing Account
+Holder. The provider read-back at that time showed **Invited**; installation on the owner's iPhone 16
 Plus is now observed, but server-side **Accepted** status has not been read back.
-The separate external group **Roberto feedback** now contains only the
-owner-requested Roberto email tester. No App Store Connect team roles or public
-invitation link were added. The provider currently says **No Builds Available**;
-registration alone does not establish that an invitation was sent.
+The separate external group **Roberto feedback** contains only the owner-requested
+Roberto tester. Builds 26 and 31 now read **Testing**, and his tester row reads
+**Invited** dated 28 October. No App Store Connect team roles or public invitation
+link were added. Email delivery and installation remain unverified.
 
 The owner's original 590 by 1280 JPEG shows the native iOS controls, rendered
 Milano tiles and price pins. The owner reports that Back works within venue
@@ -177,11 +182,12 @@ Apple codesign or CMS trust verification.
 
 Apple subsequently processed build 26 and displayed **Ready to Submit**.
 Beta App Review was submitted with automatic tester notification selected.
-The provider now displays **Waiting for Review**, with **Roberto feedback**
-containing one tester and one build. No public link or developer-team role was
-created. The tester still shows **No Builds Available** pending approval;
-invitation delivery and installation are not established. Beta description,
-feedback address and review instructions were saved in App Store Connect.
+That beta review has now completed: build 26 displays **Testing** with the
+existing **Roberto feedback** group and one requested tester. Build 31 was
+subsequently signed, processed and assigned to the owner and Roberto groups;
+it also reads **Testing**. The tester row is **Invited**. No public link or
+developer-team role was created; email delivery and installation remain
+unverified. Beta description, feedback address and review instructions are saved.
 The public App Store version also has build 26 selected and saved. Its latest
 submission includes both verified original screenshots: medium Dynamic Island
 iPhone and 13-inch iPad, each uploaded and processed as **1 of 10 App
@@ -189,8 +195,8 @@ Screenshots** in its respective slot. Apple confirmed **1 Item Submitted** on
 28 October at 16:10 UTC. Public review record
 `8f84f8ac-5654-4709-a448-6e55f622848a` displays **Waiting for Review** and the item
 **iOS App 1.0.0 / 1.0.0 (26)**. Automatic release after approval is selected.
-This public submission is separate from Roberto's external TestFlight review;
-neither review has an approval or public-availability result yet.
+This public submission is separate from the now-testing external beta; public
+approval and public availability remain unverified.
 
 The third credential-free capture run,
 `mobile-capture/v1.0.0-xcode27.1-3`, source
@@ -281,7 +287,7 @@ remain in Git history and retained evidence.
 
 Next owners must read both public review decisions, verify store availability
 after approval and complete the remaining installed-device checks. Confirm
-Roberto's invitation delivery and gather his TestFlight feedback after beta
-approval. Use
+Roberto's invitation delivery and gather his TestFlight feedback for the now
+available build 31. Use
 [the device checklist](PHYSICAL_TEST_CHECKLIST.md). Upload, processing, review
 approval and public availability are separate states; none imply the next.

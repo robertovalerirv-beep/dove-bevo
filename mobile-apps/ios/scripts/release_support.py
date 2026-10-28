@@ -12,6 +12,7 @@ import plistlib
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -171,40 +172,117 @@ def export_options(metadata, identity, internal_only=False):
     return options
 
 
-def install_profile(directory, metadata, checkout):
-    # Xcode 16+ location. No writes to previous locations, global profiles or
-    # arbitrary overrides. Reject symlinks and preserve any existing profile.
-    root = Path.home() / "Library/Developer/Xcode/UserData/Provisioning Profiles"
+def profile_roots():
+    # Xcode 16+ still loads the previous OS location. These are the only two
+    # destinations; there is no environment or caller-supplied path override.
+    return [Path.home() / "Library/Developer/Xcode/UserData/Provisioning Profiles",
+            Path.home() / "Library/MobileDevice/Provisioning Profiles"]
+
+
+def validate_profile_storage(root, checkout):
     require(not root.resolve().is_relative_to(Path(checkout).resolve()), "OS provisioning storage cannot be inside the checkout")
     require(not any(part.casefold().startswith("onedrive") for part in root.resolve().parts), "Provisioning profiles cannot be installed in OneDrive")
-    current = root
-    while current != Path.home():
-        require(not current.is_symlink(), "Provisioning profile directory cannot be a symlink")
-        current = current.parent
-    root.mkdir(mode=0o700, parents=True, exist_ok=True)
-    target = root / (metadata["uuid"] + ".mobileprovision")
-    data = (directory / "distribution.mobileprovision").read_bytes()
-    require(not target.is_symlink(), "Existing profile cannot be a symlink")
-    state = {"created": False}
-    if target.exists():
-        require(target.is_file() and target.read_bytes() == data, "Existing profile UUID collides with another file; preserving it")
-    else:
-        descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        stat = os.fstat(descriptor)
-        state = {"created": True, "path": str(target), "inode": stat.st_ino, "device": stat.st_dev, "sha256": hashlib.sha256(data).hexdigest()}
+
+
+def reject_profile_symlinks(path):
+    require(not any(part.is_symlink() for part in [path, *path.parents]), "Provisioning profile path cannot contain a symlink")
+
+
+def descriptor_sha256(descriptor):
+    os.lseek(descriptor, 0, os.SEEK_SET)
+    digest = hashlib.sha256()
+    while block := os.read(descriptor, 64 * 1024):
+        digest.update(block)
+    return digest.hexdigest()
+
+
+def save_profile_journal(directory, profiles):
+    descriptor, name = tempfile.mkstemp(prefix="installed-profile-", suffix=".tmp", dir=directory)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            json.dump({"version": 2, "profiles": profiles}, stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, directory / "installed-profile.json")
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def cleanup_profile_records(profiles):
+    changed = False
+    for state in profiles:
+        if not state["created"]:
+            continue
+        target = Path(state["path"])
         try:
-            # Record ownership before the first write so EXIT cleanup also sees
-            # an interrupted/partial profile install.
-            (directory / "installed-profile.json").write_text(json.dumps(state), encoding="utf-8")
-            with os.fdopen(descriptor, "wb") as stream:
-                descriptor = None
-                stream.write(data)
-        except BaseException:
-            if descriptor is not None:
+            require(target.parent in profile_roots(), "Installed profile path is not an approved OS location")
+            reject_profile_symlinks(target)
+            descriptor = os.open(target, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            try:
+                current = os.fstat(descriptor)
+                require(stat.S_ISREG(current.st_mode) and current.st_ino == state["inode"] and current.st_dev == state["device"], "Installed profile changed; preserving replacement")
+                require(descriptor_sha256(descriptor) == state["sha256"], "Installed profile changed; preserving replacement")
+            finally:
                 os.close(descriptor)
-            target.unlink(missing_ok=True)
-            raise
-    (directory / "installed-profile.json").write_text(json.dumps(state), encoding="utf-8")
+            latest = target.lstat()
+            require(latest.st_ino == current.st_ino and latest.st_dev == current.st_dev and stat.S_ISREG(latest.st_mode), "Installed profile changed; preserving replacement")
+            reject_profile_symlinks(target)
+            target.unlink()
+        except FileNotFoundError:
+            continue
+        except (OSError, ReleaseValidationError):
+            # A replacement at one location must not prevent cleanup of the
+            # unchanged files owned at the other location.
+            changed = True
+    require(not changed, "Installed profile changed or cleanup failed; preserving replacement")
+
+
+def install_profile(directory, metadata, checkout):
+    value = metadata.get("uuid", "")
+    require(isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}", value), "Invalid profile UUID")
+    data = (directory / "distribution.mobileprovision").read_bytes()
+    targets = []
+    for root in profile_roots():
+        validate_profile_storage(root, checkout)
+        target = root / (value.upper() + ".mobileprovision")
+        reject_profile_symlinks(target)
+        if target.exists():
+            require(target.is_file() and target.read_bytes() == data, "Existing profile UUID collides with another file; preserving it")
+        else:
+            targets.append(target)
+    # Preflight both locations before creating either file. Identical existing
+    # profiles are never owned by this task, and are never added to the journal.
+    profiles = []
+    save_profile_journal(directory, profiles)
+    try:
+        for target in targets:
+            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            reject_profile_symlinks(target)
+            descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
+            try:
+                current = os.fstat(descriptor)
+                state = {"created": True, "path": str(target), "inode": current.st_ino, "device": current.st_dev,
+                         "sha256": hashlib.sha256(b"").hexdigest()}
+                profiles.append(state)
+                # Persist ownership of the empty inode before its first write.
+                save_profile_journal(directory, profiles)
+                try:
+                    offset = 0
+                    while offset < len(data):
+                        count = os.write(descriptor, data[offset:])
+                        require(count > 0, "Provisioning profile write did not progress")
+                        offset += count
+                finally:
+                    # Also journal a short/failed write from the owned descriptor,
+                    # so exception cleanup can identify only those actual bytes.
+                    state["sha256"] = descriptor_sha256(descriptor)
+                    save_profile_journal(directory, profiles)
+            finally:
+                os.close(descriptor)
+    except BaseException:
+        cleanup_profile_records(profiles)
+        raise
 
 
 def cleanup_profile(directory):
@@ -212,14 +290,9 @@ def cleanup_profile(directory):
     if not state_path.exists():
         return
     state = json.loads(state_path.read_text(encoding="utf-8"))
-    if state["created"]:
-        target = Path(state["path"])
-        if not target.exists():
-            return
-        stat = target.lstat()
-        require(not target.is_symlink() and stat.st_ino == state["inode"] and stat.st_dev == state["device"], "Installed profile changed; preserving replacement")
-        require(hashlib.sha256(target.read_bytes()).hexdigest() == state["sha256"], "Installed profile changed; preserving replacement")
-        target.unlink()
+    # Retain cleanup compatibility with the original single-profile journal.
+    profiles = state["profiles"] if state.get("version") == 2 else [state]
+    cleanup_profile_records(profiles)
 
 
 def verify_app(app, entitlements, codesign_details, metadata, build, embedded_profile):

@@ -145,6 +145,196 @@ class ReleaseProfileTests(unittest.TestCase):
                          dict(production, testFlightInternalTestingOnly=True))
 
 
+class ProfileInstallationTests(unittest.TestCase):
+    def setUp(self):
+        root = Path(__file__).resolve().parents[2] / ".build" / "profile-install-tests"
+        root.mkdir(parents=True, exist_ok=True)
+        temporary = tempfile.TemporaryDirectory(dir=root)
+        self.addCleanup(temporary.cleanup)
+        self.folder = Path(temporary.name)
+        self.home = self.folder / "home"
+        self.home.mkdir()
+        self.private = self.folder / "private"
+        self.private.mkdir()
+        self.checkout = self.folder / "checkout"
+        self.checkout.mkdir()
+        self.data = b"public fixture bytes; not a signed provisioning profile"
+        (self.private / "distribution.mobileprovision").write_bytes(self.data)
+        self.metadata = release.validated_profile(profile(), NOW)
+        self.targets = [
+            self.home / "Library/Developer/Xcode/UserData/Provisioning Profiles" / (profile()["UUID"] + ".mobileprovision"),
+            self.home / "Library/MobileDevice/Provisioning Profiles" / (profile()["UUID"] + ".mobileprovision"),
+        ]
+        home = patch.object(Path, "home", return_value=self.home)
+        home.start()
+        self.addCleanup(home.stop)
+        # All public dummy IO stays in the selected project folder. Mock only
+        # the OS-storage location boundary for these fixtures; exercise its real
+        # checkout/OneDrive refusals separately below. Symlink checks stay real.
+        self.storage_guard = release.validate_profile_storage
+        storage = patch.object(release, "validate_profile_storage")
+        storage.start()
+        self.addCleanup(storage.stop)
+
+    def install(self):
+        release.install_profile(self.private, self.metadata, self.checkout)
+
+    def existing(self, target, data=None):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(self.data if data is None else data)
+        return target.stat()
+
+    def journal(self):
+        return json.loads((self.private / "installed-profile.json").read_text())
+
+    def test_both_fixed_locations_get_identical_uuid_and_bytes_then_owned_cleanup(self):
+        self.install()
+        for target in self.targets:
+            self.assertEqual(target.read_bytes(), self.data)
+        state = self.journal()
+        self.assertEqual(state["version"], 2)
+        self.assertEqual({item["path"] for item in state["profiles"]}, {str(path) for path in self.targets})
+        self.assertTrue(all(item["sha256"] == hashlib.sha256(self.data).hexdigest() for item in state["profiles"]))
+        release.cleanup_profile(self.private)
+        self.assertTrue(all(not path.exists() for path in self.targets))
+        release.cleanup_profile(self.private)  # Missing owned files are safe.
+
+    def test_identical_preexisting_profiles_are_preserved_and_never_owned(self):
+        identities = [self.existing(path).st_ino for path in self.targets]
+        self.install()
+        self.assertEqual(self.journal()["profiles"], [])
+        release.cleanup_profile(self.private)
+        for target, inode in zip(self.targets, identities):
+            self.assertEqual(target.read_bytes(), self.data)
+            self.assertEqual(target.stat().st_ino, inode)
+
+    def test_cleanup_removes_only_new_location_when_other_profile_already_matches(self):
+        self.existing(self.targets[0])
+        self.install()
+        release.cleanup_profile(self.private)
+        self.assertEqual(self.targets[0].read_bytes(), self.data)
+        self.assertFalse(self.targets[1].exists())
+
+    def test_collision_in_second_location_is_rejected_before_any_profile_write(self):
+        self.existing(self.targets[1], b"different public fixture")
+        with self.assertRaisesRegex(release.ReleaseValidationError, "collides"):
+            self.install()
+        self.assertFalse(self.targets[0].exists())
+        self.assertEqual(self.targets[1].read_bytes(), b"different public fixture")
+        self.assertFalse((self.private / "installed-profile.json").exists())
+
+    def test_directory_and_target_symlinks_are_rejected_before_install(self):
+        original = Path.is_symlink
+        # The filesystem symlink boundary is simulated so Windows does not need
+        # administrator/developer-mode symlink permission for this negative test.
+        for linked in [self.targets[1].parent, self.targets[1]]:
+            with self.subTest(linked=linked), patch.object(Path, "is_symlink", new=lambda path: path == linked or original(path)):
+                with self.assertRaisesRegex(release.ReleaseValidationError, "symlink"):
+                    self.install()
+                self.assertTrue(all(not path.exists() for path in self.targets))
+
+    def test_second_partial_write_is_journalled_before_write_and_all_owned_files_clean(self):
+        write = os.write
+        calls = []
+
+        def interrupted(descriptor, data):
+            owned = next(item for item in self.journal()["profiles"]
+                         if item["inode"] == os.fstat(descriptor).st_ino)
+            self.assertEqual(owned["sha256"], hashlib.sha256(b"").hexdigest())
+            calls.append(owned["path"])
+            if len(calls) == 2:
+                write(descriptor, data[:7])
+                raise OSError("public fixture partial-write failure")
+            return write(descriptor, data)
+
+        with patch.object(release.os, "write", side_effect=interrupted):
+            with self.assertRaisesRegex(OSError, "partial-write"):
+                self.install()
+        self.assertEqual(calls, [str(path) for path in self.targets])
+        self.assertEqual(self.journal()["profiles"][1]["sha256"], hashlib.sha256(self.data[:7]).hexdigest())
+        self.assertTrue(all(not path.exists() for path in self.targets))
+        release.cleanup_profile(self.private)
+
+    def test_failure_opening_second_location_cleans_first_and_preserves_new_collision(self):
+        open_file = os.open
+
+        def collision(path, flags, *args, **kwargs):
+            if Path(path) == self.targets[1] and flags & os.O_CREAT:
+                self.existing(self.targets[1], b"concurrent public replacement")
+            return open_file(path, flags, *args, **kwargs)
+
+        with patch.object(release.os, "open", side_effect=collision):
+            with self.assertRaises(FileExistsError):
+                self.install()
+        self.assertFalse(self.targets[0].exists())
+        self.assertEqual(self.targets[1].read_bytes(), b"concurrent public replacement")
+
+    def test_journal_failure_before_first_write_cleans_empty_owned_file(self):
+        save = release.save_profile_journal
+        count = 0
+
+        def fail_after_creation(directory, profiles):
+            nonlocal count
+            count += 1
+            if count == 2:
+                raise OSError("public fixture journal failure")
+            save(directory, profiles)
+
+        with patch.object(release, "save_profile_journal", side_effect=fail_after_creation):
+            with self.assertRaisesRegex(OSError, "journal failure"):
+                self.install()
+        self.assertTrue(all(not path.exists() for path in self.targets))
+
+    def test_cleanup_preserves_replaced_inode_but_still_cleans_other_owned_location(self):
+        self.install()
+        replacement = self.folder / "replacement.mobileprovision"
+        replacement.write_bytes(self.data)
+        replacement.replace(self.targets[0])
+        with self.assertRaisesRegex(release.ReleaseValidationError, "preserving replacement"):
+            release.cleanup_profile(self.private)
+        self.assertEqual(self.targets[0].read_bytes(), self.data)
+        self.assertFalse(self.targets[1].exists())
+
+    def test_cleanup_preserves_changed_bytes_on_same_inode(self):
+        self.install()
+        original_inode = self.targets[0].stat().st_ino
+        self.targets[0].write_bytes(b"changed public fixture")
+        self.assertEqual(self.targets[0].stat().st_ino, original_inode)
+        with self.assertRaisesRegex(release.ReleaseValidationError, "preserving replacement"):
+            release.cleanup_profile(self.private)
+        self.assertEqual(self.targets[0].read_bytes(), b"changed public fixture")
+        self.assertFalse(self.targets[1].exists())
+
+    def test_cleanup_rejects_symlink_replacement_and_cleans_other_location(self):
+        self.install()
+        original = Path.is_symlink
+        with patch.object(Path, "is_symlink", new=lambda path: path == self.targets[0] or original(path)):
+            with self.assertRaisesRegex(release.ReleaseValidationError, "preserving replacement"):
+                release.cleanup_profile(self.private)
+        self.assertEqual(self.targets[0].read_bytes(), self.data)
+        self.assertFalse(self.targets[1].exists())
+
+    def test_cleanup_accepts_previous_single_profile_journal(self):
+        self.install()
+        state = self.journal()["profiles"][0]
+        self.targets[1].unlink()
+        (self.private / "installed-profile.json").write_text(json.dumps(state))
+        release.cleanup_profile(self.private)
+        self.assertFalse(self.targets[0].exists())
+
+    def test_real_storage_guard_rejects_checkout_and_onedrive_without_any_io(self):
+        with self.assertRaisesRegex(release.ReleaseValidationError, "inside the checkout"):
+            self.storage_guard(self.checkout / "profiles", self.checkout)
+        with self.assertRaisesRegex(release.ReleaseValidationError, "OneDrive"):
+            self.storage_guard(self.targets[0].parent, self.checkout)
+
+    def test_uuid_cannot_override_fixed_profile_destination(self):
+        self.metadata["uuid"] = "../../another-profile"
+        with self.assertRaisesRegex(release.ReleaseValidationError, "Invalid profile UUID"):
+            self.install()
+        self.assertTrue(all(not path.exists() for path in self.targets))
+
+
 class ImportFailureTests(unittest.TestCase):
     def test_exact_apple_messages_emit_only_fixed_classification_and_catalog_status(self):
         cases = [

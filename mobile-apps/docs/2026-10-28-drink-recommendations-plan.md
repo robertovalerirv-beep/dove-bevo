@@ -62,6 +62,6 @@ Owner: iOS lane. Exclusive paths: mobile-apps/ios/**.
 - [x] Independently review each frozen slice, resolve contract/security issues with its owner, and integrate without touching existing website UI.
 - [x] Update public/bundled privacy and app-specific docs for anonymous public recommendations and retention; verify current store-disclosure category fit.
 - [ ] Run fresh integrated backend and native gates; map requirements to actual evidence, preserve failures and exact source identity.
-- [ ] Create narrow additive backend PR; verify exact-head green checks before authorized main merge. Observe migration, deploy and public GET readback.
+- [x] Create narrow additive backend PR; verify exact-head green checks before authorized main merge. Observe migration, deploy and public GET readback.
 - [ ] Produce one gated signed beta for both native apps, verify actual artifacts and provider availability, preserve public review builds.
 - [ ] Finish root checkpoint, one canonical handoff publication/close, and separate backup/provider attempts with honest limits.

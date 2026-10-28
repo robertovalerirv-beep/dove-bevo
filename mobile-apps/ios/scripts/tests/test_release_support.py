@@ -514,8 +514,16 @@ class DistributionModeTests(unittest.TestCase):
                     })
 
 
+XCODE_HELP = """testFlightInternalTestingOnly : Bool
+    -allowProvisioningUpdates
+    -authenticationKeyPath <path>
+    -authenticationKeyID <keyID>
+    -authenticationKeyIssuerID <issuerID>
+"""
+
+
 class ReleaseShellModeTests(unittest.TestCase):
-    def run_mode(self, arguments, help_text="testFlightInternalTestingOnly : Bool", help_status=0, whole_script=False):
+    def run_mode(self, arguments, help_text=XCODE_HELP, help_status=0, whole_script=False):
         # Exercise the real argument/preflight prefix and forwarding calls only.
         # No certificate decoder, keychain, signing, Apple binary or upload runs.
         git_bash = Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe"
@@ -575,7 +583,7 @@ IPA=public-ipa-fixture
                 result, actions = self.run_mode(arguments)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn(f'accepted upload={str(upload).lower()} internal={str(internal).lower()}', result.stdout)
-                self.assertEqual('xcodebuild -help' in actions, internal)
+                self.assertEqual('xcodebuild -help' in actions, internal or upload)
                 calls = [line for line in actions.splitlines() if line.startswith('python3 ')]
                 self.assertEqual(len(calls), 2)
                 for call in calls:
@@ -618,6 +626,143 @@ IPA=public-ipa-fixture
         self.assertIn(' private-dir ', python_calls[0])
         self.assertNotIn(' decode ', actions)
         self.assertNotIn('unexpected ', actions)
+
+    def test_upload_requires_each_exact_authentication_capability_before_private_inputs(self):
+        flags = ['-allowProvisioningUpdates', '-authenticationKeyPath',
+                 '-authenticationKeyID', '-authenticationKeyIssuerID']
+        for flag in flags:
+            for replacement in ['', flag + 'Suffix']:
+                help_text = '\n'.join(line for line in XCODE_HELP.splitlines() if not line.strip().startswith(flag + ' ') and line.strip() != flag)
+                help_text += '\n    ' + replacement
+                with self.subTest(flag=flag, replacement=replacement):
+                    result, actions = self.run_mode(['--upload'], help_text, whole_script=True)
+                    self.assertEqual(result.returncode, 1, result.stderr)
+                    self.assertIn('xcodebuild -help', actions)
+                    self.assertNotIn('python3 ', actions)
+                    self.assertNotIn('unexpected ', actions)
+                    self.assertNotIn('-project', actions)
+        result, actions = self.run_mode(['--upload'], XCODE_HELP, 1, whole_script=True)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertNotIn('python3 ', actions)
+
+    def test_no_upload_does_not_require_authentication_capabilities(self):
+        for arguments, help_text in [([], 'unsupported'),
+                                     (['--internal-only'], 'testFlightInternalTestingOnly : Bool')]:
+            with self.subTest(arguments=arguments):
+                result, actions = self.run_mode(arguments, help_text)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertNotIn('unexpected ', actions)
+
+
+class ArchiveAuthenticationTests(unittest.TestCase):
+    def run_archive_boundary(self, arguments, cleanup_failure=False):
+        # Run the real script up to a simulated archive failure and its EXIT
+        # trap. Apple tools and private decoding are replaced at their command
+        # boundaries; all files are public fixtures in the selected workspace.
+        git_bash = Path(os.environ.get('ProgramFiles', 'C:/Program Files')) / 'Git/bin/bash.exe'
+        bash = str(git_bash) if git_bash.is_file() else shutil.which('bash')
+        if not bash:
+            self.skipTest('Bash is unavailable')
+        script = Path(__file__).resolve().parents[1] / 'release-ios.sh'
+        source = script.read_text()
+        # Isolate only the output directory; preserve the release's control flow.
+        source = source.replace('RELEASE_ROOT="$IOS_ROOT/.build/release"', 'RELEASE_ROOT="$PWD/release"')
+        root = script.parent.parent / '.build' / 'archive-auth-tests'
+        root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=root) as working:
+            folder = Path(working)
+            (folder / 'private fixture').mkdir()
+            fixture = r'''#!/usr/bin/env bash
+record() { printf '%s\n' "$*" >> "$PWD/actions.txt"; }
+uname() { printf 'Darwin\n'; }
+git() { printf '%s\n' "$PWD"; }
+xcrun() { printf '26.2\n'; }
+xcodebuild() {
+    if [[ "$1" == -version ]]; then printf 'Xcode 26.3\n'; return 0; fi
+    if [[ "$1" == -help ]]; then printf '%s\n' "$FIXTURE_HELP"; return 0; fi
+    [[ -z "${DOVEBEVO_ASC_PRIVATE_KEY+x}" && -z "${DOVEBEVO_IOS_CERTIFICATE_BASE64+x}"
+       && -z "${DOVEBEVO_IOS_PROFILE_BASE64+x}" && -z "${DOVEBEVO_SIGNING_PASSWORD+x}" ]] || return 88
+    printf '%s\0' "$@" > "$PWD/archive-args.bin"
+    return 77
+}
+openssl() {
+    if [[ "$1" == pkcs12 ]]; then printf 'Shrouded Keybag\n'; return 0; fi
+    if [[ "$1" == rand ]]; then printf 'public-keychain-password-fixture\n'; return 0; fi
+    [[ "$1" == pkey && "$2" == -in && "$3" == "$private_dir/private_keys/AuthKey_PUBLIC1234.p8"
+       && -z "${DOVEBEVO_ASC_PRIVATE_KEY+x}" ]] || return 89
+    record 'validated existing private key path'
+}
+python3() {
+    if [[ "$1" == -c ]]; then printf '672E3C73-21B8-4B46-9ECF-A39A0CBCB4B9\n'; return 0; fi
+    case "$2" in
+        private-dir) printf '%s/private fixture\n' "$PWD" ;;
+        decode|profile|install|keychain-list|options) record "$2" ;;
+        identity) printf 'public-certificate-fingerprint\n' ;;
+        cleanup-profile) record 'cleanup-profile'; return "$FIXTURE_CLEANUP_STATUS" ;;
+        cleanup-private) record 'cleanup-private' ;;
+        *) record 'unexpected helper'; return 99 ;;
+    esac
+}
+security() {
+    case "$1" in
+        cms|create-keychain|set-keychain-settings|unlock-keychain|import|set-key-partition-list|find-identity|list-keychains) return 0 ;;
+        *) record 'unexpected security'; return 99 ;;
+    esac
+}
+codesign() { record 'unexpected codesign'; return 99; }
+ditto() { record 'unexpected ditto'; return 99; }
+bash() { record 'generate-project'; }
+''' + source
+            (folder / 'fixture.sh').write_text(fixture, encoding='utf-8', newline='\n')
+            env = {key: os.environ[key] for key in ['PATH', 'SystemRoot', 'WINDIR'] if key in os.environ}
+            env.update(RUNNER_TEMP=str(folder), FIXTURE_HELP=XCODE_HELP,
+                       FIXTURE_CLEANUP_STATUS='93' if cleanup_failure else '0',
+                       DOVEBEVO_ASC_PRIVATE_KEY='FABRICATED_KEY_ONLY',
+                       DOVEBEVO_IOS_CERTIFICATE_BASE64='FABRICATED_CERTIFICATE_ONLY',
+                       DOVEBEVO_IOS_PROFILE_BASE64='FABRICATED_PROFILE_ONLY',
+                       DOVEBEVO_SIGNING_PASSWORD='FABRICATED_PASSWORD_ONLY')
+            if '--upload' in arguments:
+                env.update(DOVEBEVO_ASC_KEY_ID='PUBLIC1234',
+                           DOVEBEVO_ASC_ISSUER_ID='00000000-0000-0000-0000-000000000001')
+            result = subprocess.run([bash, 'fixture.sh'] + arguments, cwd=folder, env=env,
+                                    capture_output=True, text=True, timeout=10)
+            args_file = folder / 'archive-args.bin'
+            argv = args_file.read_bytes().decode().rstrip('\0').split('\0') if args_file.exists() else []
+            actions = (folder / 'actions.txt').read_text().splitlines() if (folder / 'actions.txt').exists() else []
+            return result, argv, actions
+
+    def test_only_upload_archive_receives_existing_key_and_provisioning_flags_with_manual_pins(self):
+        for arguments in [[], ['--internal-only'], ['--upload'], ['--internal-only', '--upload']]:
+            with self.subTest(arguments=arguments):
+                result, argv, actions = self.run_archive_boundary(arguments)
+                self.assertEqual(result.returncode, 77, result.stderr)
+                for pin in ['CODE_SIGN_STYLE=Manual', 'DEVELOPMENT_TEAM=9T359CV674',
+                            'CODE_SIGN_IDENTITY=public-certificate-fingerprint',
+                            'PROVISIONING_PROFILE_SPECIFIER=672E3C73-21B8-4B46-9ECF-A39A0CBCB4B9',
+                            'CODE_SIGNING_ALLOWED=YES', 'CODE_SIGNING_REQUIRED=YES']:
+                    self.assertIn(pin, argv)
+                self.assertEqual(argv[-1], 'archive')
+                self.assertNotIn('', argv)
+                for flag in ['-allowProvisioningUpdates', '-authenticationKeyPath',
+                             '-authenticationKeyID', '-authenticationKeyIssuerID']:
+                    self.assertEqual(argv.count(flag), 1 if '--upload' in arguments else 0)
+                if '--upload' in arguments:
+                    key_path = argv[argv.index('-authenticationKeyPath') + 1]
+                    self.assertTrue(key_path.endswith('/private fixture/private_keys/AuthKey_PUBLIC1234.p8'))
+                    self.assertEqual(argv[argv.index('-authenticationKeyID') + 1], 'PUBLIC1234')
+                    self.assertEqual(argv[argv.index('-authenticationKeyIssuerID') + 1], '00000000-0000-0000-0000-000000000001')
+                    self.assertIn('validated existing private key path', actions)
+                else:
+                    self.assertNotIn('validated existing private key path', actions)
+                self.assertEqual([action for action in actions if action.startswith('cleanup-')], ['cleanup-profile', 'cleanup-private'])
+                self.assertNotIn('FABRICATED_', result.stdout + result.stderr + '\n'.join(argv))
+
+    def test_cleanup_failure_remains_fatal_after_authenticated_archive(self):
+        result, argv, actions = self.run_archive_boundary(['--upload'], cleanup_failure=True)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn('-authenticationKeyPath', argv)
+        self.assertEqual([action for action in actions if action.startswith('cleanup-')], ['cleanup-profile', 'cleanup-private'])
+        self.assertIn('cleanup could not confirm removal', result.stderr)
 
 
 class UploadOutcomeTests(unittest.TestCase):

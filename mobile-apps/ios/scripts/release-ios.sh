@@ -38,11 +38,19 @@ SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
 XCODE_VERSION="$(xcodebuild -version | head -n 1 | awk '{print $2}')"
 [[ "${XCODE_VERSION%%.*}" -ge 26 ]] || fail 'App Store uploads require Xcode 26 or later'
 [[ ! -e "$RELEASE_ROOT" ]] || fail 'The release output already exists; preserve it before starting a separate release'
-if [[ "$INTERNAL_ONLY" == true ]]; then
+if [[ "$INTERNAL_ONLY" == true || "$UPLOAD" == true ]]; then
     XCODEBUILD_HELP="$(xcodebuild -help 2>&1)" \
-        || fail 'Cannot verify internal-only export support in the selected Xcode'
-    grep -Eq '^[[:space:]]*testFlightInternalTestingOnly[[:space:]]*:[[:space:]]*Bool([[:space:]]|$)' <<< "$XCODEBUILD_HELP" \
-        || fail 'Selected Xcode does not advertise the internal-only export option; no signing attempted'
+        || fail 'Cannot verify required release capabilities in the selected Xcode'
+    if [[ "$INTERNAL_ONLY" == true ]]; then
+        grep -Eq '^[[:space:]]*testFlightInternalTestingOnly[[:space:]]*:[[:space:]]*Bool([[:space:]]|$)' <<< "$XCODEBUILD_HELP" \
+            || fail 'Selected Xcode does not advertise the internal-only export option; no signing attempted'
+    fi
+    if [[ "$UPLOAD" == true ]]; then
+        for capability in allowProvisioningUpdates authenticationKeyPath authenticationKeyID authenticationKeyIssuerID; do
+            grep -Eq "^[[:space:]]*-${capability}([[:space:]]|$)" <<< "$XCODEBUILD_HELP" \
+                || fail "Selected Xcode does not advertise -${capability}; no signing attempted"
+        done
+    fi
     unset XCODEBUILD_HELP
 fi
 
@@ -123,12 +131,24 @@ python3 "$SUPPORT" install "$private_dir" "$private_dir/profile.json" "$REPO_ROO
 python3 "$SUPPORT" options "$private_dir/profile.json" "$IDENTITY" "$private_dir/ExportOptions.plist" ${RELEASE_MODE_ARGS[@]+"${RELEASE_MODE_ARGS[@]}"}
 PROFILE_UUID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["uuid"])' "$private_dir/profile.json")"
 
+ARCHIVE_AUTH_ARGS=()
+if [[ "$UPLOAD" == true ]]; then
+    ASC_KEY="$private_dir/private_keys/AuthKey_${DOVEBEVO_ASC_KEY_ID}.p8"
+    openssl pkey -in "$ASC_KEY" -passin pass: -check -noout >"$private_dir/api-key-check.txt" 2>&1 \
+        || fail 'The App Store Connect private key is invalid'
+    # Manual signing stays pinned below. This permits Xcode to download the
+    # selected profile using the already approved private upload-key file.
+    ARCHIVE_AUTH_ARGS=(-allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY"
+        -authenticationKeyID "$DOVEBEVO_ASC_KEY_ID" -authenticationKeyIssuerID "$DOVEBEVO_ASC_ISSUER_ID")
+fi
+
 bash "$IOS_ROOT/scripts/generate-project.sh"
 mkdir -p "$RELEASE_ROOT"
 xcodebuild -project "$IOS_ROOT/DoveBevo.xcodeproj" -scheme DoveBevo \
     -configuration Release -destination 'generic/platform=iOS' \
     -derivedDataPath "$IOS_ROOT/.build/ReleaseDerivedData" \
     -archivePath "$RELEASE_ROOT/DoveBevo.xcarchive" \
+    ${ARCHIVE_AUTH_ARGS[@]+"${ARCHIVE_AUTH_ARGS[@]}"} \
     CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=9T359CV674 \
     CODE_SIGN_IDENTITY="$IDENTITY" PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
     CURRENT_PROJECT_VERSION="$BUILD_NUMBER" CODE_SIGNING_ALLOWED=YES CODE_SIGNING_REQUIRED=YES archive
@@ -155,9 +175,6 @@ python3 "$SUPPORT" manifest "$IPA" "$RELEASE_ROOT/release-manifest.json" \
     "$private_dir/profile.json" "$BUILD_NUMBER" "$COMMIT" ${RELEASE_MODE_ARGS[@]+"${RELEASE_MODE_ARGS[@]}"}
 
 if [[ "$UPLOAD" == true ]]; then
-    ASC_KEY="$private_dir/private_keys/AuthKey_${DOVEBEVO_ASC_KEY_ID}.p8"
-    openssl pkey -in "$ASC_KEY" -passin pass: -check -noout >"$private_dir/api-key-check.txt" 2>&1 \
-        || fail 'The App Store Connect private key is invalid'
     # Xcode's bundled altool supports App Store uploads with API authentication.
     # Require its explicit key-path option rather than writing into a home cache
     # or relying on implicit credential discovery on the host.

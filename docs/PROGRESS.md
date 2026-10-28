@@ -4,6 +4,14 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-28 · Apps-only public drink recommendations · ADR 0041
+
+The app owner authorized a narrow shared-storage exception: additive native recommendation API and D1 table, with Roberto's website interface and existing price/session behavior unchanged. `GET/POST /api/mobile/venues/:key/recommendations?c=<cell>` returns all nine catalog categories, shared totals and optional installation state with no-store. Persistent pair-scoped HMAC claims support transactional idempotent set/undo; addition attempts are limited to 50 per installation and 200 per IP per Rome day. Undo remains burst-limited but daily-budget exempt. No raw installation ID/IP is stored with claims or counters, and no browser cookies are copied.
+
+**Evidence:** two endpoint tests first failed with 404 before implementation. All 30 new cases then passed in local workerd/D1, including distinct installations on shared Wi-Fi, concurrency, quota boundaries, undo, Rome midnight, public visibility, strict input and retained votes across price changes/transient cleanup. Writer and root independently passed all 58 unit/worker files and 669 tests on the production code. TypeScript, ESLint (excluding only unrelated preserved untracked Android build reports) and production build passed. Earlier writer-run failures are preserved separately: a build/test fixture overlap, followed by one existing robots first-request timeout that passed in isolation and in the final full suite without source changes. No live recommendation writes were used.
+
+**Remaining:** independent review, root integration, exact-head CI, authorized main merge/migration/deployment and public GET readback. Native delivery and privacy disclosures are coordinated separately. Local tests are not a deployment or store approval.
+
 ## 2026-10-28 · SPEC 1.13: pulsante centrale, attribuzioni da 24 px, titolo neutro (branch `m6-chiusura-inglese`) · ADR 0040 · MG, MH, ME
 
 **Richiesta di Roberto:** una PR sola per (1) i test che mancano alle voci ME-03, ME-04, ME-06, ME-07; (2) le attribuzioni della mappa troppo piccole per `axe`; (3) dopo la sua prova su iPhone (il download in anticipo non aiuta Safari): il pulsante centrale «Clicca sulla mappa o cerca una città» all'apertura. I test devono passare davvero, niente `--no-verify`.

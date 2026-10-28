@@ -3,9 +3,10 @@
 Last verified: 28 October 2026 (UTC).
 
 Neither mobile app has been submitted for store review or released publicly.
-The 28 October Google Play dashboard shows 10 of 11 setup items complete;
-Store Listing remains outstanding. Internal-testing setup is 2 of 3, with tester
-selection missing. A locally derived, signed Android build 14 APK is installed
+Google Play has accepted and saved the Italian listing with four genuine
+1080 by 1920 emulator screenshots; it is ready to send for review once a
+production release is prepared. Internal-testing setup is 2 of 3, with tester
+selection missing. A locally derived, signed Android build 14 APK was installed
 on an account-free emulator; this is not a Play-installed or physical-device
 test. No signed iOS binary has been uploaded, and TestFlight still asks for a
 build before testing can begin.
@@ -17,7 +18,7 @@ Roberto's `robertovalerirv-beep/dove-bevo` repository is canonical. Verified own
 main is `abeac75353ad5c2b73f97ee33b98fb2040d79ff4`, seven owner commits beyond
 the previous baseline. It was merged without conflict into mobile source
 `bbc6aa21709904ea001160a36a2f8b0792ab5cbc`. Relative to that current main, the
-mobile work is exactly 98 added files, confined to `mobile-apps/` and
+mobile work is confined to `mobile-apps/` and
 `.github/workflows/mobile-apps.yml`. Our additions do not modify the website,
 backend, schema or deployment; the owner's intervening changes are preserved.
 Local project work stays in the selected OneDrive workspace. Credentials and
@@ -70,10 +71,11 @@ instead of silently selecting a newer OS. Supported inventory and compatibility:
 ## Store preparation
 
 - Google Play: app record, content rating and data-safety declarations saved;
-  listing text, icon and feature graphic saved as a draft. The fresh dashboard
-  shows **10 of 11 setup items complete**, with **Store Listing** outstanding,
-  and **2 of 3 internal-testing steps**, with **Select testers** outstanding.
-  Actual app screenshots, completed device testing and submission remain open.
+  listing text, icon, feature graphic and four genuine screenshots are saved.
+  The provider confirms **Ready to send for review** for the listing; the
+  publishing overview still disables submission until the production release
+  is completed. Internal testing has **2 of 3 steps**, with **Select testers**
+  outstanding. Physical device testing and store submission remain open.
   Signed version 1.0.0, versionCode 10, was published to internal testing
   with Italian test notes. Google reports no selected testers and no
   deobfuscation file; this build deliberately has minification disabled. The
@@ -95,6 +97,46 @@ instead of silently selecting a newer OS. Supported inventory and compatibility:
 The app privacy and deletion pages are publicly readable on the preserved
 `codex/mobile-store-disclosures-20261026` branch. Roberto Valeri is the service's
 current responsible person; support remains `dovebevo@gmail.com`.
+
+## Current local verification
+
+The integrated Android source passed all **28 unit tests**, including the three
+Android-dependent back-navigation cases, debug lint, debug APK and release
+bundle compilation on Windows with the official Android SDK and JDK. This
+build result does not establish a signed production upload or store approval.
+
+Signed build 14 passed Milano search and selection, live map tiles/markers,
+existing venue details, native back navigation, the system share chooser with
+the public website URL, cold restart, offline privacy and network-restored
+reload on the owned emulator. Directions opened Google Maps; return navigation
+was not established. Nearby permission denial and approximate permission were
+exercised, but a successful location result was not established. No public
+contributions were created and no shares were sent. The four original store
+captures and hashes are retained in `store-assets/android-screenshots/`.
+
+The emulator runs headlessly; the user's desktop mouse, keyboard and personal
+iPhone remain available. SDK automation operates only this owned virtual
+device. The installed upload-certificate APK is distinct from a Google Play
+App Signing installation and is not a physical-phone test.
+
+The app now explicitly protects public submissions on devices reporting the
+documented Firebase Test Lab flag. Its transparent native banner, local method
+interception and external-action restrictions are documented in
+`android/TEST_LAB_SAFETY.md`. Independent review and pure policy tests passed;
+the isolated real WebView/service-worker runtime gate is still pending. The
+known automatic Play pre-launch crawl is why the older unguarded bundle has
+not been promoted to production.
+
+Apple's Xcode 26.3 and the pinned Xcode 27.1 internal trial both imported the
+existing identity successfully and passed the unit checks, but archive creation
+failed to find the selected provisioning profile. One replacement App Store
+profile has now been created using the same certificate and bundle, preserving
+the original active profile. Both CMS layers verified to official Apple roots;
+the DER and XML metadata/entitlements agree and the certificate digest matches.
+This verification does not include a revocation check. Only the verified
+profile secret was updated. Exact Apple-supplied UUID casing is being preserved
+before the next hosted signing attempt; a successful iOS archive is not yet
+established.
 
 ## Internal build evidence
 

@@ -1,5 +1,5 @@
 import { useRef } from "preact/hooks";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { TESSERA_STEPS } from "../lib/usage";
 
 /** After "Salva": the Timbro with the day, the lines under it and the Tessera (MB-11, MB-12). */

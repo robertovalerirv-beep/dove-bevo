@@ -4,6 +4,148 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-28 · SPEC 1.13: pulsante centrale, attribuzioni da 24 px, titolo neutro (branch `m6-chiusura-inglese`) · ADR 0040 · MG, MH, ME
+
+**Richiesta di Roberto:** una PR sola per (1) i test che mancano alle voci ME-03, ME-04, ME-06, ME-07; (2) le attribuzioni della mappa troppo piccole per `axe`; (3) dopo la sua prova su iPhone (il download in anticipo non aiuta Safari): il pulsante centrale «Clicca sulla mappa o cerca una città» all'apertura. I test devono passare davvero, niente `--no-verify`.
+
+**Fatto in questo commit (solo specifica)**
+- SPEC 1.13: D-37, 7.1, 7.11, registro 1.13; ME-03 e M1-07 riscritte; nuove voci MG-01, MH-01, MH-02 (tutte `passes: false`); milestone MG e MH.
+- ADR 0040. Guardia sul tag `spec-approved-14` (`scripts/check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`, `.claude/agents/spec-reviewer.md`).
+- `docs/feature_list.json`: cambiano solo `verifica` di ME-03 e M1-07 (autorizzate da Roberto in chat) e le tre voci nuove; `passes` invariati.
+
+**Non fatto, di Roberto**
+- Creare e pubblicare il tag `spec-approved-14` su questo commit: finché manca, la guardia è rossa.
+
+**Prossimi passi (stesso ramo, dopo il tag):** test prima (ME-03/04/06/07, MG-01, MH-01/02), poi il codice (pulsante centrale, attribuzioni), `npm run verify` per intero, CI verde con WebKit, revisioni, `passes: true`.
+
+
+### Fase 1 · pulsante centrale (MH-01, MH-02) e attribuzioni da 24 px (MG-01)
+**Fatto**
+- `src/app/app.tsx`: nuovo `<button class="btn btn--primary map__start">` fratello del pulsante `map__preview`, visibile solo con `!ready && !mapWanted && !pinning`, stesso `ensureMap`; la pillola `status` non si disegna mentre la mappa è la foto ferma e dice «Avvicinati…» (offline ed errori si dicono lo stesso); `it.ts`/`en.ts`: `map.start` («Clicca sulla mappa o cerca una città» / «Tap the map or search for a city»), tipizzata dal dizionario.
+- `src/app/styles/app.css`: `.map__start` centrato con `inset:0; margin:auto` (senza `transform`, che il pulsante premuto usa); `.map__attribution a` a 24 px (`inline-block; min-height/line-height: 24px`), `.map__attribution` senza padding verticale (la riga resta a 24 px).
+- Il download in anticipo (ADR 0039) è rimasto com'è.
+
+**Test scritti prima, falliti per il motivo giusto** (log: link delle attribuzioni alti 13 px invece di 24; pulsante «Clicca sulla mappa…» non trovato; `tsc -b` TS2339 su `it.map.start`): `tests/e2e/map-start.spec.ts` (MH-01 due temi × 390/360 px: centrato ±2 px, ≥ 48 px, testo intero, non copre menu lingua/Elenco/attribuzioni, `axe` senza violazioni, screenshot; tocco sul pulsante e tocco sulla mappa; altezza di mappa e barra uguale prima e dopo; niente pulsante con `?at=`; nessuna richiesta `/api`/`/data`; MH-02 in inglese e dal vivo), `brand-map.spec.ts` (MG-01 due temi: link ≥ 24×24 px, testo ≤ 13 px, riga ≤ 26 px, `axe` senza esclusioni), `tests/unit/voice.test.ts` (frase nuova).
+
+**Test esistenti cambiati perché il requisito cambia (dichiarati)**
+- `map.spec.ts` M1-07: «Avvicinati…» si attende dopo il primo tocco (prima: al centro c'è il pulsante, la pillola non c'è). `english.spec.ts`: ME-04 (stesso motivo) e ME-02 (la riga di stato si misura dopo il primo tocco); ME-07: tolta l'esclusione `.exclude(".map__attribution")` dall'`axe`.
+- `brand-map.spec.ts` SPEC 2.8: soglia della riga di attribuzioni «≤ 20 px per riga» → «≤ 26 px per riga» (ora è 24 px).
+- `tapMap(page)` in `helpers.ts`: i test che «toccano la mappa» cliccavano il centro della foto, che ora è il nuovo pulsante (Playwright rifiuta il clic perché è coperto); toccano un punto della foto fuori dal pulsante (`map.spec.ts`, `english.spec.ts`, `map-warmup.spec.ts`, `position-dot.spec.ts`).
+- Localizzatori «il pulsante Cerca» della mappa → «Cerca città o bar» (`helpers.ts`, `drink-menu`, `legal`, `propose`, `map`, `a11y-views`): il nuovo testo contiene «cerca» e Playwright confronta i nomi per parte. Quelli di `/admin` non sono cambiati (lì il pulsante si chiama davvero «Cerca»).
+- Nessun test saltato o indebolito.
+
+**Prove** (ambiente cloud, Chromium e WebKit)
+- `npx tsc -b`, `npm run lint`, `npm run format:check`: puliti. `npm run test`: 57 file, 636 test verdi.
+- `E2E_PORT=4199 npx playwright test --workers=2` (tutti i progetti, compresi scrittura, bar proposti e sicurezza): **397 passati, 0 falliti** (12,7 min). Prima dell'aggiustamento dei test: 26 falliti (13 × 2 motori), tutti per il pulsante che copre il centro della foto, per i localizzatori «Cerca» e per la riga di stato che non c'è più all'apertura.
+- Pagina iniziale (`node scripts/check-bundle-size.mjs`): 39.821 B (limite 51.200; erano 39.724 B, +97 B).
+- Lighthouse (3 giri ciascuno, `--no-sandbox`, Chromium di Playwright, stesso container): **prima** (`main`) Performance 0,96 / 0,96 / 0,96, LCP 2,25–2,29 s, TBT 128–146 ms, CLS 0, **Accessibility 0,96** (i link piccoli delle attribuzioni), Best Practices e SEO 1; **dopo** Performance 0,96 / 0,98 / 0,97, LCP 2,25–2,27 s, TBT 90–152 ms, CLS 0, **Accessibility 1**, Best Practices e SEO 1. Nessun peggioramento, e l'accessibilità sale da 0,96 a 1.
+- `npm run verify`: non lanciato per intero (il passo `check-feature-list` è rosso finché Roberto non crea `spec-approved-14`; i passi sono stati eseguiti uno per uno).
+
+---
+
+## 2026-10-28 · Mappa pronta al primo tocco: file scaricati in anticipo con `fetch` (branch `m6-mappa-prefetch`) · SPEC 1.12 (tag `spec-approved-13`), ADR 0039, MF-01…MF-03
+
+**Richiesta di Roberto:** il primo tocco sulla mappa aspetta il download di MapLibre (circa 440 KB compressi). Si scaricano i file in anticipo, senza eseguirli. Scelta di Roberto dopo la misura su WebKit: `fetch(url, { priority: "low" })` al posto di `<link rel="prefetch">`, perché Safari/iPhone ignora il prefetch.
+
+**Fatto**
+- Build: il plugin `map-warmup` di `vite.config.ts` scrive in `index.html` un `<meta name="map-chunk">` con i tre file con hash (chunk, CSS, worker). Funzioni in `scripts/map-warmup.ts`.
+- App: `src/app/lib/map-warmup.ts`, avviato da `main.tsx` solo nella pagina mappa. Dopo `load` e un momento libero (`requestIdleCallback`, in WebKit un timer di 2 s) fa un `fetch` a bassa priorità dei tre file, legge il corpo e lo scarta; errori ignorati; salta tutto con il risparmio dati attivo, senza meta (sviluppo) e in `/privacy`, `/regole`, `/admin`. Nessun `import()`, nessun `modulepreload`, `loadMap()` mai chiamato.
+- `public/_headers`: `/assets/*` con `Cache-Control: public, max-age=31536000, immutable` (i nomi hanno l'hash). Senza, al tocco restava una richiesta di conferma per file; con, il server di prova non vede nessuna richiesta.
+- Test: unit `tests/unit/map-warmup.test.ts` e un caso in `bundle-size.test.ts`; e2e `tests/e2e/map-warmup.spec.ts` (MF-01 e MF-02); `tests/e2e/map.spec.ts` M1-06 **cambiato perché il requisito è cambiato** (prima: zero richieste a MapLibre prima del tocco; ora: solo file di `/assets/`, nessun canvas, nessun `modulepreload`).
+
+**Prove** (worktree, Chromium e WebKit di Playwright, 390×844)
+- `npx tsc -b`, `npm run lint`, `npm run format:check`: verdi. `npm run test`: 56 file, 617 test verdi.
+- e2e `map-warmup`, `map`, `legal`, `pwa`, `csp`, `shell` su Chromium **e WebKit**: 72 su 72 verdi. `--project=security`: 23 su 23 verdi.
+- Shell: 38.513 B → 38.814 B (limite 51.200).
+- **Lighthouse, A/B sullo stesso build** (6 giri con il `<meta>`, 6 senza, alternati, macchina poco carica): Performance 0,96–0,97 in entrambi; TBT medio 127 ms con, 118 ms senza; LCP medio 2,36 s con, 2,40 s senza; CLS 0. Nessuna differenza misurabile. Le serie fatte con la macchina molto carica (load 11) davano 0,82–0,93 anche senza la modifica: rumore, non effetto. Base storica ADR 0014: 0,99 (il container è più lento).
+- Misure con un server di prova fuori dal repository (CSP e intestazioni del progetto): Chromium, certificato fidato → prima del tocco arrivano i 3 file, **dopo il tocco zero richieste al server** (JS, CSS e worker dalla cache). WebKit → il `fetch` parte prima del tocco (con `rel=prefetch` non partiva niente).
+
+**Limiti dichiarati**
+- Il riuso della cache **non si può provare con i test automatici**: l'anteprima locale è HTTPS autofirmato e né Chromium né il WebKit di Playwright mettono in cache quelle risposte. Il test MF-02 prova quindi: il fetch parte verso i 3 URL giusti, le risposte hanno cache lunga (`immutable`), dopo il tocco la mappa chiede solo quei file.
+- Il WebKit di Playwright non tiene in cache nemmeno due `fetch()` consecutivi dello stesso file (misura: 5 richieste al server su 4 chiamate, contro 0 in Chromium), quindi su WebKit il riuso non è provabile qui in nessun modo.
+- Per la prova su WebKit su HTTP ho dovuto togliere `upgrade-insecure-requests` dalla CSP **solo nel mio server di prova** (la CSP del progetto non è toccata); non ho potuto fidare il certificato di prova nel sistema (azione negata).
+- Dopo l'unione con l'inglese (PR #68): il controllo «nessun `modulepreload`» del test MF-01 è ristretto ai file di MapLibre, perché Vite ora aggiunge due `modulepreload` per file della shell (dizionario `it-*.js`, `preload-helper`) che non c'entrano con la mappa. e2e `map-warmup` e `map` 44 su 44 su Chromium e WebKit.
+- `docs/feature_list.json`: `passes: true` per MF-01 e MF-03, con la CI della PR #69 verde sul commit `87f7f71` (run 40674405829, https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40674405829: «E2E (Chromium, WebKit) and security tests» e «Lighthouse CI» compresi). MF-02 resta `false` finché Roberto non fa la prova su iPhone.
+
+**Da verificare a mano (Roberto)**
+- Su iPhone reale (Safari) e su Android (Chrome), con rete lenta: aprire il sito, aspettare 5–10 secondi senza toccare, poi toccare la mappa. Deve partire molto più in fretta di prima. Ispezione facoltativa: dalla scheda Rete del browser desktop collegato, i tre file `/assets/maplibre-*` compaiono prima del tocco e dopo il tocco sono «dalla cache».
+- Con il risparmio dati attivo il sito non deve scaricare i file in anticipo.
+
+---
+
+## 2026-10-28 · Interfaccia pubblica in inglese (branch `m6-inglese`, da `spec-approved-12`) · SPEC 1.11, ADR 0038 · ME-01…ME-08
+
+**Richiesta di Roberto:** sito utente in inglese, stesso database; menu in alto a sinistra di fronte all'Elenco; scelta non salvata, si parte sempre dall'italiano; formati `it-IT`; admin italiano; privacy e regole tradotte come bozza.
+
+**Fatto**
+- `src/app/i18n/lang.ts` (lingua in memoria, `it` come legame vivo, `setLang` che scarica `en.ts` solo se scelto, `subscribeLang`), `src/app/lib/use-lang.ts` (hook), `src/app/i18n/en.ts` (tutte le sezioni pubbliche di `it.ts`, senza `admin`, tipo derivato: una frase mancante non compila), `src/app/components/LangMenu.tsx` (bottone «IT/EN» 48×48 con elenco Italiano/English).
+- `it.ts`: nuovo gruppo `lang` (nomi delle lingue). Nei file pubblici (`app.tsx`, `components/*`, `LegalPage`, `maplibre-map.ts`) cambia l'import di `it` verso `i18n/lang`; admin e Worker restano su `it.ts` (test `lang.test.ts`).
+- `app.tsx`: si ridisegna al cambio lingua; il messaggio di «Vicino a me» e il suggerimento di ricerca sono chiavi (seguono la lingua), il testo di copertura è calcolato una volta; `cheapest` dipende dalla lingua; etichetta del canvas aggiornata (`VenueMap.setLabel`) senza rifare la mappa; Turnstile riceve la lingua della pagina.
+- CSS: la riga di stato parte dopo il bottone (`left = 2×space-3 + target`, larghezza ridotta di un altro target); menu nell'intestazione di `/privacy` e `/regole` (l'intestazione va a capo se serve).
+- `PRIVACY-NOTES.md`, CHANGELOG. `passes: true` per ME-01, ME-02, ME-05 e ME-08 (vedi sotto).
+
+**Prove** (Chromium; WebKit non è installato in questo ambiente, lo esegue la CI)
+- Test prima del codice: `npx vitest run --project unit tests/unit/lang.test.ts` → 12 fallite (modulo `en`/`lang` assenti, file ancora su `it.ts`).
+- `npx vitest run` → 56 file, 624 test + i nuovi: unit 407/407, worker verdi. `npx tsc -b` pulito (un primo tentativo faceva entrare preact nel progetto TypeScript del Worker, che include `src/app/i18n`: l'hook è stato spostato in `lib/` e `lang.test.ts` ora lo vieta). `npm run lint` e `format:check` puliti.
+- `npx playwright test` (progetti chromium, writes, proposals, security; WebKit escluso) → **192 passati**, tra cui `tests/e2e/english.spec.ts` (17 test dopo i ritocchi della revisione: menu a sinistra speculare all'Elenco e stato che parte dopo di lui, tastiera/Esc/tocco fuori, la mappa resta aperta e non si ridimensiona, nulla salvato in `localStorage`/`sessionStorage`/cookie e nessuna richiesta `/api/*`, un solo scaricamento di `en`, ricarica → italiano, tutte le viste pubbliche senza testi italiani residui — con controllo non vacuo —, Privacy e Regole con le stesse sezioni, formati `it-IT`, `/admin` italiano, axe nei due temi, nessuna violazione CSP). Screenshot: `docs/screenshots/english/rules-{light,dark}.png`; gli altri in `test-results/` (non versionati).
+- Ritocchi dopo le revisioni: test `ME-03 offline` scritto prima, fallito per il motivo giusto (`Failed to fetch dynamically imported module` in console), poi verde con `LangMenu` che intercetta l'errore; `npx vitest run` → 56 file, 627 test; `english.spec.ts` + `legal.spec.ts` su Chromium → 23 passati.
+- `ME-01` verificato anche con prova negativa: togliendo `common.close` da `en.ts`, `tsc -b` dà TS2741.
+- **Misure della shell** (`npm run build && node scripts/check-bundle-size.mjs`): prima (commit `spec-approved-12`, la base di questo ramo) 38.513 B; dopo 39.408 B (+895 B, limite 51.200 B); `en.ts` è un file a richiesta di 5.213 B gzip.
+
+**Scelte volute**
+- Il titolo della pagina della mappa è «Dove bevo» in entrambe le lingue (neutro): cambia solo in `/privacy` e `/regole` («Privacy · Dove bevo», «Rules · Dove bevo»). Le pagine per i motori di ricerca restano come le serve il Worker.
+- I messaggi di conferma (Toast) già aperti restano nella lingua di quando sono nati (circa 5 s): non vengono riscritti al cambio.
+- Se il file inglese non si scarica (offline) il menu non fa nulla di visibile: la lingua resta quella attuale e la console resta pulita (`LangMenu` intercetta l'errore; test `ME-03 offline` in `english.spec.ts` e `lang.test.ts`).
+
+**Guardia della feature list:** il confronto è con `spec-approved-13` (SPEC 1.12, ADR 0039), non più con `-12`. Dopo `git merge origin/main` (SPEC 1.12, ADR e script restano quelli di `main`) `node scripts/check-feature-list.mjs` dice «only "passes" changed».
+
+**Prova WebKit:** la CI della PR sul commit `775c110` è verde, compreso «E2E (Chromium, WebKit) and security tests» ([run 40671979641](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40671979641)). Con quella prova, `passes: true` per ME-02 e ME-05 (la verifica di entrambe è coperta da `english.spec.ts`, `lang.test.ts` e dai test esistenti). La traduzione legale resta una **bozza da rileggere** prima del rilascio.
+
+**Non fatto / da fare**
+- Restano `passes: false`, perché una parte della riga `verifica` non è provata da un test:
+  - ME-03: «il titolo della pagina segue la lingua» vale solo in `/privacy` e `/regole`; sulla mappa il titolo è volutamente neutro («Dove bevo») e nessun test lo asserisce.
+  - ME-04: mancano i test sui testi inglesi di Timbro, Annulla, Tessera, invito all'installazione, messaggi d'errore e passo «pin» del bar mancante; nessun controllo automatico che i testi non escano dal bordo (solo screenshot guardati).
+  - ME-06: nessun test sulle distanze (m, km) in inglese e sulla pagina `/admin/verificati` (la copre solo il test di import in `lang.test.ts`).
+  - ME-07: «target ≥ 48×48 px» è verificato solo per il menu della lingua (ME-02); axe sulla mappa esclude le attribuzioni (regola dei 24 px, come negli altri test della mappa).
+- `/code-review`, `/security-review`, `spec-reviewer` e `ux-a11y-reviewer` non eseguiti da questa sessione (non può avviare altri agenti): da lanciare prima del merge.
+- Lighthouse non eseguito in locale (lo fa la CI).
+- **Da verificare a mano (Roberto):** rileggere la traduzione inglese di Privacy e Regole (bozza, ADR 0038) e dei testi `en.ts`; provare il menu su iPhone e Android (posizione dell'elenco sotto il bottone, tastiera); guardare lo stato in alto con testi lunghi a 360 px.
+
+---
+
+## 2026-10-28 · SPEC 1.12: download in anticipo con `fetch`, non `prefetch` (branch `spec-1-12`) · ADR 0039 · MF
+
+**Richiesta di Roberto:** il Ramo A ha misurato con WebKit che `rel=prefetch` non scarica nulla su Safari/iPhone; scelta di Roberto: `fetch` a bassa priorità.
+
+**Fatto (solo specifica)**
+- SPEC 1.12: D-35, MF-01, MF-02 e MF-03 riscritte (`prefetch` → `fetch`, Save-Data, cache lunga su `/assets/*`, MF-02 con prova a mano per la cache vera); registro 1.12; ADR 0039.
+- `docs/feature_list.json`: cambiano solo `descrizione` e `verifica` di MF-01, MF-02, MF-03 (autorizzate da Roberto in chat); `passes` invariati.
+- Guardia sul tag `spec-approved-13` (`scripts/check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`, `.claude/agents/spec-reviewer.md`).
+
+**Non fatto, di Roberto**
+- Creare e pubblicare il tag `spec-approved-13` sul commit di questa modifica: finché manca, la guardia è rossa.
+- Prova su iPhone reale con rete lenta: tocco sulla mappa dopo 5-10 secondi dall'apertura.
+
+---
+
+## 2026-10-28 · SPEC 1.11: mappa pronta al primo tocco e interfaccia in inglese (branch `spec-1-11`) · ADR 0037, 0038 · MF, ME
+
+**Richiesta di Roberto:** (1) la mappa si carica solo al primo tocco e ha latenza: scelta l'opzione B (scaricare il file in anticipo, senza banner); (2) pagina utente in inglese, stesso database, formati `it-IT`, menu a tendina in alto a sinistra di fronte all'Elenco, admin italiano, lingua non salvata, si parte sempre dall'italiano, privacy e regole tradotte come bozza.
+
+**Fatto (solo specifica, nessun codice)**
+- SPEC 1.11: intestazione e registro modifiche, D-35 (mappa pronta), D-36 (lingua), 7.1, nuova 7.11, sezione 14 (la lingua non è salvata), 15, 17, voci MF-01…MF-03 e ME-01…ME-08 (sezione 18), milestone MF e ME (19).
+- `docs/feature_list.json`: 11 voci nuove a `passes: false`, nessun'altra riga toccata (diff solo di righe aggiunte).
+- ADR 0037 (mappa scaricata in anticipo, completa il 0014) e ADR 0038 (inglese).
+- Guardia della feature list ora sul tag `spec-approved-12` (`scripts/check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`, `.claude/agents/spec-reviewer.md`); `CLAUDE.md` aggiornato sul file dei testi.
+
+**Non fatto, di Roberto**
+- Creare e pubblicare il tag `spec-approved-12` su questo commit: finché manca, la guardia della feature list è rossa in locale, nel hook di push e in CI.
+- Rileggere la traduzione inglese di privacy e regole quando sarà scritta (ME-05).
+
+**Prossimi passi (dopo il tag):** rami in parallelo `m6-mappa-prefetch` (MF) e `m6-inglese` (ME), come da piano.
+
+---
+
 ## 2026-10-27 · Un solo ambiente vivo: `staging` è la produzione (branch `m5-chiusura-codice`) · SPEC 1.10, ADR 0036 · M6
 
 **Richiesta di Roberto:** niente doppio ambiente per ora; `staging` diventa il sito in produzione; aggiornare M6 e il resto; l'ambiente separato, se serve, lo deciderà più avanti.

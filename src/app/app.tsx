@@ -13,10 +13,12 @@ import { ProposeSheet, type Proposal } from "./components/ProposeSheet";
 import { ReportSheet, type Reason } from "./components/ReportSheet";
 import { Toast, type StampInfo } from "./components/Toast";
 import { DrinkMenu } from "./components/DrinkMenu";
+import { LangMenu } from "./components/LangMenu";
 import { Icon } from "./components/Icon";
 import { ListSheet } from "./components/ListSheet";
 import type { Cheap, SearchSheet as SearchSheetType } from "./components/SearchSheet";
-import { it } from "./i18n/it";
+import { it } from "./i18n/lang";
+import { useLang } from "./lib/use-lang";
 import { bestPrice, invalidateCell, loadCell, ServiceBusy, type Venue } from "./lib/data";
 import { blockedHelp, locate, positionGranted } from "./lib/locate";
 import { ensureSession, postWithSession } from "./lib/session";
@@ -79,6 +81,9 @@ function parseRoute(): Route {
 
 type CellsState = "idle" | "too-many" | "loading" | "error" | "busy" | "ready";
 
+/** What «Vicino a me» says in the status line: kept as a key, so it follows the language (SPEC 7.11). */
+type Notice = "locating" | "denied" | "unavailable" | "timeout";
+
 /** Prices saved for one bar, sent together as one request after the UNDO_MS of "Annulla" (D-15). */
 interface PendingSave {
   drafts: Draft[];
@@ -100,6 +105,7 @@ interface Props {
 }
 
 export function App({ loadMap }: Props) {
+  const lang = useLang(); // the whole page is drawn again when the language changes
   const container = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<VenueMap | null>(null);
   // The map as soon as it exists: handlers of a render that is a moment old still see `map` as null,
@@ -114,7 +120,7 @@ export function App({ loadMap }: Props) {
   const [view, setView] = useState<MapView | null>(null);
   const [route, setRoute] = useState<Route>(parseRoute);
   const [sheet, setSheet] = useState<"search" | "list" | null>(null);
-  const [searchHint, setSearchHint] = useState<string | undefined>();
+  const [searchHint, setSearchHint] = useState<"app" | "ios" | "other" | undefined>();
   const [adding, setAdding] = useState<{ prefill: Prefill | null } | null>(null);
   const [addOrigin, setAddOrigin] = useState<{ lat: number; lon: number } | null>(null);
   const [proposing, setProposing] = useState<Proposing | null>(null);
@@ -144,7 +150,7 @@ export function App({ loadMap }: Props) {
   const [position, setPosition] = useState<{ lat: number; lon: number } | null>(null);
   // The dot follows only "Vicino a me" and stays put until it is pressed again (D-33).
   const [me, setMe] = useState<{ lat: number; lon: number } | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<Notice | null>(null);
   const [mapFailed, setMapFailed] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [invite, setInvite] = useState<"prompt" | "ios" | null>(null);
@@ -198,6 +204,11 @@ export function App({ loadMap }: Props) {
   useEffect(() => {
     map?.setMe(me);
   }, [map, me]);
+
+  // The map's own label follows the language; the map itself is not made again.
+  useEffect(() => {
+    map?.setLabel(it.map.canvas);
+  }, [map, lang]);
 
   // Going to the background is not a cancellation: send the pending price now (D-15).
   useEffect(() => {
@@ -256,7 +267,7 @@ export function App({ loadMap }: Props) {
 
   // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.
   useEffect(() => {
-    setMessage((current) => (current === it.map.locating ? current : null));
+    setMessage((current) => (current === "locating" ? current : null));
   }, [view?.lat, view?.lon, view?.zoom]);
 
   // Proposed bars (pending) are offered only when choosing the bar of a price (D-05).
@@ -345,7 +356,7 @@ export function App({ loadMap }: Props) {
         })
         .sort((a, b) => a.cents - b.cents || (a.day < b.day ? 1 : a.day > b.day ? -1 : 0))
         .slice(0, 10),
-    [inView, drinks],
+    [inView, drinks, lang],
   );
 
   const zoomedIn = view !== null && view.zoom >= MIN_ZOOM_CELLS;
@@ -356,8 +367,10 @@ export function App({ loadMap }: Props) {
   // A zone where almost nobody has a price yet invites the first one (D-28, MB-13).
   // The message of "Vicino a me" (searching, not found, denied) is shown at any zoom: it ends as
   // soon as the map moves (see the effect above), then the cell status is back.
-  const shownMessage = message;
-  const status =
+  const shownMessage =
+    message === "locating" ? it.map.locating : message ? it.map.position[message] : null;
+  const coverageText = it.map.coverage(zoneCoverage.withPrice, zoneCoverage.total);
+  const rawStatus =
     (online ? null : it.map.offline) ??
     (mapFailed ? it.map.mapError : null) ??
     shownMessage ??
@@ -373,10 +386,14 @@ export function App({ loadMap }: Props) {
               ? it.map.busy
               : cellsState === "error"
                 ? it.map.loadError
-                : it.map.coverage(zoneCoverage.withPrice, zoneCoverage.total));
+                : coverageText);
+  // While the map is still the static picture, the button in the centre says what to do (D-37): the
+  // message «Avvicinati…» of the top comes after the first tap. Offline and errors are still told.
+  const picture = !mapWanted && !ready;
+  const status = picture && rawStatus === it.map.zoomIn ? null : rawStatus;
 
   // The coverage bar of the brand (Copertura): only beside the coverage sentence itself.
-  const showMeter = status === it.map.coverage(zoneCoverage.withPrice, zoneCoverage.total);
+  const showMeter = status === coverageText;
   const meterWidth =
     zoneCoverage.total && zoneCoverage.withPrice
       ? Math.max(10, Math.round((60 * zoneCoverage.withPrice) / zoneCoverage.total))
@@ -815,7 +832,7 @@ export function App({ loadMap }: Props) {
   }
 
   async function nearMe() {
-    setMessage(it.map.locating);
+    setMessage("locating");
     ensureMap(); // load the map while the position is being found
     const found = await locate();
     if (found.ok) {
@@ -826,10 +843,8 @@ export function App({ loadMap }: Props) {
       moveTo(found.lat, found.lon, 15);
     } else {
       // The way out is the city search, opened for the user with what can be done on this device.
-      setMessage(it.map.position[found.reason]);
-      setSearchHint(
-        found.reason === "denied" ? it.map.position.deniedHelp[blockedHelp()] : undefined,
-      );
+      setMessage(found.reason);
+      setSearchHint(found.reason === "denied" ? blockedHelp() : undefined);
       setSheet("search");
     }
   }
@@ -901,6 +916,20 @@ export function App({ loadMap }: Props) {
               <img src={`/map-italia-${currentTheme()}.jpg`} alt="" width={780} height={1276} />
             </button>
           )}
+          {/* While the map is a picture, a button in the centre says what to do (SPEC 1.13, D-37). It is a
+              sibling of the picture button, not inside it: a button never holds a button. */}
+          {picture && !pinning && (
+            <button
+              type="button"
+              class="btn btn--primary map__start"
+              onPointerDown={ensureMap}
+              onClick={ensureMap}
+            >
+              {it.map.start}
+            </button>
+          )}
+          {/* The language menu faces the list, in the other top corner (SPEC 7.11). */}
+          {!pinning && <LangMenu className="map__lang" />}
           {/* The list is an icon on the map, not a button of the bar. */}
           {!pinning && (
             <button
@@ -958,15 +987,17 @@ export function App({ loadMap }: Props) {
             )}
           </div>
           {pinning && <div class="map__cross" aria-hidden="true" data-testid="pin-mark" />}
-          <p class="map__status" data-testid="map-status" role="status">
-            {showMeter && (
-              <svg class="meter" viewBox="0 0 64 14" aria-hidden="true">
-                <rect class="meter__fill" x="2" y="2" height="10" rx="5" width={meterWidth} />
-                <rect class="meter__track" x="1" y="1" width="62" height="12" rx="6" />
-              </svg>
-            )}
-            {status}
-          </p>
+          {status && (
+            <p class="map__status" data-testid="map-status" role="status">
+              {showMeter && (
+                <svg class="meter" viewBox="0 0 64 14" aria-hidden="true">
+                  <rect class="meter__fill" x="2" y="2" height="10" rx="5" width={meterWidth} />
+                  <rect class="meter__track" x="1" y="1" width="62" height="12" rx="6" />
+                </svg>
+              )}
+              {status}
+            </p>
+          )}
           {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}
           <p class="map__attribution">
             <a href="https://openfreemap.org" target="_blank" rel="noopener" tabIndex={0}>
@@ -1048,7 +1079,7 @@ export function App({ loadMap }: Props) {
           drink={CATALOG.filter((d) => drinks.includes(d.code))
             .map((d) => it.drinks[d.code] ?? d.code)
             .join(", ")}
-          hint={searchHint}
+          hint={searchHint && it.map.position.deniedHelp[searchHint]}
           onPlace={goToPlace}
           onBar={(hit) => {
             // The static fragment knows the bar; the cell is where it lies (ADR 0024).

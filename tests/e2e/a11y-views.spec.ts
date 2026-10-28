@@ -57,7 +57,7 @@ for (const scheme of ["light", "dark"] as const) {
     await check(page, "list");
     await page.getByRole("button", { name: "Chiudi" }).click();
 
-    await page.getByRole("button", { name: "Cerca" }).click();
+    await page.getByRole("button", { name: "Cerca città o bar" }).click();
     await check(page, "search");
     // The keyboard stays inside the sheet, and Esc gives the map back.
     for (let i = 0; i < 14; i++) await page.keyboard.press("Tab");

@@ -19,6 +19,12 @@ export const it = {
   common: {
     close: "Chiudi",
   },
+  // The language menu (SPEC 7.11): each language is named in itself, in both dictionaries.
+  lang: {
+    menu: "Lingua",
+    italian: "Italiano",
+    english: "English",
+  },
   map: {
     region: "Mappa",
     canvas: "Mappa interattiva dei bar",
@@ -51,6 +57,7 @@ export const it = {
     actions: "Azioni della mappa",
     retry: "Riprova",
     explore: "Esplora la mappa",
+    start: "Clicca sulla mappa o cerca una città",
     loadingMap: "Carico la mappa…",
     mapError: "La mappa non si carica: controlla la connessione e ricarica la pagina.",
     attribution: {

@@ -26,7 +26,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - Interfaccia: verifica a 390 px già la prima versione (a capo, griglie, testi lunghi).
 
 ## Feature list
-**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-11`.
+**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-14`.
 
 ## Comandi (da M0)
 - `./init.sh` · `./init.sh --stop`
@@ -59,7 +59,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - Header e CSP di SPEC 13.1 su asset e API; nessun CORS.
 
 ## Convenzioni
-- Codice e commenti in inglese; testi per l'utente in italiano, tutti in `src/app/i18n/it.ts`.
+- Codice e commenti in inglese; testi per l'utente in italiano in `src/app/i18n/it.ts` e, per la parte pubblica, in inglese in `src/app/i18n/en.ts` (SPEC 1.11); l'admin solo in italiano.
 - TypeScript strict, niente `any`. zod solo nel Worker, su ogni ingresso (`strict`). Il client usa i tipi di `src/shared/`.
 - Preact senza router di terze parti (`history` nativa); CSS con custom properties dal design system, niente Tailwind.
 - Accesso a D1 solo da `src/worker/lib/db.ts`; servizio AI solo da `src/worker/lib/anthropic.ts`.

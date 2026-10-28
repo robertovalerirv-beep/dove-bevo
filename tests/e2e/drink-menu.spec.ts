@@ -119,7 +119,7 @@ test("MC-02 the cheapest of the chosen drinks is also what the cheapest-here lis
   await page.goto("/");
   await goToMilano(page);
   await chooseDrinks(page, "Birra media", "Spritz");
-  await page.getByRole("button", { name: "Cerca" }).click();
+  await page.getByRole("button", { name: "Cerca città o bar" }).click();
   const cheapest = page.getByRole("list", { name: "I più economici qui" });
   const first = cheapest.getByRole("listitem").first();
   await expect(first).toContainText("Bistrot Duomo");

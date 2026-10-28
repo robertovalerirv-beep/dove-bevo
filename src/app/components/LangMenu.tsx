@@ -74,7 +74,9 @@ export function LangMenu({ className = "" }: { className?: string }) {
             onClick={() => {
               setOpen(false);
               button.current?.focus();
-              void setLang(code);
+              // Offline the English file cannot be downloaded: the language stays as it is and the
+              // console stays quiet (setLang changes nothing when it fails).
+              setLang(code).catch(() => undefined);
             }}
           >
             {code === "it" ? it.lang.italian : it.lang.english}

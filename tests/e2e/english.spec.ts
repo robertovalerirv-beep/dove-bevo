@@ -183,6 +183,30 @@ test("ME-03 nothing is stored or sent, and a reload starts in Italian", async ({
 
 // ---- ME-04: every public view in English -------------------------------------------------------
 
+test("ME-03 offline: when the English file cannot be downloaded the console stays quiet and the language stays", async ({
+  page,
+}) => {
+  const problems: string[] = [];
+  page.on("pageerror", (error) => problems.push(error.message));
+  page.on("console", (message) => {
+    // The refused request itself is logged by the browser: that one is expected.
+    if (message.type() === "error" && !/Failed to load resource/.test(message.text()))
+      problems.push(message.text());
+  });
+  await page.route(/\/assets\/en-[^/]*\.js$/, (route) => route.abort());
+  await page.goto("/");
+  await langButton(page).click();
+  await langList(page).getByRole("button", { name: "English" }).click();
+  await expect(langList(page)).toBeHidden();
+  await page.waitForTimeout(1_500); // the failure arrives after the click
+  await expect(page.locator("html")).toHaveAttribute("lang", "it");
+  await expect(langButton(page)).toHaveText("IT");
+  await expect(page.getByRole("button", { name: "Cerca città o bar" })).toBeVisible();
+  // The menu still works: the same page, the same choice, nothing broken.
+  await expect(langButton(page)).toBeEnabled();
+  expect(problems).toEqual([]);
+});
+
 test("ME-04 the check for leftover Italian is not vacuous: it sees the Italian page", async ({
   page,
 }) => {

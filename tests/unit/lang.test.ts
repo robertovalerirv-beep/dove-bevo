@@ -121,6 +121,7 @@ describe("ME-03 the language lives in memory only", () => {
   });
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.doUnmock("../../src/app/i18n/en");
     vi.resetModules();
   });
 
@@ -154,6 +155,21 @@ describe("ME-03 the language lives in memory only", () => {
     lang.subscribeLang(heard);
     await lang.setLang("it");
     expect(heard).not.toHaveBeenCalled();
+  });
+
+  test("a failed download of the English file changes nothing: the language, the page and the listeners stay", async () => {
+    vi.doMock("../../src/app/i18n/en", () => {
+      throw new Error("offline");
+    });
+    const lang = await import("../../src/app/i18n/lang");
+    const heard = vi.fn();
+    lang.subscribeLang(heard);
+    await expect(lang.setLang("en")).rejects.toThrow();
+    expect(lang.currentLang()).toBe("it");
+    expect(lang.it.add.open).toBe("Aggiungi prezzo");
+    expect(root.lang).toBe("it");
+    expect(heard).not.toHaveBeenCalled();
+    expect(writes).toEqual([]);
   });
 
   test("the last choice wins when two are made quickly", async () => {

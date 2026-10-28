@@ -112,11 +112,31 @@ if [[ ! -d "$IOS_ROOT/DoveBevo.xcodeproj" ]]; then
     bash "$IOS_ROOT/scripts/generate-project.sh"
 fi
 
+BOOTED_BY_SCRIPT=false
+simulator_state() {
+    xcrun simctl list devices --json | python3 -c '
+import json, sys
+devices = [d for group in json.load(sys.stdin)["devices"].values() for d in group if d["udid"] == sys.argv[1]]
+if len(devices) != 1:
+    sys.exit("Selected simulator state is unavailable")
+print(devices[0]["state"])
+' "$SIMULATOR_ID"
+}
+
 export_attachments() {
     local status=$?
     local export_status=0
     trap - EXIT INT TERM
     set +e
+    if [[ "$BOOTED_BY_SCRIPT" == true ]]; then
+        local current_state
+        if ! current_state="$(simulator_state)"; then
+            printf 'Owned simulator state was unavailable; test status is retained.\n' >&2
+        elif [[ "$current_state" != Shutdown ]]; then
+            xcrun simctl shutdown "$SIMULATOR_ID" >/dev/null 2>&1 \
+                || printf 'Owned simulator shutdown was unavailable; test status is retained.\n' >&2
+        fi
+    fi
     if [[ -d "$RESULT_BUNDLE" ]]; then
         xcrun xcresulttool export attachments --path "$RESULT_BUNDLE" \
             --output-path "$SCREENSHOTS"
@@ -138,6 +158,17 @@ export_attachments() {
 trap export_attachments EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+# Match the phone suite: wait for this selected device before starting XCTest.
+# An existing Booted/Booting device belongs to its caller and is never stopped.
+SELECTED_STATE="$(simulator_state)"
+case "$SELECTED_STATE" in
+    Shutdown) BOOTED_BY_SCRIPT=true ;;
+    Booted|Booting) ;;
+    *) printf 'Selected simulator is in an unsupported transition state.\n' >&2; exit 1 ;;
+esac
+printf 'Selected simulator initial state: %s; boot owned by script: %s\n' "$SELECTED_STATE" "$BOOTED_BY_SCRIPT"
+xcrun simctl bootstatus "$SIMULATOR_ID" -b
 
 xcodebuild \
     -project "$IOS_ROOT/DoveBevo.xcodeproj" \

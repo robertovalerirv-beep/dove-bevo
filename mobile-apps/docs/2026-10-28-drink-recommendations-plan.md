@@ -31,36 +31,36 @@
 
 Owner: backend lane, separate branch from current owner main. Paths: new recommendation route/lib/types/migration/tests; narrowly scoped index/config registration only. Do not change app UI, existing routes or unrelated schema.
 
-- [ ] Add failing local worker/D1 tests for public reads, distinct installations, duplicate true/false, another installation's removal, same IP fairness, concurrency, invalid input, public visibility, quotas, no-store, and retained existing price state.
-- [ ] Implement frozen contract with shared catalog and existing venue resolver, purpose-separated per-pair HMAC and additive indexed persistence.
-- [ ] Keep existing global guards; apply native-route identity plus separate daily addition budgets, with no session-cookie bridge.
-- [ ] Prove migration compatibility, existing guard/price regressions, formatting/lint/type checks and no raw identity persisted.
-- [ ] Freeze backend commit for root/independent review and source-only PR preparation; root owns merge/deploy.
+- [x] Add failing local worker/D1 tests for public reads, distinct installations, duplicate true/false, another installation's removal, same IP fairness, concurrency, invalid input, public visibility, quotas, no-store, and retained existing price state.
+- [x] Implement frozen contract with shared catalog and existing venue resolver, purpose-separated per-pair HMAC and additive indexed persistence.
+- [x] Keep existing global guards; apply native-route identity plus separate daily addition budgets, with no session-cookie bridge.
+- [x] Prove migration compatibility, existing guard/price regressions, formatting/lint/type checks and no raw identity persisted.
+- [x] Freeze backend commit for root/independent review and source-only PR preparation; root owns merge/deploy.
 
 ## Task 2: Android native UI and client
 
 Owner: Android lane. Exclusive paths: mobile-apps/android/**.
 
-- [ ] Add native catalog/context/snapshot and installation identity storage; explicit validated HTTPS transport and read-only TestLab fence.
-- [ ] Add a visible venue-scoped thumbs-up entry and native nine-row recommendation UI with shared totals, own state, undo and honest loading/error/refresh behavior.
-- [ ] Add focused JVM and owned runtime tests for response trust, identity persistence, stale/delayed results, double taps, removal, accessibility and no mutation in restricted mode.
-- [ ] Preserve existing navigation/bookmark behavior and normal WebView credentials. Run affected units/lint/compilation; no production test writes.
-- [ ] Freeze commit for independent review. Root owns SDK execution, signing and distribution.
+- [x] Add native catalog/context/snapshot and installation identity storage; explicit validated HTTPS transport and read-only TestLab fence.
+- [x] Add a visible venue-scoped thumbs-up entry and native nine-row recommendation UI with shared totals, own state, undo and honest loading/error/refresh behavior.
+- [x] Add focused JVM and owned runtime tests for response trust, identity persistence, stale/delayed results, double taps, removal, accessibility and no mutation in restricted mode.
+- [x] Preserve existing navigation/bookmark behavior and normal WebView credentials. Run affected units/lint/compilation; no production test writes.
+- [x] Freeze commit for independent review. Root owns SDK execution, signing and distribution.
 
 ## Task 3: iOS native UI and client
 
 Owner: iOS lane. Exclusive paths: mobile-apps/ios/**.
 
-- [ ] Add native catalog/context/snapshot and installation identity storage; bounded HTTPS URLSession transport with no redirects/browser cookies.
-- [ ] Capture validated current venue before presentation and add visible native thumbs-up entry plus nine-row accessible recommendation screen.
-- [ ] Implement authoritative counts/own state, undo, serialized writes/reconciliation, active-scene/generation cancellation and clear retry/offline behavior.
-- [ ] Add meaningful unit/controller/transport and safe UI checks through test-only injection seams, without a release fixture URL or public writes.
-- [ ] Run local guards/available checks and freeze commit. Root owns hosted Mac execution, signing and TestFlight assignment.
+- [x] Add native catalog/context/snapshot and installation identity storage; bounded HTTPS URLSession transport with no redirects/browser cookies.
+- [x] Capture validated current venue before presentation and add visible native thumbs-up entry plus nine-row accessible recommendation screen.
+- [x] Implement authoritative counts/own state, undo, serialized writes/reconciliation, active-scene/generation cancellation and clear retry/offline behavior.
+- [x] Add meaningful unit/controller/transport and safe UI checks through test-only injection seams, without a release fixture URL or public writes.
+- [x] Run local guards/available checks and freeze commit. Root owns hosted Mac execution, signing and TestFlight assignment.
 
 ## Task 4: Root integration, privacy and delivery
 
-- [ ] Independently review each frozen slice, resolve contract/security issues with its owner, and integrate without touching existing website UI.
-- [ ] Update public/bundled privacy and app-specific docs for anonymous public recommendations and retention; verify current store-disclosure category fit.
+- [x] Independently review each frozen slice, resolve contract/security issues with its owner, and integrate without touching existing website UI.
+- [x] Update public/bundled privacy and app-specific docs for anonymous public recommendations and retention; verify current store-disclosure category fit.
 - [ ] Run fresh integrated backend and native gates; map requirements to actual evidence, preserve failures and exact source identity.
 - [ ] Create narrow additive backend PR; verify exact-head green checks before authorized main merge. Observe migration, deploy and public GET readback.
 - [ ] Produce one gated signed beta for both native apps, verify actual artifacts and provider availability, preserve public review builds.

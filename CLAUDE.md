@@ -26,7 +26,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - Interfaccia: verifica a 390 px già la prima versione (a capo, griglie, testi lunghi).
 
 ## Feature list
-**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-12`.
+**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-13`.
 
 ## Comandi (da M0)
 - `./init.sh` · `./init.sh --stop`

@@ -3,6 +3,7 @@ import base64
 import copy
 from contextlib import redirect_stdout
 import datetime as dt
+import http.client
 import importlib.util
 import io
 import json
@@ -119,6 +120,44 @@ class ReplacementTests(unittest.TestCase):
         self.api.mode = "timeout-created"
         self.assertTrue(self.run_plan(True)["downloadedUnverified"])
         self.assertEqual(len(self.api.posts), 1)
+        self.assertTrue((self.store / replacement.MARKER).exists())
+
+    def test_truncated_post_body_immediately_reconciles_created_profile_with_one_post(self):
+        backend = self.api
+        transport = replacement.AppleAPI(lambda: 'PUBLIC_TOKEN_FIXTURE_ONLY')
+
+        class TruncatedResponse(io.BytesIO):
+            status = 201
+            def read(self, count):
+                raise http.client.IncompleteRead(b'FABRICATED_PRIVATE_RESPONSE_ONLY', 123)
+
+        class Opener:
+            def open(self, request, timeout):
+                self.marker_was_present = (backend.store / replacement.MARKER).is_file()
+                backend.posts.append(json.loads(request.data))
+                backend.calls.append(('POST', request.full_url))
+                backend.candidates = [backend.created]
+                return TruncatedResponse()
+
+        opener = Opener()
+        transport.opener = opener
+
+        class API:
+            def get(self, path): return backend.get(path)
+            def post(self, payload): return transport.post(payload)
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            try:
+                result = replacement.create_once(API(), self.context, self.store, True)
+            except http.client.HTTPException:
+                self.fail('Truncated POST body bypassed immediate reconciliation')
+        self.assertTrue(result['downloadedUnverified'])
+        self.assertTrue(opener.marker_was_present)
+        self.assertEqual(len(backend.posts), 1)
+        post_index = next(index for index, call in enumerate(backend.calls) if call[0] == 'POST')
+        self.assertEqual(backend.calls[post_index + 1], ('GET', '/v1/profiles?limit=100'))
+        self.assertEqual(output.getvalue(), '')
         self.assertTrue((self.store / replacement.MARKER).exists())
 
     def test_unknown_timeout_without_visible_result_is_never_retried(self):
@@ -337,6 +376,17 @@ class NetworkBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(replacement.SafeError, '^apple-network-error$'):
                 api.post({'data': {'type': 'profiles'}})
         self.assertEqual(opened.call_count, 1)
+
+    def test_truncated_http_body_has_only_fixed_network_error_classification(self):
+        class Response(io.BytesIO):
+            status = 200
+            def read(self, count):
+                raise http.client.IncompleteRead(b'FABRICATED_PRIVATE_BODY_ONLY', 12)
+        api = replacement.AppleAPI(lambda: 'PUBLIC_TOKEN_ONLY')
+        with patch.object(api.opener, 'open', return_value=Response()):
+            with self.assertRaises(replacement.SafeError) as error:
+                api.get('/v1/profiles')
+        self.assertEqual(str(error.exception), 'apple-network-error')
 
     def test_unique_pagination_cannot_silently_exceed_the_bounded_page_limit(self):
         class Pages:

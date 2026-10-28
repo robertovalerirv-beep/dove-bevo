@@ -10,6 +10,7 @@ import argparse
 import base64
 import datetime as dt
 import hashlib
+import http.client
 import importlib.util
 import json
 import os
@@ -191,7 +192,7 @@ class AppleAPI:
             status = int(error.code)
             error.close()
             raise SafeError("apple-http-" + str(status)) from None
-        except (urllib.error.URLError, TimeoutError, OSError):
+        except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException):
             raise SafeError("apple-network-error") from None
         except (ValueError, UnicodeError):
             raise SafeError("apple-response-invalid") from None

@@ -78,7 +78,10 @@ before credentials are decoded. These builds cannot be submitted to customers.
 They exist for real-phone checks when hosted graphics or network challenges
 block the live suite. No tester invitations or public review submissions are
 sent automatically. `mobile-release/v*` keeps its full Android/iOS live gates.
-Both tag families share this workflow's build-number counter.
+`mobile-capture/v*` runs only the credential-free iOS 27 live/capture job; its
+genuine phone/iPad exports must pass the final manifest, PNG and dimension gate.
+The first such trial is running; no successful capture is established yet.
+All tag families share this workflow's build-number counter.
 Use a new unique tag after an accepted upload: rerunning an existing workflow
 reuses its build number and is not a new distribution attempt.
 
@@ -149,9 +152,11 @@ store. Internal.3's AES trial failed Apple's importer with
 encrypted 3DES compatibility container preserves the certificate, private key
 and password. Internal.4 and Internal.6 proved Apple import and matching valid
 identity selection, then failed archive because Xcode could not find the pinned
-profile UUID. Internal.7's authenticated manual-provisioning download trial
-passed its check jobs but did not resolve that archive error. No signed IPA or
-TestFlight build is available. See [release status](../RELEASE_STATUS.md).
+profile UUID. Later profile/UUID and post-export extraction repairs preceded
+Internal.11's successful archive, export, certificate/profile/entitlement checks
+and upload. App Store Connect shows internal-only build 21 **Ready to Test**;
+it is not eligible for public App Store submission. See
+[release status](../RELEASE_STATUS.md) for exact evidence and remaining gates.
 
 `mobile-apps/scripts/publish-signing-secrets.ps1` still defaults to
 `ios-distribution.p12`. To select the compatibility container for an authorized
@@ -194,18 +199,23 @@ configuring the user search list. Internal.8 and Internal.9 passed that check,
 but both still failed archive because Xcode could not find the pinned profile.
 
 Upload also requires Xcode's `altool` to support an explicit `--p8-file-path`,
-validates the IPA and then uploads using the approved API key in private storage. It never
-uses an Apple Account password, a credential in the user's home directory or an
-Admin provisioning API key. An upload command succeeding does not attest App
-Store processing, TestFlight approval or public release. Apple documents
+validates the IPA and then uploads using the existing approved team key in private
+storage, without creating keys or changing account roles. It never uses an Apple
+Account password or a credential in the user's home directory. An upload command
+succeeding does not attest App Store processing, TestFlight approval or public
+release. Apple documents
 [API authentication for altool](https://developer.apple.com/documentation/technotes/tn3147-migrating-to-the-latest-notarization-tool),
 [App Store upload tools](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/)
 and the [Xcode 16+ profile location](https://developer.apple.com/documentation/xcode-release-notes/xcode-16-release-notes).
 
 Apple's Digital Services Act trader status was verified Active in 27 countries
-on 28 October. TestFlight still shows **Submit a build to start testing**.
-Physical iPhone checks await a processed signed build; the owner's iPhone 16 Plus
-on iOS 27.0.1 remains in use, and Phone Link cannot control its apps.
+on 28 October. Internal-only build 21 is **Ready to Test**. A manual internal
+group contains that build and one existing Account Holder with status **Invited**;
+no other testers or roles were added. The owner's real-iPhone test is pending;
+invitation acceptance, installation and physical-device behavior are unverified.
+Phone Link cannot control iPhone apps. Source now declares
+`ITSAppUsesNonExemptEncryption=false` for OS-framework-only encryption, separately
+from the already uploaded internal build.
 
 ## Browser and privacy boundary
 

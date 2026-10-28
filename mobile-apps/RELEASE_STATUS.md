@@ -2,9 +2,10 @@
 
 Last verified: 28 October 2026 (UTC).
 
-Google Play's production changes are **in review**. iOS build 26 is **Waiting for
-Review** for external TestFlight testing; Roberto's group contains one tester
-and that build. Internal build 21 is installed on the owner's iPhone. Physical evidence
+Both public store releases are submitted: Google Play's production changes are
+**in review**, and Apple confirms iOS version 1.0.0, build 26, **Waiting for
+Review**. External TestFlight review for Roberto is a separate submission.
+Internal build 21 is installed on the owner's iPhone. Physical evidence
 currently covers map/price rendering and reported venue Back behavior; neither
 store state establishes an approved public release.
 
@@ -179,10 +180,14 @@ created. The tester still shows **No Builds Available** pending approval;
 invitation delivery and installation are not established. Beta description,
 feedback address and review instructions were saved in App Store Connect.
 The public App Store version also has build 26 selected and saved. Its latest
-submission validation now lists only the 13-inch iPad screenshot as missing.
-The verified original medium Dynamic Island iPhone screenshot is uploaded,
-processed and persists after refresh as **1 of 10 App Screenshots**. Public App
-Review has not been submitted.
+submission includes both verified original screenshots: medium Dynamic Island
+iPhone and 13-inch iPad, each uploaded and processed as **1 of 10 App
+Screenshots** in its respective slot. Apple confirmed **1 Item Submitted** on
+28 October at 16:10 UTC. Public review record
+`8f84f8ac-5654-4709-a448-6e55f622848a` displays **Waiting for Review** and the item
+**iOS App 1.0.0 / 1.0.0 (26)**. Automatic release after approval is selected.
+This public submission is separate from Roberto's external TestFlight review;
+neither review has an approval or public-availability result yet.
 
 The third credential-free capture run,
 `mobile-capture/v1.0.0-xcode27.1-3`, source
@@ -225,10 +230,29 @@ The capture script now explicitly waits for its selected simulator to boot,
 matching the passing phone startup pattern, and shuts down only a device it
 booted. Mocked command controls and independent review pass; effectiveness
 against Apple's AX initialization failure is still unverified. An isolated
-iPad-only capture lane is being prepared without repeating the phone suite.
+iPad-only capture lane avoids repeating the passing phone suite.
 The existing AWS real-device connector requires reauthentication, so no free
 minutes or device availability were established and no session or charge was
 created.
+
+The isolated tag `mobile-ipad-capture/v1.0.0-preboot.1`, source
+`2c7e13b44b1f119c0f29123e796b4f2d6c5a4601`, succeeded as
+[40720750014](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40720750014)
+(workflow number 28), job `122930662962`. The selected iPad Air 13-inch M4/iOS
+27.0 completed explicit boot readiness before XCTest. The exact live search,
+map, positive coverage and Privacy-return case passed, followed by original
+PNG validation. All 93 local guards passed after integration; independent
+review confirms existing workflow job selections remain unchanged.
+
+The original iPad PNG is 2048 by 2732, SHA-256
+`d53d5b8c09cc09727f6de64c25dc0d1293511ccc1be344234ef6dfce155a5d75`.
+Its real Milano tiles, existing price pins, clusters and coverage counter were
+independently inspected. Artifact **12831890356** ZIP SHA-256 is
+`5fecf76d7ddf8cbdfd40f1fe9ce4aa16ca63b099b79afbeda6c19bd847ec1ec2`.
+Both originals and per-file provenance are preserved in
+`store-assets/ios-screenshots/`. Native app/project/resource inputs match build
+26 source; the simulator captures do not establish physical iPad behavior or
+binary identity with the signed Release app. No images were resized or rebuilt.
 
 ## Retained failure history and remaining gates
 
@@ -251,8 +275,9 @@ silent command was not established; reviewed extraction compatibility repairs
 preceded Internal.11's successful end-to-end verification. Full older details
 remain in Git history and retained evidence.
 
-Next owners must read back Google's review decision, complete the remaining
-iPhone checks, and verify genuine iOS captures
-before preparing a production-eligible iOS submission. Use
+Next owners must read both public review decisions, verify store availability
+after approval and complete the remaining installed-device checks. Confirm
+Roberto's invitation delivery and gather his TestFlight feedback after beta
+approval. Use
 [the device checklist](PHYSICAL_TEST_CHECKLIST.md). Upload, processing, review
 approval and public availability are separate states; none imply the next.

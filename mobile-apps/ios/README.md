@@ -154,7 +154,7 @@ container verification does not establish Apple importer compatibility.
 retry, use explicit parameters:
 
 ```powershell
-.\mobile-apps\scripts\publish-signing-secrets.ps1 -IosCertificateFile ios-distribution-apple-3des.p12 -IosCertificateOnly
+.\mobile-apps\scripts\publish-signing-secrets.ps1 -IosCertificateFile ios-distribution-apple-3des.p12 -IosCertificateOnly -Apply
 ```
 
 That mode updates only the existing `DOVEBEVO_IOS_CERTIFICATE_BASE64` repository

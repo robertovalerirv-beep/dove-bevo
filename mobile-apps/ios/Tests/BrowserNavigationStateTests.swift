@@ -29,4 +29,34 @@ final class BrowserNavigationStateTests: XCTestCase {
         XCTAssertTrue(state.acceptsCallback(current))
         XCTAssertFalse(state.acceptsCallback(nil), "An unidentifiable callback cannot replace an active navigation")
     }
+
+    func testLateStartCannotReactivateAnyStillLiveSupersededNavigation() {
+        let first = NSObject()
+        let second = NSObject()
+        let current = NSObject()
+        var state = BrowserNavigationState()
+        XCTAssertTrue(state.begin(first))
+        XCTAssertTrue(state.begin(second))
+        XCTAssertTrue(state.begin(current))
+        XCTAssertFalse(state.begin(first), "A superseded start must not become current again")
+        XCTAssertFalse(state.begin(second))
+        XCTAssertFalse(state.acceptsCallback(first))
+        XCTAssertFalse(state.acceptsCallback(second))
+        XCTAssertTrue(state.acceptsCallback(current))
+    }
+
+    func testRetirementDoesNotKeepCompletedNavigationObjectsAlive() {
+        var state = BrowserNavigationState()
+        weak var completed: NSObject?
+        autoreleasepool {
+            let first = NSObject()
+            completed = first
+            XCTAssertTrue(state.begin(first))
+            XCTAssertTrue(state.begin(NSObject()))
+        }
+        XCTAssertNil(completed, "Retired tokens must not retain an ever-growing browser history")
+        for _ in 0..<1_000 {
+            XCTAssertTrue(state.begin(NSObject()), "Released object identities may be reused for legitimate new navigations")
+        }
+    }
 }

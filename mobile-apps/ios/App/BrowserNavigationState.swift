@@ -3,23 +3,37 @@ import Foundation
 /// Navigation identity prevents a stopped or replaced load's late delegate
 /// callback from replacing the recovery controls for the current load.
 struct BrowserNavigationState {
-    // Retain these two bounded tokens: an ObjectIdentifier alone can be reused
-    // after deallocation, incorrectly treating a new navigation as a stopped one.
+    private final class RetiredNavigation {
+        weak var value: AnyObject?
+        init(_ value: AnyObject) { self.value = value }
+    }
+
+    // Weak retirement rejects late starts as well as late finish/error events.
+    // Purge released tokens on every transition; do not retain completed
+    // navigation objects or store raw identities that can later be reused.
     private var active: AnyObject?
-    private var stopped: AnyObject?
+    private var retired: [RetiredNavigation] = []
     private(set) var isStopped = false
 
     @discardableResult
     mutating func begin(_ navigation: AnyObject?) -> Bool {
-        if let navigation, let stopped, navigation === stopped { return false }
+        retired.removeAll { $0.value == nil }
+        if let navigation, retired.contains(where: { $0.value === navigation }) { return false }
+        if let active, active !== navigation { retire(active) }
         active = navigation
         isStopped = false
         return true
     }
 
     mutating func stop() {
-        stopped = active
+        retired.removeAll { $0.value == nil }
+        if let active { retire(active) }
         isStopped = true
+    }
+
+    private mutating func retire(_ navigation: AnyObject) {
+        guard !retired.contains(where: { $0.value === navigation }) else { return }
+        retired.append(RetiredNavigation(navigation))
     }
 
     func acceptsCallback(_ navigation: AnyObject?) -> Bool {

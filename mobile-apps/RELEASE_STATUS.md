@@ -9,6 +9,8 @@ Internal build 21 is installed on the owner's iPhone. Physical evidence
 currently covers map/price rendering and reported venue Back behavior; neither
 store state establishes an approved public release.
 
+The source also contains a separate [native usability update candidate](docs/2026-10-28-native-update-status.md), with local saved venues and native navigation/recovery improvements. Its verified Debug/emulator results do not replace the submitted Android 20/iOS 26 binaries or establish a newer TestFlight/public release.
+
 ## Source and scope
 
 The canonical repository is `robertovalerirv-beep/dove-bevo`; the active mobile

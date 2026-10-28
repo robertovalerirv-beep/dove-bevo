@@ -13,7 +13,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - `it.ts`: nuovo gruppo `lang` (nomi delle lingue). Nei file pubblici (`app.tsx`, `components/*`, `LegalPage`, `maplibre-map.ts`) cambia l'import di `it` verso `i18n/lang`; admin e Worker restano su `it.ts` (test `lang.test.ts`).
 - `app.tsx`: si ridisegna al cambio lingua; il messaggio di «Vicino a me» e il suggerimento di ricerca sono chiavi (seguono la lingua), il testo di copertura è calcolato una volta; `cheapest` dipende dalla lingua; etichetta del canvas aggiornata (`VenueMap.setLabel`) senza rifare la mappa; Turnstile riceve la lingua della pagina.
 - CSS: la riga di stato parte dopo il bottone (`left = 2×space-3 + target`, larghezza ridotta di un altro target); menu nell'intestazione di `/privacy` e `/regole` (l'intestazione va a capo se serve).
-- `PRIVACY-NOTES.md`, CHANGELOG. `passes: true` solo per ME-01 e ME-08 (vedi sotto).
+- `PRIVACY-NOTES.md`, CHANGELOG. `passes: true` per ME-01, ME-02, ME-05 e ME-08 (vedi sotto).
 
 **Prove** (Chromium; WebKit non è installato in questo ambiente, lo esegue la CI)
 - Test prima del codice: `npx vitest run --project unit tests/unit/lang.test.ts` → 12 fallite (modulo `en`/`lang` assenti, file ancora su `it.ts`).
@@ -28,13 +28,34 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - I messaggi di conferma (Toast) già aperti restano nella lingua di quando sono nati (circa 5 s): non vengono riscritti al cambio.
 - Se il file inglese non si scarica (offline) il menu non fa nulla di visibile: la lingua resta quella attuale e la console resta pulita (`LangMenu` intercetta l'errore; test `ME-03 offline` in `english.spec.ts` e `lang.test.ts`).
 
-**Guardia della feature list:** il confronto è con `spec-approved-13` (SPEC 1.12, ADR 0039), non più con `-12`. Rispetto a `-13` le voci ME di questo ramo sono identiche salvo `passes` (ME-01 e ME-08 a `true`); MF-01…MF-03 qui hanno ancora il testo della 1.11 e si allineano unendo `main` con la SPEC 1.12 (non toccato in questo ramo).
+**Guardia della feature list:** il confronto è con `spec-approved-13` (SPEC 1.12, ADR 0039), non più con `-12`. Dopo `git merge origin/main` (SPEC 1.12, ADR e script restano quelli di `main`) `node scripts/check-feature-list.mjs` dice «only "passes" changed».
+
+**Prova WebKit:** la CI della PR sul commit `775c110` è verde, compreso «E2E (Chromium, WebKit) and security tests» ([run 40671979641](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40671979641)). Con quella prova, `passes: true` per ME-02 e ME-05 (la verifica di entrambe è coperta da `english.spec.ts`, `lang.test.ts` e dai test esistenti). La traduzione legale resta una **bozza da rileggere** prima del rilascio.
 
 **Non fatto / da fare**
-- ME-02…ME-07 restano `passes: false`: la loro verifica chiede anche WebKit (SPEC 18), che qui non c'è. Se la CI della PR è verde su Chromium e WebKit, si portano a `true` con quella prova.
+- Restano `passes: false`, perché una parte della riga `verifica` non è provata da un test:
+  - ME-03: «il titolo della pagina segue la lingua» vale solo in `/privacy` e `/regole`; sulla mappa il titolo è volutamente neutro («Dove bevo») e nessun test lo asserisce.
+  - ME-04: mancano i test sui testi inglesi di Timbro, Annulla, Tessera, invito all'installazione, messaggi d'errore e passo «pin» del bar mancante; nessun controllo automatico che i testi non escano dal bordo (solo screenshot guardati).
+  - ME-06: nessun test sulle distanze (m, km) in inglese e sulla pagina `/admin/verificati` (la copre solo il test di import in `lang.test.ts`).
+  - ME-07: «target ≥ 48×48 px» è verificato solo per il menu della lingua (ME-02); axe sulla mappa esclude le attribuzioni (regola dei 24 px, come negli altri test della mappa).
 - `/code-review`, `/security-review`, `spec-reviewer` e `ux-a11y-reviewer` non eseguiti da questa sessione (non può avviare altri agenti): da lanciare prima del merge.
 - Lighthouse non eseguito in locale (lo fa la CI).
 - **Da verificare a mano (Roberto):** rileggere la traduzione inglese di Privacy e Regole (bozza, ADR 0038) e dei testi `en.ts`; provare il menu su iPhone e Android (posizione dell'elenco sotto il bottone, tastiera); guardare lo stato in alto con testi lunghi a 360 px.
+
+---
+
+## 2026-10-28 · SPEC 1.12: download in anticipo con `fetch`, non `prefetch` (branch `spec-1-12`) · ADR 0039 · MF
+
+**Richiesta di Roberto:** il Ramo A ha misurato con WebKit che `rel=prefetch` non scarica nulla su Safari/iPhone; scelta di Roberto: `fetch` a bassa priorità.
+
+**Fatto (solo specifica)**
+- SPEC 1.12: D-35, MF-01, MF-02 e MF-03 riscritte (`prefetch` → `fetch`, Save-Data, cache lunga su `/assets/*`, MF-02 con prova a mano per la cache vera); registro 1.12; ADR 0039.
+- `docs/feature_list.json`: cambiano solo `descrizione` e `verifica` di MF-01, MF-02, MF-03 (autorizzate da Roberto in chat); `passes` invariati.
+- Guardia sul tag `spec-approved-13` (`scripts/check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`, `.claude/agents/spec-reviewer.md`).
+
+**Non fatto, di Roberto**
+- Creare e pubblicare il tag `spec-approved-13` sul commit di questa modifica: finché manca, la guardia è rossa.
+- Prova su iPhone reale con rete lenta: tocco sulla mappa dopo 5-10 secondi dall'apertura.
 
 ---
 

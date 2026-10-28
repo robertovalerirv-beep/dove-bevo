@@ -59,4 +59,19 @@ final class BrowserNavigationStateTests: XCTestCase {
             XCTAssertTrue(state.begin(NSObject()), "Released object identities may be reused for legitimate new navigations")
         }
     }
+
+    func testStoppedOrSupersededTargetResponseCannotReplaceCurrentRecovery() {
+        let oldTarget = URL(string: "https://www.dovebevo.com/bar/n1?c=u0nd9")!
+        let currentTarget = URL(string: "https://www.dovebevo.com/bar/n2?c=u0nd9")!
+        var state = BrowserNavigationState()
+        XCTAssertTrue(state.begin(NSObject()))
+        XCTAssertTrue(state.shouldPresentResponseError(for: currentTarget, currentTarget: currentTarget))
+        XCTAssertFalse(state.shouldPresentResponseError(for: oldTarget, currentTarget: currentTarget))
+        XCTAssertFalse(state.shouldPresentResponseError(for: nil, currentTarget: currentTarget))
+        state.stop()
+        XCTAssertFalse(state.shouldPresentResponseError(for: currentTarget, currentTarget: currentTarget))
+        XCTAssertTrue(state.begin(NSObject()))
+        XCTAssertTrue(state.shouldPresentResponseError(for: currentTarget, currentTarget: currentTarget))
+        XCTAssertFalse(state.shouldPresentResponseError(for: oldTarget, currentTarget: currentTarget))
+    }
 }

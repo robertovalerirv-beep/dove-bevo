@@ -432,6 +432,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         updateMoreMenu()
     }
 
+    private func showResponseError(title: String, message: String, responseURL: URL?) {
+        guard navigationState.shouldPresentResponseError(for: responseURL, currentTarget: lastWebsiteURL) else { return }
+        showError(title: title, message: message)
+    }
+
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
@@ -471,12 +476,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         guard let url = navigationResponse.response.url, URLPolicy.isWebsite(url),
               navigationResponse.canShowMIMEType else {
             decisionHandler(.cancel)
-            showError(title: "Pagina non disponibile", message: "Non riesco ad aprire questa pagina. Riprova tra poco.")
+            showResponseError(title: "Pagina non disponibile", message: "Non riesco ad aprire questa pagina. Riprova tra poco.", responseURL: navigationResponse.response.url)
             return
         }
         if let response = navigationResponse.response as? HTTPURLResponse, response.statusCode >= 500 {
             decisionHandler(.cancel)
-            showError(title: "Servizio non disponibile", message: "Dove bevo non risponde in questo momento. Riprova tra poco.")
+            showResponseError(title: "Servizio non disponibile", message: "Dove bevo non risponde in questo momento. Riprova tra poco.", responseURL: url)
             return
         }
         // 4xx pages (including a normal Cloudflare verification) stay in WebKit.
@@ -493,6 +498,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         progressView.setProgress(0, animated: false)
         progressView.isHidden = false
         updateLoadingControl(true)
+    }
+
+    func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+        guard navigationState.acceptsCallback(navigation),
+              let url = webView.url, URLPolicy.isWebsite(url) else { return }
+        lastWebsiteURL = url
     }
 
     func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {

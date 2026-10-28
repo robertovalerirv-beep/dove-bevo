@@ -44,4 +44,11 @@ struct BrowserNavigationState {
         default: return false
         }
     }
+
+    func shouldPresentResponseError(for responseURL: URL?, currentTarget: URL) -> Bool {
+        // WKNavigationResponse has no navigation token. This rejects stopped
+        // loads and known older targets without claiming to distinguish two
+        // overlapping responses for an identical URL.
+        !isStopped && responseURL == currentTarget
+    }
 }

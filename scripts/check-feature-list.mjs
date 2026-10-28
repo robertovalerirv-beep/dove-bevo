@@ -1,11 +1,11 @@
 // Feature list guard (SPEC D-21): docs/feature_list.json may differ from the version
-// tagged `spec-approved-11` (SPEC 1.10, approved by Roberto) only in the `passes` field. Usage: node scripts/check-feature-list.mjs
+// tagged `spec-approved-12` (SPEC 1.11, approved by Roberto) only in the `passes` field. Usage: node scripts/check-feature-list.mjs
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { compareFeatureLists } from "./feature-list.ts";
 
 const FILE = "docs/feature_list.json";
-const TAG = "spec-approved-11";
+const TAG = "spec-approved-12";
 
 const base = JSON.parse(execFileSync("git", ["show", `${TAG}:${FILE}`], { encoding: "utf8" }));
 const current = JSON.parse(readFileSync(FILE, "utf8"));

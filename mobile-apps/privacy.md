@@ -22,6 +22,14 @@ Se scegli di contribuire, il servizio riceve il locale, il drink, il prezzo, la 
 
 Non è richiesto un profilo con nome, email o password. L'assenza di un account non significa assenza di trattamento di dati tecnici.
 
+## Consigli sui drink nelle app
+
+Se usi il pollice in su, invii al servizio il locale, la categoria di drink e la scelta di consigliare o rimuovere il consiglio. Il numero complessivo di consigli per quella combinazione è visibile agli altri utenti delle app. Non pubblichiamo il tuo nome o un elenco personale dei tuoi consigli. Un consiglio riguarda il drink in quel locale: non conferma il prezzo e non indica necessariamente quanti singoli clienti lo abbiano provato.
+
+Per ricordare la tua scelta ed evitare che tap ripetuti aumentino il conteggio, l'app genera un identificatore casuale per la propria installazione e lo conserva nella memoria privata, esclusa dal backup di questo archivio. Lo invia al servizio solo per questa funzione; non deriva da identificatori pubblicitari, posizione o caratteristiche del telefono e non viene copiato dai cookie del browser. Il servizio conserva una chiave pseudonima distinta per locale e drink, insieme al consiglio, anziché l'identificatore originale. L'indirizzo IP è elaborato anche per limiti antiabuso con chiavi giornaliere; non viene salvato con il consiglio.
+
+Puoi togliere il pollice in su dalla stessa installazione. Il consiglio e la chiave di deduplicazione restano finché lo rimuovi o il servizio li ritira; non seguono la pulizia giornaliera delle quote. Disinstallare l'app o perdere i suoi dati non elimina automaticamente i consigli già inviati e può impedire di riconoscere la scelta precedente. Un altro telefono o una nuova installazione possono avere un identificatore diverso: questa funzione non garantisce un voto per persona e non sincronizza le scelte tra dispositivi. I conteggi e la registrazione o rimozione dei consigli richiedono una connessione; se il servizio non risponde, l'app non presenta l'operazione come riuscita.
+
 ## Sicurezza, cookie e dati sul telefono
 
 Per contrastare abusi il servizio elabora l'indirizzo IP e, dove necessario, identificatori tecnici di sessione. Usa chiavi derivate con un sale giornaliero per quote, duplicati e segnalazioni. Prima di contribuire può usare Cloudflare Turnstile. Il cookie tecnico __Host-sid ha durata di 30 minuti e viene gestito dal browser integrato; l'app non copia cookie o token in un client nativo separato.

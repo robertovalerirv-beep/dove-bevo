@@ -24,8 +24,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var saveMenuEnabled = false
     private let bookmarkCapture: VenueBookmarkCapture
     private let recommendationClient: RecommendationServing
+    private let websiteLoader: ((WKWebView, URLRequest) -> WKNavigation?)?
     private var bookmarkTimeout: DispatchWorkItem?
     private var bookmarkLifecycleActive = true
+    var onShowFavourites: (() -> Void)?
 
     private lazy var backButton = item("Indietro", symbol: "chevron.backward", action: #selector(goBack), id: "browser.back")
     private lazy var forwardButton = item("Avanti", symbol: "chevron.forward", action: #selector(goForward), id: "browser.forward")
@@ -33,12 +35,15 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private lazy var shareButton = item("Condividi", symbol: "square.and.arrow.up", action: #selector(sharePage), id: "browser.share")
     private lazy var reloadButton = item("Ricarica", symbol: "arrow.clockwise", action: #selector(reloadPage), id: "browser.reload")
     private lazy var recommendationsButton = item("Drink consigliati", symbol: "hand.thumbsup", action: #selector(showRecommendations), id: "browser.recommendations")
+    private lazy var saveVenueButton = item("Salva nei preferiti", symbol: "bookmark", action: #selector(saveCurrentVenue), id: "browser.saveVenue")
 
     init(savedVenues: SavedVenueStore = SavedVenueStore(), bookmarkCapture: VenueBookmarkCapture = VenueBookmarkCapture(),
-         recommendationClient: RecommendationServing = RecommendationClient()) {
+         recommendationClient: RecommendationServing = RecommendationClient(),
+         websiteLoader: ((WKWebView, URLRequest) -> WKNavigation?)? = nil) {
         self.savedVenues = savedVenues
         self.bookmarkCapture = bookmarkCapture
         self.recommendationClient = recommendationClient
+        self.websiteLoader = websiteLoader
         super.init(nibName: nil, bundle: nil)
         observeBookmarkLifecycle()
     }
@@ -52,7 +57,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         configureContent()
         observeWebView()
         startNetworkMonitor()
-        loadWebsite(URLPolicy.homeURL)
+        loadWebsite(lastWebsiteURL)
     }
 
     deinit {
@@ -91,7 +96,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         let moreButton = UIBarButtonItem(image: UIImage(systemName: "ellipsis.circle"), menu: moreMenu())
         moreButton.accessibilityLabel = "Altre opzioni"
         moreButton.accessibilityIdentifier = "browser.more"
-        navigationItem.rightBarButtonItem = moreButton
+        saveVenueButton.isEnabled = false
+        saveVenueButton.accessibilityHint = "Salva il locale aperto con il suo nome nei preferiti privati"
+        navigationItem.rightBarButtonItems = [moreButton, saveVenueButton]
         recommendationsButton.isEnabled = false
         recommendationsButton.accessibilityHint = "Apri un locale per vedere e dare consigli sui drink"
         navigationItem.leftBarButtonItem = recommendationsButton
@@ -138,6 +145,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         guard let webView, hasLoadedPage, !webView.isLoading, !navigationState.isStopped,
               errorView.isHidden, navigationController?.topViewController === self,
               isBookmarkInteractionActive else { return nil }
+        if let tabs = tabBarController, tabs.selectedViewController !== navigationController { return nil }
         return SavedVenuePolicy.canonicalURL(webView.url)
     }
 
@@ -186,6 +194,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private func updateMoreMenu() {
         let enabled = canSaveCurrentVenue
         recommendationsButton.isEnabled = enabled
+        saveVenueButton.isEnabled = enabled
         guard enabled != saveMenuEnabled else { return }
         saveMenuEnabled = enabled
         navigationItem.rightBarButtonItem?.menu = moreMenu()
@@ -232,14 +241,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         view.addSubview(toolbar)
         view.addSubview(progressView)
         NSLayoutConstraint.activate([
-            body.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            body.topAnchor.constraint(equalTo: toolbar.bottomAnchor),
             body.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            body.bottomAnchor.constraint(equalTo: toolbar.topAnchor),
+            body.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
             toolbar.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
             toolbar.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            toolbar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            toolbar.heightAnchor.constraint(equalToConstant: 44),
+            toolbar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            toolbar.heightAnchor.constraint(equalToConstant: 48),
             progressView.topAnchor.constraint(equalTo: body.topAnchor),
             progressView.leadingAnchor.constraint(equalTo: body.leadingAnchor),
             progressView.trailingAnchor.constraint(equalTo: body.trailingAnchor)
@@ -386,7 +395,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         lastWebsiteURL = url
         setErrorVisible(false)
         loadingView.isHidden = hasLoadedPage
-        navigationState.begin(webView.load(URLRequest(url: url)))
+        let request = URLRequest(url: url)
+        if let websiteLoader { navigationState.begin(websiteLoader(webView, request)) }
+        else { navigationState.begin(webView.load(request)) }
     }
 
     private var currentWebsiteURL: URL {
@@ -434,7 +445,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         reloadButton.accessibilityHint = loading ? "Interrompe il caricamento della pagina" : "Ricarica la pagina"
     }
 
-    private func saveCurrentVenue() {
+    @objc private func saveCurrentVenue() {
         readCurrentVenue(failureTitle: "Preferito non salvato") { [weak self] venue in
             guard let self else { return }
             do {
@@ -513,6 +524,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         // Opening the private list is a new user intent. Cancel before pushing,
         // not only in viewWillDisappear, so removal cannot race an older save.
         invalidateBookmarkCapture()
+        if let onShowFavourites { onShowFavourites(); return }
         navigationItem.backButtonTitle = "Torna alla mappa"
         let list = SavedVenuesViewController(store: savedVenues) { [weak self] url in
             guard let self, let canonical = SavedVenuePolicy.canonicalURL(url) else { return }
@@ -520,6 +532,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             self.loadWebsite(canonical)
         }
         navigationController?.pushViewController(list, animated: true)
+    }
+
+    func openSavedVenue(_ url: URL) {
+        guard let canonical = SavedVenuePolicy.canonicalURL(url) else { return }
+        if isViewLoaded { loadWebsite(canonical) }
+        else { lastWebsiteURL = canonical; loadViewIfNeeded() }
     }
 
     @objc private func sharePage() {

@@ -10,19 +10,19 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     ) {
         guard let windowScene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: windowScene)
-        let navigationController = UINavigationController()
         let acceptance = RulesAcceptance()
         if acceptance.isCurrent {
-            navigationController.setViewControllers([BrowserViewController()], animated: false)
+            window.rootViewController = NativeTabsController()
         } else {
-            let welcome = WelcomeViewController { [weak navigationController] in
-                guard let navigationController else { return }
+            let navigationController = UINavigationController()
+            let welcome = WelcomeViewController { [weak window] in
+                guard let window else { return }
                 acceptance.acceptCurrentVersion()
-                navigationController.setViewControllers([BrowserViewController()], animated: false)
+                window.rootViewController = NativeTabsController()
             }
             navigationController.setViewControllers([welcome], animated: false)
+            window.rootViewController = navigationController
         }
-        window.rootViewController = navigationController
         window.makeKeyAndVisible()
         self.window = window
     }

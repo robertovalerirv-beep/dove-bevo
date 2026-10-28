@@ -10,8 +10,7 @@ final class SavedVenueControllerTests: XCTestCase {
             try store.save(url: venue, label: "Il mio bar")
             var opened: URL?
             let controller = SavedVenuesViewController(store: store) { opened = $0 }
-            controller.loadViewIfNeeded()
-            controller.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+            prepare(controller)
             controller.tableView.layoutIfNeeded()
             let row = IndexPath(row: 0, section: 0)
             XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 1)
@@ -23,7 +22,7 @@ final class SavedVenueControllerTests: XCTestCase {
             XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 0)
             XCTAssertTrue(try store.load().isEmpty)
             let reloaded = SavedVenuesViewController(store: store) { _ in XCTFail("No automatic navigation") }
-            reloaded.loadViewIfNeeded()
+            prepare(reloaded)
             XCTAssertEqual(reloaded.tableView(reloaded.tableView, numberOfRowsInSection: 0), 0)
         }
     }
@@ -44,7 +43,7 @@ final class SavedVenueControllerTests: XCTestCase {
             let list = try XCTUnwrap(navigation.topViewController as? SavedVenuesViewController)
             XCTAssertFalse(browser.isViewLoaded)
             XCTAssertFalse(capture.isPending)
-            list.loadViewIfNeeded()
+            prepare(list)
             list.tableView(list.tableView, commit: .delete, forRowAt: IndexPath(row: 0, section: 0))
             XCTAssertTrue(try store.load().isEmpty)
             let delayedCompletion = {
@@ -102,5 +101,14 @@ final class SavedVenueControllerTests: XCTestCase {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         defer { try? FileManager.default.removeItem(at: root) }
         try action(SavedVenueStore(directoryURL: root.appendingPathComponent("SavedVenues", isDirectory: true)))
+    }
+
+    @MainActor
+    private func prepare(_ controller: UIViewController) {
+        controller.loadViewIfNeeded()
+        controller.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        controller.beginAppearanceTransition(true, animated: false)
+        controller.endAppearanceTransition()
+        controller.view.layoutIfNeeded()
     }
 }

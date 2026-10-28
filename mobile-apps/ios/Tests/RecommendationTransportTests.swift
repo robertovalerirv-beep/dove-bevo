@@ -100,6 +100,65 @@ final class RecommendationTransportTests: XCTestCase {
         withExtendedLifetime(task) {}
     }
 
+    func testComparisonTransportUsesCredentialFreeGETAndReturnsBoundedHealth() {
+        RecommendationURLProtocol.handler = { request, client, proto in
+            XCTAssertEqual(request.httpMethod, "GET")
+            for header in ["Cookie", "Authorization", "X-DoveBevo-Voter", "Origin"] { XCTAssertNil(request.value(forHTTPHeaderField: header)) }
+            XCTAssertFalse(request.httpShouldHandleCookies)
+            client.urlProtocol(proto, didReceive: self.response(url: request.url!, status: 200), cacheStoragePolicy: .notAllowed)
+            client.urlProtocol(proto, didLoad: ComparisonFixtures.health)
+            client.urlProtocolDidFinishLoading(proto)
+        }
+        let done = expectation(description: "public health GET")
+        let task = comparisonTransport().get(.health) { result in
+            XCTAssertTrue(Thread.isMainThread)
+            XCTAssertEqual(try? result.get(), ComparisonFixtures.health)
+            done.fulfill()
+        }
+        wait(for: [done], timeout: 3); withExtendedLifetime(task) {}
+    }
+
+    func testComparisonTransportRejectsStreamingOverflowAndHTMLInsteadOfEmptyData() {
+        for html in [false, true] {
+            RecommendationURLProtocol.handler = { request, client, proto in
+                let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": html ? "text/html" : "application/json"])!
+                client.urlProtocol(proto, didReceive: response, cacheStoragePolicy: .notAllowed)
+                client.urlProtocol(proto, didLoad: html ? Data("<html>SPA</html>".utf8) : Data(repeating: 32, count: 8193))
+                client.urlProtocolDidFinishLoading(proto)
+            }
+            let done = expectation(description: "unavailable is not an empty JSON result")
+            let task = comparisonTransport().get(.health) { result in
+                if case .success = result { XCTFail("Untrusted comparison response accepted") }
+                done.fulfill()
+            }
+            wait(for: [done], timeout: 3); withExtendedLifetime(task) {}
+        }
+    }
+
+    func testComparisonTransportRejectsRedirectBeforeFollowingAndInvalidCellBeforeNetwork() {
+        var requests = 0
+        RecommendationURLProtocol.handler = { request, client, proto in
+            requests += 1
+            let redirect = URLRequest(url: URL(string: "https://evil.example/cells")!)
+            client.urlProtocol(proto, wasRedirectedTo: redirect, redirectResponse: HTTPURLResponse(url: request.url!, statusCode: 302, httpVersion: "HTTP/1.1", headerFields: ["Location": redirect.url!.absoluteString])!)
+        }
+        for endpoint in [ComparisonEndpoint.health, .prices(cell: "u0nd9?extra=1")] {
+            let done = expectation(description: "redirect/input rejected")
+            let task = comparisonTransport().get(endpoint) { result in
+                if case .success = result { XCTFail("Untrusted endpoint accepted") }
+                done.fulfill()
+            }
+            wait(for: [done], timeout: 3); withExtendedLifetime(task) {}
+        }
+        XCTAssertEqual(requests, 1)
+    }
+
+    private func comparisonTransport() -> ComparisonHTTPTransport {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [RecommendationURLProtocol.self]
+        return ComparisonHTTPTransport(configuration: configuration)
+    }
+
     private func transport() -> RecommendationHTTPTransport {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [RecommendationURLProtocol.self]

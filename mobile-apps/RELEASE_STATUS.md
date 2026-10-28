@@ -4,7 +4,7 @@ Last verified: 28 October 2026 (UTC).
 
 Both public store releases are submitted: Google Play's production changes are
 **in review**, and Apple confirms iOS version 1.0.0, build 26, **Waiting for
-Review**. The native update, build **31**, is now available in Google Play
+Review**. The corrected native update, build **32**, is now available in Google Play
 internal testing and **Testing** in TestFlight for the existing owner and Roberto
 groups. Roberto's tester row reads **Invited**; email delivery and installation
 are not established.
@@ -14,11 +14,13 @@ store state establishes an approved public release.
 
 See the separate [native usability update testing release](docs/2026-10-28-native-update-status.md) for signed artifacts, fresh hosted checks, provider readback and physical-device limits. Its testing distribution does not replace the Android 20/iOS 26 public submissions or establish a public launch.
 
+The owner's later physical screenshots exposed build 31's confusing naming form. Corrected build 32 at `9b54a44733e4626eaafee4976c2534f77a939cab` keeps private bookmarks but uses the existing venue name automatically, without naming or rename forms. On a venue, use **⋯ at the top right → Salva nei preferiti**; **Preferiti** reopens it. Public prices still use the website's orange **Aggiungi un prezzo qui** button. [Beta run 40760373576](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40760373576) passed both checks and signers: 47 Android units, 98 iOS guards, 35 Swift units and 4 phone UI cases. Separate Android native runtime and independent live browsing checks passed. Both stores' corrected testing availability is now verified; physical acceptance of the corrected flow remains open.
+
 ## Source and scope
 
 The canonical repository is `robertovalerirv-beep/dove-bevo`; the submitted-release
 branch is `codex/mobile-internal-testing-20261027`. The native update is saved on
-`codex/mobile-usability-20261028`, with signed build 31 at `e07a8b8596b8248e710db0587c7587a5f772d80c`.
+`codex/mobile-usability-20261028`, with corrected signed build 32 at `9b54a44733e4626eaafee4976c2534f77a939cab`; earlier signed build 31 was at `e07a8b8596b8248e710db0587c7587a5f772d80c`.
 Owner baseline
 `8094d3c2494851a2e29a5c0b6f5eb8d4dcb88e50` is incorporated without conflicts. Mobile additions are
 confined to `mobile-apps/` and `.github/workflows/mobile-apps.yml`; the website,
@@ -288,6 +290,6 @@ remain in Git history and retained evidence.
 Next owners must read both public review decisions, verify store availability
 after approval and complete the remaining installed-device checks. Confirm
 Roberto's invitation delivery and gather his TestFlight feedback for the now
-available build 31. Use
+available corrected build 32; build 31 still has the superseded manual-name form. Its automatic-name physical acceptance remains open. Use
 [the device checklist](PHYSICAL_TEST_CHECKLIST.md). Upload, processing, review
 approval and public availability are separate states; none imply the next.

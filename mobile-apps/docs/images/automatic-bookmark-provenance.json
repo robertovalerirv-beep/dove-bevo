@@ -1,0 +1,24 @@
+[
+  {
+    "file": "ios-automatic-bookmark-native-test.png",
+    "sha256": "16ea294a5b6bb7685161e9d1d6587081e8b05f2734ded0149e8667537669e702",
+    "bytes": 138114,
+    "source": "9b54a44733e4626eaafee4976c2534f77a939cab",
+    "origin": "Debug iPhone 17 iOS 27.0 simulator live test, run 40760373576 job 123070360911",
+    "originalUnedited": true,
+    "publicContributionsCreated": false,
+    "qaBookmarkRemoved": true,
+    "limit": "Not physical or store-installed behavior"
+  },
+  {
+    "file": "android-automatic-bookmark-native-test.png",
+    "sha256": "dede3395657fd12d9f1940d2899df7c9260eb825f799f10235cb1afecac6d7cf",
+    "bytes": 136226,
+    "source": "9b54a44733e4626eaafee4976c2534f77a939cab",
+    "origin": "Debug API 36 normal headless emulator live QA; no instrumentation",
+    "originalUnedited": true,
+    "publicContributionsCreated": false,
+    "qaBookmarkRemoved": true,
+    "limit": "Not physical or store-installed behavior"
+  }
+]

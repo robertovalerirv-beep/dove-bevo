@@ -65,8 +65,8 @@ Canonical UOS continuity and separate backup/provider results are recorded after
 
 The initial tasks above produced build 31. The owner's subsequent explicit decision retains bookmarks but removes naming and rename forms: use the already displayed venue name automatically. Current correction tasks:
 
-- [ ] Implement one-action private bookmarks on both platforms, using the bounded public heading/URL/selection-marker reader and native generation checks.
-- [ ] Preserve previous valid stored records and test 120-unit imported names, ambiguity, hidden/overlaid sheets, stale callbacks, failures and the pre-route-commit identity gap.
-- [ ] Independently review, integrate and run meaningful native runtime/UI checks without public test contributions.
-- [ ] Sign and distribute the corrected testing build, update the stable public policy wording and verify actual provider availability.
-- [ ] Keep short-card end-of-content behaviour separate from any demonstrated scrolling defect; do not change the website or apply an unproven native scroll workaround.
+- [x] Implement one-action private bookmarks on both platforms, using the bounded public heading/URL/selection-marker reader and native generation checks.
+- [x] Preserve previous valid stored records and test 120-unit imported names, ambiguity, hidden/overlaid sheets, stale callbacks, failures and the pre-route-commit identity gap. Fresh iOS unit/UI results passed as recorded below.
+- [x] Independently review, integrate and run meaningful native runtime/UI checks without public test contributions. Android 47 units/12 runtime cases and independent normal live browsing passed; iOS 98 guards/35 Swift units/4 phone UI cases passed.
+- [x] Sign and distribute corrected build 32, update the stable public policy wording and verify actual provider availability. Android internal testing is Active/Available; TestFlight reads Testing for both existing groups. Physical corrected-flow acceptance remains separate.
+- [x] Keep short-card end-of-content behaviour separate from any demonstrated scrolling defect; do not change the website or apply an unproven native scroll workaround.

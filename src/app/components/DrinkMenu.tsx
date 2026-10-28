@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import { CATALOG } from "../../shared/catalog";
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { drinkIcon, Icon } from "./Icon";
 
 interface Props {

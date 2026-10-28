@@ -1,4 +1,4 @@
-import { it } from "../i18n/it";
+import { it } from "../i18n/lang";
 import { bestPrice, type Venue } from "../lib/data";
 import { formatDistance, formatPrice, todayRome } from "../lib/format";
 import { compareListRows } from "../lib/list-order";

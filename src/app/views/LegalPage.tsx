@@ -1,12 +1,16 @@
 import { useEffect } from "preact/hooks";
 import { APP_NAME, CONTACT_EMAIL } from "../../shared/config";
-import { it } from "../i18n/it";
+import { LangMenu } from "../components/LangMenu";
+import { it } from "../i18n/lang";
+import { useLang } from "../lib/use-lang";
 
-// /privacy and /regole (SPEC 7.8): plain text from it.ts, its own chunk, never loaded by the map.
+// /privacy and /regole (SPEC 7.8): plain text from it.ts or en.ts (SPEC 7.11), its own chunk, never
+// loaded by the map.
 
 export type LegalKind = "privacy" | "rules";
 
 export function LegalPage({ kind }: { kind: LegalKind }) {
+  useLang(); // drawn again when the language changes
   const page = it.legal[kind];
   const other =
     kind === "privacy"
@@ -35,6 +39,7 @@ export function LegalPage({ kind }: { kind: LegalKind }) {
             height="40"
           />
         </a>
+        <LangMenu className="legal__lang" />
         <a class="btn btn--secondary" href="/">
           {it.legal.backToMap}
         </a>

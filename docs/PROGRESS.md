@@ -4,6 +4,46 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-28 · Interfaccia pubblica in inglese (branch `m6-inglese`, da `spec-approved-12`) · SPEC 1.11, ADR 0038 · ME-01…ME-08
+
+**Richiesta di Roberto:** sito utente in inglese, stesso database; menu in alto a sinistra di fronte all'Elenco; scelta non salvata, si parte sempre dall'italiano; formati `it-IT`; admin italiano; privacy e regole tradotte come bozza.
+
+**Fatto**
+- `src/app/i18n/lang.ts` (lingua in memoria, `it` come legame vivo, `setLang` che scarica `en.ts` solo se scelto, `subscribeLang`), `src/app/lib/use-lang.ts` (hook), `src/app/i18n/en.ts` (tutte le sezioni pubbliche di `it.ts`, senza `admin`, tipo derivato: una frase mancante non compila), `src/app/components/LangMenu.tsx` (bottone «IT/EN» 48×48 con elenco Italiano/English).
+- `it.ts`: nuovo gruppo `lang` (nomi delle lingue). Nei file pubblici (`app.tsx`, `components/*`, `LegalPage`, `maplibre-map.ts`) cambia l'import di `it` verso `i18n/lang`; admin e Worker restano su `it.ts` (test `lang.test.ts`).
+- `app.tsx`: si ridisegna al cambio lingua; il messaggio di «Vicino a me» e il suggerimento di ricerca sono chiavi (seguono la lingua), il testo di copertura è calcolato una volta; `cheapest` dipende dalla lingua; etichetta del canvas aggiornata (`VenueMap.setLabel`) senza rifare la mappa; Turnstile riceve la lingua della pagina.
+- CSS: la riga di stato parte dopo il bottone (`left = 2×space-3 + target`, larghezza ridotta di un altro target); menu nell'intestazione di `/privacy` e `/regole` (l'intestazione va a capo se serve).
+- `PRIVACY-NOTES.md`, CHANGELOG. `passes: true` per ME-01, ME-02, ME-05 e ME-08 (vedi sotto).
+
+**Prove** (Chromium; WebKit non è installato in questo ambiente, lo esegue la CI)
+- Test prima del codice: `npx vitest run --project unit tests/unit/lang.test.ts` → 12 fallite (modulo `en`/`lang` assenti, file ancora su `it.ts`).
+- `npx vitest run` → 56 file, 624 test + i nuovi: unit 407/407, worker verdi. `npx tsc -b` pulito (un primo tentativo faceva entrare preact nel progetto TypeScript del Worker, che include `src/app/i18n`: l'hook è stato spostato in `lib/` e `lang.test.ts` ora lo vieta). `npm run lint` e `format:check` puliti.
+- `npx playwright test` (progetti chromium, writes, proposals, security; WebKit escluso) → **192 passati**, tra cui `tests/e2e/english.spec.ts` (17 test dopo i ritocchi della revisione: menu a sinistra speculare all'Elenco e stato che parte dopo di lui, tastiera/Esc/tocco fuori, la mappa resta aperta e non si ridimensiona, nulla salvato in `localStorage`/`sessionStorage`/cookie e nessuna richiesta `/api/*`, un solo scaricamento di `en`, ricarica → italiano, tutte le viste pubbliche senza testi italiani residui — con controllo non vacuo —, Privacy e Regole con le stesse sezioni, formati `it-IT`, `/admin` italiano, axe nei due temi, nessuna violazione CSP). Screenshot: `docs/screenshots/english/rules-{light,dark}.png`; gli altri in `test-results/` (non versionati).
+- Ritocchi dopo le revisioni: test `ME-03 offline` scritto prima, fallito per il motivo giusto (`Failed to fetch dynamically imported module` in console), poi verde con `LangMenu` che intercetta l'errore; `npx vitest run` → 56 file, 627 test; `english.spec.ts` + `legal.spec.ts` su Chromium → 23 passati.
+- `ME-01` verificato anche con prova negativa: togliendo `common.close` da `en.ts`, `tsc -b` dà TS2741.
+- **Misure della shell** (`npm run build && node scripts/check-bundle-size.mjs`): prima (commit `spec-approved-12`, la base di questo ramo) 38.513 B; dopo 39.408 B (+895 B, limite 51.200 B); `en.ts` è un file a richiesta di 5.213 B gzip.
+
+**Scelte volute**
+- Il titolo della pagina della mappa è «Dove bevo» in entrambe le lingue (neutro): cambia solo in `/privacy` e `/regole` («Privacy · Dove bevo», «Rules · Dove bevo»). Le pagine per i motori di ricerca restano come le serve il Worker.
+- I messaggi di conferma (Toast) già aperti restano nella lingua di quando sono nati (circa 5 s): non vengono riscritti al cambio.
+- Se il file inglese non si scarica (offline) il menu non fa nulla di visibile: la lingua resta quella attuale e la console resta pulita (`LangMenu` intercetta l'errore; test `ME-03 offline` in `english.spec.ts` e `lang.test.ts`).
+
+**Guardia della feature list:** il confronto è con `spec-approved-13` (SPEC 1.12, ADR 0039), non più con `-12`. Dopo `git merge origin/main` (SPEC 1.12, ADR e script restano quelli di `main`) `node scripts/check-feature-list.mjs` dice «only "passes" changed».
+
+**Prova WebKit:** la CI della PR sul commit `775c110` è verde, compreso «E2E (Chromium, WebKit) and security tests» ([run 40671979641](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40671979641)). Con quella prova, `passes: true` per ME-02 e ME-05 (la verifica di entrambe è coperta da `english.spec.ts`, `lang.test.ts` e dai test esistenti). La traduzione legale resta una **bozza da rileggere** prima del rilascio.
+
+**Non fatto / da fare**
+- Restano `passes: false`, perché una parte della riga `verifica` non è provata da un test:
+  - ME-03: «il titolo della pagina segue la lingua» vale solo in `/privacy` e `/regole`; sulla mappa il titolo è volutamente neutro («Dove bevo») e nessun test lo asserisce.
+  - ME-04: mancano i test sui testi inglesi di Timbro, Annulla, Tessera, invito all'installazione, messaggi d'errore e passo «pin» del bar mancante; nessun controllo automatico che i testi non escano dal bordo (solo screenshot guardati).
+  - ME-06: nessun test sulle distanze (m, km) in inglese e sulla pagina `/admin/verificati` (la copre solo il test di import in `lang.test.ts`).
+  - ME-07: «target ≥ 48×48 px» è verificato solo per il menu della lingua (ME-02); axe sulla mappa esclude le attribuzioni (regola dei 24 px, come negli altri test della mappa).
+- `/code-review`, `/security-review`, `spec-reviewer` e `ux-a11y-reviewer` non eseguiti da questa sessione (non può avviare altri agenti): da lanciare prima del merge.
+- Lighthouse non eseguito in locale (lo fa la CI).
+- **Da verificare a mano (Roberto):** rileggere la traduzione inglese di Privacy e Regole (bozza, ADR 0038) e dei testi `en.ts`; provare il menu su iPhone e Android (posizione dell'elenco sotto il bottone, tastiera); guardare lo stato in alto con testi lunghi a 360 px.
+
+---
+
 ## 2026-10-28 · SPEC 1.12: download in anticipo con `fetch`, non `prefetch` (branch `spec-1-12`) · ADR 0039 · MF
 
 **Richiesta di Roberto:** il Ramo A ha misurato con WebKit che `rel=prefetch` non scarica nulla su Safari/iPhone; scelta di Roberto: `fetch` a bassa priorità.

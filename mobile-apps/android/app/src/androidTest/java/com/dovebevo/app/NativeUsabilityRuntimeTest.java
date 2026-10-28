@@ -8,6 +8,7 @@ import android.annotation.TargetApi;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.system.Os;
@@ -34,10 +35,12 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import org.junit.After;
@@ -82,7 +85,7 @@ public final class NativeUsabilityRuntimeTest {
         fixtureDirectory = new File(activity.getCacheDir(), "native-usability-" + UUID.randomUUID());
         assertTrue(fixtureDirectory.mkdir());
         store = new SavedVenueStore(new SavedVenueFile(fixtureDirectory));
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             try {
                 assertNotNull(activity.findViewById(R.id.accept_rules));
                 assertNull(get("website"));
@@ -125,7 +128,7 @@ public final class NativeUsabilityRuntimeTest {
 
     @After public void tearDown() throws Exception {
         release.countDown();
-        if (activity != null) instrumentation.runOnMainSync(() -> {
+        if (activity != null) onMain(() -> {
             if (savedUi != null) savedUi.dismiss();
             if (web != null) { web.stopLoading(); web.destroy(); }
             try { set("website", null); } catch (Exception error) { throw new AssertionError(error); }
@@ -149,7 +152,7 @@ public final class NativeUsabilityRuntimeTest {
     @Test public void savedVenueNativeDialogsPreserveTheWebViewAndPersistAndRemoveRealFiles() throws Exception {
         navigate(ONE);
         WebView original = web;
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             savedUi.saveCurrent();
             AlertDialog dialog = currentDialog();
             ((EditText) dialog.findViewById(R.id.saved_venue_name)).setText("Locale di prova");
@@ -159,7 +162,7 @@ public final class NativeUsabilityRuntimeTest {
         });
         assertEquals("Locale di prova", new SavedVenueStore(new SavedVenueFile(fixtureDirectory)).load().get(0).label);
         assertEquals(ONE, store.load().get(0).url);
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             savedUi.saveCurrent();
             currentDialog().getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
             savedUi.showList();
@@ -167,7 +170,7 @@ public final class NativeUsabilityRuntimeTest {
             currentDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick();
         });
         await(() -> ONE.equals(web.getUrl()) && (Boolean) get("hasUsablePage") && !(Boolean) get("loading"));
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             assertSame(original, get("website"));
             savedUi.showList();
             currentDialog().getListView().performItemClick(null, 0, 0);
@@ -178,16 +181,16 @@ public final class NativeUsabilityRuntimeTest {
 
     @Test public void sameDocumentHistoryControlsAndNativeSavedStateRestoreAForwardEntry() throws Exception {
         navigate(BrowserPolicy.HOME);
-        instrumentation.runOnMainSync(() -> web.evaluateJavascript("history.pushState({inApp:true},'', '/bar/n123?c=u0nd9')", null));
+        onMain(() -> web.evaluateJavascript("history.pushState({inApp:true},'', '/bar/n123?c=u0nd9')", null));
         await(() -> ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             assertFalse(((Button) get("forwardButton")).isEnabled());
             assertEquals(ONE, invoke("eligibleSavedVenue"));
             ((Button) get("backButton")).performClick();
         });
         await(() -> BrowserPolicy.HOME.equals(web.getUrl()) && ((Button) get("forwardButton")).isEnabled());
         Bundle activityState = new Bundle();
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             invoke("onSaveInstanceState", new Class<?>[]{Bundle.class}, activityState);
             assertNotNull(activityState.getBundle("browser_history"));
             FrameLayout content = (FrameLayout) get("content");
@@ -197,7 +200,7 @@ public final class NativeUsabilityRuntimeTest {
             assertEquals(Boolean.TRUE, invoke("restoreHistory", new Class<?>[]{Bundle.class}, activityState));
         });
         await(() -> BrowserPolicy.HOME.equals(web.getUrl()) && !(Boolean) get("loading"));
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             assertFalse(((Button) get("backButton")).isEnabled());
             assertTrue(((Button) get("forwardButton")).isEnabled());
             ((Button) get("forwardButton")).performClick();
@@ -207,9 +210,9 @@ public final class NativeUsabilityRuntimeTest {
 
     @Test public void firstLoadStopOffersRetryAndARealServerFailureStillShowsRecovery() throws Exception {
         hold.set(true);
-        instrumentation.runOnMainSync(() -> invoke("navigate", new Class<?>[]{String.class}, HOLD));
+        onMain(() -> invoke("navigate", new Class<?>[]{String.class}, HOLD));
         assertTrue("Held fixture did not start", holdStarted.await(10, TimeUnit.SECONDS));
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             assertEquals(activity.getString(R.string.stop_loading), ((Button) get("refreshButton")).getContentDescription());
             ((Button) get("refreshButton")).performClick();
             assertEquals(View.GONE, ((ProgressBar) get("progress")).getVisibility());
@@ -218,15 +221,15 @@ public final class NativeUsabilityRuntimeTest {
             assertNull(invoke("eligibleSavedVenue"));
         });
         hold.set(false); release.countDown();
-        instrumentation.runOnMainSync(() -> activity.findViewById(R.id.retry).performClick());
+        onMain(() -> activity.findViewById(R.id.retry).performClick());
         await(() -> HOLD.equals(web.getUrl()) && !(Boolean) get("loading") && !(Boolean) get("failed"));
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             assertEquals(View.GONE, ((LinearLayout) get("errorPanel")).getVisibility());
             assertEquals(HOLD, invoke("eligibleSavedVenue"));
             invoke("navigate", new Class<?>[]{String.class}, FAILURE);
         });
         await(() -> (Boolean) get("failed"));
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             assertEquals(View.VISIBLE, ((LinearLayout) get("errorPanel")).getVisibility());
             assertNull(invoke("eligibleSavedVenue"));
         });
@@ -242,9 +245,82 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals(SavedVenueStore.Result.REMOVED, store.remove(ONE));
     }
 
+    @Test public void stoppedSecondLoadIgnoresLateHttpFailureWithoutHidingTheUsableWebView() throws Exception {
+        navigate(ONE);
+        WebView original = web;
+        hold.set(true);
+        onMain(() -> invoke("navigate", new Class<?>[]{String.class}, HOLD));
+        assertTrue("Held second load did not start", holdStarted.await(10, TimeUnit.SECONDS));
+        onMain(() -> {
+            ((Button) get("refreshButton")).performClick();
+            assertEquals(HOLD, get("stoppedUrl"));
+            assertFalse((Boolean) get("failed"));
+            assertTrue((Boolean) get("hasUsablePage"));
+            assertEquals(View.VISIBLE, web.getVisibility());
+            assertEquals(View.GONE, ((LinearLayout) get("errorPanel")).getVisibility());
+            String currentUrl = web.getUrl();
+            int historySize = web.copyBackForwardList().getSize();
+            // Deliver a delayed platform response to the actual app client.
+            // No network request is made by this callback regression.
+            actualClient.onReceivedHttpError(web, mainFrameRequest(HOLD), new WebResourceResponse(
+                    "text/html", "UTF-8", 500, "Service Unavailable", Collections.emptyMap(),
+                    new ByteArrayInputStream(new byte[0])));
+            assertFalse("A stopped request must not become a new page failure", (Boolean) get("failed"));
+            assertFalse((Boolean) get("documentHasHttpError"));
+            assertTrue((Boolean) get("hasUsablePage"));
+            assertSame(original, get("website"));
+            assertEquals(currentUrl, web.getUrl());
+            assertEquals(historySize, web.copyBackForwardList().getSize());
+            assertEquals(View.VISIBLE, web.getVisibility());
+            assertEquals(View.GONE, ((LinearLayout) get("errorPanel")).getVisibility());
+            assertEquals(View.GONE, ((ProgressBar) get("progress")).getVisibility());
+            assertEquals(activity.getString(R.string.refresh), ((Button) get("refreshButton")).getContentDescription());
+            assertNull(invoke("eligibleSavedVenue"));
+        });
+    }
+
+    @Test public void sslRejectionAlwaysCancelsButOnlyActiveUnstoppedFailuresCoverThePage() throws Exception {
+        navigate(ONE);
+        AtomicInteger cancelled = new AtomicInteger();
+        Runnable cancel = cancelled::incrementAndGet;
+        onMain(() -> {
+            WebView old = new WebView(activity);
+            old.getSettings().setBlockNetworkLoads(true);
+            try {
+                invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, old, ONE, cancel);
+                invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, web, BrowserPolicy.HOME, cancel);
+                invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, web, null, cancel);
+                assertEquals(3, cancelled.get());
+                assertFalse((Boolean) get("failed"));
+                assertEquals(View.VISIBLE, web.getVisibility());
+                assertEquals(View.GONE, ((LinearLayout) get("errorPanel")).getVisibility());
+            } finally { old.destroy(); }
+        });
+        hold.set(true);
+        onMain(() -> invoke("navigate", new Class<?>[]{String.class}, HOLD));
+        assertTrue("Held second load did not start", holdStarted.await(10, TimeUnit.SECONDS));
+        onMain(() -> {
+            ((Button) get("refreshButton")).performClick();
+            invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, web, HOLD, cancel);
+            assertEquals(4, cancelled.get());
+            assertFalse((Boolean) get("failed"));
+            assertEquals(View.VISIBLE, web.getVisibility());
+            assertEquals(View.GONE, ((LinearLayout) get("errorPanel")).getVisibility());
+        });
+        hold.set(false); release.countDown();
+        navigate(ONE);
+        onMain(() -> {
+            invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, web, ONE, cancel);
+            assertEquals(5, cancelled.get());
+            assertTrue((Boolean) get("failed"));
+            assertEquals(View.VISIBLE, ((LinearLayout) get("errorPanel")).getVisibility());
+            assertNull(invoke("eligibleSavedVenue"));
+        });
+    }
+
     @Test public void oversizedOrForeignHistoryCannotBeRestoredAsAnAllowedWebsite() throws Exception {
         Bundle excessive = new Bundle(); excessive.putByteArray("oversize", new byte[131073]);
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             assertNull(BrowserHistoryState.restore(web, excessive));
             assertTrue(web.getSettings().getBlockNetworkLoads());
         });
@@ -252,7 +328,7 @@ public final class NativeUsabilityRuntimeTest {
         // every response is local, without weakening the real app's URL client.
         AtomicReference<WebView> foreignView = new AtomicReference<>();
         CountDownLatch foreignLoaded = new CountDownLatch(1);
-        instrumentation.runOnMainSync(() -> {
+        onMain(() -> {
             WebView foreign = new WebView(activity); foreignView.set(foreign);
             foreign.getSettings().setBlockNetworkLoads(true);
             foreign.setWebViewClient(new WebViewClient() {
@@ -266,18 +342,18 @@ public final class NativeUsabilityRuntimeTest {
         });
         try {
             assertTrue(foreignLoaded.await(15, TimeUnit.SECONDS));
-            instrumentation.runOnMainSync(() -> {
+            onMain(() -> {
                 Bundle foreign = new Bundle();
                 WebBackForwardList captured = foreignView.get().saveState(foreign);
                 assertNotNull(captured);
                 try { BrowserHistoryState.restore(web, foreign); fail("Foreign history must be rejected"); }
                 catch (IllegalArgumentException expected) { assertTrue(web.getSettings().getBlockNetworkLoads()); }
             });
-        } finally { instrumentation.runOnMainSync(() -> foreignView.get().destroy()); }
+        } finally { onMain(() -> foreignView.get().destroy()); }
     }
 
     private void navigate(String url) throws Exception {
-        instrumentation.runOnMainSync(() -> invoke("navigate", new Class<?>[]{String.class}, url));
+        onMain(() -> invoke("navigate", new Class<?>[]{String.class}, url));
         await(() -> url.equals(web.getUrl()) && !(Boolean) get("loading") && (Boolean) get("hasUsablePage"));
     }
 
@@ -323,7 +399,7 @@ public final class NativeUsabilityRuntimeTest {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
         AtomicBoolean matched = new AtomicBoolean();
         while (System.nanoTime() < deadline) {
-            instrumentation.runOnMainSync(() -> matched.set(condition.getAsBoolean()));
+            onMain(() -> matched.set(condition.getAsBoolean()));
             if (matched.get()) return;
             Thread.sleep(50);
         }
@@ -352,6 +428,30 @@ public final class NativeUsabilityRuntimeTest {
     private Object invoke(String name, Class<?>[] types, Object... values) {
         try { Method method = MainActivity.class.getDeclaredMethod(name, types); method.setAccessible(true); return method.invoke(activity, values); }
         catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+    }
+
+    private void onMain(Runnable action) {
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Instrumentation runner = instrumentation;
+        runner.runOnMainSync(() -> {
+            try { action.run(); }
+            catch (Throwable error) { failure.set(error); }
+        });
+        Throwable error = failure.get();
+        if (error instanceof Error) throw (Error) error;
+        if (error instanceof RuntimeException) throw (RuntimeException) error;
+        if (error != null) throw new AssertionError(error);
+    }
+
+    private static WebResourceRequest mainFrameRequest(String url) {
+        return new WebResourceRequest() {
+            @Override public Uri getUrl() { return Uri.parse(url); }
+            @Override public boolean isForMainFrame() { return true; }
+            @Override public boolean isRedirect() { return false; }
+            @Override public boolean hasGesture() { return false; }
+            @Override public String getMethod() { return "GET"; }
+            @Override public Map<String, String> getRequestHeaders() { return Collections.emptyMap(); }
+        };
     }
 
 }

@@ -515,6 +515,14 @@ public final class MainActivity extends ComponentActivity {
         errorPanel.bringToFront();
     }
 
+    private void rejectSslFailure(WebView source, String errorUrl, Runnable cancel) {
+        // Rejection is unconditional, including stale or stopped requests.
+        // Only the matching active document may replace the native UI.
+        cancel.run();
+        if (source == website && errorUrl != null && errorUrl.equals(lastTrustedUrl)
+                && !errorUrl.equals(stoppedUrl)) showFailure();
+    }
+
     private final class WebsiteClient extends TestLabClient {
         WebsiteClient(TestLabPolicy policy) { super(policy); }
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -561,14 +569,14 @@ public final class MainActivity extends ComponentActivity {
         @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
             // Cloudflare can serve an interactive browser challenge as HTTP 403.
             // Keep 4xx pages visible instead of hiding the existing challenge UI.
-            if (view == website && request.isForMainFrame() && request.getUrl().toString().equals(lastTrustedUrl)) {
+            if (view == website && request.isForMainFrame() && !request.getUrl().toString().equals(stoppedUrl)
+                    && request.getUrl().toString().equals(lastTrustedUrl)) {
                 documentHasHttpError = response.getStatusCode() >= 400;
                 if (response.getStatusCode() >= 500) showFailure();
             }
         }
         @Override public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
-            handler.cancel();
-            showFailure();
+            rejectSslFailure(view, error.getUrl(), handler::cancel);
         }
         @Override public void onFormResubmission(WebView view, Message dontResend, Message resend) {
             dontResend.sendToTarget();

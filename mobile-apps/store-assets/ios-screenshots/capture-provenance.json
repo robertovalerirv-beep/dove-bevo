@@ -1,0 +1,34 @@
+{
+  "appId": "com.dovebevo.app",
+  "versionName": "1.0.0",
+  "submissionBuildNumber": 26,
+  "submissionSourceCommit": "88880558efe638e06f2fef69d74e5e789369b4cd",
+  "captureSourceCommit": "b1f69e0f338a481dbfaa0278db2d9be3324712a5",
+  "captureConfiguration": "Unsigned Debug iOS simulator, project build number 1",
+  "sourceRepresentation": "Native app, project, generator and bundled resources match build 26 source; Debug conditionals only log diagnostics. Binary identity is not claimed.",
+  "captureMethod": "Original XCUIScreen PNG exported by xcresulttool after the passing live search, map, positive coverage and native Privacy-return assertions",
+  "content": "Existing live public website and venues; no price or venue contributions submitted",
+  "reconstructionOrResizing": false,
+  "physicalDeviceVerification": false,
+  "publicReleaseEstablished": false,
+  "files": [
+    {
+      "file": "01-iphone-milano-map.png",
+      "sha256": "4805f62d67d20c209b51fdb87a1b955cbaa0ea5d5afe516bc8febb3d9adf85b0",
+      "width": 1206,
+      "height": 2622,
+      "opaque": true,
+      "pixelChanges": "none",
+      "capturedAt": "2026-10-28T15:29:12.626000+00:00",
+      "device": "iPhone 17 simulator, iOS 27.0, Xcode 27.1",
+      "artifactRunId": 40714924179,
+      "artifactId": 12828892348,
+      "artifactZipSha256": "dc27593965068f7282939d596a714fe8dd5aeb4c84c89f15f69a44a048805c53",
+      "testIdentifier": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+      "captureTestStatus": "passed",
+      "sourceAttachment": "D2C11CF3-1343-4A1C-AA9A-92E5C514997D.png",
+      "isAssociatedWithFailure": false,
+      "workflowStatus": "failed: separate iPad runner AX initialization; phone test passed"
+    }
+  ]
+}

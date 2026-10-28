@@ -37,3 +37,21 @@ For each failed or blocked step, record the step number, expected versus observe
 ## Italian “What to Test” copy
 
 Prova Dove bevo sul tuo telefono. Al primo avvio, anche offline, leggi Regole e Privacy e verifica il rifiuto; poi, se sei maggiorenne, accetta esplicitamente. Nega la posizione e cerca Milano a mano: controlla mappa, elenco e un locale esistente. Se acconsenti a condividere la posizione con il servizio, verifica separatamente **Vicino a me** con il permesso in primo piano attivo: la mappa deve centrarsi sulla posizione ottenuta e mostrare i risultati vicini o un elenco correttamente vuoto. Non registrare coordinate o immagini della posizione personale; se rifiuti il permesso, segna questa prova come BLOCCATA. Ripristina il permesso originale dopo la prova. Prova Indietro, Privacy, Home, Ricarica, Condividi senza inviare e le indicazioni, quindi torna all'app. Verifica ripresa e riapertura senza una nuova richiesta delle regole già accettate. Segnala blocchi, verifiche umane, schermate vuote, riavvii o arresti con modello, versione OS e numero build. Non inserire prezzi, locali o recensioni e non includere dati personali nelle immagini.
+
+## Native favourites comparison update
+
+Record the actual build/source first; these steps are acceptance criteria, not a passed-device claim.
+
+1. Open two existing venues and use the visible **Salva nei preferiti** action. Each saves its existing name without a naming form. This changes only this installation's bookmarks.
+2. Open native **Preferiti**, select **Birra media** and **Normale**, and compare any available recorded prices, dates and confirmation counts. Missing prices remain missing; no zero or invented price is acceptable. Inspect a venue with no selected-drink price too.
+3. Select **Negroni**, then a different category. Each row must reflect that same category. Switch **Normale / Happy hour**: the bands must stay separate, even when one has no prices. Choosing a drink should not cause a request storm.
+4. Return to **Mappa** without opening a row: the previous map/history should remain. Reopen Preferiti, select a saved row and verify it opens the corresponding existing venue on Mappa. Native Back from Preferiti returns to Mappa before navigating its browser history.
+5. Refresh, switch destinations during loading and remove only a local test entry. A late response must not reopen the wrong venue or restore the removed entry. The visible venue-save/recommend actions must not act on an old/loading page.
+6. Temporarily disconnect and reopen Preferiti. Saved names remain readable; unavailable live prices must be stated honestly. Restore the original connection and refresh. Do not record private locations or another app's content.
+7. Increase system text size and check both destinations, drink/band selectors and long venue names. Verify scrolling, touch targets and safe-area placement. Restore the original setting.
+
+No public prices, confirmations, recommendations or reports are needed for these checks. Menu research is separate; do not enter a menu quote as a consumer test contribution.
+
+Suggested Italian beta notes:
+
+Nuova navigazione nativa Mappa / Preferiti. Salva due locali esistenti con il loro nome, apri Preferiti e scegli una bevanda per confrontare i prezzi registrati. Controlla data, conferme, prezzi mancanti e la separazione Normale / Happy hour. Cambia bevanda, aggiorna, riapri un locale e torna alla mappa: la navigazione precedente deve restare. Prova testo grande e assenza di connessione, poi ripristina le impostazioni. Rimuovi solo i tuoi preferiti di prova. Non inserire prezzi, conferme, consigli pubblici o segnalazioni durante il test.

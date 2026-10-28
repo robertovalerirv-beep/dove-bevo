@@ -22,6 +22,8 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>La posizione serve per mostrarti i bar vicini sulla mappa, solo mentre usi Dove bevo. Puoi continuare a esplorare anche senza consentire l'accesso.</string>
     <key>UIApplicationSceneManifest</key>

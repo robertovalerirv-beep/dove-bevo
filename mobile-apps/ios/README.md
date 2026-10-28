@@ -26,10 +26,11 @@ landscape and iPad share popovers use UIKit defaults.
 
 Requirements: macOS, Xcode 16.4 or later with an installed iOS simulator, command-line
 tools selected with `xcode-select`, Python 3 and network access for the build tool
-and the live-site smoke test. CI pins Xcode 26.3 and the iOS 26.2 simulator.
+and the live-site smoke test. Production CI pins Xcode 26.3 and the iOS 26.2 simulator.
 The production live-test job uses `macos-15-intel`; RC.6 actually ran on
 macOS 15.7.9 (24G830), `Macmini6,2` / `x86_64h`, with an iPhone 17 `x86_64`
-simulator. Internal checks and signing jobs remain on macOS 26 ARM. The Intel
+simulator. Internal checks and signing use the standard `xcode-27` runner with
+exact Xcode 27.1 and SDK 27.1 guards; internal unit tests select iOS 27.0. The Intel
 trial still failed the live search after a WebKit GPU failure; neither host
 has passed the required live suite. See [release status](../RELEASE_STATUS.md)
 for exact runs and remaining gates. No Node or CocoaPods installation
@@ -188,8 +189,9 @@ that mode requires the selected Xcode to advertise `-allowProvisioningUpdates`
 and all three authentication-key flags. The archive uses the existing private
 P8 file for the manual profile-download trial while retaining exact team,
 certificate and profile UUID pins. Local signing without upload has no API-key
-requirement. The prepared search-list diagnostic validates the same identity
-after configuring the user search list; its hosted result is still unverified.
+requirement. The search-list diagnostic validates the same identity after
+configuring the user search list. Internal.8 and Internal.9 passed that check,
+but both still failed archive because Xcode could not find the pinned profile.
 
 Upload also requires Xcode's `altool` to support an explicit `--p8-file-path`,
 validates the IPA and then uploads using the approved API key in private storage. It never

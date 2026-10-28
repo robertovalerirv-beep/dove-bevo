@@ -56,9 +56,11 @@ assertions, eight-minute device captures and mandatory signing dependencies
 remain enforced. Do not resize failed-test screenshots, reopen a lost sheet or
 weaken the live map checks to satisfy a store requirement.
 
-The production live job uses explicit `macos-15-intel`; internal checks and
-signing jobs remain on macOS 26 ARM. The host comparison retained pinned
-Xcode 26.3 and iOS 26.2; neither host has passed the required live suite.
+The production live job uses explicit `macos-15-intel` with pinned Xcode 26.3
+and iOS 26.2. Internal checks and signing now use the standard `xcode-27` runner
+with exact Xcode 27.1 and SDK 27.1 guards; internal unit tests select iOS 27.0.
+The earlier Intel/ARM host comparison used Xcode 26.3 and iOS 26.2; neither
+host passed the required live suite.
 The main test selects the actual iPhone 17 type for a medium Dynamic Island
 capture; separate large-iPhone and 13-inch iPad checks remain required. This
 differs from the preceding iPhone 16 and is not an identical hardware comparison.
@@ -200,8 +202,9 @@ key and password were not changed.
 A separate encrypted 3DES compatibility container was privately verified against
 the same certificate, key and password. The original container and the AES trial
 are retained in the secure signing store. Only the existing
-`DOVEBEVO_IOS_CERTIFICATE_BASE64` repository secret was updated; the password,
-profile, API key and Android identity are unchanged.
+`DOVEBEVO_IOS_CERTIFICATE_BASE64` repository secret was updated for that
+container trial; the password, profile, API key and Android identity were
+unchanged at that stage.
 
 `mobile-testing/v1.0.0-internal.4` identifies merged source
 `bbc6aa21709904ea001160a36a2f8b0792ab5cbc` and
@@ -230,10 +233,18 @@ error. No signed IPA, upload or TestFlight build resulted. The team, certificate
 profile UUID and post-export validation gates remain pinned.
 
 `mobile-testing/v1.0.0-internal.8` at
-`e25cbd224a4439c6149a21df0636c5a936a8d545` is running as
+`e25cbd224a4439c6149a21df0636c5a936a8d545` ran as
 [40675741220](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40675741220).
-Android checks passed; iOS unit tests are running. No final signing, archive or
-upload result is available yet.
+All check jobs passed, and the default user keychain search list exposed the
+same validated signing identity. Archive still failed with the pinned
+profile-not-found error. No IPA was exported or uploaded.
+
+`mobile-testing/v1.0.0-internal.9` at
+`86973ffdcb0324704742566646342059906766c2` ran as
+[40678519019](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40678519019).
+The exact Xcode 27.1 toolchain guard and unit checks passed. The default
+search-list identity matched again, but archive failed with the same
+profile-not-found error. No IPA or TestFlight upload resulted.
 
 The secret publisher still defaults to `ios-distribution.p12`. The compatibility
 container requires explicit `-IosCertificateFile ios-distribution-apple-3des.p12`
@@ -255,10 +266,10 @@ The live website and initialized Italy map loaded without a Cloudflare challenge
 on this local connection. Retained evidence is
 `test-evidence/local-android-20261028/after-acceptance.png`.
 
-The city-search sheet opens, but ordinary keyboard entry is being resolved.
-No Milano result, city-map or venue check has passed yet; location and subsequent
-navigation remain untested. Emulator evidence does not establish physical-device
-behavior. Follow
+Subsequent Milano search and city selection, live map tiles/markers and existing
+venue checks passed. The current local verification section records the later
+navigation checks and remaining location/directions limits. Emulator evidence
+does not establish physical-device behavior. Follow
 [the acceptance checklist](PHYSICAL_TEST_CHECKLIST.md) and retain original
 screenshots with their dimensions.
 
@@ -268,9 +279,10 @@ been completed.
 
 ## Next release gate
 
-Internal.8 tests whether the same validated signing identity is visible in the
-configured user keychain search list. Its hosted result is unverified; it does
-not establish that Xcode can discover the pinned profile.
+`mobile-testing/v1.0.0-internal.10` at
+`eaef11d564d1c78ad308e16efa7b20ef27bfcc7d` is running with the verified
+replacement profile and preserved Apple UUID spelling. Its result is not yet
+verified; no successful archive, export or upload is established.
 
 Production remains gated on required live Android and iOS verification,
 including successful genuine phone and iPad store screenshots. Run the required

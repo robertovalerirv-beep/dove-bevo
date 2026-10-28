@@ -27,12 +27,14 @@ landscape and iPad share popovers use UIKit defaults.
 Requirements: macOS, Xcode 16.4 or later with an installed iOS simulator, command-line
 tools selected with `xcode-select`, Python 3 and network access for the build tool
 and the live-site smoke test. Production CI pins Xcode 26.3 and the iOS 26.2 simulator.
-The production live-test job uses `macos-15-intel`; RC.6 actually ran on
+The legacy production live-test job uses `macos-15-intel`; RC.6 actually ran on
 macOS 15.7.9 (24G830), `Macmini6,2` / `x86_64h`, with an iPhone 17 `x86_64`
 simulator. Internal checks and signing use the standard `xcode-27` runner with
 exact Xcode 27.1 and SDK 27.1 guards; internal unit tests select iOS 27.0. The Intel
-trial still failed the live search after a WebKit GPU failure; neither host
-has passed the required live suite. See [release status](../RELEASE_STATUS.md)
+trial failed the live search after a WebKit GPU failure. The Xcode 27.1/iOS 27.0
+capture runs subsequently passed the complete iPhone suite and the separate
+13-inch iPad live case. Their original screenshots and signed build 26 are now
+submitted for public App Store review. See [release status](../RELEASE_STATUS.md)
 for exact runs and remaining gates. No Node or CocoaPods installation
 is needed. The build-tool source is [XcodeGen 2.44.1](https://github.com/yonaskolb/XcodeGen/releases/tag/2.44.1)
 (MIT). The generation script downloads its official release ZIP, verifies the
@@ -50,7 +52,7 @@ bash mobile-apps/ios/scripts/archive-unsigned.sh
 Set `DEVELOPER_DIR` to choose an installed Xcode. Set `IOS_SIMULATOR_ID` to an
 available iPhone simulator UDID to choose a particular device, including an older
 OS for explicit compatibility checks. Set `IOS_SIMULATOR_RUNTIME` to an exact
-installed version such as `26.2` to pin the main tests and both store captures;
+installed version such as `27.0` to pin the main tests and both store captures;
 an unavailable pin or a conflicting device selection fails. `IOS_SIMULATOR_MODEL`
 selects an exact actual iPhone type from `simctl`, independent of a device's
 editable name. CI selects iPhone 17 to retain a medium Dynamic Island screenshot,
@@ -83,7 +85,14 @@ genuine phone/iPad exports must pass the final manifest, PNG and dimension gate.
 The first trial failed its live map accessibility assertion; iPad capture and
 PNG validation were skipped. Its diagnostic artifact upload also found no files;
 the capture job now includes its narrowly allowlisted hidden `.build` outputs.
-The follow-up result and successful store captures remain unverified. See
+Later runs verified genuine passing phone and iPad originals. The isolated
+`mobile-ipad-capture/v*` lane runs only the credential-free iPad live case and
+validates its original PNG; it avoids repeating a previously passing phone
+suite. Capture scripts wait for their selected simulator to boot and stop only
+a device they booted. `mobile-beta/v*` uploads a normal eligible signed build
+after fresh checks; it does not submit the public store version automatically.
+Build 26 and both captures were manually submitted and are Waiting for Review.
+See
 [release status](../RELEASE_STATUS.md).
 All tag families share this workflow's build-number counter.
 Use a new unique tag after an accepted upload: rerunning an existing workflow

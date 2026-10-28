@@ -13,7 +13,7 @@ store state establishes an approved public release.
 
 The canonical repository is `robertovalerirv-beep/dove-bevo`; the active mobile
 branch is `codex/mobile-internal-testing-20261027`. Owner main
-`2338467a795d48d10cdc606c6a6f10b1e9c15e34` is incorporated without conflicts. Mobile additions are
+`8094d3c2494851a2e29a5c0b6f5eb8d4dcb88e50` is incorporated without conflicts. Mobile additions are
 confined to `mobile-apps/` and `.github/workflows/mobile-apps.yml`; the website,
 backend, schema, deployment and website security settings are unchanged.
 PR #62 remains an older draft at head `722c`; it has not been updated or merged.
@@ -101,8 +101,9 @@ It is QA evidence, not an accepted medium-iPhone or iPad store screenshot. Do no
 resize or upscale it to satisfy store dimensions.
 
 Build 21 is **TestFlight Internal Only** and cannot be submitted for external
-testing or public App Store distribution. A production-eligible IPA, genuine iOS store captures and
-the remaining physical checks are required. Digital Services Act trader
+testing or public App Store distribution. Normal eligible build 26 and genuine
+iOS store captures are now completed and submitted; remaining physical-device
+checks are still open. Digital Services Act trader
 status was verified **Active in 27 countries** on 28 October.
 
 The source now declares `ITSAppUsesNonExemptEncryption=false` (commit
@@ -191,7 +192,7 @@ neither review has an approval or public-availability result yet.
 
 The third credential-free capture run,
 `mobile-capture/v1.0.0-xcode27.1-3`, source
-`be66b18ceea2ede8a7443f79d8b56462f0ec6872`, is running as
+`be66b18ceea2ede8a7443f79d8b56462f0ec6872`, ran as
 [40709708958](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40709708958)
 (workflow number 25), **failed** at the positive-coverage assertion. Its reviewed test accepts only the base map label and
 the exact observed region suffix, adds positive live-price coverage checks,
@@ -228,8 +229,9 @@ verified SHA-256
 `dc27593965068f7282939d596a714fe8dd5aeb4c84c89f15f69a44a048805c53`.
 The capture script now explicitly waits for its selected simulator to boot,
 matching the passing phone startup pattern, and shuts down only a device it
-booted. Mocked command controls and independent review pass; effectiveness
-against Apple's AX initialization failure is still unverified. An isolated
+booted. Mocked command controls and independent review pass; the subsequent
+isolated run 28 also passed actual boot readiness and live capture. This single
+success does not establish the root cause of the earlier AX failure. An isolated
 iPad-only capture lane avoids repeating the passing phone suite.
 The existing AWS real-device connector requires reauthentication, so no free
 minutes or device availability were established and no session or charge was

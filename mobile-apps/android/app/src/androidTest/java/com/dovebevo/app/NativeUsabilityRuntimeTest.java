@@ -11,10 +11,15 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.system.Os;
 import android.view.View;
+import android.view.InputDevice;
+import android.view.MotionEvent;
 import android.webkit.ServiceWorkerController;
 import android.webkit.WebBackForwardList;
+import android.webkit.ConsoleMessage;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -39,6 +44,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -47,6 +53,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.Assume;
+import org.json.JSONArray;
 
 /**
  * Real app callbacks/native dialogs and real WebViews, with every response local.
@@ -59,6 +66,15 @@ public final class NativeUsabilityRuntimeTest {
     private static final String ONE = "https://www.dovebevo.com/bar/n123?c=u0nd9";
     private static final String HOLD = "https://www.dovebevo.com/bar/w9?c=sr2y7";
     private static final String FAILURE = "https://www.dovebevo.com/bar/r42?c=u0nd9";
+    private static final String FIXTURE_HTML = """
+            <!doctype html><meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <meta http-equiv="Content-Security-Policy"
+              content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
+            <title>Owned native fixture</title><p>Local browser fixture</p>
+            <button id="open-venue" style="min-height:64px;width:240px"
+              onclick="history.pushState({inApp:true},'', '/bar/n123?c=u0nd9')">Open owned venue fixture</button>
+            """;
     private final Instrumentation instrumentation = InstrumentationRegistry.getInstrumentation();
     private final AtomicBoolean hold = new AtomicBoolean();
     private final CountDownLatch release = new CountDownLatch(1);
@@ -73,6 +89,7 @@ public final class NativeUsabilityRuntimeTest {
     private String oldRulesVersion;
     private boolean hadRulesVersion;
     private boolean priorWorkerBlock;
+    private final CopyOnWriteArrayList<String> events = new CopyOnWriteArrayList<>();
 
     @Before public void setUp() throws Exception {
         Assume.assumeTrue("Fixture delegates require WebView.getWebViewClient on API 26+", Build.VERSION.SDK_INT >= 26);
@@ -152,36 +169,49 @@ public final class NativeUsabilityRuntimeTest {
     @Test public void savedVenueNativeDialogsPreserveTheWebViewAndPersistAndRemoveRealFiles() throws Exception {
         navigate(ONE);
         WebView original = web;
+        AtomicReference<AlertDialog> saveDialog = new AtomicReference<>();
         onMain(() -> {
             savedUi.saveCurrent();
-            AlertDialog dialog = currentDialog();
+            saveDialog.set(currentDialog());
+        });
+        instrumentation.waitForIdleSync();
+        onMain(() -> {
+            AlertDialog dialog = saveDialog.get();
             ((EditText) dialog.findViewById(R.id.saved_venue_name)).setText("Locale di prova");
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
-            assertFalse(dialog.isShowing());
+        });
+        instrumentation.waitForIdleSync();
+        onMain(() -> {
+            assertFalse(saveDialog.get().isShowing());
             assertSame(original, get("website"));
         });
         assertEquals("Locale di prova", new SavedVenueStore(new SavedVenueFile(fixtureDirectory)).load().get(0).label);
         assertEquals(ONE, store.load().get(0).url);
-        onMain(() -> {
-            savedUi.saveCurrent();
-            currentDialog().getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
-            savedUi.showList();
-            currentDialog().getListView().performItemClick(null, 0, 0);
-            currentDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick();
-        });
+        onMain(() -> savedUi.saveCurrent());
+        instrumentation.waitForIdleSync();
+        onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_NEGATIVE).performClick());
+        instrumentation.waitForIdleSync();
+        onMain(() -> savedUi.showList());
+        instrumentation.waitForIdleSync();
+        onMain(() -> currentDialog().getListView().performItemClick(null, 0, 0));
+        instrumentation.waitForIdleSync();
+        onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick());
         await(() -> ONE.equals(web.getUrl()) && (Boolean) get("hasUsablePage") && !(Boolean) get("loading"));
         onMain(() -> {
             assertSame(original, get("website"));
             savedUi.showList();
-            currentDialog().getListView().performItemClick(null, 0, 0);
-            currentDialog().getButton(AlertDialog.BUTTON_NEUTRAL).performClick();
         });
+        instrumentation.waitForIdleSync();
+        onMain(() -> currentDialog().getListView().performItemClick(null, 0, 0));
+        instrumentation.waitForIdleSync();
+        onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_NEUTRAL).performClick());
+        instrumentation.waitForIdleSync();
         assertTrue(store.load().isEmpty());
     }
 
     @Test public void sameDocumentHistoryControlsAndNativeSavedStateRestoreAForwardEntry() throws Exception {
         navigate(BrowserPolicy.HOME);
-        onMain(() -> web.evaluateJavascript("history.pushState({inApp:true},'', '/bar/n123?c=u0nd9')", null));
+        tapOwnedVenueButton();
         await(() -> ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
         onMain(() -> {
             assertFalse(((Button) get("forwardButton")).isEnabled());
@@ -363,11 +393,22 @@ public final class NativeUsabilityRuntimeTest {
         web.getSettings().setBlockNetworkLoads(true);
         actualClient = web.getWebViewClient();
         WebViewClient delegate = actualClient;
+        WebChromeClient actualChrome = web.getWebChromeClient();
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override public boolean onConsoleMessage(ConsoleMessage message) {
+                record("console=" + message.message());
+                return actualChrome.onConsoleMessage(message);
+            }
+            @Override public void onProgressChanged(WebView view, int progress) {
+                record("progress=" + progress + " url=" + view.getUrl());
+                actualChrome.onProgressChanged(view, progress);
+            }
+        });
         web.setWebViewClient(new WebViewClient() {
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 WebResourceResponse guarded = delegate.shouldInterceptRequest(view, request);
                 if (guarded != null) return guarded;
-                byte[] bytes = "<!doctype html><meta charset=utf-8><meta http-equiv=Content-Security-Policy content=\"default-src 'none'\"><title>Owned native fixture</title><p>Local browser fixture</p>".getBytes(StandardCharsets.UTF_8);
+                byte[] bytes = FIXTURE_HTML.getBytes(StandardCharsets.UTF_8);
                 InputStream body = new ByteArrayInputStream(bytes);
                 if (hold.get() && HOLD.equals(request.getUrl().toString())) body = new ByteArrayInputStream(bytes) {
                     @Override public synchronized int read(byte[] buffer, int offset, int length) {
@@ -377,6 +418,7 @@ public final class NativeUsabilityRuntimeTest {
                     }
                 };
                 int status = !"GET".equals(request.getMethod()) ? 403 : FAILURE.equals(request.getUrl().toString()) ? 500 : 200;
+                record("response=" + status + " main=" + request.isForMainFrame() + " url=" + request.getUrl());
                 return new WebResourceResponse("text/html", "UTF-8", status,
                         status == 200 ? "OK" : status == 500 ? "Service Unavailable" : "Forbidden",
                         Collections.singletonMap("Cache-Control", "no-store"), body);
@@ -385,13 +427,14 @@ public final class NativeUsabilityRuntimeTest {
                 return delegate.shouldOverrideUrlLoading(view, request);
             }
             @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
+                record("started=" + url);
                 delegate.onPageStarted(view, url, icon);
                 if (HOLD.equals(url) && hold.get()) holdStarted.countDown();
             }
-            @Override public void onPageFinished(WebView view, String url) { delegate.onPageFinished(view, url); }
-            @Override public void doUpdateVisitedHistory(WebView view, String url, boolean reload) { delegate.doUpdateVisitedHistory(view, url, reload); }
-            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) { delegate.onReceivedError(view, request, error); }
-            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) { delegate.onReceivedHttpError(view, request, response); }
+            @Override public void onPageFinished(WebView view, String url) { record("finished=" + url); delegate.onPageFinished(view, url); }
+            @Override public void doUpdateVisitedHistory(WebView view, String url, boolean reload) { record("history=" + url); delegate.doUpdateVisitedHistory(view, url, reload); }
+            @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) { record("error=" + error.getErrorCode() + " main=" + request.isForMainFrame() + " url=" + request.getUrl()); delegate.onReceivedError(view, request, error); }
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) { record("http=" + response.getStatusCode() + " main=" + request.isForMainFrame() + " url=" + request.getUrl()); delegate.onReceivedHttpError(view, request, response); }
         });
     }
 
@@ -403,7 +446,42 @@ public final class NativeUsabilityRuntimeTest {
             if (matched.get()) return;
             Thread.sleep(50);
         }
-        fail("Native fixture state did not become ready within 15 seconds");
+        AtomicReference<String> state = new AtomicReference<>();
+        onMain(() -> state.set("url=" + web.getUrl() + " history=" + web.copyBackForwardList().getSize()
+                + " canBack=" + web.canGoBack() + " backEnabled=" + ((Button) get("backButton")).isEnabled()
+                + " canForward=" + web.canGoForward() + " forwardEnabled=" + ((Button) get("forwardButton")).isEnabled()
+                + " loading=" + get("loading") + " failed=" + get("failed") + " usable=" + get("hasUsablePage")
+                + " stopped=" + get("stoppedUrl") + " httpError=" + get("documentHasHttpError")));
+        fail("Native fixture state did not become ready within 15 seconds: " + state.get() + " events=" + String.join(" | ", events));
+    }
+
+    private void record(String event) { if (events.size() < 100) events.add(event); }
+
+    private void tapOwnedVenueButton() throws Exception {
+        CountDownLatch measured = new CountDownLatch(1);
+        AtomicReference<String> geometry = new AtomicReference<>();
+        AtomicReference<int[]> screen = new AtomicReference<>();
+        onMain(() -> {
+            int[] origin = new int[2]; web.getLocationOnScreen(origin);
+            screen.set(new int[]{origin[0], origin[1], web.getWidth()});
+            // Measure only our own fixture; the history mutation must follow a
+            // real touch, so Chromium does not mark the entry as skippable.
+            web.evaluateJavascript("(function(){const r=document.getElementById('open-venue').getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2,innerWidth];})()",
+                    result -> { geometry.set(result); measured.countDown(); });
+        });
+        assertTrue("Owned fixture button geometry missing", measured.await(5, TimeUnit.SECONDS));
+        JSONArray point = new JSONArray(geometry.get());
+        double scale = screen.get()[2] / point.getDouble(2);
+        float x = (float) (screen.get()[0] + point.getDouble(0) * scale);
+        float y = (float) (screen.get()[1] + point.getDouble(1) * scale);
+        long downAt = SystemClock.uptimeMillis();
+        MotionEvent down = MotionEvent.obtain(downAt, downAt, MotionEvent.ACTION_DOWN, x, y, 0);
+        down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        try { instrumentation.sendPointerSync(down); } finally { down.recycle(); }
+        SystemClock.sleep(50);
+        MotionEvent up = MotionEvent.obtain(downAt, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, x, y, 0);
+        up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        try { instrumentation.sendPointerSync(up); } finally { up.recycle(); }
     }
 
     private AlertDialog currentDialog() {

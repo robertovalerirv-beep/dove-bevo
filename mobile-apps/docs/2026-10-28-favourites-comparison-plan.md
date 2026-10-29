@@ -28,35 +28,37 @@
 
 ## Task 1 - Existing-data and menu route
 
-- [ ] Verify health/version/static-cell/public-price contracts against source and a bounded live GET.
-- [ ] Record first-party menu facts for exact existing Italian venue keys, maintaining currency, serving/context and checked date.
-- [ ] Record Google eligibility and menu publication constraints without claiming an unsupported import.
+- [x] Verify health/version/static-cell/public-price contracts against source and a bounded live GET.
+- [x] Record first-party menu facts for exact existing Italian venue keys, maintaining currency, serving/context and checked date.
+- [x] Record Google eligibility and menu publication constraints without claiming an unsupported import.
 
 ## Task 2 - Android native comparison
 
 Owner: Android lane, exclusive platform tree mobile-apps/android.
 
-- [ ] Add focused failing model/client/UI fixture checks for same category/band, active sorting, visibility, missing/error and races.
-- [ ] Add bounded fixed-origin GET transport and cell model, preserving the bookmark store.
-- [ ] Implement native persistent destinations and full favourites comparison list, context save/recommend actions and secondary browser controls.
-- [ ] Run JVM checks, compilation and lint; root owns device execution.
-- [ ] Commit only platform paths and report exact SHA, failures and commands.
+- [x] Add focused failing model/client/UI fixture checks for same category/band, active sorting, visibility, missing/error and races.
+- [x] Add bounded fixed-origin GET transport and cell model, preserving the bookmark store.
+- [x] Implement native persistent destinations and full favourites comparison list, context save/recommend actions and secondary browser controls.
+- [x] Run JVM checks, compilation and lint; root owns device execution.
+- [x] Commit only platform paths and report exact SHA, failures and commands.
 
 ## Task 3 - iOS native comparison
 
 Owner: iOS lane, exclusive platform tree mobile-apps/ios.
 
-- [ ] Add meaningful fixture/native test coverage equivalent to Android, retaining table-managed targets.
-- [ ] Implement bounded ephemeral GET transport, strict cell model and cancellation.
-- [ ] Implement native destinations and accessible favourites selectors/list; keep browser and rule acceptance intact.
-- [ ] Run available source guards; hosted Mac must run native tests before signing.
-- [ ] Commit only platform paths and report exact SHA, unavailable checks and commands.
+- [x] Add meaningful fixture/native test coverage equivalent to Android, retaining table-managed targets.
+- [x] Implement bounded ephemeral GET transport, strict cell model and cancellation.
+- [x] Implement native destinations and accessible favourites selectors/list; keep browser and rule acceptance intact.
+- [x] Run available source guards; hosted Mac must run native tests before signing.
+- [x] Commit only platform paths and report exact SHA, unavailable checks and commands.
 
 ## Task 4 - Integration and delivery
 
-- [ ] Independently review both platform commits before integration; fix in owning lanes.
-- [ ] Update bundled privacy disclosures and release documentation with actual behaviour and limits.
-- [ ] Root runs fresh combined guards/JVM/build/lint and owned background Android fixture/live read-only checks.
-- [ ] Run one necessary exact-source gated native beta, inspect actual results/artifacts before store upload.
-- [ ] Read back distribution state, keeping public release and physical acceptance separate.
+- [x] Independently review both platform commits before integration; fix in owning lanes.
+- [x] Update bundled privacy disclosures and release documentation with actual behaviour and limits.
+- [x] Root runs fresh combined guards/JVM/build/lint and owned background Android fixture/live read-only checks.
+- [x] Run necessary exact-source gated native beta checks, inspect signed results/artifacts and verify distribution state. Strict iOS CI validation precedes its upload; the retained IPA audit follows it. Build 35 exposed a real tab-label issue; corrected build 36 passed without weakening tests. Both build-35 signers were skipped.
+- [x] Read back distribution state, keeping public release and physical acceptance separate.
 - [ ] Publish exactly one curated UOS handoff through bound checkpoint and sealed receipt; attempt mirrors honestly.
+
+See [delivery status](2026-10-28-favourites-comparison-status.md) for exact source, checks and store readback. Physical acceptance of build 36 and public review decisions remain open.

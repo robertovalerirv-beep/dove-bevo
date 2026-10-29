@@ -1,10 +1,12 @@
 # Mobile release status
 
-Last verified: 28 October 2026 (UTC).
+Last verified: 29 October 2026 (UTC).
 
-Both public store releases are submitted: Google Play's production changes are
+Both public store releases remain submitted: Google Play's production changes are
 **in review**, and Apple confirms iOS version 1.0.0, build 26, **Waiting for
-Review**. The latest native update, build **34**, is now **Available to internal testers** in Google Play and **Testing** in TestFlight for the existing owner and Roberto groups. It adds shared drink recommendations and retains automatic-name private bookmarks. Email delivery and Roberto's installation are not established. The owner subsequently reports that build 34 opens the existing venue name, all nine recommendation categories and shared totals, scrolls and returns with Back on his personal iPhone. That is a limited human-reported check; public vote/undo and Android physical installation remain unverified.
+Review**. The latest native update, build **36**, is **Available to internal testers** in Google Play and **Testing** in TestFlight for the existing owner and Roberto groups. It adds native **Mappa / Preferiti** navigation and compares a chosen drink's recorded prices across local favourites, keeping normal and happy-hour prices separate. Automatic venue names and shared drink recommendations remain included. See [the exact build-36 delivery record](docs/2026-10-28-favourites-comparison-status.md) for checks, signed artifacts, live browsing evidence and limitations. Email delivery, installation and physical acceptance of build 36 remain unverified.
+
+The owner previously reported that build 34 opens the existing venue name, all nine recommendation categories and shared totals, scrolls and returns with Back on his personal iPhone. That is a limited human-reported check of build 34; public vote/undo and Android physical installation remain unverified.
 Internal build 21 is installed on the owner's iPhone. Physical evidence
 currently covers map/price rendering and reported venue Back behavior; neither
 store state establishes an approved public release.
@@ -15,7 +17,7 @@ The owner's later physical screenshots exposed build 31's confusing naming form.
 
 ## Source and scope
 
-The canonical repository is `robertovalerirv-beep/dove-bevo`; the submitted-release branch `codex/mobile-internal-testing-20261027` remains the reference for public Android 20/iOS 26. Latest mobile source and evidence are saved on `codex/mobile-drink-recommendations-20261028`, with signed build 34 frozen at `388e200844ced599be4212e6d6af5c23744fe3f1` and tag `mobile-beta/v1.0.0-drink-recommendations.2`.
+The canonical repository is `robertovalerirv-beep/dove-bevo`; the submitted-release branch `codex/mobile-internal-testing-20261027` remains the reference for public Android 20/iOS 26. Latest mobile source and evidence are saved on `codex/mobile-favourites-comparison-20261028`, with signed build 36 frozen at `01ffc66531b255485122836a3a4777dbb51bd158` and tag `mobile-beta/v1.0.0-favourites-comparison.2`. The earlier build-34 source `388e200844ced599be4212e6d6af5c23744fe3f1` and tag `mobile-beta/v1.0.0-drink-recommendations.2` remain preserved.
 
 The initial mobile additions were app-only at owner baseline `8094d3c2494851a2e29a5c0b6f5eb8d4dcb88e50`. The owner's later narrow apps-only shared-voting exception adds one API and table in the existing Worker/D1: [PR 73](https://github.com/robertovalerirv-beep/dove-bevo/pull/73), merged and deployed at `1a58d7332d4275e0a56ed21c60240459afab1a5e`. The website interface, existing prices, price confirmations and session/security boundaries retain their behavior. See [ADR 0041](../docs/adr/0041-app-drink-recommendations.md). No new Cloudflare resource, secret or browser-cookie bridge was created.
 
@@ -281,6 +283,6 @@ remain in Git history and retained evidence.
 Next owners must read both public review decisions, verify store availability
 after approval and complete the remaining installed-device checks. Confirm
 Roberto's invitation delivery and gather his TestFlight feedback for the now
-available corrected build 32; build 31 still has the superseded manual-name form. Its automatic-name physical acceptance remains open. Use
+available build 36 and its native drink comparison; build 31 still has the superseded manual-name form. Physical acceptance of build 36 remains open. Use
 [the device checklist](PHYSICAL_TEST_CHECKLIST.md). Upload, processing, review
 approval and public availability are separate states; none imply the next.

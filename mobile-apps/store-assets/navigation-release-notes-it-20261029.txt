@@ -1,0 +1,3 @@
+Home, Mappa, Preferiti, Salva e Drink consigliati nella barra inferiore.
+Condividi e Ricarica nel menu in alto.
+Salvataggio con il nome del locale e confronto dei prezzi dei drink nei Preferiti.

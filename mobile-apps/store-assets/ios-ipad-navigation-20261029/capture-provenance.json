@@ -1,0 +1,53 @@
+{
+  "schema": "dovebevo-original-navigation-screenshots/v1",
+  "sourceCommit": "c24c7be2a67039ac80385e809f5f68d0614307e4",
+  "workflowRun": 40955432655,
+  "workflowRunNumber": 43,
+  "checkArtifact": 12934367430,
+  "checkArtifactZIP_SHA256": "5eaf88c5743a3904af216c3877483c0e105422eb93660a03d932bffa5563dfa3",
+  "device": "iPad Air 13-inch M4",
+  "runtime": "iOS 27.0",
+  "captureType": "Original unsigned Debug simulator screen from passing live tests",
+  "identityLimit": "Same application source as signed release candidate 41; screenshots are not a signed IPA or physical-device capture.",
+  "publicContributionsDuringTest": false,
+  "specification": "https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications",
+  "appleDisplaySlot": "iPad 13-inch display",
+  "images": [
+    {
+      "file": "01-ipad-milano-map.png",
+      "originalAttachment": "8C778C2F-DC66-4434-B849-0B7093802E07.png",
+      "attachmentName": "DoveBevo-live-Milano-map_0_35C57A83-FE7E-4724-B22F-7E0655A4DA97.png",
+      "test": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+      "dimensions": [2048, 2732],
+      "colorType": "RGB without alpha",
+      "timestampUTC": "2026-10-29T21:26:22.845000+00:00",
+      "bytes": 1142588,
+      "sha256": "55b9bd3340b20a8741bcb661c6ac3a4d09a7e8041efed78cba9b4e0abd9e9e52",
+      "edited": false
+    },
+    {
+      "file": "02-ipad-favourites-comparison.png",
+      "originalAttachment": "6A1521FB-0C23-49C6-8629-73088498428F.png",
+      "attachmentName": "DoveBevo-live-native-saved-venue_0_2C4251D2-D65B-4698-B926-2E93A2464AD7.png",
+      "test": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+      "dimensions": [2048, 2732],
+      "colorType": "RGB without alpha",
+      "timestampUTC": "2026-10-29T21:25:19.787000+00:00",
+      "bytes": 188469,
+      "sha256": "aa86bbc17de863fa899209de4c0224ccd5eed1b9950280e842284edeb565e645",
+      "edited": false
+    },
+    {
+      "file": "03-ipad-drink-recommendations.png",
+      "originalAttachment": "BEFA8169-0B5D-4B91-A111-E92E39D1A114.png",
+      "attachmentName": "DoveBevo-live-native-recommendations-read-only_0_C8D0489B-CD38-4240-B4C1-C1AC32BFCCDD.png",
+      "test": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+      "dimensions": [2048, 2732],
+      "colorType": "RGB without alpha",
+      "timestampUTC": "2026-10-29T21:24:56.013000+00:00",
+      "bytes": 251365,
+      "sha256": "025c72704f3a4551c5710b25a5d97d958db0a93e03078f755096a42615314044",
+      "edited": false
+    }
+  ]
+}

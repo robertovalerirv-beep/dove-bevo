@@ -3,9 +3,9 @@
  * The response nonce stays in this document and is never returned to native code.
  */
 (() => {
-  'use strict';
-  const id = 'dovebevo-native-theme-v1';
-  const marker = 'data-dovebevo-app-theme';
+  "use strict";
+  const id = "dovebevo-native-theme-v1";
+  const marker = "data-dovebevo-app-theme";
   const css = String.raw`
 :root[data-dovebevo-app-theme="1"] {
   color-scheme: light;
@@ -249,30 +249,44 @@ html[data-dovebevo-app-theme="1"] .price__stale { color: #9b2938; }
   let previous;
   try {
     const url = new URL(window.location.href);
-    if (window.top !== window || url.protocol !== 'https:' ||
-        !['dovebevo.com', 'www.dovebevo.com'].includes(url.hostname) ||
-        url.username || url.password || (url.port && url.port !== '443') ||
-        !/^(?:\/|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname)) return false;
-    if (!document.querySelector('#app > .app .top') ||
-        !document.querySelector('#app > .app .main')) return false;
+    if (
+      window.top !== window ||
+      url.protocol !== "https:" ||
+      !["dovebevo.com", "www.dovebevo.com"].includes(url.hostname) ||
+      url.username ||
+      url.password ||
+      (url.port && url.port !== "443") ||
+      !/^(?:\/|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname)
+    )
+      return false;
+    if (!document.querySelector("#app > .app .top") || !document.querySelector("#app > .app .main"))
+      return false;
     root = document.documentElement;
     const existing = document.getElementById(id);
-    if (existing && (existing.tagName !== 'STYLE' ||
-        existing.getAttribute('data-dovebevo-style') !== '1')) return false;
-    if (existing && root.getAttribute(marker) === '1' &&
-        getComputedStyle(root).getPropertyValue('--dovebevo-app-theme').trim() === '1') return true;
-    const source = [...document.querySelectorAll('style[nonce], script[nonce]')]
-      .find(node => /^[A-Za-z0-9+/_=-]{16,128}$/.test(node.nonce));
+    if (
+      existing &&
+      (existing.tagName !== "STYLE" || existing.getAttribute("data-dovebevo-style") !== "1")
+    )
+      return false;
+    if (
+      existing &&
+      root.getAttribute(marker) === "1" &&
+      getComputedStyle(root).getPropertyValue("--dovebevo-app-theme").trim() === "1"
+    )
+      return true;
+    const source = [...document.querySelectorAll("style[nonce], script[nonce]")].find((node) =>
+      /^[A-Za-z0-9+/_=-]{16,128}$/.test(node.nonce),
+    );
     if (!source || !document.head) return false;
     previous = root.getAttribute(marker);
-    style = existing || document.createElement('style');
+    style = existing || document.createElement("style");
     style.id = id;
-    style.setAttribute('data-dovebevo-style', '1');
+    style.setAttribute("data-dovebevo-style", "1");
     style.nonce = source.nonce;
     style.textContent = css;
     if (!existing) document.head.appendChild(style);
-    root.setAttribute(marker, '1');
-    if (getComputedStyle(root).getPropertyValue('--dovebevo-app-theme').trim() === '1') return true;
+    root.setAttribute(marker, "1");
+    if (getComputedStyle(root).getPropertyValue("--dovebevo-app-theme").trim() === "1") return true;
   } catch (_) {
     // A failed enhancement leaves the original working website in place.
   }

@@ -87,6 +87,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Check shared app presentation isolation contract
+        run: node --test mobile-apps/presentation/tests/app-theme.test.mjs
       - name: Build APK and unsigned release bundle, run tests and lint
         working-directory: mobile-apps/android
         run: bash gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:bundleRelease

@@ -14,6 +14,11 @@ public final class FavoriteComparisonTest {
     static byte[] bytes(String value) { return value.getBytes(StandardCharsets.UTF_8); }
     static final String STATIC = "{\"c\":[[1,\"Milano\"]],\"v\":[[\"n123\",\"Locale reale\",1,45.4642,9.19,\"Via A\",0],[\"w9\",\"Altro locale\",1,45.4643,9.1901,\"\",0]]}";
     static final String PRICES = "{\"p\":[[\"n123\",\"beer_draft\",0,800,\"2026-10-28\",2,0],[\"n123\",\"beer_draft\",1,500,\"2026-10-27\",1,0],[\"w9\",\"beer_draft\",0,600,\"2026-06-01\",0,0]],\"u\":[],\"pend\":[],\"h\":[],\"g\":[]}";
+    private static final String[][] EUROPE = {
+            {"Paris", "48.8566", "2.3522", "u09tv"},
+            {"Berlin", "52.52", "13.405", "u33dc"},
+            {"Madrid", "40.4168", "-3.7038", "ezjmg"}
+    };
     static List<SavedVenueStore.Venue> saved() throws Exception {
         SavedVenueStore store = new SavedVenueStore(new SavedVenueStore.Storage() {
             byte[] value; public byte[] read() { return value; } public void write(byte[] next) { value=next; }
@@ -53,6 +58,47 @@ public final class FavoriteComparisonTest {
             FavoriteComparison.Cell value=FavoriteComparison.parse(missing,bytes(data),"u0nd9","2026-10-29");
             assertFalse(value.staticVerified); assertEquals("Locale approvato",value.names.get("u7"));assertFalse(value.names.containsKey("u8"));assertFalse(value.names.containsKey("n123"));
         }
+    }
+    @Test public void europeanStaticAndApprovedVenuesResolvePricesWithTheirExactCells() throws Exception {
+        for(String[] city:EUROPE){
+            FavoriteComparison.Cell cell=FavoriteComparison.parse(bytes(staticAt(city[0],city[1],city[2])),bytes(approvedAt(city[1],city[2])),city[3],"2026-10-29");
+            assertTrue(city[0],cell.staticVerified);
+            SavedVenueStore store=new SavedVenueStore(new SavedVenueStore.Storage(){
+                byte[] value;public byte[] read(){return value;}public void write(byte[] next){value=next;}
+            });
+            assertEquals(SavedVenueStore.Result.SAVED,store.save("https://www.dovebevo.com/bar/n123?c="+city[3],"Saved static fixture"));
+            assertEquals(SavedVenueStore.Result.SAVED,store.save("https://www.dovebevo.com/bar/u7?c="+city[3],"Saved approved fixture"));
+            List<FavoriteComparison.Row> rows=FavoriteComparison.rows(store.load(),Collections.singletonMap(city[3],cell),RecommendationDrink.BEER_DRAFT,0);
+            assertEquals(2,rows.size());assertEquals(city[0],rows.get(0).name);assertEquals(800,rows.get(0).price.cents);
+            assertEquals("Approved fixture",rows.get(1).name);assertEquals(900,rows.get(1).price.cents);
+            assertTrue(rows.stream().allMatch(row->row.state==FavoriteComparison.State.AVAILABLE));
+        }
+    }
+    @Test public void europeanVenuesInTheWrongRequestedCellRemainUnavailable() throws Exception {
+        for(String[] city:EUROPE){
+            FavoriteComparison.Cell cell=FavoriteComparison.parse(bytes(staticAt(city[0],city[1],city[2])),bytes(PRICES),"u0nd9","2026-10-29");
+            assertFalse(city[0],cell.staticVerified);assertTrue(cell.names.isEmpty());assertTrue(cell.prices.isEmpty());
+            try{FavoriteComparison.parse(null,bytes(approvedAt(city[1],city[2])),"u0nd9","2026-10-29");fail("Accepted approved venue from a different cell: "+city[0]);}
+            catch(IOException expected){}
+        }
+    }
+    @Test public void worldCoordinateEdgesAreValidButOutOfRangeAndNonNumericValuesAreNot() throws Exception {
+        for(String[] edge:new String[][]{{"90","180","zzzzz"},{"-90","-180","00000"}}){
+            FavoriteComparison.Cell cell=FavoriteComparison.parse(null,bytes(approvedAt(edge[0],edge[1])),edge[2],"2026-10-29");
+            assertEquals("Approved fixture",cell.names.get("u7"));
+        }
+        for(String[] invalid:new String[][]{{"90.00001","0"},{"-90.00001","0"},{"0","180.00001"},{"0","-180.00001"},
+                {"true","0"},{"null","0"},{"\"48.8566\"","2.3522"},{"1e999","0"}}){
+            try{FavoriteComparison.parse(null,bytes(approvedAt(invalid[0],invalid[1])),"u09tv","2026-10-29");fail("Accepted invalid world coordinates");}
+            catch(IOException expected){}
+        }
+    }
+    private static String staticAt(String name,String lat,String lon){
+        return "{\"c\":[[1,\""+name+"\"]],\"v\":[[\"n123\",\""+name+"\",1,"+lat+","+lon+",\"\",0]]}";
+    }
+    private static String approvedAt(String lat,String lon){
+        return PRICES.replace("\"u\":[]","\"u\":[[\"u7\",\"Approved fixture\",1,"+lat+","+lon+"]]")
+                .replace("\"p\":[","\"p\":[[\"u7\",\"beer_draft\",0,900,\"2026-10-28\",0,0],");
     }
     @Test public void rejectsMalformedNumbersCalendarDatesDuplicatePairsAndBodies() throws Exception {
         String duplicate=PRICES.replace("\"p\":[","\"p\":[[\"n123\",\"beer_draft\",0,800,\"2026-10-28\",2,0],");

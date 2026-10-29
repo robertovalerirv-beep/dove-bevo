@@ -82,7 +82,8 @@ final class FavoriteComparison {
     }
     private static String pair(String key,RecommendationDrink drink,int band){return key+"/"+drink.code+"/"+band;}
     private static void location(List<?> row,int start,String cell)throws IOException{
-        NativeJson.integer(row.get(start),0,4);double lat=NativeJson.decimal(row.get(start+1),35.2,47.2),lon=NativeJson.decimal(row.get(start+2),6.5,18.6);
+        // Public venues can be outside Italy; their coordinates must still match the requested cell.
+        NativeJson.integer(row.get(start),0,4);double lat=NativeJson.decimal(row.get(start+1),-90,90),lon=NativeJson.decimal(row.get(start+2),-180,180);
         if(!geohash(lat,lon).equals(cell))throw NativeJson.invalid();
     }
     private static String geohash(double lat,double lon){

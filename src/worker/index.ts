@@ -35,6 +35,8 @@ app.on("POST", "/api/*", requireRealSecrets);
 // Burst limit on every write and on the per-bar history (SPEC 9.2, 13.3).
 app.on("POST", "/api/*", rateLimit);
 app.get("/api/venues/*", rateLimit);
+// Admin reads too: a flood of forged tokens must not reach the key download or the database (audit 28/10/2026).
+app.get("/api/admin/*", rateLimit);
 // Cell reads hit D1 on every call (the Cache API is inactive on workers.dev): one script must not
 // burn the free-plan quota in minutes (red-team audit 14/10/2026, ADR 0021).
 app.get("/api/prices/*", readLimit);

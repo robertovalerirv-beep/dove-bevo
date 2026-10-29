@@ -114,6 +114,13 @@ html[data-dovebevo-app-theme="1"] .sheet {
 html[data-dovebevo-app-theme="1"] .sheet__head {
   padding: 14px 16px 10px;
 }
+html[data-dovebevo-app-theme="1"] .sheet__title {
+  font: 700 20px/1.25 var(--font-sans);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+html[data-dovebevo-app-theme="1"] .sheet__head > .btn { flex: none; }
 html[data-dovebevo-app-theme="1"] .sheet__body {
   padding: 16px 16px max(24px, env(safe-area-inset-bottom));
 }

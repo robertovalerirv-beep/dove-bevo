@@ -2,6 +2,7 @@
  * No bridge, network, storage, event handler, form or application-data changes.
  * The response nonce stays in this document and is never returned to native code.
  */
+/* global window, document, URL, getComputedStyle */
 (() => {
   "use strict";
   const id = "dovebevo-native-theme-v1";
@@ -287,7 +288,7 @@ html[data-dovebevo-app-theme="1"] .price__stale { color: #9b2938; }
     if (!existing) document.head.appendChild(style);
     root.setAttribute(marker, "1");
     if (getComputedStyle(root).getPropertyValue("--dovebevo-app-theme").trim() === "1") return true;
-  } catch (_) {
+  } catch {
     // A failed enhancement leaves the original working website in place.
   }
   if (style) style.remove();

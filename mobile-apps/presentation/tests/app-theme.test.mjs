@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
+import { Buffer } from "node:buffer";
+import { URL } from "node:url";
 
 const source = readFileSync(new URL("../app-theme.js", import.meta.url), "utf8");
 

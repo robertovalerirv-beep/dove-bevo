@@ -36,6 +36,8 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             XCTAssertEqual(controller.tableView.bounds.width, 320, accuracy: 0.5)
             XCTAssertEqual(controller.traitCollection.preferredContentSizeCategory, .accessibilityExtraExtraExtraLarge)
             let cell = try row(controller)
+            XCTAssertTrue(cell.window === window, "Inspect the real table-owned cell in the mounted narrow window")
+            XCTAssertTrue(controller.tableView.bounds.intersects(cell.convert(cell.bounds, to: controller.tableView)), "Scroll the actual cell into the visible table viewport")
             let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
             XCTAssertEqual(content.text, longName)
             let text = try XCTUnwrap(content.secondaryAttributedText)
@@ -223,7 +225,20 @@ final class FavouriteComparisonControllerTests: XCTestCase {
     @MainActor
     private func row(_ controller: SavedVenuesViewController) throws -> UITableViewCell {
         controller.view.layoutIfNeeded()
-        return try XCTUnwrap(controller.tableView.cellForRow(at: IndexPath(row: 0, section: 0)))
+        let table = try XCTUnwrap(controller.tableView)
+        let indexPath = IndexPath(row: 0, section: 0)
+        if table.numberOfRows(inSection: 0) > 0 {
+            // At320pt/XXXL the real, fully wrapped header may exceed one
+            // viewport. UITableView creates its cell lazily when scrolled in.
+            // Never fabricate a data-source cell or shrink the text fixture.
+            table.scrollToRow(at: indexPath, at: .top, animated: false)
+            table.layoutIfNeeded()
+            let materialised = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                table.cellForRow(at: indexPath) != nil
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [materialised], timeout: 5), .completed, "The real scrolled row must materialise")
+        }
+        return try XCTUnwrap(table.cellForRow(at: indexPath))
     }
     @MainActor
     private func descendants(_ view: UIView) -> [UIView] { view.subviews + view.subviews.flatMap { descendants($0) } }

@@ -52,6 +52,7 @@ class AppPresentationGuards(unittest.TestCase):
         favourites = (IOS / "Tests/FavouriteComparisonControllerTests.swift").read_text(encoding="utf-8")
         for required in ["testWhiteCardsRenderRealPriceAndMissingState", "accessibilityExtraExtraExtraLarge", "width: 320",
                          "Measure the actual native name and price labels", "label.sizeThatFits", "Prezzo non disponibile",
+                         "scrollToRow(at: indexPath, at: .top, animated: false)", "cell.window === window", "table.cellForRow(at: indexPath)",
                          "Presentation and refresh must not rewrite private bookmark identity"]:
             self.assertIn(required, favourites)
         recommendations = (IOS / "Tests/RecommendationControllerTests.swift").read_text(encoding="utf-8")

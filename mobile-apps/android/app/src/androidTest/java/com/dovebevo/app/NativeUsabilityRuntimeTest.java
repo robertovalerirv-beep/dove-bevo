@@ -311,6 +311,44 @@ public final class NativeUsabilityRuntimeTest {
         assertOwnedDocument(2);
     }
 
+    @Test public void restoringFavoritesBeforeResumeWaitsForForegroundAndKeepsRetainedBrowser() throws Exception {
+        navigate(ONE);
+        onMain(() -> {
+            FavoritesScreen screen = new FavoritesScreen(activity, store,
+                    url -> invoke("navigate", new Class<?>[]{String.class}, url),
+                    () -> (Boolean)get("foreground"),
+                    new FavoritesLoader(new FavoritePricesClient((url,max,call) -> {
+                        throw new IOException("Empty owned favourites must not fetch");
+                    }, () -> "2026-10-29"), task -> activity.runOnUiThread(task)));
+            set("favorites", screen);
+            ((FrameLayout)get("content")).addView(screen.view());
+            screen.view().setVisibility(View.GONE);
+            WebView retained = web;
+            int historyIndex = web.copyBackForwardList().getCurrentIndex();
+            invoke("onPause");
+            Bundle restored = new Bundle(); restored.putBoolean("favorites_visible", true);
+            invoke("restoreDestination", new Class<?>[]{Bundle.class}, restored);
+            assertFalse((Boolean)get("favoritesVisible"));
+            assertTrue((Boolean)get("restoreFavoritesPending"));
+            invoke("showFavorites"); // The ordinary action remains fenced while paused.
+            assertFalse((Boolean)get("favoritesVisible"));
+            invoke("onResume");
+            assertTrue((Boolean)get("favoritesVisible"));
+            assertFalse((Boolean)get("restoreFavoritesPending"));
+            assertEquals(View.VISIBLE,screen.view().getVisibility());
+            assertEquals(View.GONE,web.getVisibility());
+            assertTrue(activity.findViewById(R.id.favorites_destination).isSelected());
+            assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
+            assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            activity.findViewById(R.id.map_destination).performClick();
+            assertSame(retained,get("website"));
+            assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
+            assertEquals(ONE,web.getUrl());
+            invoke("onPause"); invoke("onResume");
+            assertFalse("Consumed restoration must not override a later Mappa choice",(Boolean)get("favoritesVisible"));
+        });
+    }
+
     @Test public void actualBottomLayoutFitsNarrowLargeTextAndLandscapeWithoutClippingOrHiddenActions() {
         onMain(() -> {
             for (float[] fixture : new float[][]{{390,1f},{320,1.5f},{320,2f},{640,1.5f}}) {
@@ -340,6 +378,36 @@ public final class NativeUsabilityRuntimeTest {
                     boxes.add(box);
                 }
             }
+        });
+    }
+
+    @Test public void existingBottomBarReflowsWhenWindowShrinksAndExpandsWithoutReplacingControls() {
+        onMain(() -> {
+            android.content.res.Configuration config = new android.content.res.Configuration(activity.getResources().getConfiguration());
+            config.screenWidthDp = 640; config.fontScale = 1.5f;
+            android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
+            AtomicInteger taps = new AtomicInteger();
+            BottomNavigationBar bar = new BottomNavigationBar(context, taps::incrementAndGet, () -> {}, () -> {}, () -> {}, () -> {});
+            View originalHome = bar.findViewById(R.id.home);
+            float density = context.getResources().getDisplayMetrics().density;
+            for (int widthDp : new int[]{640,320,640,360,640}) {
+                int width = Math.round(widthDp*density);
+                bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                bar.layout(0,0,width,bar.getMeasuredHeight());
+                assertEquals(widthDp==640?1:2,bar.getChildCount());
+                assertSame(originalHome,bar.findViewById(R.id.home));
+                for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
+                    Button button=bar.findViewById(id);
+                    assertTrue(button.getWidth()>=48*density); assertTrue(button.getHeight()>=48*density);
+                    assertNotNull(button.getLayout());
+                    assertTrue(button.getLayout().getHeight()<=button.getHeight()-button.getCompoundPaddingTop()-button.getCompoundPaddingBottom());
+                    for(int line=0;line<button.getLineCount();line++) {
+                        assertEquals(0,button.getLayout().getEllipsisCount(line));
+                        assertTrue(button.getLayout().getLineWidth(line)<=button.getWidth()-button.getCompoundPaddingLeft()-button.getCompoundPaddingRight()+1);
+                    }
+                }
+            }
+            originalHome.performClick(); assertEquals(1,taps.get());
         });
     }
 

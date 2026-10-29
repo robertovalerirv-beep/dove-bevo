@@ -267,7 +267,7 @@ final class SavedVenuesViewController: UITableViewController {
             ]))
         }
         var content = cell.defaultContentConfiguration()
-        content.text = row.name; content.attributedSecondaryText = visual
+        content.text = row.name; content.secondaryAttributedText = visual
         content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection); content.textProperties.numberOfLines = 0
         content.textProperties.color = NativeAppearance.ink
         content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection); content.secondaryTextProperties.numberOfLines = 0

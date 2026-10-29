@@ -38,7 +38,7 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             let cell = try row(controller)
             let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
             XCTAssertEqual(content.text, longName)
-            let text = try XCTUnwrap(content.attributedSecondaryText)
+            let text = try XCTUnwrap(content.secondaryAttributedText)
             XCTAssertTrue(text.string.contains("Birra media · Normale\n8,00 €\nSegnalato il 2026-10-28 · 1 conferma"))
             XCTAssertEqual(cell.backgroundConfiguration?.backgroundColor, NativeAppearance.surface)
             XCTAssertEqual(cell.backgroundConfiguration?.cornerRadius, 16)
@@ -70,7 +70,7 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             try client.complete(1, FavouriteComparisonSnapshot(venues: [:], unavailable: [saved.url]))
             let unavailable = try row(controller)
             let missingContent = try XCTUnwrap(unavailable.contentConfiguration as? UIListContentConfiguration)
-            let missing = try XCTUnwrap(missingContent.attributedSecondaryText).string
+            let missing = try XCTUnwrap(missingContent.secondaryAttributedText).string
             XCTAssertTrue(missing.contains("Prezzo non disponibile"))
             XCTAssertFalse(missing.contains("8,00"))
             XCTAssertFalse(missing.contains("0,00"))

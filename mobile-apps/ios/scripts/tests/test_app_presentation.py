@@ -60,7 +60,7 @@ class AppPresentationGuards(unittest.TestCase):
 
     def test_native_reference_palette_keeps_real_price_and_vote_data(self):
         favourites = (IOS / "App/SavedVenuesViewController.swift").read_text(encoding="utf-8")
-        self.assertIn("content.attributedSecondaryText = visual", favourites)
+        self.assertIn("content.secondaryAttributedText = visual", favourites)
         self.assertIn("price.observedOn", favourites)
         self.assertIn("price.confirmations", favourites)
         self.assertIn("cell.accessibilityValue =", favourites)

@@ -7,19 +7,13 @@
   "distribution": "TestFlight internal",
   "evidence": "owner-map-original.jpg",
   "imageSHA256": "4358090143f04ad67ddb318d32b75af1afd10b882e37ff36939b15df5f72df50",
-  "imageSize": [
-    590,
-    1280
-  ],
+  "imageSize": [590, 1280],
   "imageUse": "QA evidence only; not accepted store screenshot dimensions",
   "checks": {
     "installedAndLaunched": "OWNER_REPORT_WITH_NATIVE_APP_SCREENSHOT",
     "liveMapTilesAndPriceMarkers": "VISIBLE_IN_OWNER_SCREENSHOT",
     "selectedDrink": "Birra media",
-    "visiblePriceMarkers": [
-      "8.00 EUR",
-      "10.00 EUR"
-    ],
+    "visiblePriceMarkers": ["8.00 EUR", "10.00 EUR"],
     "venueBack": "OWNER_REPORTED_WORKS_FROM_BAR_SELECTION",
     "otherPhysicalCases": "NOT_VERIFIED"
   },

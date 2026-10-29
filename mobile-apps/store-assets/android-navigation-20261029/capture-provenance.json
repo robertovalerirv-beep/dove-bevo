@@ -9,10 +9,7 @@
   "captureRuntime": {
     "kind": "owned headless emulator",
     "androidApi": 36,
-    "dimensions": [
-      1080,
-      1920
-    ],
+    "dimensions": [1080, 1920],
     "physicalDevice": false,
     "pcForegroundControl": false
   },

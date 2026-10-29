@@ -183,7 +183,7 @@ html[data-dovebevo-app-theme="1"] .field {
   background: var(--surface);
   border-radius: 12px;
 }
-html[data-dovebevo-app-theme="1"] .price-input .field {
+html[data-dovebevo-app-theme="1"] .price-input input {
   min-height: 68px;
   font-size: 36px;
   font-weight: 700;

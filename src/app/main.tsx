@@ -5,12 +5,14 @@ import { App } from "./app";
 import { listenForInstall } from "./lib/install";
 import { warmUpMapWhenIdle } from "./lib/map-warmup";
 import { watchTheme } from "./lib/theme";
+import { installTrustedTypes } from "./lib/trusted-types";
 import type * as MapModule from "./lib/maplibre-map";
 
 // MapLibre (~1 MB of JS) is loaded only when the map is wanted (ADR 0014).
 let mapModule: Promise<typeof MapModule> | null = null;
 const loadMap = () => (mapModule ??= import("./lib/maplibre-map"));
 
+installTrustedTypes(); // before MapLibre starts its worker and the service worker registers (ADR 0045)
 watchTheme(); // Bancone by day, Fuori orario from 21:30 (ADR 0025)
 
 const root = document.getElementById("app");

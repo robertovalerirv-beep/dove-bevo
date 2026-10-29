@@ -7,6 +7,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/it-IT/1.1.0/). Versioni `
 Il sito vivo è l'ambiente `staging` su `www.dovebevo.com` (ADR 0035 e 0036): il tag `v0.1.0` segna la versione su `main`, senza un secondo deploy.
 
 ### Aggiunto
+- Specifica 1.15 e ADR 0045: le segnalazioni di Google Search Console chiuse in un intervento: pagine con un nonce per richiesta, tema e CSS dentro la pagina (nessuna richiesta blocca il primo disegno), CSP con `strict-dynamic`, Trusted Types, HSTS con `preload`, 404 su `/.well-known/*`, download della mappa dopo l'LCP e immagini in WebP. In prova: primo disegno 1,56 → 1,22 s, immagine principale 2,41 → 1,98 s, Performance 0,95 → 0,99.
 - Verificati a mano su iPhone e Android: pulsante centrale, menu della lingua, traduzione inglese e riga di stato su telefono stretto.
 - Specifica 1.13: pulsante centrale «Clicca sulla mappa o cerca una città» all'apertura, attribuzioni della mappa con link da 24 px, titolo della pagina neutro sulla mappa (ADR 0040). Il codice arriva nei prossimi commit di questa PR.
 - Mappa pronta al primo tocco: dopo il caricamento della pagina, a telefono libero, i file della mappa si scaricano in anticipo con un `fetch` (funziona anche su Safari) e cache lunga sui file con hash; salta con il risparmio dati.

@@ -4,6 +4,33 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-29 · SPEC 1.15: segnalazioni di Google chiuse in un intervento (ramo `claude/rendering-blocking-requests-6321a3`) · ADR 0045
+
+**Richiesta di Roberto:** una soluzione unica per le sei segnalazioni di Search Console (rendering bloccato da `theme.js` e CSS, CSP con elenco di host, HSTS senza `preload`, Trusted Types, immagine della mappa, `ai-catalog.json` con 200 HTML), senza peggiorare UI/UX e velocità.
+
+**Fatto**
+- Ogni pagina passa dal Worker, che le dà un nonce nuovo a ogni richiesta (`security-headers.ts`, `run_worker_first` in `wrangler.jsonc`); CSP di pagina `nonce + strict-dynamic`, CSP fissa per API e file.
+- Tema e CSS dentro `index.html` (plugin `inline-first-paint`); il file CSS dell'entry resta ma vuoto, perché i chunk a richiesta lo elencano tra le dipendenze (tolto, rompeva `import()`: trovato dalla suite e2e). Il service worker non lo mette in cache.
+- Trusted Types con una sola regola `default` (`src/app/lib/trusted-types.ts`); HSTS con `preload`; 404 su `/.well-known/*` tranne `security.txt`.
+- Download della mappa dopo l'LCP (`map-warmup.ts`); immagini in WebP (`npm run map-images`, JPEG sorgenti in `docs/brand/assets/map/`).
+- SPEC 1.15, ADR 0045. `docs/feature_list.json` non cambia. La guardia resta sul tag `spec-approved-14` (la lista non cambia).
+
+**Prove (Lighthouse locale, build di produzione in workerd, profilo mobile della CI, 7 run, mediana)**
+
+| | `main` (1a58d73) | soluzione |
+|---|---|---|
+| FCP | 1557 ms | 1221 ms |
+| LCP | 2414 ms (una run su cinque a 3650) | 1981 ms (7 su 7 tra 1972 e 1995) |
+| Performance | 0,95 | 0,99 |
+| Richieste che bloccano il rendering | 2 | 0 |
+
+- Tre varianti provate prima della finale: tema inline da solo (LCP 2412 ms, peggio di `main`: l'immagine con `fetchpriority=high` competeva con il JS), senza `fetchpriority` (1970 ms), con il download della mappa dopo l'LCP (1981 ms stabili; prima oscillava tra 1,9 e 3,4 s).
+- `tsc -b`, ESLint, Prettier verdi. Vitest 679/679. Playwright: sicurezza 36/36; e2e Chromium e WebKit tutti verdi tranne tre test inglesi e uno admin su WebKit che sotto carico vanno in timeout e, rilanciati da soli, passano (30/30 e 8/8); test che scrivono (Turnstile di prova, gestori verificati) 38/38.
+- Test cambiati e perché: header (CSP e HSTS nuovi), `seo-config` (ora tutte le pagine passano dal Worker), `seo` e `verified` del Worker (nonce negli script), `pwa.spec.ts` (la cache offline non ha più un file CSS: il CSS è nella pagina). `english-views.spec.ts` (ME-07): il test falliva da solo 3 volte su 6 su WebKit anche su `main` (verificato su una copia di `main`) e bloccava il gate locale; ora aspetta che la scheda della segnalazione e quella del bar siano chiuse prima di cliccare «Add a price» e che l'animazione del Timbro finisca prima di `axe`. Nessun controllo tolto. Dopo la correzione 24/24 su Chromium e WebKit (6 ripetizioni, luce e buio). Nuovi: nonce e CSP per pagina, `/.well-known/*`, regola Trusted Types, ordine del download della mappa.
+
+**Da verificare a mano dopo il deploy:** Turnstile con le chiavi vere (segnare un prezzo); console del browser senza «Refused to…» (Cloudflare aggiunge uno script in fondo alla pagina); PageSpeed Insights sul sito vivo. Cloudflare: HSTS sulla zona, «Always Use HTTPS» e redirect `dovebevo.com → www` solo su HTTPS; poi hstspreload.org (decisione di Roberto). Dettagli in `docs/release-checklist.md`, sezione E.
+
+**Non risolto qui:** attività lunga di ~100 ms (sotto la soglia di INP); segnalazione di sicurezza sull'identificativo del votante in `src/worker/routes/mobile-recommendations.ts` (ADR 0041), fuori ambito.
 ## 2026-10-29 · Rafforzamento dopo l'audit (branch `m7-sicurezza`) · ADR 0044
 
 **Richiesta di Roberto:** terza PR dopo l'audit del 28/10: S1, S3, S4, S5. Gli altri punti dell'audit restano a sua decisione.

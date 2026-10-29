@@ -271,7 +271,11 @@ async function walkEnglishViews(page: Page, check: (view: string) => Promise<voi
     .getByRole("dialog", { name: "Report an error" })
     .getByRole("button", { name: "Close" })
     .click();
+  // Wait for each sheet to be gone: while the report sheet is still closing its «Close» is the first one,
+  // and while the bar sheet is still closing its «Add a price here» makes the next click ambiguous.
+  await expect(page.getByRole("dialog", { name: "Report an error" })).toBeHidden();
   await page.getByRole("button", { name: "Close" }).first().click();
+  await expect(bar).toBeHidden();
 
   await page.getByRole("button", { name: "Add a price" }).click();
   await expect(nearBars(page)).toHaveCount(5);
@@ -302,6 +306,10 @@ async function walkEnglishViews(page: Page, check: (view: string) => Promise<voi
   await page.getByRole("button", { name: "Save" }).click();
   await expect(stamp(page)).toBeVisible();
   await page.mouse.move(0, 0);
+  // axe reads the colour of the mark: not while it is still being pressed onto the page.
+  await page
+    .locator(".stamp__mark")
+    .evaluate((mark) => Promise.all(mark.getAnimations().map((a) => a.finished)));
   await check("Timbro");
 
   for (const path of ["/privacy", "/regole"]) {

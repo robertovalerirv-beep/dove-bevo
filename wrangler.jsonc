@@ -4,28 +4,25 @@
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
-  // Assets never run the Worker; only /api/* does (SPEC 4).
+  // Files never run the Worker; every page does (SPEC 4, ADR 0045).
   "assets": {
     "directory": "./dist/client",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    // The API, and the pages the Worker enriches for search engines (src/worker/routes/seo.ts, ADR 0025);
-    // every other asset (JS, CSS, fonts, data) is served without running the Worker. The city slugs
-    // are SEO_CITIES (tests/unit/seo-config.test.ts keeps the two lists equal).
+    // Every page (also the ones the app answers on its own: /privacy, /admin, an unknown path) goes through
+    // the Worker, which gives it a new CSP nonce on each request (src/worker/lib/security-headers.ts). The
+    // files named hashes, fonts, images, data, map styles, the manifest and the service worker are
+    // served without running it. /.well-known/* is the Worker's too: only security.txt exists there.
     "run_worker_first": [
-      "/api/*",
-      "/",
-      "/copertura",
-      "/bar/*",
-      "/robots.txt",
-      "/llms.txt",
-      "/sitemap.xml",
-      "/milano",
-      "/roma",
-      "/torino",
-      "/bologna",
-      "/firenze",
-      "/napoli",
+      "/*",
+      "!/assets/*",
+      "!/fonts/*",
+      "!/brand/*",
+      "!/data/*",
+      "!/map/*",
+      "!/map-italia-*",
+      "!/manifest.webmanifest",
+      "!/sw.js",
     ],
   },
   // Invocation logs off: we log only what we write ourselves (SPEC 13.8).

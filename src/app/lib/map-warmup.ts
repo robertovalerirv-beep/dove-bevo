@@ -28,12 +28,22 @@ function start() {
   for (const href of warmupFiles(content, connection?.saveData === true)) void fetchAhead(href);
 }
 
-/** After `load`, in the first idle moment (a timer where the browser has no idle callback). */
+/** After `load` and after the largest contentful paint (the photo of the map), in the first idle moment. */
 export function warmUpMapWhenIdle() {
-  const schedule = () => {
+  const idle = () => {
     if ("requestIdleCallback" in window) requestIdleCallback(start, { timeout: 4000 });
     else setTimeout(start, 2000);
   };
-  if (document.readyState === "complete") schedule();
-  else addEventListener("load", schedule, { once: true });
+  const afterPaint = () => {
+    try {
+      new PerformanceObserver((_list, observer) => {
+        observer.disconnect();
+        setTimeout(idle, 300);
+      }).observe({ type: "largest-contentful-paint", buffered: true });
+    } catch {
+      setTimeout(idle, 3000);
+    }
+  };
+  if (document.readyState === "complete") afterPaint();
+  else addEventListener("load", afterPaint, { once: true });
 }

@@ -448,7 +448,7 @@ describe("pages for search engines (MD-09)", () => {
       forgetCoverage();
       return Promise.all(
         [`/bar/${BISTROT}`, `/bar/${VESTA}`, "/milano"].map(async (path) =>
-          (await get(path)).text(),
+          (await get(path)).text().then((html) => html.replace(/ nonce="[^"]*"/g, "")),
         ),
       );
     };

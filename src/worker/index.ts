@@ -62,10 +62,19 @@ app.route("/api/events", events);
 app.route("/api/mobile/venues", mobileRecommendations);
 app.route("/", seo);
 
-// Pages that run the Worker first (run_worker_first in wrangler.jsonc: the home, /copertura, the main
-// cities, /bar/*) are handed to the static assets; the copy has headers the middleware can change.
+// Every page runs the Worker first (run_worker_first in wrangler.jsonc) and is handed to the static
+// assets; the copy has headers (and a nonce) the middleware can change.
 app.all("*", async (c) => {
-  if (new URL(c.req.url).pathname.startsWith("/api/")) return apiError(c, "not_found");
+  const { pathname } = new URL(c.req.url);
+  if (pathname.startsWith("/api/")) return apiError(c, "not_found");
+  // Only security.txt exists under /.well-known/: any other file is a real 404, not the app page
+  // (a probe for ai-catalog.json must not read HTML with a 200).
+  if (pathname.startsWith("/.well-known/") && pathname !== "/.well-known/security.txt") {
+    return new Response("Not found", {
+      status: 404,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
   const asset = await c.env.ASSETS.fetch(c.req.raw);
   return new Response(asset.body, asset);
 });

@@ -133,10 +133,22 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
   it("every security header survives the HTML transform, CSP included", async () => {
     const response = await get("/");
     expect(response.headers.get("content-security-policy")).toContain("default-src 'self'");
-    expect(response.headers.get("content-security-policy")).toContain(
-      "script-src 'self' https://challenges.cloudflare.com",
+    // A page has its own nonce (ADR 0045): in the header and on every script of the page.
+    const csp = response.headers.get("content-security-policy") ?? "";
+    const nonce =
+      /script-src 'nonce-([^']+)' 'strict-dynamic' 'self' https:\/\/challenges\.cloudflare\.com/.exec(
+        csp,
+      )?.[1];
+    expect(nonce).toBeTruthy();
+    expect(csp).toContain(`style-src 'self' 'nonce-${nonce ?? ""}'`);
+    expect(csp).toContain("require-trusted-types-for 'script'");
+    const html = await response.text();
+    const scripts = html.match(/<script\b[^>]*>/g) ?? [];
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const tag of scripts) expect(tag, tag).toContain(`nonce="${nonce ?? ""}"`);
+    expect(response.headers.get("strict-transport-security")).toBe(
+      "max-age=63072000; includeSubDomains; preload",
     );
-    expect(response.headers.get("strict-transport-security")).toContain("max-age=63072000");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
     // the body is rewritten: the old length and validator must be gone
@@ -208,13 +220,13 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
     expect(html).toMatch(/<meta property="og:title" content="Bar &quot;&gt;&lt;script&gt;/);
     expect(html).toMatch(/<meta name="description" content="[^"]*&lt;script&gt;/);
     // the JSON-LD stays valid JSON and has no raw "<"
-    const ld = [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/gs)].map(
-      (m) => m[1] ?? "",
-    );
+    const ld = [
+      ...html.matchAll(/<script type="application\/ld\+json"[^>]*>(.*?)<\/script>/gs),
+    ].map((m) => m[1] ?? "");
     expect(ld).toHaveLength(1);
     expect(ld[0]).not.toContain("<");
     expect((JSON.parse(ld[0] ?? "") as { name: string }).name).toBe(evil);
-    expect(response.headers.get("content-security-policy")).toContain("script-src 'self'");
+    expect(response.headers.get("content-security-policy")).toContain("script-src 'nonce-");
   });
 
   it("only public bars: hidden, proposed and priceless bars get the plain shell", async () => {

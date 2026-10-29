@@ -7,7 +7,8 @@ import { it } from "../../app/i18n/it";
 import { formatDate, formatPrice } from "../../app/lib/format";
 import type { Place } from "../../shared/api-types";
 import { APP_NAME } from "../../shared/config";
-import { searchKey } from "../../shared/venue";
+import { medianOf } from "../../shared/prices";
+import { searchKey, VENUE_KEY_PATTERN } from "../../shared/venue";
 import { SEO_CITIES, SEO_LIMITS, type SeoCitySlug } from "../config";
 import { getSeoCity, getSeoCoverage, getSeoVenue, getUserVenueNames, type SeoPriceRow } from "./db";
 import { cellFile, placesFile } from "./venues";
@@ -63,14 +64,12 @@ export type PageType =
   | { type: "city"; slug: SeoCitySlug }
   | { type: "venue"; key: string };
 
-const VENUE_KEY = /^[nwru][1-9]\d{0,14}$/;
-
 /** Which pages get the SEO treatment; /admin and /api/* never do (SEO rule S6). */
 export function detectPageType(path: string): PageType | null {
   if (path === "/") return { type: "home" };
   if (path === "/copertura") return { type: "coverage" };
   const venue = /^\/bar\/([^/]+)$/.exec(path)?.[1];
-  if (venue) return VENUE_KEY.test(venue) ? { type: "venue", key: venue } : null;
+  if (venue) return VENUE_KEY_PATTERN.test(venue) ? { type: "venue", key: venue } : null;
   const slug = /^\/([a-z]+)$/.exec(path)?.[1];
   return slug && slug in SEO_CITIES ? { type: "city", slug: slug as SeoCitySlug } : null;
 }
@@ -183,12 +182,6 @@ const offer = (r: SeoPriceRow) => ({
   priceCurrency: "EUR",
 });
 
-const median = (values: number[]): number => {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? (sorted[mid] ?? 0) : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
-};
-
 const barUrl = (origin: string, key: string, cell: string) => `${origin}/bar/${key}?c=${cell}`;
 const barHref = (key: string, cell: string) => `/bar/${key}?c=${cell}`;
 const attribution = `<p>${escapeHtml(seoText.osm)}</p><p><a href="/">${escapeHtml(seoText.more)}</a></p>`;
@@ -283,7 +276,7 @@ export async function buildCity(
       `<h2>${escapeHtml(label)}</h2><p>${escapeHtml(
         seoText.cityDrink(
           label,
-          formatPrice(median(cents)),
+          formatPrice(medianOf(cents)),
           formatPrice(Math.min(...cents)),
           formatPrice(Math.max(...cents)),
           all.length,

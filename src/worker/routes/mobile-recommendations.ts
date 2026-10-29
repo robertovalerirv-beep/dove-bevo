@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { CATALOG, findDrink } from "../../shared/catalog";
+import { CELL_PATTERN } from "../../shared/venue";
 import { getMobileRecommendations, setMobileRecommendation } from "../lib/db";
 import { ApiError } from "../lib/errors";
 import { readJson } from "../lib/guards";
@@ -17,7 +18,7 @@ import { VenueKey } from "./venues";
 const Voter = z
   .string()
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
+const Cell = z.string().regex(CELL_PATTERN);
 const Choice = z.strictObject({
   drink: z
     .string()

@@ -5,7 +5,7 @@ import { CATALOG, DEFAULT_DRINK } from "../shared/catalog";
 import { APP_NAME, UNDO_MS } from "../shared/config";
 import { encodeGeohash, visibleCells } from "../shared/geohash";
 import type { PriceRow } from "../shared/api-types";
-import { distanceMeters, searchKey } from "../shared/venue";
+import { CELL_PATTERN, distanceMeters, searchKey, VENUE_KEY_PATTERN } from "../shared/venue";
 import { AddPriceSheet, type Draft, type Prefill } from "./components/AddPriceSheet";
 import { BarSheet, type BarActions } from "./components/BarSheet";
 import { PinPanel } from "./components/PinPanel";
@@ -56,8 +56,6 @@ const PIN_MIN_MOVE_M = 10;
 /** Known bars this close to the pin, with a similar name, are offered as "È uno di questi?". */
 const SIMILAR_METERS = 150;
 const SIMILAR_MAX = 3;
-const KEY = /^[nwru][1-9]\d{0,14}$/;
-const CELL = /^[0-9b-hjkmnp-z]{5}$/;
 
 /** `/?at=lat,lon`: the admin's city rows open the map there (a view only, nothing is sent). */
 function parseAt(): [number, number, number] | null {
@@ -74,7 +72,7 @@ type Route = { name: "map" } | { name: "bar"; key: string; cell: string };
 function parseRoute(): Route {
   const match = /^\/bar\/([^/]+)$/.exec(location.pathname);
   const cell = new URLSearchParams(location.search).get("c") ?? "";
-  if (match?.[1] && KEY.test(match[1]) && CELL.test(cell))
+  if (match?.[1] && VENUE_KEY_PATTERN.test(match[1]) && CELL_PATTERN.test(cell))
     return { name: "bar", key: match[1], cell };
   return { name: "map" };
 }

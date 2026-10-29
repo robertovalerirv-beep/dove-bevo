@@ -1,6 +1,7 @@
 // POST /api/reports — closed reasons only, one per session per price or bar (SPEC 7.2, 11, D-07).
 import { Hono } from "hono";
 import { findDrink } from "../../shared/catalog";
+import { CELL_PATTERN } from "../../shared/venue";
 import { z } from "zod";
 import { REVIEW_AFTER_REPORTS } from "../config";
 import { romeDay } from "../lib/day";
@@ -21,7 +22,7 @@ import type { AppEnv } from "../types";
 import { forgetCellCache } from "../lib/cell-cache";
 import { VenueKey } from "./venues";
 
-const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
+const Cell = z.string().regex(CELL_PATTERN);
 const Body = z.strictObject({
   venue: VenueKey,
   cell: Cell,

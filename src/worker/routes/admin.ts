@@ -7,6 +7,7 @@ import { DAYS_IN_WEEK, isValidWeek, MAX_RANGES, TIME, type WeekHours } from "../
 import { STALE_DAYS } from "../../shared/config";
 import { summarizeMetrics } from "../../shared/metrics";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
+import { CELL_PATTERN, OSM_KEY_PATTERN } from "../../shared/venue";
 import { COVERAGE_MIN_INTERVAL_MS, MAX_ITEMS } from "../config";
 import { coverageSnapshot, forgetCoverage } from "../lib/coverage";
 import { romeDay } from "../lib/day";
@@ -37,8 +38,8 @@ import { forgetCell } from "../lib/cell-cache";
 import type { AppEnv } from "../types";
 import { Lat, Lon, VenueKey, VenueName } from "./venues";
 
-const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
-const OsmKey = z.string().regex(/^[nwr][1-9]\d{0,14}$/);
+const Cell = z.string().regex(CELL_PATTERN);
+const OsmKey = z.string().regex(OSM_KEY_PATTERN);
 
 const Kind = z.number().int().min(0).max(4);
 const NewVenue = z.strictObject({ name: VenueName, kind: Kind, lat: Lat, lon: Lon });

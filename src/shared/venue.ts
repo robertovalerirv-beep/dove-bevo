@@ -3,6 +3,13 @@
 /** Same box as the OSM import (scripts/osm-import): Italy, San Marino, Vatican. */
 export const ITALY = { south: 35.2, north: 47.2, west: 6.5, east: 18.6 } as const;
 
+/** A geohash5 cell id (SPEC 5.4): the geohash alphabet has no a, i, l, o. */
+export const CELL_PATTERN = /^[0-9b-hjkmnp-z]{5}$/;
+/** An OSM bar ("n123", "w456", "r789") or a user bar ("u12"); canonical only, so "u007" never aliases "u7". */
+export const VENUE_KEY_PATTERN = /^[nwru][1-9]\d{0,14}$/;
+/** An OSM bar only (the admin hides and unhides these). */
+export const OSM_KEY_PATTERN = /^[nwr][1-9]\d{0,14}$/;
+
 export const NAME_MIN = 2;
 export const NAME_MAX = 80;
 /** A proposed bar this close to a known one with the same name is the same bar. */

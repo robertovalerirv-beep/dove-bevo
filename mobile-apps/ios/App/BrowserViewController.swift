@@ -241,7 +241,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             body.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             body.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
             body.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            body.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            // Resize the real web viewport above the docked keyboard and its
+            // accessory. With no/undocked keyboard the guide uses safe-area
+            // bottom by default; the retained root navigation/bar is unchanged.
+            body.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
             progressView.topAnchor.constraint(equalTo: body.topAnchor),
             progressView.leadingAnchor.constraint(equalTo: body.leadingAnchor),
             progressView.trailingAnchor.constraint(equalTo: body.trailingAnchor)

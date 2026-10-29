@@ -23,6 +23,15 @@ class AppPresentationGuards(unittest.TestCase):
         self.assertIn('label IN %@", ["1", "2"]', keyboard)
         self.assertIn("keyboard.frame.width >= 250, keyboard.frame.height >= 150", keyboard)
         self.assertIn("key.isHittable", keyboard)
+        self.assertIn("if ordinaryDecimalKeyboard() == nil { price.tap() }", flow)
+        self.assertIn("frame.height < normalViewport.height", flow)
+        self.assertIn("frame.maxY <= current.frame.minY", flow)
+        self.assertIn("abs(frame.height - normalViewport.height) <= 0.5", flow)
+        self.assertLess(flow.index('attachState(named: "DoveBevo-live-price-action-with-keyboard-read-only")'),
+                        flow.index('XCTAssertTrue(visibleAboveKeyboard(submit'))
+        browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
+        self.assertIn("body.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor)", browser)
+        self.assertNotIn("followsUndockedKeyboard = true", browser)
 
     def test_shared_asset_is_only_js_resource_and_installed_in_isolated_main_frame(self):
         project = (IOS / "project.yml").read_text(encoding="utf-8")

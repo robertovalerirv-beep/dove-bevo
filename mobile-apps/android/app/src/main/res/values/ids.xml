@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="back" type="id" />
+    <item name="browser_tools" type="id" />
+    <item name="bottom_navigation" type="id" />
+    <item name="forward" type="id" />
+    <item name="home" type="id" />
+    <item name="share" type="id" />
+    <item name="refresh" type="id" />
+    <item name="more" type="id" />
+    <item name="privacy" type="id" />
+    <item name="support" type="id" />
+    <item name="privacy_document" type="id" />
+    <item name="privacy_scroll" type="id" />
+    <item name="rules_scroll" type="id" />
+    <item name="rules_document" type="id" />
+    <item name="accept_rules" type="id" />
+    <item name="decline_rules" type="id" />
+    <item name="retry" type="id" />
+    <item name="website" type="id" />
+    <item name="offline" type="id" />
+    <item name="load_error" type="id" />
+    <item name="save_venue" type="id" />
+    <item name="saved_venues" type="id" />
+    <item name="saved_venues_list" type="id" />
+    <item name="open_saved_venue" type="id" />
+    <item name="remove_saved_venue" type="id" />
+    <item name="location_help" type="id" />
+    <item name="recommendation_entry" type="id" />
+    <item name="recommendation_status" type="id" />
+    <item name="recommendation_refresh" type="id" />
+    <item name="recommendation_rows" type="id" />
+    <item name="recommendation_row" type="id" />
+    <item name="map_destination" type="id" />
+    <item name="favorites_destination" type="id" />
+    <item name="favorites_screen" type="id" />
+    <item name="favorites_drink" type="id" />
+    <item name="favorites_band" type="id" />
+    <item name="favorites_status" type="id" />
+    <item name="favorites_refresh" type="id" />
+    <item name="favorites_rows" type="id" />
+    <item name="favorite_open" type="id" />
+    <item name="favorite_remove" type="id" />
+</resources>

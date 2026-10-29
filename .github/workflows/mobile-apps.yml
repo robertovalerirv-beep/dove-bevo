@@ -1,0 +1,695 @@
+name: Mobile apps
+
+on:
+  push:
+    tags:
+      - "mobile-release/v*"
+      - "mobile-testing/v*"
+      - "mobile-capture/v*"
+      - "mobile-beta/v*"
+      - "mobile-ipad-capture/v*"
+      - "mobile-quality/v*"
+  pull_request:
+    paths:
+      - "mobile-apps/**"
+      - ".github/workflows/mobile-apps.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-apps-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ios-quality:
+    name: iOS native update tests without signing or upload
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-quality/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "27.0"
+      IOS_SIMULATOR_MODEL: iPhone 17
+    steps:
+      - name: Verify the known working Apple toolchain
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Generate the pinned Xcode project
+        run: bash mobile-apps/ios/scripts/generate-project.sh
+      - name: Verify existing native release and simulator guards
+        run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
+      - name: Run native unit and phone UI tests
+        timeout-minutes: 18
+        run: bash mobile-apps/ios/scripts/test-simulator.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-quality-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            mobile-apps/ios/.build/TestResults*.xcresult
+            mobile-apps/ios/.build/Screenshots/
+            mobile-apps/ios/.build/SimulatorDiagnostics/
+          retention-days: 7
+          if-no-files-found: error
+
+  android:
+    name: Android production app build and tests
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/mobile-release/v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/mobile-apps/android/.gradle-user-home
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build APK and unsigned release bundle, run tests and lint
+        working-directory: mobile-apps/android
+        run: bash gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:bundleRelease
+      - name: Check signing input and cleanup boundaries without credentials
+        run: python3 -B mobile-apps/android/tests/release_android_test.py -v
+      - name: Check private emulator runtime and failure diagnostics without Android tools
+        run: python3 -B -m unittest discover -s mobile-apps/scripts/tests -p 'test_android_smoke.py' -v
+      - name: Install official emulator image
+        timeout-minutes: 8
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "emulator" "platform-tools" "system-images;android-36;google_apis;x86_64"'
+      - name: Allow this temporary runner user to use KVM
+        run: |
+          test -c /dev/kvm
+          sudo setfacl -m "u:$(id -u):rw" /dev/kvm
+      - name: Launch and test live application
+        timeout-minutes: 8
+        run: python3 mobile-apps/scripts/android-smoke.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-android
+          path: |
+            mobile-apps/android/app/build/outputs/apk/debug/*.apk
+            mobile-apps/android/app/build/outputs/bundle/release/*.aab
+            mobile-apps/android/app/build/reports/
+            mobile-apps/evidence/android/*.png
+            mobile-apps/evidence/android/smoke-result.json
+            mobile-apps/evidence/android/latest-ui.xml
+            mobile-apps/evidence/android/command-failures.json
+            mobile-apps/evidence/android/emulator-startup.json
+          retention-days: 7
+          if-no-files-found: error
+
+  release-android:
+    name: Sign Android release bundle
+    needs: [android, ios]
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-release/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Sign and verify release bundle
+        env:
+          DOVEBEVO_ANDROID_KEYSTORE_BASE64: ${{ secrets.DOVEBEVO_ANDROID_KEYSTORE_BASE64 }}
+          DOVEBEVO_SIGNING_PASSWORD: ${{ secrets.DOVEBEVO_SIGNING_PASSWORD }}
+          DOVEBEVO_ANDROID_CERT_SHA256: ${{ secrets.DOVEBEVO_ANDROID_CERT_SHA256 }}
+          DOVEBEVO_BUILD_NUMBER: ${{ github.run_number }}
+          GRADLE_USER_HOME: ${{ github.workspace }}/mobile-apps/android/.gradle-user-home
+        run: bash mobile-apps/scripts/release-android.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dove-bevo-android-release-${{ github.sha }}
+          path: mobile-apps/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 14
+          if-no-files-found: error
+
+  ios-ipad-capture:
+    name: iOS 27 live test and genuine 13-inch iPad capture
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-ipad-capture/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "27.0"
+    steps:
+      - name: Verify exact iPad-capture toolchain without credentials
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          sw_vers
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Generate pinned native Xcode project
+        run: bash mobile-apps/ios/scripts/generate-project.sh
+      - name: Verify native release and simulator guards without credentials
+        run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
+      - name: Verify live map on 13-inch iPad and capture store screenshots
+        timeout-minutes: 20
+        env:
+          STORE_CAPTURE_DEVICE: ipad
+        run: bash mobile-apps/ios/scripts/capture-ipad.sh
+      - name: Require the genuine exported live iPad PNG
+        timeout-minutes: 2
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import re
+          import struct
+          import subprocess
+          import sys
+
+          def require(condition):
+              if not condition:
+                  raise ValueError("iPad capture evidence is invalid")
+
+          def verify_ipad_capture():
+              workspace = Path.cwd().resolve(strict=True)
+              root = Path("mobile-apps/ios/.build/Screenshots-iPad")
+              require(all(not parent.is_symlink() for parent in [root, *root.parents]))
+              require(root.is_dir())
+              root = root.resolve(strict=True)
+              require(root.is_relative_to(workspace))
+              manifest = root / "manifest.json"
+              require(manifest.is_file() and not manifest.is_symlink() and manifest.stat().st_size <= 2_000_000)
+              require(manifest.resolve(strict=True).parent == root)
+              entries = json.loads(manifest.read_text(encoding="utf-8"))
+              require(isinstance(entries, list) and len(entries) <= 10_000)
+              matches = []
+              for entry in entries:
+                  require(isinstance(entry, dict))
+                  if entry.get("testIdentifier") != "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()":
+                      continue
+                  require(entry.get("isAssociatedWithFailure", False) is False)
+                  attachments = entry.get("attachments")
+                  require(isinstance(attachments, list) and len(attachments) <= 1_000)
+                  for attachment in attachments:
+                      require(isinstance(attachment, dict) and attachment.get("isAssociatedWithFailure") is False)
+                      name = attachment.get("suggestedHumanReadableName", "")
+                      if isinstance(name, str) and name.startswith("DoveBevo-live-Milano-map"):
+                          matches.append(attachment)
+              require(len(matches) == 1)
+              filename = matches[0].get("exportedFileName")
+              require(isinstance(filename, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*\.png", filename) is not None)
+              image = root / filename
+              require(image.is_file() and not image.is_symlink() and image.resolve(strict=True).parent == root)
+              require(image.stat().st_nlink == 1 and 24 <= image.stat().st_size <= 64_000_000)
+              with image.open("rb") as stream:
+                  header = stream.read(24)
+              require(header[:16] == b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+              dimensions = struct.unpack(">II", header[16:24])
+              require(dimensions in {(2048, 2732), (2064, 2752)})
+              inspection = subprocess.run(["sips", "-g", "format", "-g", "pixelWidth", "-g", "pixelHeight", str(image)],
+                                          check=True, capture_output=True, text=True, timeout=15)
+              fields = dict(re.findall(r"^\s*(format|pixelWidth|pixelHeight):\s*(\S+)\s*$", inspection.stdout, re.MULTILINE))
+              require(fields.get("format") == "png" and (int(fields["pixelWidth"]), int(fields["pixelHeight"])) == dimensions)
+              return {"width": dimensions[0], "height": dimensions[1], "sha256": hashlib.sha256(image.read_bytes()).hexdigest()}
+
+          try:
+              ipad = verify_ipad_capture()
+          except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+              sys.exit("iPad capture validation failed; a genuine live 13-inch iPad PNG is required")
+          print(json.dumps({"liveIPadCaptureExportVerified": True, "ipad": ipad}, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-ipad-capture-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            mobile-apps/ios/.build/iPadScreenshots.xcresult
+            mobile-apps/ios/.build/Screenshots-iPad/
+            mobile-apps/ios/.build/iPadSimulatorInventory.json
+            mobile-apps/ios/.build/SimulatorDiagnostics/
+          retention-days: 7
+          if-no-files-found: error
+
+  release-ios:
+    name: Sign and upload iOS release
+    needs: [android, ios]
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-release/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: macos-26
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Generate pinned native Xcode project
+        run: bash mobile-apps/ios/scripts/generate-project.sh
+      - name: Sign, verify and upload App Store build
+        env:
+          DOVEBEVO_IOS_CERTIFICATE_BASE64: ${{ secrets.DOVEBEVO_IOS_CERTIFICATE_BASE64 }}
+          DOVEBEVO_SIGNING_PASSWORD: ${{ secrets.DOVEBEVO_SIGNING_PASSWORD }}
+          DOVEBEVO_IOS_PROFILE_BASE64: ${{ secrets.DOVEBEVO_IOS_PROFILE_BASE64 }}
+          DOVEBEVO_ASC_PRIVATE_KEY: ${{ secrets.DOVEBEVO_ASC_PRIVATE_KEY }}
+          DOVEBEVO_ASC_KEY_ID: ${{ secrets.DOVEBEVO_ASC_KEY_ID }}
+          DOVEBEVO_ASC_ISSUER_ID: ${{ secrets.DOVEBEVO_ASC_ISSUER_ID }}
+          DOVEBEVO_BUILD_NUMBER: ${{ github.run_number }}
+        run: bash mobile-apps/ios/scripts/release-ios.sh --upload
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-release-${{ github.sha }}
+          path: |
+            mobile-apps/ios/.build/release/export/*.ipa
+            mobile-apps/ios/.build/release/release-manifest.json
+          retention-days: 14
+          if-no-files-found: error
+
+  ios:
+    name: iOS simulator tests and unsigned device archive
+    if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/mobile-release/v')
+    runs-on: macos-15-intel
+    timeout-minutes: 50
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "26.2"
+      IOS_SIMULATOR_MODEL: iPhone 17
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Retain installed Apple upload tool capabilities
+        run: |
+          mkdir -p mobile-apps/ios/.build/SimulatorDiagnostics
+          if ! xcrun altool --help > mobile-apps/ios/.build/SimulatorDiagnostics/altool-help.txt 2>&1; then
+            printf 'Apple upload tool help returned a nonzero status; diagnostics retained.\n'
+          fi
+      - name: Generate pinned native Xcode project
+        run: bash mobile-apps/ios/scripts/generate-project.sh
+      - name: Check simulator selection and release metadata guards
+        run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -v
+      - name: Build simulator app
+        run: bash mobile-apps/ios/scripts/build-simulator.sh
+      - name: Run unit and live application tests
+        timeout-minutes: 20
+        run: bash mobile-apps/ios/scripts/test-simulator.sh
+      - name: Verify live map on 13-inch iPad and capture store screenshots
+        timeout-minutes: 8
+        run: bash mobile-apps/ios/scripts/capture-ipad.sh
+      - name: Verify live map on large iPhone and capture store screenshots
+        timeout-minutes: 8
+        env:
+          STORE_CAPTURE_DEVICE: iphone-large
+        run: bash mobile-apps/ios/scripts/capture-ipad.sh
+      - name: Compile unsigned device archive
+        run: bash mobile-apps/ios/scripts/archive-unsigned.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios
+          path: |
+            mobile-apps/ios/.build/DoveBevo.xcarchive
+            mobile-apps/ios/.build/TestResults.xcresult
+            mobile-apps/ios/.build/Screenshots/
+            mobile-apps/ios/.build/Screenshots-iPad/
+            mobile-apps/ios/.build/iPadScreenshots.xcresult
+            mobile-apps/ios/.build/iPadSimulatorInventory.json
+            mobile-apps/ios/.build/Screenshots-iPhoneLarge/
+            mobile-apps/ios/.build/iPhoneLargeScreenshots.xcresult
+            mobile-apps/ios/.build/iPhoneLargeSimulatorInventory.json
+            mobile-apps/ios/.build/SimulatorDiagnostics/
+            mobile-apps/ios/.build/DerivedData/Build/Products/Debug-iphonesimulator/*.app
+          retention-days: 7
+          if-no-files-found: error
+
+  ios-capture:
+    name: iOS 27 live tests and genuine phone and iPad captures
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-capture/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: xcode-27
+    timeout-minutes: 40
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "27.0"
+      IOS_SIMULATOR_MODEL: iPhone 17
+    steps:
+      - name: Verify exact live-capture toolchain without credentials
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          sw_vers
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Generate pinned native Xcode project
+        run: bash mobile-apps/ios/scripts/generate-project.sh
+      - name: Verify native release and simulator guards without credentials
+        run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
+      - name: Run full unit and live application tests on iPhone 17
+        timeout-minutes: 20
+        run: bash mobile-apps/ios/scripts/test-simulator.sh
+      - name: Verify live map on 13-inch iPad and capture store screenshots
+        timeout-minutes: 8
+        env:
+          STORE_CAPTURE_DEVICE: ipad
+        run: bash mobile-apps/ios/scripts/capture-ipad.sh
+      - name: Require genuine exported live phone and iPad PNGs
+        timeout-minutes: 2
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import re
+          import struct
+          import subprocess
+          import sys
+
+          def require(condition):
+              if not condition:
+                  raise ValueError("Capture evidence is invalid")
+
+          def verify_capture(folder, sizes):
+              root = Path(folder)
+              require(root.is_dir() and not root.is_symlink())
+              root = root.resolve(strict=True)
+              manifest = root / "manifest.json"
+              require(manifest.is_file() and not manifest.is_symlink() and manifest.stat().st_size <= 2_000_000)
+              entries = json.loads(manifest.read_text(encoding="utf-8"))
+              require(isinstance(entries, list) and len(entries) <= 10_000)
+              matches = []
+              for entry in entries:
+                  require(isinstance(entry, dict))
+                  if entry.get("testIdentifier") != "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()":
+                      continue
+                  attachments = entry.get("attachments")
+                  require(isinstance(attachments, list) and len(attachments) <= 1_000)
+                  for attachment in attachments:
+                      require(isinstance(attachment, dict))
+                      name = attachment.get("suggestedHumanReadableName", "")
+                      if isinstance(name, str) and name.startswith("DoveBevo-live-Milano-map"):
+                          matches.append(attachment)
+              require(len(matches) == 1)
+              filename = matches[0].get("exportedFileName")
+              require(isinstance(filename, str) and bool(filename) and Path(filename).name == filename)
+              image = root / filename
+              require(image.is_file() and not image.is_symlink() and image.resolve(strict=True).parent == root)
+              require(24 <= image.stat().st_size <= 64_000_000)
+              with image.open("rb") as stream:
+                  header = stream.read(24)
+              require(header[:16] == b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+              dimensions = struct.unpack(">II", header[16:24])
+              require(dimensions in sizes)
+              inspection = subprocess.run(["sips", "-g", "format", "-g", "pixelWidth", "-g", "pixelHeight", str(image)],
+                                          check=True, capture_output=True, text=True, timeout=15)
+              fields = dict(re.findall(r"^\s*(format|pixelWidth|pixelHeight):\s*(\S+)\s*$", inspection.stdout, re.MULTILINE))
+              require(fields.get("format") == "png" and (int(fields["pixelWidth"]), int(fields["pixelHeight"])) == dimensions)
+              return {"width": dimensions[0], "height": dimensions[1], "sha256": hashlib.sha256(image.read_bytes()).hexdigest()}
+
+          try:
+              phone = verify_capture("mobile-apps/ios/.build/Screenshots", {(1179, 2556), (1206, 2622)})
+              ipad = verify_capture("mobile-apps/ios/.build/Screenshots-iPad", {(2048, 2732), (2064, 2752)})
+          except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+              sys.exit("iOS capture validation failed; genuine live phone and iPad PNGs are required")
+          print(json.dumps({"liveCaptureExportsVerified": True, "phone": phone, "ipad": ipad}, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-capture-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            mobile-apps/ios/.build/TestResults*.xcresult
+            mobile-apps/ios/.build/last-test-result-path.txt
+            mobile-apps/ios/.build/Screenshots/
+            mobile-apps/ios/.build/Screenshots-iPad/
+            mobile-apps/ios/.build/iPadScreenshots.xcresult
+            mobile-apps/ios/.build/iPadSimulatorInventory.json
+            mobile-apps/ios/.build/SimulatorDiagnostics/
+          retention-days: 7
+          if-no-files-found: error
+
+  internal-android-checks:
+    name: Android checks for internal testing
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      (startsWith(github.ref, 'refs/tags/mobile-testing/v') ||
+       startsWith(github.ref, 'refs/tags/mobile-beta/v')) &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/mobile-apps/android/.gradle-user-home
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Run unit tests, lint and unsigned compilation
+        working-directory: mobile-apps/android
+        run: bash gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - name: Verify signing and private-runtime guards without credentials
+        run: |
+          python3 -B mobile-apps/android/tests/release_android_test.py -q
+          python3 -B -m unittest discover -s mobile-apps/scripts/tests -p 'test_android_smoke.py' -q
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-android-internal-checks-${{ github.sha }}
+          path: mobile-apps/android/app/build/reports/
+          retention-days: 7
+          if-no-files-found: error
+
+  internal-ios-checks:
+    name: iOS unit checks for internal testing
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      (startsWith(github.ref, 'refs/tags/mobile-testing/v') ||
+       startsWith(github.ref, 'refs/tags/mobile-beta/v')) &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "27.0"
+      IOS_SIMULATOR_MODEL: iPhone 17
+    steps:
+      - name: Verify exact Xcode compatibility trial toolchain without credentials
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          sw_vers
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Generate pinned native Xcode project
+        run: bash mobile-apps/ios/scripts/generate-project.sh
+      - name: Verify native release and simulator guards without credentials
+        run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
+      - name: Run native unit tests and beta phone UI tests
+        timeout-minutes: 22
+        run: |
+          case "$GITHUB_REF" in
+            refs/tags/mobile-beta/v*) bash mobile-apps/ios/scripts/test-simulator.sh ;;
+            refs/tags/mobile-testing/v*) bash mobile-apps/ios/scripts/test-simulator.sh --unit-only ;;
+            *) printf 'Unexpected testing tag\n' >&2; exit 2 ;;
+          esac
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-internal-checks-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            mobile-apps/ios/.build/TestResults.xcresult
+            mobile-apps/ios/.build/Screenshots/
+            mobile-apps/ios/.build/SimulatorDiagnostics/
+          retention-days: 7
+          if-no-files-found: error
+
+  internal-android-build:
+    name: Sign Android bundle for internal testing only
+    needs: [internal-android-checks, internal-ios-checks]
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      (startsWith(github.ref, 'refs/tags/mobile-testing/v') ||
+       startsWith(github.ref, 'refs/tags/mobile-beta/v')) &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Sign and verify internal-test bundle
+        env:
+          DOVEBEVO_ANDROID_KEYSTORE_BASE64: ${{ secrets.DOVEBEVO_ANDROID_KEYSTORE_BASE64 }}
+          DOVEBEVO_SIGNING_PASSWORD: ${{ secrets.DOVEBEVO_SIGNING_PASSWORD }}
+          DOVEBEVO_ANDROID_CERT_SHA256: ${{ secrets.DOVEBEVO_ANDROID_CERT_SHA256 }}
+          DOVEBEVO_BUILD_NUMBER: ${{ github.run_number }}
+          GRADLE_USER_HOME: ${{ github.workspace }}/mobile-apps/android/.gradle-user-home
+        run: bash mobile-apps/scripts/release-android.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dove-bevo-android-internal-${{ github.sha }}
+          path: mobile-apps/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 14
+          if-no-files-found: error
+
+  internal-ios-build:
+    name: Sign and upload TestFlight Internal Only build
+    needs: [internal-android-checks, internal-ios-checks]
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+    steps:
+      - name: Verify exact Xcode compatibility trial toolchain without credentials
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          sw_vers
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Sign, verify and upload internal-only build
+        env:
+          DOVEBEVO_IOS_CERTIFICATE_BASE64: ${{ secrets.DOVEBEVO_IOS_CERTIFICATE_BASE64 }}
+          DOVEBEVO_SIGNING_PASSWORD: ${{ secrets.DOVEBEVO_SIGNING_PASSWORD }}
+          DOVEBEVO_IOS_PROFILE_BASE64: ${{ secrets.DOVEBEVO_IOS_PROFILE_BASE64 }}
+          DOVEBEVO_ASC_PRIVATE_KEY: ${{ secrets.DOVEBEVO_ASC_PRIVATE_KEY }}
+          DOVEBEVO_ASC_KEY_ID: ${{ secrets.DOVEBEVO_ASC_KEY_ID }}
+          DOVEBEVO_ASC_ISSUER_ID: ${{ secrets.DOVEBEVO_ASC_ISSUER_ID }}
+          DOVEBEVO_BUILD_NUMBER: ${{ github.run_number }}
+        run: bash mobile-apps/ios/scripts/release-ios.sh --upload --internal-only
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-internal-${{ github.sha }}
+          path: |
+            mobile-apps/ios/.build/release/export/*.ipa
+            mobile-apps/ios/.build/release/release-manifest.json
+          retention-days: 14
+          if-no-files-found: error
+
+  ios-external-beta-build:
+    name: Sign and upload candidate for external TestFlight testing
+    needs: [internal-android-checks, internal-ios-checks]
+    if: >-
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      startsWith(github.ref, 'refs/tags/mobile-beta/v') &&
+      github.repository == 'robertovalerirv-beep/dove-bevo'
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+    steps:
+      - name: Verify exact external-beta toolchain without credentials
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          sw_vers
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Sign, verify and upload external-beta candidate
+        env:
+          DOVEBEVO_IOS_CERTIFICATE_BASE64: ${{ secrets.DOVEBEVO_IOS_CERTIFICATE_BASE64 }}
+          DOVEBEVO_SIGNING_PASSWORD: ${{ secrets.DOVEBEVO_SIGNING_PASSWORD }}
+          DOVEBEVO_IOS_PROFILE_BASE64: ${{ secrets.DOVEBEVO_IOS_PROFILE_BASE64 }}
+          DOVEBEVO_ASC_PRIVATE_KEY: ${{ secrets.DOVEBEVO_ASC_PRIVATE_KEY }}
+          DOVEBEVO_ASC_KEY_ID: ${{ secrets.DOVEBEVO_ASC_KEY_ID }}
+          DOVEBEVO_ASC_ISSUER_ID: ${{ secrets.DOVEBEVO_ASC_ISSUER_ID }}
+          DOVEBEVO_BUILD_NUMBER: ${{ github.run_number }}
+        run: bash mobile-apps/ios/scripts/release-ios.sh --upload
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-ios-external-beta-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            mobile-apps/ios/.build/release/export/*.ipa
+            mobile-apps/ios/.build/release/release-manifest.json
+          retention-days: 14
+          if-no-files-found: error

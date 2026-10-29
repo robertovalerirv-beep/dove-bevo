@@ -1,0 +1,30 @@
+{
+  "schema": "dovebevo-owner-device-check/v1",
+  "platform": "iOS",
+  "deviceModel": "iPhone 16 Plus",
+  "modelSource": "owner supplied device information",
+  "build": 21,
+  "distribution": "TestFlight internal",
+  "evidence": "owner-map-original.jpg",
+  "imageSHA256": "4358090143f04ad67ddb318d32b75af1afd10b882e37ff36939b15df5f72df50",
+  "imageSize": [
+    590,
+    1280
+  ],
+  "imageUse": "QA evidence only; not accepted store screenshot dimensions",
+  "checks": {
+    "installedAndLaunched": "OWNER_REPORT_WITH_NATIVE_APP_SCREENSHOT",
+    "liveMapTilesAndPriceMarkers": "VISIBLE_IN_OWNER_SCREENSHOT",
+    "selectedDrink": "Birra media",
+    "visiblePriceMarkers": [
+      "8.00 EUR",
+      "10.00 EUR"
+    ],
+    "venueBack": "OWNER_REPORTED_WORKS_FROM_BAR_SELECTION",
+    "otherPhysicalCases": "NOT_VERIFIED"
+  },
+  "navigationFinding": "Native Back follows browser history. City selection changes camera without a history entry; bar selection adds a page. No defect established from supplied behavior.",
+  "countFinding": "2 of 58 counts loaded nonpending venues with an active selected-drink price inside current map bounds; not a Milan-wide total.",
+  "recordingRequired": false,
+  "publicContributionsMadeByAgent": false
+}

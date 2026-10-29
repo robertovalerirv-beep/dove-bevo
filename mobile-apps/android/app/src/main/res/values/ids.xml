@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="back" type="id" />
+    <item name="browser_tools" type="id" />
+    <item name="bottom_navigation" type="id" />
     <item name="forward" type="id" />
     <item name="home" type="id" />
     <item name="share" type="id" />

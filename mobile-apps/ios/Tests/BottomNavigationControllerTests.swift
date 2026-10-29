@@ -7,13 +7,37 @@ final class BottomNavigationControllerTests: XCTestCase {
     @MainActor
     func testFiveActualBottomControlsFitNarrowWidthAndAccessibilityTextWithoutBlankDestinations() throws {
         let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first {
+            $0.activationState == .foregroundActive
+        })
+        let previousKeyWindow = scene.windows.first { $0.isKeyWindow }
+        let window = UIWindow(windowScene: scene)
+        let host = UIViewController()
+        window.frame = CGRect(x: 0, y: 0, width: 320, height: 568)
+        window.rootViewController = host
+        host.view.frame = window.bounds
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+            previousKeyWindow?.makeKey()
+        }
         traits.performAsCurrent {
             let browser = BrowserViewController(websiteLoader: { _, _ in nil })
             let tabs = NativeTabsController(browser: browser)
-            tabs.loadViewIfNeeded()
-            tabs.view.frame = CGRect(x: 0, y: 0, width: 320, height: 568)
+            host.addChild(tabs)
+            host.view.addSubview(tabs.view)
+            tabs.view.frame = host.view.bounds
+            tabs.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            host.setOverrideTraitCollection(traits, forChild: tabs)
+            tabs.didMove(toParent: host)
+            window.makeKeyAndVisible()
+            window.layoutIfNeeded()
             tabs.view.layoutIfNeeded()
             let bar = tabs.bottomBar
+            bar.layoutIfNeeded()
+            XCTAssertTrue(bar.window === window, "Measure the actual mounted native controls")
+            XCTAssertEqual(tabs.traitCollection.preferredContentSizeCategory, .accessibilityExtraExtraExtraLarge)
+            XCTAssertEqual(bar.bounds.width, 320, accuracy: 0.5)
             XCTAssertEqual(bar.items?.map(\.title), ["Home", "Mappa", "Preferiti", "Salva", "Consigliati"])
             XCTAssertEqual(bar.items?.compactMap(\.accessibilityLabel), ["Home", "Mappa", "Preferiti", "Salva nei preferiti", "Drink consigliati"])
             XCTAssertTrue(tabs.children.contains { $0 === tabs.mapNavigation })
@@ -22,13 +46,17 @@ final class BottomNavigationControllerTests: XCTestCase {
             XCTAssertEqual(bar.frame.maxY, tabs.view.safeAreaLayoutGuide.layoutFrame.maxY, accuracy: 0.5)
             XCTAssertGreaterThanOrEqual(bar.frame.height, 48)
             XCTAssertLessThanOrEqual(tabs.mapNavigation.view.frame.maxY, bar.frame.minY + 0.5)
-            let controls = bar.subviews.compactMap { $0 as? UIControl }.sorted { $0.frame.minX < $1.frame.minX }
-            XCTAssertEqual(controls.count, 5, "Measure actual UIKit controls, not a duplicated geometry formula")
-            for (index, control) in controls.enumerated() {
-                XCTAssertGreaterThanOrEqual(control.bounds.width, 48)
-                XCTAssertGreaterThanOrEqual(control.bounds.height, 48)
-                XCTAssertTrue(bar.bounds.contains(control.frame))
-                if index > 0 { XCTAssertLessThanOrEqual(controls[index - 1].frame.maxX, control.frame.minX + 0.5) }
+            // iOS 27 nests its native buttons inside material containers. Do
+            // not depend on private class names or immediate-child structure.
+            let controls = descendants(bar).compactMap { $0 as? UIControl }
+            let frames = controls.map { $0.convert($0.bounds, to: bar) }.sorted { $0.minX < $1.minX }
+            let hierarchy = descendants(bar).map { "\(type(of: $0)): \($0.frame)" }.joined(separator: "\n")
+            XCTAssertEqual(controls.count, 5, "Measure actual UIKit controls, not a duplicated geometry formula: \(hierarchy)")
+            for (index, frame) in frames.enumerated() {
+                XCTAssertGreaterThanOrEqual(frame.width, 48)
+                XCTAssertGreaterThanOrEqual(frame.height, 48)
+                XCTAssertTrue(bar.bounds.contains(frame))
+                if index > 0 { XCTAssertLessThanOrEqual(frames[index - 1].maxX, frame.minX + 0.5) }
             }
             XCTAssertTrue(bar.selectedItem === tabs.mapNavigation.tabBarItem)
             XCTAssertFalse(bar.items?[3].isEnabled ?? true)
@@ -153,20 +181,37 @@ final class BottomNavigationControllerTests: XCTestCase {
         browser.loadViewIfNeeded()
         let web = try XCTUnwrap(ownedWeb)
         waitUntil("Owned page must finish") { (try? self.share(browser).attributes.contains(.disabled)) == false }
+        // loadHTMLString establishes the document origin but does not promise
+        // a native history item. Materialize the owned home entry explicitly
+        // before adding the venue; assert the real WKBackForwardList, not just
+        // a location change or the JavaScript history.length value.
+        let homeURL = URL(string: "https://www.dovebevo.com/?owned-history=home")!
+        let primed = expectation(description: "Owned home history item")
+        web.evaluateJavaScript("history.pushState({}, '', '/?owned-history=home')") { _, error in
+            XCTAssertNil(error); primed.fulfill()
+        }
+        wait(for: [primed], timeout: 10)
+        waitUntil("Owned home item must exist") { web.backForwardList.currentItem?.url == homeURL }
         let pushed = expectation(description: "Owned same-document route")
         web.evaluateJavaScript("history.pushState({}, '', '/bar/n123?c=u0nd9')") { _, error in
             XCTAssertNil(error); pushed.fulfill()
         }
         wait(for: [pushed], timeout: 10)
-        waitUntil("Owned history back enabled") { web.canGoBack && web.url?.path == "/bar/n123" }
+        waitUntil("Owned history back enabled") {
+            web.canGoBack && web.url?.path == "/bar/n123" && web.backForwardList.backList.last?.url == homeURL
+        }
+        XCTAssertEqual(web.backForwardList.currentItem?.url.path, "/bar/n123")
         let back = try XCTUnwrap(browser.navigationItem.leftBarButtonItems?.first)
         _ = browser.perform(try XCTUnwrap(back.action))
-        waitUntil("Back returns to owned home") { web.url?.path == "/" }
+        waitUntil("Back returns to owned home") { web.url == homeURL && web.canGoForward }
+        XCTAssertEqual(web.backForwardList.currentItem?.url, homeURL)
+        XCTAssertEqual(web.backForwardList.forwardList.first?.url.path, "/bar/n123")
         XCTAssertFalse(try share(browser).attributes.contains(.disabled))
         XCTAssertTrue(try actions(browser).contains { $0.title == "Ricarica" })
         let forward = try XCTUnwrap(browser.navigationItem.leftBarButtonItems?.last)
         _ = browser.perform(try XCTUnwrap(forward.action))
         waitUntil("Forward restores owned venue route") { web.url?.path == "/bar/n123" }
+        XCTAssertEqual(web.backForwardList.backList.last?.url, homeURL)
         XCTAssertFalse(try share(browser).attributes.contains(.disabled))
         XCTAssertTrue(try actions(browser).contains { $0.title == "Ricarica" })
         XCTAssertTrue(navigation.topViewController === browser)

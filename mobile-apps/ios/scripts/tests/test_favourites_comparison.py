@@ -86,10 +86,13 @@ class FavouritesComparisonGuards(unittest.TestCase):
 
     def test_native_and_ui_suites_exercise_real_controls_and_same_document_history(self):
         native = (IOS / "Tests/BottomNavigationControllerTests.swift").read_text(encoding="utf-8")
-        for required in ["bar.subviews.compactMap", "accessibilityExtraExtraExtraLarge", "tabs.children.count, 2",
+        for required in ["descendants(bar).compactMap", "UIWindow(windowScene: scene)", "previousKeyWindow?.makeKey()",
+                         "bar.window === window", "convert($0.bounds, to: bar)",
+                         "accessibilityExtraExtraExtraLarge", "tabs.children.count, 2",
                          "testHomeResetsSameBrowserButMapResumesItsRetainedStack", "testDestinationChangesDuringParentAppearance",
                          "testOffscreenFavouritesCannotFetchOrAcceptLateResults", "testOverflowUpdatesLoadingAndRecovery",
-                         "testSameDocumentHistory", "history.pushState", "web.canGoBack"]:
+                         "testSameDocumentHistory", "history.pushState", "web.canGoBack",
+                         "web.backForwardList.currentItem", "web.backForwardList.backList.last", "web.backForwardList.forwardList.first"]:
             self.assertIn(required, native)
         ui = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
         self.assertIn('app.tabBars["native.bottomNavigation"]', ui)

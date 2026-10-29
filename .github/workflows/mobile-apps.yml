@@ -307,13 +307,23 @@ jobs:
   ios:
     name: iOS simulator tests and unsigned device archive
     if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/mobile-release/v')
-    runs-on: macos-15-intel
-    timeout-minutes: 50
+    runs-on: xcode-27
+    timeout-minutes: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mobile-release/v') && 70 || 50 }}
     env:
-      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
-      IOS_SIMULATOR_RUNTIME: "26.2"
+      DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
+      IOS_SIMULATOR_RUNTIME: "27.0"
       IOS_SIMULATOR_MODEL: iPhone 17
     steps:
+      - name: Verify the known working Apple toolchain
+        run: |
+          set -euo pipefail
+          selected_xcode="$(xcodebuild -version)"
+          iphoneos_sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          simulator_sdk="$(xcrun --sdk iphonesimulator --show-sdk-version)"
+          printf '%s\n' "$selected_xcode"
+          printf 'iPhoneOS SDK: %s\niPhoneSimulator SDK: %s\n' "$iphoneos_sdk" "$simulator_sdk"
+          [[ "$selected_xcode" == $'Xcode 27.1\nBuild version 27A9275' ]]
+          [[ "$iphoneos_sdk" == 27.1 && "$simulator_sdk" == 27.1 ]]
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -330,13 +340,15 @@ jobs:
       - name: Build simulator app
         run: bash mobile-apps/ios/scripts/build-simulator.sh
       - name: Run unit and live application tests
-        timeout-minutes: 20
+        timeout-minutes: 22
         run: bash mobile-apps/ios/scripts/test-simulator.sh
       - name: Verify live map on 13-inch iPad and capture store screenshots
-        timeout-minutes: 8
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mobile-release/v')
+        timeout-minutes: 20
         run: bash mobile-apps/ios/scripts/capture-ipad.sh
       - name: Verify live map on large iPhone and capture store screenshots
-        timeout-minutes: 8
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mobile-release/v')
+        timeout-minutes: 20
         env:
           STORE_CAPTURE_DEVICE: iphone-large
         run: bash mobile-apps/ios/scripts/capture-ipad.sh

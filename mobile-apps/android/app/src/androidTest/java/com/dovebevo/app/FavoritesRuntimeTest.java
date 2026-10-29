@@ -59,6 +59,41 @@ public final class FavoritesRuntimeTest {
         int count=requests.get();onMain(()->{screen.refresh();screen.hide();});assertEquals(count,requests.get());assertEquals(1,store.load().size());
         onMain(()->{active.set(true);screen.show();});awaitLoaded();assertEquals(1,store.load().size());
     }
+    @Test public void nativeCardsKeepActualPriceContextAndAccessibleActions()throws Exception{
+        byte[] savedBefore=file.read();show();awaitLoaded();
+        onMain(()->{
+            View card=row(1);
+            assertTrue(text(card).contains("Locale reale"));assertTrue(text(card).contains("8,00"));
+            assertTrue(text(card).contains("Birra media"));assertTrue(text(card).contains("Normale"));
+            assertTrue(text(card).contains("28/10/2026"));assertTrue(text(card).contains("2 conferme"));
+            assertFalse("No uncomputed value judgement is invented",text(card).contains("Affare"));
+            assertTrue(card.getBackground() instanceof android.graphics.drawable.GradientDrawable);
+            assertEquals(16*activity.getResources().getDisplayMetrics().density,((android.graphics.drawable.GradientDrawable)card.getBackground()).getCornerRadius(),1f);
+            for(int id:new int[]{R.id.favorite_open,R.id.favorite_remove}) {
+                View action=card.findViewById(id);assertTrue(action.isClickable());assertNotNull(action.getContentDescription());
+                assertTrue(action.getMinimumHeight()>=48*activity.getResources().getDisplayMetrics().density);
+            }
+        });
+        assertArrayEquals(savedBefore,file.read());
+    }
+    @Test public void comparisonFiltersReflowTheSameSelectorsWithoutLosingChoices()throws Exception{
+        show();awaitLoaded();
+        onMain(()->{
+            Spinner drink=activity.findViewById(R.id.favorites_drink),band=activity.findViewById(R.id.favorites_band);
+            drink.setSelection(RecommendationDrink.SPRITZ.ordinal());band.setSelection(1);
+            ComparisonFilters filters=(ComparisonFilters)((View)drink.getParent()).getParent();
+            float density=activity.getResources().getDisplayMetrics().density;
+            for(int widthDp:new int[]{720,320,720}) {
+                int width=Math.round(widthDp*density);
+                filters.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
+                filters.layout(0,0,width,filters.getMeasuredHeight());
+                assertEquals(widthDp==720?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL,filters.getOrientation());
+                assertSame(drink,filters.findViewById(R.id.favorites_drink));assertSame(band,filters.findViewById(R.id.favorites_band));
+                assertEquals(RecommendationDrink.SPRITZ.ordinal(),drink.getSelectedItemPosition());assertEquals(1,band.getSelectedItemPosition());
+                assertTrue(drink.getWidth()>=48*density);assertTrue(band.getWidth()>=48*density);
+            }
+        });
+    }
     @Test public void unavailableDataIsNotZeroAndClearedStoreHasNativeEmptyInstructions()throws Exception{
         onMain(()->{FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{throw new IOException("Owned offline fixture");},()->"2026-10-29");screen=new FavoritesScreen(activity,store,opened::set,active::get,new FavoritesLoader(client,task->activity.runOnUiThread(task)));activity.setContentView(screen.view());screen.show();});
         awaitLoaded();onMain(()->{assertTrue(text(row(0)).contains("non verificabili"));assertFalse(text(row(0)).contains("0,00"));});

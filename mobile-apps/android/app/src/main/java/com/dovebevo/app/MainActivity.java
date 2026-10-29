@@ -92,9 +92,17 @@ public final class MainActivity extends ComponentActivity {
     private ConnectivityManager.NetworkCallback networkCallback;
     private AlertDialog privacyDialog;
     private TestLabPolicy testLabPolicy;
+    private String mobileThemeScript;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        // Light system navigation surfaces require dark controls, introduced in API 26.
+        // The resource fallback stays dark on API 24-25, where those controls are white.
+        if (Build.VERSION.SDK_INT >= 26) {
+            getWindow().setNavigationBarColor(getColor(R.color.shell_background));
+            getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility()
+                    | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        }
         // Firebase's documented signal, read once before any WebView can be created.
         testLabPolicy = TestLabPolicy.detect(
                 () -> Settings.System.getString(getContentResolver(), "firebase.test.lab"));
@@ -239,10 +247,17 @@ public final class MainActivity extends ComponentActivity {
         LinearLayout tools = new LinearLayout(this);
         tools.setId(R.id.browser_tools);
         tools.setGravity(Gravity.CENTER_VERTICAL);
+        tools.setBackgroundColor(getColor(R.color.surface));
+        tools.setPadding(dp(8), dp(6), dp(8), dp(6));
         backButton = button(R.id.back, R.string.back, this::goBack);
         forwardButton = button(R.id.forward, R.string.forward, this::goForward);
-        tools.addView(backButton, toolSize());
-        tools.addView(forwardButton, toolSize());
+        backButton.setText("‹"); backButton.setTextSize(28);
+        forwardButton.setText("›"); forwardButton.setTextSize(28);
+        tools.addView(backButton, new LinearLayout.LayoutParams(dp(48), -2));
+        tools.addView(forwardButton, new LinearLayout.LayoutParams(dp(48), -2));
+        TextView brand = text(R.string.app_name, 18);
+        NativeAppearance.title(brand);
+        tools.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
         Button more = button(R.id.more, R.string.more_options, () -> {});
         more.setText(R.string.more_symbol); more.setTextSize(24);
         more.setOnClickListener(this::showMenu);
@@ -278,6 +293,7 @@ public final class MainActivity extends ComponentActivity {
         button.setMinimumHeight(dp(48));
         button.setPadding(dp(2), dp(4), dp(2), dp(4));
         button.setMaxLines(2);
+        NativeAppearance.button(button, false);
         button.setOnClickListener(view -> action.run());
         return button;
     }
@@ -453,14 +469,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void styleDestination(Button button,boolean selected){
-        button.setSelected(selected);
-        int ink=getColor(selected?R.color.colorPrimaryDark:R.color.shell_text);
-        button.setTextColor(ink);
-        button.setTypeface(null,selected?android.graphics.Typeface.BOLD:android.graphics.Typeface.NORMAL);
-        // Tint the existing native background so its touch ripple remains; remove only the raised elevation.
-        button.setBackgroundTintList(android.content.res.ColorStateList.valueOf(getColor(selected?R.color.colorPrimary:R.color.shell_background)));
-        button.setStateListAnimator(null);button.setElevation(0);
-        for(android.graphics.drawable.Drawable icon:button.getCompoundDrawables())if(icon!=null)icon.mutate().setTint(ink);
+        NativeAppearance.destination(button, selected);
     }
 
     private void restoreDestination(Bundle state){
@@ -683,6 +692,20 @@ public final class MainActivity extends ComponentActivity {
         }
     }
 
+    private void installMobilePresentation(WebView view, String finishedUrl) {
+        if (view != website || failed || destroyed || !MobilePresentation.allows(finishedUrl, view.getUrl())) return;
+        try {
+            if (mobileThemeScript == null) {
+                try (InputStream input = getAssets().open(MobilePresentation.ASSET)) {
+                    mobileThemeScript = MobilePresentation.read(input);
+                }
+            }
+            view.evaluateJavascript(mobileThemeScript, null);
+        } catch (IOException unavailable) {
+            // A missing or invalid bundled skin preserves the original website and its normal security policy.
+        }
+    }
+
     private final class WebsiteClient extends TestLabClient {
         WebsiteClient(TestLabPolicy policy) { super(policy); }
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -711,6 +734,7 @@ public final class MainActivity extends ComponentActivity {
             setLoading(false);
             if (!failed && BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL) {
                 hasUsablePage = !documentHasHttpError;
+                if (hasUsablePage) installMobilePresentation(view, url);
                 errorPanel.setVisibility(View.GONE);
                 view.setVisibility(favoritesVisible?View.GONE:View.VISIBLE);
             }

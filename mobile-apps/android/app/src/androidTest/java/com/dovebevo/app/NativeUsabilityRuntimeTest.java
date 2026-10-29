@@ -88,6 +88,7 @@ public final class NativeUsabilityRuntimeTest {
     private final AtomicBoolean hold = new AtomicBoolean();
     private final AtomicBoolean serverFailure = new AtomicBoolean(true);
     private final AtomicInteger documentResponses = new AtomicInteger();
+    private volatile int presentationMode;
     private final CountDownLatch release = new CountDownLatch(1);
     private final CountDownLatch holdStarted = new CountDownLatch(1);
     private MainActivity activity;
@@ -267,7 +268,10 @@ public final class NativeUsabilityRuntimeTest {
             assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
             assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
             android.view.ViewGroup top = activity.findViewById(R.id.browser_tools);
-            assertEquals(3, top.getChildCount());
+            assertEquals(4, top.getChildCount());
+            int historyActions=0;
+            for(int i=0;i<top.getChildCount();i++) if(top.getChildAt(i) instanceof Button) historyActions++;
+            assertEquals("The brand title adds no duplicate action",3,historyActions);
             assertNull(top.findViewById(R.id.home)); assertNull(top.findViewById(R.id.save_venue));
             assertNull(activity.findViewById(R.id.share)); assertNull(activity.findViewById(R.id.refresh));
             android.view.Menu menu = browserMenu().getMenu();
@@ -409,6 +413,56 @@ public final class NativeUsabilityRuntimeTest {
             }
             originalHome.performClick(); assertEquals(1,taps.get());
         });
+    }
+
+    @Test public void bundledPresentationUsesTheRealResponseNonceAndFailsClosedWhenAbsentOrDenied() throws Exception {
+        presentationMode=1;
+        navigate(ONE);
+        JSONArray styled=presentationState();
+        assertEquals("1",styled.getString(0));
+        assertEquals(1,styled.getInt(1));
+        assertEquals("rgb(255, 255, 255)",styled.getString(2));
+        AtomicInteger history=new AtomicInteger();
+        onMain(()->{history.set(web.copyBackForwardList().getSize());actualClient.onPageFinished(web,ONE);});
+        assertEquals("Repeated finish must not duplicate the bundled style",1,presentationState().getInt(1));
+        onMain(()->assertEquals(history.get(),web.copyBackForwardList().getSize()));
+        assertEquals("Locale di prova",readVenue().name);
+        for(int mode:new int[]{2,3}) {
+            presentationMode=mode;
+            navigate(BrowserPolicy.HOME);
+            JSONArray rejected=presentationState();
+            assertEquals("",rejected.getString(0));
+            assertEquals(0,rejected.getInt(1));
+        }
+    }
+
+    @Test public void compactHeaderKeepsNamedHistoryControlsVisibleAtNarrowWidth() {
+        onMain(()->{
+            if(Build.VERSION.SDK_INT>=26) assertTrue("Light system navigation must request dark controls",
+                    (activity.getWindow().getDecorView().getSystemUiVisibility()&View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR)!=0);
+            LinearLayout header=(LinearLayout)invoke("createBrowserTools");
+            float density=activity.getResources().getDisplayMetrics().density;
+            int width=Math.round(320*density);
+            header.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
+            header.layout(0,0,width,header.getMeasuredHeight());
+            for(int id:new int[]{R.id.back,R.id.forward,R.id.more}) {
+                Button action=header.findViewById(id);
+                assertNotNull(action);assertTrue(action.getWidth()>=48*density);assertTrue(action.getHeight()>=48*density);
+                assertNotNull(action.getContentDescription());assertTrue(action.getContentDescription().length()>1);
+                assertNotNull(action.getLayout());
+                for(int line=0;line<action.getLineCount();line++) {
+                    assertEquals(0,action.getLayout().getEllipsisCount(line));
+                    assertTrue(action.getLayout().getLineWidth(line)<=action.getWidth()-action.getCompoundPaddingLeft()-action.getCompoundPaddingRight()+1);
+                }
+            }
+        });
+    }
+
+    private JSONArray presentationState() throws Exception {
+        AtomicReference<String> value=new AtomicReference<>();CountDownLatch complete=new CountDownLatch(1);
+        onMain(()->web.evaluateJavascript("[getComputedStyle(document.documentElement).getPropertyValue('--dovebevo-app-theme').trim(),document.querySelectorAll('#dovebevo-native-theme-v1').length,getComputedStyle(document.querySelector('.top')).backgroundColor]",result->{value.set(result);complete.countDown();}));
+        assertTrue("Presentation probe missing",complete.await(5,TimeUnit.SECONDS));
+        return new JSONArray(value.get());
     }
 
     @Test public void nativeFavoritesKeepBrowserHistoryAndLateBrowserFailureBehindTheSelectedTab() throws Exception {
@@ -762,6 +816,16 @@ public final class NativeUsabilityRuntimeTest {
                 String key = request.getUrl().getLastPathSegment();
                 byte[] bytes = FIXTURE_HTML.replace("OWNED_RESPONSE", Integer.toString(responseToken))
                         .replace("OWNED_VENUE_KEY", key == null ? "" : key).getBytes(StandardCharsets.UTF_8);
+                if(presentationMode!=0) {
+                    String nonce=presentationMode==2?"":" nonce=\"fixtureThemeNonce20261029\"";
+                    String html="<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+                            +"<meta name=\"owned-response\" content=\""+responseToken+"\"><script"+nonce+"></script>"
+                            +"<div id=\"app\"><div class=\"app\"><header class=\"top\">Owned header</header><main class=\"main\">"
+                            +"<section class=\"map\" data-selected=\"n123\"></section>"
+                            +"<dialog class=\"sheet sheet--bare\" open aria-label=\"Locale di prova\"><div class=\"sheet__body\"><div class=\"scontrino\"><div class=\"scontrino__paper\"><h2 class=\"scontrino__name\">Locale di prova</h2></div></div></div></dialog>"
+                            +"</main></div></div>";
+                    bytes=html.getBytes(StandardCharsets.UTF_8);
+                }
                 InputStream body = new ByteArrayInputStream(bytes);
                 if (hold.get() && HOLD.equals(request.getUrl().toString())) body = new ByteArrayInputStream(bytes) {
                     @Override public synchronized int read(byte[] buffer, int offset, int length) {
@@ -773,9 +837,11 @@ public final class NativeUsabilityRuntimeTest {
                 int status = !"GET".equals(request.getMethod()) ? 403
                         : FAILURE.equals(request.getUrl().toString()) && serverFailure.get() ? 500 : 200;
                 record("response=" + status + " token=" + responseToken + " main=" + request.isForMainFrame() + " url=" + request.getUrl());
+                Map<String,String> headers=new java.util.HashMap<>();headers.put("Cache-Control","no-store");
+                if(presentationMode!=0) headers.put("Content-Security-Policy","default-src 'none'; script-src 'nonce-fixtureThemeNonce20261029'; style-src 'nonce-"+(presentationMode==3?"deniedFixtureNonce20261029":"fixtureThemeNonce20261029")+"'");
                 return new WebResourceResponse("text/html", "UTF-8", status,
                         status == 200 ? "OK" : status == 500 ? "Service Unavailable" : "Forbidden",
-                        Collections.singletonMap("Cache-Control", "no-store"), body);
+                        headers, body);
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 return delegate.shouldOverrideUrlLoading(view, request);

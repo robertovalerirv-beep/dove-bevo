@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { z } from "zod";
 import { routePath } from "hono/route";
 import { version } from "../../package.json";
 import { ApiError, apiError } from "./lib/errors";
@@ -20,8 +19,6 @@ import { session } from "./routes/session";
 import { venues } from "./routes/venues";
 import { mobileRecommendations } from "./routes/mobile-recommendations";
 import type { AppEnv } from "./types";
-
-const QueueTask = z.record(z.string(), z.unknown());
 
 const app = new Hono<AppEnv>();
 
@@ -89,19 +86,5 @@ export default {
     const today = Date.parse(`${romeDay()}T12:00:00Z`);
     const oldestKept = new Date(today - KEEP_DAYS * 86_400_000).toISOString().slice(0, 10);
     await purgeOldKeys(env.DB, oldestKept);
-  },
-  /** Consumer of the "dovebevo-tasks" queue: validate, log only a code and the id, ack or retry. */
-  queue(batch: MessageBatch): void {
-    for (const message of batch.messages) {
-      try {
-        // No task shape is defined yet: accept only a plain object. Bodies are never logged (13.8).
-        QueueTask.parse(message.body);
-        console.log(JSON.stringify({ code: "queue_task_ok", id: message.id }));
-        message.ack();
-      } catch {
-        console.error(JSON.stringify({ code: "queue_task_failed", id: message.id }));
-        message.retry();
-      }
-    }
   },
 } satisfies ExportedHandler<Env>;

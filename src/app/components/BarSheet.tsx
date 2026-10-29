@@ -3,6 +3,7 @@ import type { PriceRow, VenuePrices } from "../../shared/api-types";
 import { it } from "../i18n/lang";
 import { loadCell, loadVenuePrices, type Venue } from "../lib/data";
 import { formatDate, formatPrice, todayRome } from "../lib/format";
+import { loadMenuSources, menuSourceForRow, type MenuPriceSource } from "../lib/menu-sources";
 import { isStale, type Tier } from "../lib/tiers";
 import { directionsUrl } from "../lib/geo";
 import { drinkIcon, Icon } from "./Icon";
@@ -63,12 +64,14 @@ function PriceItem({
   actions,
   inReview,
   tier,
+  menu,
 }: {
   row: PriceRow;
   venue: Venue;
   actions: BarActions;
   inReview: boolean;
   tier: Tier;
+  menu?: MenuPriceSource;
 }) {
   const [, drink, hh, cents, day, confirmations] = row;
   const id = `${row[0]}|${rowId(row)}|${String(cents)}`;
@@ -80,6 +83,7 @@ function PriceItem({
   const name = [it.drinks[drink] ?? drink, hh ? it.bar.happyHour : ""].filter(Boolean).join(" ");
 
   async function confirm() {
+    if (menu) return;
     if (state === "busy" || state === "done" || state === "already") return;
     setState("busy");
     try {
@@ -110,23 +114,44 @@ function PriceItem({
         {formatPrice(cents)}
       </span>
       <span class="price__meta" aria-live="polite">
-        {formatDate(day)} · {it.bar.confirmations(count)}
-        {isStale(day, todayRome()) && <span class="price__stale"> · {it.bar.toConfirm}</span>}
+        {menu ? (
+          <>
+            {it.bar.officialMenu} · {it.bar.menuChecked(formatDate(menu.checked_on))}
+          </>
+        ) : (
+          <>
+            {formatDate(day)} · {it.bar.confirmations(count)}
+            {isStale(day, todayRome()) && <span class="price__stale"> · {it.bar.toConfirm}</span>}
+          </>
+        )}
       </span>
+      {menu && (
+        <p class="hint price__note">
+          {menu.menu_item}
+          {menu.serving && <> · {menu.serving}</>}
+          {menu.context && <> · {menu.context}</>}
+          {" · "}
+          <a href={menu.menu_url} target="_blank" rel="noopener noreferrer">
+            {it.bar.menuLink}
+          </a>
+        </p>
+      )}
       <span class="price__actions">
-        <button
-          type="button"
-          class="btn btn--secondary"
-          // aria-disabled keeps the focus on the button (WCAG 2.4.3); clicks are ignored above.
-          aria-disabled={state === "idle" || state === "failed" ? undefined : "true"}
-          onClick={() => void confirm()}
-        >
-          {state === "done"
-            ? it.actions.confirmed
-            : state === "already"
-              ? it.actions.alreadyConfirmed
-              : it.actions.confirm}
-        </button>
+        {!menu && (
+          <button
+            type="button"
+            class="btn btn--secondary"
+            // aria-disabled keeps the focus on the button (WCAG 2.4.3); clicks are ignored above.
+            aria-disabled={state === "idle" || state === "failed" ? undefined : "true"}
+            onClick={() => void confirm()}
+          >
+            {state === "done"
+              ? it.actions.confirmed
+              : state === "already"
+                ? it.actions.alreadyConfirmed
+                : it.actions.confirm}
+          </button>
+        )}
         {!inReview && (
           <button
             type="button"
@@ -168,22 +193,44 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [menuSources, setMenuSources] = useState<MenuPriceSource[]>([]);
   useEffect(() => {
+    let current = true;
+    const controller = new AbortController();
+    setVenue(undefined);
+    setPrices(null);
+    setPricesFailed(false);
+    setShowAll(false);
+    setMenuSources([]);
     void loadCell(cell)
       .then((venues) => {
+        if (!current) return;
         // A proposed bar is public only once the admin approved it (ADR 0019): not here by its link.
         const found = venues.find((v) => v.key === venueKey && !v.pending) ?? null;
         setVenue(found);
         if (found) onVenue(found);
       })
       .catch(() => {
-        setVenue(null);
+        if (current) setVenue(null);
       });
-    loadVenuePrices(venueKey)
-      .then(setPrices)
+    // Settle provenance before showing price actions; an imported quote must never briefly
+    // offer customer confirmation just because its optional metadata arrived second.
+    void Promise.all([
+      loadVenuePrices(venueKey),
+      loadMenuSources(venueKey, cell, controller.signal).catch(() => []),
+    ])
+      .then(([loadedPrices, sources]) => {
+        if (!current) return;
+        setMenuSources(sources);
+        setPrices(loadedPrices);
+      })
       .catch(() => {
-        setPricesFailed(true);
+        if (current) setPricesFailed(true);
       });
+    return () => {
+      current = false;
+      controller.abort();
+    };
   }, [venueKey, cell]);
 
   if (venue === undefined) {
@@ -240,6 +287,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 actions={actions}
                 inReview={false}
                 tier={tier(row)}
+                menu={menuSourceForRow(row, menuSources, venueKey)}
               />
             ))}
           </ul>
@@ -257,7 +305,11 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           )}
           {active.length > 0 && (
             <p class="scontrino__foot">
-              <span>{it.bar.receiptFoot}</span>
+              <span>
+                {active.some((row) => menuSourceForRow(row, menuSources, venueKey))
+                  ? it.bar.receiptMenuFoot
+                  : it.bar.receiptFoot}
+              </span>
               <span>{it.bar.drinkCount(active.length)}</span>
             </p>
           )}

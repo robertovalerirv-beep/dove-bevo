@@ -105,6 +105,10 @@ export const en: Dict = {
     inReviewHelp: "Unusual prices: they become visible when someone else confirms them.",
     confirmations: (n) =>
       n === 0 ? "No confirmations" : n === 1 ? "1 confirmation" : `${String(n)} confirmations`,
+    officialMenu: "From the official menu",
+    menuChecked: (date) => `Checked on ${date}`,
+    menuLink: "Open the official menu",
+    receiptMenuFoot: "Prices and sources listed above",
     happyHour: "HH",
     notFound: "This place is no longer on the map.",
     loading: "Loading the bar…",

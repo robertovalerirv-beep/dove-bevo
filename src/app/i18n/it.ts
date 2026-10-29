@@ -103,6 +103,10 @@ export const it = {
     inReviewHelp: "Prezzi insoliti: diventano visibili quando qualcun altro li conferma.",
     confirmations: (n: number) =>
       n === 0 ? "Nessuna conferma" : n === 1 ? "1 conferma" : `${String(n)} conferme`,
+    officialMenu: "Dal menu ufficiale",
+    menuChecked: (date: string) => `Controllato il ${date}`,
+    menuLink: "Apri il menu ufficiale",
+    receiptMenuFoot: "Prezzi e fonti indicati sopra",
     happyHour: "HH",
     notFound: "Questo locale non è più sulla mappa.",
     loading: "Carico il bar…",

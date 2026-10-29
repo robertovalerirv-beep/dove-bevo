@@ -4,6 +4,29 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-29 · Rafforzamento dopo l'audit (branch `m7-sicurezza`) · ADR 0044
+
+**Richiesta di Roberto:** terza PR dopo l'audit del 28/10: S1, S3, S4, S5. Gli altri punti dell'audit restano a sua decisione.
+
+**Fatto**
+- S1: `BAR_IS_PUBLIC` (`src/worker/lib/db.ts`) esclude i bar nascosti; la query degli orari verificati non ripete più il controllo.
+- S3: `src/worker/lib/access.ts` (`REFRESH_MIN_MS` = 30 s per un `kid` ignoto) e `app.get("/api/admin/*", rateLimit)` in `src/worker/index.ts`.
+- S4: `EVENTS_PER_IP_DAY` (3000) in `config.ts`, `consumeEventQuota` in `lib/quota.ts`, chiamata in `routes/events.ts` dopo la validazione.
+- S5: `src/worker/lib/same-name.ts` (`foldLookalikes`, `sameName`), usato da `lib/venues.ts`; fuori da `src/shared` per non pesare sulla shell. Dopo una revisione automatica del commit: il nome passa da NFKD prima della tabella (copre anche larghezza intera, lettere matematiche, legature); una prima prova con NFKC rompeva un test esistente (e + accento diventa `ѐ`), corretta con NFKD e un test dedicato.
+- `SECURITY.md` (tre righe STRIDE) e ADR 0044.
+
+**Prove**
+- Test prima, tutti falliti per il motivo giusto: 5 in `venue-name.test.ts` (`expected false to be true`), 9 nel Worker, tra cui `expected 41 to be less than or equal to 1` (i 41 download dell'audit), `consumeEventQuota is not a function`, `expected 200 to be 409`.
+- Poi verdi: unit 34 file, 471 test; Worker 26 file, 261 test (erano 249); `playwright --project=security` 23 test; `tsc`/`typecheck`, `eslint .`, `prettier --check .`, `check-feature-list`, `check-config`, `check-workflows` verdi.
+- Una prima versione aveva messo la tabella nella shell (23,49 KB gzip); spostata nel modulo solo-Worker: 23,20 KB, come prima.
+- Test esistenti: nessuna asserzione cambiata. Cambiato solo l'helper `call` di `tests/worker/access-jwt.ts` (un indirizzo per chiamata) perché il nuovo limite sulle GET admin faceva dare 429 ai test che dividevano un solo «indirizzo sconosciuto».
+
+**Non eseguito qui:** Playwright e2e (Chromium e WebKit), Lighthouse, `npm run verify`; li esegue la CI.
+
+**Da verificare a mano:** nulla di specifico. Dopo il deploy, aprire `/admin` e controllare che le sezioni si carichino senza errori (il limite sulle GET admin non deve scattare con l'uso normale).
+
+---
+
 ## 2026-10-29 · Import OSM tollerante (branch `m7-import`) · SPEC 1.14 · ADR 0043
 
 **Richiesta di Roberto:** seconda delle tre PR dopo l'audit del 28/10: una voce OSM non valida non deve fermare il deploy; SPEC e ADR scritti da me.

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { validVenueName } from "../../src/shared/venue";
+import { sameName } from "../../src/worker/lib/same-name";
 
 // The rule for a bar name (SPEC 13.4): text only. A proposed name is public before the admin sees it,
 // so links, contacts and invisible or invalid characters must not get through (red-team audit 22/10/2026, F-04).
@@ -92,5 +93,69 @@ describe("validVenueName: what must stay accepted", () => {
     }
     expect(names.length).toBeGreaterThan(500);
     expect(names.filter((name) => !validVenueName(name))).toEqual([]);
+  });
+});
+
+// Audit 28/10/2026: a name written with Cyrillic or Greek letters that look Latin was not seen as the
+// name of a bar already on the map, so a copy at the same spot was accepted as new.
+describe("sameName: look-alike letters", () => {
+  it.each([
+    ["Cyrillic о and а", "Bistrot Italia", "Bistr\u043Et It\u0430li\u0430"],
+    ["Cyrillic capitals", "BAR ROMA", "\u0412\u0410R R\u041E\u041C\u0410"],
+    ["Cyrillic е and с", "Caffè Rec", "Caff\u0435\u0300 R\u0435\u0441"],
+    ["Greek omicron and alpha", "Bar Nova", "B\u03B1r N\u03BFva"],
+    ["Cyrillic Ј and а", "Bar Jazz", "Bar \u0408\u0430zz"],
+  ])("%s is the same name", (_label, plain, fake) => {
+    expect(sameName(plain, fake)).toBe(true);
+  });
+
+  it.each([
+    ["different words", "Bar Roma", "Bar Napoli"],
+    ["a letter that only looks similar in some fonts", "Bar Roma", "Bar Rorna"],
+    ["a different number", "Bar 21", "Bar 22"],
+  ])("%s stays different", (_label, a, b) => {
+    expect(sameName(a, b)).toBe(false);
+  });
+
+  it("keeps the old behaviour: case, accents, spaces and punctuation do not matter", () => {
+    expect(sameName("Caffè   dell'Angolo!", "CAFFE DELL ANGOLO")).toBe(true);
+  });
+
+  it.each([
+    [
+      "full-width letters",
+      "Bistrot Italia",
+      "\uFF22\uFF49\uFF53\uFF54\uFF52\uFF4F\uFF54 \uFF29\uFF54\uFF41\uFF4C\uFF49\uFF41",
+    ],
+    [
+      "mathematical bold letters",
+      "Bar Roma",
+      "\u{1D401}\u{1D41A}\u{1D42B} \u{1D411}\u{1D428}\u{1D426}\u{1D41A}",
+    ],
+    ["a ligature", "Office Bar", "O\uFB03ce Bar"],
+    ["full-width and Cyrillic mixed", "Bar Roma", "\uFF22\u0430r R\u043Ema"],
+  ])("%s is the same name", (_label, plain, fake) => {
+    expect(sameName(plain, fake)).toBe(true);
+  });
+
+  it("a look-alike letter that composes with an accent into another Cyrillic letter is still folded", () => {
+    // Cyrillic е + grave accent composes into the single letter ѐ (U+0450), which a table of plain letters misses.
+    expect(sameName("Caff\u00E8", "Caff\u0450")).toBe(true);
+    expect(sameName("Caffe", "Caff\u0435\u0301")).toBe(true);
+  });
+
+  it("a name written entirely in Cyrillic is still equal to itself and different from another", () => {
+    expect(
+      sameName(
+        "\u0411\u0430\u0440 \u041C\u043E\u0441\u043A\u0432\u0430",
+        "\u0411\u0430\u0440 \u041C\u043E\u0441\u043A\u0432\u0430",
+      ),
+    ).toBe(true);
+    expect(
+      sameName(
+        "\u0411\u0430\u0440 \u041C\u043E\u0441\u043A\u0432\u0430",
+        "\u0411\u0430\u0440 \u041A\u0438\u0435\u0432",
+      ),
+    ).toBe(false);
   });
 });

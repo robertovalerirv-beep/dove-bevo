@@ -17,12 +17,17 @@ interface Jwk extends JsonWebKey {
 
 const keyCache = new Map<string, { at: number; keys: Jwk[] }>();
 const KEYS_TTL_MS = 10 * 60_000;
+/** An unknown `kid` may ask for the keys again only this long after the last download (audit 28/10/2026). */
+const REFRESH_MIN_MS = 30_000;
 /** One team in practice; a few more are tolerated, the oldest entry goes first. */
 const KEY_CACHE_MAX = 4;
 
 async function teamKeys(team: string, refresh: boolean): Promise<Jwk[]> {
   const cached = keyCache.get(team);
-  if (cached && !refresh && Date.now() - cached.at < KEYS_TTL_MS) return cached.keys;
+  // A refresh (unknown `kid`) is a rotation only if the keys are not brand new: anyone can send a well-formed
+  // token with a made-up `kid`, which must not cost a download each time.
+  if (cached && Date.now() - cached.at < (refresh ? REFRESH_MIN_MS : KEYS_TTL_MS))
+    return cached.keys;
   const response = await fetch(`https://${team}/cdn-cgi/access/certs`);
   if (!response.ok) throw new ApiError("forbidden");
   const { keys } = await response.json<{ keys: Jwk[] }>();

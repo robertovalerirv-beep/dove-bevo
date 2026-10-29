@@ -1,5 +1,5 @@
 // Daily quotas per session AND per IP, keyed by HMAC with the day as salt (SPEC 13.3, ADR 0005).
-import { QUOTAS, type QuotaKind } from "../config";
+import { EVENTS_PER_IP_DAY, QUOTAS, type QuotaKind } from "../config";
 import { addToCounter } from "./db";
 import { romeDay } from "./day";
 import { ApiError } from "./errors";
@@ -51,5 +51,14 @@ export async function consumeQuota(
     if (!(await addToCounter(env.DB, key, day, amount, limit))) {
       throw new ApiError("rate_limited", { "Retry-After": String(secondsToRomeMidnight()) });
     }
+  }
+}
+
+/** Daily cap of events per address, keyed by HMAC with the day as salt like the other quotas (SPEC 12, 14). */
+export async function consumeEventQuota(env: Env, ip: string, amount: number): Promise<void> {
+  const day = romeDay();
+  const key = await hmacHex(env.HASH_KEY, [day, "events", "ip", ip]);
+  if (!(await addToCounter(env.DB, key, day, amount, EVENTS_PER_IP_DAY))) {
+    throw new ApiError("rate_limited", { "Retry-After": String(secondsToRomeMidnight()) });
   }
 }

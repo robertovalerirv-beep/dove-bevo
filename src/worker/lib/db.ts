@@ -189,9 +189,10 @@ export async function getCoverageRows(db: D1Database): Promise<CoverageRows> {
   };
 }
 
-/** The bar of `?1` is public: an OSM bar, or a user bar the admin approved (ADR 0019). */
-const BAR_IS_PUBLIC = `(?1 NOT LIKE 'u%' OR EXISTS (SELECT 1 FROM venues_user
-  WHERE id = CAST(substr(?1, 2) AS INTEGER) AND status = 'approved'))`;
+/** The bar of `?1` is public: an OSM bar the admin did not hide, or a user bar the admin approved (ADR 0017, 0019). */
+const BAR_IS_PUBLIC = `(NOT EXISTS (SELECT 1 FROM venues_hidden WHERE venue_key = ?1)
+  AND (?1 NOT LIKE 'u%' OR EXISTS (SELECT 1 FROM venues_user
+    WHERE id = CAST(substr(?1, 2) AS INTEGER) AND status = 'approved')))`;
 
 /** Current prices of a bar, its latest 10 observations per drink (D-26) and its hours if verified (D-34). */
 export async function getVenuePrices(db: D1Database, key: string): Promise<VenuePrices> {
@@ -219,10 +220,7 @@ export async function getVenuePrices(db: D1Database, key: string): Promise<Venue
       )
       .bind(key),
     db
-      .prepare(
-        `SELECT hours FROM venues_verified WHERE venue_key = ?1 AND ${BAR_IS_PUBLIC}
-           AND NOT EXISTS (SELECT 1 FROM venues_hidden WHERE venue_key = ?1)`,
-      )
+      .prepare(`SELECT hours FROM venues_verified WHERE venue_key = ?1 AND ${BAR_IS_PUBLIC}`)
       .bind(key),
   ]);
   const h = (

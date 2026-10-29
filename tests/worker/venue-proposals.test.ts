@@ -171,6 +171,23 @@ describe("POST /api/venues (M3-11, M3-12)", () => {
     });
   });
 
+  it("answers 409 for the name of an OSM bar written with Cyrillic look-alike letters", async () => {
+    const file = await (
+      await env.ASSETS.fetch("https://assets.local/data/fixture/v/u0nd9.json")
+    ).json<{ v: [string, string, number, number, number][] }>();
+    const osm = file.v.find((v) => v[0] === "n2420779240");
+    expect(osm).toBeDefined();
+    // Latin o, a, e replaced by the Cyrillic о, а, е that look the same.
+    const fake = (osm?.[1] ?? "")
+      .replaceAll("o", "\u043E")
+      .replaceAll("a", "\u0430")
+      .replaceAll("e", "\u0435");
+    expect(fake).not.toBe(osm?.[1]);
+    const response = await propose(bar(fake, { lat: osm?.[3], lon: osm?.[4] }), await newSession());
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ key: "n2420779240" });
+  });
+
   it("a duplicate of a pending bar answers 409 and counts one more independent proposer", async () => {
     const first = await (
       await propose(bar("Doppione"), await newSession())

@@ -75,3 +75,38 @@ describe("GET /api/venues/approved (ADR 0025)", () => {
     await env.DB.prepare("DELETE FROM venues_user").run();
   });
 });
+
+// Audit 28/10/2026: a bar the admin hid (closed, not a bar) is out of the map, the cell and the SEO pages;
+// its prices must not stay readable by key either.
+describe("a bar hidden by the admin", () => {
+  const hide = () =>
+    env.DB.prepare(
+      "INSERT OR REPLACE INTO venues_hidden (venue_key, cell, name, day) VALUES ('n1', 'u0nd9', 'Bar', '2026-10-28')",
+    ).run();
+  const unhide = () => env.DB.prepare("DELETE FROM venues_hidden WHERE venue_key = 'n1'").run();
+
+  it("returns no current prices and no history, and comes back when it is shown again", async () => {
+    const before: VenuePrices = await (await get("/api/venues/n1/prices")).json();
+    expect(before.p).toHaveLength(1);
+    await hide();
+    try {
+      const body: VenuePrices = await (await get("/api/venues/n1/prices")).json();
+      expect(body).toEqual({ p: [], h: [] });
+    } finally {
+      await unhide();
+    }
+    const back: VenuePrices = await (await get("/api/venues/n1/prices")).json();
+    expect(back.p).toHaveLength(1);
+    expect(back.h.length).toBeGreaterThan(0);
+  });
+
+  it("does not touch the other bars", async () => {
+    await hide();
+    try {
+      const body: VenuePrices = await (await get("/api/venues/n2/prices")).json();
+      expect(body.h).toEqual([["spritz", 0, 900, "2026-09-06"]]);
+    } finally {
+      await unhide();
+    }
+  });
+});

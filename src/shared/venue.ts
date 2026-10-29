@@ -73,12 +73,6 @@ export function distanceMeters(lat1: number, lon1: number, lat2: number, lon2: n
   return 12_742_000 * Math.asin(Math.sqrt(a));
 }
 
-/** Same name once accents, case, spaces and punctuation are ignored. */
-export const sameName = (a: string, b: string) => {
-  const flat = (s: string) => searchKey(s).replace(/[^\p{L}\p{N}]/gu, "");
-  return flat(a) === flat(b);
-};
-
 /**
  * Characters a name never needs: controls, invisible formatting (bidi, zero width), line and paragraph
  * separators, private use, unassigned code points and lone surrogates (D1 would store those as invalid UTF-8).

@@ -1,6 +1,8 @@
 import { env, exports } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
+import { EVENTS_PER_IP_DAY } from "../../src/worker/config";
 import { romeDay } from "../../src/worker/lib/day";
+import { consumeEventQuota } from "../../src/worker/lib/quota";
 
 const ORIGIN = "https://dovebevo.example";
 
@@ -120,5 +122,47 @@ describe("POST /api/events (M5-01, D-06)", () => {
       await env.DB.prepare("PRAGMA table_info(metrics_daily)").all<{ name: string }>()
     ).results.map((c) => c.name);
     expect(cols).toEqual(["day", "event", "prop", "n"]);
+  });
+});
+
+// Audit 28/10/2026: one address could count any number of invented events at the burst limit (400 fake
+// `price_added` in a few seconds). A daily cap per address keeps the gate metrics from being drowned.
+describe("daily cap of events per address", () => {
+  const ten = { events: Array.from({ length: 10 }, () => ({ e: "app_open" })) };
+  const five = { events: Array.from({ length: 5 }, () => ({ e: "app_open" })) };
+  const clear = () => env.DB.prepare("DELETE FROM counters").run();
+
+  it("refuses with 429 and Retry-After once the day's cap is reached, and counts nothing", async () => {
+    await clear();
+    await consumeEventQuota(env, "203.0.113.50", EVENTS_PER_IP_DAY - 5);
+    const over = await beacon(ten, { ip: "203.0.113.50" });
+    expect(over.status).toBe(429);
+    expect(Number(over.headers.get("Retry-After"))).toBeGreaterThan(0);
+    expect(await rows()).toEqual([]);
+    expect((await beacon(five, { ip: "203.0.113.50" })).status).toBe(204);
+    expect((await beacon({ events: [{ e: "app_open" }] }, { ip: "203.0.113.50" })).status).toBe(
+      429,
+    );
+    expect(await rows()).toEqual([{ event: "app_open", prop: "-", n: 5 }]);
+  });
+
+  it("does not touch another address", async () => {
+    await clear();
+    await consumeEventQuota(env, "203.0.113.60", EVENTS_PER_IP_DAY);
+    expect((await beacon(five, { ip: "203.0.113.61" })).status).toBe(204);
+  });
+
+  it("a refused body does not use up the cap", async () => {
+    await clear();
+    expect((await beacon({ events: [{ e: "nope" }] }, { ip: "203.0.113.70" })).status).toBe(400);
+    await consumeEventQuota(env, "203.0.113.70", EVENTS_PER_IP_DAY); // the whole cap is still free
+  });
+
+  it("stores no address in clear", async () => {
+    await clear();
+    await beacon(five, { ip: "203.0.113.80" });
+    const keys = (await env.DB.prepare("SELECT k FROM counters").all<{ k: string }>()).results;
+    expect(keys.length).toBeGreaterThan(0);
+    for (const { k } of keys) expect(k).toMatch(/^[0-9a-f]{32}$/);
   });
 });

@@ -48,8 +48,14 @@ export async function accessJwt(
   return `${head}.${body}.${b64url(new Uint8Array(signature))}`;
 }
 
+// GET /api/admin/* has a burst limit per address (20 / 10 s): every call comes from its own address, so a test
+// that makes many calls does not use up the one shared bucket of "no address" (audit 28/10/2026).
+let calls = 0;
+const nextAddress = () =>
+  `198.18.${String(Math.floor(calls / 250) % 250)}.${String((calls++ % 250) + 1)}`;
+
 export function call(path: string, jwt: string | null, body?: unknown) {
-  const headers: Record<string, string> = { Origin: ORIGIN };
+  const headers: Record<string, string> = { Origin: ORIGIN, "CF-Connecting-IP": nextAddress() };
   if (jwt) headers["Cf-Access-Jwt-Assertion"] = jwt;
   if (body !== undefined) headers["Content-Type"] = "application/json";
   return exports.default.fetch(`${ORIGIN}/api/admin/${path}`, {

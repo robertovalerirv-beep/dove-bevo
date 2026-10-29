@@ -9,6 +9,7 @@ import {
   bumpProposal,
   claimOnce,
   getVenuePrices,
+  getMenuPriceSources,
   listApprovedVenues,
   proposeVenue,
 } from "../lib/db";
@@ -17,7 +18,7 @@ import { ApiError, apiError } from "../lib/errors";
 import { readJson } from "../lib/guards";
 import { hmacHex } from "../lib/hmac";
 import { clientIp, consumeQuota } from "../lib/quota";
-import { findDuplicate } from "../lib/venues";
+import { findDuplicate, publicVenueName } from "../lib/venues";
 import type { AppEnv } from "../types";
 
 /**
@@ -49,6 +50,25 @@ export const venues = new Hono<AppEnv>();
 venues.get("/approved", async (c) =>
   c.json({ v: await listApprovedVenues(c.env.DB) }, 200, { "Cache-Control": "public, max-age=60" }),
 );
+
+// Separate metadata keeps released native clients' strict cell payload contract unchanged.
+venues.get("/:key/menu-sources", async (c) => {
+  const key = VenueKey.safeParse(c.req.param("key"));
+  const cells = c.req.queries("c");
+  const params = new URL(c.req.url).searchParams;
+  if (
+    !key.success ||
+    cells?.length !== 1 ||
+    !/^[0-9b-hjkmnp-z]{5}$/.test(cells[0] ?? "") ||
+    [...params.keys()].some((name) => name !== "c")
+  )
+    return apiError(c, "bad_request");
+  const cell = cells[0] ?? "";
+  if (!(await publicVenueName(c.env, key.data, cell))) return apiError(c, "not_found");
+  return c.json({ prices: await getMenuPriceSources(c.env.DB, key.data, cell) }, 200, {
+    "Cache-Control": "no-store",
+  });
+});
 
 // GET /api/venues/:key/prices — current prices and short history (D-26).
 venues.get("/:key/prices", async (c) => {

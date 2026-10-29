@@ -1,6 +1,7 @@
 // The only module that talks to D1 (CLAUDE.md).
 import { isValidWeek, type WeekHours } from "../../shared/hours";
 import type { MetricRow } from "../../shared/metrics";
+import type { MenuPriceSource } from "../../shared/menu-seed";
 import type {
   CellPrices,
   HistoryRow,
@@ -40,6 +41,32 @@ const toPriceRow = (r: PriceDbRow): PriceRow => [
   r.confirmations,
   r.status === "quarantined" ? 1 : 0,
 ];
+
+/** Only the exact current menu observation may carry the frozen import's source label. */
+export async function getMenuPriceSources(
+  db: D1Database,
+  venue: string,
+  cell: string,
+): Promise<MenuPriceSource[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT s.drink, s.hh, s.price_cents, s.checked_on, s.published_on,
+              s.menu_url, s.menu_item, s.serving, s.context
+       FROM menu_seed_prices s JOIN prices_current p
+         ON p.venue_key = s.venue_key AND p.drink = s.drink AND p.hh = s.hh
+       JOIN price_obs o ON o.id = s.source_obs_id
+       WHERE s.venue_key = ?1 AND s.cell = ?2 AND p.cell = ?2
+         AND s.currency = 'EUR' AND p.source = 'menu' AND p.status = 'active'
+         AND p.price_cents = s.price_cents AND p.observed_on = s.checked_on
+         AND o.venue_key = s.venue_key AND o.drink = s.drink AND o.hh = s.hh
+         AND o.price_cents = s.price_cents AND o.observed_on = s.checked_on
+         AND o.source = 'menu' AND o.status = 'active'
+       ORDER BY s.drink, s.hh LIMIT 18`,
+    )
+    .bind(venue, cell)
+    .all<MenuPriceSource>();
+  return results;
+}
 
 /**
  * Prices, user venues, hidden OSM keys and verified bars of a cell (SPEC 5.4, 9.2, D-34): indexed

@@ -373,33 +373,20 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func dismissMoreMenu() {
-        // The context menu can cover the header. The observed native Mappa
-        // button is below it and preserves this same browser if a tap forwards.
-        let bar = app.descendants(matching: .any)["native.bottomNavigation"]
-        let map = bar.buttons["tab.map"]
-        XCTAssertTrue(bar.exists && map.exists)
-        let frame = map.frame
-        let numbers = [frame.minX, frame.minY, frame.width, frame.height]
-        guard numbers.allSatisfy({ $0.isFinite }), frame.width >= 48, frame.height >= 48,
-              app.frame.contains(frame), bar.frame.contains(frame), frame.minY > app.frame.midY else {
-            XCTFail("There is no verified native Mappa target outside the context menu")
-            return
-        }
-        let point = CGPoint(x: frame.midX, y: frame.midY)
-        for label in ["Condividi", "Ricarica", "Interrompi", "Apri nel browser", "Permessi posizione", "Privacy", "Informazioni"] {
-            let action = app.buttons[label]
-            if action.exists {
-                guard !action.frame.contains(point) else {
-                    XCTFail("The native Mappa target overlaps a presented menu action")
-                    return
-                }
-            }
-        }
-        map.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        // Select a real, harmless native menu action rather than a coordinate
+        // behind the context menu. Closing its alert preserves this browser.
+        let information = app.buttons["Informazioni"]
+        XCTAssertTrue(information.waitForExistence(timeout: 5))
+        XCTAssertTrue(information.isHittable)
+        information.tap()
+        let alert = app.alerts["Dove bevo"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 5))
+        alert.buttons["Chiudi"].tap()
         let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["Condividi"])
         XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed)
         assertNoSharePresentation()
-        XCTAssertTrue(map.isSelected)
+        XCTAssertTrue(app.buttons["tab.map"].isSelected)
+        XCTAssertTrue(app.navigationBars["Dove bevo"].exists)
     }
 
     private func assertNoSharePresentation() {

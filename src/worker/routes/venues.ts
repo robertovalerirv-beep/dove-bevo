@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { it } from "../../app/i18n/it";
 import { CELL_PRECISION, encodeGeohash } from "../../shared/geohash";
-import { ITALY, validVenueName } from "../../shared/venue";
+import { ITALY, validVenueName, VENUE_KEY_PATTERN } from "../../shared/venue";
 import { MAX_PENDING_PER_CELL, MAX_PENDING_VENUES, REJECTION_TRACE_DAYS } from "../config";
 import { romeDay } from "../lib/day";
 import {
@@ -24,7 +24,7 @@ import type { AppEnv } from "../types";
  * OSM bar ("n123", "w456", "r789") or user bar ("u12"). Canonical only: "u007" must not alias "u7"
  * (it would be a hidden price row that still counts in the median).
  */
-export const VenueKey = z.string().regex(/^[nwru][1-9]\d{0,14}$/);
+export const VenueKey = z.string().regex(VENUE_KEY_PATTERN);
 
 export const Lat = z.number().min(ITALY.south).max(ITALY.north);
 export const Lon = z.number().min(ITALY.west).max(ITALY.east);

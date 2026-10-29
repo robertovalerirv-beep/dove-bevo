@@ -4,6 +4,31 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-29 · Pulizia dopo l'audit del 28/10 (branch `m7-pulizia`) · ADR 0042
+
+**Richiesta di Roberto:** dall'audit di sicurezza e qualità, fare per prima la pulizia (P1, P3, P4, P8); poi l'import tollerante e la sicurezza in PR separate. S2 (`/api/ai/cerca`) rimandato per sua scelta.
+
+**Fatto**
+- P1/P2: `CELL_PATTERN`, `VENUE_KEY_PATTERN`, `OSM_KEY_PATTERN` in `src/shared/venue.ts` e `medianOf` in `src/shared/prices.ts`; usati da `prices`, `reports`, `admin`, `venues`, `mobile-recommendations`, `seo`, `app.tsx`, `tiers`.
+- P3: coda `TASKS_QUEUE` tolta (`index.ts`, `wrangler.jsonc` staging, `env.d.ts`, `worker-configuration.d.ts` rigenerato, `docs/release-checklist.md`).
+- P4: commento del cron.
+- P8: solo verifica (vedi ADR 0042): `allowScripts` è efficace con npm 11.21.1.
+
+**Prove**
+- Test prima: `tests/unit/patterns.test.ts` fallito con `Cannot read properties of undefined (reading 'test')` (33 casi) prima del codice, poi verde.
+- `npx tsc -b` e `npm run typecheck` (compreso `wrangler types --check`) verdi; `npx eslint .` e `prettier --check .` senza errori.
+- `npx vitest run --project unit` → 34 file, 454 test verdi. `npx vitest run --project worker` → 25 file, 249 test verdi (compresi i 30 della PR #73).
+- `check-feature-list` (dopo `git fetch --tags`): `128/134 passing`, solo `passes`; `check-config` e `check-workflows` verdi.
+- `grep` di `TASKS_QUEUE|QueueTask|dovebevo-tasks` in `src`, `wrangler.jsonc` e `worker-configuration.d.ts`: nessun residuo.
+
+**Non eseguito qui:** Playwright (e2e e `test:security`), `npm run verify` completo e Lighthouse; li esegue la CI sulla PR.
+
+**Da verificare a mano (Roberto):** dopo il deploy, nella dashboard Cloudflare (Queues → `dovebevo-tasks`) controllare che il Worker `dovebevo-staging` non risulti più consumatore; se risulta, staccarlo. La coda si può lasciare.
+
+**Osservazione fuori ambito:** la PR #73 (raccomandazioni nelle app, ADR 0041) è arrivata su `main` dopo l'audit e non è stata analizzata a fondo: scritture senza Turnstile né sessione, protette solo da un UUID scelto dal client e da quote di 50 (installazione) e 200 (IP) al giorno. Da includere in un prossimo audit.
+
+---
+
 ## 2026-10-28 · Apps-only public drink recommendations · ADR 0041
 
 The app owner authorized a narrow shared-storage exception: additive native recommendation API and D1 table, with Roberto's website interface and existing price/session behavior unchanged. `GET/POST /api/mobile/venues/:key/recommendations?c=<cell>` returns all nine catalog categories, shared totals and optional installation state with no-store. Persistent pair-scoped HMAC claims support transactional idempotent set/undo; addition attempts are limited to 50 per installation and 200 per IP per Rome day. Undo remains burst-limited but daily-budget exempt. No raw installation ID/IP is stored with claims or counters, and no browser cookies are copied.

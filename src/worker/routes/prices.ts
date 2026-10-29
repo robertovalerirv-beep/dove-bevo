@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { findDrink } from "../../shared/catalog";
+import { medianOf } from "../../shared/prices";
+import { CELL_PATTERN } from "../../shared/venue";
 import { MAX_ITEMS, QUARANTINE_MIN_PRICES, QUARANTINE_RATIO } from "../config";
 import { edgeKey, forgetCellCache } from "../lib/cell-cache";
 import { romeDay } from "../lib/day";
@@ -24,7 +26,7 @@ import { resolveVenue } from "../lib/venues";
 import { VenueKey } from "./venues";
 import type { AppEnv } from "../types";
 
-const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
+const Cell = z.string().regex(CELL_PATTERN);
 const EDGE_TTL = "public, max-age=60";
 export const prices = new Hono<AppEnv>();
 
@@ -69,12 +71,6 @@ const ConfirmBody = z.strictObject({
 });
 
 type Result = { status: "active" | "quarantined" | "confirmed" | "rejected"; code?: string };
-
-const median = (values: number[]) => {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? (sorted[mid] ?? 0) : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
-};
 
 const priceId = (k: PriceKey) => `${k.venue}|${k.drink}|${String(k.hh)}`;
 
@@ -160,7 +156,7 @@ prices.post("/", async (c) => {
     const ownCounts =
       existing?.status === "active" && where.isPublic && existing.cell === where.cell;
     const all = ownCounts ? [...others, existing.price] : others;
-    const m = median(all);
+    const m = medianOf(all);
     const status =
       all.length >= QUARANTINE_MIN_PRICES && Math.abs(item.price_cents - m) > QUARANTINE_RATIO * m
         ? "quarantined"

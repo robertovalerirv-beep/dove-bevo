@@ -29,7 +29,7 @@
     ],
   },
   // Invocation logs off: we log only what we write ourselves (SPEC 13.8).
-  // Nightly cleanup of counters and dedup (SPEC 8), 02:30 UTC.
+  // Hourly cleanup of counters and dedup (SPEC 8, ADR 0016): keys older than yesterday go.
   "triggers": { "crons": ["0 * * * *"] },
   // 10 % sampling is enough to debug; query strings (geohash cells) never reach the logs.
   "observability": {
@@ -91,11 +91,6 @@
           "migrations_dir": "migrations",
         },
       ],
-      // Async tasks: the queue already exists on Cloudflare; this Worker is producer and consumer.
-      "queues": {
-        "producers": [{ "binding": "TASKS_QUEUE", "queue": "dovebevo-tasks" }],
-        "consumers": [{ "queue": "dovebevo-tasks", "max_batch_size": 10, "max_batch_timeout": 5 }],
-      },
       "ratelimits": [
         { "name": "RATE_LIMITER", "namespace_id": "1002", "simple": { "limit": 20, "period": 10 } },
         {

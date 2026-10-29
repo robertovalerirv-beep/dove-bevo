@@ -5,7 +5,7 @@ import {
   TIER_MIN_PRICES,
   TIER_PRICEY_ABOVE,
 } from "../../shared/config";
-import { bestPrice } from "../../shared/prices";
+import { bestPrice, medianOf } from "../../shared/prices";
 import type { PriceRow } from "../../shared/api-types";
 
 /** What the tiers need of a bar (the full `Venue` lives in data.ts, which needs Vite). */
@@ -17,11 +17,7 @@ interface Venue {
 
 export type Tier = "affare" | "giusto" | "salato" | "neutro";
 
-export function medianOf(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? (sorted[mid] ?? 0) : ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2;
-}
+export { medianOf };
 
 /** Active normal-hours prices (cents) of a drink in a cell, one per bar. */
 export function cellPrices(venues: Venue[], cell: string, drink: string): number[] {

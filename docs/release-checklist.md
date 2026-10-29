@@ -35,7 +35,7 @@ Cosa fa Roberto, cosa fa Claude Code. **Un solo ambiente vivo (ADR 0036):** `sta
 
 ## Se un giorno serve l'ambiente separato (non ora)
 Serve una decisione tua e una nuova versione della SPEC con un tag nuovo, perché cambiano il capitolo 16 e M6. Poi:
-1. D1 `dovebevo-production` (`wrangler d1 create`), con il suo `database_id`; Queue e Rate Limiting come per staging, con `namespace_id` propri.
+1. D1 `dovebevo-production` (`wrangler d1 create`), con il suo `database_id`; Rate Limiting come per staging, con `namespace_id` propri.
 2. Widget Turnstile e applicazione Access sul dominio, con `TURNSTILE_SITE_KEY`, `TURNSTILE_HOSTNAME`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD` nelle vars.
 3. Segreti: `npx wrangler secret put <NOME> --env production` per i tre, valori diversi da quelli di staging.
 4. Blocco `env.production` in `wrangler.jsonc` (stessa forma di `staging`); `node scripts/check-config.mjs` deve restare verde.

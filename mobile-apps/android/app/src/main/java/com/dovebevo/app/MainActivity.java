@@ -62,13 +62,10 @@ public final class MainActivity extends ComponentActivity {
     private TextView errorMessage;
     private Button backButton;
     private Button forwardButton;
-    private Button refreshButton;
-    private Button shareButton;
     private SavedVenuesUi savedVenues;
     private FavoritesScreen favorites;
     private boolean favoritesVisible;
     private Button mapDestination,favoritesDestination,saveButton;
-    private View browserTools,venueTools;
     private RecommendationsUi recommendations;
     private Button recommendationButton;
     private long recommendationCapture;
@@ -185,31 +182,7 @@ public final class MainActivity extends ComponentActivity {
         // The first WebView and network observer are created only after current rules acceptance.
         WebView.setWebContentsDebuggingEnabled(false);
         LinearLayout shell = createShell();
-        LinearLayout tools = new LinearLayout(this);
-        browserTools=tools;
-        tools.setGravity(Gravity.CENTER_VERTICAL);
-        backButton = button(R.id.back, R.string.back, this::goBack);
-        forwardButton = button(R.id.forward, R.string.forward, this::goForward);
-        shareButton = button(R.id.share, R.string.share, this::share);
-        refreshButton = button(R.id.refresh, R.string.refresh, this::refresh);
-        tools.addView(backButton, toolSize());
-        tools.addView(forwardButton, toolSize());
-        tools.addView(button(R.id.home, R.string.home, () -> navigate(BrowserPolicy.HOME)), toolSize());
-        tools.addView(shareButton, toolSize());
-        tools.addView(refreshButton, toolSize());
-        Button more = button(R.id.more, R.string.more_options, () -> {});
-        more.setText(R.string.more_symbol);
-        more.setTextSize(24);
-        more.setOnClickListener(this::showMenu);
-        tools.addView(more, new LinearLayout.LayoutParams(dp(48), -2));
-        shell.addView(tools, new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout venueActions=new LinearLayout(this);venueTools=venueActions;
-        saveButton=button(R.id.save_venue,R.string.save_venue,this::saveCurrentVenue);
-        saveButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.native_bookmark,0,0,0);
-        recommendationButton = button(R.id.recommendation_entry, R.string.recommendation_entry, this::showRecommendations);
-        recommendationButton.setCompoundDrawablesWithIntrinsicBounds(R.drawable.native_thumb,0,0,0);
-        for(Button action:new Button[]{saveButton,recommendationButton}){action.setTextSize(16);action.setMaxLines(4);venueActions.addView(action,new LinearLayout.LayoutParams(0,-2,1));}
-        venueActions.setVisibility(View.GONE);shell.addView(venueActions,new LinearLayout.LayoutParams(-1,-2));
+        shell.addView(createBrowserTools(), new LinearLayout.LayoutParams(-1, -2));
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(true);
         progress.setContentDescription(getString(R.string.loading));
@@ -222,13 +195,7 @@ public final class MainActivity extends ComponentActivity {
         shell.addView(offline, new LinearLayout.LayoutParams(-1, -2));
         content = new FrameLayout(this);
         shell.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
-        LinearLayout destinations=new LinearLayout(this);
-        mapDestination=button(R.id.map_destination,R.string.map_destination,this::showMap);
-        favoritesDestination=button(R.id.favorites_destination,R.string.saved_venues,this::showFavorites);
-        mapDestination.setCompoundDrawablesWithIntrinsicBounds(0,R.drawable.native_map,0,0);
-        favoritesDestination.setCompoundDrawablesWithIntrinsicBounds(0,R.drawable.native_bookmark,0,0);
-        for(Button destination:new Button[]{mapDestination,favoritesDestination}){destination.setTextSize(16);destination.setMinHeight(dp(64));destinations.addView(destination,new LinearLayout.LayoutParams(0,-2,1));}
-        shell.addView(destinations,new LinearLayout.LayoutParams(-1,-2));
+        shell.addView(createBottomNavigation(),new LinearLayout.LayoutParams(-1,-2));
         errorPanel = new LinearLayout(this);
         errorPanel.setId(R.id.load_error);
         errorPanel.setOrientation(LinearLayout.VERTICAL);
@@ -267,6 +234,29 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+    private LinearLayout createBrowserTools() {
+        LinearLayout tools = new LinearLayout(this);
+        tools.setId(R.id.browser_tools);
+        tools.setGravity(Gravity.CENTER_VERTICAL);
+        backButton = button(R.id.back, R.string.back, this::goBack);
+        forwardButton = button(R.id.forward, R.string.forward, this::goForward);
+        tools.addView(backButton, toolSize());
+        tools.addView(forwardButton, toolSize());
+        Button more = button(R.id.more, R.string.more_options, () -> {});
+        more.setText(R.string.more_symbol); more.setTextSize(24);
+        more.setOnClickListener(this::showMenu);
+        tools.addView(more, new LinearLayout.LayoutParams(dp(48), -2));
+        return tools;
+    }
+    private LinearLayout createBottomNavigation() {
+        BottomNavigationBar bottom = new BottomNavigationBar(this, this::goHome, this::showMap,
+                this::showFavorites, this::saveCurrentVenue, this::showRecommendations);
+        mapDestination = bottom.findViewById(R.id.map_destination);
+        favoritesDestination = bottom.findViewById(R.id.favorites_destination);
+        saveButton = bottom.findViewById(R.id.save_venue);
+        recommendationButton = bottom.findViewById(R.id.recommendation_entry);
+        return bottom;
+    }
     private LinearLayout.LayoutParams toolSize() { return new LinearLayout.LayoutParams(0, -2, 1); }
     private TextView text(int label, int size) {
         TextView view = new TextView(this);
@@ -444,20 +434,20 @@ public final class MainActivity extends ComponentActivity {
 
     private void updateToolbar() {
         if (backButton == null) return;
-        backButton.setEnabled(website != null && website.canGoBack());
-        forwardButton.setEnabled(website != null && website.canGoForward());
-        shareButton.setEnabled(website != null && hasUsablePage && !failed && !loading && !awaitingDocumentStart);
-        int action = loading ? R.string.stop_loading : R.string.refresh;
-        refreshButton.setText(action);
-        refreshButton.setContentDescription(getString(action));
+        backButton.setEnabled(foreground && !destroyed && (favoritesVisible || website != null && website.canGoBack()));
+        forwardButton.setEnabled(foreground && !destroyed && !favoritesVisible && website != null && website.canGoForward());
         if (recommendationButton != null) {
-            recommendationButton.setVisibility(eligibleSavedVenue() == null ? View.GONE : View.VISIBLE);
-            recommendationButton.setEnabled(foreground && !recommendationCapturing);
+            recommendationButton.setEnabled(foreground && eligibleSavedVenue() != null && !recommendationCapturing);
+            recommendationButton.setAlpha(recommendationButton.isEnabled() ? 1f : .5f);
         }
-        if(venueTools!=null)venueTools.setVisibility(!favoritesVisible&&eligibleSavedVenue()!=null?View.VISIBLE:View.GONE);
-        if(saveButton!=null)saveButton.setEnabled(foreground&&eligibleSavedVenue()!=null);
-        if(browserTools!=null)browserTools.setVisibility(favoritesVisible?View.GONE:View.VISIBLE);
+        if(saveButton!=null){saveButton.setEnabled(foreground&&eligibleSavedVenue()!=null);saveButton.setAlpha(saveButton.isEnabled()?1f:.5f);}
         if(mapDestination!=null){styleDestination(mapDestination,!favoritesVisible);styleDestination(favoritesDestination,favoritesVisible);}
+        for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination}){
+            View control=findViewById(id);if(control!=null)control.setEnabled(foreground&&!destroyed);
+        }
+        for(int id:new int[]{R.id.home,R.id.save_venue,R.id.recommendation_entry}){
+            Button control=findViewById(id);if(control!=null)styleDestination(control,false);
+        }
         if (recommendations != null) recommendations.contextChanged();
     }
 
@@ -473,7 +463,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void showFavorites(){
-        if(destroyed||favorites==null||favoritesVisible)return;
+        if(!foreground||destroyed||favorites==null||favoritesVisible)return;
         venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
         cancelLocation();disposePopup();
         if(savedVenues!=null)savedVenues.dismiss();if(recommendations!=null)recommendations.dismiss();
@@ -483,6 +473,7 @@ public final class MainActivity extends ComponentActivity {
         progress.setVisibility(View.GONE);favorites.view().setVisibility(View.VISIBLE);favorites.view().bringToFront();favorites.show();updateToolbar();
     }
     private void showMap(){
+        if(!foreground||destroyed)return;
         if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}
         favoritesVisible=false;
         if(website!=null){website.setVisibility(failed?View.GONE:View.VISIBLE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);}
@@ -490,8 +481,15 @@ public final class MainActivity extends ComponentActivity {
         if(progress!=null)progress.setVisibility(loading?View.VISIBLE:View.GONE);updateToolbar();
     }
     private void saveCurrentVenue(){
-        if(savedVenues==null||eligibleSavedVenue()==null)return;
+        if(!foreground||savedVenues==null||eligibleSavedVenue()==null)return;
         recommendationCapture++;recommendationCapturing=false;savedVenues.saveCurrent();updateToolbar();
+    }
+
+    private void goHome(){
+        if(!foreground||destroyed)return;
+        venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
+        if(savedVenues!=null)savedVenues.dismiss();if(recommendations!=null)recommendations.dismiss();
+        disposePopup();showMap();navigate(BrowserPolicy.HOME);
     }
 
     private void showRecommendations() {
@@ -580,21 +578,34 @@ public final class MainActivity extends ComponentActivity {
     }
     private void toast(int message) { Toast.makeText(this, message, Toast.LENGTH_SHORT).show(); }
     private void showMenu(View anchor) {
+        if(!foreground||destroyed)return;
+        createBrowserMenu(anchor).show();
+    }
+    private PopupMenu createBrowserMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
-        menu.getMenu().add(Menu.NONE, R.id.save_venue, Menu.NONE, R.string.save_venue).setEnabled(eligibleSavedVenue() != null);
-        menu.getMenu().add(Menu.NONE, R.id.saved_venues, Menu.NONE, R.string.saved_venues);
+        boolean mapActive=foreground&&!destroyed&&!favoritesVisible&&website!=null;
+        menu.getMenu().add(Menu.NONE, R.id.share, Menu.NONE, R.string.share)
+                .setEnabled(mapActive&&hasUsablePage&&!failed&&!loading&&!awaitingDocumentStart);
+        menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, loading?R.string.stop_loading:R.string.refresh).setEnabled(mapActive);
         menu.getMenu().add(Menu.NONE, R.id.location_help, Menu.NONE, R.string.location_help);
         menu.getMenu().add(Menu.NONE, R.id.privacy, Menu.NONE, R.string.privacy);
         menu.getMenu().add(Menu.NONE, R.id.support, Menu.NONE, R.string.support);
         menu.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == R.id.save_venue) { saveCurrentVenue(); return true; }
-            if (item.getItemId() == R.id.saved_venues) { showFavorites(); return true; }
+            // Recheck current context: a menu may have been opened before background/navigation.
+            if(!foreground||destroyed)return false;
+            if (item.getItemId() == R.id.share) {
+                if(!favoritesVisible&&website!=null&&hasUsablePage&&!failed&&!loading&&!awaitingDocumentStart)share();
+                return true;
+            }
+            if (item.getItemId() == R.id.refresh) {
+                if(!favoritesVisible&&website!=null)refresh();return true;
+            }
             if (item.getItemId() == R.id.location_help) { showLocationHelp(); return true; }
             if (item.getItemId() == R.id.privacy) { showPrivacy(); return true; }
             if (item.getItemId() == R.id.support) { openExternal("mailto:dovebevo@gmail.com"); return true; }
             return false;
         });
-        menu.show();
+        return menu;
     }
 
     private void showLocationHelp() {

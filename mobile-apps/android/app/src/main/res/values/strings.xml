@@ -18,6 +18,7 @@
     <string name="location_help_body">Tocca «Vicino a me» nella mappa per scegliere se consentire la posizione, anche approssimativa. Se hai negato il permesso, puoi cambiarlo nelle Impostazioni di Android. Controlla anche che la posizione del telefono sia attiva. Puoi sempre cercare una città senza condividere la posizione.</string>
     <string name="open_settings">Apri Impostazioni</string>
     <string name="save_venue">Salva nei preferiti</string>
+    <string name="save_venue_short">Salva</string>
     <string name="saved_venues">Preferiti</string>
     <string name="cancel">Annulla</string>
     <string name="save_venue_unavailable">Apri la scheda di un locale e attendi il caricamento del suo nome prima di salvarlo nei preferiti.</string>
@@ -47,6 +48,7 @@
     <string name="test_lab_read_only_banner">Test automatico in sola lettura: invii pubblici, collegamenti esterni e condivisioni sono disabilitati per proteggere i dati reali.</string>
     <string name="test_lab_external_disabled">Durante il test automatico i collegamenti esterni e le condivisioni sono disabilitati.</string>
     <string name="recommendation_entry">Drink consigliati</string>
+    <string name="recommendation_short">Consigliati</string>
     <string name="recommendation_title">Drink consigliati</string>
     <string name="recommendation_explanation">Consiglia i drink che hai provato qui. Le categorie non indicano la disponibilità del locale. Ogni installazione può dare o togliere un consiglio per drink.</string>
     <string name="recommendation_refresh">Aggiorna consigli</string>

@@ -123,16 +123,7 @@ public final class NativeUsabilityRuntimeTest {
                 ServiceWorkerController.getInstance().getServiceWorkerWebSettings().setBlockNetworkLoads(true);
                 LinearLayout layout = new LinearLayout(activity);
                 layout.setOrientation(LinearLayout.VERTICAL);
-                LinearLayout tools = new LinearLayout(activity);
-                for (String[] action : new String[][]{{"backButton", "goBack"}, {"forwardButton", "goForward"},
-                        {"refreshButton", "refresh"}, {"shareButton", "share"}}) {
-                    Button button = new Button(activity);
-                    button.setText(action[1]);
-                    button.setOnClickListener(view -> invoke(action[1]));
-                    set(action[0], button);
-                    tools.addView(button, new LinearLayout.LayoutParams(0, -2, 1));
-                }
-                layout.addView(tools);
+                layout.addView((View) invoke("createBrowserTools"));
                 ProgressBar progress = new ProgressBar(activity);
                 set("progress", progress); layout.addView(progress);
                 FrameLayout content = new FrameLayout(activity);
@@ -146,6 +137,7 @@ public final class NativeUsabilityRuntimeTest {
                 retry.setOnClickListener(view -> invoke("navigate", new Class<?>[]{String.class}, get("lastTrustedUrl")));
                 error.addView(retry); error.setVisibility(View.GONE); set("errorPanel", error);
                 content.addView(error, new FrameLayout.LayoutParams(-1, -1));
+                layout.addView((View) invoke("createBottomNavigation"));
                 activity.setContentView(layout);
                 installFixtureWebView();
                 savedUi = new SavedVenuesUi(activity, store, () -> (String) invoke("eligibleSavedVenue"),
@@ -183,11 +175,15 @@ public final class NativeUsabilityRuntimeTest {
     @Test public void oneActionBookmarkUsesActualHeadingWithoutAFormAndPersistsOpensAndRemoves() throws Exception {
         navigate(ONE);
         WebView original = web;
-        onMain(() -> savedUi.saveCurrent());
+        onMain(() -> activity.findViewById(R.id.save_venue).performClick());
         await(() -> "Locale di prova".equals(savedLabel()));
         onMain(() -> {
             assertNull(currentDialog());
             assertSame(original, get("website"));
+            assertFalse((Boolean) get("favoritesVisible"));
+            assertEquals(ONE, web.getUrl());
+            assertTrue(activity.findViewById(R.id.map_destination).isSelected());
+            assertFalse(activity.findViewById(R.id.save_venue).isSelected());
         });
         assertEquals("Locale di prova", new SavedVenueStore(new SavedVenueFile(fixtureDirectory)).load().get(0).label);
         assertEquals(ONE, store.load().get(0).url);
@@ -230,10 +226,9 @@ public final class NativeUsabilityRuntimeTest {
             };
             RecommendationsUi ui = new RecommendationsUi(activity, api, TestLabPolicy.detect(() -> null), () -> (String) invoke("eligibleSavedVenue"));
             nativeUi.set(ui); set("recommendations", ui);
-            Button entry = new Button(activity); entry.setId(R.id.recommendation_entry); entry.setText(R.string.recommendation_entry);
-            entry.setOnClickListener(view -> invoke("showRecommendations")); set("recommendationButton", entry);
-            ((LinearLayout) ((FrameLayout) get("content")).getParent()).addView(entry, 0); invoke("updateToolbar");
-            assertEquals(View.GONE, entry.getVisibility());
+            Button entry = activity.findViewById(R.id.recommendation_entry);
+            invoke("updateToolbar");
+            assertEquals(View.VISIBLE, entry.getVisibility()); assertFalse(entry.isEnabled());
         });
         navigate(ONE);
         onMain(() -> {
@@ -253,8 +248,99 @@ public final class NativeUsabilityRuntimeTest {
             } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
         });
         navigate(BrowserPolicy.HOME);
-        onMain(() -> assertEquals(View.GONE, activity.findViewById(R.id.recommendation_entry).getVisibility()));
+        onMain(() -> {
+            assertEquals(View.VISIBLE, activity.findViewById(R.id.recommendation_entry).getVisibility());
+            assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+        });
         assertEquals("Entry/GET must not publish a recommendation", 0, posts.get());
+    }
+
+    @Test public void fiveBottomControlsRemainVisibleAndOverflowHasNoDestinationDuplicates() throws Exception {
+        onMain(() -> {
+            android.view.ViewGroup bottom = activity.findViewById(R.id.bottom_navigation);
+            assertNotNull(bottom);
+            for (int id : new int[]{R.id.home, R.id.map_destination, R.id.favorites_destination,
+                    R.id.save_venue, R.id.recommendation_entry}) {
+                View control = bottom.findViewById(id);
+                assertNotNull(control); assertEquals(View.VISIBLE, control.getVisibility());
+            }
+            assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
+            assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            android.view.ViewGroup top = activity.findViewById(R.id.browser_tools);
+            assertEquals(3, top.getChildCount());
+            assertNull(top.findViewById(R.id.home)); assertNull(top.findViewById(R.id.save_venue));
+            assertNull(activity.findViewById(R.id.share)); assertNull(activity.findViewById(R.id.refresh));
+            android.view.Menu menu = browserMenu().getMenu();
+            assertNotNull(menu.findItem(R.id.share)); assertNotNull(menu.findItem(R.id.refresh));
+            for (int id : new int[]{R.id.home, R.id.map_destination, R.id.favorites_destination,
+                    R.id.saved_venues, R.id.save_venue, R.id.recommendation_entry}) assertNull(menu.findItem(id));
+        });
+        navigate(ONE);
+        WebView original = web;
+        onMain(() -> {
+            assertTrue(activity.findViewById(R.id.save_venue).isEnabled());
+            assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            FavoritePricesClient client = new FavoritePricesClient((url,max,call) -> {
+                throw new IOException("Empty owned favourites must not fetch");
+            }, () -> "2026-10-29");
+            FavoritesScreen screen = new FavoritesScreen(activity, store,
+                    url -> invoke("navigate", new Class<?>[]{String.class}, url),
+                    () -> (Boolean) get("foreground"),
+                    new FavoritesLoader(client, task -> activity.runOnUiThread(task)));
+            set("favorites", screen); ((FrameLayout)get("content")).addView(screen.view());
+            screen.view().setVisibility(View.GONE);
+            int index = web.copyBackForwardList().getCurrentIndex();
+            activity.findViewById(R.id.favorites_destination).performClick();
+            assertSame(screen, get("favorites")); assertTrue((Boolean)get("favoritesVisible"));
+            assertTrue(activity.findViewById(R.id.favorites_destination).isSelected());
+            assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
+            assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertFalse(browserMenu().getMenu().findItem(R.id.share).isEnabled());
+            assertFalse(browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
+            activity.findViewById(R.id.map_destination).performClick();
+            assertSame(original, get("website")); assertEquals(index, web.copyBackForwardList().getCurrentIndex());
+            assertEquals(ONE, web.getUrl()); assertFalse((Boolean)get("favoritesVisible"));
+            activity.findViewById(R.id.favorites_destination).performClick();
+            activity.findViewById(R.id.home).performClick();
+            assertFalse((Boolean)get("favoritesVisible"));
+            assertTrue(activity.findViewById(R.id.map_destination).isSelected());
+            assertFalse(activity.findViewById(R.id.home).isSelected());
+            assertSame(original, get("website"));
+        });
+        await(() -> BrowserPolicy.HOME.equals(web.getUrl()) && !(Boolean)get("loading"));
+        assertOwnedDocument(2);
+    }
+
+    @Test public void actualBottomLayoutFitsNarrowLargeTextAndLandscapeWithoutClippingOrHiddenActions() {
+        onMain(() -> {
+            for (float[] fixture : new float[][]{{390,1f},{320,1.5f},{320,2f},{640,1.5f}}) {
+                android.content.res.Configuration config = new android.content.res.Configuration(activity.getResources().getConfiguration());
+                config.screenWidthDp = (int)fixture[0]; config.fontScale = fixture[1];
+                android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
+                BottomNavigationBar bar = new BottomNavigationBar(context, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
+                float density = context.getResources().getDisplayMetrics().density;
+                int width = Math.round(fixture[0] * density);
+                bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+                bar.layout(0, 0, width, bar.getMeasuredHeight());
+                java.util.ArrayList<android.graphics.Rect> boxes = new java.util.ArrayList<>();
+                for (int id : new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
+                    Button button = bar.findViewById(id); assertNotNull(button);
+                    assertEquals(View.VISIBLE, button.getVisibility());
+                    assertTrue(button.getWidth() >= 48*density); assertTrue(button.getHeight() >= 48*density);
+                    assertNotNull(button.getLayout());
+                    assertTrue(button.getLayout().getHeight() <= button.getHeight()-button.getCompoundPaddingTop()-button.getCompoundPaddingBottom());
+                    for(int line=0;line<button.getLineCount();line++) {
+                        assertEquals(0,button.getLayout().getEllipsisCount(line));
+                        assertTrue(button.getLayout().getLineWidth(line) <= button.getWidth()-button.getCompoundPaddingLeft()-button.getCompoundPaddingRight()+1);
+                    }
+                    android.graphics.Rect box = new android.graphics.Rect(0,0,button.getWidth(),button.getHeight());
+                    bar.offsetDescendantRectToMyCoords(button,box);
+                    assertTrue(new android.graphics.Rect(0,0,width,bar.getHeight()).contains(box));
+                    for(android.graphics.Rect other:boxes) assertFalse(android.graphics.Rect.intersects(other,box));
+                    boxes.add(box);
+                }
+            }
+        });
     }
 
     @Test public void nativeFavoritesKeepBrowserHistoryAndLateBrowserFailureBehindTheSelectedTab() throws Exception {
@@ -388,8 +474,8 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> invoke("navigate", new Class<?>[]{String.class}, HOLD));
         assertTrue("Held fixture did not start", holdStarted.await(10, TimeUnit.SECONDS));
         onMain(() -> {
-            assertEquals(activity.getString(R.string.stop_loading), ((Button) get("refreshButton")).getContentDescription());
-            ((Button) get("refreshButton")).performClick();
+            assertEquals(activity.getString(R.string.stop_loading), browserMenu().getMenu().findItem(R.id.refresh).getTitle());
+            assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.refresh, 0));
             assertEquals(View.GONE, ((ProgressBar) get("progress")).getVisibility());
             assertEquals(View.VISIBLE, ((LinearLayout) get("errorPanel")).getVisibility());
             assertEquals(activity.getString(R.string.loading_stopped_title), ((TextView) get("errorTitle")).getText().toString());
@@ -447,7 +533,7 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> invoke("navigate", new Class<?>[]{String.class}, HOLD));
         assertTrue("Held second load did not start", holdStarted.await(10, TimeUnit.SECONDS));
         onMain(() -> {
-            ((Button) get("refreshButton")).performClick();
+            assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.refresh, 0));
             assertEquals(HOLD, get("stoppedUrl"));
             assertFalse((Boolean) get("failed"));
             assertTrue((Boolean) get("hasUsablePage"));
@@ -469,7 +555,7 @@ public final class NativeUsabilityRuntimeTest {
             assertEquals(View.VISIBLE, web.getVisibility());
             assertEquals(View.GONE, ((LinearLayout) get("errorPanel")).getVisibility());
             assertEquals(View.GONE, ((ProgressBar) get("progress")).getVisibility());
-            assertEquals(activity.getString(R.string.refresh), ((Button) get("refreshButton")).getContentDescription());
+            assertEquals(activity.getString(R.string.refresh), browserMenu().getMenu().findItem(R.id.refresh).getTitle());
             assertNull(invoke("eligibleSavedVenue"));
         });
     }
@@ -495,7 +581,7 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> invoke("navigate", new Class<?>[]{String.class}, HOLD));
         assertTrue("Held second load did not start", holdStarted.await(10, TimeUnit.SECONDS));
         onMain(() -> {
-            ((Button) get("refreshButton")).performClick();
+            assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.refresh, 0));
             invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, web, HOLD, cancel);
             assertEquals(4, cancelled.get());
             assertFalse((Boolean) get("failed"));
@@ -552,6 +638,10 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> invoke("navigate", new Class<?>[]{String.class}, url));
         await(() -> url.equals(web.getUrl()) && !(Boolean) get("loading") && (Boolean) get("hasUsablePage"));
         assertOwnedDocument(minimumToken);
+    }
+
+    private android.widget.PopupMenu browserMenu() {
+        return (android.widget.PopupMenu) invoke("createBrowserMenu", new Class<?>[]{View.class}, activity.findViewById(R.id.more));
     }
 
     private void assertOwnedDocument(int minimumToken) throws Exception {

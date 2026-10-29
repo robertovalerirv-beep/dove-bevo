@@ -61,10 +61,15 @@ final class BottomNavigationControllerTests: XCTestCase {
             for button in bar.buttons {
                 button.layoutIfNeeded()
                 XCTAssertTrue(button.isAccessibilityElement)
-                XCTAssertNotNil(button.configuration?.image)
+                XCTAssertFalse(button.accessibilityElementsHidden)
+                XCTAssertNotNil(button.configuration?.image, "Missing symbol for \(button.accessibilityIdentifier ?? "unknown")")
                 if let title = button.titleLabel, let image = button.imageView {
                     XCTAssertGreaterThan(title.bounds.height, 0)
-                    XCTAssertGreaterThan(image.bounds.height, 0)
+                    XCTAssertGreaterThan(image.bounds.height, 0, "Empty symbol for \(button.accessibilityIdentifier ?? "unknown")")
+                    XCTAssertFalse(title.isHidden)
+                    XCTAssertFalse(image.isHidden)
+                    XCTAssertTrue(title.accessibilityElementsHidden)
+                    XCTAssertTrue(image.accessibilityElementsHidden)
                     XCTAssertEqual(title.text ?? title.attributedText?.string, button.configuration?.title)
                     XCTAssertEqual(title.numberOfLines, 0)
                     XCTAssertTrue(button.bounds.contains(title.convert(title.bounds, to: button)), "The visible title must not be clipped")
@@ -232,24 +237,21 @@ final class BottomNavigationControllerTests: XCTestCase {
         var ownedWeb: WKWebView?
         let browser = BrowserViewController(websiteLoader: { web, request in
             ownedWeb = web
-            // An owned asset-free document, never a public request or contribution.
-            return web.loadHTMLString("<html><body><h1>Owned history fixture</h1></body></html>", baseURL: request.url)
+            // Public WebKit API loads the owned response without sending the
+            // request. Unlike loadHTMLString, this creates a real history item.
+            // The document has no subresources, links or public contributions.
+            let data = Data("<html><body><h1>Owned history fixture</h1></body></html>".utf8)
+            let response = URLResponse(url: request.url!, mimeType: "text/html", expectedContentLength: data.count, textEncodingName: "UTF-8")
+            return web.loadSimulatedRequest(request, response: response, responseData: data)
         })
         let navigation = UINavigationController(rootViewController: browser)
         browser.loadViewIfNeeded()
         let web = try XCTUnwrap(ownedWeb)
         waitUntil("Owned page must finish") { (try? self.share(browser).attributes.contains(.disabled)) == false }
-        // loadHTMLString establishes the document origin but does not promise
-        // a native history item. Materialize the owned home entry explicitly
-        // before adding the venue; assert the real WKBackForwardList, not just
-        // a location change or the JavaScript history.length value.
-        let homeURL = URL(string: "https://www.dovebevo.com/?owned-history=home")!
-        let primed = expectation(description: "Owned home history item")
-        web.evaluateJavaScript("history.pushState({}, '', '/?owned-history=home')") { _, error in
-            XCTAssertNil(error); primed.fulfill()
-        }
-        wait(for: [primed], timeout: 10)
+        // Assert the real initial item before testing same-document traversal.
+        let homeURL = URLPolicy.homeURL
         waitUntil("Owned home item must exist") { web.backForwardList.currentItem?.url == homeURL }
+        XCTAssertTrue(web.backForwardList.backList.isEmpty)
         let pushed = expectation(description: "Owned same-document route")
         web.evaluateJavaScript("history.pushState({}, '', '/bar/n123?c=u0nd9')") { _, error in
             XCTAssertNil(error); pushed.fulfill()

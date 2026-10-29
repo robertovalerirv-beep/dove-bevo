@@ -33,7 +33,7 @@ enum BottomNavigationAction: Int, CaseIterable {
         case .home: return "house"
         case .map: return "map"
         case .favourites: return "bookmark"
-        case .save: return "bookmark.badge.plus"
+        case .save: return "bookmark"
         case .recommendations: return "hand.thumbsup"
         }
     }
@@ -54,7 +54,8 @@ final class NativeBottomBar: UIView {
         super.init(frame: frame)
         accessibilityIdentifier = "native.bottomNavigation"
         accessibilityLabel = "Navigazione e azioni del locale"
-        accessibilityTraits = .tabBar
+        accessibilityContainerType = .semanticGroup
+        shouldGroupAccessibilityChildren = true
         isAccessibilityElement = false
         backgroundColor = .systemBackground
         let separator = UIView()
@@ -76,7 +77,7 @@ final class NativeBottomBar: UIView {
             stack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -4)
         ])
         for action in BottomNavigationAction.allCases {
-            let button = UIButton(type: .system)
+            let button = NativeBottomButton(type: .system)
             button.tag = action.rawValue
             button.accessibilityIdentifier = action.identifier
             button.accessibilityLabel = action.label
@@ -90,7 +91,6 @@ final class NativeBottomBar: UIView {
             button.addTarget(self, action: #selector(selectAction), for: .touchUpInside)
             buttons.append(button)
         }
-        accessibilityElements = buttons
         arrange(columns: 5)
         update(destination: 0, venueActionsEnabled: false)
     }
@@ -173,5 +173,18 @@ final class NativeBottomBar: UIView {
         guard sender.isEnabled, let action = BottomNavigationAction(rawValue: sender.tag),
               (action != .save && action != .recommendations) || venueActionsEnabled else { return }
         onSelect?(action)
+    }
+}
+
+/// UIButton is the single accessibility element. Configuration may recreate
+/// its labels during state/trait updates, so retire only their AX subtrees
+/// after native layout, while keeping the real visible title and image.
+private final class NativeBottomButton: UIButton {
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        titleLabel?.isAccessibilityElement = false
+        titleLabel?.accessibilityElementsHidden = true
+        imageView?.isAccessibilityElement = false
+        imageView?.accessibilityElementsHidden = true
     }
 }

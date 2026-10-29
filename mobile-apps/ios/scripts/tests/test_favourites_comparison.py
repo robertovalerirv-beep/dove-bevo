@@ -44,7 +44,11 @@ class FavouritesComparisonGuards(unittest.TestCase):
         bar = (IOS / "App/NativeBottomBar.swift").read_text(encoding="utf-8")
         self.assertIn("case home, map, favourites, save, recommendations", bar)
         self.assertIn("for action in BottomNavigationAction.allCases", bar)
-        self.assertIn("let button = UIButton(type: .system)", bar)
+        self.assertIn("let button = NativeBottomButton(type: .system)", bar)
+        self.assertIn("private final class NativeBottomButton: UIButton", bar)
+        self.assertNotIn("accessibilityTraits = .tabBar", bar)
+        self.assertNotIn("accessibilityElements = buttons", bar)
+        self.assertIn("titleLabel?.accessibilityElementsHidden = true", bar)
         self.assertIn("browser.openSavedVenue(url)", tabs)
         browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
         self.assertIn('navigationItem.title = "Dove bevo"', browser)
@@ -104,7 +108,8 @@ class FavouritesComparisonGuards(unittest.TestCase):
                          "testHomeResetsSameBrowserButMapResumesItsRetainedStack", "testDestinationChangesDuringParentAppearance",
                          "testOffscreenFavouritesCannotFetchOrAcceptLateResults", "testOverflowUpdatesLoadingAndRecovery",
                          "testSameDocumentHistory", "history.pushState", "web.canGoBack",
-                         "web.backForwardList.currentItem", "web.backForwardList.backList.last", "web.backForwardList.forwardList.first"]:
+                         "web.backForwardList.currentItem", "web.backForwardList.backList.last", "web.backForwardList.forwardList.first",
+                         "loadSimulatedRequest(request, response: response, responseData: data)"]:
             self.assertIn(required, native)
         ui = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
         self.assertIn('app.descendants(matching: .any)["native.bottomNavigation"]', ui)
@@ -114,9 +119,11 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn('app.navigationBars["Dove bevo"].exists', save)
         self.assertIn('app.buttons["tab.map"].isSelected', save)
         dismiss = ui.split("private func dismissMoreMenu()", 1)[1].split("private func interactiveMap()", 1)[0]
-        self.assertIn('bar.buttons["tab.map"]', dismiss)
-        self.assertIn("frame.minY > app.frame.midY", dismiss)
-        self.assertNotIn('app.navigationBars["Dove bevo"]', dismiss)
+        self.assertIn('app.buttons["Informazioni"]', dismiss)
+        self.assertIn('app.alerts["Dove bevo"]', dismiss)
+        self.assertIn('alert.buttons["Chiudi"].tap()', dismiss)
+        self.assertNotIn(".coordinate(", dismiss)
+        self.assertIn('app.buttons["tab.map"].isSelected', dismiss)
         self.assertIn('app.otherElements["ShareSheet.RemoteContainerView"].exists', dismiss)
 
 

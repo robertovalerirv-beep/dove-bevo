@@ -65,6 +65,7 @@ public final class MainActivity extends ComponentActivity {
     private SavedVenuesUi savedVenues;
     private FavoritesScreen favorites;
     private boolean favoritesVisible;
+    private boolean restoreFavoritesPending;
     private Button mapDestination,favoritesDestination,saveButton;
     private RecommendationsUi recommendations;
     private Button recommendationButton;
@@ -230,7 +231,7 @@ public final class MainActivity extends ComponentActivity {
         createWebsite();
         if (!restoreHistory(state)) navigate(lastTrustedUrl);
         updateToolbar();
-        if(state!=null&&state.getBoolean("favorites_visible",false))showFavorites();
+        restoreDestination(state);
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
@@ -462,6 +463,14 @@ public final class MainActivity extends ComponentActivity {
         for(android.graphics.drawable.Drawable icon:button.getCompoundDrawables())if(icon!=null)icon.mutate().setTint(ink);
     }
 
+    private void restoreDestination(Bundle state){
+        if(state!=null)restoreFavoritesPending=state.getBoolean("favorites_visible",false);
+        // onCreate precedes onResume. Keep the destination intent until foreground
+        // rather than bypassing the same foreground guard used by user actions.
+        if(!restoreFavoritesPending||!foreground||destroyed||favorites==null)return;
+        restoreFavoritesPending=false;
+        showFavorites();
+    }
     private void showFavorites(){
         if(!foreground||destroyed||favorites==null||favoritesVisible)return;
         venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
@@ -860,6 +869,7 @@ public final class MainActivity extends ComponentActivity {
         if (website != null) website.onResume();
         if (recommendations != null) recommendations.resume();
         if(favorites!=null)favorites.resume();
+        restoreDestination(null);
         updateToolbar();
         resolveLocationResult();
     }
@@ -875,6 +885,7 @@ public final class MainActivity extends ComponentActivity {
         if (!requestingLocationPermission) cancelLocation();
         disposePopup();
         if (website != null) website.onPause();
+        updateToolbar();
         super.onPause();
     }
     @Override protected void onStop() {
@@ -882,7 +893,7 @@ public final class MainActivity extends ComponentActivity {
         super.onStop();
     }
     @Override protected void onSaveInstanceState(Bundle state) {
-        state.putBoolean("favorites_visible",favoritesVisible);
+        state.putBoolean("favorites_visible",favoritesVisible||restoreFavoritesPending);
         if(favorites!=null){state.putString("favorite_drink",favorites.selectedDrink());state.putInt("favorite_band",favorites.selectedBand());}
         state.putString("trusted_url", lastTrustedUrl);
         if (website != null && !failed) {

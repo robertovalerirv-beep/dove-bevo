@@ -31,8 +31,10 @@ final class NativeTabsController: UITabBarController {
         super.init(nibName: nil, bundle: nil)
         mapNavigation.tabBarItem = UITabBarItem(title: "Mappa", image: UIImage(systemName: "map"), selectedImage: UIImage(systemName: "map.fill"))
         mapNavigation.tabBarItem.accessibilityIdentifier = "tab.map"
+        mapNavigation.tabBarItem.accessibilityLabel = "Mappa"
         favouritesNavigation.tabBarItem = UITabBarItem(title: "Preferiti", image: UIImage(systemName: "bookmark"), selectedImage: UIImage(systemName: "bookmark.fill"))
         favouritesNavigation.tabBarItem.accessibilityIdentifier = "tab.favorites"
+        favouritesNavigation.tabBarItem.accessibilityLabel = "Preferiti"
         viewControllers = [mapNavigation, favouritesNavigation]
         selectedIndex = 0
     }

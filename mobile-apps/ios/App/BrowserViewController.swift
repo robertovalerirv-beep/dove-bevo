@@ -84,7 +84,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func configureChrome() {
-        title = "Dove bevo"
+        // Keep the browser header independent of the enclosing Mappa tab item.
+        navigationItem.title = "Dove bevo"
         view.backgroundColor = .systemBackground
         navigationController?.navigationBar.prefersLargeTitles = false
         navigationController?.navigationBar.tintColor = .label

@@ -59,14 +59,19 @@ final class FavouriteComparisonControllerTests: XCTestCase {
                 return nil
             })
             let tabs = NativeTabsController(store: store, comparisonClient: client, browser: browser)
+            assertDestinationTitles(tabs)
             tabs.loadViewIfNeeded()
             let browserView = browser.view
+            XCTAssertEqual(browser.navigationItem.title, "Dove bevo", "The browser header must keep its app title independently of the map destination")
+            assertDestinationTitles(tabs)
             XCTAssertEqual(websiteLoads, [URLPolicy.homeURL], "The owned loader must positively intercept the initial website request")
             XCTAssertTrue(client.calls.isEmpty, "A hidden favourites destination must not request comparisons")
             let recommendations = RecommendationsViewController(venue: saved, client: DelayedRecommendationClient(), activityCheck: { false })
             tabs.mapNavigation.pushViewController(recommendations, animated: false)
+            assertDestinationTitles(tabs)
             let initialLoads = websiteLoads
             tabs.selectedIndex = 1; tabs.selectedIndex = 0
+            assertDestinationTitles(tabs)
             XCTAssertTrue(tabs.mapNavigation.topViewController === recommendations, "Plain tab return preserves its existing stack")
             XCTAssertEqual(websiteLoads, initialLoads)
             tabs.selectedIndex = 1
@@ -76,6 +81,8 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             XCTAssertEqual(tabs.mapNavigation.viewControllers.count, 1)
             XCTAssertTrue(tabs.mapNavigation.topViewController === browser)
             XCTAssertTrue(browser.view === browserView)
+            assertDestinationTitles(tabs)
+            XCTAssertEqual(browser.navigationItem.title, "Dove bevo")
             XCTAssertEqual(websiteLoads, [URLPolicy.homeURL, saved.url], "Opening the favourite must issue exactly its validated request through the owned loader")
             XCTAssertTrue(client.calls.isEmpty, "The offscreen owned coordinator fixture cannot start live comparisons")
         }
@@ -122,6 +129,14 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             XCTAssertFalse(value.contains("0,00"))
             controller.beginAppearanceTransition(false, animated: false); controller.endAppearanceTransition()
         }
+    }
+
+    @MainActor
+    private func assertDestinationTitles(_ tabs: NativeTabsController, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(tabs.mapNavigation.tabBarItem.title, "Mappa", file: file, line: line)
+        XCTAssertEqual(tabs.mapNavigation.tabBarItem.accessibilityLabel, "Mappa", file: file, line: line)
+        XCTAssertEqual(tabs.favouritesNavigation.tabBarItem.title, "Preferiti", file: file, line: line)
+        XCTAssertEqual(tabs.favouritesNavigation.tabBarItem.accessibilityLabel, "Preferiti", file: file, line: line)
     }
 
     @MainActor

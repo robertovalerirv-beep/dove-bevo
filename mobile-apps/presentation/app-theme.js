@@ -184,10 +184,37 @@ html[data-dovebevo-app-theme="1"] .field {
   border-radius: 12px;
 }
 html[data-dovebevo-app-theme="1"] .price-input input {
+  flex: 1;
+  width: 0;
+  min-width: 0;
   min-height: 68px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   font-size: 36px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+html[data-dovebevo-app-theme="1"] .price-input {
+  padding: 0 14px;
+  border: 1px solid #c9d0d7;
+  border-radius: 12px;
+  font-size: 24px;
+}
+html[data-dovebevo-app-theme="1"] .price-input:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+html[data-dovebevo-app-theme="1"] .question {
+  margin: 24px 0 12px;
+  font: 650 20px/1.3 var(--font-sans);
+  letter-spacing: normal;
+}
+html[data-dovebevo-app-theme="1"] .context-tag {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
 }
 html[data-dovebevo-app-theme="1"] .drink[aria-pressed="true"],
 html[data-dovebevo-app-theme="1"] .chip[aria-pressed="true"],

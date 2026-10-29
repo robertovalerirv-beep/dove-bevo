@@ -1,5 +1,7 @@
 # Bottom navigation — exact paused-work checkpoint
 
+Historical pause record, superseded after the owner's explicit resumption by [the current navigation delivery status](2026-10-29-bottom-navigation-status.md). Build 41 is now distributed to the existing testing groups; the launch goal is active. Retain the older branches and failure evidence below for recovery.
+
 29 October 2026. The owner says credits are still almost finished and requests another exact resume note. **The active launch goal was explicitly set to `paused` and the tool confirmed that state. Do not restart from an automatic continuation; wait for the owner's explicit resumption.** Implementation/tests/provider actions have stopped. This record supersedes the earlier note's claim that no Android navigation code exists.
 
 ## Required layout, both platforms

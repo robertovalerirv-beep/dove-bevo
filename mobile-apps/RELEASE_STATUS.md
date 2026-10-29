@@ -2,6 +2,16 @@
 
 Last verified: 29 October 2026 (UTC).
 
+## Current native navigation delivery — build 41
+
+Signed source `c24c7be2a67039ac80385e809f5f68d0614307e4`, tag `mobile-beta/v1.0.0-bottom-navigation.4`, [run 40952554881](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40952554881), passed both checks and intended signers. Fresh execution includes **81 native iOS tests and four phone UI tests with zero failures**, plus Android checks and the independently verified local runtime/live browsing evidence. Both packages and bundled privacy bytes were independently checked. Provider readback confirms Android **Available to internal testers**, and iOS **Testing** for the existing owner and Roberto groups. Existing testers were preserved.
+
+Home, Mappa, Preferiti, Salva and Consigliati now share the bottom area; Condividi and Ricarica are in the top menu. Source is preserved in [app-only PR 78](https://github.com/robertovalerirv-beep/dove-bevo/pull/78), based on Roberto's main `efce911`, with no website, Worker or schema changes. This is the current testing release; the build-36 and older records below are dated history.
+
+**Public release is not verified.** Updated production submissions are now Android **41 in review** and iOS **1.0.0 (41) Waiting for Review**, with automatic release after approval. The verified replacement and updated original screenshots/descriptions were submitted together; Google required restarting the older review, and Apple version 26 was withdrawn before version 41 was submitted. Apple submission is `4db2c63c-3a65-4b6d-be43-dccdf0635790`. The physical-iPhone check remains pending. Original iPad capture 43 passed and all six Apple listing images were independently verified. PR42's Android live check encountered Cloudflare human verification, while its older Intel iOS job timed out before the city tap; those failed checks are retained. See [the complete navigation evidence and next steps](docs/2026-10-29-bottom-navigation-status.md).
+
+## Earlier build-36 checkpoint
+
 Both public store releases remain submitted: Google Play's production changes are
 **in review**, and Apple confirms iOS version 1.0.0, build 26, **Waiting for
 Review**. The latest native update, build **36**, is **Available to internal testers** in Google Play and **Testing** in TestFlight for the existing owner and Roberto groups. It adds native **Mappa / Preferiti** navigation and compares a chosen drink's recorded prices across local favourites, keeping normal and happy-hour prices separate. Automatic venue names and shared drink recommendations remain included. See [the exact build-36 delivery record](docs/2026-10-28-favourites-comparison-status.md) for checks, signed artifacts, live browsing evidence and limitations. Email delivery, installation and physical acceptance of build 36 remain unverified.
@@ -17,7 +27,7 @@ The owner's later physical screenshots exposed build 31's confusing naming form.
 
 ## Source and scope
 
-The canonical repository is `robertovalerirv-beep/dove-bevo`; the submitted-release branch `codex/mobile-internal-testing-20261027` remains the reference for public Android 20/iOS 26. Latest mobile source and evidence are saved on `codex/mobile-favourites-comparison-20261028`, with signed build 36 frozen at `01ffc66531b255485122836a3a4777dbb51bd158` and tag `mobile-beta/v1.0.0-favourites-comparison.2`. The earlier build-34 source `388e200844ced599be4212e6d6af5c23744fe3f1` and tag `mobile-beta/v1.0.0-drink-recommendations.2` remain preserved.
+The canonical repository is `robertovalerirv-beep/dove-bevo`; `codex/mobile-internal-testing-20261027` remains the historical reference for the superseded Android 20/iOS 26 submissions. Current mobile delivery and submitted build 41 are on `codex/mobile-native-navigation-main-20261029` in PR78, with signed source pinned above. Historical build-36 source and evidence remain on `codex/mobile-favourites-comparison-20261028`, frozen at `01ffc66531b255485122836a3a4777dbb51bd158` and tag `mobile-beta/v1.0.0-favourites-comparison.2`. The earlier build-34 source `388e200844ced599be4212e6d6af5c23744fe3f1` and tag `mobile-beta/v1.0.0-drink-recommendations.2` remain preserved.
 
 The initial mobile additions were app-only at owner baseline `8094d3c2494851a2e29a5c0b6f5eb8d4dcb88e50`. The owner's later narrow apps-only shared-voting exception adds one API and table in the existing Worker/D1: [PR 73](https://github.com/robertovalerirv-beep/dove-bevo/pull/73), merged and deployed at `1a58d7332d4275e0a56ed21c60240459afab1a5e`. The website interface, existing prices, price confirmations and session/security boundaries retain their behavior. See [ADR 0041](../docs/adr/0041-app-drink-recommendations.md). No new Cloudflare resource, secret or browser-cookie bridge was created.
 

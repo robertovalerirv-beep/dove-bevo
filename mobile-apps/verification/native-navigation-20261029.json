@@ -1,0 +1,72 @@
+{
+  "schema": "dovebevo-native-navigation-delivery/v1",
+  "observedAtUTC": "2026-10-29T21:46:00Z",
+  "signedSourceCommit": "c24c7be2a67039ac80385e809f5f68d0614307e4",
+  "tag": "mobile-beta/v1.0.0-bottom-navigation.4",
+  "workflowRun": 40952554881,
+  "build": 41,
+  "android": {
+    "package": "com.dovebevo.app",
+    "versionName": "1.0.0",
+    "versionCode": 41,
+    "aabSHA256": "7ee3678043ebe5c398b495509a4f42dc74390d49a01d98a5736f5ded67a20d75",
+    "artifact": 12932233565,
+    "testing": "Available to internal testers",
+    "production": "Changes in review",
+    "managedPublishing": false,
+    "productionChanges": [
+      "Verified bundle 41",
+      "Italian full description",
+      "Four original navigation screenshots"
+    ],
+    "olderReviewRestarted": true
+  },
+  "ios": {
+    "bundleIdentifier": "com.dovebevo.app",
+    "version": "1.0.0",
+    "build": "41",
+    "ipaSHA256": "01d390cb56895f213b12a1a846d9abc1211746e81c98d12a798c24d2c83d9623",
+    "artifact": 12933263006,
+    "distributionScope": "app-store",
+    "ownerGroup": "Testing",
+    "robertoGroup": "Testing",
+    "existingTestersPreserved": true,
+    "production": "Waiting for Review",
+    "submission": "4db2c63c-3a65-4b6d-be43-dccdf0635790",
+    "automaticReleaseAfterApproval": true,
+    "screenshots": "Three original medium Dynamic Island images and three original 13-inch iPad images",
+    "olderBuild26WithdrawnByDeveloper": true
+  },
+  "verification": {
+    "androidJVMTestsPassed": 72,
+    "androidLintErrors": 0,
+    "androidOwnedRuntimeCasesPassed": 26,
+    "androidLiveBrowsing": "Milano map, existing venue, automatic private bookmark, recorded price comparison, recommendation GET",
+    "iosSourceGuardsPassed": 111,
+    "iosNativeTestsPassed": 81,
+    "iosPhoneUITestsPassed": 4,
+    "iosLivePhoneSeconds": 309.727,
+    "ipadCaptureRun": 40955432655,
+    "ipadCaptureRunNumber": 43,
+    "ipadLiveCasePassed": true,
+    "ipadLiveCaseSeconds": 345.411,
+    "signedArtifactsIndependentlyChecked": true,
+    "allSixIOSImagesIndependentlyChecked": true,
+    "publicPricesVenuesVotesOrReportsWrittenByTests": false,
+    "bundledPrivacySHA256": "c36fb4364c776426b08991349c5a2476d7f3b4054401075c0c5481667aa0c48f"
+  },
+  "separatePR42FailuresRetained": {
+    "run": 40952557161,
+    "android": "Production build and checks passed; live smoke encountered Cloudflare human verification",
+    "ios": "81 native tests and first UI case passed; old Intel host exceeded its 20-minute deadline before the live city tap",
+    "waived": false
+  },
+  "limits": [
+    "Store approval, public availability and store-delivered installation are unverified.",
+    "Physical iPhone acceptance of build 41 is pending the owner response.",
+    "Screenshots are genuine unsigned Debug simulator captures from the same application source, not signed IPA captures.",
+    "Artifact source metadata is not an embedded binary source attestation.",
+    "Testing distribution and review submission do not establish a public launch.",
+    "The separate Europe menu importer remains paused and unimplemented."
+  ]
+}

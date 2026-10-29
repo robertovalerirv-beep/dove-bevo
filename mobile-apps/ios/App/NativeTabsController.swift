@@ -1,43 +1,214 @@
 import UIKit
 
-/// Created only after rules acceptance. Both destinations keep their controllers
-/// alive; selecting a tab never recreates the website or its browser history.
-final class NativeTabsController: UITabBarController {
+/// Two retained destinations and three actions share one native bottom bar.
+/// Actions never select an empty controller or replace the browser's history.
+final class NativeTabsController: UIViewController, UITabBarDelegate, UINavigationControllerDelegate {
     private let store: SavedVenueStore
     private let comparisonClient: FavouriteComparisonServing
     private let recommendationClient: RecommendationServing
     private let providedBrowser: BrowserViewController?
+    private let content = UIView()
+    private let bottomBackground = UIView()
+    private(set) var bottomBar = UITabBar()
+    private var destinationIndex = 0
+    private var visible = false
+    private var parentAppearance: (navigation: UINavigationController, appearing: Bool)?
+    private var venueActionsAvailable = false
+
+    var selectedIndex: Int {
+        get { destinationIndex }
+        set { selectDestination(newValue) }
+    }
 
     private(set) lazy var browser: BrowserViewController = {
         let controller = self.providedBrowser ?? BrowserViewController(savedVenues: self.store, recommendationClient: self.recommendationClient)
         controller.onShowFavourites = { [weak self] in self?.selectedIndex = 1 }
+        controller.isMapDestinationSelected = { [weak self] in self?.selectedIndex == 0 }
+        controller.onVenueActionsChanged = { [weak self] enabled in
+            self?.venueActionsAvailable = enabled
+            self?.refreshBottomBar()
+        }
         return controller
     }()
     private(set) lazy var mapNavigation = UINavigationController(rootViewController: browser)
     private(set) lazy var favourites: SavedVenuesViewController = {
-        SavedVenuesViewController(store: self.store, client: self.comparisonClient) { [weak self] url in
+        let controller = SavedVenuesViewController(store: self.store, client: self.comparisonClient) { [weak self] url in
             guard let self else { return }
+            self.browser.retireVenueActions()
             self.mapNavigation.popToRootViewController(animated: false)
             self.selectedIndex = 0
             self.browser.openSavedVenue(url)
         }
+        controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 1 }
+        return controller
     }()
     private(set) lazy var favouritesNavigation = UINavigationController(rootViewController: favourites)
+
+    private lazy var homeItem = bottomItem("Home", label: "Home", symbol: "house", id: "browser.home")
+    private lazy var saveItem = bottomItem("Salva", label: "Salva nei preferiti", symbol: "bookmark.badge.plus", id: "browser.saveVenue")
+    private lazy var recommendationsItem = bottomItem("Consigliati", label: "Drink consigliati", symbol: "hand.thumbsup", id: "browser.recommendations")
 
     init(store: SavedVenueStore = SavedVenueStore(), comparisonClient: FavouriteComparisonServing = FavouriteComparisonClient(),
          recommendationClient: RecommendationServing = RecommendationClient(), browser: BrowserViewController? = nil) {
         self.store = store; self.comparisonClient = comparisonClient; self.recommendationClient = recommendationClient
         self.providedBrowser = browser
         super.init(nibName: nil, bundle: nil)
-        mapNavigation.tabBarItem = UITabBarItem(title: "Mappa", image: UIImage(systemName: "map"), selectedImage: UIImage(systemName: "map.fill"))
-        mapNavigation.tabBarItem.accessibilityIdentifier = "tab.map"
-        mapNavigation.tabBarItem.accessibilityLabel = "Mappa"
-        favouritesNavigation.tabBarItem = UITabBarItem(title: "Preferiti", image: UIImage(systemName: "bookmark"), selectedImage: UIImage(systemName: "bookmark.fill"))
-        favouritesNavigation.tabBarItem.accessibilityIdentifier = "tab.favorites"
-        favouritesNavigation.tabBarItem.accessibilityLabel = "Preferiti"
-        viewControllers = [mapNavigation, favouritesNavigation]
-        selectedIndex = 0
+        mapNavigation.tabBarItem = bottomItem("Mappa", label: "Mappa", symbol: "map", selectedSymbol: "map.fill", id: "tab.map")
+        favouritesNavigation.tabBarItem = bottomItem("Preferiti", label: "Preferiti", symbol: "bookmark", selectedSymbol: "bookmark.fill", id: "tab.favorites")
+        mapNavigation.delegate = self
+        favouritesNavigation.delegate = self
     }
 
     required init?(coder: NSCoder) { return nil }
+    override var shouldAutomaticallyForwardAppearanceMethods: Bool { false }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .systemBackground
+        bottomBackground.backgroundColor = .systemBackground
+        [content, bottomBackground, bottomBar].forEach {
+            $0.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview($0)
+        }
+        bottomBar.accessibilityIdentifier = "native.bottomNavigation"
+        bottomBar.delegate = self
+        bottomBar.itemPositioning = .fill
+        bottomBar.tintColor = .label
+        let appearance = UITabBarAppearance()
+        appearance.configureWithDefaultBackground()
+        bottomBar.standardAppearance = appearance
+        bottomBar.scrollEdgeAppearance = appearance
+        bottomBar.items = [homeItem, mapNavigation.tabBarItem, favouritesNavigation.tabBarItem, saveItem, recommendationsItem]
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: view.topAnchor),
+            content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            content.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
+            bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            bottomBar.heightAnchor.constraint(equalToConstant: 49),
+            bottomBackground.topAnchor.constraint(equalTo: bottomBar.topAnchor),
+            bottomBackground.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bottomBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bottomBackground.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+        ])
+        for child in [mapNavigation, favouritesNavigation] {
+            addChild(child)
+            child.view.translatesAutoresizingMaskIntoConstraints = false
+            content.addSubview(child.view)
+            NSLayoutConstraint.activate([
+                child.view.topAnchor.constraint(equalTo: content.topAnchor),
+                child.view.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+                child.view.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+                child.view.bottomAnchor.constraint(equalTo: content.bottomAnchor)
+            ])
+            child.didMove(toParent: self)
+        }
+        mapNavigation.view.isHidden = destinationIndex != 0
+        favouritesNavigation.view.isHidden = destinationIndex != 1
+        refreshBottomBar()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        beginParentAppearance(true, animated: animated)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        endParentAppearance()
+        visible = true
+        browser.refreshNavigationControls()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        visible = false
+        browser.retireVenueActions()
+        beginParentAppearance(false, animated: animated)
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        endParentAppearance()
+    }
+
+    private var activeNavigation: UINavigationController { destinationIndex == 0 ? mapNavigation : favouritesNavigation }
+
+    private func beginParentAppearance(_ appearing: Bool, animated: Bool) {
+        endParentAppearance()
+        let navigation = activeNavigation
+        navigation.beginAppearanceTransition(appearing, animated: animated)
+        parentAppearance = (navigation, appearing)
+    }
+
+    private func endParentAppearance() {
+        let transition = parentAppearance
+        parentAppearance = nil
+        transition?.navigation.endAppearanceTransition()
+    }
+
+    private func selectDestination(_ index: Int) {
+        guard (0...1).contains(index) else { return }
+        guard index != destinationIndex else { refreshBottomBar(); return }
+        let previous = activeNavigation
+        destinationIndex = index
+        browser.retireVenueActions()
+        guard isViewLoaded else { return }
+        let next = activeNavigation
+        if let transition = parentAppearance {
+            endParentAppearance()
+            if transition.appearing {
+                previous.beginAppearanceTransition(false, animated: false)
+                previous.endAppearanceTransition()
+                next.beginAppearanceTransition(true, animated: false)
+                parentAppearance = (next, true)
+            }
+        } else if visible {
+            previous.beginAppearanceTransition(false, animated: false)
+            next.beginAppearanceTransition(true, animated: false)
+        }
+        previous.view.isHidden = true
+        next.view.isHidden = false
+        if visible && parentAppearance == nil {
+            previous.endAppearanceTransition()
+            next.endAppearanceTransition()
+        }
+        browser.refreshNavigationControls()
+        refreshBottomBar()
+    }
+
+    private func refreshBottomBar() {
+        guard isViewLoaded else { return }
+        bottomBar.selectedItem = destinationIndex == 0 ? mapNavigation.tabBarItem : favouritesNavigation.tabBarItem
+        let enabled = destinationIndex == 0 && mapNavigation.topViewController === browser && venueActionsAvailable
+        saveItem.isEnabled = enabled
+        recommendationsItem.isEnabled = enabled
+    }
+
+    func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+        if item === homeItem {
+            browser.retireVenueActions()
+            mapNavigation.popToRootViewController(animated: false)
+            selectedIndex = 0
+            browser.goHome()
+        } else if item === mapNavigation.tabBarItem { selectedIndex = 0 }
+        else if item === favouritesNavigation.tabBarItem { selectedIndex = 1 }
+        else if item === saveItem, saveItem.isEnabled { browser.saveCurrentVenue() }
+        else if item === recommendationsItem, recommendationsItem.isEnabled { browser.showRecommendations() }
+        refreshBottomBar()
+    }
+
+    func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {
+        browser.refreshNavigationControls()
+        refreshBottomBar()
+    }
+
+    private func bottomItem(_ title: String, label: String, symbol: String, selectedSymbol: String? = nil, id: String) -> UITabBarItem {
+        let item = UITabBarItem(title: title, image: UIImage(systemName: symbol), selectedImage: UIImage(systemName: selectedSymbol ?? symbol))
+        item.accessibilityIdentifier = id
+        item.accessibilityLabel = label
+        return item
+    }
 }

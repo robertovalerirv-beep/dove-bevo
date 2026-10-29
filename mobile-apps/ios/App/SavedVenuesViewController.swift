@@ -17,6 +17,7 @@ final class SavedVenuesViewController: UITableViewController {
     private var storeFailed = false
     private var drink = DrinkCategory.all[0]
     private var band = ComparisonBand.normal
+    var isDestinationSelected: (() -> Bool)?
     private let drinkButton = UIButton(type: .system)
     private let bandControl = ComparisonBandSelector()
     private let statusLabel = UILabel()
@@ -112,7 +113,7 @@ final class SavedVenuesViewController: UITableViewController {
     }
 
     private var canRead: Bool {
-        guard visible, lifecycleActive else { return false }
+        guard visible, lifecycleActive, isDestinationSelected?() != false else { return false }
         if let activityCheck { return activityCheck() }
         guard UIApplication.shared.applicationState == .active,
               let scene = viewIfLoaded?.window?.windowScene, scene.activationState == .foregroundActive else { return false }

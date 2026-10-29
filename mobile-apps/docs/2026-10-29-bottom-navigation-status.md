@@ -1,6 +1,6 @@
 # Native bottom navigation — candidate and verification status
 
-29 October 2026 UTC. Corrected candidate source: **`9a3e5cf79500ea3d53cc232cb899eaf6158dc05c`** in Roberto's canonical `robertovalerirv-beep/dove-bevo` repository. [Build 38 / run 40944405886](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40944405886) is the pending native iOS/UI and signing gate. This record describes implemented source and the checks actually completed; it does not establish testing distribution or a public launch of this candidate.
+29 October 2026 UTC. Corrected candidate source: **`fe8d1c9a8c378c97e07fe3022859141a8a193507`** in Roberto's canonical `robertovalerirv-beep/dove-bevo` repository. [Build 39 / run 40948425592](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40948425592) is the pending native iOS/UI and signing gate. Builds 37 and 38 failed and produced no signed release. This record describes implemented source and the checks actually completed; it does not establish testing distribution or a public launch of this candidate.
 
 ## Implemented navigation
 
@@ -24,7 +24,7 @@ Android's bottom controls reflow from their actual measured width, including res
 | Android live browsing | Actual Milano city result, rendered map, existing venue and recorded beer price; actual-name save stayed on the venue; Preferiti reopened that same venue |
 | Android recommendation browsing | Shared totals loaded through the native existing-venue read flow; no vote was tapped |
 | Corrected iOS source/release guards | **110 passed**; this is source/tooling verification, not Swift compilation or a passing phone UI run |
-| Corrected iOS native/UI and signing | **Pending** in build 38; new signed artifacts and provider testing availability are not established |
+| Corrected iOS native/UI and signing | **Pending** in build 39; new signed artifacts and provider testing availability are not established |
 
 Android application inputs remain those reviewed at `f30fa2bad5125c10ecfcc3014f23009e5cb9fe29`; the subsequent integrated fixes are iOS source, test and workflow changes. Root's evidence receipts are under the selected workspace's `test-evidence/bottom-navigation-20261029/`, including `android-runtime-verification.json`, `android-live-verification.json`, `android-live-shutdown.json`, original PNG/XML captures and `ios-corrected-central-guards.log`.
 
@@ -36,7 +36,11 @@ The live check removed only its own private test bookmark and verified an empty 
 
 Xcode printed **TEST FAILED** before the 18-minute workflow step timed out during its remaining result/cleanup path. Independent comparison with successful build 36 supported a bounded step increase to 22 minutes, retaining the 25-minute job and all test/signing dependencies. That timing adjustment does not waive any failed assertion.
 
-Both build-37 signing jobs were skipped. Its checked artifact `12926358586` has retained ZIP SHA-256 `849b9221c472d048142fd48ae14f81784efae7d58c748145652f83168f9e8961`, with size, safe paths and CRC verification recorded in `ios37-checks-verification.json`. This is failed-test evidence, not a signed app. Corrected source `9a3e5cf` must pass the fresh build-38 native/UI gate before either signer can run.
+Both build-37 signing jobs were skipped. Its checked artifact `12926358586` has retained ZIP SHA-256 `849b9221c472d048142fd48ae14f81784efae7d58c748145652f83168f9e8961`, with size, safe paths and CRC verification recorded in `ios37-checks-verification.json`. This is failed-test evidence, not a signed app.
+
+[Build 38 / run 40944405886](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40944405886), source `9a3e5cf79500ea3d53cc232cb899eaf6158dc05c`, also failed: 81 native tests reported nine assertion failures in two cases, and two of four UI cases failed. Privacy and favourites/Home/disabled-action UI checks passed, and the original images show the bar clipping repaired. Remaining defects included an unavailable Save symbol and duplicate accessibility title elements. The owned HTML history fixture still lacked native history items, and the menu-dismissal check did not complete. Neither intended signer ran. Verified artifact `12929037459` has ZIP SHA-256 `de4149ce1b67585cc7016bc6ad69c61e251b0fb984bc26a0ec25c30ed2c8d645`; original exported images and accessibility text are retained in `ios38-checks/`.
+
+The next reviewed iOS patch uses the working bookmark symbol, exposes each full native button once, and leaves decorative title/image children out of accessibility. Its history test uses Apple's public `loadSimulatedRequest` API with an owned asset-free response and actual Back/Forward list assertions. The live menu check uses the existing Informazioni/Chiudi flow and still requires no Share presentation, retained map state and the single actual city-search tap. Coordinator source guards pass, but build 39 must demonstrate actual native/UI success before either signer can run.
 
 ## Distribution and remaining gates
 
@@ -44,6 +48,6 @@ The latest verified available beta remains [build 36](2026-10-28-favourites-comp
 
 The latest observed public states remain Android **20 — Changes in review**, with managed publishing off, and iOS **1.0.0 (26) — Waiting for Review**, with automatic release selected. The navigation task has not cancelled or replaced either public submission. Review state is time-sensitive and must be read again before any replacement or version update.
 
-Next owner: the coordinator must read the complete build-38 result; inspect the actual signed packages, source/build provenance, signer and bundled policies; verify upload/processing and existing tester-group availability; and complete changed-control device acceptance. Public release then requires the current store review decision, public country/listing availability and a store-delivered installation. A source commit, green source guards, uploaded binary or testing track alone cannot establish those later states.
+Next owner: the coordinator must read the complete build-39 result; inspect the actual signed packages, source/build provenance, signer and bundled policies; verify upload/processing and existing tester-group availability; and complete changed-control device acceptance. Updated original Android screenshots are prepared separately with provenance. A single isolated iPad capture is planned after a passing candidate, with the same app input tree and bounded 20-minute capture step/25-minute job. Public release then requires the current store review decision, public country/listing availability and a store-delivered installation. A source commit, green source guards, uploaded binary or testing track alone cannot establish those later states.
 
 Roberto's website interface, backend, schema, business plan and separately paused European importer remain unchanged by this navigation update. All source, worktrees, builds and retained project evidence stay under the selected OneDrive workspace. GitHub is canonical; local OneDrive presence is not verified cloud synchronization. Signing material and authentication remain outside source, OneDrive and memory.

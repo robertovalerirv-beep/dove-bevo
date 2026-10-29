@@ -121,6 +121,29 @@ describe("sameName: look-alike letters", () => {
     expect(sameName("Caffè   dell'Angolo!", "CAFFE DELL ANGOLO")).toBe(true);
   });
 
+  it.each([
+    [
+      "full-width letters",
+      "Bistrot Italia",
+      "\uFF22\uFF49\uFF53\uFF54\uFF52\uFF4F\uFF54 \uFF29\uFF54\uFF41\uFF4C\uFF49\uFF41",
+    ],
+    [
+      "mathematical bold letters",
+      "Bar Roma",
+      "\u{1D401}\u{1D41A}\u{1D42B} \u{1D411}\u{1D428}\u{1D426}\u{1D41A}",
+    ],
+    ["a ligature", "Office Bar", "O\uFB03ce Bar"],
+    ["full-width and Cyrillic mixed", "Bar Roma", "\uFF22\u0430r R\u043Ema"],
+  ])("%s is the same name", (_label, plain, fake) => {
+    expect(sameName(plain, fake)).toBe(true);
+  });
+
+  it("a look-alike letter that composes with an accent into another Cyrillic letter is still folded", () => {
+    // Cyrillic е + grave accent composes into the single letter ѐ (U+0450), which a table of plain letters misses.
+    expect(sameName("Caff\u00E8", "Caff\u0450")).toBe(true);
+    expect(sameName("Caffe", "Caff\u0435\u0301")).toBe(true);
+  });
+
   it("a name written entirely in Cyrillic is still equal to itself and different from another", () => {
     expect(
       sameName(

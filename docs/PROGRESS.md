@@ -12,7 +12,7 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 - S1: `BAR_IS_PUBLIC` (`src/worker/lib/db.ts`) esclude i bar nascosti; la query degli orari verificati non ripete più il controllo.
 - S3: `src/worker/lib/access.ts` (`REFRESH_MIN_MS` = 30 s per un `kid` ignoto) e `app.get("/api/admin/*", rateLimit)` in `src/worker/index.ts`.
 - S4: `EVENTS_PER_IP_DAY` (3000) in `config.ts`, `consumeEventQuota` in `lib/quota.ts`, chiamata in `routes/events.ts` dopo la validazione.
-- S5: `src/worker/lib/same-name.ts` (`foldLookalikes`, `sameName`), usato da `lib/venues.ts`; fuori da `src/shared` per non pesare sulla shell.
+- S5: `src/worker/lib/same-name.ts` (`foldLookalikes`, `sameName`), usato da `lib/venues.ts`; fuori da `src/shared` per non pesare sulla shell. Dopo una revisione automatica del commit: il nome passa da NFKD prima della tabella (copre anche larghezza intera, lettere matematiche, legature); una prima prova con NFKC rompeva un test esistente (e + accento diventa `ѐ`), corretta con NFKD e un test dedicato.
 - `SECURITY.md` (tre righe STRIDE) e ADR 0044.
 
 **Prove**

@@ -25,10 +25,11 @@ export const foldLookalikes = (text: string): string =>
   text.replace(LOOKALIKE_LETTER, (ch) => LOOKALIKES.get(ch) ?? ch);
 
 /**
- * Same name once accents, case, spaces and punctuation are ignored, and look-alike Cyrillic or Greek letters
- * count as the Latin ones: "Bistrоt" with a Cyrillic о is "Bistrot" (audit 28/10/2026).
+ * Same name once accents, case, spaces and punctuation are ignored, compatibility forms (full-width, mathematical,
+ * ligatures: NFKD, which also splits a letter from its accent) are written plain, and look-alike Cyrillic or Greek letters count as the Latin ones: "Bistrоt" with a Cyrillic о is "Bistrot" (audit 28/10/2026).
  */
 export const sameName = (a: string, b: string) => {
-  const flat = (s: string) => searchKey(foldLookalikes(s)).replace(/[^\p{L}\p{N}]/gu, "");
+  const flat = (s: string) =>
+    searchKey(foldLookalikes(s.normalize("NFKD"))).replace(/[^\p{L}\p{N}]/gu, "");
   return flat(a) === flat(b);
 };

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dove bevo</string>
+    <string name="back">Indietro</string>
+    <string name="home">Home</string>
+    <string name="share">Condividi</string>
+    <string name="refresh">Ricarica</string>
+    <string name="more_options">Altre opzioni</string>
+    <string name="more_symbol" translatable="false">⋮</string>
+    <string name="privacy">Privacy</string>
+    <string name="support">Contatta l’assistenza</string>
+    <string name="close">Chiudi</string>
+    <string name="privacy_unavailable">Non è stato possibile leggere l’informativa inclusa nell’app. Chiudi e riprova, oppure contatta l’assistenza.</string>
+    <string name="welcome_title">Benvenuto in Dove bevo</string>
+    <string name="welcome_body">Leggi le regole prima di continuare. Il servizio è riservato alle persone maggiorenni. Puoi leggere anche l’informativa Privacy senza aprire il sito.</string>
+    <string name="accept_rules">Ho almeno 18 anni e accetto</string>
+    <string name="decline_rules">Esci</string>
+    <string name="rules_unavailable">Non è stato possibile leggere le regole incluse nell’app. Chiudi e riprova, oppure contatta l’assistenza indicata nella Privacy.</string>
+    <string name="rules_not_saved">Non è stato possibile salvare la scelta. Riprova per continuare.</string>
+    <string name="loading">Caricamento di Dove bevo</string>
+    <string name="unavailable_title">Pagina non disponibile</string>
+    <string name="unavailable_body">Controlla la connessione e riprova. I contenuti già aperti potrebbero essere ancora disponibili.</string>
+    <string name="retry">Riprova</string>
+    <string name="offline">Sei offline. Controlla la connessione.</string>
+    <string name="external_unavailable">Nessuna app disponibile per questo collegamento.</string>
+    <string name="blocked_link">Questo collegamento non può essere aperto.</string>
+    <string name="no_resubmit">L’invio non è stato ripetuto. Riapri la pagina per continuare.</string>
+</resources>

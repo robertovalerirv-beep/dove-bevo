@@ -1,0 +1,98 @@
+import javax.inject.Inject
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.FileSystemOperations
+import org.gradle.api.file.RegularFileProperty
+
+plugins { id 'com.android.application' }
+
+def requestedBuildNumber = providers.environmentVariable('DOVEBEVO_BUILD_NUMBER').orNull
+if (requestedBuildNumber != null && (!requestedBuildNumber.matches('[1-9][0-9]{0,9}') || requestedBuildNumber.toLong() > 2100000000L))
+    throw new GradleException('DOVEBEVO_BUILD_NUMBER must be a positive integer no greater than 2100000000.')
+def appVersionCode = requestedBuildNumber == null ? 1 : requestedBuildNumber.toInteger()
+
+def releaseKeystorePath = providers.environmentVariable('DOVEBEVO_ANDROID_KEYSTORE').orNull
+def releaseSigningPassword = providers.environmentVariable('DOVEBEVO_SIGNING_PASSWORD').orNull
+def hasReleaseKeystore = releaseKeystorePath != null && !releaseKeystorePath.isEmpty()
+def hasReleasePassword = releaseSigningPassword != null && !releaseSigningPassword.isEmpty()
+if (hasReleaseKeystore != hasReleasePassword)
+    throw new GradleException('Release signing requires both protected signing inputs.')
+def releaseSigningEnabled = hasReleaseKeystore && hasReleasePassword
+if (releaseSigningEnabled && (!new File(releaseKeystorePath).isAbsolute() || !new File(releaseKeystorePath).isFile()))
+    throw new GradleException('The protected release keystore must be an existing absolute file.')
+
+abstract class GeneratePrivacyAssets extends DefaultTask {
+    @InputFile @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getPolicyFile()
+    @InputFile @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getTermsFile()
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
+    @Inject
+    abstract FileSystemOperations getFileSystemOperations()
+
+    @TaskAction
+    void generate() {
+        File policy = policyFile.get().asFile
+        File terms = termsFile.get().asFile
+        if ([policy, terms].any { !it.isFile() || it.length() == 0 || it.length() > 131072 })
+            throw new GradleException('A common mobile policy document is missing, empty or too large.')
+        // Copy exactly these documents; never expose the parent source directory as app assets.
+        fileSystemOperations.sync {
+            from(policy, terms)
+            into(outputDirectory)
+        }
+    }
+}
+
+android {
+    namespace = 'com.dovebevo.app'
+    compileSdk = 37
+    buildToolsVersion = '36.0.0'
+    defaultConfig {
+        applicationId = 'com.dovebevo.app'
+        minSdk = 24
+        targetSdk = 36
+        versionCode = appVersionCode
+        versionName = '1.0.0'
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    signingConfigs {
+        if (releaseSigningEnabled) {
+            create('protectedRelease') {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseSigningPassword
+                keyPassword = releaseSigningPassword
+                keyAlias = 'dovebevo-upload'
+                storeType = 'PKCS12'
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled = false
+            // Signing is supplied by the secure release environment, never by source.
+            signingConfig = releaseSigningEnabled ? signingConfigs.getByName('protectedRelease') : null
+        }
+    }
+    lint { abortOnError = true; checkReleaseBuilds = true }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        def generatePrivacyAssets = tasks.register("generate${variant.name.capitalize()}PrivacyAssets", GeneratePrivacyAssets) {
+            policyFile.set(layout.projectDirectory.file('../../privacy.md'))
+            termsFile.set(layout.projectDirectory.file('../../terms.md'))
+            outputDirectory.set(layout.buildDirectory.dir("generated/privacyAssets/${variant.name}"))
+        }
+        variant.sources.assets.addGeneratedSourceDirectory(generatePrivacyAssets) { it.outputDirectory }
+        tasks.named('preBuild').configure { dependsOn(generatePrivacyAssets) }
+    }
+}
+
+dependencies {
+    implementation 'androidx.activity:activity:1.11.0'
+    testImplementation 'junit:junit:4.13.2'
+}

@@ -6,6 +6,24 @@ IOS = Path(__file__).resolve().parents[2]
 
 
 class AppPresentationGuards(unittest.TestCase):
+    def test_live_price_form_checks_keyboard_and_closes_without_public_submission(self):
+        source = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
+        self.assertIn("verifyLiveVenueAndPriceFormReadOnly(venueName: publicName)", source)
+        flow = source.split("private func verifyLiveVenueAndPriceFormReadOnly", 1)[1].split("private func ordinaryDecimalKeyboard", 1)[0]
+        for required in ['website.buttons["Aggiungi un prezzo qui"]', 'app.buttons["Birra media"]',
+                         'app.textFields["Prezzo in euro"]', 'website.buttons["Salva"]', "XCTAssertFalse(submit.isEnabled",
+                         "visibleAboveKeyboard(price", "visibleAboveKeyboard(submit", "ordinaryDecimalKeyboard()",
+                         'DoveBevo-live-venue-detail-read-only', 'DoveBevo-live-price-form-empty-read-only',
+                         'DoveBevo-live-price-field-with-keyboard-read-only', 'DoveBevo-live-price-action-with-keyboard-read-only',
+                         "closeForm.tap()", 'website.links["Indicazioni"].exists']:
+            self.assertIn(required, flow)
+        for forbidden in ["typeText(", "submit.tap()", 'buttons["Confermo"].tap()', ".seen__price", "coordinate("]:
+            self.assertNotIn(forbidden, flow)
+        keyboard = source.split("private func ordinaryDecimalKeyboard", 1)[1].split("private func visibleAboveKeyboard", 1)[0]
+        self.assertIn('label IN %@", ["1", "2"]', keyboard)
+        self.assertIn("keyboard.frame.width >= 250, keyboard.frame.height >= 150", keyboard)
+        self.assertIn("key.isHittable", keyboard)
+
     def test_shared_asset_is_only_js_resource_and_installed_in_isolated_main_frame(self):
         project = (IOS / "project.yml").read_text(encoding="utf-8")
         self.assertIn("- path: ../presentation/app-theme.js\n        buildPhase: resources", project)

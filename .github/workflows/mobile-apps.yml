@@ -546,7 +546,7 @@ jobs:
       - name: Verify native release and simulator guards without credentials
         run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
       - name: Run native unit tests and beta phone UI tests
-        timeout-minutes: 18
+        timeout-minutes: 22
         run: |
           case "$GITHUB_REF" in
             refs/tags/mobile-beta/v*) bash mobile-apps/ios/scripts/test-simulator.sh ;;

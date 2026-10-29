@@ -107,7 +107,10 @@ final class BottomNavigationControllerTests: XCTestCase {
         let original = try Data(contentsOf: store.fileURL)
         selected = false
         try client.complete(0, FavouriteComparisonSnapshot(venues: [:], unavailable: [venue]))
-        XCTAssertFalse(controller.view.subviews.contains { $0.accessibilityIdentifier == "favorites.loaded" })
+        let statusIdentifiers = descendants(controller.view).compactMap { ($0 as? UILabel)?.accessibilityIdentifier }
+        XCTAssertTrue(statusIdentifiers.contains("favorites.unavailable"))
+        XCTAssertFalse(statusIdentifiers.contains("favorites.partial"), "The late result cannot publish a completed snapshot")
+        XCTAssertFalse(statusIdentifiers.contains("favorites.loading"))
         XCTAssertEqual(try Data(contentsOf: store.fileURL), original)
         controller.refresh()
         XCTAssertEqual(client.calls.count, 1, "An offscreen manual refresh must remain inert")
@@ -183,5 +186,10 @@ final class BottomNavigationControllerTests: XCTestCase {
     private func waitUntil(_ description: String, condition: @escaping () -> Bool) {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in condition() }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed, description)
+    }
+
+    @MainActor
+    private func descendants(_ view: UIView) -> [UIView] {
+        view.subviews + view.subviews.flatMap { descendants($0) }
     }
 }

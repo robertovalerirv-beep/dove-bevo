@@ -1,13 +1,22 @@
 import { expect, test, type APIResponse } from "@playwright/test";
 
-// M0-03: SPEC 13.1 headers, exact values, on assets and API; no CORS headers.
+// M0-03: SPEC 13.1 headers, exact values, on assets and API; no CORS headers. A page gets a new nonce on each
+// request (ADR 0045): its CSP is compared with the nonce taken out; the other responses carry the fixed CSP.
+const CSP_REST =
+  "img-src 'self' data: blob:; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self'; " +
+  "frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; " +
+  "form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'";
+const STATIC_CSP =
+  "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; " +
+  CSP_REST;
+const PAGE_CSP =
+  "default-src 'self'; script-src 'nonce-N' 'strict-dynamic' 'self' https://challenges.cloudflare.com; " +
+  "style-src 'self' 'nonce-N'; " +
+  CSP_REST;
+const withoutNonce = (csp: string | undefined) => csp?.replace(/'nonce-[^']+'/g, "'nonce-N'");
+
 const EXPECTED: Record<string, string> = {
-  "content-security-policy":
-    "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; " +
-    "img-src 'self' data: blob:; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self'; " +
-    "frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'; " +
-    "form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
-  "strict-transport-security": "max-age=63072000; includeSubDomains",
+  "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
   "permissions-policy": "camera=(), microphone=(), geolocation=(self), payment=(), usb=()",
@@ -15,8 +24,11 @@ const EXPECTED: Record<string, string> = {
   "cross-origin-resource-policy": "same-origin",
 };
 
-function expectSecurityHeaders(response: APIResponse) {
+function expectSecurityHeaders(response: APIResponse, page = false) {
   const headers = response.headers();
+  expect(
+    page ? withoutNonce(headers["content-security-policy"]) : headers["content-security-policy"],
+  ).toBe(page ? PAGE_CSP : STATIC_CSP);
   for (const [name, value] of Object.entries(EXPECTED)) {
     expect(headers[name], name).toBe(value);
   }
@@ -27,13 +39,13 @@ function expectSecurityHeaders(response: APIResponse) {
 test("shell / has the security headers", async ({ request }) => {
   const response = await request.get("/");
   expect(response.status()).toBe(200);
-  expectSecurityHeaders(response);
+  expectSecurityHeaders(response, true);
 });
 
 test("SPA fallback /bar/n1 has the security headers", async ({ request }) => {
   const response = await request.get("/bar/n1");
   expect(response.status()).toBe(200);
-  expectSecurityHeaders(response);
+  expectSecurityHeaders(response, true);
 });
 
 test("JS asset has the security headers", async ({ request }) => {

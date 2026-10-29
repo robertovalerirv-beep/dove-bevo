@@ -63,9 +63,14 @@ describe("public/theme.js", () => {
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
     const run = new Function("document", "Date", script) as (p: FakePage, d: unknown) => void;
     run(page, FixedDate);
-    expect(links[0]?.href).toBe(`/map-italia-${root.dataset["theme"] ?? ""}.jpg`);
+    expect(links[0]?.href).toBe(`/map-italia-${root.dataset["theme"] ?? ""}.webp`);
     return root.dataset["theme"];
   }
+
+  it("does not ask for the picture at high priority: it would compete with the script that draws it (ADR 0045)", () => {
+    expect(script).not.toMatch(/setAttribute\(\s*["']fetchpriority/);
+    expect(script).not.toMatch(/\.fetchPriority\s*=/);
+  });
 
   it("gives the same theme as the app for every minute of the day", () => {
     for (let minutes = 0; minutes < 24 * 60; minutes++) {

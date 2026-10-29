@@ -21,7 +21,10 @@ test("M4-07 the service worker keeps the shell only, never /api or /data", async
   expect(cached.names[0]).toMatch(/^dovebevo-shell-[0-9a-f]{10}$/);
   expect(cached.urls).toContain("/");
   expect(cached.urls.some((u) => /\.js$/.test(u))).toBe(true);
-  expect(cached.urls.some((u) => /\.css$/.test(u))).toBe(true);
+  // ADR 0045: the stylesheet of the shell travels inside the page, so the cached page is the stylesheet.
+  expect(cached.urls.some((u) => /\.css$/.test(u))).toBe(false);
+  const shell = await page.evaluate(async () => (await caches.match("/"))?.text() ?? "");
+  expect(shell).toMatch(/<style\b[^>]*>[^<]*--/);
   expect(cached.urls.some((u) => /\.woff2$/.test(u))).toBe(true);
   expect(cached.urls.some((u) => u.includes("/brand/icon-192.png"))).toBe(true);
   expect(cached.urls.filter((u) => /^\/(api|data|map)\//.test(u))).toEqual([]);

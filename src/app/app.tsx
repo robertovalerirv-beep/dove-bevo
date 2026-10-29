@@ -911,7 +911,7 @@ export function App({ loadMap }: Props) {
               onPointerDown={ensureMap}
               onClick={ensureMap}
             >
-              <img src={`/map-italia-${currentTheme()}.jpg`} alt="" width={780} height={1276} />
+              <img src={`/map-italia-${currentTheme()}.webp`} alt="" width={780} height={1276} />
             </button>
           )}
           {/* While the map is a picture, a button in the centre says what to do (SPEC 1.13, D-37). It is a

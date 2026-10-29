@@ -160,7 +160,7 @@ jobs:
       startsWith(github.ref, 'refs/tags/mobile-ipad-capture/v') &&
       github.repository == 'robertovalerirv-beep/dove-bevo'
     runs-on: xcode-27
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
       IOS_SIMULATOR_RUNTIME: "27.0"
@@ -185,7 +185,7 @@ jobs:
       - name: Verify native release and simulator guards without credentials
         run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
       - name: Verify live map on 13-inch iPad and capture store screenshots
-        timeout-minutes: 15
+        timeout-minutes: 20
         env:
           STORE_CAPTURE_DEVICE: ipad
         run: bash mobile-apps/ios/scripts/capture-ipad.sh

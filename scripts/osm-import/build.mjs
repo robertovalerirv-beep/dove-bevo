@@ -33,7 +33,11 @@ for await (const raw of createInterface({ input: createReadStream(input), crlfDe
 }
 
 try {
-  const files = buildDataset(features, dataVersion);
+  let skipped = 0;
+  const files = buildDataset(features, dataVersion, {}, (entry) => {
+    skipped++;
+    console.error(`OSM import: skipped ${entry.kind} ${entry.key}: ${entry.reason}`);
+  });
   for (const [path, content] of files) {
     const target = join(outDir, path);
     mkdirSync(dirname(target), { recursive: true });
@@ -41,7 +45,8 @@ try {
   }
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   console.log(
-    `OSM import ${dataVersion}: ${files.size} files from ${features.length} features in ${seconds} s`,
+    `OSM import ${dataVersion}: ${files.size} files from ${features.length} features in ${seconds} s` +
+      `, ${skipped} skipped`,
   );
 } catch (error) {
   if (error instanceof ImportError) {

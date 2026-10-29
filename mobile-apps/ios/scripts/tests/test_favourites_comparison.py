@@ -37,9 +37,12 @@ class FavouritesComparisonGuards(unittest.TestCase):
 
     def test_native_tabs_and_live_checks_keep_original_map_and_no_public_writes(self):
         tabs = (IOS / "App/NativeTabsController.swift").read_text(encoding="utf-8")
-        self.assertIn("UITabBarController", tabs)
+        self.assertIn("NativeTabsController: UIViewController, UITabBarDelegate", tabs)
         self.assertIn("lazy var browser", tabs)
-        self.assertIn('mapNavigation.tabBarItem.accessibilityLabel = "Mappa"', tabs)
+        self.assertIn('mapNavigation.tabBarItem = bottomItem("Mappa", label: "Mappa"', tabs)
+        self.assertIn("for child in [mapNavigation, favouritesNavigation]", tabs)
+        self.assertIn("bottomBar.items = [homeItem, mapNavigation.tabBarItem, favouritesNavigation.tabBarItem, saveItem, recommendationsItem]", tabs)
+        self.assertIn("browser.openSavedVenue(url)", tabs)
         browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
         self.assertIn('navigationItem.title = "Dove bevo"', browser)
         self.assertNotIn('\n        title = "Dove bevo"', browser)
@@ -48,6 +51,53 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn('app.tabBars.buttons["Mappa"]', tests)
         self.assertIn('app.staticTexts["favorites.loaded"]', tests)
         self.assertIn("hasVisiblePositiveCoverage", tests)
+
+    def test_bottom_actions_are_contextual_and_do_not_select_empty_destinations(self):
+        tabs = (IOS / "App/NativeTabsController.swift").read_text(encoding="utf-8")
+        for label in ["Home", "Salva nei preferiti", "Drink consigliati"]:
+            self.assertIn(f'label: "{label}"', tabs)
+        self.assertIn("saveItem.isEnabled = enabled", tabs)
+        self.assertIn("recommendationsItem.isEnabled = enabled", tabs)
+        self.assertIn("mapNavigation.topViewController === browser && venueActionsAvailable", tabs)
+        self.assertIn("guard (0...1).contains(index)", tabs)
+        self.assertNotIn("UITabBarController", tabs)
+        self.assertIn("browser.goHome()", tabs)
+        self.assertIn("browser.saveCurrentVenue()", tabs)
+        self.assertIn("browser.showRecommendations()", tabs)
+        browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
+        self.assertIn("if isMapDestinationSelected?() == false { return nil }", browser)
+        self.assertIn("guard browserVisible, bookmarkLifecycleActive", browser)
+        saved = (IOS / "App/SavedVenuesViewController.swift").read_text(encoding="utf-8")
+        self.assertIn("guard visible, lifecycleActive, isDestinationSelected?() != false", saved)
+
+    def test_more_menu_owns_share_reload_only_and_save_stays_on_current_venue(self):
+        browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
+        more = browser.split("private func moreMenu()", 1)[1].split("private var canSaveCurrentVenue", 1)[0]
+        self.assertIn('UIAction(title: "Condividi"', more)
+        self.assertIn('UIAction(title: pageLoading ? "Interrompi" : "Ricarica"', more)
+        for title in ["Home", "Preferiti", "Salva nei preferiti", "Drink consigliati"]:
+            self.assertNotIn(f'UIAction(title: "{title}"', more)
+        self.assertNotIn("saveMenuEnabled", browser)
+        self.assertNotIn("toolbar.items", browser)
+        save = browser.split("@objc func saveCurrentVenue()", 1)[1].split("@objc func showRecommendations()", 1)[0]
+        self.assertIn("try self.savedVenues.save(url: venue.url, label: venue.label)", save)
+        self.assertNotIn("showSavedVenues()", save)
+        self.assertIn('"Preferito salvato"', save)
+
+    def test_native_and_ui_suites_exercise_real_controls_and_same_document_history(self):
+        native = (IOS / "Tests/BottomNavigationControllerTests.swift").read_text(encoding="utf-8")
+        for required in ["bar.subviews.compactMap", "accessibilityExtraExtraExtraLarge", "tabs.children.count, 2",
+                         "testHomeResetsSameBrowserButMapResumesItsRetainedStack", "testDestinationChangesDuringParentAppearance",
+                         "testOffscreenFavouritesCannotFetchOrAcceptLateResults", "testOverflowUpdatesLoadingAndRecovery",
+                         "testSameDocumentHistory", "history.pushState", "web.canGoBack"]:
+            self.assertIn(required, native)
+        ui = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
+        self.assertIn('app.tabBars["native.bottomNavigation"]', ui)
+        self.assertIn("assertShareAndReloadAvailable()", ui)
+        save = ui.split("private func saveCurrentVenueInOneTap()", 1)[1].split("private func assertShareAndReloadAvailable()", 1)[0]
+        self.assertIn('app.alerts["Preferito salvato"]', save)
+        self.assertIn('app.navigationBars["Dove bevo"].exists', save)
+        self.assertIn('app.tabBars.buttons["Mappa"].isSelected', save)
 
 
 if __name__ == "__main__":

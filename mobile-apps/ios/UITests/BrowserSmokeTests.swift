@@ -41,7 +41,10 @@ final class BrowserSmokeTests: XCTestCase {
         app.buttons["browser.more"].tap()
         XCTAssertTrue(app.buttons["Condividi"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Ricarica"].exists || app.buttons["Interrompi"].exists)
-        XCTAssertEqual(app.buttons.matching(identifier: "tab.favorites").count, 1)
+        for label in ["Home", "Preferiti", "Salva nei preferiti", "Drink consigliati"] {
+            XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", label)).count, 1,
+                           "More must not duplicate a bottom control: \(label)")
+        }
         XCTAssertFalse(app.buttons["Home"].isSelected, "Home is an action, not a blank selected tab")
         app.buttons["Informazioni"].tap()
         XCTAssertTrue(app.alerts["Dove bevo"].waitForExistence(timeout: 5))

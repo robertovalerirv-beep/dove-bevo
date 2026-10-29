@@ -26,6 +26,12 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertIn('NSPredicate(format: "label IN %@", Self.liveMapLabels as NSArray)', query)
         self.assertNotIn("BEGINSWITH", query)
 
+    def test_live_city_and_euro_matchers_keep_utf8_literals(self):
+        for required in ['website.buttons["Cerca citt\u00e0 o bar"]', '"Citt\u00e0"', '"\u20ac"']:
+            self.assertIn(required, self.source)
+        for damaged in ["\u00c3\u00a0", "\u00e2\u201a\u00ac", "\ufffd"]:
+            self.assertNotIn(damaged, self.source)
+
     def test_coverage_uses_the_actual_anchored_pattern_and_valid_positive_ratio(self):
         declaration = re.search(r'static let liveCoveragePattern\s*=\s*#"([^"]+)"#', self.source)
         self.assertIsNotNone(declaration)

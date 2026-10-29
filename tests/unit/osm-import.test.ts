@@ -96,12 +96,67 @@ describe("OSM import (M1-02)", () => {
   it("fails when a file is larger than the size limit", () => {
     expect(() => buildDataset(features, "x", { maxFileBytes: 100 })).toThrow(/too large/);
   });
+});
 
-  it("fails on a bar outside Italy or with an overlong name", () => {
+// SPEC 5.1 (1.14, ADR 0043): an entry that does not validate is skipped and reported; the import
+// fails only when more than MAX_SKIPPED (25) entries were skipped, so one OSM edit cannot stop a deploy.
+describe("invalid OSM entries are skipped and reported", () => {
+  const good = [milano, point("n1", 45.4642, 9.19, { amenity: "bar", name: "Bar Duomo" })];
+  const bad = (i: number) =>
+    point(`n${String(100 + i)}`, 45.47, 9.2, { amenity: "bar", name: "x".repeat(121) });
+  type Skipped = { kind: string; key: string; reason: string };
+  const run = (extra: OsmFeature[], limits = {}) => {
+    const skipped: Skipped[] = [];
+    const files = buildDataset([...good, ...extra], "x", limits, (s: Skipped) => skipped.push(s));
+    return { files, skipped };
+  };
+  const names = (files: Map<string, string>): string[] =>
+    [...files]
+      .filter(([path]) => path.startsWith("v/"))
+      .flatMap(([, text]) => (JSON.parse(text) as CellFile).v.map((v) => v[1]));
+
+  it("skips a name over 120 characters, keeps the others and tells which one", () => {
+    const { files, skipped } = run([bad(1)]);
+    expect(names(files)).toEqual(["Bar Duomo"]);
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0]).toMatchObject({ kind: "bar", key: "n101" });
+    expect(skipped[0]?.reason).toMatch(/name longer than 120/);
+  });
+
+  it("skips a bar outside Italy", () => {
     const paris = point("n9", 48.8566, 2.3522, { amenity: "bar", name: "Paris" });
-    expect(() => buildDataset([paris], "x")).toThrow(/outside Italy/);
-    const long = point("n8", 45.4642, 9.19, { amenity: "bar", name: "x".repeat(121) });
-    expect(() => buildDataset([long], "x")).toThrow(/name/);
+    const { files, skipped } = run([paris]);
+    expect(names(files)).toEqual(["Bar Duomo"]);
+    expect(skipped[0]?.reason).toMatch(/outside Italy/);
+  });
+
+  it("skips a city or town with an invalid name too", () => {
+    const longCity = point("n300", 45.5, 9.3, { place: "town", name: "y".repeat(121) });
+    const { files, skipped } = run([longCity]);
+    expect(skipped[0]).toMatchObject({ kind: "place", key: "n300" });
+    const places = JSON.parse(files.get("places.json") ?? "[]") as Place[];
+    expect(places.map((p) => p[1])).toEqual(["Milano"]);
+  });
+
+  it("works without a report callback", () => {
+    expect(() => buildDataset([...good, bad(1)], "x")).not.toThrow();
+  });
+
+  it("accepts exactly 25 skipped entries and fails from the 26th", () => {
+    const many = (n: number) => Array.from({ length: n }, (_, i) => bad(i));
+    expect(run(many(25)).skipped).toHaveLength(25);
+    expect(() => run(many(26))).toThrow(ImportError);
+    expect(() => run(many(26))).toThrow(/26 .*skipped.*more than 25/);
+  });
+
+  it("takes the threshold from the limits", () => {
+    expect(() => run([bad(1), bad(2)], { maxSkipped: 1 })).toThrow(/more than 1/);
+    expect(run([bad(1), bad(2)], { maxSkipped: 2 }).skipped).toHaveLength(2);
+  });
+
+  it("keeps the other limits blocking (files, size)", () => {
+    expect(() => run([bad(1)], { maxFiles: 1 })).toThrow(/files/);
+    expect(() => run([bad(1)], { maxFileBytes: 10 })).toThrow(/too large/);
   });
 });
 

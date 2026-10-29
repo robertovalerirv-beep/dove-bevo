@@ -4,6 +4,26 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-10-29 · Import OSM tollerante (branch `m7-import`) · SPEC 1.14 · ADR 0043
+
+**Richiesta di Roberto:** seconda delle tre PR dopo l'audit del 28/10: una voce OSM non valida non deve fermare il deploy; SPEC e ADR scritti da me.
+
+**Fatto**
+- `scripts/osm-import/osm.ts`: `validate()` → `invalidReason()`; `buildDataset(features, version, limits, onSkip?)` salta e segnala bar e città non validi; `maxSkipped: 25` in `DEFAULT_LIMITS`; sopra soglia `ImportError`.
+- `scripts/osm-import/build.mjs`: scrive ogni voce saltata su stderr e `N skipped` nel riepilogo.
+- SPEC 1.14 (intestazione, registro, 5.1 punto 5, 5.3) e ADR 0043. Nessun nuovo tag: `feature_list.json` non cambia.
+
+**Prove**
+- Test prima: 7 casi nuovi in `tests/unit/osm-import.test.ts` falliti con `Error: bar n101: name longer than 120` (il codice vecchio lanciava), poi verdi. Il test «fails on a bar outside Italy or with an overlong name» è stato sostituito: il requisito è cambiato.
+- `vitest --project unit tests/unit/osm-import.test.ts tests/unit/search-index.test.ts` → 30 test verdi; `tsc -b` ed ESLint senza errori.
+- Prova da riga di comando: `build.mjs` su un file con 4 voci, una con nome di 130 caratteri → esce con 0, `skipped bar n3: name longer than 120`, `6 files from 4 features, 1 skipped`; `check-output.mjs` → `bars: 2`, il nome lungo assente dai file.
+
+**Non eseguito qui:** `osmium` (non installato) e il job CI `OSM import on a test PBF`, Playwright, `npm run verify`; li esegue la CI.
+
+**Da verificare a mano:** nel log del primo deploy dopo il merge, la riga finale `OSM import <versione>: … , 0 skipped` (oggi ci si aspetta 0).
+
+---
+
 ## 2026-10-29 · Pulizia dopo l'audit del 28/10 (branch `m7-pulizia`) · ADR 0042
 
 **Richiesta di Roberto:** dall'audit di sicurezza e qualità, fare per prima la pulizia (P1, P3, P4, P8); poi l'import tollerante e la sicurezza in PR separate. S2 (`/api/ai/cerca`) rimandato per sua scelta.

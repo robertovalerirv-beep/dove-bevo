@@ -17,12 +17,22 @@ export interface Limits {
   maxFileBytes: number;
   /** Largest search fragment, gzipped (ADR 0024). */
   maxFragmentGzip: number;
+  /** Entries that may be skipped (reported) before the import fails: a broken extract (SPEC 5.1, ADR 0043). */
+  maxSkipped: number;
+}
+
+/** An entry left out of the dataset because it does not validate. */
+export interface Skipped {
+  kind: "bar" | "place";
+  key: string;
+  reason: string;
 }
 
 const DEFAULT_LIMITS: Limits = {
   maxFiles: 15_000,
   maxFileBytes: 1_000_000,
   maxFragmentGzip: 40 * 1024,
+  maxSkipped: 25,
 };
 // Index = kind code (api-types). "cafe" keeps code 0 but is not imported (too many, little value).
 const KINDS = ["cafe", "bar", "pub", "biergarten", "nightclub"];
@@ -60,16 +70,13 @@ function text(tags: Record<string, unknown>, key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function validate(kind: string, key: string, name: string, lat: number, lon: number) {
-  if (!Number.isFinite(lat) || !Number.isFinite(lon))
-    throw new ImportError(`${kind} ${key}: no coordinates`);
-  if (lat < ITALY.south || lat > ITALY.north || lon < ITALY.west || lon > ITALY.east) {
-    throw new ImportError(
-      `${kind} ${key}: coordinates outside Italy (${String(lat)}, ${String(lon)})`,
-    );
-  }
-  if (name.length > MAX_NAME)
-    throw new ImportError(`${kind} ${key}: name longer than ${String(MAX_NAME)}`);
+/** Why an entry is not valid, or null when it is. */
+function invalidReason(name: string, lat: number, lon: number): string | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return "no coordinates";
+  if (lat < ITALY.south || lat > ITALY.north || lon < ITALY.west || lon > ITALY.east)
+    return `coordinates outside Italy (${String(lat)}, ${String(lon)})`;
+  if (name.length > MAX_NAME) return `name longer than ${String(MAX_NAME)}`;
+  return null;
 }
 
 /** Centroid of the largest outer ring (shoelace); vertex mean when the area is zero. */
@@ -237,10 +244,17 @@ export function buildDataset(
   features: Iterable<OsmFeature>,
   dataVersion: string,
   limits: Partial<Limits> = {},
+  onSkip?: (skipped: Skipped) => void,
 ): Map<string, string> {
-  const { maxFiles, maxFileBytes, maxFragmentGzip } = { ...DEFAULT_LIMITS, ...limits };
+  const { maxFiles, maxFileBytes, maxFragmentGzip, maxSkipped } = { ...DEFAULT_LIMITS, ...limits };
   const venues: Venue[] = [];
   const cities: City[] = [];
+  let skipped = 0;
+  // OSM is edited by anyone: one bad entry is left out and reported, a broken extract still fails.
+  const skip = (kind: Skipped["kind"], key: string, reason: string) => {
+    skipped++;
+    onSkip?.({ kind, key, reason });
+  };
 
   for (const feature of features) {
     const tags = feature.properties ?? {};
@@ -253,14 +267,28 @@ export function buildDataset(
     const place = text(tags, "place");
     const kind = KINDS.indexOf(text(tags, "amenity"));
     if (key.startsWith("n") && PLACES.includes(place)) {
-      validate("place", key, name, lat, lon);
+      const reason = invalidReason(name, lat, lon);
+      if (reason) {
+        skip("place", key, reason);
+        continue;
+      }
       cities.push({ id: Number(key.slice(1)), name, lat: round5(lat), lon: round5(lon), bars: 0 });
     } else if (kind >= SKIPPED_KINDS) {
-      validate("bar", key, name, lat, lon);
+      const reason = invalidReason(name, lat, lon);
+      if (reason) {
+        skip("bar", key, reason);
+        continue;
+      }
       const street = text(tags, "addr:street");
       const addr = street ? `${street} ${text(tags, "addr:housenumber")}`.trim() : "";
       venues.push({ key, name, kind: kind as VenueKind, lat: round5(lat), lon: round5(lon), addr });
     }
+  }
+
+  if (skipped > maxSkipped) {
+    throw new ImportError(
+      `${String(skipped)} entries skipped as invalid, more than ${String(maxSkipped)}: the extract looks broken`,
+    );
   }
 
   const grid = new Map<string, City[]>();

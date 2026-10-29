@@ -2,14 +2,14 @@ import UIKit
 
 /// Two retained destinations and three actions share one native bottom bar.
 /// Actions never select an empty controller or replace the browser's history.
-final class NativeTabsController: UIViewController, UITabBarDelegate, UINavigationControllerDelegate {
+final class NativeTabsController: UIViewController, UINavigationControllerDelegate {
     private let store: SavedVenueStore
     private let comparisonClient: FavouriteComparisonServing
     private let recommendationClient: RecommendationServing
     private let providedBrowser: BrowserViewController?
     private let content = UIView()
     private let bottomBackground = UIView()
-    private(set) var bottomBar = UITabBar()
+    private(set) var bottomBar = NativeBottomBar()
     private var destinationIndex = 0
     private var visible = false
     private var parentAppearance: (navigation: UINavigationController, appearing: Bool)?
@@ -44,17 +44,11 @@ final class NativeTabsController: UIViewController, UITabBarDelegate, UINavigati
     }()
     private(set) lazy var favouritesNavigation = UINavigationController(rootViewController: favourites)
 
-    private lazy var homeItem = bottomItem("Home", label: "Home", symbol: "house", id: "browser.home")
-    private lazy var saveItem = bottomItem("Salva", label: "Salva nei preferiti", symbol: "bookmark.badge.plus", id: "browser.saveVenue")
-    private lazy var recommendationsItem = bottomItem("Consigliati", label: "Drink consigliati", symbol: "hand.thumbsup", id: "browser.recommendations")
-
     init(store: SavedVenueStore = SavedVenueStore(), comparisonClient: FavouriteComparisonServing = FavouriteComparisonClient(),
          recommendationClient: RecommendationServing = RecommendationClient(), browser: BrowserViewController? = nil) {
         self.store = store; self.comparisonClient = comparisonClient; self.recommendationClient = recommendationClient
         self.providedBrowser = browser
         super.init(nibName: nil, bundle: nil)
-        mapNavigation.tabBarItem = bottomItem("Mappa", label: "Mappa", symbol: "map", selectedSymbol: "map.fill", id: "tab.map")
-        favouritesNavigation.tabBarItem = bottomItem("Preferiti", label: "Preferiti", symbol: "bookmark", selectedSymbol: "bookmark.fill", id: "tab.favorites")
         mapNavigation.delegate = self
         favouritesNavigation.delegate = self
     }
@@ -70,15 +64,7 @@ final class NativeTabsController: UIViewController, UITabBarDelegate, UINavigati
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         }
-        bottomBar.accessibilityIdentifier = "native.bottomNavigation"
-        bottomBar.delegate = self
-        bottomBar.itemPositioning = .fill
-        bottomBar.tintColor = .label
-        let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
-        bottomBar.standardAppearance = appearance
-        bottomBar.scrollEdgeAppearance = appearance
-        bottomBar.items = [homeItem, mapNavigation.tabBarItem, favouritesNavigation.tabBarItem, saveItem, recommendationsItem]
+        bottomBar.onSelect = { [weak self] action in self?.performBottomAction(action) }
         NSLayoutConstraint.activate([
             content.topAnchor.constraint(equalTo: view.topAnchor),
             content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -87,7 +73,6 @@ final class NativeTabsController: UIViewController, UITabBarDelegate, UINavigati
             bottomBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomBar.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            bottomBar.heightAnchor.constraint(equalToConstant: 49),
             bottomBackground.topAnchor.constraint(equalTo: bottomBar.topAnchor),
             bottomBackground.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             bottomBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
@@ -181,22 +166,24 @@ final class NativeTabsController: UIViewController, UITabBarDelegate, UINavigati
 
     private func refreshBottomBar() {
         guard isViewLoaded else { return }
-        bottomBar.selectedItem = destinationIndex == 0 ? mapNavigation.tabBarItem : favouritesNavigation.tabBarItem
         let enabled = destinationIndex == 0 && mapNavigation.topViewController === browser && venueActionsAvailable
-        saveItem.isEnabled = enabled
-        recommendationsItem.isEnabled = enabled
+        bottomBar.update(destination: destinationIndex, venueActionsEnabled: enabled)
     }
 
-    func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
-        if item === homeItem {
+    private func performBottomAction(_ action: BottomNavigationAction) {
+        switch action {
+        case .home:
             browser.retireVenueActions()
             mapNavigation.popToRootViewController(animated: false)
             selectedIndex = 0
             browser.goHome()
-        } else if item === mapNavigation.tabBarItem { selectedIndex = 0 }
-        else if item === favouritesNavigation.tabBarItem { selectedIndex = 1 }
-        else if item === saveItem, saveItem.isEnabled { browser.saveCurrentVenue() }
-        else if item === recommendationsItem, recommendationsItem.isEnabled { browser.showRecommendations() }
+        case .map: selectedIndex = 0
+        case .favourites: selectedIndex = 1
+        case .save, .recommendations:
+            guard selectedIndex == 0, mapNavigation.topViewController === browser, venueActionsAvailable else { return }
+            if action == .save { browser.saveCurrentVenue() }
+            else { browser.showRecommendations() }
+        }
         refreshBottomBar()
     }
 
@@ -205,10 +192,4 @@ final class NativeTabsController: UIViewController, UITabBarDelegate, UINavigati
         refreshBottomBar()
     }
 
-    private func bottomItem(_ title: String, label: String, symbol: String, selectedSymbol: String? = nil, id: String) -> UITabBarItem {
-        let item = UITabBarItem(title: title, image: UIImage(systemName: symbol), selectedImage: UIImage(systemName: selectedSymbol ?? symbol))
-        item.accessibilityIdentifier = id
-        item.accessibilityLabel = label
-        return item
-    }
 }

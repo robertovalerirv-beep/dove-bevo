@@ -38,8 +38,8 @@ final class BottomNavigationControllerTests: XCTestCase {
             XCTAssertTrue(bar.window === window, "Measure the actual mounted native controls")
             XCTAssertEqual(tabs.traitCollection.preferredContentSizeCategory, .accessibilityExtraExtraExtraLarge)
             XCTAssertEqual(bar.bounds.width, 320, accuracy: 0.5)
-            XCTAssertEqual(bar.items?.map(\.title), ["Home", "Mappa", "Preferiti", "Salva", "Consigliati"])
-            XCTAssertEqual(bar.items?.compactMap(\.accessibilityLabel), ["Home", "Mappa", "Preferiti", "Salva nei preferiti", "Drink consigliati"])
+            XCTAssertEqual(bar.buttons.map { $0.configuration?.title }, ["Home", "Mappa", "Preferiti", "Salva", "Consigliati"])
+            XCTAssertEqual(bar.buttons.compactMap(\.accessibilityLabel), ["Home", "Mappa", "Preferiti", "Salva nei preferiti", "Drink consigliati"])
             XCTAssertTrue(tabs.children.contains { $0 === tabs.mapNavigation })
             XCTAssertTrue(tabs.children.contains { $0 === tabs.favouritesNavigation })
             XCTAssertEqual(tabs.children.count, 2, "Actions must not create empty navigation destinations")
@@ -49,23 +49,78 @@ final class BottomNavigationControllerTests: XCTestCase {
             // iOS 27 nests its native buttons inside material containers. Do
             // not depend on private class names or immediate-child structure.
             let controls = descendants(bar).compactMap { $0 as? UIControl }
-            let frames = controls.map { $0.convert($0.bounds, to: bar) }.sorted { $0.minX < $1.minX }
+            let frames = controls.map { $0.convert($0.bounds, to: bar) }
             let hierarchy = descendants(bar).map { "\(type(of: $0)): \($0.frame)" }.joined(separator: "\n")
             XCTAssertEqual(controls.count, 5, "Measure actual UIKit controls, not a duplicated geometry formula: \(hierarchy)")
             for (index, frame) in frames.enumerated() {
                 XCTAssertGreaterThanOrEqual(frame.width, 48)
                 XCTAssertGreaterThanOrEqual(frame.height, 48)
                 XCTAssertTrue(bar.bounds.contains(frame))
-                if index > 0 { XCTAssertLessThanOrEqual(frames[index - 1].maxX, frame.minX + 0.5) }
+                for other in frames.dropFirst(index + 1) { XCTAssertFalse(frame.intersects(other)) }
             }
-            XCTAssertTrue(bar.selectedItem === tabs.mapNavigation.tabBarItem)
-            XCTAssertFalse(bar.items?[3].isEnabled ?? true)
-            XCTAssertFalse(bar.items?[4].isEnabled ?? true)
-            tabs.tabBar(bar, didSelect: bar.items![3])
-            tabs.tabBar(bar, didSelect: bar.items![4])
+            for button in bar.buttons {
+                button.layoutIfNeeded()
+                XCTAssertTrue(button.isAccessibilityElement)
+                XCTAssertNotNil(button.configuration?.image)
+                if let title = button.titleLabel, let image = button.imageView {
+                    XCTAssertGreaterThan(title.bounds.height, 0)
+                    XCTAssertGreaterThan(image.bounds.height, 0)
+                    XCTAssertEqual(title.text ?? title.attributedText?.string, button.configuration?.title)
+                    XCTAssertEqual(title.numberOfLines, 0)
+                    XCTAssertTrue(button.bounds.contains(title.convert(title.bounds, to: button)), "The visible title must not be clipped")
+                    XCTAssertTrue(button.bounds.contains(image.convert(image.bounds, to: button)), "The visible icon must not be clipped")
+                    let required = title.sizeThatFits(CGSize(width: title.bounds.width, height: .greatestFiniteMagnitude))
+                    XCTAssertLessThanOrEqual(required.height, title.bounds.height + 0.5, "The whole wrapped title must fit, including Preferiti and Consigliati")
+                } else { XCTFail("Every native button needs a visible icon and title") }
+            }
+            XCTAssertTrue(bar.button(for: .map).isSelected)
+            XCTAssertTrue(bar.button(for: .map).accessibilityTraits.contains(.selected))
+            XCTAssertFalse(bar.button(for: .save).isEnabled)
+            XCTAssertTrue(bar.button(for: .save).accessibilityTraits.contains(.notEnabled))
+            XCTAssertFalse(bar.button(for: .recommendations).isEnabled)
+            XCTAssertTrue(bar.button(for: .recommendations).accessibilityTraits.contains(.notEnabled))
+            bar.button(for: .save).sendActions(for: .touchUpInside)
+            bar.button(for: .recommendations).sendActions(for: .touchUpInside)
             XCTAssertEqual(tabs.selectedIndex, 0)
             XCTAssertEqual(tabs.mapNavigation.viewControllers.count, 1)
             XCTAssertNil(browser.presentedViewController)
+            let originalButtons = bar.buttons
+            let largeTextHeight = bar.bounds.height
+            XCTAssertGreaterThanOrEqual(Set(frames.map { Int($0.minY.rounded()) }).count, 2)
+            host.setOverrideTraitCollection(UITraitCollection(preferredContentSizeCategory: .large), forChild: tabs)
+            window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+            host.view.frame = window.bounds
+            window.layoutIfNeeded()
+            bar.setNeedsLayout()
+            bar.layoutIfNeeded()
+            window.layoutIfNeeded()
+            tabs.view.layoutIfNeeded()
+            XCTAssertEqual(bar.bounds.width, 390, accuracy: 0.5)
+            XCTAssertLessThan(bar.bounds.height, largeTextHeight, "Normal width/text returns to one usable row")
+            XCTAssertTrue(zip(originalButtons, bar.buttons).allSatisfy { pair in pair.0 === pair.1 }, "Resizing retains each native control and target")
+            let resizedFrames = bar.buttons.map { $0.convert($0.bounds, to: bar) }
+            XCTAssertEqual(Set(resizedFrames.map { Int($0.minY.rounded()) }).count, 1)
+            for frame in resizedFrames {
+                XCTAssertGreaterThanOrEqual(frame.width, 48)
+                XCTAssertGreaterThanOrEqual(frame.height, 48)
+                XCTAssertTrue(bar.bounds.contains(frame))
+            }
+            tabs.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 40, bottom: 0, right: 40)
+            window.frame = CGRect(x: 0, y: 0, width: 844, height: 390)
+            host.view.frame = window.bounds
+            window.layoutIfNeeded()
+            bar.setNeedsLayout()
+            bar.layoutIfNeeded()
+            window.layoutIfNeeded()
+            tabs.view.layoutIfNeeded()
+            XCTAssertGreaterThanOrEqual(bar.safeAreaInsets.left, 40)
+            XCTAssertGreaterThanOrEqual(bar.safeAreaInsets.right, 40)
+            for button in bar.buttons {
+                let frame = button.convert(button.bounds, to: bar)
+                XCTAssertTrue(bar.safeAreaLayoutGuide.layoutFrame.contains(frame), "Landscape/split-window side insets protect every native target")
+                XCTAssertGreaterThanOrEqual(frame.width, 48)
+                XCTAssertGreaterThanOrEqual(frame.height, 48)
+            }
         }
     }
 
@@ -81,14 +136,17 @@ final class BottomNavigationControllerTests: XCTestCase {
         let details = UIViewController()
         tabs.mapNavigation.pushViewController(details, animated: false)
         tabs.selectedIndex = 1
+        XCTAssertTrue(tabs.bottomBar.button(for: .favourites).isSelected)
+        XCTAssertTrue(tabs.bottomBar.button(for: .favourites).accessibilityTraits.contains(.selected))
         let bar = tabs.bottomBar
-        tabs.tabBar(bar, didSelect: try XCTUnwrap(bar.items?[1]))
+        bar.button(for: .map).sendActions(for: .touchUpInside)
         XCTAssertTrue(tabs.mapNavigation.topViewController === details)
         XCTAssertEqual(requests, [URLPolicy.homeURL])
         tabs.selectedIndex = 1
-        tabs.tabBar(bar, didSelect: try XCTUnwrap(bar.items?.first))
+        bar.button(for: .home).sendActions(for: .touchUpInside)
         XCTAssertEqual(tabs.selectedIndex, 0)
-        XCTAssertTrue(bar.selectedItem === tabs.mapNavigation.tabBarItem)
+        XCTAssertTrue(bar.button(for: .map).isSelected)
+        XCTAssertFalse(bar.button(for: .home).isSelected)
         XCTAssertTrue(tabs.mapNavigation.topViewController === browser)
         XCTAssertTrue(browser.view === originalView)
         XCTAssertEqual(requests, [URLPolicy.homeURL, URLPolicy.homeURL])
@@ -103,7 +161,7 @@ final class BottomNavigationControllerTests: XCTestCase {
         tabs.selectedIndex = 1
         tabs.endAppearanceTransition()
         XCTAssertEqual(tabs.selectedIndex, 1)
-        XCTAssertTrue(tabs.bottomBar.selectedItem === tabs.favouritesNavigation.tabBarItem)
+        XCTAssertTrue(tabs.bottomBar.button(for: .favourites).isSelected)
         XCTAssertTrue(tabs.mapNavigation.view.isHidden)
         XCTAssertFalse(tabs.favouritesNavigation.view.isHidden)
         tabs.beginAppearanceTransition(false, animated: false)

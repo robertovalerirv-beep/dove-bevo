@@ -25,15 +25,21 @@ final class BrowserSmokeTests: XCTestCase {
         for identifier in ["browser.back", "browser.forward", "browser.home", "browser.more", "browser.recommendations", "browser.saveVenue"] {
             XCTAssertTrue(app.buttons[identifier].exists, identifier)
         }
-        let bottomBar = app.tabBars["native.bottomNavigation"]
-        for identifier in ["browser.home", "tab.map", "tab.favorites", "browser.saveVenue", "browser.recommendations"] {
+        let bottomBar = app.descendants(matching: .any)["native.bottomNavigation"]
+        XCTAssertEqual(bottomBar.buttons.count, 5)
+        for (identifier, label) in [("browser.home", "Home"), ("tab.map", "Mappa"), ("tab.favorites", "Preferiti"), ("browser.saveVenue", "Salva nei preferiti"), ("browser.recommendations", "Drink consigliati")] {
             let control = bottomBar.buttons[identifier]
             XCTAssertTrue(control.exists, "All five controls must be in the bottom bar: \(identifier)")
+            XCTAssertEqual(control.label, label)
             XCTAssertGreaterThanOrEqual(control.frame.width, 48)
             XCTAssertGreaterThanOrEqual(control.frame.height, 48)
             XCTAssertTrue(bottomBar.frame.contains(control.frame))
         }
         XCTAssertGreaterThanOrEqual(bottomBar.frame.minY, app.frame.midY)
+        XCTAssertTrue(bottomBar.buttons["tab.map"].isSelected)
+        XCTAssertFalse(bottomBar.buttons["tab.favorites"].isSelected)
+        XCTAssertFalse(bottomBar.buttons["browser.saveVenue"].isEnabled)
+        XCTAssertFalse(bottomBar.buttons["browser.recommendations"].isEnabled)
         XCTAssertEqual(app.buttons.matching(identifier: "tab.favorites").count, 1)
         XCTAssertEqual(app.buttons["browser.home"].label, "Home")
         XCTAssertFalse(app.buttons["Condividi"].exists)
@@ -65,20 +71,21 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(app.buttons["browser.saveVenue"].exists)
         XCTAssertFalse(app.buttons["browser.saveVenue"].isEnabled, "The initial home/map page is not a venue to save")
         XCTAssertFalse(app.buttons["browser.recommendations"].isEnabled, "Recommendations require an open venue")
-        app.tabBars.buttons["Preferiti"].tap()
+        app.buttons["tab.favorites"].tap()
         XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tables["savedVenues.list"].exists)
         XCTAssertFalse(app.buttons["browser.saveVenue"].isEnabled)
         XCTAssertFalse(app.buttons["browser.recommendations"].isEnabled)
-        XCTAssertTrue(app.tabBars.buttons["Preferiti"].isSelected)
-        app.tabBars.buttons["Mappa"].tap()
+        XCTAssertTrue(app.buttons["tab.favorites"].isSelected)
+        XCTAssertFalse(app.buttons["tab.map"].isSelected)
+        app.buttons["tab.map"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["browser.home"].exists)
         assertReloadInMoreMenu()
-        app.tabBars.buttons["Preferiti"].tap()
+        app.buttons["tab.favorites"].tap()
         app.buttons["browser.home"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.buttons["Mappa"].isSelected)
+        XCTAssertTrue(app.buttons["tab.map"].isSelected)
         XCTAssertFalse(app.buttons["browser.home"].isSelected)
     }
 
@@ -104,6 +111,8 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(website.buttons["Vicino a me"].exists)
         XCTAssertTrue(ready.evaluate(with: nil), "Page readiness changed before the single search tap")
         assertShareAndReloadAvailable()
+        assertNoSharePresentation()
+        XCTAssertTrue(searchButton.isHittable, "Menu dismissal must leave the real city-search action reachable")
         searchButton.tap()
         attachState(named: "DoveBevo-live-after-search-tap")
 
@@ -159,7 +168,7 @@ final class BrowserSmokeTests: XCTestCase {
         let website = app.webViews["browser.website"]
         // A fresh owned installation lets this test remove only its own entry.
         // Never clear preferences, overwrite an existing choice or contribute data.
-        app.tabBars.buttons["Preferiti"].tap()
+        app.buttons["tab.favorites"].tap()
         XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 10))
         let initialSavedTable = app.tables["savedVenues.list"]
         let emptyMessage = initialSavedTable.descendants(matching: .any).matching(
@@ -170,7 +179,7 @@ final class BrowserSmokeTests: XCTestCase {
             XCTFail("Live bookmark QA requires an owned empty installation; existing records were left unchanged")
             return
         }
-        app.tabBars.buttons["Mappa"].tap()
+        app.buttons["tab.map"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
         XCTAssertTrue(hasVisiblePositiveCoverage(), "The native list must preserve the live map")
         let listButton = website.buttons["Elenco"]
@@ -210,7 +219,7 @@ final class BrowserSmokeTests: XCTestCase {
         waitForNativePageReady()
         verifyLiveRecommendationsReadOnly(venueName: publicName)
         saveCurrentVenueInOneTap()
-        app.tabBars.buttons["Preferiti"].tap()
+        app.buttons["tab.favorites"].tap()
         let savedTable = app.tables["savedVenues.list"]
         let savedRow = savedTable.cells.matching(NSPredicate(format: "label == %@", publicName)).firstMatch
         XCTAssertTrue(savedRow.waitForExistence(timeout: 10), "One menu action must save the existing name without a naming form")
@@ -220,7 +229,7 @@ final class BrowserSmokeTests: XCTestCase {
         let savedIdentity = savedRow.identifier
         verifyLiveFavouriteComparisonReadOnly()
         attachScreen(named: "DoveBevo-live-native-saved-venue")
-        app.tabBars.buttons["Mappa"].tap()
+        app.buttons["tab.map"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
         let initialCloseBar = website.buttons["Chiudi"]
         XCTAssertTrue(initialCloseBar.waitForExistence(timeout: 10))
@@ -229,7 +238,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [venueClosed], timeout: 15), .completed)
         XCTAssertTrue(interactiveMap().waitForExistence(timeout: 15))
         XCTAssertTrue(hasVisiblePositiveCoverage())
-        app.tabBars.buttons["Preferiti"].tap()
+        app.buttons["tab.favorites"].tap()
         XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 10))
         let reopenRow = app.tables["savedVenues.list"].cells[savedIdentity]
         XCTAssertTrue(reopenRow.waitForExistence(timeout: 10))
@@ -242,7 +251,7 @@ final class BrowserSmokeTests: XCTestCase {
         // Saving the reopened venue must update that same record, not create a
         // different URL/key or ask the tester to provide an invented name.
         saveCurrentVenueInOneTap()
-        app.tabBars.buttons["Preferiti"].tap()
+        app.buttons["tab.favorites"].tap()
         XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 1)
         let qaRow = app.tables["savedVenues.list"].cells[savedIdentity]
         XCTAssertTrue(qaRow.waitForExistence(timeout: 10))
@@ -254,7 +263,7 @@ final class BrowserSmokeTests: XCTestCase {
         let removed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: qaRow)
         XCTAssertEqual(XCTWaiter.wait(for: [removed], timeout: 10), .completed, "Remove only the test's private bookmark")
         XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 0)
-        app.tabBars.buttons["Mappa"].tap()
+        app.buttons["tab.map"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
         let closeBar = website.buttons["Chiudi"]
         XCTAssertTrue(closeBar.waitForExistence(timeout: 10))
@@ -273,7 +282,7 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func verifyLiveFavouriteComparisonReadOnly() {
-        XCTAssertTrue(app.tabBars.buttons["Preferiti"].isSelected)
+        XCTAssertTrue(app.buttons["tab.favorites"].isSelected)
         XCTAssertTrue(app.staticTexts["favorites.loaded"].waitForExistence(timeout: 60), "The favourite must resolve using actual public metadata and prices")
         let selector = app.buttons["favorites.drink"]
         XCTAssertTrue(selector.exists)
@@ -341,7 +350,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
         confirmation.buttons["Chiudi"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].exists, "Saving stays on the existing venue")
-        XCTAssertTrue(app.tabBars.buttons["Mappa"].isSelected)
+        XCTAssertTrue(app.buttons["tab.map"].isSelected)
         XCTAssertTrue(app.webViews["browser.website"].links["Indicazioni"].exists)
         XCTAssertFalse(app.textFields["savedVenue.name"].exists)
     }
@@ -364,10 +373,40 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func dismissMoreMenu() {
-        // Dismiss against the native header; never tap public website content.
-        let header = app.navigationBars["Dove bevo"]
-        header.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        XCTAssertFalse(app.buttons["Condividi"].exists)
+        // The context menu can cover the header. The observed native Mappa
+        // button is below it and preserves this same browser if a tap forwards.
+        let bar = app.descendants(matching: .any)["native.bottomNavigation"]
+        let map = bar.buttons["tab.map"]
+        XCTAssertTrue(bar.exists && map.exists)
+        let frame = map.frame
+        let numbers = [frame.minX, frame.minY, frame.width, frame.height]
+        guard numbers.allSatisfy({ $0.isFinite }), frame.width >= 48, frame.height >= 48,
+              app.frame.contains(frame), bar.frame.contains(frame), frame.minY > app.frame.midY else {
+            XCTFail("There is no verified native Mappa target outside the context menu")
+            return
+        }
+        let point = CGPoint(x: frame.midX, y: frame.midY)
+        for label in ["Condividi", "Ricarica", "Interrompi", "Apri nel browser", "Permessi posizione", "Privacy", "Informazioni"] {
+            let action = app.buttons[label]
+            if action.exists {
+                guard !action.frame.contains(point) else {
+                    XCTFail("The native Mappa target overlaps a presented menu action")
+                    return
+                }
+            }
+        }
+        map.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["Condividi"])
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed)
+        assertNoSharePresentation()
+        XCTAssertTrue(map.isSelected)
+    }
+
+    private func assertNoSharePresentation() {
+        XCTAssertFalse(app.otherElements["ShareSheet.RemoteContainerView"].exists, "Menu dismissal must never activate Share")
+        XCTAssertFalse(app.otherElements["ActivityListView"].exists)
+        XCTAssertFalse(app.otherElements["UIActivityContentView"].exists)
+        XCTAssertFalse(app.sheets.firstMatch.exists)
     }
 
     private func interactiveMap() -> XCUIElement {

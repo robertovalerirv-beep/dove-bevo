@@ -133,10 +133,10 @@ final class FavouriteComparisonControllerTests: XCTestCase {
 
     @MainActor
     private func assertDestinationTitles(_ tabs: NativeTabsController, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertEqual(tabs.mapNavigation.tabBarItem.title, "Mappa", file: file, line: line)
-        XCTAssertEqual(tabs.mapNavigation.tabBarItem.accessibilityLabel, "Mappa", file: file, line: line)
-        XCTAssertEqual(tabs.favouritesNavigation.tabBarItem.title, "Preferiti", file: file, line: line)
-        XCTAssertEqual(tabs.favouritesNavigation.tabBarItem.accessibilityLabel, "Preferiti", file: file, line: line)
+        XCTAssertEqual(tabs.bottomBar.button(for: .map).configuration?.title, "Mappa", file: file, line: line)
+        XCTAssertEqual(tabs.bottomBar.button(for: .map).accessibilityLabel, "Mappa", file: file, line: line)
+        XCTAssertEqual(tabs.bottomBar.button(for: .favourites).configuration?.title, "Preferiti", file: file, line: line)
+        XCTAssertEqual(tabs.bottomBar.button(for: .favourites).accessibilityLabel, "Preferiti", file: file, line: line)
     }
 
     @MainActor

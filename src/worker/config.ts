@@ -2,6 +2,12 @@
 export const QUOTAS = { price: 30, confirm: 50, venue: 5, report: 20 } as const;
 export type QuotaKind = keyof typeof QUOTAS;
 
+/**
+ * Events one address may count per day (SPEC 12, D-06). Generous: a shared mobile address must not lose real
+ * visits; it only stops one address from drowning the gate metrics (audit 28/10/2026).
+ */
+export const EVENTS_PER_IP_DAY = 3000;
+
 /** Addition attempts, not voter uniqueness. Undo remains available after either daily budget. */
 export const MOBILE_RECOMMENDATION_QUOTAS = { installation: 50, ip: 200 } as const;
 

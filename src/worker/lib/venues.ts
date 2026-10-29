@@ -1,5 +1,6 @@
 import type { CellFile, Place } from "../../shared/api-types";
-import { distanceMeters, DUPLICATE_METERS, sameName } from "../../shared/venue";
+import { distanceMeters, DUPLICATE_METERS } from "../../shared/venue";
+import { sameName } from "./same-name";
 import { getUserVenue, isHidden, venuesInCell } from "./db";
 import { ApiError } from "./errors";
 

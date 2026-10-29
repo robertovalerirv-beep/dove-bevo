@@ -8,6 +8,7 @@ import { romeDay } from "../lib/day";
 import { addMetrics, verifiedAmong } from "../lib/db";
 import { ApiError } from "../lib/errors";
 import { readBody } from "../lib/guards";
+import { clientIp, consumeEventQuota } from "../lib/quota";
 import type { AppEnv } from "../types";
 import { VenueKey } from "./venues";
 
@@ -43,6 +44,8 @@ events.post("/", async (c) => {
   if (!parsed.success) throw new ApiError("bad_request");
   const keyed = parsed.data.events.flatMap(({ e, p }) => (p?.venue ? [{ e, venue: p.venue }] : []));
   if (keyed.some((ev) => ev.e !== "venue_viewed")) throw new ApiError("bad_request");
+  // Only a valid body counts against the day's cap; a refused one costs nothing.
+  await consumeEventQuota(c.env, clientIp(c.req.raw), parsed.data.events.length);
   // A key is counted only for a verified bar, so nobody can fill metrics_daily with invented keys;
   // any other key still counts as a plain view. One read, and only when a key came.
   const verified = await verifiedAmong(c.env.DB, [...new Set(keyed.map((ev) => ev.venue))]);

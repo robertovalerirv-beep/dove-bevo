@@ -16,6 +16,7 @@ final class RecommendationsViewController: UITableViewController {
     private var status = "Caricamento dei consigli…"
     private let statusLabel = UILabel()
     private var categories = DrinkCategory.all
+    private var renderedCategory: UIContentSizeCategory?
 
     init(venue: SavedVenue, client: RecommendationServing = RecommendationClient(), activityCheck: (() -> Bool)? = nil) {
         self.venue = venue
@@ -43,6 +44,8 @@ final class RecommendationsViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Drink consigliati"
+        NativeAppearance.configure(navigationController)
+        NativeAppearance.configure(tableView)
         tableView.accessibilityIdentifier = "recommendations.list"
         tableView.register(RecommendationCell.self, forCellReuseIdentifier: "recommendation")
         tableView.rowHeight = UITableView.automaticDimension
@@ -52,11 +55,13 @@ final class RecommendationsViewController: UITableViewController {
         let name = UILabel()
         name.text = venue.label
         name.font = .preferredFont(forTextStyle: .title2)
+        name.textColor = NativeAppearance.ink
         name.accessibilityIdentifier = "recommendations.venueName"
         name.accessibilityTraits = .header
         let introduction = UILabel()
         introduction.text = "Consiglia i drink che hai provato qui. I consigli sono pubblici nelle app. Le categorie non indicano ciò che il locale serve."
-        introduction.font = .preferredFont(forTextStyle: .body)
+        introduction.font = .preferredFont(forTextStyle: .subheadline)
+        introduction.textColor = NativeAppearance.muted
         for label in [name, introduction] { label.numberOfLines = 0; label.adjustsFontForContentSizeCategory = true }
         let header = UIView()
         let stack = UIStackView(arrangedSubviews: [name, introduction])
@@ -73,6 +78,7 @@ final class RecommendationsViewController: UITableViewController {
         tableView.tableHeaderView = header
         statusLabel.numberOfLines = 0
         statusLabel.font = .preferredFont(forTextStyle: .body)
+        statusLabel.textColor = NativeAppearance.muted
         statusLabel.adjustsFontForContentSizeCategory = true
         statusLabel.textAlignment = .center
         statusLabel.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 16, leading: 20, bottom: 20, trailing: 20)
@@ -96,6 +102,10 @@ final class RecommendationsViewController: UITableViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        if renderedCategory != traitCollection.preferredContentSizeCategory {
+            renderedCategory = traitCollection.preferredContentSizeCategory
+            render()
+        }
         if let header = tableView.tableHeaderView {
             let size = header.systemLayoutSizeFitting(CGSize(width: tableView.bounds.width, height: 0),
                                                      withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel)
@@ -259,23 +269,26 @@ private final class RecommendationCell: UITableViewCell {
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         selectionStyle = .none
+        backgroundConfiguration = NativeAppearance.card()
         nameLabel.font = .preferredFont(forTextStyle: .headline)
+        nameLabel.textColor = NativeAppearance.ink
         countLabel.font = .preferredFont(forTextStyle: .body)
+        countLabel.textColor = NativeAppearance.muted
         for label in [nameLabel, countLabel] { label.numberOfLines = 0; label.adjustsFontForContentSizeCategory = true }
         button.titleLabel?.font = .preferredFont(forTextStyle: .body)
         button.titleLabel?.adjustsFontForContentSizeCategory = true
         button.titleLabel?.numberOfLines = 0
         button.contentHorizontalAlignment = .leading
-        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
         button.addTarget(self, action: #selector(tapped), for: .touchUpInside)
         let stack = UIStackView(arrangedSubviews: [nameLabel, countLabel, button])
         stack.axis = .vertical
-        stack.spacing = 6
+        stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: contentView.layoutMarginsGuide.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: contentView.layoutMarginsGuide.bottomAnchor),
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 22),
+            stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -22),
             stack.leadingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.trailingAnchor)
         ])
@@ -289,8 +302,12 @@ private final class RecommendationCell: UITableViewCell {
         nameLabel.text = category.name
         countLabel.text = value.map { $0.count == 1 ? "1 consiglio" : "\($0.count) consigli" } ?? "Conteggio non disponibile"
         let action = value?.recommended == true ? "Annulla consiglio" : "Consiglia"
-        button.setTitle(pending ? "Invio…" : action, for: .normal)
-        button.setImage(UIImage(systemName: value?.recommended == true ? "hand.thumbsup.fill" : "hand.thumbsup"), for: .normal)
+        var configuration = NativeAppearance.button(selected: value?.recommended == true, traits: traitCollection)
+        configuration.title = pending ? "Invio…" : action
+        configuration.image = UIImage(systemName: value?.recommended == true ? "hand.thumbsup.fill" : "hand.thumbsup")
+        if !enabled { configuration.baseForegroundColor = NativeAppearance.muted }
+        button.configuration = configuration
+        button.titleLabel?.numberOfLines = 0
         button.isEnabled = enabled
         button.accessibilityIdentifier = "recommendations.toggle.\(category.code)"
         button.accessibilityLabel = "\(category.name), \(countLabel.text ?? ""), \(pending ? "invio in corso" : action)"

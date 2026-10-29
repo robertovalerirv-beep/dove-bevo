@@ -91,13 +91,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private func configureChrome() {
         // Keep the browser header independent of the enclosing Mappa tab item.
         navigationItem.title = "Dove bevo"
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = NativeAppearance.surface
         navigationController?.navigationBar.prefersLargeTitles = false
-        navigationController?.navigationBar.tintColor = .label
-        let appearance = UINavigationBarAppearance()
-        appearance.configureWithDefaultBackground()
-        navigationController?.navigationBar.standardAppearance = appearance
-        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        NativeAppearance.configure(navigationController)
 
         navigationItem.rightBarButtonItem = moreButton
         navigationItem.leftBarButtonItems = [backButton, forwardButton]
@@ -208,13 +204,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         // public venue name in an isolated world, after an explicit user tap.
         configuration.websiteDataStore = .default()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+        AppPresentationTheme.install(in: configuration)
         webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
         webView.isOpaque = false
-        webView.backgroundColor = .systemBackground
-        webView.scrollView.backgroundColor = .systemBackground
+        webView.backgroundColor = NativeAppearance.surface
+        webView.scrollView.backgroundColor = NativeAppearance.surface
         webView.accessibilityIdentifier = "browser.website"
         // Preserve WebKit's standard user agent and secure origin handling.
         // On supported iOS versions WebKit requests website geolocation normally
@@ -227,7 +224,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         offlineLabel.adjustsFontForContentSizeCategory = true
         offlineLabel.numberOfLines = 0
         offlineLabel.textAlignment = .center
-        offlineLabel.backgroundColor = .secondarySystemBackground
+        offlineLabel.backgroundColor = NativeAppearance.accent.withAlphaComponent(0.18)
+        offlineLabel.textColor = NativeAppearance.ink
         offlineLabel.accessibilityIdentifier = "browser.offline"
         offlineLabel.isHidden = true
 
@@ -236,6 +234,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         body.translatesAutoresizingMaskIntoConstraints = false
         progressView.translatesAutoresizingMaskIntoConstraints = false
         progressView.accessibilityLabel = "Caricamento pagina"
+        progressView.progressTintColor = NativeAppearance.accent
         view.addSubview(body)
         view.addSubview(progressView)
         NSLayoutConstraint.activate([
@@ -257,7 +256,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         loadingView.accessibilityIdentifier = "browser.loading"
 
         let image = UIImageView(image: UIImage(systemName: "wifi.exclamationmark"))
-        image.tintColor = .secondaryLabel
+        image.tintColor = NativeAppearance.muted
         image.contentMode = .scaleAspectFit
         image.heightAnchor.constraint(equalToConstant: 44).isActive = true
         image.isAccessibilityElement = false
@@ -270,8 +269,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         errorMessage.adjustsFontForContentSizeCategory = true
         errorMessage.numberOfLines = 0
         errorMessage.textAlignment = .center
-        errorMessage.textColor = .secondaryLabel
-        retryButton.configuration = .filled()
+        errorMessage.textColor = NativeAppearance.muted
+        errorTitle.textColor = NativeAppearance.ink
+        retryButton.configuration = NativeAppearance.button(primary: true)
         retryButton.setTitle("Riprova", for: .normal)
         retryButton.titleLabel?.font = .preferredFont(forTextStyle: .headline)
         retryButton.titleLabel?.adjustsFontForContentSizeCategory = true
@@ -290,8 +290,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         stack.spacing = 16
         stack.isLayoutMarginsRelativeArrangement = true
         stack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 24, leading: 24, bottom: 24, trailing: 24)
-        stack.backgroundColor = .systemBackground
-        stack.layer.cornerRadius = 16
+        stack.backgroundColor = NativeAppearance.surface
+        stack.layer.cornerRadius = NativeAppearance.radius
+        stack.layer.borderColor = NativeAppearance.line.cgColor
+        stack.layer.borderWidth = 1
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
         let preferredWidth = stack.widthAnchor.constraint(equalTo: webView.widthAnchor, constant: -32)
@@ -689,6 +691,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard navigationState.acceptsCallback(navigation) else { return }
+        AppPresentationTheme.applyAfterFinish(to: webView)
         #if DEBUG
         NSLog("DoveBevo: navigation finish")
         #endif

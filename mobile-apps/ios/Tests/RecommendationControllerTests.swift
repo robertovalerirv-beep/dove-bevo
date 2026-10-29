@@ -6,6 +6,47 @@ final class RecommendationControllerTests: XCTestCase {
     private var retainedCells: [UITableViewCell] = []
 
     @MainActor
+    func testNativeRecommendationCardFitsAccessibilityTextAndUsesOnlyConfirmedOwnSelection() throws {
+        defer { retainedCells.removeAll() }
+        let (controller, client) = makeController()
+        let host = UIViewController()
+        host.addChild(controller)
+        host.view.addSubview(controller.view)
+        controller.view.frame = CGRect(x: 0, y: 0, width: 320, height: 1000)
+        host.setOverrideTraitCollection(UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge), forChild: controller)
+        controller.didMove(toParent: host)
+        try client.complete(0, .success(snapshot(counts: ["alcohol_free": 3], selected: ["alcohol_free"])))
+        controller.view.layoutIfNeeded()
+        XCTAssertEqual(controller.tableView.bounds.width, 320, accuracy: 0.5)
+        XCTAssertEqual(controller.traitCollection.preferredContentSizeCategory, .accessibilityExtraExtraExtraLarge)
+        let action = try button(controller, row: 0)
+        let cell = try XCTUnwrap(controller.tableView.cellForRow(at: IndexPath(row: 0, section: 0)))
+        XCTAssertEqual(action.accessibilityIdentifier, "recommendations.toggle.alcohol_free")
+        XCTAssertTrue(action.accessibilityLabel?.contains("3 consigli") == true)
+        XCTAssertEqual(action.configuration?.title, "Annulla consiglio")
+        XCTAssertTrue(action.isEnabled)
+        XCTAssertTrue(action.accessibilityTraits.contains(.selected))
+        XCTAssertEqual(action.configuration?.baseBackgroundColor, NativeAppearance.accent)
+        XCTAssertEqual(cell.backgroundConfiguration?.backgroundColor, NativeAppearance.surface)
+        XCTAssertEqual(cell.backgroundConfiguration?.cornerRadius, 16)
+        XCTAssertGreaterThanOrEqual(action.bounds.height, 48)
+        XCTAssertNotNil(action.configuration?.image)
+        let title = try XCTUnwrap(action.titleLabel)
+        XCTAssertEqual(title.numberOfLines, 0)
+        XCTAssertGreaterThan(title.bounds.width, 0)
+        XCTAssertTrue(action.bounds.contains(title.convert(title.bounds, to: action)))
+        XCTAssertLessThanOrEqual(title.sizeThatFits(CGSize(width: title.bounds.width, height: .greatestFiniteMagnitude)).height, title.bounds.height + 1)
+        let labels = descendants(cell).compactMap { $0 as? UILabel }
+        for expected in ["Analcolico", "3 consigli"] {
+            let label = try XCTUnwrap(labels.first { $0.text == expected && !$0.isHidden })
+            XCTAssertGreaterThan(label.bounds.width, 0)
+            XCTAssertTrue(cell.contentView.bounds.contains(label.convert(label.bounds, to: cell.contentView)))
+            XCTAssertLessThanOrEqual(label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)).height, label.bounds.height + 1)
+        }
+        XCTAssertTrue(client.calls.allSatisfy { $0.drink == nil }, "Rendering a selected public count must not cast or repeat a vote")
+    }
+
+    @MainActor
     func testUnavailableDoesNotBecomeZeroAndOnlyConfirmedDataEnablesButtons() throws {
         defer { retainedCells.removeAll() }
         let (controller, client) = makeController()

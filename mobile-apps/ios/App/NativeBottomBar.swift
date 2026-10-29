@@ -57,9 +57,9 @@ final class NativeBottomBar: UIView {
         accessibilityContainerType = .semanticGroup
         shouldGroupAccessibilityChildren = true
         isAccessibilityElement = false
-        backgroundColor = .systemBackground
+        backgroundColor = NativeAppearance.surface
         let separator = UIView()
-        separator.backgroundColor = .separator
+        separator.backgroundColor = NativeAppearance.line
         separator.translatesAutoresizingMaskIntoConstraints = false
         addSubview(separator)
         stack.axis = .vertical
@@ -117,7 +117,8 @@ final class NativeBottomBar: UIView {
             let button = button(for: action)
             let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1)
             let enabled = action != .save && action != .recommendations || venueActionsEnabled
-            var configuration = selected ? UIButton.Configuration.tinted() : UIButton.Configuration.plain()
+            var configuration = selected ? UIButton.Configuration.filled() : UIButton.Configuration.plain()
+            configuration.baseBackgroundColor = selected ? NativeAppearance.ink : .clear
             configuration.title = action.title
             configuration.titleAlignment = .center
             configuration.titleLineBreakMode = .byWordWrapping
@@ -132,8 +133,9 @@ final class NativeBottomBar: UIView {
             configuration.imagePlacement = .top
             configuration.imagePadding = 4
             configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 4, bottom: 6, trailing: 4)
-            configuration.baseForegroundColor = enabled ? .label : .tertiaryLabel
-            configuration.cornerStyle = .medium
+            configuration.baseForegroundColor = selected ? NativeAppearance.surface : (enabled ? NativeAppearance.ink : NativeAppearance.disabled)
+            configuration.background.cornerRadius = NativeAppearance.radius
+            configuration.cornerStyle = .fixed
             button.configuration = configuration
             button.titleLabel?.numberOfLines = 0
             button.titleLabel?.adjustsFontForContentSizeCategory = true

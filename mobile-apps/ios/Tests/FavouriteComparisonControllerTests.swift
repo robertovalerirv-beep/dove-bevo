@@ -4,6 +4,81 @@ import XCTest
 
 final class FavouriteComparisonControllerTests: XCTestCase {
     @MainActor
+    func testWhiteCardsRenderRealPriceAndMissingStateWithLongNamesAtNarrowAccessibilitySize() throws {
+        try withStore { store in
+            let saved = ComparisonFixtures.saved("n123")
+            try store.save(url: saved.url, label: saved.label)
+            let original = try Data(contentsOf: store.fileURL)
+            let client = DelayedFavouriteService()
+            let controller = SavedVenuesViewController(store: store, client: client, activityCheck: { true }) { _ in }
+            let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first {
+                $0.activationState == .foregroundActive
+            })
+            let previous = scene.windows.first { $0.isKeyWindow }
+            let window = UIWindow(windowScene: scene)
+            window.frame = CGRect(x: 0, y: 0, width: 320, height: 1000)
+            let host = UIViewController()
+            window.rootViewController = host
+            host.view.frame = window.bounds
+            host.addChild(controller)
+            host.view.addSubview(controller.view)
+            controller.view.frame = host.view.bounds
+            controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            host.setOverrideTraitCollection(UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge), forChild: controller)
+            controller.didMove(toParent: host)
+            window.makeKeyAndVisible()
+            defer { window.isHidden = true; window.rootViewController = nil; previous?.makeKey() }
+            let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in client.calls.count == 1 }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 5), .completed)
+            let longName = "Caffè con un nome molto lungo nella piazza del quartiere"
+            try client.complete(0, snapshot(saved, name: longName, prices: [price(.normal, 800)]))
+            window.layoutIfNeeded(); controller.view.layoutIfNeeded()
+            XCTAssertEqual(controller.tableView.bounds.width, 320, accuracy: 0.5)
+            XCTAssertEqual(controller.traitCollection.preferredContentSizeCategory, .accessibilityExtraExtraExtraLarge)
+            let cell = try row(controller)
+            let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
+            XCTAssertEqual(content.text, longName)
+            let text = try XCTUnwrap(content.attributedSecondaryText)
+            XCTAssertTrue(text.string.contains("Birra media · Normale\n8,00 €\nSegnalato il 2026-10-28 · 1 conferma"))
+            XCTAssertEqual(cell.backgroundConfiguration?.backgroundColor, NativeAppearance.surface)
+            XCTAssertEqual(cell.backgroundConfiguration?.cornerRadius, 16)
+            XCTAssertEqual(controller.tableView.backgroundColor, NativeAppearance.canvas)
+            let visibleText = descendants(cell).compactMap { $0 as? UILabel }.filter {
+                $0.text == longName || $0.attributedText?.string == text.string
+            }
+            XCTAssertEqual(visibleText.count, 2, "Measure the actual native name and price labels")
+            for label in visibleText {
+                XCTAssertFalse(label.isHidden)
+                XCTAssertEqual(label.numberOfLines, 0)
+                XCTAssertGreaterThan(label.bounds.width, 0)
+                XCTAssertTrue(cell.contentView.bounds.contains(label.convert(label.bounds, to: cell.contentView)))
+                let needed = label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude))
+                XCTAssertLessThanOrEqual(needed.height, label.bounds.height + 1, "Long venue name and all drink, price and date lines must remain readable")
+            }
+            let header = try XCTUnwrap(controller.tableView.tableHeaderView)
+            XCTAssertGreaterThan(header.bounds.height, 0)
+            let headerLabels = descendants(header).compactMap { $0 as? UILabel }
+            for expected in ["Confronta i tuoi posti", "Scegli cosa bere e confronta i prezzi segnalati nei tuoi preferiti.",
+                             "Prezzi segnalati aggiornati. Ogni prezzo mostra la sua data."] {
+                let label = try XCTUnwrap(headerLabels.first { $0.text == expected && !$0.isHidden })
+                XCTAssertGreaterThan(label.bounds.width, 0)
+                XCTAssertTrue(header.bounds.contains(label.convert(label.bounds, to: header)))
+                let needed = label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude))
+                XCTAssertLessThanOrEqual(needed.height, label.bounds.height + 1, "The comparison heading and current status must fit")
+            }
+            controller.refresh()
+            try client.complete(1, FavouriteComparisonSnapshot(venues: [:], unavailable: [saved.url]))
+            let unavailable = try row(controller)
+            let missingContent = try XCTUnwrap(unavailable.contentConfiguration as? UIListContentConfiguration)
+            let missing = try XCTUnwrap(missingContent.attributedSecondaryText).string
+            XCTAssertTrue(missing.contains("Prezzo non disponibile"))
+            XCTAssertFalse(missing.contains("8,00"))
+            XCTAssertFalse(missing.contains("0,00"))
+            XCTAssertEqual(try Data(contentsOf: store.fileURL), original, "Presentation and refresh must not rewrite private bookmark identity")
+        }
+    }
+
+    @MainActor
     func testHiddenViewDoesNotLoadSavedListOrFetchAndNetworkNamesNeverRewriteFile() throws {
         try withStore { store in
             let saved = ComparisonFixtures.saved("n123")

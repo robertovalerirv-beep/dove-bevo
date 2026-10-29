@@ -107,13 +107,19 @@ class FavouritesComparisonGuards(unittest.TestCase):
                          "accessibilityExtraExtraExtraLarge", "tabs.children.count, 2",
                          "testHomeResetsSameBrowserButMapResumesItsRetainedStack", "testDestinationChangesDuringParentAppearance",
                          "testOffscreenFavouritesCannotFetchOrAcceptLateResults", "testOverflowUpdatesLoadingAndRecovery",
-                         "testSameDocumentHistory", "history.pushState", "web.canGoBack",
+                         "testOwnedRequestHistory", "browser.openSavedVenue(venueURL)", "web.canGoBack",
                          "web.backForwardList.currentItem", "web.backForwardList.backList.last", "web.backForwardList.forwardList.first",
                          "loadSimulatedRequest(request, response: response, responseData: data)"]:
             self.assertIn(required, native)
+        history = native.split("func testOwnedRequestHistory", 1)[1].split("private func actions", 1)[0]
+        self.assertNotIn("web.evaluateJavaScript", history)
+        self.assertIn("web.window === window", history)
         ui = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
         self.assertIn('app.descendants(matching: .any)["native.bottomNavigation"]', ui)
         self.assertIn("assertShareAndReloadAvailable()", ui)
+        self.assertIn("verifyLiveVenueHistoryReadOnly(venueName: publicName)", ui)
+        self.assertIn('let back = app.buttons["browser.back"]', ui)
+        self.assertIn('let forward = app.buttons["browser.forward"]', ui)
         save = ui.split("private func saveCurrentVenueInOneTap()", 1)[1].split("private func assertShareAndReloadAvailable()", 1)[0]
         self.assertIn('app.alerts["Preferito salvato"]', save)
         self.assertIn('app.navigationBars["Dove bevo"].exists', save)

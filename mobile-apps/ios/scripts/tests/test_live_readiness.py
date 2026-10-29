@@ -32,6 +32,17 @@ class LiveReadinessTests(unittest.TestCase):
         for damaged in ["\u00c3\u00a0", "\u00e2\u201a\u00ac", "\ufffd"]:
             self.assertNotIn(damaged, self.source)
 
+    def test_original_field_receives_one_real_focus_tap_and_keyboard_readiness_before_typing(self):
+        live = self.source.split("func testLiveWebsiteCitySearchAndMap()", 1)[1].split("\n    private func", 1)[0]
+        self.assertEqual(live.count("searchField.tap()"), 1)
+        self.assertLess(live.index("searchField.tap()"), live.index("waitForOrdinaryKeyboard()"))
+        self.assertLess(live.index("waitForOrdinaryKeyboard()"), live.index('searchField.typeText("Milano")'))
+        self.assertIn('XCTAssertEqual(searchField.value as? String, "Milano"', live)
+        keyboard = self.source.split("private func waitForOrdinaryKeyboard()", 1)[1].split("\n    private func", 1)[0]
+        self.assertIn("frame.width >= 250, frame.height >= 150", keyboard)
+        self.assertIn("key.isHittable", keyboard)
+        self.assertIn("appFrame.contains(key.frame)", keyboard)
+
     def test_coverage_uses_the_actual_anchored_pattern_and_valid_positive_ratio(self):
         declaration = re.search(r'static let liveCoveragePattern\s*=\s*#"([^"]+)"#', self.source)
         self.assertIsNotNone(declaration)

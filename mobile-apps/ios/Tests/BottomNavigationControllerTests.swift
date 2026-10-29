@@ -233,7 +233,18 @@ final class BottomNavigationControllerTests: XCTestCase {
     }
 
     @MainActor
-    func testSameDocumentHistoryRetainsReadyShareAndReloadMenuAfterBackAndForward() throws {
+    func testOwnedRequestHistoryRetainsReadyShareAndReloadMenuAfterBackAndForward() throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first {
+            $0.activationState == .foregroundActive
+        })
+        let previousKeyWindow = scene.windows.first { $0.isKeyWindow }
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        defer {
+            window.isHidden = true
+            window.rootViewController = nil
+            previousKeyWindow?.makeKey()
+        }
         var ownedWeb: WKWebView?
         let browser = BrowserViewController(websiteLoader: { web, request in
             ownedWeb = web
@@ -245,33 +256,49 @@ final class BottomNavigationControllerTests: XCTestCase {
             return web.loadSimulatedRequest(request, response: response, responseData: data)
         })
         let navigation = UINavigationController(rootViewController: browser)
-        browser.loadViewIfNeeded()
+        window.rootViewController = navigation
+        window.makeKeyAndVisible()
+        window.layoutIfNeeded()
+        browser.view.layoutIfNeeded()
         let web = try XCTUnwrap(ownedWeb)
+        XCTAssertTrue(web.window === window)
+        XCTAssertGreaterThan(web.bounds.width, 0)
+        XCTAssertGreaterThan(web.bounds.height, 0)
         waitUntil("Owned page must finish") { (try? self.share(browser).attributes.contains(.disabled)) == false }
-        // Assert the real initial item before testing same-document traversal.
+        // Use request-created items, matching WebKit's own public load-API
+        // history test. A programmatic pushState is not a real user gesture and
+        // is intentionally filtered by WebKit's native Back/Forward policy.
+        // Actual user-driven SPA history is covered by the live UI case.
         let homeURL = URLPolicy.homeURL
         waitUntil("Owned home item must exist") { web.backForwardList.currentItem?.url == homeURL }
         XCTAssertTrue(web.backForwardList.backList.isEmpty)
-        let pushed = expectation(description: "Owned same-document route")
-        web.evaluateJavaScript("history.pushState({}, '', '/bar/n123?c=u0nd9')") { _, error in
-            XCTAssertNil(error); pushed.fulfill()
-        }
-        wait(for: [pushed], timeout: 10)
+        let venueURL = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+        browser.openSavedVenue(venueURL)
         waitUntil("Owned history back enabled") {
-            web.canGoBack && web.url?.path == "/bar/n123" && web.backForwardList.backList.last?.url == homeURL
+            web.canGoBack && web.url == venueURL && web.backForwardList.backList.last?.url == homeURL &&
+                (try? self.share(browser).attributes.contains(.disabled)) == false
         }
-        XCTAssertEqual(web.backForwardList.currentItem?.url.path, "/bar/n123")
+        XCTAssertEqual(web.backForwardList.currentItem?.url, venueURL)
+        XCTAssertEqual(web.backForwardList.backList.count, 1)
+        XCTAssertTrue(web.backForwardList.forwardList.isEmpty)
         let back = try XCTUnwrap(browser.navigationItem.leftBarButtonItems?.first)
         _ = browser.perform(try XCTUnwrap(back.action))
-        waitUntil("Back returns to owned home") { web.url == homeURL && web.canGoForward }
+        waitUntil("Back returns to owned home") {
+            web.url == homeURL && web.canGoForward && (try? self.share(browser).attributes.contains(.disabled)) == false
+        }
         XCTAssertEqual(web.backForwardList.currentItem?.url, homeURL)
-        XCTAssertEqual(web.backForwardList.forwardList.first?.url.path, "/bar/n123")
+        XCTAssertEqual(web.backForwardList.forwardList.first?.url, venueURL)
+        XCTAssertTrue(web.backForwardList.backList.isEmpty)
         XCTAssertFalse(try share(browser).attributes.contains(.disabled))
         XCTAssertTrue(try actions(browser).contains { $0.title == "Ricarica" })
         let forward = try XCTUnwrap(browser.navigationItem.leftBarButtonItems?.last)
         _ = browser.perform(try XCTUnwrap(forward.action))
-        waitUntil("Forward restores owned venue route") { web.url?.path == "/bar/n123" }
+        waitUntil("Forward restores owned venue route") {
+            web.url == venueURL && (try? self.share(browser).attributes.contains(.disabled)) == false
+        }
+        XCTAssertEqual(web.backForwardList.currentItem?.url, venueURL)
         XCTAssertEqual(web.backForwardList.backList.last?.url, homeURL)
+        XCTAssertTrue(web.backForwardList.forwardList.isEmpty)
         XCTAssertFalse(try share(browser).attributes.contains(.disabled))
         XCTAssertTrue(try actions(browser).contains { $0.title == "Ricarica" })
         XCTAssertTrue(navigation.topViewController === browser)

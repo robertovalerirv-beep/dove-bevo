@@ -126,9 +126,13 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(searchField.exists, "The original city search sheet disappeared; do not reopen it after a renderer reset")
         XCTAssertTrue(searchField.isHittable, "The original city search field must remain reachable before typing")
         assertNoNativeRecovery()
+        // WebKit's asynchronously mounted DOM field can report focus before
+        // iOS displays a usable keyboard. One real tap on this existing field
+        // acquires input normally; never reopen the sheet or inject its value.
+        searchField.tap()
+        dismissKeyboardIntroductionIfPresent(searchField: searchField)
+        waitForOrdinaryKeyboard()
         attachScreen(named: "DoveBevo-live-city-search-before-input")
-        // Opening the website sheet intentionally focuses this field. A second
-        // tap is unnecessary and can collide with the first keyboard intro.
         searchField.typeText("Milano")
         XCTAssertEqual(searchField.value as? String, "Milano", "The actual website input must receive the query")
         let city = website.descendants(matching: .any).matching(
@@ -217,6 +221,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 30))
         XCTAssertTrue(website.staticTexts[publicName].waitForExistence(timeout: 15))
         waitForNativePageReady()
+        verifyLiveVenueHistoryReadOnly(venueName: publicName)
         verifyLiveRecommendationsReadOnly(venueName: publicName)
         saveCurrentVenueInOneTap()
         app.buttons["tab.favorites"].tap()
@@ -302,6 +307,47 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(selector.label.contains("Birra media"))
         XCTAssertTrue(app.buttons["favorites.refresh"].exists)
         // No price, recommendation or venue is written by this flow.
+    }
+
+    private func verifyLiveVenueHistoryReadOnly(venueName: String) {
+        // The actual user tap on an existing public venue creates its SPA
+        // history entry. Exercise native Back/Forward, never JavaScript history
+        // calls or a programmatic substitute for the user's interaction.
+        let website = app.webViews["browser.website"]
+        let back = app.buttons["browser.back"]
+        XCTAssertTrue(back.exists && back.isEnabled)
+        back.tap()
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: website.links["Indicazioni"])
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 15), .completed)
+        XCTAssertTrue(interactiveMap().exists)
+        XCTAssertTrue(hasVisiblePositiveCoverage())
+        XCTAssertFalse(app.buttons["browser.saveVenue"].isEnabled)
+        assertNoNativeRecovery()
+        assertShareAndReloadAvailable()
+        let forward = app.buttons["browser.forward"]
+        XCTAssertTrue(forward.exists && forward.isEnabled)
+        forward.tap()
+        XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 30))
+        XCTAssertTrue(website.staticTexts[venueName].waitForExistence(timeout: 10))
+        waitForNativePageReady()
+    }
+
+    private func waitForOrdinaryKeyboard() {
+        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            self.app.keyboards.allElementsBoundByIndex.contains { keyboard in
+                guard keyboard.exists else { return false }
+                let frame = keyboard.frame
+                let appFrame = self.app.frame
+                guard frame.width >= 250, frame.height >= 150, appFrame.intersects(frame) else { return false }
+                // A tiny UIKeyboardLayoutStar Preview is not a usable keyboard.
+                return keyboard.keys.matching(NSPredicate(format: "label IN %@", ["m", "M"] as NSArray)).allElementsBoundByIndex.contains { key in
+                    key.exists && key.isHittable && key.frame.width >= 20 && key.frame.height >= 20 && appFrame.contains(key.frame)
+                }
+            }
+        }, object: nil)
+        let result = XCTWaiter.wait(for: [ready], timeout: 15)
+        if result != .completed { attachState(named: "DoveBevo-original-field-keyboard-not-ready") }
+        XCTAssertEqual(result, .completed, "The existing field must have an ordinary visible keyboard before typing")
     }
 
     private func verifyLiveRecommendationsReadOnly(venueName: String) {

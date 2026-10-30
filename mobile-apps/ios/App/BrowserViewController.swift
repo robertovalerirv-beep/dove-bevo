@@ -6,7 +6,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var webView: WKWebView!
     private let progressView = UIProgressView(progressViewStyle: .bar)
     private let offlineLabel = UILabel()
-    private let loadingView = UIStackView()
+    private let loadingView = UIScrollView()
+    private let loadingContent = UIStackView()
     private let errorView = UIScrollView()
     private let errorContent = UIStackView()
     private let errorTitle = UILabel()
@@ -251,11 +252,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         ])
 
         let spinner = UIActivityIndicatorView(style: .large)
+        spinner.accessibilityIdentifier = "browser.loading.spinner"
         spinner.startAnimating()
         let loadingLabel = label("Caricamento di Dove bevo…", style: .body)
-        loadingView.addArrangedSubview(spinner)
-        loadingView.addArrangedSubview(loadingLabel)
-        configureOverlay(loadingView)
+        loadingLabel.accessibilityIdentifier = "browser.loading.message"
+        loadingContent.addArrangedSubview(spinner)
+        loadingContent.addArrangedSubview(loadingLabel)
+        configureLoadingOverlay()
         loadingView.accessibilityIdentifier = "browser.loading"
 
         let image = UIImageView(image: UIImage(systemName: "wifi.exclamationmark"))
@@ -287,27 +290,52 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         errorView.isHidden = true
     }
 
-    private func configureOverlay(_ stack: UIStackView) {
-        stack.axis = .vertical
-        stack.alignment = .fill
-        stack.spacing = 16
-        stack.isLayoutMarginsRelativeArrangement = true
-        stack.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 24, leading: 24, bottom: 24, trailing: 24)
-        stack.backgroundColor = NativeAppearance.surface
-        stack.layer.cornerRadius = NativeAppearance.radius
-        stack.layer.borderColor = NativeAppearance.line.cgColor
-        stack.layer.borderWidth = 1
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-        let preferredWidth = stack.widthAnchor.constraint(equalTo: webView.widthAnchor, constant: -32)
+    private func configureLoadingOverlay() {
+        // The entire visibility owner stays inside the real web viewport.
+        // Larger text can scroll instead of covering navigation or the bar.
+        loadingView.translatesAutoresizingMaskIntoConstraints = false
+        loadingView.backgroundColor = NativeAppearance.surface
+        loadingView.contentInsetAdjustmentBehavior = .never
+        loadingView.clipsToBounds = true
+        let content = UIView()
+        content.translatesAutoresizingMaskIntoConstraints = false
+        loadingView.addSubview(content)
+        loadingContent.axis = .vertical
+        loadingContent.alignment = .fill
+        loadingContent.spacing = 16
+        loadingContent.isLayoutMarginsRelativeArrangement = true
+        loadingContent.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 24, leading: 24, bottom: 24, trailing: 24)
+        loadingContent.backgroundColor = NativeAppearance.surface
+        loadingContent.layer.cornerRadius = NativeAppearance.radius
+        loadingContent.layer.borderColor = NativeAppearance.line.cgColor
+        loadingContent.layer.borderWidth = 1
+        loadingContent.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(loadingContent)
+        view.insertSubview(loadingView, belowSubview: progressView)
+        let preferredHeight = content.heightAnchor.constraint(equalTo: loadingView.frameLayoutGuide.heightAnchor)
+        preferredHeight.priority = .defaultLow
+        let preferredWidth = loadingContent.widthAnchor.constraint(equalTo: content.widthAnchor, constant: -32)
         preferredWidth.priority = .defaultHigh
         NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: webView.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: webView.centerYAnchor),
-            stack.widthAnchor.constraint(lessThanOrEqualToConstant: 400),
+            loadingView.topAnchor.constraint(equalTo: webView.topAnchor),
+            loadingView.bottomAnchor.constraint(equalTo: webView.bottomAnchor),
+            loadingView.leadingAnchor.constraint(equalTo: webView.leadingAnchor),
+            loadingView.trailingAnchor.constraint(equalTo: webView.trailingAnchor),
+            content.topAnchor.constraint(equalTo: loadingView.contentLayoutGuide.topAnchor),
+            content.bottomAnchor.constraint(equalTo: loadingView.contentLayoutGuide.bottomAnchor),
+            content.leadingAnchor.constraint(equalTo: loadingView.contentLayoutGuide.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: loadingView.contentLayoutGuide.trailingAnchor),
+            content.widthAnchor.constraint(equalTo: loadingView.frameLayoutGuide.widthAnchor),
+            content.heightAnchor.constraint(greaterThanOrEqualTo: loadingView.frameLayoutGuide.heightAnchor),
+            preferredHeight,
+            loadingContent.centerXAnchor.constraint(equalTo: content.centerXAnchor),
+            loadingContent.centerYAnchor.constraint(equalTo: content.centerYAnchor),
+            loadingContent.topAnchor.constraint(greaterThanOrEqualTo: content.topAnchor, constant: 16),
+            loadingContent.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -16),
+            loadingContent.widthAnchor.constraint(lessThanOrEqualToConstant: 400),
             preferredWidth,
-            stack.leadingAnchor.constraint(greaterThanOrEqualTo: webView.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: webView.trailingAnchor, constant: -16)
+            loadingContent.leadingAnchor.constraint(greaterThanOrEqualTo: content.leadingAnchor, constant: 16),
+            loadingContent.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -16)
         ])
     }
 

@@ -35,6 +35,35 @@ final class BottomNavigationControllerTests: XCTestCase {
             tabs.view.layoutIfNeeded()
             let bar = tabs.bottomBar
             bar.layoutIfNeeded()
+            // Keyboard-guide registration and Dynamic Type configuration can
+            // schedule another UIKit layout pass. Observe the real managed
+            // controls across two stable polls; never alter their bounds.
+            var previousFittingContent: String?
+            let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                window.layoutIfNeeded()
+                tabs.view.layoutIfNeeded()
+                bar.layoutIfNeeded()
+                var rectangles: [String] = []
+                for button in bar.buttons {
+                    button.layoutIfNeeded()
+                    guard let title = button.titleLabel, let image = button.imageView,
+                          title.bounds.height > 0, image.bounds.height > 0 else {
+                        previousFittingContent = nil; return false
+                    }
+                    let titleFrame = title.convert(title.bounds, to: button)
+                    let imageFrame = image.convert(image.bounds, to: button)
+                    guard button.bounds.contains(titleFrame), button.bounds.contains(imageFrame) else {
+                        previousFittingContent = nil; return false
+                    }
+                    rectangles.append("\(button.accessibilityIdentifier ?? "")|\(self.precise(button.bounds))|\(self.precise(titleFrame))|\(self.precise(imageFrame))|\(title.font?.pointSize ?? 0)")
+                }
+                let current = rectangles.joined(separator: "\n")
+                defer { previousFittingContent = current }
+                return previousFittingContent == current
+            }, object: nil)
+            let settledResult = XCTWaiter.wait(for: [settled], timeout: 5)
+            attachBottomGeometry(window: window, bar: bar, result: settledResult)
+            XCTAssertEqual(settledResult, .completed, "Real native title and icon geometry must settle within the unchanged button bounds")
             XCTAssertTrue(bar.window === window, "Measure the actual mounted native controls")
             XCTAssertEqual(tabs.traitCollection.preferredContentSizeCategory, .accessibilityExtraExtraExtraLarge)
             XCTAssertEqual(bar.bounds.width, 320, accuracy: 0.5)
@@ -323,5 +352,53 @@ final class BottomNavigationControllerTests: XCTestCase {
     @MainActor
     private func descendants(_ view: UIView) -> [UIView] {
         view.subviews + view.subviews.flatMap { descendants($0) }
+    }
+
+    private func precise(_ rect: CGRect) -> String {
+        [rect.minX, rect.minY, rect.width, rect.height].map { String(format: "%.17g", Double($0)) }.joined(separator: ",")
+    }
+
+    @MainActor
+    private func attachBottomGeometry(window: UIWindow, bar: NativeBottomBar, result: XCTWaiter.Result) {
+        func viewRecord(_ view: UIView) -> String {
+            let transform = view.transform
+            let matrix = [transform.a, transform.b, transform.c, transform.d, transform.tx, transform.ty]
+                .map { String(format: "%.17g", Double($0)) }.joined(separator: ",")
+            return "\(type(of: view)) id=\(view.accessibilityIdentifier ?? "") frame=[\(precise(view.frame))] bounds=[\(precise(view.bounds))] inWindow=[\(precise(view.convert(view.bounds, to: window)))] transform=[\(matrix)] hidden=\(view.isHidden) clips=\(view.clipsToBounds)"
+        }
+        var lines = [
+            "Owned native unit-test window; no fabricated geometry or rendered web fixture.",
+            "settlingResult=\(result.rawValue)",
+            "window \(viewRecord(window))",
+            "bar \(viewRecord(bar))",
+            "traits category=\(bar.traitCollection.preferredContentSizeCategory.rawValue) displayScale=\(bar.traitCollection.displayScale) horizontal=\(bar.traitCollection.horizontalSizeClass.rawValue) vertical=\(bar.traitCollection.verticalSizeClass.rawValue)"
+        ]
+        for button in bar.buttons {
+            lines.append("BUTTON \(viewRecord(button)) enabled=\(button.isEnabled) selected=\(button.isSelected)")
+            if let title = button.titleLabel {
+                let frame = title.convert(title.bounds, to: button)
+                lines.append("TITLE \(viewRecord(title)) inButton=[\(precise(frame))] contained=\(button.bounds.contains(frame)) text=\(title.text ?? title.attributedText?.string ?? "") lines=\(title.numberOfLines) font=\(title.font?.fontName ?? "") pointSize=\(String(format: "%.17g", Double(title.font?.pointSize ?? 0)))")
+            }
+            if let image = button.imageView {
+                let frame = image.convert(image.bounds, to: button)
+                lines.append("IMAGE \(viewRecord(image)) inButton=[\(precise(frame))] contained=\(button.bounds.contains(frame))")
+            }
+        }
+        lines.append("COMPLETE OWNED WINDOW VIEW HIERARCHY")
+        lines.append(contentsOf: descendants(window).map(viewRecord))
+        let geometry = XCTAttachment(string: lines.joined(separator: "\n"))
+        geometry.name = "DoveBevo-native-bottom-320-XXXL-geometry"
+        geometry.lifetime = .keepAlways
+        add(geometry)
+        // Render the actual owned window's current layer tree without forcing
+        // screen updates or changing any frames. This is a native fixture
+        // snapshot, not a physical-screen App Store screenshot.
+        let snapshot = UIGraphicsImageRenderer(bounds: window.bounds).image { context in
+            window.layer.render(in: context.cgContext)
+        }
+        let attachment = XCTAttachment(image: snapshot)
+        attachment.name = "DoveBevo-native-bottom-320-XXXL-owned-window-layer-snapshot"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }

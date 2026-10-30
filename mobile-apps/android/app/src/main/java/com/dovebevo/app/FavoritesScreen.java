@@ -34,19 +34,22 @@ final class FavoritesScreen {
     FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,FavoritesLoader loader){
         this.activity=activity;this.store=store;this.navigate=navigate;this.foreground=foreground;this.loader=loader;
         view=new ScrollView(activity);view.setId(R.id.favorites_screen);view.setBackgroundColor(activity.getColor(R.color.shell_background));LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);int pad=dp(16);body.setPadding(pad,pad,pad,pad);view.addView(body);
-        TextView title=text(activity.getString(R.string.saved_venues),24);heading(title);body.addView(title);
-        body.addView(text(activity.getString(R.string.favorites_explanation),16));
-        TextView drinkLabel=text(activity.getString(R.string.favorites_drink),16);drinkLabel.setLabelFor(R.id.favorites_drink);body.addView(drinkLabel);
+        TextView title=text(activity.getString(R.string.saved_venues),26);heading(title);NativeAppearance.title(title);body.addView(title);
+        TextView explanation=text(activity.getString(R.string.favorites_explanation),15);NativeAppearance.muted(explanation);explanation.setPadding(0,dp(4),0,dp(12));body.addView(explanation);
+        LinearLayout filters=new ComparisonFilters(activity);NativeAppearance.card(filters);body.addView(filters,new LinearLayout.LayoutParams(-1,-2));
+        LinearLayout drinkFilter=new LinearLayout(activity);drinkFilter.setOrientation(LinearLayout.VERTICAL);filters.addView(drinkFilter);
+        LinearLayout bandFilter=new LinearLayout(activity);bandFilter.setOrientation(LinearLayout.VERTICAL);filters.addView(bandFilter);
+        TextView drinkLabel=text(activity.getString(R.string.favorites_drink),14);NativeAppearance.title(drinkLabel);drinkLabel.setLabelFor(R.id.favorites_drink);drinkFilter.addView(drinkLabel);
         drinks=new Spinner(activity);drinks.setId(R.id.favorites_drink);drinks.setContentDescription(activity.getString(R.string.favorites_drink));
         String[] labels=new String[RecommendationDrink.values().length];for(int i=0;i<labels.length;i++)labels[i]=RecommendationDrink.values()[i].label;
-        ArrayAdapter<String> drinkOptions=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,labels);drinkOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);drinks.setAdapter(drinkOptions);drinks.setMinimumHeight(dp(56));body.addView(drinks,new LinearLayout.LayoutParams(-1,-2));
-        TextView bandLabel=text(activity.getString(R.string.favorites_band),16);bandLabel.setLabelFor(R.id.favorites_band);body.addView(bandLabel);
+        ArrayAdapter<String> drinkOptions=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,labels);drinkOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);drinks.setAdapter(drinkOptions);drinks.setMinimumHeight(dp(56));drinkFilter.addView(drinks,new LinearLayout.LayoutParams(-1,-2));
+        TextView bandLabel=text(activity.getString(R.string.favorites_band),14);NativeAppearance.title(bandLabel);bandLabel.setLabelFor(R.id.favorites_band);bandFilter.addView(bandLabel);
         bands=new Spinner(activity);bands.setId(R.id.favorites_band);bands.setContentDescription(activity.getString(R.string.favorites_band));
-        ArrayAdapter<String> bandOptions=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,new String[]{activity.getString(R.string.favorites_normal),activity.getString(R.string.favorites_happy_hour)});bandOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);bands.setAdapter(bandOptions);bands.setMinimumHeight(dp(56));body.addView(bands,new LinearLayout.LayoutParams(-1,-2));
+        ArrayAdapter<String> bandOptions=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,new String[]{activity.getString(R.string.favorites_normal),activity.getString(R.string.favorites_happy_hour)});bandOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);bands.setAdapter(bandOptions);bands.setMinimumHeight(dp(56));bandFilter.addView(bands,new LinearLayout.LayoutParams(-1,-2));
         drinks.setOnItemSelectedListener(selection(()->{drink=RecommendationDrink.values()[drinks.getSelectedItemPosition()];render();}));
         bands.setOnItemSelectedListener(selection(()->{band=bands.getSelectedItemPosition();render();}));
-        status=text("",16);status.setId(R.id.favorites_status);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(status);
-        refresh=new Button(activity);refresh.setId(R.id.favorites_refresh);refresh.setText(R.string.favorites_refresh);refresh.setAllCaps(false);refresh.setMinHeight(dp(48));refresh.setOnClickListener(v->refresh());body.addView(refresh,new LinearLayout.LayoutParams(-1,-2));
+        status=text("",15);NativeAppearance.muted(status);status.setPadding(0,dp(12),0,dp(8));status.setId(R.id.favorites_status);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(status);
+        refresh=new Button(activity);refresh.setId(R.id.favorites_refresh);refresh.setText(R.string.favorites_refresh);NativeAppearance.button(refresh,false);refresh.setOnClickListener(v->refresh());LinearLayout.LayoutParams refreshSize=new LinearLayout.LayoutParams(-1,-2);refreshSize.bottomMargin=dp(16);body.addView(refresh,refreshSize);
         rows=new LinearLayout(activity);rows.setId(R.id.favorites_rows);rows.setOrientation(LinearLayout.VERTICAL);body.addView(rows);
     }
     View view(){return view;}
@@ -73,12 +76,13 @@ final class FavoritesScreen {
         try{values=FavoriteComparison.rows(saved,cells,drink,band);}catch(IOException invalid){status.setText(R.string.favorites_unavailable);return;}
         NumberFormat euros=NumberFormat.getCurrencyInstance(Locale.ITALY);
         for(FavoriteComparison.Row row:values){
-            LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setPadding(0,dp(16),0,dp(16));card.setTag(row.saved.url);
+            LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);NativeAppearance.card(card);card.setTag(row.saved.url);
             LinearLayout headline=new LinearLayout(activity);boolean large=activity.getResources().getConfiguration().fontScale>=1.3f;
             headline.setOrientation(large?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
-            TextView name=text(row.name,18);heading(name);headline.addView(name,large?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-2,1));
-            if(!busy&&row.price!=null){TextView price=text(euros.format(BigDecimal.valueOf(row.price.cents,2)),22);price.setPadding(dp(8),dp(4),0,dp(4));headline.addView(price,new LinearLayout.LayoutParams(-2,-2));}
+            TextView name=text(row.name,18);heading(name);NativeAppearance.title(name);headline.addView(name,large?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-2,1));
+            if(!busy&&row.price!=null){TextView price=text(euros.format(BigDecimal.valueOf(row.price.cents,2)),22);NativeAppearance.price(price);LinearLayout.LayoutParams priceSize=new LinearLayout.LayoutParams(-2,-2);priceSize.leftMargin=large?0:dp(12);headline.addView(price,priceSize);}
             card.addView(headline,new LinearLayout.LayoutParams(-1,-2));
+            TextView category=text(drink.label+" · "+activity.getString(band==0?R.string.favorites_normal:R.string.favorites_happy_hour),14);NativeAppearance.muted(category);category.setPadding(0,dp(10),0,dp(4));card.addView(category);
             if(row.state==FavoriteComparison.State.UNAVAILABLE)card.addView(text(activity.getString(R.string.favorites_saved_name),14));
             if(busy)card.addView(text(activity.getString(R.string.favorites_loading),16));
             else if(row.price==null)card.addView(text(activity.getString(row.state==FavoriteComparison.State.MISSING?R.string.favorites_missing:R.string.favorites_unavailable),16));
@@ -89,9 +93,10 @@ final class FavoritesScreen {
                 if(row.price.old)card.addView(text(activity.getString(R.string.favorites_old),16));
             }
             LinearLayout actions=new LinearLayout(activity);
-            Button open=action(R.id.favorite_open,R.string.open_saved_venue,activity.getString(R.string.favorites_open_named,row.name),()->{if(usable()&&contains(row.saved.url))navigate.accept(row.saved.url);});actions.addView(open,new LinearLayout.LayoutParams(0,-2,1));
+            actions.setPadding(0,dp(12),0,0);
+            Button open=action(R.id.favorite_open,R.string.open_saved_venue,activity.getString(R.string.favorites_open_named,row.name),()->{if(usable()&&contains(row.saved.url))navigate.accept(row.saved.url);});NativeAppearance.button(open,true);LinearLayout.LayoutParams openSize=new LinearLayout.LayoutParams(0,-2,1);openSize.rightMargin=dp(8);actions.addView(open,openSize);
             Button remove=action(R.id.favorite_remove,R.string.remove_saved_venue,activity.getString(R.string.favorites_remove_named,row.name),()->remove(row.saved.url));actions.addView(remove,new LinearLayout.LayoutParams(0,-2,1));card.addView(actions,new LinearLayout.LayoutParams(-1,-2));
-            rows.addView(card,new LinearLayout.LayoutParams(-1,-2));
+            LinearLayout.LayoutParams cardSize=new LinearLayout.LayoutParams(-1,-2);cardSize.bottomMargin=dp(12);rows.addView(card,cardSize);
         }
     }
     private void remove(String url){
@@ -99,7 +104,7 @@ final class FavoritesScreen {
         if(result==SavedVenueStore.Result.REMOVED||result==SavedVenueStore.Result.NOT_FOUND)refresh();else{status.setText(R.string.saved_venues_storage_error);render();}
     }
     private boolean contains(String url){for(SavedVenueStore.Venue venue:saved)if(venue.url.equals(url))return true;return false;}
-    private Button action(int id,int label,String description,Runnable action){Button button=new Button(activity);button.setId(id);button.setText(label);button.setContentDescription(description);button.setAllCaps(false);button.setTextSize(16);button.setMinHeight(dp(48));button.setOnClickListener(v->action.run());return button;}
+    private Button action(int id,int label,String description,Runnable action){Button button=new Button(activity);button.setId(id);button.setText(label);button.setContentDescription(description);NativeAppearance.button(button,false);button.setOnClickListener(v->action.run());return button;}
     private TextView text(String value,int size){TextView text=new TextView(activity);text.setText(value);text.setTextSize(size);text.setTextColor(activity.getColor(R.color.shell_text));text.setPadding(0,dp(4),0,dp(4));return text;}
     private int dp(int value){return Math.round(value*activity.getResources().getDisplayMetrics().density);}
     private void heading(TextView text){if(Build.VERSION.SDK_INT>=28)text.setAccessibilityHeading(true);}

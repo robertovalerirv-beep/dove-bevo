@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#FF5A1F</color>
-    <color name="colorPrimaryDark">#1B1611</color>
-    <color name="colorAccent">#FF5A1F</color>
+    <color name="colorPrimary">#F5B521</color>
+    <color name="colorPrimaryDark">#101820</color>
+    <color name="colorAccent">#F5B521</color>
     <color name="ic_launcher_background">#FF5A1F</color>
-    <color name="shell_background">#FFF6ED</color>
-    <color name="shell_text">#1B1611</color>
+    <color name="shell_background">#F7F8FA</color>
+    <color name="shell_text">#101820</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="muted_text">#5D6670</color>
+    <color name="surface_line">#E7EAEE</color>
+    <color name="selected_surface">#FFF4D2</color>
+    <color name="positive_surface">#EAF6EE</color>
+    <color name="positive_text">#216C3A</color>
 </resources>

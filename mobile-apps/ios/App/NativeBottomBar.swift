@@ -44,6 +44,7 @@ enum BottomNavigationAction: Int, CaseIterable {
 final class NativeBottomBar: UIView {
     private let stack = UIStackView()
     private(set) var buttons: [UIButton] = []
+    private var minimumHeights: [NSLayoutConstraint] = []
     private var columns = 0
     private var destination = 0
     private var venueActionsEnabled = false
@@ -57,9 +58,9 @@ final class NativeBottomBar: UIView {
         accessibilityContainerType = .semanticGroup
         shouldGroupAccessibilityChildren = true
         isAccessibilityElement = false
-        backgroundColor = .systemBackground
+        backgroundColor = NativeAppearance.surface
         let separator = UIView()
-        separator.backgroundColor = .separator
+        separator.backgroundColor = NativeAppearance.line
         separator.translatesAutoresizingMaskIntoConstraints = false
         addSubview(separator)
         stack.axis = .vertical
@@ -86,7 +87,9 @@ final class NativeBottomBar: UIView {
             button.titleLabel?.numberOfLines = 0
             button.titleLabel?.isAccessibilityElement = false
             button.imageView?.isAccessibilityElement = false
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 56).isActive = true
+            let minimumHeight = button.heightAnchor.constraint(greaterThanOrEqualToConstant: 56)
+            minimumHeight.isActive = true
+            minimumHeights.append(minimumHeight)
             button.widthAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
             button.addTarget(self, action: #selector(selectAction), for: .touchUpInside)
             buttons.append(button)
@@ -106,6 +109,39 @@ final class NativeBottomBar: UIView {
         let requiredColumns = usableWidth < 360 || traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 3 : 5
         if bounds.width > 0 && columns != requiredColumns { arrange(columns: requiredColumns) }
         super.layoutSubviews()
+        updateContentHeights()
+    }
+
+    private func updateContentHeights() {
+        var changed = false
+        for (button, minimum) in zip(buttons, minimumHeights) {
+            button.layoutIfNeeded()
+            guard button.bounds.width > 0, let title = button.titleLabel,
+                  let image = button.imageView, let configuration = button.configuration else { continue }
+            let insets = configuration.contentInsets
+            let width = max(1, button.bounds.width - insets.leading - insets.trailing)
+            let titleHeight = title.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
+            // UIKit resolves accessibility-scaled symbols during button layout;
+            // their real height can exceed the nominal 20-point configuration image.
+            let symbolHeight = image.bounds.height
+            let needed = ceil(insets.top + titleHeight + configuration.imagePadding + symbolHeight + insets.bottom)
+            guard needed.isFinite, titleHeight > 0, symbolHeight > 0 else { continue }
+            let height = max(56, needed)
+            if minimum.constant != height {
+                minimum.constant = height
+                button.invalidateIntrinsicContentSize()
+                changed = true
+            }
+        }
+        if changed {
+            // Wrapped configuration content does not always invalidate UIButton's
+            // cached intrinsic height. Let Auto Layout grow/shrink these same
+            // native controls and rows from the actual current-width content.
+            stack.arrangedSubviews.forEach { $0.invalidateIntrinsicContentSize() }
+            stack.invalidateIntrinsicContentSize()
+            invalidateIntrinsicContentSize()
+            superview?.setNeedsLayout()
+        }
     }
 
     func button(for action: BottomNavigationAction) -> UIButton { buttons[action.rawValue] }
@@ -117,7 +153,8 @@ final class NativeBottomBar: UIView {
             let button = button(for: action)
             let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1)
             let enabled = action != .save && action != .recommendations || venueActionsEnabled
-            var configuration = selected ? UIButton.Configuration.tinted() : UIButton.Configuration.plain()
+            var configuration = selected ? UIButton.Configuration.filled() : UIButton.Configuration.plain()
+            configuration.baseBackgroundColor = selected ? NativeAppearance.ink : .clear
             configuration.title = action.title
             configuration.titleAlignment = .center
             configuration.titleLineBreakMode = .byWordWrapping
@@ -132,8 +169,9 @@ final class NativeBottomBar: UIView {
             configuration.imagePlacement = .top
             configuration.imagePadding = 4
             configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 4, bottom: 6, trailing: 4)
-            configuration.baseForegroundColor = enabled ? .label : .tertiaryLabel
-            configuration.cornerStyle = .medium
+            configuration.baseForegroundColor = selected ? NativeAppearance.surface : (enabled ? NativeAppearance.ink : NativeAppearance.disabled)
+            configuration.background.cornerRadius = NativeAppearance.radius
+            configuration.cornerStyle = .fixed
             button.configuration = configuration
             button.titleLabel?.numberOfLines = 0
             button.titleLabel?.adjustsFontForContentSizeCategory = true

@@ -6,5 +6,7 @@
         <item name="android:windowActionModeOverlay">true</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowBackground">@color/shell_background</item>
+        <item name="android:statusBarColor">@color/shell_background</item>
+        <item name="android:navigationBarColor">@color/shell_text</item>
     </style>
 </resources>

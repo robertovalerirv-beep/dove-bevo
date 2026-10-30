@@ -17,6 +17,7 @@ final class SavedVenuesViewController: UITableViewController {
     private var storeFailed = false
     private var drink = DrinkCategory.all[0]
     private var band = ComparisonBand.normal
+    private var renderedCategory: UIContentSizeCategory?
     var isDestinationSelected: (() -> Bool)?
     private let drinkButton = UIButton(type: .system)
     private let bandControl = ComparisonBandSelector()
@@ -44,6 +45,8 @@ final class SavedVenuesViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Preferiti"
+        NativeAppearance.configure(navigationController)
+        NativeAppearance.configure(tableView)
         tableView.accessibilityIdentifier = "savedVenues.list"
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "venue")
         tableView.rowHeight = UITableView.automaticDimension
@@ -65,10 +68,24 @@ final class SavedVenuesViewController: UITableViewController {
         bandControl.addTarget(self, action: #selector(bandChanged), for: .valueChanged)
         statusLabel.numberOfLines = 0
         statusLabel.font = .preferredFont(forTextStyle: .body)
+        statusLabel.textColor = NativeAppearance.muted
         statusLabel.adjustsFontForContentSizeCategory = true
         statusLabel.text = "I nomi salvati sono disponibili anche offline."
+        let heading = UILabel()
+        heading.text = "Confronta i tuoi posti"
+        heading.font = .preferredFont(forTextStyle: .title2)
+        heading.textColor = NativeAppearance.ink
+        heading.numberOfLines = 0
+        heading.adjustsFontForContentSizeCategory = true
+        heading.accessibilityTraits = .header
+        let introduction = UILabel()
+        introduction.text = "Scegli cosa bere e confronta i prezzi segnalati nei tuoi preferiti."
+        introduction.font = .preferredFont(forTextStyle: .subheadline)
+        introduction.textColor = NativeAppearance.muted
+        introduction.numberOfLines = 0
+        introduction.adjustsFontForContentSizeCategory = true
         let header = UIView()
-        let stack = UIStackView(arrangedSubviews: [drinkButton, bandControl, statusLabel])
+        let stack = UIStackView(arrangedSubviews: [heading, introduction, drinkButton, bandControl, statusLabel])
         stack.axis = .vertical; stack.spacing = 12; stack.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -102,6 +119,10 @@ final class SavedVenuesViewController: UITableViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        if renderedCategory != traitCollection.preferredContentSizeCategory {
+            renderedCategory = traitCollection.preferredContentSizeCategory
+            render()
+        }
         if let header = tableView.tableHeaderView {
             let size = header.systemLayoutSizeFitting(CGSize(width: tableView.bounds.width, height: 0),
                                                      withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel)
@@ -151,12 +172,17 @@ final class SavedVenuesViewController: UITableViewController {
     private func render() {
         guard isViewLoaded else { return }
         rows = FavouriteComparisonRow.sorted(saved: venues, snapshot: snapshot, drink: drink.code, band: band)
-        var picker = UIButton.Configuration.tinted()
+        var picker = NativeAppearance.button(traits: traitCollection)
+        picker.baseBackgroundColor = NativeAppearance.surface
+        picker.background.strokeColor = NativeAppearance.line
+        picker.background.strokeWidth = 1
         picker.title = "Confronta: \(drink.name)"
         picker.image = UIImage(systemName: "chevron.down")
         picker.imagePlacement = .trailing; picker.imagePadding = 8
         picker.titleLineBreakMode = .byWordWrapping
         drinkButton.configuration = picker
+        drinkButton.titleLabel?.numberOfLines = 0
+        drinkButton.titleLabel?.adjustsFontForContentSizeCategory = true
         drinkButton.accessibilityLabel = "Drink da confrontare: \(drink.name)"
         drinkButton.menu = UIMenu(children: DrinkCategory.all.map { category in
             UIAction(title: category.name, state: category.code == drink.code ? .on : .off) { [weak self] _ in
@@ -218,18 +244,37 @@ final class SavedVenuesViewController: UITableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: "venue", for: indexPath)
         let row = rows[indexPath.row]
         let details: String
+        let visual = NSMutableAttributedString(string: "\(drink.name) · \(band.name)\n", attributes: [
+            .font: UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
+        ])
         if let price = row.price {
             let amount = String(format: "%d,%02d €", price.cents / 100, price.cents % 100)
             let confirmations = price.confirmations == 1 ? "1 conferma" : "\(price.confirmations) conferme"
             let old = price.isOld(today: ComparisonJSON.today()) ? " · Da confermare: oltre 90 giorni" : ""
             details = "\(amount) · \(band.name)\nSegnalato il \(price.observedOn) · \(confirmations)\(old)"
+            visual.append(NSAttributedString(string: "\(amount)\n", attributes: [
+                .font: UIFontMetrics(forTextStyle: .title2).scaledFont(for: UIFont.systemFont(ofSize: 22, weight: .bold), compatibleWith: traitCollection), .foregroundColor: NativeAppearance.ink
+            ]))
+            visual.append(NSAttributedString(string: "Segnalato il \(price.observedOn) · \(confirmations)\(old)", attributes: [
+                .font: UIFont.preferredFont(forTextStyle: .footnote, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
+            ]))
         } else if busy { details = "Caricamento prezzi…" }
         else if row.unavailable { details = "Prezzo non disponibile" }
         else { details = "Nessun prezzo segnalato per \(drink.name) · \(band.name)" }
+        if row.price == nil {
+            visual.append(NSAttributedString(string: details, attributes: [
+                .font: UIFont.preferredFont(forTextStyle: .body, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
+            ]))
+        }
         var content = cell.defaultContentConfiguration()
-        content.text = row.name; content.secondaryText = details
-        content.textProperties.font = .preferredFont(forTextStyle: .body); content.textProperties.numberOfLines = 0
-        content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body); content.secondaryTextProperties.numberOfLines = 0
+        content.text = row.name; content.secondaryAttributedText = visual
+        content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection); content.textProperties.numberOfLines = 0
+        content.textProperties.color = NativeAppearance.ink
+        content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection); content.secondaryTextProperties.numberOfLines = 0
+        content.textToSecondaryTextVerticalPadding = 8
+        content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 12)
+        cell.backgroundConfiguration = NativeAppearance.card()
+        cell.tintColor = NativeAppearance.muted
         cell.contentConfiguration = content; cell.accessoryType = .disclosureIndicator
         cell.accessibilityIdentifier = "savedVenue.\(row.saved.url.lastPathComponent)"
         cell.accessibilityLabel = row.name
@@ -271,6 +316,7 @@ final class ComparisonBandSelector: UIControl {
     private(set) var selectedBand = ComparisonBand.normal
     private let stack = UIStackView()
     private var buttons: [UIButton] = []
+    private var renderedCategory: UIContentSizeCategory?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -300,6 +346,10 @@ final class ComparisonBandSelector: UIControl {
     required init?(coder: NSCoder) { return nil }
 
     override func layoutSubviews() {
+        if renderedCategory != traitCollection.preferredContentSizeCategory {
+            renderedCategory = traitCollection.preferredContentSizeCategory
+            updateButtons()
+        }
         let axis: NSLayoutConstraint.Axis = traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? .vertical : .horizontal
         if stack.axis != axis { stack.axis = axis }
         super.layoutSubviews()
@@ -314,11 +364,18 @@ final class ComparisonBandSelector: UIControl {
         for button in buttons {
             guard let band = ComparisonBand(rawValue: button.tag) else { continue }
             let selected = band == selectedBand
-            var style = selected ? UIButton.Configuration.tinted() : UIButton.Configuration.gray()
+            var style = NativeAppearance.button(primary: selected, traits: traitCollection)
+            if !selected {
+                style.baseBackgroundColor = NativeAppearance.surface
+                style.background.strokeColor = NativeAppearance.line
+                style.background.strokeWidth = 1
+            }
             style.title = band.name; style.titleLineBreakMode = .byWordWrapping
             style.image = selected ? UIImage(systemName: "checkmark") : nil
             style.imagePadding = 6
             button.configuration = style
+            button.titleLabel?.numberOfLines = 0
+            button.titleLabel?.adjustsFontForContentSizeCategory = true
             button.isSelected = selected
             button.accessibilityTraits = selected ? [.button, .selected] : [.button]
         }

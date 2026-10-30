@@ -222,6 +222,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(website.staticTexts[publicName].waitForExistence(timeout: 15))
         waitForNativePageReady()
         verifyLiveVenueHistoryReadOnly(venueName: publicName)
+        verifyLiveVenueAndPriceFormReadOnly(venueName: publicName)
         verifyLiveRecommendationsReadOnly(venueName: publicName)
         saveCurrentVenueInOneTap()
         app.buttons["tab.favorites"].tap()
@@ -348,6 +349,113 @@ final class BrowserSmokeTests: XCTestCase {
         let result = XCTWaiter.wait(for: [ready], timeout: 15)
         if result != .completed { attachState(named: "DoveBevo-original-field-keyboard-not-ready") }
         XCTAssertEqual(result, .completed, "The existing field must have an ordinary visible keyboard before typing")
+    }
+
+    private func verifyLiveVenueAndPriceFormReadOnly(venueName: String) {
+        let website = app.webViews["browser.website"]
+        let normalViewport = website.frame
+        XCTAssertTrue(website.staticTexts[venueName].exists)
+        XCTAssertTrue(website.links["Indicazioni"].exists)
+        let priceAction = website.buttons.matching(NSPredicate(format: "label IN %@", ["Confermo", "Confermato", "Già confermato"] as NSArray)).firstMatch
+        XCTAssertTrue(priceAction.waitForExistence(timeout: 30), "Capture the actual priced venue after its public price rows load; never activate a confirmation")
+        let addHere = website.buttons["Aggiungi un prezzo qui"]
+        XCTAssertTrue(addHere.waitForExistence(timeout: 10))
+        attachScreen(named: "DoveBevo-live-venue-detail-read-only")
+        for _ in 0..<3 {
+            if addHere.isHittable { break }
+            website.swipeUp()
+        }
+        XCTAssertTrue(addHere.isHittable)
+        addHere.tap()
+        // The venue is already selected. Choosing a fixed catalogue category
+        // only opens its empty form; never tap a one-touch public price chip.
+        XCTAssertTrue(app.staticTexts["Che cosa hai preso?"].waitForExistence(timeout: 10))
+        let category = app.buttons["Birra media"]
+        XCTAssertTrue(category.isHittable)
+        category.tap()
+        let price = app.textFields["Prezzo in euro"]
+        XCTAssertTrue(price.waitForExistence(timeout: 10))
+        XCTAssertTrue(website.staticTexts[venueName].exists)
+        let submit = website.buttons["Salva"]
+        XCTAssertTrue(submit.exists)
+        XCTAssertFalse(submit.isEnabled, "An untouched empty price must never enable public submission")
+        attachScreen(named: "DoveBevo-live-price-form-empty-read-only")
+        XCTAssertTrue(price.isHittable)
+        // The category tap normally focuses this form inside its real user
+        // gesture. Retapping an already focused field opens Paste/Autofill.
+        if ordinaryDecimalKeyboard() == nil { price.tap() }
+        let keyboardReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in self.ordinaryDecimalKeyboard() != nil }, object: nil)
+        let result = XCTWaiter.wait(for: [keyboardReady], timeout: 15)
+        if result != .completed { attachState(named: "DoveBevo-live-price-keyboard-not-ready") }
+        XCTAssertEqual(result, .completed, "The actual decimal price field must show usable software number keys")
+        guard let keyboard = ordinaryDecimalKeyboard() else {
+            XCTFail("The real decimal keyboard disappeared before inspecting the focused field")
+            return
+        }
+        let viewportReady = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            guard let current = self.ordinaryDecimalKeyboard() else { return false }
+            let frame = website.frame
+            return frame.height > 0 && frame.height < normalViewport.height &&
+                abs(frame.minY - normalViewport.minY) <= 0.5 && abs(frame.width - normalViewport.width) <= 0.5 &&
+                frame.maxY <= current.frame.minY
+        }, object: nil)
+        let viewportResult = XCTWaiter.wait(for: [viewportReady], timeout: 10)
+        attachState(named: "DoveBevo-live-price-field-with-keyboard-read-only")
+        XCTAssertEqual(viewportResult, .completed, "The real web viewport must resize above the docked keyboard")
+        XCTAssertTrue(price.isHittable)
+        XCTAssertTrue(visibleAboveKeyboard(price, keyboard: keyboard), "The focused price field must remain visible above the keyboard")
+        // A long list of real nearby price examples may place the final button
+        // lower in this sheet. Scroll only; leave the value empty and disabled.
+        for _ in 0..<3 {
+            if let current = ordinaryDecimalKeyboard(), visibleAboveKeyboard(submit, keyboard: current) { break }
+            website.swipeUp()
+        }
+        attachState(named: "DoveBevo-live-price-action-with-keyboard-read-only")
+        guard let finalKeyboard = ordinaryDecimalKeyboard() else {
+            XCTFail("Inspect the submit control while the real decimal keyboard is still visible")
+            return
+        }
+        XCTAssertTrue(visibleAboveKeyboard(submit, keyboard: finalKeyboard), "The final price action must be reachable by scrolling above the keyboard")
+        XCTAssertFalse(submit.isEnabled)
+        let value = price.value as? String ?? ""
+        XCTAssertTrue(value.isEmpty || value == "0,00", "This inspection must never type or prefill a test price")
+        let close = website.buttons.matching(NSPredicate(format: "label == %@", "Chiudi")).allElementsBoundByIndex.filter { $0.isHittable }
+        XCTAssertEqual(close.count, 1, "Close only the active form using its visible native HTML dialog control")
+        guard let closeForm = close.first else { return }
+        closeForm.tap()
+        let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: price)
+        XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 10), .completed)
+        let keyboardClosed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in self.ordinaryDecimalKeyboard() == nil }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [keyboardClosed], timeout: 10), .completed)
+        let restoredViewport = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            let frame = website.frame
+            return abs(frame.minX - normalViewport.minX) <= 0.5 && abs(frame.minY - normalViewport.minY) <= 0.5 &&
+                abs(frame.width - normalViewport.width) <= 0.5 && abs(frame.height - normalViewport.height) <= 0.5
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [restoredViewport], timeout: 10), .completed, "Closing the form must restore the original browser viewport")
+        XCTAssertTrue(website.staticTexts[venueName].exists)
+        XCTAssertTrue(website.links["Indicazioni"].exists)
+        waitForNativePageReady()
+        assertNoNativeRecovery()
+    }
+
+    private func ordinaryDecimalKeyboard() -> XCUIElement? {
+        app.keyboards.allElementsBoundByIndex.first { keyboard in
+            guard keyboard.exists, keyboard.frame.width >= 250, keyboard.frame.height >= 150,
+                  app.frame.intersects(keyboard.frame) else { return false }
+            return keyboard.keys.matching(NSPredicate(format: "label IN %@", ["1", "2"] as NSArray)).allElementsBoundByIndex.contains { key in
+                key.exists && key.isHittable && key.frame.width >= 20 && key.frame.height >= 20 && app.frame.contains(key.frame)
+            }
+        }
+    }
+
+    private func visibleAboveKeyboard(_ element: XCUIElement, keyboard: XCUIElement) -> Bool {
+        guard element.exists else { return false }
+        let frame = element.frame
+        let websiteFrame = app.webViews["browser.website"].frame
+        return !frame.isNull && !frame.isInfinite && frame.width >= 44 && frame.height >= 44 &&
+            [frame.minX, frame.minY, frame.maxX, frame.maxY].allSatisfy { $0.isFinite } &&
+            app.frame.contains(frame) && websiteFrame.contains(frame) && frame.maxY <= keyboard.frame.minY
     }
 
     private func verifyLiveRecommendationsReadOnly(venueName: String) {

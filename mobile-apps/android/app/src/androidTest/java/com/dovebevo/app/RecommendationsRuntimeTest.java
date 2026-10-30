@@ -89,6 +89,22 @@ public final class RecommendationsRuntimeTest {
         });
         assertEquals(0, sink.posts);
     }
+    @Test public void recommendationCardsKeepSharedCountsAndPendingControlsDistinct() {
+        runNext();
+        onMain(()->{
+            Button water=row("water");assertEquals(1f,water.getAlpha(),0f);
+            assertTrue(water.getBackground() instanceof android.graphics.drawable.RippleDrawable);
+            water.performClick();assertFalse(row("water").isEnabled());assertTrue(row("water").getAlpha()<1f);
+            assertTrue("Pending UI cannot invent a shared total",row("water").getText().toString().contains("Ancora nessun consiglio"));
+        });
+        runNext();
+        onMain(()->{
+            Button water=row("water");assertTrue(water.isSelected());assertTrue(water.isEnabled());assertEquals(1f,water.getAlpha(),0f);
+            assertTrue(water.getText().toString().contains("1 consiglio"));
+            assertTrue(water.getText().toString().contains(activity.getString(R.string.recommendation_undo)));
+            assertEquals(activity.getColor(R.color.positive_text),water.getCurrentTextColor());
+        });
+    }
     @Test public void restrictedUiHasNoWriteAndDismissedResultNeverReopens() throws Exception {
         onMain(() -> { ui.close(); worker.tasks.clear(); ui = new RecommendationsUi(activity, sink, TestLabPolicy.detect(() -> "true"), () -> eligible, worker); ui.show(venue()); });
         runNext();

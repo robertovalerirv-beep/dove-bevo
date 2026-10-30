@@ -29,6 +29,8 @@ targets:
         buildPhase: resources
       - path: ../terms.md
         buildPhase: resources
+      - path: ../presentation/app-theme.js
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dovebevo.app

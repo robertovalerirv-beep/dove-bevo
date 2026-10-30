@@ -6,7 +6,9 @@ final class PrivacyViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Privacy"
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = NativeAppearance.surface
+        view.tintColor = NativeAppearance.ink
+        NativeAppearance.configure(navigationController)
 
         let textView = UITextView()
         textView.translatesAutoresizingMaskIntoConstraints = false
@@ -17,8 +19,8 @@ final class PrivacyViewController: UIViewController {
         textView.isScrollEnabled = true
         textView.font = .preferredFont(forTextStyle: .body)
         textView.adjustsFontForContentSizeCategory = true
-        textView.textColor = .label
-        textView.backgroundColor = .systemBackground
+        textView.textColor = NativeAppearance.ink
+        textView.backgroundColor = NativeAppearance.surface
         textView.textContainerInset = UIEdgeInsets(top: 16, left: 16, bottom: 24, right: 16)
         do {
             textView.text = try PrivacyPolicy.load()
@@ -30,7 +32,7 @@ final class PrivacyViewController: UIViewController {
 
         let contactButton = UIButton(type: .system)
         contactButton.translatesAutoresizingMaskIntoConstraints = false
-        contactButton.configuration = .tinted()
+        contactButton.configuration = NativeAppearance.button()
         contactButton.setTitle("Scrivi a \(PrivacyPolicy.supportEmail)", for: .normal)
         contactButton.titleLabel?.font = .preferredFont(forTextStyle: .body)
         contactButton.titleLabel?.adjustsFontForContentSizeCategory = true

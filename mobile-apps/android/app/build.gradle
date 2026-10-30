@@ -44,6 +44,26 @@ abstract class GeneratePrivacyAssets extends DefaultTask {
     }
 }
 
+abstract class GenerateMobilePresentationAssets extends DefaultTask {
+    @InputFile @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getPresentationFile()
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDirectory()
+    @Inject
+    abstract FileSystemOperations getFileSystemOperations()
+
+    @TaskAction
+    void generate() {
+        File presentation = presentationFile.get().asFile
+        if (!presentation.isFile() || presentation.length() == 0 || presentation.length() > 131072)
+            throw new GradleException('The bundled app presentation is missing or invalid.')
+        fileSystemOperations.sync {
+            from(presentation)
+            into(outputDirectory)
+        }
+    }
+}
+
 android {
     namespace = 'com.dovebevo.app'
     compileSdk = 37
@@ -89,6 +109,11 @@ androidComponents {
             outputDirectory.set(layout.buildDirectory.dir("generated/privacyAssets/${variant.name}"))
         }
         variant.sources.assets.addGeneratedSourceDirectory(generatePrivacyAssets) { it.outputDirectory }
+        def generatePresentationAssets = tasks.register("generate${variant.name.capitalize()}MobilePresentationAssets", GenerateMobilePresentationAssets) {
+            presentationFile.set(layout.projectDirectory.file('../../presentation/app-theme.js'))
+            outputDirectory.set(layout.buildDirectory.dir("generated/mobilePresentationAssets/${variant.name}"))
+        }
+        variant.sources.assets.addGeneratedSourceDirectory(generatePresentationAssets) { it.outputDirectory }
         tasks.named('preBuild').configure { dependsOn(generatePrivacyAssets) }
     }
 }

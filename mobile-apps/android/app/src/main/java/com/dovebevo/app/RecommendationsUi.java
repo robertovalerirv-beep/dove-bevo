@@ -48,15 +48,20 @@ final class RecommendationsUi {
         String key = selected.url.substring(selected.url.indexOf("/bar/") + 5, selected.url.indexOf('?'));
         session = new RecommendationSession(key);
         LinearLayout body = new LinearLayout(activity); body.setOrientation(LinearLayout.VERTICAL);
+        body.setBackgroundColor(activity.getColor(R.color.shell_background));
         int padding = Math.round(16 * activity.getResources().getDisplayMetrics().density);
         body.setPadding(padding, padding, padding, padding);
-        TextView heading = new TextView(activity); heading.setText(selected.name); heading.setTextSize(20); body.addView(heading);
-        TextView explanation = new TextView(activity); explanation.setText(R.string.recommendation_explanation); body.addView(explanation);
+        TextView heading = new TextView(activity); heading.setText(selected.name); heading.setTextSize(24); NativeAppearance.title(heading); body.addView(heading);
+        TextView explanation = new TextView(activity); explanation.setText(R.string.recommendation_explanation); explanation.setTextSize(15); NativeAppearance.muted(explanation);
+        explanation.setPadding(0, NativeAppearance.dp(activity,8), 0, NativeAppearance.dp(activity,12)); body.addView(explanation);
         status = new TextView(activity); status.setId(R.id.recommendation_status);
+        status.setTextSize(14); NativeAppearance.muted(status);status.setPadding(0,0,0,NativeAppearance.dp(activity,12));
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); body.addView(status);
         refresh = new Button(activity); refresh.setId(R.id.recommendation_refresh); refresh.setText(R.string.recommendation_refresh);
+        NativeAppearance.button(refresh,false);
         refresh.setOnClickListener(view -> request(session.refresh())); body.addView(refresh);
         rows = new LinearLayout(activity); rows.setId(R.id.recommendation_rows); rows.setOrientation(LinearLayout.VERTICAL);
+        rows.setPadding(0,NativeAppearance.dp(activity,4),0,0);
         body.addView(rows, new LinearLayout.LayoutParams(-1, -2));
         // The entire content scrolls, so large system text cannot squeeze the drink rows out below a fixed header.
         ScrollView scroll = new ScrollView(activity); scroll.addView(body);
@@ -66,7 +71,10 @@ final class RecommendationsUi {
         current.setOnDismissListener(value -> { if (dialog == current) retire(); });
         dialog.show();
         // Give the native list bounded space while preserving small-screen scrolling.
-        if (dialog.getWindow() != null) dialog.getWindow().setLayout(-1, Math.round(activity.getResources().getDisplayMetrics().heightPixels * 0.85f));
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(NativeAppearance.shape(activity,R.color.surface,16,false));
+            dialog.getWindow().setLayout(-1, Math.round(activity.getResources().getDisplayMetrics().heightPixels * 0.85f));
+        }
         request(session.refresh());
     }
     private void request(RecommendationSession.Request request) {
@@ -107,8 +115,9 @@ final class RecommendationsUi {
             String label = row.drink.label + " · " + count + "\n" + action;
             button.setText(label); button.setContentDescription(label); button.setSelected(row.recommended);
             button.setEnabled(!paused && !policy.isReadOnly() && session.canWrite());
+            NativeAppearance.recommendation(button,row.recommended);
             button.setOnClickListener(view -> { if (contextValid() && !policy.isReadOnly()) request(session.toggle(row.drink)); });
-            rows.addView(button, new LinearLayout.LayoutParams(-1, -2));
+            LinearLayout.LayoutParams cardSize=new LinearLayout.LayoutParams(-1,-2);cardSize.topMargin=NativeAppearance.dp(activity,10);rows.addView(button,cardSize);
         }
     }
     void contextChanged() { if (venue != null && !venue.url.equals(eligible.get())) dismiss(); }

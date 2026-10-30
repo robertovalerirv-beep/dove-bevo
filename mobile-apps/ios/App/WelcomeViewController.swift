@@ -18,7 +18,9 @@ final class WelcomeViewController: UIViewController {
         super.viewDidLoad()
         title = "Benvenuto"
         navigationItem.backButtonTitle = "Torna all'inizio"
-        view.backgroundColor = .systemBackground
+        view.backgroundColor = NativeAppearance.surface
+        view.tintColor = NativeAppearance.ink
+        NativeAppearance.configure(navigationController)
         let scroll = UIScrollView()
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.accessibilityIdentifier = "welcome.scroll"
@@ -45,12 +47,13 @@ final class WelcomeViewController: UIViewController {
         let heading = UILabel()
         heading.text = "Prima di aprire Dove bevo"
         heading.font = .preferredFont(forTextStyle: .title1)
+        heading.textColor = NativeAppearance.ink
         heading.adjustsFontForContentSizeCategory = true
         heading.numberOfLines = 0
         heading.accessibilityTraits = .header
         stack.addArrangedSubview(heading)
         let privacy = button("Leggi la privacy", identifier: "welcome.privacy", action: #selector(showPrivacy))
-        privacy.configuration = .tinted()
+        privacy.configuration = NativeAppearance.button()
         privacy.setTitle("Leggi la privacy", for: .normal)
         stack.addArrangedSubview(privacy)
 
@@ -62,8 +65,8 @@ final class WelcomeViewController: UIViewController {
         rules.isScrollEnabled = false
         rules.font = .preferredFont(forTextStyle: .body)
         rules.adjustsFontForContentSizeCategory = true
-        rules.textColor = .label
-        rules.backgroundColor = .systemBackground
+        rules.textColor = NativeAppearance.ink
+        rules.backgroundColor = NativeAppearance.surface
         rules.textContainerInset = .zero
         rules.textContainer.lineFragmentPadding = 0
         let availableRules: Bool
@@ -77,12 +80,13 @@ final class WelcomeViewController: UIViewController {
         stack.addArrangedSubview(rules)
 
         let accept = button("Ho almeno 18 anni e accetto", identifier: "welcome.accept", action: #selector(acceptRules))
-        accept.configuration = .filled()
+        accept.configuration = NativeAppearance.button(primary: true)
         accept.setTitle("Ho almeno 18 anni e accetto", for: .normal)
         accept.isEnabled = availableRules
         stack.addArrangedSubview(accept)
         stack.addArrangedSubview(button("Non accetto", identifier: "welcome.decline", action: #selector(declineRules)))
         declineMessage.font = .preferredFont(forTextStyle: .body)
+        declineMessage.textColor = NativeAppearance.muted
         declineMessage.adjustsFontForContentSizeCategory = true
         declineMessage.numberOfLines = 0
         declineMessage.accessibilityIdentifier = "welcome.declined"

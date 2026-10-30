@@ -16,7 +16,8 @@ final class BottomNavigationBar extends LinearLayout {
         super(context);
         setId(R.id.bottom_navigation);
         setOrientation(VERTICAL);
-        setBackgroundColor(context.getColor(R.color.shell_background));
+        setBackgroundColor(context.getColor(R.color.surface));
+        setPadding(dp(6), dp(6), dp(6), dp(6));
         controls = new Button[]{
             control(R.id.home, R.string.home, R.string.home, R.drawable.native_home, home),
             control(R.id.map_destination, R.string.map_destination, R.string.map_destination, R.drawable.native_map, map),
@@ -72,6 +73,7 @@ final class BottomNavigationBar extends LinearLayout {
         button.setMaxLines(3);
         button.setCompoundDrawablePadding(dp(4));
         button.setCompoundDrawablesWithIntrinsicBounds(0, icon, 0, 0);
+        NativeAppearance.destination(button, false);
         button.setOnClickListener(view -> action.run());
         return button;
     }

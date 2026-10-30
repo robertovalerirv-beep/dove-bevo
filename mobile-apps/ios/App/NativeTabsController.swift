@@ -58,8 +58,11 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
-        bottomBackground.backgroundColor = .systemBackground
+        view.backgroundColor = NativeAppearance.surface
+        view.tintColor = NativeAppearance.ink
+        bottomBackground.backgroundColor = NativeAppearance.surface
+        NativeAppearance.configure(mapNavigation)
+        NativeAppearance.configure(favouritesNavigation)
         [content, bottomBackground, bottomBar].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)

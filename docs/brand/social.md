@@ -2,7 +2,7 @@
 
 Riferimento per post, reel e storie. Vale insieme a `02-voce.md` (regole di voce e parole vietate D-31); in caso di dubbio prevalgono quelle, tranne dove questo file dichiara una deroga (solo emoji 18+, sotto). Grafica solo dal kit del brand (`tokens.json`, `fonts/`, `components/`, `assets/`). I file dei contenuti (immagini, video) non stanno nel repository.
 
-Ultimo allineamento: 27/10/2026, con le decisioni di Roberto in chat.
+Ultimo allineamento: 31/10/2026, con le decisioni di Roberto in chat (i reel hanno audio: voce e musica).
 
 ## Account
 
@@ -62,7 +62,7 @@ Per maggiorenni.
 ## Formati
 
 - **Post:** carosello 4:5 (1080×1350), 4 slide: domanda → problema → promessa coperta → attesa. Testo alternativo per ogni slide.
-- **Reel:** 1080×1920, circa 15 s, senza audio (si sceglie dalla libreria di Instagram). Testi nella fascia centrale, tra y 260 e y 1480, lontani dal bordo destro. Copertina dalla scena più curiosa.
+- **Reel:** 1080×1920, circa 15 s, con audio: voce e musica insieme (decisione di Roberto, 31/10/2026). La musica si sceglie dalla libreria di Instagram; la voce, propria o sintetica, è da decidere. Testi nella fascia centrale, tra y 260 e y 1480, lontani dal bordo destro. Copertina dalla scena più curiosa.
 
 ## Pubblicati
 

@@ -176,7 +176,7 @@ final class BottomNavigationControllerTests: XCTestCase {
         let bar = tabs.bottomBar
         bar.button(for: .map).sendActions(for: .touchUpInside)
         XCTAssertTrue(tabs.mapNavigation.topViewController === details)
-        XCTAssertEqual(requests, [URLPolicy.homeURL])
+        XCTAssertEqual(requests, [MobileEntry.homeURL])
         tabs.selectedIndex = 1
         bar.button(for: .home).sendActions(for: .touchUpInside)
         XCTAssertEqual(tabs.selectedIndex, 2)
@@ -189,7 +189,7 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertFalse(bar.button(for: .recommendations).isEnabled)
         XCTAssertTrue(tabs.mapNavigation.topViewController === details, "Home must retain the actual map stack and history")
         XCTAssertTrue(browser.view === originalView)
-        XCTAssertEqual(requests, [URLPolicy.homeURL], "Native discovery does not reload or reset the website")
+        XCTAssertEqual(requests, [MobileEntry.homeURL], "Native discovery does not reload or reset the website")
         bar.button(for: .map).sendActions(for: .touchUpInside)
         XCTAssertEqual(tabs.selectedIndex, 0)
         XCTAssertTrue(tabs.mapNavigation.topViewController === details)
@@ -292,7 +292,7 @@ final class BottomNavigationControllerTests: XCTestCase {
             // Public WebKit API loads the owned response without sending the
             // request. Unlike loadHTMLString, this creates a real history item.
             // The document has no subresources, links or public contributions.
-            let data = Data("<html><body><h1>Owned history fixture</h1></body></html>".utf8)
+            let data = Data("<html data-dovebevo-mobile-shell=\"1\"><body><h1>Owned history fixture</h1></body></html>".utf8)
             let response = URLResponse(url: request.url!, mimeType: "text/html", expectedContentLength: data.count, textEncodingName: "UTF-8")
             return web.loadSimulatedRequest(request, response: response, responseData: data)
         })
@@ -310,11 +310,12 @@ final class BottomNavigationControllerTests: XCTestCase {
         // history test. A programmatic pushState is not a real user gesture and
         // is intentionally filtered by WebKit's native Back/Forward policy.
         // Actual user-driven SPA history is covered by the live UI case.
-        let homeURL = URLPolicy.homeURL
+        let homeURL = MobileEntry.homeURL
         waitUntil("Owned home item must exist") { web.backForwardList.currentItem?.url == homeURL }
         XCTAssertTrue(web.backForwardList.backList.isEmpty)
-        let venueURL = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
-        browser.openSavedVenue(venueURL)
+        let canonical = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+        let venueURL = try XCTUnwrap(MobileEntry.venueDocument(canonical))
+        browser.openSavedVenue(canonical)
         waitUntil("Owned history back enabled") {
             web.canGoBack && web.url == venueURL && web.backForwardList.backList.last?.url == homeURL &&
                 (try? self.share(browser).attributes.contains(.disabled)) == false

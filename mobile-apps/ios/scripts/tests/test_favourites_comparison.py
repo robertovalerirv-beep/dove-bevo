@@ -109,7 +109,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
                          "accessibilityExtraExtraExtraLarge", "tabs.children.count, 3",
                          "testHomeShowsNativeDiscoveryButMapResumesItsRetainedStack", "testDestinationChangesDuringParentAppearance",
                          "testOffscreenFavouritesCannotFetchOrAcceptLateResults", "testOverflowUpdatesLoadingAndRecovery",
-                         "testOwnedRequestHistory", "browser.openSavedVenue(venueURL)", "web.canGoBack",
+                         "testOwnedRequestHistory", "browser.openSavedVenue(canonical)", "MobileEntry.venueDocument(canonical)", "web.canGoBack",
                          "web.backForwardList.currentItem", "web.backForwardList.backList.last", "web.backForwardList.forwardList.first",
                          "loadSimulatedRequest(request, response: response, responseData: data)"]:
             self.assertIn(required, native)

@@ -7,10 +7,12 @@ final class MobileEntryTests: XCTestCase {
         let canonical = try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9"))
         let document = try XCTUnwrap(URL(string: "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9"))
         XCTAssertEqual(MobileEntry.publicVenue(document), canonical)
+        XCTAssertEqual(SavedVenuePolicy.canonicalURL(document), canonical)
         XCTAssertEqual(MobileEntry.venueDocument(canonical), document)
         XCTAssertEqual(MobileEntry.publicVenue(URL(string: "https://www.dovebevo.com/mobile/?c=u0nd9&path=%2Fbar%2Fn123")), canonical)
         XCTAssertNil(MobileEntry.publicVenue(canonical))
         XCTAssertNil(MobileEntry.venueDocument(URL(string: "https://evil.test/bar/n123?c=u0nd9")!))
+        XCTAssertEqual(MobileEntry.documentURL(URLPolicy.homeURL), MobileEntry.homeURL)
     }
 
     func testAmbiguousAndExternalDocumentIdentityIsRejected() {

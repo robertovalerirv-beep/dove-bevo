@@ -17,6 +17,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var observations: [NSKeyValueObservation] = []
     private var lastWebsiteURL = MobileEntry.homeURL
     private var documentMarkerCheck: UUID?
+    private var documentHasClientError = false
     private var hasLoadedPage = false
     private var isOffline = false
     private var recoveredRenderer = false
@@ -428,6 +429,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         guard URLPolicy.isWebsite(url) else { return }
         let url = MobileEntry.documentURL(url)
         documentMarkerCheck = nil
+        documentHasClientError = false
         pageLoading = true
         invalidateBookmarkCapture()
         lastWebsiteURL = url
@@ -737,12 +739,16 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             return
         }
         // 4xx pages (including a normal Cloudflare verification) stay in WebKit.
+        if let response = navigationResponse.response as? HTTPURLResponse {
+            documentHasClientError = (400..<500).contains(response.statusCode)
+        }
         decisionHandler(.allow)
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         guard navigationState.begin(navigation) else { return }
         documentMarkerCheck = nil
+        documentHasClientError = false
         invalidateBookmarkCapture()
         #if DEBUG
         NSLog("DoveBevo: navigation provisional-start")
@@ -771,6 +777,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard navigationState.acceptsCallback(navigation) else { return }
+        if documentHasClientError {
+            completeDocumentLoad(usable: false)
+            return
+        }
         if MobileEntry.isDocument(webView.url) {
             let check = UUID()
             documentMarkerCheck = check
@@ -797,11 +807,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         completeDocumentLoad()
     }
 
-    private func completeDocumentLoad() {
+    private func completeDocumentLoad(usable: Bool = true) {
         #if DEBUG
         NSLog("DoveBevo: navigation finish")
         #endif
-        hasLoadedPage = true
+        hasLoadedPage = usable
         loadingView.isHidden = true
         setErrorVisible(false)
         progressView.isHidden = true

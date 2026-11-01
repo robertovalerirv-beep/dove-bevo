@@ -141,7 +141,7 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             let browserView = browser.view
             XCTAssertEqual(browser.navigationItem.title, "Dove bevo", "The browser header must keep its app title independently of the map destination")
             assertDestinationTitles(tabs)
-            XCTAssertEqual(websiteLoads, [URLPolicy.homeURL], "The owned loader must positively intercept the initial website request")
+            XCTAssertEqual(websiteLoads, [MobileEntry.homeURL], "The owned loader must positively intercept the initial website request")
             XCTAssertTrue(client.calls.isEmpty, "A hidden favourites destination must not request comparisons")
             let recommendations = RecommendationsViewController(venue: saved, client: DelayedRecommendationClient(), activityCheck: { false })
             tabs.mapNavigation.pushViewController(recommendations, animated: false)
@@ -160,7 +160,7 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             XCTAssertTrue(browser.view === browserView)
             assertDestinationTitles(tabs)
             XCTAssertEqual(browser.navigationItem.title, "Dove bevo")
-            XCTAssertEqual(websiteLoads, [URLPolicy.homeURL, saved.url], "Opening the favourite must issue exactly its validated request through the owned loader")
+            XCTAssertEqual(websiteLoads, [MobileEntry.homeURL, MobileEntry.documentURL(saved.url)], "Opening the favourite must issue exactly its validated request through the owned loader")
             XCTAssertTrue(client.calls.isEmpty, "The offscreen owned coordinator fixture cannot start live comparisons")
         }
     }

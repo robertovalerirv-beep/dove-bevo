@@ -445,7 +445,6 @@ public final class MainActivity extends ComponentActivity {
 
     private void prepareNavigation(String url) {
         documentCheckGeneration++;
-        hasUsablePage = false;
         venueCaptureEpoch++;
         failed = false;
         documentHasHttpError = false;
@@ -769,7 +768,6 @@ public final class MainActivity extends ComponentActivity {
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
             if (view != website || destroyed) return;
             documentCheckGeneration++;
-            hasUsablePage = false;
             venueCaptureEpoch++;
             if (url.equals(stoppedUrl)) { view.stopLoading(); return; }
             cancelLocation();

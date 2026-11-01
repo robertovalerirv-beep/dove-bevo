@@ -51,7 +51,7 @@ final class BrowserSmokeTests: XCTestCase {
             XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", label)).count, 1,
                            "More must not duplicate a bottom control: \(label)")
         }
-        XCTAssertFalse(app.buttons["Home"].isSelected, "Home is an action, not a blank selected tab")
+        XCTAssertFalse(app.buttons["Home"].isSelected, "The retained map is the current destination")
         app.buttons["Informazioni"].tap()
         XCTAssertTrue(app.alerts["Dove bevo"].waitForExistence(timeout: 5))
         app.alerts.buttons["Chiudi"].tap()
@@ -84,9 +84,17 @@ final class BrowserSmokeTests: XCTestCase {
         assertReloadInMoreMenu()
         app.buttons["tab.favorites"].tap()
         app.buttons["browser.home"].tap()
+        XCTAssertTrue(app.navigationBars["Scopri"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tables["discovery.list"].exists)
+        XCTAssertTrue(app.staticTexts["discovery.chooseArea"].exists, "An uncaptured map area must not invent a nearby feed")
+        XCTAssertFalse(app.buttons["tab.map"].isSelected)
+        XCTAssertTrue(app.buttons["browser.home"].isSelected)
+        XCTAssertFalse(app.buttons["browser.saveVenue"].isEnabled)
+        XCTAssertFalse(app.buttons["browser.recommendations"].isEnabled)
+        attachState(named: "DoveBevo-native-discovery-choose-map-area")
+        app.buttons["tab.map"].tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["tab.map"].isSelected)
-        XCTAssertFalse(app.buttons["browser.home"].isSelected)
     }
 
     /// This deliberately requires live HTTPS website readiness. A native
@@ -165,7 +173,51 @@ final class BrowserSmokeTests: XCTestCase {
         assertNoNativeRecovery()
         assertShareAndReloadAvailable()
         verifyLiveSavedVenueRoundTrip()
+        verifyLiveDiscoveryReadOnly()
         attachScreen(named: "DoveBevo-live-Milano-map")
+    }
+
+    private func verifyLiveDiscoveryReadOnly() {
+        // The real viewed map area must be captured by the explicit Home tap.
+        // All discovery requests are existing public GETs; no price or vote.
+        app.buttons["browser.home"].tap()
+        XCTAssertTrue(app.navigationBars["Scopri"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["browser.home"].isSelected)
+        XCTAssertFalse(app.buttons["browser.saveVenue"].isEnabled)
+        XCTAssertFalse(app.buttons["browser.recommendations"].isEnabled)
+        let table = app.tables["discovery.list"]
+        XCTAssertTrue(table.waitForExistence(timeout: 5))
+        let loaded = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            self.app.staticTexts["discovery.loaded"].exists || self.app.staticTexts["discovery.partial"].exists
+        }, object: nil)
+        let result = XCTWaiter.wait(for: [loaded], timeout: 65)
+        attachState(named: "DoveBevo-live-native-discovery-prices-read-only")
+        XCTAssertEqual(result, .completed, "Discovery must load actual prices from the current public map neighbourhood")
+        XCTAssertFalse(app.staticTexts["discovery.chooseArea"].exists)
+        XCTAssertGreaterThan(table.cells.count, 0, "The previously priced live beer map must yield a real nearby price")
+        let beer = app.buttons["discovery.drink.beer_draft"]
+        let spritz = app.buttons["discovery.drink.spritz"]
+        XCTAssertTrue(beer.isSelected)
+        XCTAssertTrue(spritz.exists)
+        spritz.tap()
+        XCTAssertTrue(spritz.isSelected)
+        XCTAssertFalse(beer.isSelected)
+        beer.tap()
+        let venue = table.cells.firstMatch
+        XCTAssertTrue(venue.identifier.hasPrefix("discovery.venue."))
+        XCTAssertTrue((venue.value as? String)?.contains("€") == true)
+        XCTAssertTrue((venue.value as? String)?.contains("dal centro mappa") == true)
+        if !venue.isHittable { table.swipeUp() }
+        XCTAssertTrue(venue.isHittable)
+        venue.tap()
+        XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
+        let website = app.webViews["browser.website"]
+        XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 45), "The native card opens its actual canonical venue in the retained map")
+        waitForNativePageReady()
+        let close = website.buttons["Chiudi"]
+        XCTAssertTrue(close.exists); close.tap()
+        XCTAssertTrue(interactiveMap().waitForExistence(timeout: 15))
+        XCTAssertTrue(hasVisiblePositiveCoverage())
     }
 
     private func verifyLiveSavedVenueRoundTrip() {

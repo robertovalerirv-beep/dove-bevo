@@ -27,6 +27,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private let recommendationClient: RecommendationServing
     private let websiteLoader: ((WKWebView, URLRequest) -> WKNavigation?)?
     private var bookmarkTimeout: DispatchWorkItem?
+    private var mapAreaTimeout: DispatchWorkItem?
+    private var mapAreaGeneration = UUID()
     private var bookmarkLifecycleActive = true
     var onShowFavourites: (() -> Void)?
     var isMapDestinationSelected: (() -> Bool)?
@@ -66,6 +68,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     deinit {
         bookmarkTimeout?.cancel()
+        mapAreaTimeout?.cancel()
         NotificationCenter.default.removeObserver(self)
         monitor.cancel()
         observations.forEach { $0.invalidate() }
@@ -448,6 +451,36 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         navigationState.begin(webView.goForward())
     }
     @objc func goHome() { loadWebsite(URLPolicy.homeURL) }
+
+    /// Read only when Home is explicitly tapped on the real visible visitor
+    /// page. Any navigation, backgrounding or destination change retires it.
+    func captureDiscoveryArea(completion: @escaping (DiscoveryArea?) -> Void) {
+        invalidateMapAreaCapture()
+        guard let webView, hasLoadedPage, !pageLoading, !webView.isLoading, !navigationState.isStopped,
+              errorView.isHidden, navigationController?.topViewController === self,
+              isBookmarkInteractionActive, isMapDestinationSelected?() != false,
+              let url = webView.url, AppPresentationTheme.canApply(to: url) else { completion(nil); return }
+        let token = UUID(); mapAreaGeneration = token
+        let timeout = DispatchWorkItem { [weak self] in
+            guard let self, self.mapAreaGeneration == token, self.isBookmarkInteractionActive else { return }
+            self.invalidateMapAreaCapture(); completion(nil)
+        }
+        mapAreaTimeout = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: timeout)
+        webView.evaluateJavaScript(MapAreaReader.script, in: nil, in: .defaultClient) { [weak self] result in
+            guard let self, self.mapAreaGeneration == token else { return }
+            let usable = self.isBookmarkInteractionActive && self.isMapDestinationSelected?() != false &&
+                self.navigationController?.topViewController === self && self.webView.url == url &&
+                !self.pageLoading && !self.webView.isLoading && !self.navigationState.isStopped && self.errorView.isHidden
+            self.invalidateMapAreaCapture()
+            guard usable else { return }
+            completion(MapAreaReader.area(try? result.get(), currentURL: url))
+        }
+    }
+
+    private func invalidateMapAreaCapture() {
+        mapAreaGeneration = UUID(); mapAreaTimeout?.cancel(); mapAreaTimeout = nil
+    }
     @objc private func retry() { loadWebsite(lastWebsiteURL) }
 
     @objc private func reloadPage() {
@@ -535,6 +568,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func invalidateBookmarkCapture() {
+        invalidateMapAreaCapture()
         bookmarkTimeout?.cancel()
         bookmarkTimeout = nil
         bookmarkCapture.invalidate()

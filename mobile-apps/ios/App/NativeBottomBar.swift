@@ -151,7 +151,7 @@ final class NativeBottomBar: UIView {
         self.venueActionsEnabled = venueActionsEnabled
         for action in BottomNavigationAction.allCases {
             let button = button(for: action)
-            let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1)
+            let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .home && destination == 2)
             let enabled = action != .save && action != .recommendations || venueActionsEnabled
             var configuration = UIButton.Configuration.plain()
             configuration.baseBackgroundColor = NativeAppearance.surface
@@ -165,7 +165,7 @@ final class NativeBottomBar: UIView {
                 attributes.font = titleFont
                 return attributes
             }
-            let symbol = selected && (action == .map || action == .favourites) ? "\(action.symbol).fill" : action.symbol
+            let symbol = selected && (action == .map || action == .favourites || action == .home) ? "\(action.symbol).fill" : action.symbol
             configuration.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 20))
             configuration.imagePlacement = .top
             configuration.imagePadding = 4

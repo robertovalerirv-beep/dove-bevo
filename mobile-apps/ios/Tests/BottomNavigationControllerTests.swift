@@ -71,7 +71,8 @@ final class BottomNavigationControllerTests: XCTestCase {
             XCTAssertEqual(bar.buttons.compactMap(\.accessibilityLabel), ["Home", "Mappa", "Preferiti", "Salva nei preferiti", "Drink consigliati"])
             XCTAssertTrue(tabs.children.contains { $0 === tabs.mapNavigation })
             XCTAssertTrue(tabs.children.contains { $0 === tabs.favouritesNavigation })
-            XCTAssertEqual(tabs.children.count, 2, "Actions must not create empty navigation destinations")
+            XCTAssertTrue(tabs.children.contains { $0 === tabs.discoveryNavigation })
+            XCTAssertEqual(tabs.children.count, 3, "Home owns a real discovery controller; venue actions must not create empty destinations")
             XCTAssertEqual(bar.frame.maxY, tabs.view.safeAreaLayoutGuide.layoutFrame.maxY, accuracy: 0.5)
             XCTAssertGreaterThanOrEqual(bar.frame.height, 48)
             XCTAssertLessThanOrEqual(tabs.mapNavigation.view.frame.maxY, bar.frame.minY + 0.5)
@@ -159,7 +160,7 @@ final class BottomNavigationControllerTests: XCTestCase {
     }
 
     @MainActor
-    func testHomeResetsSameBrowserButMapResumesItsRetainedStack() throws {
+    func testHomeShowsNativeDiscoveryButMapResumesItsRetainedStack() throws {
         var requests: [URL] = []
         let browser = BrowserViewController(websiteLoader: { _, request in
             requests.append(request.url!); return nil
@@ -178,12 +179,21 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertEqual(requests, [URLPolicy.homeURL])
         tabs.selectedIndex = 1
         bar.button(for: .home).sendActions(for: .touchUpInside)
-        XCTAssertEqual(tabs.selectedIndex, 0)
-        XCTAssertTrue(bar.button(for: .map).isSelected)
-        XCTAssertFalse(bar.button(for: .home).isSelected)
-        XCTAssertTrue(tabs.mapNavigation.topViewController === browser)
+        XCTAssertEqual(tabs.selectedIndex, 2)
+        XCTAssertFalse(bar.button(for: .map).isSelected)
+        XCTAssertTrue(bar.button(for: .home).isSelected)
+        XCTAssertTrue(tabs.discoveryNavigation.topViewController === tabs.discovery)
+        XCTAssertEqual(tabs.discovery.title, "Scopri")
+        XCTAssertFalse(tabs.discoveryNavigation.view.isHidden)
+        XCTAssertFalse(bar.button(for: .save).isEnabled)
+        XCTAssertFalse(bar.button(for: .recommendations).isEnabled)
+        XCTAssertTrue(tabs.mapNavigation.topViewController === details, "Home must retain the actual map stack and history")
         XCTAssertTrue(browser.view === originalView)
-        XCTAssertEqual(requests, [URLPolicy.homeURL, URLPolicy.homeURL])
+        XCTAssertEqual(requests, [URLPolicy.homeURL], "Native discovery does not reload or reset the website")
+        bar.button(for: .map).sendActions(for: .touchUpInside)
+        XCTAssertEqual(tabs.selectedIndex, 0)
+        XCTAssertTrue(tabs.mapNavigation.topViewController === details)
+        XCTAssertTrue(tabs.discoveryNavigation.view.isHidden)
     }
 
     @MainActor
@@ -198,6 +208,7 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertTrue(tabs.bottomBar.button(for: .favourites).isSelected)
         XCTAssertTrue(tabs.mapNavigation.view.isHidden)
         XCTAssertFalse(tabs.favouritesNavigation.view.isHidden)
+        XCTAssertTrue(tabs.discoveryNavigation.view.isHidden)
         tabs.beginAppearanceTransition(false, animated: false)
         tabs.selectedIndex = 0
         tabs.endAppearanceTransition()

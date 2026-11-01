@@ -40,7 +40,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("NativeTabsController: UIViewController, UINavigationControllerDelegate", tabs)
         self.assertIn("lazy var browser", tabs)
         self.assertIn("bottomBar = NativeBottomBar()", tabs)
-        self.assertIn("for child in [mapNavigation, favouritesNavigation]", tabs)
+        self.assertIn("for child in [mapNavigation, favouritesNavigation, discoveryNavigation]", tabs)
         bar = (IOS / "App/NativeBottomBar.swift").read_text(encoding="utf-8")
         self.assertIn("case home, map, favourites, save, recommendations", bar)
         self.assertIn("for action in BottomNavigationAction.allCases", bar)
@@ -74,10 +74,12 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("safeAreaLayoutGuide.leadingAnchor", bar)
         self.assertIn("safeAreaInsets.left - safeAreaInsets.right", bar)
         self.assertIn("mapNavigation.topViewController === browser && venueActionsAvailable", tabs)
-        self.assertIn("guard (0...1).contains(index)", tabs)
+        self.assertIn("guard (0...2).contains(index)", tabs)
         self.assertNotIn("UITabBarController", tabs)
         self.assertNotIn("UITabBar()", tabs)
-        self.assertIn("browser.goHome()", tabs)
+        self.assertIn("browser.captureDiscoveryArea", tabs)
+        self.assertIn("DiscoveryViewController(client: discoveryClient", tabs)
+        self.assertNotIn("browser.goHome()", tabs)
         self.assertIn("browser.saveCurrentVenue()", tabs)
         self.assertIn("browser.showRecommendations()", tabs)
         browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
@@ -104,8 +106,8 @@ class FavouritesComparisonGuards(unittest.TestCase):
         native = (IOS / "Tests/BottomNavigationControllerTests.swift").read_text(encoding="utf-8")
         for required in ["descendants(bar).compactMap", "UIWindow(windowScene: scene)", "previousKeyWindow?.makeKey()",
                          "bar.window === window", "convert($0.bounds, to: bar)",
-                         "accessibilityExtraExtraExtraLarge", "tabs.children.count, 2",
-                         "testHomeResetsSameBrowserButMapResumesItsRetainedStack", "testDestinationChangesDuringParentAppearance",
+                         "accessibilityExtraExtraExtraLarge", "tabs.children.count, 3",
+                         "testHomeShowsNativeDiscoveryButMapResumesItsRetainedStack", "testDestinationChangesDuringParentAppearance",
                          "testOffscreenFavouritesCannotFetchOrAcceptLateResults", "testOverflowUpdatesLoadingAndRecovery",
                          "testOwnedRequestHistory", "browser.openSavedVenue(venueURL)", "web.canGoBack",
                          "web.backForwardList.currentItem", "web.backForwardList.backList.last", "web.backForwardList.forwardList.first",

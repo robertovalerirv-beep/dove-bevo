@@ -1,11 +1,12 @@
 import UIKit
 
-/// Two retained destinations and three actions share one native bottom bar.
+/// Three retained destinations and two venue actions share one native bottom bar.
 /// Actions never select an empty controller or replace the browser's history.
 final class NativeTabsController: UIViewController, UINavigationControllerDelegate {
     private let store: SavedVenueStore
     private let comparisonClient: FavouriteComparisonServing
     private let recommendationClient: RecommendationServing
+    private let discoveryClient: DiscoveryServing
     private let providedBrowser: BrowserViewController?
     private let content = UIView()
     private let bottomBackground = UIView()
@@ -14,6 +15,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private var visible = false
     private var parentAppearance: (navigation: UINavigationController, appearing: Bool)?
     private var venueActionsAvailable = false
+    private var homeIntent = UUID()
 
     var selectedIndex: Int {
         get { destinationIndex }
@@ -43,14 +45,29 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         return controller
     }()
     private(set) lazy var favouritesNavigation = UINavigationController(rootViewController: favourites)
+    private(set) lazy var discovery: DiscoveryViewController = {
+        let controller = DiscoveryViewController(client: discoveryClient, onOpen: { [weak self] url in
+            guard let self else { return }
+            self.browser.retireVenueActions()
+            self.mapNavigation.popToRootViewController(animated: false)
+            self.selectedIndex = 0
+            self.browser.openSavedVenue(url)
+        }, onMap: { [weak self] in self?.selectedIndex = 0 })
+        controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 2 }
+        return controller
+    }()
+    private(set) lazy var discoveryNavigation = UINavigationController(rootViewController: discovery)
 
     init(store: SavedVenueStore = SavedVenueStore(), comparisonClient: FavouriteComparisonServing = FavouriteComparisonClient(),
-         recommendationClient: RecommendationServing = RecommendationClient(), browser: BrowserViewController? = nil) {
+         recommendationClient: RecommendationServing = RecommendationClient(), browser: BrowserViewController? = nil,
+         discoveryClient: DiscoveryServing = DiscoveryClient()) {
         self.store = store; self.comparisonClient = comparisonClient; self.recommendationClient = recommendationClient
         self.providedBrowser = browser
+        self.discoveryClient = discoveryClient
         super.init(nibName: nil, bundle: nil)
         mapNavigation.delegate = self
         favouritesNavigation.delegate = self
+        discoveryNavigation.delegate = self
     }
 
     required init?(coder: NSCoder) { return nil }
@@ -63,6 +80,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         bottomBackground.backgroundColor = NativeAppearance.surface
         NativeAppearance.configure(mapNavigation)
         NativeAppearance.configure(favouritesNavigation)
+        NativeAppearance.configure(discoveryNavigation)
         [content, bottomBackground, bottomBar].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
@@ -81,7 +99,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             bottomBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomBackground.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        for child in [mapNavigation, favouritesNavigation] {
+        for child in [mapNavigation, favouritesNavigation, discoveryNavigation] {
             addChild(child)
             child.view.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(child.view)
@@ -95,6 +113,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         }
         mapNavigation.view.isHidden = destinationIndex != 0
         favouritesNavigation.view.isHidden = destinationIndex != 1
+        discoveryNavigation.view.isHidden = destinationIndex != 2
         refreshBottomBar()
     }
 
@@ -122,7 +141,9 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         endParentAppearance()
     }
 
-    private var activeNavigation: UINavigationController { destinationIndex == 0 ? mapNavigation : favouritesNavigation }
+    private var activeNavigation: UINavigationController {
+        switch destinationIndex { case 1: return favouritesNavigation; case 2: return discoveryNavigation; default: return mapNavigation }
+    }
 
     private func beginParentAppearance(_ appearing: Bool, animated: Bool) {
         endParentAppearance()
@@ -138,7 +159,8 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     }
 
     private func selectDestination(_ index: Int) {
-        guard (0...1).contains(index) else { return }
+        guard (0...2).contains(index) else { return }
+        homeIntent = UUID()
         guard index != destinationIndex else { refreshBottomBar(); return }
         let previous = activeNavigation
         destinationIndex = index
@@ -177,9 +199,14 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         switch action {
         case .home:
             browser.retireVenueActions()
-            mapNavigation.popToRootViewController(animated: false)
-            selectedIndex = 0
-            browser.goHome()
+            if selectedIndex == 0 && mapNavigation.topViewController === browser {
+                let intent = UUID(); homeIntent = intent
+                browser.captureDiscoveryArea { [weak self] area in
+                    guard let self, self.homeIntent == intent, self.selectedIndex == 0 else { return }
+                    self.discovery.setArea(area)
+                    self.selectedIndex = 2
+                }
+            } else { selectedIndex = 2 }
         case .map: selectedIndex = 0
         case .favourites: selectedIndex = 1
         case .save, .recommendations:

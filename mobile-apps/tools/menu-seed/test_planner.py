@@ -225,6 +225,18 @@ class PlannerAcceptanceTests(unittest.TestCase):
                 self.replace_price(text, item=text.replace(" €8.00", ""), drink=drink)
                 self.assertIn(reason, self.reasons())
 
+    def test_single_serving_large_numeric_volumes_held(self):
+        for volume in ("1000 ml", "100 cl", "6 dl", "750 millilitres", "75 centiliters", "5.01 dl"):
+            with self.subTest(volume=volume):
+                text = f"Gin tonic {volume} €8.00"
+                self.replace_price(text, item=f"Gin tonic {volume}", drink="gin_tonic")
+                self.assertIn("large_or_shared_serving_held", self.reasons())
+        for volume in ("40 ml", "20 cl", "500 ml"):
+            with self.subTest(volume=volume):
+                text = f"Gin tonic {volume} €8.00"
+                self.replace_price(text, item=f"Gin tonic {volume}", drink="gin_tonic")
+                self.assertNotIn("large_or_shared_serving_held", self.reasons())
+
     def test_impossible_happy_hour_times_held(self):
         self.add_source("menu", "<h1>Caffe Esempio</h1><p>Via Roma 10</p><p>Negroni €8.00</p>"
                         "<p>Happy hour 99:99-99:99 Negroni €8.00</p>")

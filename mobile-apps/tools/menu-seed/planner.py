@@ -459,6 +459,23 @@ def valid_happy_hour_times(excerpt):
                                for start_h, start_m, end_h, end_m in times)
 
 
+def oversized_volume(text):
+    # Only inspect the explicitly supplied item and context, not unrelated
+    # neighbouring menu text. Decimal millilitre conversion is unnecessary:
+    # compare decimal strings as exact rational numbers.
+    pattern = r"\b(\d{1,6})(?:[.,](\d{1,3}))?\s*(ml|millilit(?:er|re)s?|millilitri|cl|centilit(?:er|re)s?|centilitri|dl|decilit(?:er|re)s?|decilitri)\b"
+    factors = {"ml": 1, "cl": 10, "dl": 100}
+    for match in re.finditer(pattern, text, re.I):
+        whole, fraction, unit = match.groups()
+        unit = unit.casefold()
+        factor = factors.get(unit, 1 if unit.startswith("milli") else 10 if unit.startswith("centi") else 100)
+        scale = 10 ** len(fraction or "")
+        numerator = int(whole) * scale + int(fraction or "0")
+        if numerator * factor > 500 * scale:
+            return True
+    return False
+
+
 def price_reasons(row, sources, venue):
     obj(row, "id drink cents currency hh item serving context source_id excerpt amount_literal hh_excerpt", "price")
     for field, cap in (("id", 80), ("drink", 40), ("currency", 8), ("item", 100),
@@ -515,6 +532,8 @@ def price_reasons(row, sources, venue):
         reasons.append("alcohol_free_conflicts_with_drink_category")
     if re.search(r"\b(?:xxl|xl|large format|magnum|jug|carafe|caraffa|litre|litres|liter|liters|litro|litri)\b", words) or re.search(
             r"\b\d+(?:[.,]\d+)?\s*(?:l|litres?|liters?|litri|litro)\b|\b(?:for|per|pour|fur)\s+\d+\s*(?:people|persons?|persone|personnes|personen)\b", words):
+        reasons.append("large_or_shared_serving_held")
+    if row["serving"] == "single" and oversized_volume(row["item"] + " " + row["context"]):
         reasons.append("large_or_shared_serving_held")
     if row["drink"] == "negroni" and re.search(r"\bsbagliato\b", item_context):
         reasons.append("sbagliato_cannot_be_plain_negroni")

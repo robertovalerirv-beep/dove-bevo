@@ -49,6 +49,21 @@ describe.each([
     expect(new URL(style.glyphs).host).toBe("tiles.openfreemap.org");
     expect(new URL(style.sprite).host).toBe("tiles.openfreemap.org");
   });
+
+  // The Dark base asks for "circle-11", which the shared sprite does not have (MapLibre logs a
+  // missing image and draws no dot). Names checked against ofm_f384/ofm.json on 01/11/2026.
+  it("asks the sprite only for images it has", () => {
+    const SPRITE = new Set(["circle_11", "circle_11_black"]);
+    const names = style.layers
+      .map((l) => l.layout?.["icon-image"])
+      .filter((v) => v !== undefined)
+      .flatMap((v) => JSON.stringify(v).match(/"[a-z][\w-]*"/g) ?? [])
+      .map((s) => s.slice(1, -1))
+      .filter((s) => s !== "step" && s !== "zoom");
+    expect(new URL(style.sprite).pathname).toBe("/sprites/ofm_f384/ofm");
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) expect(SPRITE, name).toContain(name);
+  });
 });
 
 it("public/map holds exactly the two styles", () => {

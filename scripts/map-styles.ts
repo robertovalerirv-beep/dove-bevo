@@ -63,7 +63,18 @@ export function deriveStyle(base: BaseStyle, tokens: BrandTokens, theme: MapThem
         set("text-color", c.label);
         set("text-halo-color", c.land);
       }
-      return { ...l, paint };
+      // The Dark base names a dot the shared sprite does not have; its light dot is "circle_11".
+      const icon = l.layout?.["icon-image"];
+      const layout =
+        icon === undefined
+          ? l.layout
+          : {
+              ...l.layout,
+              "icon-image": JSON.parse(
+                JSON.stringify(icon).replaceAll('"circle-11"', '"circle_11"'),
+              ) as unknown,
+            };
+      return layout === undefined ? { ...l, paint } : { ...l, paint, layout };
     });
   const used = new Set(layers.map((l) => l.source));
   const sources = Object.fromEntries(Object.entries(base.sources).filter(([id]) => used.has(id)));

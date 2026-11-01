@@ -48,6 +48,28 @@ test("SPA fallback /bar/n1 has the security headers", async ({ request }) => {
   expectSecurityHeaders(response, true);
 });
 
+test("app-only asset and venue reload retain page nonces without replacing the website", async ({
+  request,
+}) => {
+  const website = await (await request.get("/")).text();
+  expect(website).not.toContain('data-dovebevo-mobile-shell="1"');
+  for (const path of ["/mobile/", "/mobile/?path=%2Fbar%2Fn123&c=u0nd9"]) {
+    const response = await request.get(path);
+    expect(response.status()).toBe(200);
+    expectSecurityHeaders(response, true);
+    const html = await response.text();
+    expect(html).toContain('data-dovebevo-mobile-shell="1"');
+    const nonce = /'nonce-([^']+)'/.exec(response.headers()["content-security-policy"] ?? "")?.[1];
+    expect(nonce).toBeTruthy();
+    expect(html).toContain(`nonce="${nonce ?? ""}"`);
+    const entry = /<script[^>]+src="(\/assets\/mobile\/[^"]+\.js)"/.exec(html)?.[1];
+    expect(entry).toBeTruthy();
+    const asset = await request.get(entry ?? "");
+    expect(asset.status()).toBe(200);
+    expectSecurityHeaders(asset);
+  }
+});
+
 test("JS asset has the security headers", async ({ request }) => {
   const html = await (await request.get("/")).text();
   const src = /<script[^>]+src="(\/assets\/[^"]+\.js)"/.exec(html)?.[1];

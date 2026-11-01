@@ -133,7 +133,8 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
   it("every security header survives the HTML transform, CSP included", async () => {
     const response = await get("/");
     expect(response.headers.get("content-security-policy")).toContain("default-src 'self'");
-    // A page has its own nonce (ADR 0045): in the header and on every script of the page.
+    // A page has its own nonce (ADR 0045, SPEC 1.16): in the header and on every script of index.html, never on
+    // what the Worker adds to it (JSON-LD here): markup injected by a future bug must not be trusted.
     const csp = response.headers.get("content-security-policy") ?? "";
     const nonce =
       /script-src 'nonce-([^']+)' 'strict-dynamic' 'self' https:\/\/challenges\.cloudflare\.com/.exec(
@@ -144,8 +145,12 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
     expect(csp).toContain("require-trusted-types-for 'script'");
     const html = await response.text();
     const scripts = html.match(/<script\b[^>]*>/g) ?? [];
-    expect(scripts.length).toBeGreaterThan(0);
-    for (const tag of scripts) expect(tag, tag).toContain(`nonce="${nonce ?? ""}"`);
+    const added = scripts.filter((tag) => tag.includes("application/ld+json"));
+    const shell = scripts.filter((tag) => !added.includes(tag));
+    expect(shell.length).toBeGreaterThan(0);
+    expect(added.length).toBeGreaterThan(0);
+    for (const tag of shell) expect(tag, tag).toContain(`nonce="${nonce ?? ""}"`);
+    for (const tag of added) expect(tag, tag).not.toContain("nonce=");
     expect(response.headers.get("strict-transport-security")).toBe(
       "max-age=63072000; includeSubDomains; preload",
     );

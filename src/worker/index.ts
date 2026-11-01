@@ -5,7 +5,7 @@ import { ApiError, apiError } from "./lib/errors";
 import { requireRealSecrets } from "./lib/env-guard";
 import { requireOrigin, requireSession } from "./lib/guards";
 import { rateLimit, readLimit } from "./lib/rate-limit";
-import { securityHeaders } from "./lib/security-headers";
+import { securityHeaders, withNonce } from "./lib/security-headers";
 import { KEEP_DAYS } from "./config";
 import { romeDay } from "./lib/day";
 import { purgeOldKeys } from "./lib/db";
@@ -76,7 +76,8 @@ app.all("*", async (c) => {
     });
   }
   const asset = await c.env.ASSETS.fetch(c.req.raw);
-  return new Response(asset.body, asset);
+  // The nonce goes on index.html here, before seoPages adds its tags (SPEC 13.1, 1.16).
+  return withNonce(new Response(asset.body, asset), c.get("nonce"));
 });
 
 app.notFound((c) => apiError(c, "not_found"));

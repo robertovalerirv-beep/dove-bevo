@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // ADR 0045: every page gets a new nonce on each request, the same in the CSP and on every script and style
-// of the page; nothing in the page blocks the first paint; the other responses carry the fixed CSP.
+// of index.html, never on what the Worker adds (the JSON-LD of the SEO pages, SPEC 1.16); nothing in the page blocks the first paint; the other responses carry the fixed CSP.
 const NONCE =
   /script-src 'nonce-([^']+)' 'strict-dynamic' 'self' https:\/\/challenges\.cloudflare\.com/;
 
@@ -24,9 +24,12 @@ for (const path of ["/", "/privacy", "/regole", "/admin", "/bar/n1", "/qualunque
     ).toBeUndefined();
 
     const html = await first.text();
-    const tags = html.match(/<(?:script|style)\b[^>]*>/g) ?? [];
+    const all = html.match(/<(?:script|style)\b[^>]*>/g) ?? [];
+    const tags = all.filter((tag) => !tag.includes("application/ld+json"));
     expect(tags.length).toBeGreaterThan(0);
     for (const tag of tags) expect(tag, tag).toContain(`nonce="${nonce ?? ""}"`);
+    for (const tag of all.filter((t) => !tags.includes(t)))
+      expect(tag, tag).not.toContain("nonce=");
     // The nonce of another request is not in this page.
     expect(html).not.toContain(
       NONCE.exec(second.headers()["content-security-policy"] ?? "")?.[1] ?? "x\u0000",

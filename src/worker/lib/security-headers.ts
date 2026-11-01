@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "hono";
+import type { AppEnv } from "../types";
 
 // SPEC 13.1 — keep in sync with public/_headers (tests/security/headers.spec.ts checks both).
 const BASE_CSP =
@@ -31,24 +32,35 @@ export const pageCsp = (nonce: string) =>
 
 const newNonce = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
 
-export const securityHeaders: MiddlewareHandler = async (c, next) => {
-  await next();
-  for (const [name, value] of Object.entries(SECURITY_HEADERS)) c.res.headers.set(name, value);
-  const isPage =
-    c.res.status === 200 && (c.res.headers.get("Content-Type") ?? "").includes("text/html");
-  if (!isPage) {
-    c.res.headers.set("Content-Security-Policy", STATIC_CSP);
-    return;
-  }
-  const nonce = newNonce();
+const isPage = (response: Response) =>
+  response.status === 200 && (response.headers.get("Content-Type") ?? "").includes("text/html");
+
+/**
+ * Puts the nonce on the scripts, styles and module preloads of index.html, as it comes out of the static
+ * assets and before anything is added to it (SPEC 13.1, 1.16): markup the Worker appends later (the SEO
+ * tags) never carries the nonce, so a future injection bug there is still blocked by the CSP.
+ */
+export function withNonce(response: Response, nonce: string): Response {
+  if (!isPage(response)) return response;
   const stamp = { element: (el: Element) => void el.setAttribute("nonce", nonce) };
-  c.res = new HTMLRewriter()
+  return new HTMLRewriter()
     .on("script", stamp)
     .on("style", stamp)
     .on('link[rel="modulepreload"]', stamp)
-    .transform(new Response(c.res.body, c.res));
-  // After the assignment: Hono copies the old headers onto a new response, and the old validators and the
-  // static CSP describe another body. A 304 would pair this header with an old body and its old nonce.
+    .transform(response);
+}
+
+export const securityHeaders: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const nonce = newNonce();
+  c.set("nonce", nonce);
+  await next();
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) c.res.headers.set(name, value);
+  if (!isPage(c.res)) {
+    c.res.headers.set("Content-Security-Policy", STATIC_CSP);
+    return;
+  }
+  // The body was rewritten: the old validators describe another body, and a 304 would pair this header
+  // with an old body and its old nonce.
   c.res.headers.delete("ETag");
   c.res.headers.delete("Last-Modified");
   c.res.headers.delete("Content-Length");

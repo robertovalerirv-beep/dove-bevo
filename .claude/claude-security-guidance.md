@@ -38,13 +38,25 @@ Project-specific rules for the security-guidance plugin. Source: `docs/SPEC.md` 
 - [ ] No script from CDNs except Turnstile.
 - [ ] GitHub Actions pinned to commit SHA, `permissions: contents: read` by default, no `pull_request_target`.
 
-## Headers
-- [ ] CSP, HSTS, `nosniff`, Referrer-Policy, Permissions-Policy (`camera=()`, `geolocation=(self)`), COOP, CORP exactly as SPEC 13.1 on both `/api/*` and assets.
-- [ ] No new origin added to CSP without an ADR.
+## Headers (SPEC 13.1, version 1.15, ADR 0045)
+- [ ] CSP, HSTS (`max-age=63072000; includeSubDomains; preload`), `nosniff`, Referrer-Policy, Permissions-Policy (`camera=()`, `geolocation=(self)`), COOP, CORP exactly as SPEC 13.1 on pages, `/api/*` and files.
+- [ ] Pages: a fresh nonce per response on every `<script>`, `<style>` and `<link rel="modulepreload">`; `script-src 'nonce-N' 'strict-dynamic' 'self' https://challenges.cloudflare.com`, `style-src 'self' 'nonce-N'`; never `'unsafe-inline'`; no ETag, Last-Modified or Content-Length on pages; a page with its nonce is never cached.
+- [ ] API and files: the static CSP (`script-src 'self' https://challenges.cloudflare.com`, `style-src 'self'`).
+- [ ] `require-trusted-types-for 'script'` everywhere; one `default` policy (`src/app/lib/trusted-types.ts`) that accepts only `/assets/*`, `/sw.js` and the Turnstile script URL and creates no HTML or script text.
+- [ ] `/.well-known/*` answers 404 plain text except `security.txt`.
+- [ ] No new origin added to CSP or to the Trusted Types policy without an ADR.
+
+## Server-built HTML
+- [ ] SEO pages, sitemap and `llms.txt` escape every OSM or user string (`escapeHtml`); JSON-LD only through `jsonLdScript`.
+
+## Verified venues and native-app API
+- [ ] `venues_verified` holds only `venue_key`, `cell`, `name`, `hours`: no personal or economic data; cell and name come from the bar file or `venues_user`, never from the client; every write clears the cell snapshot and the Cache API entry (ADR 0032, 0033).
+- [ ] A hidden, unapproved or disabled venue never shows the tick (`g`) or the hours (`o`).
+- [ ] `/api/mobile/*` (ADR 0041): the installation UUID is never stored raw; only purpose-separated HMACs; Rome-day budgets of 50 per installation and 200 per IP; no change to prices or sessions.
 
 ## Logging
 - [ ] Logs contain only error code, route without parameters, duration. Never bodies, images, IPs, cells, prices tied to sessions.
 - [ ] `observability.logs.invocation_logs` stays `false`.
 
 ## Admin
-- [ ] `/api/admin/*` verifies the Cloudflare Access JWT in the Worker (RS256 signature via WebCrypto, `aud`, `exp`), not only at the edge.
+- [ ] `/api/admin/*` verifies the Cloudflare Access JWT in the Worker (RS256 signature via WebCrypto, `aud`, `iss`, `exp`; an unknown `kid` refreshes the keys at most once per interval), not only at the edge, on GETs too (ADR 0044).

@@ -4,6 +4,22 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-11-01 · Revisori allineati alla SPEC 1.15 (ramo `claude/reviewers-update`)
+
+**Richiesta di Roberto:** tenere il ruolo dei tre revisori e portarli al livello del progetto di oggi.
+
+**Fatto** (solo `.claude/`, nessuna modifica a codice, test, SPEC o feature list)
+- `security-reviewer`: tolte le voci AI/LLM e il token di estrazione (rimossi in 1.1); aggiunti nonce, `strict-dynamic`, Trusted Types, HSTS `preload`, `/.well-known` (1.15), gestori verificati, API delle app (ADR 0041), HTML delle pagine SEO, regressioni degli audit (ADR 0021, 0029, 0044); mappa delle superfici con i file; metodo dalla security-audit-skill di Cloudflare (MIT): prova locale, tentativo di smentita, esiti `confirmed` / `needs_validation` / scartati, gravità solo sui confermati.
+- `spec-reviewer`: niente più «D-01…D-26» né tag scritti a mano: legge versione, decisioni e tag dal repository; tabella file → funzionalità → decisioni; ogni clausola della verifica legata a un test; inglese, budget, ADR 0003, migrazioni congelate.
+- `ux-a11y-reviewer`: tolta l'etichetta AI e il tag `@screenshot` inesistente; tema per ora (`atHour`), inglese (`chooseEnglish`, `expectNoItalian`), larghezze 390/360/320, invarianti della mappa, controlli di qualità da Impeccable (Apache-2.0) con le eccezioni del brand approvato (fondo crema, Geist Mono, ombra stampa: ADR 0023), conto dei caratteri dei titoli da taste-skill (MIT).
+- `claude-security-guidance.md`: header della 1.15, HTML lato server, gestori verificati, API delle app, JWT di Access.
+
+**Prove:** `npx prettier --check .claude/` verde; ogni percorso e helper citato verificato con `ls`/`grep` (corretto `scripts/sw.ts`; il controllo `kid` descritto come nel codice, `src/worker/lib/access.ts:20-70`).
+
+**Da verificare:** alla prossima chiusura di milestone, che i tre revisori diano esiti utili (prova consigliata: farli girare sul diff della 1.15, commit `1272b30`).
+
+---
+
 ## 2026-10-29 · SPEC 1.15: segnalazioni di Google chiuse in un intervento (ramo `claude/rendering-blocking-requests-6321a3`) · ADR 0045
 
 **Richiesta di Roberto:** una soluzione unica per le sei segnalazioni di Search Console (rendering bloccato da `theme.js` e CSS, CSP con elenco di host, HSTS senza `preload`, Trusted Types, immagine della mappa, `ai-catalog.json` con 200 HTML), senza peggiorare UI/UX e velocità.

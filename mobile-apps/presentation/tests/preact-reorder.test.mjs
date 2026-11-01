@@ -1,17 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
 import test from "node:test";
 
-// Set these to existing local dependencies to run the optional real-browser test.
-const playwrightPath = process.env.DOVEBEVO_PLAYWRIGHT;
-const preactPath = process.env.DOVEBEVO_PREACT;
 const testBrowser = process.env.DOVEBEVO_BROWSER;
-test("keyed Preact price rows preserve controls through promotion and rerender", { skip: !playwrightPath || !preactPath || !testBrowser }, async () => {
-  const { chromium } = await import(pathToFileURL(playwrightPath).href);
-  const preact = readFileSync(preactPath, "utf8");
+test("keyed Preact price rows preserve controls through promotion and rerender", async () => {
+  const { chromium } = await import("@playwright/test");
+  const preact = readFileSync(new URL(import.meta.resolve("preact")), "utf8");
   const adapter = readFileSync(new URL("../app-theme.js", import.meta.url), "utf8");
-  const browser = await chromium.launch({ executablePath: testBrowser, headless: true });
+  const browser = await chromium.launch({ ...(testBrowser ? { executablePath: testBrowser } : {}), headless: true });
   try {
     const page = await browser.newPage();
     await page.route("https://www.dovebevo.com/**", async (route) => {

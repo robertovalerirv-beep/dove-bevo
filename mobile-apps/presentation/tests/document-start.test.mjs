@@ -1,15 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
 import test from "node:test";
 
-const playwrightPath = process.env.DOVEBEVO_PLAYWRIGHT;
 const testBrowser = process.env.DOVEBEVO_BROWSER;
 const early = readFileSync(new URL("../app-theme-start.js", import.meta.url), "utf8");
-test("document-start guard precedes website listeners and ignores nonvisitor pages", { skip: !playwrightPath || !testBrowser }, async () => {
+test("document-start guard precedes website listeners and ignores nonvisitor pages", async () => {
   assert.ok(Buffer.byteLength(early) < 8192);
-  const { chromium } = await import(pathToFileURL(playwrightPath).href);
-  const browser = await chromium.launch({ executablePath: testBrowser, headless: true });
+  const { chromium } = await import("@playwright/test");
+  const browser = await chromium.launch({ ...(testBrowser ? { executablePath: testBrowser } : {}), headless: true });
   const context = await browser.newContext();
   try {
     await context.addInitScript({ content: early });

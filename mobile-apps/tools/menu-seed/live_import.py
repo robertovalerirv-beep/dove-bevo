@@ -127,6 +127,30 @@ class Transport:
             if len(raw) > maximum: raise Error("response exceeds limit")
             return raw
         except Exception: raise Error("public source fetch failed") from None
+    def provider_get(self, suffix):
+        endpoint = f"https://api.cloudflare.com/client/v4/accounts/{self.account}" + suffix
+        try:
+            request = Request(endpoint, headers={"Authorization": "Bearer " + self.token})
+            with self.opener.open(request, timeout=30) as response:
+                raw = response.read(2 * 1024 * 1024 + 1)
+            if len(raw) > 2 * 1024 * 1024: raise Error("provider response too large")
+            payload = strict_json(raw)
+            if not isinstance(payload, dict) or payload.get("success") is not True: raise Error("provider read failed")
+            return payload.get("result")
+        except Exception:
+            raise Error("provider binding attestation failed") from None
+    def attest_binding(self):
+        settings = self.provider_get("/workers/scripts/dovebevo-staging/settings")
+        domains = self.provider_get("/workers/domains?hostname=www.dovebevo.com&service=dovebevo-staging")
+        database = self.provider_get("/d1/database/" + DATABASE + "?fields=uuid,name")
+        bindings = settings.get("bindings") if isinstance(settings, dict) else None
+        if not isinstance(bindings, list) or sum(isinstance(b, dict) and b.get("name") == "DB" and b.get("type") == "d1" and b.get("id") == DATABASE for b in bindings) != 1:
+            raise Error("provider binding attestation failed")
+        if not isinstance(domains, list) or not any(isinstance(d, dict) and d.get("hostname") == "www.dovebevo.com" and d.get("service") == "dovebevo-staging" and d.get("enabled") is not False for d in domains):
+            raise Error("provider binding attestation failed")
+        if not isinstance(database, dict) or database.get("uuid") != DATABASE or database.get("name") != "dovebevo-staging":
+            raise Error("provider binding attestation failed")
+        return {"domain": "www.dovebevo.com", "worker": "dovebevo-staging", "database": DATABASE, "binding": "DB", "name": "dovebevo-staging", "verified": True}
     def query(self, sql, params):
         endpoint = f"https://api.cloudflare.com/client/v4/accounts/{self.account}/d1/database/{DATABASE}/query"
         body = json.dumps({"sql": sql, "params": params}).encode()
@@ -160,7 +184,10 @@ def run(raw, transport, apply=False, approved=None):
         if expected_city != r["city"]: raise Error("catalogue city mismatch")
         if r["source_url"] not in sources: sources[r["source_url"]] = hashlib.sha256(transport.fetch(r["source_url"])).hexdigest()
         if sources[r["source_url"]] != r["source_sha256"]: raise Error("source hash mismatch")
-    receipt = {"schema_version": 1, "batch_id": doc["batch_id"], "manifest_sha256": manifest_hash, "mode": "apply" if apply else "dry_run", "provenance": "online_menu", "complete": False, "records": [], "cache_invalidated": [], "errors": []}
+    attestation = transport.attest_binding()
+    expected_attestation = {"domain": "www.dovebevo.com", "worker": "dovebevo-staging", "database": DATABASE, "binding": "DB", "name": "dovebevo-staging", "verified": True}
+    if attestation != expected_attestation: raise Error("provider binding attestation failed")
+    receipt = {"binding_attestation": expected_attestation, "schema_version": 1, "batch_id": doc["batch_id"], "manifest_sha256": manifest_hash, "mode": "apply" if apply else "dry_run", "provenance": "online_menu", "complete": False, "records": [], "cache_invalidated": [], "errors": []}
     affected = set()
     for r in doc["records"]:
         key = [r["venue_key"], r["drink"], r["hh"]]

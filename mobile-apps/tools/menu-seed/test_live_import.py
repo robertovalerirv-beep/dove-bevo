@@ -33,6 +33,8 @@ class Fake:
         if url == m.SITE + "/api/health": return json.dumps({"status": "ok", "data_version": self.version}).encode()
         if url.startswith(m.SITE + "/data/"): return json.dumps({"c": [[123, "Roma"]], "v": [["n123", "Example", 1, 41.9, 12.5, "", 0]]}).encode()
         return self.menu
+    def attest_binding(self):
+        return {"domain":"www.dovebevo.com", "worker":"dovebevo-staging", "database":m.DATABASE, "binding":"DB", "name":"dovebevo-staging", "verified":True}
     def query(self, sql, params):
         self.queries.append(sql)
         if sql == m.INVALIDATE and self.fail_cache: raise m.Error("injected")
@@ -130,6 +132,64 @@ class Tests(unittest.TestCase):
         with self.assertRaises(m.Error): self.run_import(True)
         with self.assertRaises(m.Error): m.run(self.raw(), self.f, True, "0" * 64)
         self.assertEqual(self.f.queries, [])
+    def test_provider_binding_fails_closed_and_excludes_secret_fields(self):
+        settings = {"bindings": [{"name":"DB", "type":"d1", "id":m.DATABASE}, {"name":"SECRET", "value":"must-not-appear"}]}
+        domains = [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging"}]
+        database = {"uuid":m.DATABASE, "name":"dovebevo-staging"}
+        def make_transport(settings_value, domains_value, database_value):
+            t = m.Transport("a" * 32, "synthetic-token")
+            values = iter((settings_value, domains_value, database_value))
+            t.provider_get = lambda path: next(values)
+            return t
+        expected = make_transport(settings, domains, database).attest_binding()
+        self.assertTrue(expected["verified"])
+        self.assertNotIn("must-not-appear", json.dumps(expected))
+        bad_settings = {"bindings": [{"name":"DB", "type":"d1", "id":"wrong"}]}
+        bad_domains = [{"hostname":"www.dovebevo.com", "service":"wrong"}]
+        disabled = [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging", "enabled":False}]
+        bad_database = {"uuid":m.DATABASE, "name":"wrong"}
+        for s, d, b in ((bad_settings, domains, database), (settings, bad_domains, database),
+                        (settings, disabled, database), (settings, domains, bad_database)):
+            with self.subTest(settings=s, domains=d, database=b):
+                with self.assertRaises(m.Error): make_transport(s,d,b).attest_binding()
+        self.f.attest_binding = lambda: {"verified": False}
+        with self.assertRaises(m.Error): self.run_import(True)
+        self.assertEqual(self.f.queries, [])
+
+    def test_real_provider_http_json_path_is_bounded_and_redacted(self):
+        class Response:
+            def __init__(self, value): self.value = json.dumps(value).encode()
+            def __enter__(self): return self
+            def __exit__(self, *_): pass
+            def read(self, limit): return self.value[:limit]
+        class Opener:
+            def __init__(self, values): self.values, self.urls = iter(values), []
+            def open(self, request, timeout):
+                self.urls.append(request.full_url)
+                return Response(next(self.values))
+        entries = [
+            {"success": True, "result": {"bindings":[{"name":"DB", "type":"d1", "id":m.DATABASE}, {"name":"SECRET", "value":"private-value"}]}},
+            {"success": True, "result": [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging"}]},
+            {"success": True, "result": {"uuid":m.DATABASE, "name":"dovebevo-staging"}},
+        ]
+        transport = m.Transport("a" * 32, "token-value")
+        transport.opener = Opener(entries)
+        attestation = transport.attest_binding()
+        self.assertNotIn("private-value", json.dumps(attestation))
+        self.assertNotIn("token-value", json.dumps(attestation))
+        self.assertTrue(transport.opener.urls[0].endswith("/workers/scripts/dovebevo-staging/settings"))
+        self.assertTrue(transport.opener.urls[1].endswith("/workers/domains?hostname=www.dovebevo.com&service=dovebevo-staging"))
+        self.assertTrue(transport.opener.urls[2].endswith("/d1/database/" + m.DATABASE + "?fields=uuid,name"))
+        transport.opener = Opener([{"success":False, "errors":[{"message":"private-value"}]}])
+        with self.assertRaises(m.Error) as error: transport.attest_binding()
+        self.assertNotIn("private-value", str(error.exception))
+
+    def test_denied_binding_read_blocks_all_database_queries(self):
+        def denied(): raise m.Error("denied")
+        self.f.attest_binding = denied
+        with self.assertRaises(m.Error): self.run_import(True)
+        self.assertEqual(self.f.queries, [])
+
     def test_only_allowed_mutations_and_schema_unchanged(self):
         before = self.f.db.execute("SELECT sql FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
         self.run_import(True)

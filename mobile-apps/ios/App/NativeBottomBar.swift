@@ -154,7 +154,8 @@ final class NativeBottomBar: UIView {
             let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1)
             let enabled = action != .save && action != .recommendations || venueActionsEnabled
             var configuration = UIButton.Configuration.plain()
-            configuration.baseBackgroundColor = .clear
+            configuration.baseBackgroundColor = NativeAppearance.surface
+            configuration.background.backgroundColor = NativeAppearance.surface
             configuration.title = action.title
             configuration.titleAlignment = .center
             configuration.titleLineBreakMode = .byWordWrapping

@@ -321,8 +321,9 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertTrue(web.backForwardList.backList.isEmpty)
         XCTAssertFalse(try share(browser).attributes.contains(.disabled))
         XCTAssertTrue(try actions(browser).contains { $0.title == "Ricarica" })
-        let forward = try XCTUnwrap(browser.navigationItem.leftBarButtonItems?.last)
-        _ = browser.perform(try XCTUnwrap(forward.action))
+        let forward = try XCTUnwrap(try actions(browser).first { $0.identifier.rawValue == "browser.forward" })
+        XCTAssertFalse(forward.attributes.contains(.disabled))
+        _ = browser.perform(NSSelectorFromString("goForward"))
         waitUntil("Forward restores owned venue route") {
             web.url == venueURL && (try? self.share(browser).attributes.contains(.disabled)) == false
         }

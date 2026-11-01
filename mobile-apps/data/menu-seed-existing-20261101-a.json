@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "batch_id": "existing-venues-torino-20261101-a",
+  "checked_on": "2026-11-01",
+  "data_version": "20261030",
+  "records": [
+    {
+      "venue_key": "n13074614346",
+      "name": "L'Asilo",
+      "cell": "u0j2q",
+      "city": 63621589,
+      "lat": 45.07608,
+      "lon": 7.68055,
+      "drink": "negroni",
+      "hh": 0,
+      "cents": 800,
+      "source_url": "https://lasilosrl.com/menu/cocktail.html",
+      "source_sha256": "5ce32bea79070e50dd19407d8cbf56635255dfaad812e88d3aaaad1fa5b26aab",
+      "google_reviews": 119,
+      "google_url": "https://www.google.com/maps/place/L'Asilo+Cocktail+Bar/@45.0761306,7.6806123,17z/data=!4m6!3m5!1s0x47886da05a27df2b:0x6ec99cffaf6a89e9!8m2!3d45.0761306!4d7.6806123!16s%2Fg%2F11whwckg06",
+      "identity_note": "Reviewed existing OSM node and current catalogue name and coordinates. Primary Google business profile names L'Asilo Cocktail Bar, links www.lasilosrl.com, and gives Via Franco Bonelli 11d. Its actual place marker is less than 8 metres from the catalogue node. Catalogue address is blank; no invented address is written to it. Prices are curated transcriptions of online menus, not claims that a customer paid today."
+    },
+    {
+      "venue_key": "n13074614346",
+      "name": "L'Asilo",
+      "cell": "u0j2q",
+      "city": 63621589,
+      "lat": 45.07608,
+      "lon": 7.68055,
+      "drink": "sbagliato",
+      "hh": 0,
+      "cents": 800,
+      "source_url": "https://lasilosrl.com/menu/cocktail.html",
+      "source_sha256": "5ce32bea79070e50dd19407d8cbf56635255dfaad812e88d3aaaad1fa5b26aab",
+      "google_reviews": 119,
+      "google_url": "https://www.google.com/maps/place/L'Asilo+Cocktail+Bar/@45.0761306,7.6806123,17z/data=!4m6!3m5!1s0x47886da05a27df2b:0x6ec99cffaf6a89e9!8m2!3d45.0761306!4d7.6806123!16s%2Fg%2F11whwckg06",
+      "identity_note": "Reviewed existing OSM node and current catalogue name and coordinates. Primary Google business profile names L'Asilo Cocktail Bar, links www.lasilosrl.com, and gives Via Franco Bonelli 11d. Its actual place marker is less than 8 metres from the catalogue node. Catalogue address is blank; no invented address is written to it. Prices are curated transcriptions of online menus, not claims that a customer paid today."
+    },
+    {
+      "venue_key": "n13074614346",
+      "name": "L'Asilo",
+      "cell": "u0j2q",
+      "city": 63621589,
+      "lat": 45.07608,
+      "lon": 7.68055,
+      "drink": "wine_glass",
+      "hh": 0,
+      "cents": 500,
+      "source_url": "https://lasilosrl.com/menu/vino-e-birra.html",
+      "source_sha256": "f6cbc339f51336092f4a116b71d0986fdbae867df277f42bab88c059374c15e9",
+      "google_reviews": 119,
+      "google_url": "https://www.google.com/maps/place/L'Asilo+Cocktail+Bar/@45.0761306,7.6806123,17z/data=!4m6!3m5!1s0x47886da05a27df2b:0x6ec99cffaf6a89e9!8m2!3d45.0761306!4d7.6806123!16s%2Fg%2F11whwckg06",
+      "identity_note": "Reviewed existing OSM node and current catalogue name and coordinates. Primary Google business profile names L'Asilo Cocktail Bar, links www.lasilosrl.com, and gives Via Franco Bonelli 11d. Its actual place marker is less than 8 metres from the catalogue node. Catalogue address is blank; no invented address is written to it. Prices are curated transcriptions of online menus, not claims that a customer paid today."
+    },
+    {
+      "venue_key": "n13074614346",
+      "name": "L'Asilo",
+      "cell": "u0j2q",
+      "city": 63621589,
+      "lat": 45.07608,
+      "lon": 7.68055,
+      "drink": "water",
+      "hh": 0,
+      "cents": 100,
+      "source_url": "https://lasilosrl.com/menu/noalcol.html",
+      "source_sha256": "a2c83bc4f24240c7b488d224899cc8961b77e1f1aed5d9ebce3786363e5704cc",
+      "google_reviews": 119,
+      "google_url": "https://www.google.com/maps/place/L'Asilo+Cocktail+Bar/@45.0761306,7.6806123,17z/data=!4m6!3m5!1s0x47886da05a27df2b:0x6ec99cffaf6a89e9!8m2!3d45.0761306!4d7.6806123!16s%2Fg%2F11whwckg06",
+      "identity_note": "Reviewed existing OSM node and current catalogue name and coordinates. Primary Google business profile names L'Asilo Cocktail Bar, links www.lasilosrl.com, and gives Via Franco Bonelli 11d. Its actual place marker is less than 8 metres from the catalogue node. Catalogue address is blank; no invented address is written to it. Prices are curated transcriptions of online menus, not claims that a customer paid today."
+    }
+  ]
+}

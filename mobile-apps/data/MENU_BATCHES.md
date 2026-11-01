@@ -10,13 +10,17 @@ Exact source: `ae964cb496b5176b988f7ab9d24ab0d7a985ad73`; manifest SHA256 `1360b
 
 Coordinator and independent reviewer read the public `/api/prices/u0j2q` response. Independent fresh verification at2026-11-01T22:02:24Z returned all four exact values, date2026-11-01, hh0 and confirmations0. Apply receipt SHA256 `26b638f684bc37224dd2c91dea71f1e7aed255c5355a7676de081c311d06c2b0`; initial public snapshot SHA256 `916941df20f1425221e0e4258ef7ce2289db3c8dc00200be895fbd5410748b85`.
 
-## 2026-11-01 batch B: prepared, not yet imported
+## 2026-11-01 batch B: live
 
 Seventeen records cover I Frighi and Clorophilla in Torino, Abbey Theater in Roma, Orange Spritz Bar in Milano, and Vip's Bar in Firenze. Exact existing catalogue names, coordinates and addresses remain unchanged. Primary Google captures show565,668,3049,380 and472 reviews respectively. Current official menu sources and actual Google place markers were checked separately.
 
 The first nine-record audit41355456767 failed before provider queries because Abbey's HTML wrapper changes between requests. No import was attempted. Version2 now declares an explicit source format: raw hashes for the published Frighi data chunk and Vip's PDF, and bounded canonical HTML-text hashes for the three HTML menus. This is extracted markup text, not a browser visibility assertion. Raw source snapshots remain retained locally, and semantic menu/identity checks are still manual. An altered price changes the canonical digest and stops the batch. No fallback from a failed raw pin is allowed.
 
 Vip's current official homepage links a PDF under a2024 URL path. Its actual page was visually checked; the import date means the linked menu was checked today, not that it was issued today or that a customer paid today. Generic cocktail prices and beer with absent or incompatible serving volumes are excluded.
+
+Final manifest SHA256 `07fc73fdb9b40d35126868ca8bd1bc96528609cfaad8157df83c5af934c95077`, exact source `6b77518b4d068cf1fb097f695bdab40d5bb969de`. Read-only audit41356050827 succeeded with all17 records eligible and unchanged before/after state. Audit receipt SHA256 `1809c1e31084fd68097662c7cc8f4653e7903817fcf97131238091d016e6270c`.
+
+Apply41356129179 succeeded with17 inserts, a complete receipt, zero customer confirmations and invalidated cells `sr2y7`, `srb0b`, `u0j2r`, `u0nd9`. Apply receipt SHA256 `7753b89d59187ac002881605d9461a0099612aafc5ec12dcdce5e04c4f01e4a4`. Coordinator public read-back at2026-11-01T22:16:42Z matched every new key/drink/band/amount/date and zero confirmations. Together with batch A this is21 prices across six existing venues in four cities. These totals describe this one-off import, not every existing customer price in the service.
 
 ## Coverage limits
 

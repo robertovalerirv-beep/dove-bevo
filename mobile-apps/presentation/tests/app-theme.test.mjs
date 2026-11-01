@@ -17,6 +17,7 @@ function fixture(options = {}) {
     return {
       tagName: tag.toUpperCase(),
       textContent: "",
+      addEventListener(name, fn) { if (name === "click") this.click = fn; },
       setAttribute: (key, value) => attrs.set(key, value),
       getAttribute: (key) => attrs.get(key) ?? null,
       remove() {
@@ -29,10 +30,11 @@ function fixture(options = {}) {
     setAttribute: (key, value) => rootAttributes.set(key, value),
     removeAttribute: (key) => rootAttributes.delete(key),
   };
+  const app = { querySelector: () => null, querySelectorAll: () => [] };
   const document = {
     documentElement: root,
     head: options.noHead ? null : { appendChild: (node) => nodes.set(node.id, node) },
-    querySelector: () => (options.noShell ? null : {}),
+    querySelector: () => (options.noShell ? null : app),
     querySelectorAll: () =>
       options.noNonce ? [] : [{ nonce: options.nonce ?? "testResponseNonce0123456789==" }],
     getElementById: (id) => nodes.get(id) ?? null,
@@ -43,12 +45,24 @@ function fixture(options = {}) {
     node.id = "dovebevo-native-theme-v1";
     nodes.set(node.id, node);
   }
-  const window = { location: { href: options.url ?? "https://www.dovebevo.com/" } };
+  const listeners = new Map();
+  const window = {
+    location: { href: options.url ?? "https://www.dovebevo.com/" },
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: (name) => listeners.delete(name),
+    dispatchEvent: (event) => { const fn = listeners.get(event.type); if (fn) fn(event); },
+  };
+  class MutationObserver {
+    constructor(fn) { this.fn = fn; }
+    observe() {}
+    disconnect() {}
+  }
+  class Event { constructor(type) { this.type = type; } }
   window.top = options.frame ? {} : window;
   const context = vm.createContext({
     window,
     document,
-    URL,
+    URL, MutationObserver, Event,
     getComputedStyle: () => ({
       getPropertyValue: () =>
         options.cspDenied
@@ -59,7 +73,7 @@ function fixture(options = {}) {
             : "",
     }),
   });
-  return { run: () => vm.runInContext(source, context, { timeout: 1000 }), nodes, rootAttributes };
+  return { run: () => vm.runInContext(source, context, { timeout: 1000 }), nodes, rootAttributes, listeners, window, app };
 }
 
 for (const url of [
@@ -142,8 +156,60 @@ test("bundled script contains no remote CSS, data mutation or bridge", () => {
   assert.ok(Buffer.byteLength(source) < 32768);
   assert.doesNotMatch(
     source,
-    /@import|url\s*\(|innerHTML|fetch\s*\(|XMLHttpRequest|localStorage|sessionStorage|postMessage|addJavascriptInterface|MutationObserver/,
+    /@import|url\s*\(|innerHTML|fetch\s*\(|XMLHttpRequest|localStorage|sessionStorage|postMessage|addJavascriptInterface/,
   );
   assert.match(source, /style\.nonce = source\.nonce/);
   assert.match(source, /style\.textContent = css/);
+});
+
+test("light theme is enforced and theme notifications terminate without recursion", () => {
+  const page = fixture();
+  page.rootAttributes.set("data-theme", "dark");
+  assert.equal(page.run(), true);
+  assert.equal(page.rootAttributes.get("data-theme"), "light");
+  page.rootAttributes.set("data-theme", "dark");
+  page.window.dispatchEvent({ type: "themechange" });
+  assert.equal(page.rootAttributes.get("data-theme"), "light");
+  const handler = page.listeners.get("themechange");
+  assert.equal(page.run(), true);
+  assert.equal(page.listeners.get("themechange"), handler);
+  page.listeners.get("pagehide")({ persisted: false });
+  assert.equal(page.listeners.has("themechange"), false);
+});
+
+test("adapter exposes original checkbox group and expands real price actions", () => {
+  const page = fixture();
+  const attrs = new Map([["hidden", ""]]);
+  const list = { hasAttribute: (k) => attrs.has(k), removeAttribute: (k) => attrs.delete(k) };
+  const rowAttrs = new Map();
+  let child;
+  const row = {
+    classList: { contains: () => true },
+    querySelector: (s) => s === ".price__actions" ? {} : child ?? null,
+    setAttribute: (k, v) => rowAttrs.set(k, v),
+    appendChild: (v) => { child = v; },
+  };
+  const first = { classList: { contains: () => true } };
+  page.app.querySelector = () => list;
+  page.app.querySelectorAll = () => [{ children: [first, row] }];
+  // A separate browser-like button retains the actual click listener and ARIA state.
+  // The fixture's button factory is replaced through the row append target below.
+  row.appendChild = (v) => { child = v; };
+  assert.equal(page.run(), true);
+  assert.equal(attrs.has("hidden"), false);
+  assert.equal(rowAttrs.get("data-dovebevo-collapsed"), "1");
+  assert.equal(child.getAttribute("aria-expanded"), "false");
+  child.click();
+  assert.equal(child.getAttribute("aria-expanded"), "true");
+  assert.equal(rowAttrs.get("data-dovebevo-collapsed"), "0");
+  child.click();
+  assert.equal(rowAttrs.get("data-dovebevo-collapsed"), "1");
+});
+
+test("adapter targets the existing website checkbox and price action structure", () => {
+  const menu = readFileSync(new URL("../../../src/app/components/DrinkMenu.tsx", import.meta.url), "utf8");
+  const venue = readFileSync(new URL("../../../src/app/components/BarSheet.tsx", import.meta.url), "utf8");
+  assert.match(menu, /class="drink-menu__list"[\s\S]*?class="drink-option"[\s\S]*?type="checkbox"/);
+  assert.match(menu, /onChange=\{\(\) =>/);
+  assert.match(venue, /class="price__actions"[\s\S]*?actions\.changed[\s\S]*?actions\.report/);
 });

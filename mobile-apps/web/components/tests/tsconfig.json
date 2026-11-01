@@ -1,0 +1,8 @@
+{
+  "extends": "../../../../tsconfig.app.json",
+  "compilerOptions": {
+    "paths": { "@site/*": ["../../../../src/*"] },
+    "tsBuildInfoFile": "./dist/component-tests.tsbuildinfo"
+  },
+  "include": ["../BarSheet.tsx", "../AddPriceSheet.tsx", "fixture.tsx", "drink-images.d.ts"]
+}

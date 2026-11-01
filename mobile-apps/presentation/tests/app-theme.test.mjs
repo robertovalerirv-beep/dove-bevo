@@ -168,7 +168,7 @@ test("light theme is enforced and theme notifications terminate without recursio
   assert.equal(page.run(), true);
   assert.equal(page.rootAttributes.get("data-theme"), "light");
   page.rootAttributes.set("data-theme", "dark");
-  page.window.dispatchEvent({ type: "themechange" });
+  page.window.dispatchEvent({ type: "themechange", stopImmediatePropagation() {} });
   assert.equal(page.rootAttributes.get("data-theme"), "light");
   const handler = page.listeners.get("themechange");
   assert.equal(page.run(), true);
@@ -189,7 +189,7 @@ test("adapter exposes original checkbox group and expands real price actions", (
     setAttribute: (k, v) => rowAttrs.set(k, v),
     appendChild: (v) => { child = v; },
   };
-  const first = { classList: { contains: () => true } };
+  const first = { classList: { contains: () => true }, querySelector: () => null, hasAttribute: () => false };
   page.app.querySelector = () => list;
   page.app.querySelectorAll = () => [{ children: [first, row] }];
   // A separate browser-like button retains the actual click listener and ARIA state.

@@ -243,21 +243,19 @@ html[data-dovebevo-app-theme="1"] .drink-menu__list {
   scrollbar-width: none;
 }
 html[data-dovebevo-app-theme="1"] .drink-option {
-  min-height: 38px; padding: 0 12px; gap: 5px; border-radius: 22px;
+  min-height: 48px; padding: 0 12px; gap: 5px; border-radius: 22px;
   font-size: 13px; white-space: nowrap;
 }
 html[data-dovebevo-app-theme="1"] .drink-option .icon { display: none; }
-html[data-dovebevo-app-theme="1"] .drink-option__box { width: 16px; height: 16px; }
 html[data-dovebevo-app-theme="1"] .scontrino .prices:first-of-type > .price:first-child {
-  background: #f2f6f0; border: 0; border-radius: 12px; padding: 12px;
+  background: var(--surface-2); border: 0; border-radius: 12px; padding: 12px;
 }
 html[data-dovebevo-app-theme="1"] .scontrino .prices > .price:not(:first-child) {
   padding: 8px 0; row-gap: 2px;
 }
-html[data-dovebevo-app-theme="1"] .price[data-dovebevo-collapsed="1"] .price__actions,
-html[data-dovebevo-app-theme="1"] .price[data-dovebevo-collapsed="1"] .price__meta { display: none; }
+html[data-dovebevo-app-theme="1"] .price[data-dovebevo-collapsed="1"] .price__actions { display: none; }
 html[data-dovebevo-app-theme="1"] .dovebevo-price-toggle {
-  grid-column: 1 / -1; justify-self: start; padding: 4px 0; border: 0;
+  grid-column: 1 / -1; justify-self: start; min-height: 48px; padding: 4px 8px; border: 0;
   background: transparent; color: #315c72; font: 600 13px/1.3 var(--font-sans);
 }
 html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .sheet__body { padding-top: 8px; }
@@ -286,33 +284,50 @@ html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .question { margin: 1
       root.setAttribute("data-theme", "light");
       window.dispatchEvent(new Event("themechange"));
     };
+    const toggleText = (expanded) => {
+      const english = (root.getAttribute("lang") || "it").toLowerCase().startsWith("en");
+      return english ? (expanded ? "Hide actions" : "Show actions") :
+        (expanded ? "Nascondi azioni" : "Mostra azioni");
+    };
     const adapt = () => {
       const list = app.querySelector(".drink-menu__list");
       if (list && list.hasAttribute("hidden")) list.removeAttribute("hidden");
       app.querySelectorAll(".scontrino .prices").forEach((prices) => {
         [...prices.children].filter((row) => row.classList.contains("price")).forEach((row, index) => {
-          if (index === 0 || row.querySelector(".dovebevo-price-toggle")) return;
+          let button = row.querySelector(".dovebevo-price-toggle");
           const actions = row.querySelector(".price__actions");
-          if (!actions) return;
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "dovebevo-price-toggle";
-          button.textContent = "Mostra azioni";
-          button.setAttribute("aria-expanded", "false");
-          button.addEventListener("click", () => {
-            const expanded = button.getAttribute("aria-expanded") !== "true";
-            button.setAttribute("aria-expanded", String(expanded));
-            button.textContent = expanded ? "Nascondi azioni" : "Mostra azioni";
-            row.setAttribute("data-dovebevo-collapsed", expanded ? "0" : "1");
-          });
-          row.setAttribute("data-dovebevo-collapsed", "1");
-          row.appendChild(button);
+          if (index === 0 || !actions) {
+            const moveFocus = button && document.activeElement === button;
+            if (row.hasAttribute("data-dovebevo-collapsed")) row.removeAttribute("data-dovebevo-collapsed");
+            // Preserve keyboard focus if this row becomes the leading price.
+            if (moveFocus) actions?.querySelector("button")?.focus();
+            if (button) button.remove();
+            return;
+          }
+          if (!button) {
+            button = document.createElement("button");
+            button.type = "button";
+            button.className = "dovebevo-price-toggle";
+            button.setAttribute("aria-expanded", "false");
+            button.textContent = toggleText(false);
+            button.addEventListener("click", () => {
+              const expanded = button.getAttribute("aria-expanded") !== "true";
+              button.setAttribute("aria-expanded", String(expanded));
+              button.textContent = toggleText(expanded);
+              row.setAttribute("data-dovebevo-collapsed", expanded ? "0" : "1");
+            });
+            row.setAttribute("data-dovebevo-collapsed", "1");
+            row.appendChild(button);
+          } else {
+            const label = toggleText(button.getAttribute("aria-expanded") === "true");
+            if (button.textContent !== label) button.textContent = label;
+          }
         });
       });
     };
     const observer = new MutationObserver(() => { forceLight(); adapt(); });
     observer.observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
-    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme", "lang"] });
     window.addEventListener("themechange", forceLight);
     const cleanup = (event) => {
       if (event.persisted) return;

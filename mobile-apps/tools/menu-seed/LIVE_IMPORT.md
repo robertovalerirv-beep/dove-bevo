@@ -1,0 +1,26 @@
+# Guarded one-off online-menu import
+
+This is a separate, operator-controlled tool for an explicitly authorized batch. It does not modify the website, routes, schema or resources. Dry run is the default and performs public GETs and read-only, cohort-key D1 SELECTs. `--apply` requires the exact SHA-256 of the manifest bytes. This hash binds reviewed bytes; it is not independent evidence of authorization or source truth. The operator must curate and approve each menu price, primary Google count and venue identity before applying. Neither Google assertions nor `identity_note` are independently verified by this program. Do not run against fabricated venues or prices.
+
+The fixed target is staging's existing D1 database `d2d4f6d4-b2fb-435b-9f9e-a2961d9c9839`, serving `https://www.dovebevo.com`. The tool checks its public health data version, downloads the matching static cell JSON and compares the existing OSM key, name, coordinates, city and numeric kind. It downloads each HTTPS menu source and checks SHA-256 of the returned bytes. Redirects are rejected; source URLs may have no credentials, query or fragment. A source hash proves byte equality only, not a venue, price, copyright permission or origin of data. The public-site and D1 bindings still require an independent operator check against current Cloudflare configuration.
+
+Manifest UTF-8 JSON has exactly `schema_version`, `batch_id`, `checked_on`, `data_version`, and `records`. The version is integer 1, date is actual review date (not in the future), data version is eight digits, and 1–200 records are supported. Each record has exactly:
+
+```
+venue_key name cell city lat lon drink hh cents source_url source_sha256
+ google_reviews google_url identity_note
+```
+
+`venue_key` is a canonical positive OSM node, way or relation ID; `cell` is the matching geohash5; `city` is the published city ID or null for no city. `hh` is 0 or 1, `cents` an integer in the existing category's inclusive EUR bounds, and `google_reviews` an integer above 100. `identity_note` records manual evidence connecting the official venue and primary Google location. Each SHA-256 is lowercase hex of actual source response bytes. The `google_url` must be a direct supported Google host. The operator is responsible for verifying price meaning, exact drink/serving, happy-hour conditions, currency and capture recency. Blank public catalogue addresses do not automatically reject a venue; a real identity review is essential. Never include credentials, private data or auth-bearing URLs.
+
+With existing authorized Cloudflare credentials exposed only as `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` environment variables, run from the repository root. The tool never prints values or raw HTTP errors. Receipt path must be new; reserve it in a protected working location under the selected project folder.
+
+```powershell
+python -B mobile-apps/tools/menu-seed/live_import.py --manifest <manifest.json> --receipt <new-dry-receipt.json>
+python -B mobile-apps/tools/menu-seed/live_import.py --manifest <manifest.json> --receipt <new-apply-receipt.json> --apply --approved-sha256 <reviewed-manifest-byte-sha256>
+python -B -m unittest discover -s mobile-apps/tools/menu-seed -p test_live_import.py -v
+```
+
+Apply performs a parameterized `INSERT ... SELECT ... WHERE NOT EXISTS ... RETURNING` per item. In the same statement it blocks any existing price in any status for that key/drink/band, any matching history, any venue report and any hidden venue. It never updates customer prices or confirmations and does not insert fabricated observations. The existing schema requires `source='manual'`: here that means a curated manual transcription of an online menu, **not** a verified visit or photograph. The manifest and receipt together retain `online_menu` provenance; the database alone does not. The receipt reports before/after scoped state and actual returned inserts; concurrent user writes can occur and these observations are not a proof that no unrelated mutation occurred.
+
+Each affected cell's existing snapshot is invalidated using the application's version bump. Cache failure makes the receipt incomplete. A rerun with the same manifest and approval skips existing rows and retries invalidation for matching manual/date/price rows, without claiming those rows were inserted in this run. Matching rows alone cannot prove they originated in the earlier run. Network interruption, process termination, or receipt write failure can leave partial inserts or an empty receipt; stop, preserve evidence and use a fresh receipt for a reviewed rerun. Edge caching can continue to show old data temporarily; independently read the public site after the cache TTL before claiming visible completion. No public write was performed by the tests, which use an injected in-memory transport and SQLite.

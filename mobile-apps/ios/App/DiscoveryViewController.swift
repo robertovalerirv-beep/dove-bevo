@@ -28,6 +28,7 @@ final class DiscoveryViewController: UITableViewController {
          onOpen: @escaping (URL) -> Void, onMap: @escaping () -> Void) {
         self.client = client; self.activityCheck = activityCheck; self.onOpen = onOpen; self.onMap = onMap
         super.init(style: .insetGrouped)
+        title = "Scopri"
         let center = NotificationCenter.default
         for name in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
             center.addObserver(self, selector: #selector(appDeactivated), name: name, object: nil)
@@ -44,7 +45,6 @@ final class DiscoveryViewController: UITableViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Scopri"
         NativeAppearance.configure(navigationController)
         navigationItem.largeTitleDisplayMode = .always
         navigationController?.navigationBar.prefersLargeTitles = true

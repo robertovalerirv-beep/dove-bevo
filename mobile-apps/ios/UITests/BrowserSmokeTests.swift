@@ -194,15 +194,18 @@ final class BrowserSmokeTests: XCTestCase {
         attachState(named: "DoveBevo-live-native-discovery-prices-read-only")
         XCTAssertEqual(result, .completed, "Discovery must load actual prices from the current public map neighbourhood")
         XCTAssertFalse(app.staticTexts["discovery.chooseArea"].exists)
-        XCTAssertGreaterThan(table.cells.count, 0, "The previously priced live beer map must yield a real nearby price")
+        XCTAssertGreaterThan(table.cells.count, 0, "The current live map area must yield a real nearby price for the selected drink")
         let beer = app.buttons["discovery.drink.beer_draft"]
         let spritz = app.buttons["discovery.drink.spritz"]
-        XCTAssertTrue(beer.isSelected)
         XCTAssertTrue(spritz.exists)
-        spritz.tap()
         XCTAssertTrue(spritz.isSelected)
         XCTAssertFalse(beer.isSelected)
         beer.tap()
+        XCTAssertTrue(beer.isSelected)
+        XCTAssertFalse(spritz.isSelected)
+        spritz.tap()
+        XCTAssertTrue(spritz.isSelected)
+        XCTAssertFalse(beer.isSelected)
         let venue = table.cells.firstMatch
         XCTAssertTrue(venue.identifier.hasPrefix("discovery.venue."))
         XCTAssertTrue((venue.value as? String)?.contains("€") == true)

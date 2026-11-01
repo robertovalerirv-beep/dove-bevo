@@ -77,7 +77,8 @@ public final class MainActivity extends ComponentActivity {
     private boolean recommendationCapturing;
     private long venueCaptureEpoch;
     private AlertDialog locationHelpDialog;
-    private String lastTrustedUrl = BrowserPolicy.HOME;
+    private String lastTrustedUrl = MobileEntry.HOME;
+    private long documentCheckGeneration;
     private boolean foreground;
     private boolean failed;
     private boolean destroyed;
@@ -376,6 +377,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void navigate(String url) {
         if (destroyed || BrowserPolicy.target(url) != BrowserPolicy.Target.INTERNAL) return;
+        url = MobileEntry.documentURL(url);
         cancelLocation();
         if (website == null) createWebsite();
         prepareNavigation(url);
@@ -442,6 +444,8 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void prepareNavigation(String url) {
+        documentCheckGeneration++;
+        hasUsablePage = false;
         venueCaptureEpoch++;
         failed = false;
         documentHasHttpError = false;
@@ -612,6 +616,10 @@ public final class MainActivity extends ComponentActivity {
 
     private boolean handleNavigation(String url) {
         BrowserPolicy.Target target = BrowserPolicy.target(url);
+        if (target == BrowserPolicy.Target.INTERNAL && !url.equals(MobileEntry.documentURL(url))) {
+            navigate(url);
+            return true;
+        }
         if (target == BrowserPolicy.Target.INTERNAL) return false;
         if (target == BrowserPolicy.Target.EXTERNAL || target == BrowserPolicy.Target.EMAIL || target == BrowserPolicy.Target.MAP) openExternal(url);
         else toast(R.string.blocked_link);
@@ -760,6 +768,8 @@ public final class MainActivity extends ComponentActivity {
         }
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
             if (view != website || destroyed) return;
+            documentCheckGeneration++;
+            hasUsablePage = false;
             venueCaptureEpoch++;
             if (url.equals(stoppedUrl)) { view.stopLoading(); return; }
             cancelLocation();
@@ -777,6 +787,30 @@ public final class MainActivity extends ComponentActivity {
         @Override public void onPageFinished(WebView view, String url) {
             if (view != website || destroyed || awaitingDocumentStart || url.equals(stoppedUrl) || !url.equals(lastTrustedUrl)) return;
             preparedNavigationUrl = null;
+            if (!failed && !documentHasHttpError && MobileEntry.isDocument(url)) {
+                // A previously installed website SW can return its cached root page offline.
+                // Do not expose that page as the new app interface or enable its native actions.
+                long check = ++documentCheckGeneration;
+                hasUsablePage = false;
+                view.evaluateJavascript(MobileEntry.MARKER, result -> {
+                    if (destroyed || view != website || check != documentCheckGeneration || failed
+                            || !MobileEntry.isDocument(view.getUrl())) return;
+                    documentCheckGeneration++;
+                    if (!"true".equals(result)) { showFailure(); return; }
+                    hasUsablePage = true;
+                    setLoading(false);
+                    errorPanel.setVisibility(View.GONE);
+                    view.setVisibility(nativeDestinationVisible()?View.GONE:View.VISIBLE);
+                    updateToolbar();
+                });
+                view.postDelayed(() -> {
+                    if (!destroyed && view == website && check == documentCheckGeneration && !failed) {
+                        documentCheckGeneration++;
+                        showFailure();
+                    }
+                }, 5000);
+                return;
+            }
             setLoading(false);
             if (!failed && BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL) {
                 hasUsablePage = !documentHasHttpError;

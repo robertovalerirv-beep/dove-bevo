@@ -33,6 +33,7 @@ import WebKit
     }
 
     static func canApply(to url: URL?) -> Bool {
+        if MobileEntry.isDocument(url) { return true }
         guard let url, URLPolicy.isWebsite(url) else { return false }
         let path = url.path(percentEncoded: true)
         return path.isEmpty || path == "/" || path.range(of: #"\A/bar/[nwru][1-9][0-9]{0,14}\z"#, options: .regularExpression) != nil

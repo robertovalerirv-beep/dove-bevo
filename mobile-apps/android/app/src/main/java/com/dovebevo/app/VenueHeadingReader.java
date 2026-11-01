@@ -8,7 +8,11 @@ final class VenueHeadingReader {
             (() => {
               if (document.visibilityState !== 'visible') return null;
               const route = new URL(location.href);
-              const match = /^\\/bar\\/([nwru][1-9][0-9]{0,14})$/.exec(route.pathname);
+              const mobile = /^\\/mobile\\/(?:index\\.html)?$/.test(route.pathname);
+              if (mobile && (document.documentElement.getAttribute('data-dovebevo-mobile-shell') !== '1' ||
+                  route.searchParams.size !== 2 || route.searchParams.getAll('path').length !== 1 ||
+                  route.searchParams.getAll('c').length !== 1 || !/^[0-9b-hjkmnp-z]{5}$/.test(route.searchParams.get('c') || ''))) return null;
+              const match = /^\\/bar\\/([nwru][1-9][0-9]{0,14})$/.exec(mobile ? route.searchParams.get('path') || '' : route.pathname);
               const maps = document.querySelectorAll('section.map[data-selected]');
               if (!match || maps.length !== 1 || maps[0].getAttribute('data-selected') !== match[1]) return null;
               const dialogs = document.querySelectorAll('dialog.sheet[open]');

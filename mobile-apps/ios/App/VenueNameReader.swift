@@ -8,10 +8,14 @@ enum VenueNameReader {
         "use strict";
         const href = location.href;
         const url = new URL(href);
-        const key = /^\/bar\/([nwru][1-9][0-9]{0,14})$/.exec(url.pathname)?.[1];
+        const mobile = /^\/mobile\/(?:index\.html)?$/.test(url.pathname);
+        if (mobile && (document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1" ||
+            url.searchParams.size !== 2 || url.searchParams.getAll("path").length !== 1 ||
+            url.searchParams.getAll("c").length !== 1 || !/^[0-9b-hjkmnp-z]{5}$/.test(url.searchParams.get("c") || ""))) return null;
+        const key = /^\/bar\/([nwru][1-9][0-9]{0,14})$/.exec(mobile ? url.searchParams.get("path") || "" : url.pathname)?.[1];
         if (url.protocol !== "https:" || !["www.dovebevo.com", "dovebevo.com"].includes(url.hostname) ||
             url.username || url.password || (url.port && url.port !== "443") ||
-            !key || !/^\?c=[0-9b-hjkmnp-z]{5}$/.test(url.search) || url.hash) return null;
+            !key || (!mobile && !/^\?c=[0-9b-hjkmnp-z]{5}$/.test(url.search)) || url.hash) return null;
         const maps = document.querySelectorAll("section.map[data-selected]");
         if (maps.length !== 1 || maps[0].getAttribute("data-selected") !== key) return null;
         const sheets = document.querySelectorAll("dialog.sheet[open]");

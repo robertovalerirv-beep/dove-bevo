@@ -15,7 +15,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private let retryButton = UIButton(type: .system)
     private let monitor = NWPathMonitor()
     private var observations: [NSKeyValueObservation] = []
-    private var lastWebsiteURL = URLPolicy.homeURL
+    private var lastWebsiteURL = MobileEntry.homeURL
+    private var documentMarkerCheck: UUID?
     private var hasLoadedPage = false
     private var isOffline = false
     private var recoveredRenderer = false
@@ -425,6 +426,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func loadWebsite(_ url: URL) {
         guard URLPolicy.isWebsite(url) else { return }
+        let url = MobileEntry.documentURL(url)
+        documentMarkerCheck = nil
         pageLoading = true
         invalidateBookmarkCapture()
         lastWebsiteURL = url
@@ -450,7 +453,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         invalidateBookmarkCapture()
         navigationState.begin(webView.goForward())
     }
-    @objc func goHome() { loadWebsite(URLPolicy.homeURL) }
+    @objc func goHome() { loadWebsite(MobileEntry.homeURL) }
 
     /// Read only when Home is explicitly tapped on the real visible visitor
     /// page. Any navigation, backgrounding or destination change retires it.
@@ -606,7 +609,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     @objc private func sharePage() {
         guard canSharePage else { return }
-        let sheet = UIActivityViewController(activityItems: [currentWebsiteURL], applicationActivities: nil)
+        let publicURL = SavedVenuePolicy.canonicalURL(currentWebsiteURL) ?? (MobileEntry.isDocument(currentWebsiteURL) ? URLPolicy.homeURL : currentWebsiteURL)
+        let sheet = UIActivityViewController(activityItems: [publicURL], applicationActivities: nil)
         sheet.popoverPresentationController?.barButtonItem = moreButton
         present(sheet, animated: true)
     }
@@ -694,6 +698,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             isUserActivatedLink: userLink, isFromWebsite: trustedSource
         ) {
         case .website:
+            let document = MobileEntry.documentURL(url)
+            if mainFrame && document != url {
+                decisionHandler(.cancel)
+                loadWebsite(document)
+                return
+            }
             lastWebsiteURL = url
             decisionHandler(.allow)
         case .webFrame:
@@ -732,6 +742,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         guard navigationState.begin(navigation) else { return }
+        documentMarkerCheck = nil
         invalidateBookmarkCapture()
         #if DEBUG
         NSLog("DoveBevo: navigation provisional-start")
@@ -760,7 +771,33 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         guard navigationState.acceptsCallback(navigation) else { return }
+        if MobileEntry.isDocument(webView.url) {
+            let check = UUID()
+            documentMarkerCheck = check
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self, weak webView] in
+                guard let self, let webView, self.webView === webView,
+                      self.documentMarkerCheck == check, self.navigationState.acceptsCallback(navigation) else { return }
+                self.documentMarkerCheck = nil
+                self.showError(title: "Dove bevo non si carica", message: "L'interfaccia dell'app richiede internet. Controlla la connessione e tocca Riprova.")
+            }
+            webView.evaluateJavaScript(MobileEntry.markerScript, in: nil, in: .defaultClient) { [weak self, weak webView] result in
+                guard let self, let webView, self.webView === webView,
+                      self.documentMarkerCheck == check,
+                      self.navigationState.acceptsCallback(navigation), MobileEntry.isDocument(webView.url) else { return }
+                self.documentMarkerCheck = nil
+                guard case .success(let value) = result, let marker = value as? Bool, marker else {
+                    self.showError(title: "Dove bevo non si carica", message: "L'interfaccia dell'app richiede internet. Controlla la connessione e tocca Riprova.")
+                    return
+                }
+                self.completeDocumentLoad()
+            }
+            return
+        }
         AppPresentationTheme.applyAfterFinish(to: webView)
+        completeDocumentLoad()
+    }
+
+    private func completeDocumentLoad() {
         #if DEBUG
         NSLog("DoveBevo: navigation finish")
         #endif

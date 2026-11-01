@@ -129,10 +129,12 @@ enum MapAreaReader {
     (() => {
         "use strict";
         const url = new URL(location.href);
+        const mobile = /^\/mobile\/(?:index\.html)?$/.test(url.pathname);
+        if (mobile && document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1") return null;
         if (window.top !== window || url.protocol !== "https:" ||
             !["www.dovebevo.com", "dovebevo.com"].includes(url.hostname) ||
             url.username || url.password || (url.port && url.port !== "443") ||
-            !/^(?:\/|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname)) return null;
+            (!mobile && !/^(?:\/|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname))) return null;
         const maps = document.querySelectorAll("#app > .app section.map");
         if (maps.length !== 1 || maps[0].getAttribute("data-ready") !== "true") return null;
         const map = maps[0], box = map.getBoundingClientRect();

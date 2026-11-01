@@ -71,6 +71,8 @@ public final class BrowserPolicy {
     }
 
     public static String shareUrl(String raw) {
+        String venue = SavedVenueUrl.canonicalize(raw);
+        if (venue != null) return venue;
         if (target(raw) != Target.INTERNAL) return HOME;
         URI uri = parse(raw);
         if (uri == null || uri.getRawFragment() != null) return HOME;

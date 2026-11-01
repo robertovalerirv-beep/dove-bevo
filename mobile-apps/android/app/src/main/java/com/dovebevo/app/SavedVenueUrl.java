@@ -13,6 +13,8 @@ public final class SavedVenueUrl {
     private SavedVenueUrl() {}
 
     public static String canonicalize(String raw) {
+        String mobile = MobileEntry.publicVenue(raw);
+        if (mobile != null) return mobile;
         if (raw == null || raw.isEmpty() || raw.length() > 256 || raw.indexOf('\\') >= 0) return null;
         for (int i = 0; i < raw.length(); i++) if (Character.isISOControl(raw.charAt(i))) return null;
         try {

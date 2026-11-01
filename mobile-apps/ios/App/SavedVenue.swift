@@ -18,6 +18,7 @@ enum SavedVenuePolicy {
     }
 
     static func canonicalURL(_ url: URL?) -> URL? {
+        if let canonical = MobileEntry.publicVenue(url) { return canonical }
         guard let url, URLPolicy.isWebsite(url),
               let scheme = url.scheme,
               ["www.dovebevo.com", "dovebevo.com", "www.dovebevo.com:443", "dovebevo.com:443"].contains(

@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./.build/mobile.tsbuildinfo",
+    "allowImportingTsExtensions": true,
+    "paths": { "@site/*": ["../../src/*"], "@mobile/*": ["./*"] }
+  },
+  "include": ["./**/*.ts", "./**/*.tsx", "../../src/app", "../../src/shared"],
+  "exclude": [".build", "components/tests", "tests"]
+}

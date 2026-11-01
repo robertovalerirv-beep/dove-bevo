@@ -56,6 +56,10 @@ jobs:
       - run: npx playwright install --with-deps chromium webkit
       # All Playwright projects (chromium, webkit, security) share one build and server.
       - run: npx playwright test
+      - name: App-only mobile presentation and routing
+        run: |
+          npx tsc -p mobile-apps/web/tsconfig.json --noEmit
+          node --test mobile-apps/web/tests/*.test.mjs mobile-apps/web/components/tests/components.test.mjs
 
   osm-import:
     name: OSM import on a test PBF

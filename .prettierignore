@@ -2,6 +2,7 @@
 *.md
 package-lock.json
 dist/
+mobile-apps/web/.build/
 .wrangler/
 public/data/
 playwright-report/

@@ -6,6 +6,8 @@ export default defineConfig(
   {
     ignores: [
       "dist/",
+      "mobile-apps/web/.build/",
+      "mobile-apps/web/components/tests/dist/",
       "docs/materiali/", // local marketing material, not in the repository
       ".claude/worktrees/", // other sessions' checkouts of this repository (local only)
       "backup-*/",

@@ -26,6 +26,7 @@ class Fake:
         self.cell = m.geo(41.9, 12.5)
         self.fail_cache = False
         self.race = False
+        self.lost_insert_response = False
         self.queries = []
         self.version = "20261024"
     def fetch(self, url, maximum=0):
@@ -38,7 +39,11 @@ class Fake:
         if sql == m.INSERT and self.race:
             self.db.execute("INSERT INTO prices_current VALUES ('n123','spritz',0,?,123,999,'2026-10-20',7,'review','manual')", [self.cell])
         cur = self.db.execute(sql, params)
-        return [dict(row) for row in cur.fetchall()]
+        rows = [dict(row) for row in cur.fetchall()]
+        if sql == m.INSERT and self.lost_insert_response:
+            self.db.commit()
+            raise m.Error("response lost after commit")
+        return rows
 
 class Tests(unittest.TestCase):
     def setUp(self):
@@ -92,6 +97,20 @@ class Tests(unittest.TestCase):
         self.assertTrue(retry["complete"])
         self.assertEqual(retry["cache_invalidated"], [self.f.cell])
         self.assertEqual(retry["records"][0]["outcome"], "skipped_existing_or_guarded")
+    def test_insert_response_lost_is_indeterminate_and_cache_attempted(self):
+        for cache_fails in (False, True):
+            with self.subTest(cache_fails=cache_fails):
+                self.f.db.close()
+                self.setUp()
+                self.f.lost_insert_response = True
+                self.f.fail_cache = cache_fails
+                receipt = self.run_import(True)
+                self.assertFalse(receipt["complete"])
+                self.assertEqual(receipt["records"][0]["outcome"], "indeterminate")
+                self.assertEqual(self.f.db.execute("SELECT COUNT(*) FROM prices_current").fetchone()[0], 1)
+                self.assertEqual(receipt["cache_invalidated"], [] if cache_fails else [self.f.cell])
+                self.assertEqual("cache_invalidation_failed" in receipt["errors"], cache_fails)
+
     def test_invalid_and_duplicate_records_rejected(self):
         for field, value in (("venue_key","n001"),("cents",True),("hh",2),("google_reviews",100),("source_sha256","bad"),("cell","abcde"),("lat",float('nan')),("source_url","http://example.com")):
             with self.subTest(field=field):

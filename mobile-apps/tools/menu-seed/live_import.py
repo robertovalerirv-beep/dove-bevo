@@ -173,6 +173,7 @@ def run(raw, transport, apply=False, approved=None):
                 # Add before sending: an interrupted request may have committed.
                 previously_affected = r["cell"] in affected
                 affected.add(r["cell"])
+                result["outcome"] = "indeterminate"
                 inserted = transport.query(INSERT, key + [r["cell"], r["city"], r["cents"], doc["checked_on"]])
                 if len(inserted) > 1: raise Error("unexpected insert response")
                 result["outcome"] = "inserted" if inserted else "skipped_existing_or_guarded"

@@ -97,7 +97,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         NativeAppearance.configure(navigationController)
 
         navigationItem.rightBarButtonItem = moreButton
-        navigationItem.leftBarButtonItems = [backButton, forwardButton]
+        navigationItem.leftBarButtonItems = [backButton]
         backButton.isEnabled = false
         forwardButton.isEnabled = false
     }
@@ -109,6 +109,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             },
             UIAction(title: pageLoading ? "Interrompi" : "Ricarica", image: UIImage(systemName: pageLoading ? "xmark" : "arrow.clockwise"), identifier: UIAction.Identifier("browser.reload")) { [weak self] _ in
                 self?.reloadPage()
+            },
+            UIAction(title: "Avanti", image: UIImage(systemName: "chevron.forward"), identifier: UIAction.Identifier("browser.forward"), attributes: forwardButton.isEnabled ? [] : [.disabled]) { [weak self] _ in
+                self?.goForward()
             },
             UIAction(title: "Apri nel browser", image: UIImage(systemName: "safari")) { [weak self] _ in
                 self?.openCurrentPageInBrowser()
@@ -401,6 +404,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             },
             webView.observe(\.canGoForward, options: [.new]) { [weak self] webView, _ in
                 self?.forwardButton.isEnabled = webView.canGoForward
+                self?.updateMoreMenu()
             }
         ]
     }

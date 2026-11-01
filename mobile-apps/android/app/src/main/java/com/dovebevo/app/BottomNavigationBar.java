@@ -66,10 +66,10 @@ final class BottomNavigationBar extends LinearLayout {
         button.setText(label);
         button.setContentDescription(getContext().getString(description));
         button.setAllCaps(false);
-        button.setTextSize(13);
+        button.setTextSize(11);
         button.setMinWidth(dp(48)); button.setMinimumWidth(dp(48));
-        button.setMinHeight(dp(64)); button.setMinimumHeight(dp(64));
-        button.setPadding(dp(2), dp(6), dp(2), dp(6));
+        button.setMinHeight(dp(56)); button.setMinimumHeight(dp(56));
+        button.setPadding(dp(2), dp(4), dp(2), dp(4));
         button.setMaxLines(3);
         button.setCompoundDrawablePadding(dp(4));
         button.setCompoundDrawablesWithIntrinsicBounds(0, icon, 0, 0);

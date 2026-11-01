@@ -1,14 +1,25 @@
 /* Native document-start visitor guard. No network, storage, or bridge. */
-/* global window, document, URL, MutationObserver, Event */
+/* global window, document, URL, MutationObserver, Event, setTimeout, clearTimeout */
 (() => {
   "use strict";
   const key = "__dovebevoEarlyTheme";
   let url;
-  try { url = new URL(window.location.href); } catch { return; }
-  if (window.top !== window || url.protocol !== "https:" ||
-      !["dovebevo.com", "www.dovebevo.com"].includes(url.hostname) ||
-      url.username || url.password || (url.port && url.port !== "443") ||
-      !/^(?:\/|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname) || window[key]) return;
+  try {
+    url = new URL(window.location.href);
+  } catch {
+    return;
+  }
+  if (
+    window.top !== window ||
+    url.protocol !== "https:" ||
+    !["dovebevo.com", "www.dovebevo.com"].includes(url.hostname) ||
+    url.username ||
+    url.password ||
+    (url.port && url.port !== "443") ||
+    !/^(?:\/|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname) ||
+    window[key]
+  )
+    return;
 
   let active = false;
   let stopped = false;
@@ -17,9 +28,11 @@
   const shellObserver = new MutationObserver(() => activate(true));
   function visitor() {
     // These are the actual visitor document's static shell and brand links.
-    return !!document.querySelector('body > #app') &&
+    return (
+      !!document.querySelector("body > #app") &&
       !!document.querySelector('link[rel="manifest"][href="/manifest.webmanifest"]') &&
-      !!document.querySelector('link[rel="icon"][href="/brand/favicon.svg"]');
+      !!document.querySelector('link[rel="icon"][href="/brand/favicon.svg"]')
+    );
   }
   function forceLight(notify) {
     const root = document.documentElement;
@@ -32,7 +45,10 @@
     active = true;
     shellObserver.disconnect();
     clearTimeout(timer);
-    rootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    rootObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
     forceLight(notify);
   }
   function onTheme() {
@@ -49,12 +65,14 @@
     clearTimeout(timer);
     window.removeEventListener("themechange", onTheme);
     window.removeEventListener("pagehide", cleanup);
-    delete window[key];
+    Reflect.deleteProperty(window, key);
   }
   window[key] = true;
   window.addEventListener("themechange", onTheme);
   window.addEventListener("pagehide", cleanup);
   shellObserver.observe(document, { childList: true, subtree: true });
-  timer = setTimeout(() => { if (!active) cleanup(); }, 15000);
+  timer = setTimeout(() => {
+    if (!active) cleanup();
+  }, 15000);
   activate(true);
 })();

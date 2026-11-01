@@ -2,7 +2,7 @@
  * No bridge, network, storage or application-data changes.
  * The response nonce stays in this document and is never returned to native code.
  */
-/* global window, document, URL, getComputedStyle */
+/* global window, document, URL, getComputedStyle, MutationObserver, Event */
 (() => {
   "use strict";
   const id = "dovebevo-native-theme-v1";
@@ -286,47 +286,63 @@ html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .question { margin: 1
     };
     const toggleText = (expanded) => {
       const english = (root.getAttribute("lang") || "it").toLowerCase().startsWith("en");
-      return english ? (expanded ? "Hide actions" : "Show actions") :
-        (expanded ? "Nascondi azioni" : "Mostra azioni");
+      return english
+        ? expanded
+          ? "Hide actions"
+          : "Show actions"
+        : expanded
+          ? "Nascondi azioni"
+          : "Mostra azioni";
     };
     const adapt = () => {
       const list = app.querySelector(".drink-menu__list");
       if (list && list.hasAttribute("hidden")) list.removeAttribute("hidden");
       app.querySelectorAll(".scontrino .prices").forEach((prices) => {
-        [...prices.children].filter((row) => row.classList.contains("price")).forEach((row, index) => {
-          let button = row.querySelector(".dovebevo-price-toggle");
-          const actions = row.querySelector(".price__actions");
-          if (index === 0 || !actions) {
-            const moveFocus = button && document.activeElement === button;
-            if (row.hasAttribute("data-dovebevo-collapsed")) row.removeAttribute("data-dovebevo-collapsed");
-            // Preserve keyboard focus if this row becomes the leading price.
-            if (moveFocus) actions?.querySelector("button")?.focus();
-            if (button) button.remove();
-            return;
-          }
-          if (!button) {
-            button = document.createElement("button");
-            button.type = "button";
-            button.className = "dovebevo-price-toggle";
-            button.setAttribute("aria-expanded", "false");
-            button.textContent = toggleText(false);
-            button.addEventListener("click", () => {
-              const expanded = button.getAttribute("aria-expanded") !== "true";
-              button.setAttribute("aria-expanded", String(expanded));
-              button.textContent = toggleText(expanded);
-              row.setAttribute("data-dovebevo-collapsed", expanded ? "0" : "1");
-            });
-            row.setAttribute("data-dovebevo-collapsed", "1");
-            row.appendChild(button);
-          } else {
-            const label = toggleText(button.getAttribute("aria-expanded") === "true");
-            if (button.textContent !== label) button.textContent = label;
-          }
-        });
+        [...prices.children]
+          .filter((row) => row.classList.contains("price"))
+          .forEach((row, index) => {
+            let button = row.querySelector(".dovebevo-price-toggle");
+            const actions = row.querySelector(".price__actions");
+            if (index === 0 || !actions) {
+              const moveFocus = button && document.activeElement === button;
+              if (row.hasAttribute("data-dovebevo-collapsed"))
+                row.removeAttribute("data-dovebevo-collapsed");
+              // Preserve keyboard focus if this row becomes the leading price.
+              if (moveFocus) actions?.querySelector("button")?.focus();
+              if (button) button.remove();
+              return;
+            }
+            if (!button) {
+              button = document.createElement("button");
+              button.type = "button";
+              button.className = "dovebevo-price-toggle";
+              button.setAttribute("aria-expanded", "false");
+              button.textContent = toggleText(false);
+              button.addEventListener("click", () => {
+                const expanded = button.getAttribute("aria-expanded") !== "true";
+                button.setAttribute("aria-expanded", String(expanded));
+                button.textContent = toggleText(expanded);
+                row.setAttribute("data-dovebevo-collapsed", expanded ? "0" : "1");
+              });
+              row.setAttribute("data-dovebevo-collapsed", "1");
+              row.appendChild(button);
+            } else {
+              const label = toggleText(button.getAttribute("aria-expanded") === "true");
+              if (button.textContent !== label) button.textContent = label;
+            }
+          });
       });
     };
-    const observer = new MutationObserver(() => { forceLight(); adapt(); });
-    observer.observe(app, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
+    const observer = new MutationObserver(() => {
+      forceLight();
+      adapt();
+    });
+    observer.observe(app, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["hidden"],
+    });
     observer.observe(root, { attributes: true, attributeFilter: ["data-theme", "lang"] });
     window.addEventListener("themechange", forceLight);
     const cleanup = (event) => {

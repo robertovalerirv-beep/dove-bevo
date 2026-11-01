@@ -268,14 +268,16 @@ public final class NativeUsabilityRuntimeTest {
             assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
             assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
             android.view.ViewGroup top = activity.findViewById(R.id.browser_tools);
-            assertEquals(4, top.getChildCount());
+            assertEquals(3, top.getChildCount());
             int historyActions=0;
             for(int i=0;i<top.getChildCount();i++) if(top.getChildAt(i) instanceof Button) historyActions++;
-            assertEquals("The brand title adds no duplicate action",3,historyActions);
+            assertEquals("The compact header has Back and More",2,historyActions);
+            assertNull(top.findViewById(R.id.forward));
             assertNull(top.findViewById(R.id.home)); assertNull(top.findViewById(R.id.save_venue));
             assertNull(activity.findViewById(R.id.share)); assertNull(activity.findViewById(R.id.refresh));
             android.view.Menu menu = browserMenu().getMenu();
             assertNotNull(menu.findItem(R.id.share)); assertNotNull(menu.findItem(R.id.refresh));
+            assertNotNull(menu.findItem(R.id.forward));
             for (int id : new int[]{R.id.home, R.id.map_destination, R.id.favorites_destination,
                     R.id.saved_venues, R.id.save_venue, R.id.recommendation_entry}) assertNull(menu.findItem(id));
         });
@@ -436,6 +438,22 @@ public final class NativeUsabilityRuntimeTest {
         }
     }
 
+    @Test public void documentStartThemePrecedesOwnedWebsiteMapListeners() throws Exception {
+        assertTrue("The test WebView must support actual document-start registration",
+                androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT));
+        presentationMode=4;
+        navigate(ONE);
+        CountDownLatch complete=new CountDownLatch(1);
+        AtomicReference<String> result=new AtomicReference<>();
+        onMain(()->web.evaluateJavascript("(()=>{const initial=window.themeSeen.join('|');document.documentElement.dataset.theme='dark';window.dispatchEvent(new Event('themechange'));return [initial,window.themeSeen.join('|'),document.documentElement.dataset.theme];})()",
+                value->{result.set(value);complete.countDown();}));
+        assertTrue(complete.await(5,TimeUnit.SECONDS));
+        JSONArray state=new JSONArray(result.get());
+        assertEquals("light",state.getString(0));
+        assertEquals("light|light",state.getString(1));
+        assertEquals("light",state.getString(2));
+    }
+
     @Test public void compactHeaderKeepsNamedHistoryControlsVisibleAtNarrowWidth() {
         onMain(()->{
             if(Build.VERSION.SDK_INT>=26) assertTrue("Light system navigation must request dark controls",
@@ -445,7 +463,7 @@ public final class NativeUsabilityRuntimeTest {
             int width=Math.round(320*density);
             header.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
             header.layout(0,0,width,header.getMeasuredHeight());
-            for(int id:new int[]{R.id.back,R.id.forward,R.id.more}) {
+            for(int id:new int[]{R.id.back,R.id.more}) {
                 Button action=header.findViewById(id);
                 assertNotNull(action);assertTrue(action.getWidth()>=48*density);assertTrue(action.getHeight()>=48*density);
                 assertNotNull(action.getContentDescription());assertTrue(action.getContentDescription().length()>1);
@@ -820,10 +838,12 @@ public final class NativeUsabilityRuntimeTest {
                     String nonce=presentationMode==2?"":" nonce=\"fixtureThemeNonce20261029\"";
                     String html="<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
                             +"<meta name=\"owned-response\" content=\""+responseToken+"\"><script"+nonce+"></script>"
+                            +(presentationMode==4?"<link rel=\"manifest\" href=\"/manifest.webmanifest\"><link rel=\"icon\" href=\"/brand/favicon.svg\"><script"+nonce+">document.documentElement.dataset.theme='dark';</script>":"")
                             +"<div id=\"app\"><div class=\"app\"><header class=\"top\">Owned header</header><main class=\"main\">"
                             +"<section class=\"map\" data-selected=\"n123\"></section>"
                             +"<dialog class=\"sheet sheet--bare\" open aria-label=\"Locale di prova\"><div class=\"sheet__body\"><div class=\"scontrino\"><div class=\"scontrino__paper\"><h2 class=\"scontrino__name\">Locale di prova</h2></div></div></div></dialog>"
-                            +"</main></div></div>";
+                            +"</main></div></div>"
+                            +(presentationMode==4?"<script type=\"module\""+nonce+">window.themeSeen=[document.documentElement.dataset.theme];window.addEventListener('themechange',()=>window.themeSeen.push(document.documentElement.dataset.theme));</script>":"");
                     bytes=html.getBytes(StandardCharsets.UTF_8);
                 }
                 InputStream body = new ByteArrayInputStream(bytes);

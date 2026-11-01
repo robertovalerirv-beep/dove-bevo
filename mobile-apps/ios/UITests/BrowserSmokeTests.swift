@@ -22,7 +22,7 @@ final class BrowserSmokeTests: XCTestCase {
 
     func testNativeNavigationAndInformationAreAccessible() {
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
-        for identifier in ["browser.back", "browser.forward", "browser.home", "browser.more", "browser.recommendations", "browser.saveVenue"] {
+        for identifier in ["browser.back", "browser.home", "browser.more", "browser.recommendations", "browser.saveVenue"] {
             XCTAssertTrue(app.buttons[identifier].exists, identifier)
         }
         let bottomBar = app.descendants(matching: .any)["native.bottomNavigation"]
@@ -325,7 +325,8 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertFalse(app.buttons["browser.saveVenue"].isEnabled)
         assertNoNativeRecovery()
         assertShareAndReloadAvailable()
-        let forward = app.buttons["browser.forward"]
+        app.buttons["browser.more"].tap()
+        let forward = app.buttons["Avanti"]
         XCTAssertTrue(forward.exists && forward.isEnabled)
         forward.tap()
         XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 30))

@@ -47,6 +47,8 @@ abstract class GeneratePrivacyAssets extends DefaultTask {
 abstract class GenerateMobilePresentationAssets extends DefaultTask {
     @InputFile @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getPresentationFile()
+    @InputFile @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getBootstrapFile()
     @OutputDirectory
     abstract DirectoryProperty getOutputDirectory()
     @Inject
@@ -55,10 +57,13 @@ abstract class GenerateMobilePresentationAssets extends DefaultTask {
     @TaskAction
     void generate() {
         File presentation = presentationFile.get().asFile
+        File bootstrap = bootstrapFile.get().asFile
         if (!presentation.isFile() || presentation.length() == 0 || presentation.length() > 131072)
             throw new GradleException('The bundled app presentation is missing or invalid.')
+        if (!bootstrap.isFile() || bootstrap.length() == 0 || bootstrap.length() > 8192)
+            throw new GradleException('The bundled app theme bootstrap is missing or invalid.')
         fileSystemOperations.sync {
-            from(presentation)
+            from(presentation, bootstrap)
             into(outputDirectory)
         }
     }
@@ -111,6 +116,7 @@ androidComponents {
         variant.sources.assets.addGeneratedSourceDirectory(generatePrivacyAssets) { it.outputDirectory }
         def generatePresentationAssets = tasks.register("generate${variant.name.capitalize()}MobilePresentationAssets", GenerateMobilePresentationAssets) {
             presentationFile.set(layout.projectDirectory.file('../../presentation/app-theme.js'))
+            bootstrapFile.set(layout.projectDirectory.file('../../presentation/app-theme-start.js'))
             outputDirectory.set(layout.buildDirectory.dir("generated/mobilePresentationAssets/${variant.name}"))
         }
         variant.sources.assets.addGeneratedSourceDirectory(generatePresentationAssets) { it.outputDirectory }
@@ -120,6 +126,7 @@ androidComponents {
 
 dependencies {
     implementation 'androidx.activity:activity:1.11.0'
+    implementation 'androidx.webkit:webkit:1.16.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test:runner:1.7.0'

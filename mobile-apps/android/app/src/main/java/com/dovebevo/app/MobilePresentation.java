@@ -7,12 +7,28 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import android.webkit.WebView;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
+import java.util.Set;
 
 /** Bounded bundled presentation only. The installer independently checks normal DOM and page nonce. */
 final class MobilePresentation {
     static final String ASSET = "app-theme.js";
     static final int MAX_BYTES = 131072;
     private MobilePresentation() {}
+
+    static void installDocumentStart(WebView view) {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return;
+        try (InputStream input = view.getContext().getAssets().open("app-theme-start.js")) {
+            String source = read(input);
+            if (source.getBytes(StandardCharsets.UTF_8).length > 8192) return;
+            WebViewCompat.addDocumentStartJavaScript(view, source,
+                    Set.of("https://www.dovebevo.com", "https://dovebevo.com"));
+        } catch (IOException unavailable) {
+            // Keep normal browsing available if the optional theme cannot load.
+        }
+    }
 
     static boolean allows(String finishedUrl, String currentUrl) {
         if (finishedUrl == null || !finishedUrl.equals(currentUrl)

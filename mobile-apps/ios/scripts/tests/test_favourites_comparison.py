@@ -119,7 +119,9 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("assertShareAndReloadAvailable()", ui)
         self.assertIn("verifyLiveVenueHistoryReadOnly(venueName: publicName)", ui)
         self.assertIn('let back = app.buttons["browser.back"]', ui)
-        self.assertIn('let forward = app.buttons["browser.forward"]', ui)
+        self.assertIn('let forward = app.buttons["Avanti"]', ui)
+        history_flow = ui.split("private func verifyLiveVenueHistoryReadOnly", 1)[1].split("private func waitForOrdinaryKeyboard", 1)[0]
+        self.assertLess(history_flow.index('app.buttons["browser.more"].tap()'), history_flow.index('let forward = app.buttons["Avanti"]'))
         save = ui.split("private func saveCurrentVenueInOneTap()", 1)[1].split("private func assertShareAndReloadAvailable()", 1)[0]
         self.assertIn('app.alerts["Preferito salvato"]', save)
         self.assertIn('app.navigationBars["Dove bevo"].exists', save)

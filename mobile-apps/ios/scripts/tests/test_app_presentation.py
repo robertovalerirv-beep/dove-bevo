@@ -36,7 +36,10 @@ class AppPresentationGuards(unittest.TestCase):
     def test_shared_asset_is_only_js_resource_and_installed_in_isolated_main_frame(self):
         project = (IOS / "project.yml").read_text(encoding="utf-8")
         self.assertIn("- path: ../presentation/app-theme.js\n        buildPhase: resources", project)
+        self.assertIn("- path: ../presentation/app-theme-start.js\n        buildPhase: resources", project)
         source = (IOS / "App/AppPresentationTheme.swift").read_text(encoding="utf-8")
+        self.assertIn("injectionTime: .atDocumentStart", source)
+        self.assertIn("data.count <= 8 * 1024", source)
         for required in ['Bundle.main.url(forResource: "app-theme", withExtension: "js")',
                          "data.count <= 32 * 1024", "encoding: .utf8", ".atDocumentEnd",
                          "forMainFrameOnly: true, in: .defaultClient", "URLPolicy.isWebsite(url)",

@@ -12,6 +12,13 @@ import WebKit
     }()
 
     static func install(in configuration: WKWebViewConfiguration) {
+        if let url = Bundle.main.url(forResource: "app-theme-start", withExtension: "js"),
+           let data = try? Data(contentsOf: url), data.count <= 8 * 1024,
+           let bootstrap = String(data: data, encoding: .utf8) {
+            configuration.userContentController.addUserScript(WKUserScript(
+                source: bootstrap, injectionTime: .atDocumentStart,
+                forMainFrameOnly: true, in: .defaultClient))
+        }
         guard let source else { return }
         let script = WKUserScript(source: source, injectionTime: .atDocumentEnd,
                                   forMainFrameOnly: true, in: .defaultClient)

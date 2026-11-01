@@ -17,7 +17,9 @@ function fixture(options = {}) {
     return {
       tagName: tag.toUpperCase(),
       textContent: "",
-      addEventListener(name, fn) { if (name === "click") this.click = fn; },
+      addEventListener(name, fn) {
+        if (name === "click") this.click = fn;
+      },
       setAttribute: (key, value) => attrs.set(key, value),
       getAttribute: (key) => attrs.get(key) ?? null,
       remove() {
@@ -50,19 +52,28 @@ function fixture(options = {}) {
     location: { href: options.url ?? "https://www.dovebevo.com/" },
     addEventListener: (name, fn) => listeners.set(name, fn),
     removeEventListener: (name) => listeners.delete(name),
-    dispatchEvent: (event) => { const fn = listeners.get(event.type); if (fn) fn(event); },
+    dispatchEvent: (event) => {
+      const fn = listeners.get(event.type);
+      if (fn) fn(event);
+    },
   };
   class MutationObserver {
-    constructor(fn) { this.fn = fn; }
+    constructor(fn) {
+      this.fn = fn;
+    }
     observe() {}
     disconnect() {}
   }
-  class Event { constructor(type) { this.type = type; } }
+  function Event(type) {
+    this.type = type;
+  }
   window.top = options.frame ? {} : window;
   const context = vm.createContext({
     window,
     document,
-    URL, MutationObserver, Event,
+    URL,
+    MutationObserver,
+    Event,
     getComputedStyle: () => ({
       getPropertyValue: () =>
         options.cspDenied
@@ -73,7 +84,14 @@ function fixture(options = {}) {
             : "",
     }),
   });
-  return { run: () => vm.runInContext(source, context, { timeout: 1000 }), nodes, rootAttributes, listeners, window, app };
+  return {
+    run: () => vm.runInContext(source, context, { timeout: 1000 }),
+    nodes,
+    rootAttributes,
+    listeners,
+    window,
+    app,
+  };
 }
 
 for (const url of [
@@ -185,16 +203,24 @@ test("adapter exposes original checkbox group and expands real price actions", (
   let child;
   const row = {
     classList: { contains: () => true },
-    querySelector: (s) => s === ".price__actions" ? {} : child ?? null,
+    querySelector: (s) => (s === ".price__actions" ? {} : (child ?? null)),
     setAttribute: (k, v) => rowAttrs.set(k, v),
-    appendChild: (v) => { child = v; },
+    appendChild: (v) => {
+      child = v;
+    },
   };
-  const first = { classList: { contains: () => true }, querySelector: () => null, hasAttribute: () => false };
+  const first = {
+    classList: { contains: () => true },
+    querySelector: () => null,
+    hasAttribute: () => false,
+  };
   page.app.querySelector = () => list;
   page.app.querySelectorAll = () => [{ children: [first, row] }];
   // A separate browser-like button retains the actual click listener and ARIA state.
   // The fixture's button factory is replaced through the row append target below.
-  row.appendChild = (v) => { child = v; };
+  row.appendChild = (v) => {
+    child = v;
+  };
   assert.equal(page.run(), true);
   assert.equal(attrs.has("hidden"), false);
   assert.equal(rowAttrs.get("data-dovebevo-collapsed"), "1");
@@ -207,8 +233,14 @@ test("adapter exposes original checkbox group and expands real price actions", (
 });
 
 test("adapter targets the existing website checkbox and price action structure", () => {
-  const menu = readFileSync(new URL("../../../src/app/components/DrinkMenu.tsx", import.meta.url), "utf8");
-  const venue = readFileSync(new URL("../../../src/app/components/BarSheet.tsx", import.meta.url), "utf8");
+  const menu = readFileSync(
+    new URL("../../../src/app/components/DrinkMenu.tsx", import.meta.url),
+    "utf8",
+  );
+  const venue = readFileSync(
+    new URL("../../../src/app/components/BarSheet.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(menu, /class="drink-menu__list"[\s\S]*?class="drink-option"[\s\S]*?type="checkbox"/);
   assert.match(menu, /onChange=\{\(\) =>/);
   assert.match(venue, /class="price__actions"[\s\S]*?actions\.changed[\s\S]*?actions\.report/);

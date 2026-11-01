@@ -1,5 +1,13 @@
 # Dove Bevo app visual adaptation — design QA
 
+## Current reference follow-up — 1 November 2026
+
+The owner rejected the earlier adaptation as insufficiently close to the supplied six-screen board. The historical result below applies only to that limited build52 adaptation; it is not current reference-fidelity approval. The new implementation exposes real drink choices as horizontal chips, restores promoted price rows after selection changes, compacts secondary actions without hiding freshness, moves Forward to native overflow, reduces normal native chrome, and installs a visitor-only light-theme guard at document start.
+
+Fresh local checks: 38 presentation tests with zero skips, 115 iOS source/release guards, 74 Android JVM cases, zero Android lint errors, and32 Android installed runtime cases including document-start listener ordering. Native iOS tests and new genuine screen comparisons remain required. The direct Android emulator launch/capture command was rejected by automatic approval review as blocked by policy; it supplied no more specific reason. Browser tooling separately reports that local browser access is disabled.
+
+Current reference fidelity: **not approved**. Existing marker geometry, venue photography, discovery and image-sharing surfaces still differ from the reference. No public menu-price import has been made. Do not reuse the historical adaptation's pass as proof that the latest owner request is complete.
+
 Review date: 30 October 2026. Paths below are relative to the integration checkout root. This report lives at the mobile project root. This reviews the existing mobile product adapted to the owner's six-screen visual direction. It does not certify a pixel-identical recreation, a new public catalogue, physical-device acceptance or store approval.
 
 ## Findings
@@ -63,6 +71,6 @@ The check artifact has no simulator app bundle, so it does not establish fresh s
 
 The existing map renderer/attribution, night basemap and cached marker geometry remain. The reference's venue photography, observation-date picker, receipt upload, editorial discovery, own-contribution history, rating faces and share-image cards require distinct functional product work; they are not decorative placeholders in this adaptation. Native URL sharing and the existing support/privacy controls remain usable. The one-off Europe catalogue/menu import is a separate paused task.
 
-final result: passed
+Historical build52 adaptation result: passed. Current reference follow-up final result: blocked pending genuine native captures and comparison.
 
 No actionable P0/P1/P2 visual finding remains in the tested adaptation. Physical-device acceptance, later store decisions and complete Europe venue/menu coverage are separate outstanding work; this report does not certify them.

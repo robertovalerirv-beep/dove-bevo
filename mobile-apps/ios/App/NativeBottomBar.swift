@@ -153,8 +153,8 @@ final class NativeBottomBar: UIView {
             let button = button(for: action)
             let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1)
             let enabled = action != .save && action != .recommendations || venueActionsEnabled
-            var configuration = selected ? UIButton.Configuration.filled() : UIButton.Configuration.plain()
-            configuration.baseBackgroundColor = selected ? NativeAppearance.ink : .clear
+            var configuration = UIButton.Configuration.plain()
+            configuration.baseBackgroundColor = .clear
             configuration.title = action.title
             configuration.titleAlignment = .center
             configuration.titleLineBreakMode = .byWordWrapping
@@ -169,7 +169,7 @@ final class NativeBottomBar: UIView {
             configuration.imagePlacement = .top
             configuration.imagePadding = 4
             configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 4, bottom: 6, trailing: 4)
-            configuration.baseForegroundColor = selected ? NativeAppearance.surface : (enabled ? NativeAppearance.ink : NativeAppearance.disabled)
+            configuration.baseForegroundColor = enabled ? (selected ? NativeAppearance.ink : NativeAppearance.muted) : NativeAppearance.disabled
             configuration.background.cornerRadius = NativeAppearance.radius
             configuration.cornerStyle = .fixed
             button.configuration = configuration

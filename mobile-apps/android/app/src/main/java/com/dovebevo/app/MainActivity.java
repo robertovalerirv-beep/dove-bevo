@@ -248,18 +248,24 @@ public final class MainActivity extends ComponentActivity {
         tools.setId(R.id.browser_tools);
         tools.setGravity(Gravity.CENTER_VERTICAL);
         tools.setBackgroundColor(getColor(R.color.surface));
-        tools.setPadding(dp(8), dp(6), dp(8), dp(6));
+        tools.setPadding(dp(8), 0, dp(8), 0);
         backButton = button(R.id.back, R.string.back, this::goBack);
         forwardButton = button(R.id.forward, R.string.forward, this::goForward);
         backButton.setText("‹"); backButton.setTextSize(28);
         forwardButton.setText("›"); forwardButton.setTextSize(28);
         tools.addView(backButton, new LinearLayout.LayoutParams(dp(48), -2));
-        tools.addView(forwardButton, new LinearLayout.LayoutParams(dp(48), -2));
+        // Forward remains available in overflow; the map header needs one back control.
+        for (Button control : new Button[]{backButton, forwardButton}) {
+            control.setPadding(0, 0, 0, 0);
+            control.setBackground(NativeAppearance.shape(this, R.color.surface, 24, false));
+        }
         TextView brand = text(R.string.app_name, 18);
         NativeAppearance.title(brand);
         tools.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
         Button more = button(R.id.more, R.string.more_options, () -> {});
         more.setText(R.string.more_symbol); more.setTextSize(24);
+        more.setPadding(0, 0, 0, 0);
+        more.setBackground(NativeAppearance.shape(this, R.color.surface, 24, false));
         more.setOnClickListener(this::showMenu);
         tools.addView(more, new LinearLayout.LayoutParams(dp(48), -2));
         return tools;
@@ -304,6 +310,7 @@ public final class MainActivity extends ComponentActivity {
         website.setId(R.id.website);
         WebSettings settings = website.getSettings();
         settings.setJavaScriptEnabled(true);
+        MobilePresentation.installDocumentStart(website);
         settings.setDomStorageEnabled(true);
         settings.setGeolocationEnabled(true);
         settings.setSupportMultipleWindows(true);
@@ -605,6 +612,8 @@ public final class MainActivity extends ComponentActivity {
         menu.getMenu().add(Menu.NONE, R.id.share, Menu.NONE, R.string.share)
                 .setEnabled(mapActive&&hasUsablePage&&!failed&&!loading&&!awaitingDocumentStart);
         menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, loading?R.string.stop_loading:R.string.refresh).setEnabled(mapActive);
+        menu.getMenu().add(Menu.NONE, R.id.forward, Menu.NONE, R.string.forward)
+                .setEnabled(mapActive && website.canGoForward());
         menu.getMenu().add(Menu.NONE, R.id.location_help, Menu.NONE, R.string.location_help);
         menu.getMenu().add(Menu.NONE, R.id.privacy, Menu.NONE, R.string.privacy);
         menu.getMenu().add(Menu.NONE, R.id.support, Menu.NONE, R.string.support);
@@ -617,6 +626,9 @@ public final class MainActivity extends ComponentActivity {
             }
             if (item.getItemId() == R.id.refresh) {
                 if(!favoritesVisible&&website!=null)refresh();return true;
+            }
+            if (item.getItemId() == R.id.forward) {
+                if(!favoritesVisible&&website!=null)goForward();return true;
             }
             if (item.getItemId() == R.id.location_help) { showLocationHelp(); return true; }
             if (item.getItemId() == R.id.privacy) { showPrivacy(); return true; }

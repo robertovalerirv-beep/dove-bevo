@@ -13,14 +13,46 @@ final class AppPresentationThemeTests: XCTestCase {
         let originalApplicationName = configuration.applicationNameForUserAgent
         let originalStore = configuration.websiteDataStore
         AppPresentationTheme.install(in: configuration)
-        let script = try XCTUnwrap(configuration.userContentController.userScripts.first)
-        XCTAssertEqual(configuration.userContentController.userScripts.count, 1)
+        let scripts = configuration.userContentController.userScripts
+        XCTAssertEqual(scripts.count, 2)
+        let early = try XCTUnwrap(scripts.first)
+        XCTAssertEqual(early.injectionTime, .atDocumentStart)
+        XCTAssertTrue(early.isForMainFrameOnly)
+        let earlyAsset = try XCTUnwrap(Bundle.main.url(forResource: "app-theme-start", withExtension: "js"))
+        XCTAssertEqual(early.source, try String(contentsOf: earlyAsset, encoding: .utf8))
+        let script = try XCTUnwrap(scripts.last)
         XCTAssertEqual(script.source, source)
         XCTAssertEqual(script.injectionTime, .atDocumentEnd)
         XCTAssertTrue(script.isForMainFrameOnly)
         XCTAssertEqual(configuration.applicationNameForUserAgent, originalApplicationName)
         XCTAssertTrue(configuration.websiteDataStore === originalStore)
         XCTAssertTrue(configuration.websiteDataStore.isPersistent)
+    }
+
+    @MainActor
+    func testDocumentStartSelectsLightBeforePageMapConsumers() throws {
+        let configuration = WKWebViewConfiguration()
+        AppPresentationTheme.install(in: configuration)
+        let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 700), configuration: configuration)
+        let done = expectation(description: "Document start visitor fixture")
+        let delegate = ThemeNavigationDelegate(finished: done)
+        web.navigationDelegate = delegate
+        let data = Data("""
+        <!doctype html><html><head><meta charset="utf-8">
+        <link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/brand/favicon.svg">
+        <script>document.documentElement.dataset.theme='dark';</script></head>
+        <body><div id="app"></div><script type="module">
+        window.themeSeen=[document.documentElement.dataset.theme];
+        window.addEventListener('themechange',()=>window.themeSeen.push(document.documentElement.dataset.theme));
+        </script></body></html>
+        """.utf8)
+        let url = URLPolicy.homeURL
+        let response = URLResponse(url: url, mimeType: "text/html", expectedContentLength: data.count, textEncodingName: "UTF-8")
+        XCTAssertNotNil(web.loadSimulatedRequest(URLRequest(url: url), response: response, responseData: data))
+        wait(for: [done], timeout: 15)
+        XCTAssertNil(delegate.error)
+        XCTAssertEqual(try evaluate(web, "window.themeSeen.join('|')", world: .page) as? String, "light")
+        XCTAssertEqual(try evaluate(web, "document.documentElement.dataset.theme='dark';window.dispatchEvent(new Event('themechange'));window.themeSeen.join('|')", world: .page) as? String, "light|light")
     }
 
     @MainActor

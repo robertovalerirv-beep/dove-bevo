@@ -73,14 +73,14 @@ final class NativeAppearance {
         button.setSelected(selected);
         button.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
         button.setTextColor(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled},new int[]{}},
-                new int[]{context.getColor(R.color.muted_text),ink}));
+                new int[]{context.getColor(R.color.muted_text),selected ? ink : context.getColor(R.color.muted_text)}));
         button.setStateListAnimator(null);
         button.setElevation(0);
         button.setBackgroundTintList(null);
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22101820),
-                shape(context, selected ? R.color.selected_surface : R.color.surface, 12, false), null));
+                shape(context, R.color.surface, 12, false), null));
         for (android.graphics.drawable.Drawable icon : button.getCompoundDrawables()) {
-            if (icon != null) icon.mutate().setTint(ink);
+            if (icon != null) icon.mutate().setTint(selected ? ink : context.getColor(R.color.muted_text));
         }
     }
 

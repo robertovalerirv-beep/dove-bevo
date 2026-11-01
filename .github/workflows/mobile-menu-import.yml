@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
-      MANIFEST: mobile-apps/data/menu-seed-existing-20261101-a.json
-      MANIFEST_SHA256: 1360bc4300cad4fb9e1b530ae09eb1f4871e9cb8093d644aeb299273e533027a
+      MANIFEST: mobile-apps/data/menu-seed-existing-20261101-b.json
+      MANIFEST_SHA256: f43a1f397c204c5fc47d120db69ceb80bb46337774176b9d651696ad50d707b2
       RECEIPT: mobile-apps/evidence/menu-import/receipt.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

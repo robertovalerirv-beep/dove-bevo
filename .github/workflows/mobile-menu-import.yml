@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 10
     env:
       MANIFEST: mobile-apps/data/menu-seed-existing-20261101-b.json
-      MANIFEST_SHA256: e5c93b63862a002ab5d64324e9f5a55c5b991331cf5b1108aefd97576f393102
+      MANIFEST_SHA256: 07fc73fdb9b40d35126868ca8bd1bc96528609cfaad8157df83c5af934c95077
       RECEIPT: mobile-apps/evidence/menu-import/receipt.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

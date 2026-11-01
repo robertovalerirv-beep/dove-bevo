@@ -18,7 +18,9 @@ final class DiscoveryControllerTests: XCTestCase {
         let venue = DiscoveryVenue(key: "n123", name: "Real current name", cell: "u0nd9", latitude: 45.4642, longitude: 9.19,
                                    address: "Via pubblica", city: "Milano", prices: [price])
         client.complete(0, DiscoverySnapshot(area: area, venues: [venue], unavailableCells: []))
-        XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 0, "The initial beer filter must not show a Spritz price")
+        XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 1, "Both platforms start on the real Spritz filter")
+        controller.selectDrink("beer_draft")
+        XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 0, "A beer filter cannot show a Spritz price")
         controller.selectDrink("spritz")
         XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 1)
         let index = IndexPath(row: 0, section: 0)

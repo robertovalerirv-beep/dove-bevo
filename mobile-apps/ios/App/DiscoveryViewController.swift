@@ -15,7 +15,7 @@ final class DiscoveryViewController: UITableViewController {
     private var visible = false
     private var lifecycleActive = true
     private var busy = false
-    private var drink = DrinkCategory.all[0]
+    private var drink = DrinkCategory.all.first { $0.code == "spritz" } ?? DrinkCategory.all[0]
     private var band = ComparisonBand.normal
     private var renderedCategory: UIContentSizeCategory?
     private var drinkButtons: [UIButton] = []

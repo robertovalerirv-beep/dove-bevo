@@ -142,6 +142,57 @@ final class DiscoveryTests: XCTestCase {
         XCTAssertEqual(transport.calls.count, 5)
     }
 
+    func testConflictingCrossCellIdentityIsExcludedForBothCompletionOrders() throws {
+        let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
+        for reversed in [false, true] {
+            let transport = DelayedComparisonTransport()
+            let client = DiscoveryClient(transport: transport, today: { "2026-10-29" })
+            var output: DiscoverySnapshot?
+            let operation = client.load(area) { output = $0 }
+            defer { operation.cancel() }
+            try transport.complete(0, .success(ComparisonFixtures.health))
+            while output == nil {
+                let waiting = transport.calls.indices.filter { !transport.calls[$0].completed }
+                let index = try XCTUnwrap(reversed ? waiting.last : waiting.first)
+                switch try transport.call(index).endpoint {
+                case .venues(_, let cell):
+                    let point = cellCenter(cell)
+                    let rows: [[Any]] = [["n123", "Conflicting \(cell)", 1, point.0, point.1, "", -1]] +
+                        (cell == area.cells[0] ? [["n456", "Independent", 1, point.0, point.1, "", -1]] : [])
+                    try transport.complete(index, .success(ComparisonFixtures.json(["c": [], "v": rows])))
+                case .prices(let cell):
+                    let rows: [[Any]] = [["n123", "spritz", 0, 600, "2026-10-28", 0, 0]] +
+                        (cell == area.cells[0] ? [["n456", "spritz", 0, 900, "2026-10-28", 0, 0]] : [])
+                    try transport.complete(index, .success(ComparisonFixtures.prices(rows)))
+                case .health: XCTFail("Only the first request may be health")
+                }
+            }
+            XCTAssertEqual(output?.venues.map(\.key), ["n456"])
+            XCTAssertEqual(output?.unavailableCells, Set(area.cells), "Later completions must not clear conflict warnings")
+            XCTAssertEqual(transport.calls.count, 19)
+        }
+    }
+
+    private func cellCenter(_ cell: String) -> (Double, Double) {
+        let alphabet = Array("0123456789bcdefghjkmnpqrstuvwxyz")
+        var latitude = (-90.0, 90.0), longitude = (-180.0, 180.0), longitudeBit = true
+        for character in cell {
+            let code = alphabet.firstIndex(of: character)!
+            for shift in stride(from: 4, through: 0, by: -1) {
+                let high = (code & (1 << shift)) != 0
+                if longitudeBit {
+                    let middle = (longitude.0 + longitude.1) / 2
+                    if high { longitude.0 = middle } else { longitude.1 = middle }
+                } else {
+                    let middle = (latitude.0 + latitude.1) / 2
+                    if high { latitude.0 = middle } else { latitude.1 = middle }
+                }
+                longitudeBit.toggle()
+            }
+        }
+        return ((latitude.0 + latitude.1) / 2, (longitude.0 + longitude.1) / 2)
+    }
+
     private func discoveryVenue(_ key: String, name: String, prices: [FavouritePrice]) -> DiscoveryVenue {
         DiscoveryVenue(key: key, name: name, cell: "u0nd9", latitude: 45.4642, longitude: 9.19, address: "", city: nil, prices: prices)
     }

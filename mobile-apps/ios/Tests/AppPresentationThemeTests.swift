@@ -8,7 +8,12 @@ final class AppPresentationThemeTests: XCTestCase {
     func testPackagedAssetUsesOnlyMainFrameDocumentEndAndNormalWebKitSession() throws {
         let source = try XCTUnwrap(AppPresentationTheme.source, "The reviewed shared JS must be a real app resource")
         let asset = try XCTUnwrap(Bundle.main.url(forResource: "app-theme", withExtension: "js"))
-        XCTAssertEqual(source, try String(contentsOf: asset, encoding: .utf8))
+        let core = try String(contentsOf: asset, encoding: .utf8)
+        let artworkAsset = try XCTUnwrap(Bundle.main.url(forResource: "drink-art", withExtension: "js"))
+        let artwork = try String(contentsOf: artworkAsset, encoding: .utf8)
+        XCTAssertLessThanOrEqual(core.utf8.count, 32 * 1024)
+        XCTAssertLessThanOrEqual(artwork.utf8.count, 256 * 1024)
+        XCTAssertEqual(source, artwork + "\n" + core)
         let configuration = WKWebViewConfiguration()
         let originalApplicationName = configuration.applicationNameForUserAgent
         let originalStore = configuration.websiteDataStore
@@ -27,6 +32,22 @@ final class AppPresentationThemeTests: XCTestCase {
         XCTAssertEqual(configuration.applicationNameForUserAgent, originalApplicationName)
         XCTAssertTrue(configuration.websiteDataStore === originalStore)
         XCTAssertTrue(configuration.websiteDataStore.isPersistent)
+    }
+
+    @MainActor
+    func testBundledDrinkArtworkDecodesUnderProductionImageCSPWithoutChangingPrice() throws {
+        let configuration = WKWebViewConfiguration()
+        AppPresentationTheme.install(in: configuration)
+        let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), configuration: configuration)
+        try loadOwned(web, nonce: true, artwork: true)
+        AppPresentationTheme.applyAfterFinish(to: web)
+        let finished = expectation(description: "Bundled decorative drink decodes under CSP")
+        var value: Result<Any, Error>?
+        web.callAsyncJavaScript("const image = document.querySelector('img.dovebevo-drink-art'); await image.decode(); return [image.naturalWidth, image.naturalHeight, document.querySelector('#price').value].join('|');",
+                                arguments: [:], in: nil, in: .defaultClient) { result in value = result; finished.fulfill() }
+        wait(for: [finished], timeout: 15)
+        XCTAssertEqual(try XCTUnwrap(value).get() as? String, "1024|1536|5.50")
+        XCTAssertEqual(try evaluate(web, "document.querySelector('img.dovebevo-drink-art').alt") as? String, "")
     }
 
     @MainActor
@@ -107,7 +128,7 @@ final class AppPresentationThemeTests: XCTestCase {
     }
 
     @MainActor
-    private func loadOwned(_ web: WKWebView, nonce: Bool, cspAllowsNonce: Bool = true) throws {
+    private func loadOwned(_ web: WKWebView, nonce: Bool, cspAllowsNonce: Bool = true, artwork: Bool = false) throws {
         let finished = expectation(description: "Owned visitor response finishes")
         let delegate = ThemeNavigationDelegate(finished: finished)
         web.navigationDelegate = delegate
@@ -118,8 +139,8 @@ final class AppPresentationThemeTests: XCTestCase {
         // The public isolated-world API must retain its own JS global scope.
         let pageScript = "<script nonce='\(fixtureNonce)'>window.__themePageOnly = 1; window.URL = function () { throw new Error('page scope'); };</script>"
         let data = Data("""
-        <!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-\(styleNonce)'; script-src 'nonce-\(fixtureNonce)';">\(style)\(nonce ? pageScript : "")</head>
-        <body><div id="app"><div class="app"><header class="top">Dove bevo</header><main class="main"><form><input id="price" type="number" value="5.50" min="0.50" max="50" required></form></main></div></div></body></html>
+        <!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-\(styleNonce)'; script-src 'nonce-\(fixtureNonce)'; img-src data:;">\(style)\(nonce ? pageScript : "")</head>
+        <body><div id="app"><div class="app"><header class="top">Dove bevo</header><main class="main"><form>\(artwork ? "<h3 class='context-tag'>Spritz</h3><label class='price-input'>" : "")<input id="price" type="number" value="5.50" min="0.50" max="50" required>\(artwork ? "</label>" : "")</form></main></div></div></body></html>
         """.utf8)
         let url = URLPolicy.homeURL
         let response = URLResponse(url: url, mimeType: "text/html", expectedContentLength: data.count, textEncodingName: "UTF-8")

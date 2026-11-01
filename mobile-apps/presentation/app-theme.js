@@ -90,6 +90,8 @@ html[data-dovebevo-app-theme="1"] .drink-option {
 }
 html[data-dovebevo-app-theme="1"] .drink-option:has(input:checked) {
   border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
 }
 html[data-dovebevo-app-theme="1"] .bottom {
   background: var(--surface);
@@ -247,6 +249,9 @@ html[data-dovebevo-app-theme="1"] .drink-option {
   font-size: 13px; white-space: nowrap;
 }
 html[data-dovebevo-app-theme="1"] .drink-option .icon { display: none; }
+html[data-dovebevo-app-theme="1"] .drink-option:has(input:checked) {
+  background: var(--ink); color: var(--surface); border-color: var(--ink);
+}
 html[data-dovebevo-app-theme="1"] .scontrino .prices:first-of-type > .price:first-child {
   background: var(--surface-2); border: 0; border-radius: 12px; padding: 12px;
 }
@@ -263,6 +268,32 @@ html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .context-tag {
   justify-content: center; margin: 0 0 10px; padding: 12px; font-size: 17px;
 }
 html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .question { margin: 12px 0 8px; font-size: 16px; }
+html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .sheet__head {
+  display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px;
+  grid-template-rows: auto auto; column-gap: 8px; row-gap: 3px; align-items: center;
+  padding: 10px 12px;
+}
+html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .sheet__title {
+  grid-column: 2; grid-row: 2; text-align: center;
+  font: 400 13px/1.3 var(--font-sans); color: var(--ink-muted); margin: 0;
+}
+html[data-dovebevo-app-theme="1"] .dovebevo-form-action-title {
+  grid-column: 2; grid-row: 1; text-align: center; font: 700 17px/1.3 var(--font-sans);
+}
+html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .sheet__head > .btn {
+  grid-row: 1 / 3; min-width: 48px; min-height: 48px; width: 48px;
+  padding: 8px; font-size: 0; justify-content: center;
+}
+html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .sheet__head > .btn:first-of-type { grid-column: 1; }
+html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .sheet__head > .btn:last-of-type { grid-column: 3; }
+html[data-dovebevo-app-theme="1"] .context-tag[data-dovebevo-art="spritz"] {
+  flex-direction: column; gap: 8px; background: transparent; padding: 0;
+}
+html[data-dovebevo-app-theme="1"] .context-tag[data-dovebevo-art="spritz"] > .icon { display: none; }
+html[data-dovebevo-app-theme="1"] .dovebevo-drink-art {
+  display: block; width: 100%; height: 132px; object-fit: contain;
+  border-radius: 12px; background: #fafafa;
+}
 @media (max-width: 359px) {
   html[data-dovebevo-app-theme="1"] .scontrino .price {
     grid-template-columns: 22px minmax(0, 1fr);
@@ -295,6 +326,26 @@ html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .question { margin: 1
           : "Mostra azioni";
     };
     const adapt = () => {
+      app.querySelectorAll(".sheet").forEach((sheet) => {
+        const head = sheet.querySelector(":scope > .sheet__head");
+        if (!head) return;
+        let title = head.querySelector(".dovebevo-form-action-title");
+        if (!sheet.querySelector("form .price-input")) {
+          if (title) title.remove();
+          return;
+        }
+        if (!title) {
+          title = document.createElement("span");
+          title.className = "dovebevo-form-action-title";
+          title.setAttribute("aria-hidden", "true");
+          head.appendChild(title);
+        }
+        const english = (root.getAttribute("lang") || "it").toLowerCase().startsWith("en");
+        const text = english ? "Add a price" : "Aggiungi un prezzo";
+        if (title.textContent !== text) title.textContent = text;
+      });
+      if (typeof window.__dovebevoDrinkArt === "function")
+        app.querySelectorAll("h3.context-tag").forEach(window.__dovebevoDrinkArt);
       const list = app.querySelector(".drink-menu__list");
       if (list && list.hasAttribute("hidden")) list.removeAttribute("hidden");
       app.querySelectorAll(".scontrino .prices").forEach((prices) => {
@@ -339,6 +390,7 @@ html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .question { margin: 1
     });
     observer.observe(app, {
       childList: true,
+      characterData: true,
       subtree: true,
       attributes: true,
       attributeFilter: ["hidden"],

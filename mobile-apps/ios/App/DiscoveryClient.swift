@@ -37,6 +37,9 @@ private final class DiscoveryLoad: RecommendationRequest {
     private var active = Set<String>()
     private var version = ""
     private var results: [String: DiscoveryVenue] = [:]
+    private var origins: [String: Set<String>] = [:]
+    private var conflictingKeys = Set<String>()
+    private var conflictingCells = Set<String>()
     private var unavailable: Set<String>
 
     init(area: DiscoveryArea, transport: ComparisonReadTransport, today: @escaping () -> String,
@@ -72,8 +75,20 @@ private final class DiscoveryLoad: RecommendationRequest {
         fetch(.prices(cell: cell)) { [weak self] result in
             guard let self else { return }
             if let parsed = try? DiscoveryJSON.resolve(staticData: staticData, priceData: result.get(), cell: cell, today: self.today()) {
-                for venue in parsed.venues { self.results[venue.key] = venue }
-                if !parsed.incomplete { self.unavailable.remove(cell) }
+                for venue in parsed.venues {
+                    var cells = self.origins[venue.key, default: []]
+                    cells.insert(cell)
+                    self.origins[venue.key] = cells
+                    if cells.count > 1 {
+                        self.conflictingKeys.insert(venue.key)
+                        self.conflictingCells.formUnion(cells)
+                        self.unavailable.formUnion(cells)
+                        self.results.removeValue(forKey: venue.key)
+                    } else if !self.conflictingKeys.contains(venue.key) {
+                        self.results[venue.key] = venue
+                    }
+                }
+                if !parsed.incomplete && !self.conflictingCells.contains(cell) { self.unavailable.remove(cell) }
             }
             self.active.remove(cell); self.pump()
         }

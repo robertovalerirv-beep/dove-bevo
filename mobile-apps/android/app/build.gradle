@@ -49,6 +49,8 @@ abstract class GenerateMobilePresentationAssets extends DefaultTask {
     abstract RegularFileProperty getPresentationFile()
     @InputFile @PathSensitive(PathSensitivity.NONE)
     abstract RegularFileProperty getBootstrapFile()
+    @InputFile @PathSensitive(PathSensitivity.NONE)
+    abstract RegularFileProperty getArtworkFile()
     @OutputDirectory
     abstract DirectoryProperty getOutputDirectory()
     @Inject
@@ -58,12 +60,15 @@ abstract class GenerateMobilePresentationAssets extends DefaultTask {
     void generate() {
         File presentation = presentationFile.get().asFile
         File bootstrap = bootstrapFile.get().asFile
+        File artwork = artworkFile.get().asFile
         if (!presentation.isFile() || presentation.length() == 0 || presentation.length() > 131072)
             throw new GradleException('The bundled app presentation is missing or invalid.')
         if (!bootstrap.isFile() || bootstrap.length() == 0 || bootstrap.length() > 8192)
             throw new GradleException('The bundled app theme bootstrap is missing or invalid.')
+        if (!artwork.isFile() || artwork.length() == 0 || artwork.length() > 256 * 1024)
+            throw new GradleException('The bundled drink artwork is missing or invalid.')
         fileSystemOperations.sync {
-            from(presentation, bootstrap)
+            from(presentation, bootstrap, artwork)
             into(outputDirectory)
         }
     }
@@ -117,6 +122,7 @@ androidComponents {
         def generatePresentationAssets = tasks.register("generate${variant.name.capitalize()}MobilePresentationAssets", GenerateMobilePresentationAssets) {
             presentationFile.set(layout.projectDirectory.file('../../presentation/app-theme.js'))
             bootstrapFile.set(layout.projectDirectory.file('../../presentation/app-theme-start.js'))
+            artworkFile.set(layout.projectDirectory.file('../../presentation/drink-art.js'))
             outputDirectory.set(layout.buildDirectory.dir("generated/mobilePresentationAssets/${variant.name}"))
         }
         variant.sources.assets.addGeneratedSourceDirectory(generatePresentationAssets) { it.outputDirectory }

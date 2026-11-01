@@ -8,7 +8,14 @@ import WebKit
     static let source: String? = {
         guard let url = Bundle.main.url(forResource: "app-theme", withExtension: "js"),
               let data = try? Data(contentsOf: url), data.count <= 32 * 1024 else { return nil }
-        return String(data: data, encoding: .utf8)
+        guard let core = String(data: data, encoding: .utf8) else { return nil }
+        if let artURL = Bundle.main.url(forResource: "drink-art", withExtension: "js"),
+           let artData = try? Data(contentsOf: artURL), !artData.isEmpty,
+           artData.count <= 256 * 1024,
+           let art = String(data: artData, encoding: .utf8) {
+            return art + "\n" + core
+        }
+        return core
     }()
 
     static func install(in configuration: WKWebViewConfiguration) {

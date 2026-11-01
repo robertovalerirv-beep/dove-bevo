@@ -29,4 +29,16 @@ public final class MobilePresentationTest {
             catch(IOException expected){}
         }
     }
+
+    @Test public void optionalArtworkHasItsOwnBoundWithoutIncreasingTheCoreBudget() throws Exception {
+        byte[] art = new byte[MobilePresentation.MAX_BYTES + 1];
+        java.util.Arrays.fill(art, (byte)' ');
+        assertEquals(art.length, MobilePresentation.read(new ByteArrayInputStream(art), MobilePresentation.MAX_ART_BYTES).length());
+        try { MobilePresentation.read(new ByteArrayInputStream(art)); fail("Core budget was widened"); }
+        catch (IOException expected) { }
+        for (byte[] invalid : new byte[][] { new byte[MobilePresentation.MAX_ART_BYTES + 1], new byte[]{(byte)0xc3, 0x28} }) {
+            try { MobilePresentation.read(new ByteArrayInputStream(invalid), MobilePresentation.MAX_ART_BYTES); fail("Invalid artwork accepted"); }
+            catch (IOException expected) { }
+        }
+    }
 }

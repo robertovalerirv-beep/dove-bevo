@@ -33,6 +33,8 @@ targets:
         buildPhase: resources
       - path: ../presentation/app-theme-start.js
         buildPhase: resources
+      - path: ../presentation/drink-art.js
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dovebevo.app

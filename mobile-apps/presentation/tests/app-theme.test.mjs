@@ -215,7 +215,8 @@ test("adapter exposes original checkbox group and expands real price actions", (
     hasAttribute: () => false,
   };
   page.app.querySelector = () => list;
-  page.app.querySelectorAll = () => [{ children: [first, row] }];
+  page.app.querySelectorAll = (selector) =>
+    selector === ".scontrino .prices" ? [{ children: [first, row] }] : [];
   // A separate browser-like button retains the actual click listener and ARIA state.
   // The fixture's button factory is replaced through the row append target below.
   row.appendChild = (v) => {

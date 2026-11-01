@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import android.webkit.WebView;
+import android.content.Context;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 import java.util.Set;
@@ -16,6 +17,7 @@ import java.util.Set;
 final class MobilePresentation {
     static final String ASSET = "app-theme.js";
     static final int MAX_BYTES = 131072;
+    static final int MAX_ART_BYTES = 256 * 1024;
     private MobilePresentation() {}
 
     static void installDocumentStart(WebView view) {
@@ -41,11 +43,23 @@ final class MobilePresentation {
     }
 
     static String read(InputStream input) throws IOException {
+        return read(input, MAX_BYTES);
+    }
+
+    static String load(Context context) throws IOException {
+        String core;
+        try (InputStream input = context.getAssets().open(ASSET)) { core = read(input); }
+        try (InputStream input = context.getAssets().open("drink-art.js")) {
+            return read(input, MAX_ART_BYTES) + "\n" + core;
+        } catch (IOException optionalArtworkUnavailable) { return core; }
+    }
+
+    static String read(InputStream input, int maximum) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         byte[] buffer = new byte[4096];
         int count;
         while ((count = input.read(buffer)) != -1) {
-            if (count == 0 || bytes.size() > MAX_BYTES - count) throw new IOException("Invalid bundled presentation");
+            if (count == 0 || bytes.size() > maximum - count) throw new IOException("Invalid bundled presentation");
             bytes.write(buffer, 0, count);
         }
         if (bytes.size() == 0) throw new IOException("Missing bundled presentation");

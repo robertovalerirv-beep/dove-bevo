@@ -744,9 +744,7 @@ public final class MainActivity extends ComponentActivity {
         if (view != website || failed || destroyed || !MobilePresentation.allows(finishedUrl, view.getUrl())) return;
         try {
             if (mobileThemeScript == null) {
-                try (InputStream input = getAssets().open(MobilePresentation.ASSET)) {
-                    mobileThemeScript = MobilePresentation.read(input);
-                }
+                mobileThemeScript = MobilePresentation.load(this);
             }
             view.evaluateJavascript(mobileThemeScript, null);
         } catch (IOException unavailable) {

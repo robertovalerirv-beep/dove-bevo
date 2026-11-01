@@ -10,6 +10,14 @@ Exact source: `ae964cb496b5176b988f7ab9d24ab0d7a985ad73`; manifest SHA256 `1360b
 
 Coordinator and independent reviewer read the public `/api/prices/u0j2q` response. Independent fresh verification at2026-11-01T22:02:24Z returned all four exact values, date2026-11-01, hh0 and confirmations0. Apply receipt SHA256 `26b638f684bc37224dd2c91dea71f1e7aed255c5355a7676de081c311d06c2b0`; initial public snapshot SHA256 `916941df20f1425221e0e4258ef7ce2289db3c8dc00200be895fbd5410748b85`.
 
+## 2026-11-01 batch B: prepared, not yet imported
+
+Seventeen records cover I Frighi and Clorophilla in Torino, Abbey Theater in Roma, Orange Spritz Bar in Milano, and Vip's Bar in Firenze. Exact existing catalogue names, coordinates and addresses remain unchanged. Primary Google captures show565,668,3049,380 and472 reviews respectively. Current official menu sources and actual Google place markers were checked separately.
+
+The first nine-record audit41355456767 failed before provider queries because Abbey's HTML wrapper changes between requests. No import was attempted. Version2 now declares an explicit source format: raw hashes for the published Frighi data chunk and Vip's PDF, and bounded canonical HTML-text hashes for the three HTML menus. This is extracted markup text, not a browser visibility assertion. Raw source snapshots remain retained locally, and semantic menu/identity checks are still manual. An altered price changes the canonical digest and stops the batch. No fallback from a failed raw pin is allowed.
+
+Vip's current official homepage links a PDF under a2024 URL path. Its actual page was visually checked; the import date means the linked menu was checked today, not that it was issued today or that a customer paid today. Generic cocktail prices and beer with absent or incompatible serving volumes are excluded.
+
 ## Coverage limits
 
 This is the first live batch, not complete European coverage. The current catalogue and price contract support existing Italian venues and EUR categories. No unmatched venue, inferred menu price, unspecified draft-beer volume, premium variant mapped to a classic, fabricated vote or confirmation is eligible. Other cities and currencies require separately verified compatible catalogue coverage.

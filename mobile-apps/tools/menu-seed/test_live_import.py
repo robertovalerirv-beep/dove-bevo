@@ -132,6 +132,64 @@ class Tests(unittest.TestCase):
         with self.assertRaises(m.Error): self.run_import(True)
         with self.assertRaises(m.Error): m.run(self.raw(), self.f, True, "0" * 64)
         self.assertEqual(self.f.queries, [])
+
+    def use_text_source(self, source):
+        self.doc["schema_version"] = 2
+        self.record["source_format"] = "html_text_v1"
+        self.f.menu = source
+        self.record["source_sha256"] = hashlib.sha256(b"Negroni EUR 8 & soda").hexdigest()
+
+    def test_html_text_pin_ignores_only_nontext_wrapper_changes(self):
+        self.use_text_source(b'<html><style>.menu{color:red}</style><body><p class="old">Negroni EUR 8 &amp; soda</p><!-- nonce1 --><script>nonce1</script></body></html>')
+        self.f.menu = b'<html><style>.menu{color:blue}</style><body data-request="nonce2"><p id="new">  Negroni\nEUR 8 &#38; soda </p><!-- nonce2 --><script>nonce2</script></body></html>'
+        self.assertTrue(self.run_import()["complete"])
+        self.assertTrue(all(q in (m.CURRENT, m.PRESENCE) for q in self.f.queries))
+
+    def test_html_text_price_change_rejects_before_provider_or_database(self):
+        self.use_text_source(b"<p>Negroni EUR 8 &amp; soda</p>")
+        self.f.menu = b"<p>Negroni EUR 9 &amp; soda</p>"
+        def unexpected_attestation(): self.fail("Source pin must precede provider access")
+        self.f.attest_binding = unexpected_attestation
+        with self.assertRaises(m.Error): self.run_import(True)
+        self.assertEqual(self.f.queries, [])
+
+    def test_source_formats_are_explicit_and_version_one_stays_raw(self):
+        self.f.menu = b"<p>Negroni EUR 8 &amp; soda</p>"
+        self.record["source_sha256"] = hashlib.sha256(b"Negroni EUR 8 & soda").hexdigest()
+        with self.assertRaises(m.Error): self.run_import()
+        self.record["source_format"] = "html_text_v1"
+        with self.assertRaises(m.Error): self.run_import()  # Extra field is invalid in version1.
+        self.doc["schema_version"] = 2
+        for value in (None, "html", "RAW", True):
+            self.record["source_format"] = value
+            with self.assertRaises(m.Error): self.run_import()
+        del self.record["source_format"]
+        with self.assertRaises(m.Error): self.run_import()
+        self.record["source_format"] = "raw"
+        self.record["source_sha256"] = hashlib.sha256(self.f.menu).hexdigest()
+        self.assertTrue(self.run_import()["complete"])
+
+    def test_html_text_rejects_empty_bad_encoding_and_size_limits(self):
+        for source in (b"<style>x</style><script>x</script><!-- no text -->", b"\xff<p>bad</p>",
+                       b"x" * (8 * 1024 * 1024 + 1),
+                       ("<p>" + "x" * (1024 * 1024 + 1) + "</p>").encode(),
+                       ("<p>" + "\u20ac" * (400 * 1024) + "</p>").encode()):
+            with self.subTest(length=len(source)):
+                self.use_text_source(source)
+                with self.assertRaises(m.Error): self.run_import()
+                self.assertEqual(self.f.queries, [])
+
+    def test_same_source_url_with_distinct_formats_checks_each_digest(self):
+        self.use_text_source(b"<p>Negroni EUR 8 &amp; soda</p>")
+        raw_record = copy.deepcopy(self.record)
+        raw_record.update(drink="negroni", source_format="raw",
+                          source_sha256=hashlib.sha256(self.f.menu).hexdigest())
+        self.doc["records"].append(raw_record)
+        self.assertEqual(len(self.run_import()["records"]), 2)
+        self.f.queries.clear()
+        raw_record["source_sha256"] = self.record["source_sha256"]
+        with self.assertRaises(m.Error): self.run_import()
+        self.assertEqual(self.f.queries, [])
     def test_provider_binding_fails_closed_and_excludes_secret_fields(self):
         settings = {"bindings": [{"name":"DB", "type":"d1", "id":m.DATABASE}, {"name":"SECRET", "value":"must-not-appear"}]}
         domains = [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging", "environment":"production"}]

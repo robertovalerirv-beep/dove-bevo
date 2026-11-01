@@ -3,6 +3,7 @@
 import argparse
 import datetime
 import hashlib
+from html.parser import HTMLParser
 import ipaddress
 import json
 import math
@@ -19,6 +20,8 @@ LIMITS = {"beer_draft": (250, 1200), "spritz": (250, 1500), "negroni": (400, 200
           "sbagliato": (400, 2000), "gin_tonic": (400, 2000), "gin_lemon": (400, 2000),
           "wine_glass": (200, 1500), "alcohol_free": (200, 1200), "water": (50, 600)}
 RECORD_FIELDS = set("venue_key name cell city lat lon drink hh cents source_url source_sha256 google_reviews google_url identity_note".split())
+MAX_SOURCE_BYTES = 8 * 1024 * 1024
+MAX_HTML_TEXT = 1024 * 1024
 INSERT = """INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
 SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, 0, 'active', 'manual'
 WHERE NOT EXISTS (SELECT 1 FROM prices_current WHERE venue_key=?1 AND drink=?2 AND hh=?3)
@@ -37,6 +40,40 @@ CURRENT = "SELECT venue_key, drink, hh, cell, city, price_cents, observed_on, co
 
 class Error(Exception):
     pass
+
+class HTMLTextV1(HTMLParser):
+    """Extract markup text, not browser-visible text; never execute the source."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.ignored = 0
+        self.length = 0
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style"): self.ignored += 1
+    def handle_endtag(self, tag):
+        if tag in ("script", "style"): self.ignored = max(0, self.ignored - 1)
+    def handle_data(self, data):
+        if not self.ignored:
+            self.length += len(data) + 1
+            if self.length > MAX_HTML_TEXT: raise Error("HTML text exceeds limit")
+            self.parts.append(data)
+
+
+def source_digest(raw, source_format="raw"):
+    if len(raw) > MAX_SOURCE_BYTES: raise Error("source exceeds limit")
+    if source_format == "raw": return hashlib.sha256(raw).hexdigest()
+    if source_format != "html_text_v1": raise Error("invalid source format")
+    try:
+        parser = HTMLTextV1()
+        parser.feed(raw.decode("utf-8", errors="strict"))
+        parser.close()
+        canonical = re.sub(r"\s+", " ", " ".join(parser.parts)).strip().encode("utf-8")
+    except UnicodeError:
+        raise Error("invalid HTML source encoding") from None
+    if not canonical: raise Error("empty HTML text")
+    if len(canonical) > MAX_HTML_TEXT: raise Error("HTML text exceeds limit")
+    return hashlib.sha256(canonical).hexdigest()
+
 
 def strict_json(raw):
     def pairs(p):
@@ -83,7 +120,7 @@ def geo(lat, lon):
 def validate(raw):
     if len(raw) > 1024 * 1024: raise Error("manifest too large")
     doc = strict_json(raw)
-    if not isinstance(doc, dict) or set(doc) != {"schema_version", "batch_id", "checked_on", "data_version", "records"} or type(doc["schema_version"]) is not int or doc["schema_version"] != 1:
+    if not isinstance(doc, dict) or set(doc) != {"schema_version", "batch_id", "checked_on", "data_version", "records"} or type(doc["schema_version"]) is not int or doc["schema_version"] not in (1, 2):
         raise Error("invalid manifest schema")
     if not text(doc["batch_id"], 80) or not re.fullmatch(r"[A-Za-z0-9._-]+", doc["batch_id"]): raise Error("invalid batch id")
     if not isinstance(doc["data_version"], str) or not re.fullmatch(r"[0-9]{8}", doc["data_version"]): raise Error("invalid data version")
@@ -94,7 +131,9 @@ def validate(raw):
     if not isinstance(doc["records"], list) or not 1 <= len(doc["records"]) <= 200: raise Error("invalid record count")
     seen = set()
     for r in doc["records"]:
-        if not isinstance(r, dict) or set(r) != RECORD_FIELDS: raise Error("invalid record schema")
+        fields = RECORD_FIELDS | {"source_format"} if doc["schema_version"] == 2 else RECORD_FIELDS
+        if not isinstance(r, dict) or set(r) != fields: raise Error("invalid record schema")
+        if doc["schema_version"] == 2 and r["source_format"] not in ("raw", "html_text_v1"): raise Error("invalid source format")
         if not isinstance(r["venue_key"], str) or not re.fullmatch(r"[nwr][1-9][0-9]{0,14}", r["venue_key"]): raise Error("invalid OSM key")
         if not text(r["name"], 240) or not text(r["identity_note"], 1000): raise Error("missing venue identity evidence")
         if not isinstance(r["cell"], str) or not re.fullmatch(r"[0-9bcdefghjkmnpqrstuvwxyz]{5}", r["cell"]): raise Error("invalid cell")
@@ -120,7 +159,7 @@ class Transport:
         if not account or not token or not re.fullmatch(r"[0-9a-fA-F]{32}", account): raise Error("Cloudflare credentials unavailable")
         self.account, self.token = account, token
         self.opener = build_opener(NoRedirect())
-    def fetch(self, address, maximum=8*1024*1024):
+    def fetch(self, address, maximum=MAX_SOURCE_BYTES):
         try:
             with self.opener.open(Request(address, headers={"User-Agent": "DoveBevoMenuAudit/1"}), timeout=20) as response:
                 raw = response.read(maximum + 1)
@@ -182,8 +221,10 @@ def run(raw, transport, apply=False, approved=None):
         if city_index >= 0 and (not isinstance(data["c"][city_index], list) or len(data["c"][city_index]) != 2 or type(data["c"][city_index][0]) is not int): raise Error("invalid catalogue city")
         expected_city = None if city_index == -1 else data["c"][city_index][0]
         if expected_city != r["city"]: raise Error("catalogue city mismatch")
-        if r["source_url"] not in sources: sources[r["source_url"]] = hashlib.sha256(transport.fetch(r["source_url"])).hexdigest()
-        if sources[r["source_url"]] != r["source_sha256"]: raise Error("source hash mismatch")
+        source_format = r.get("source_format", "raw")
+        source_key = (r["source_url"], source_format)
+        if source_key not in sources: sources[source_key] = source_digest(transport.fetch(r["source_url"]), source_format)
+        if sources[source_key] != r["source_sha256"]: raise Error("source hash mismatch")
     attestation = transport.attest_binding()
     expected_attestation = {"domain": "www.dovebevo.com", "worker": "dovebevo-staging", "database": DATABASE, "binding": "DB", "name": "dovebevo-staging", "environment": "production", "verified": True}
     if attestation != expected_attestation: raise Error("provider binding attestation failed")

@@ -18,7 +18,7 @@ public final class DiscoveryTest {
         String url=BrowserPolicy.HOME,result="[\""+url+"\",\"45.46420,9.19000\",\"14.0\"]";
         DiscoveryArea a=DiscoveryArea.decode(result,url,url,7,7);assertNotNull(a);assertEquals(45.4642,a.lat,0);assertEquals(9.19,a.lon,0);
         assertNull(DiscoveryArea.decode(result,url,url,7,8));assertNull(DiscoveryArea.decode(result,url,url+"?at=45,9",7,7));
-        assertNull(DiscoveryArea.decode(result.replace("14.0","5.0"),url,url,7,7));assertNull(DiscoveryArea.decode(result.replace("45.46420","90.0"),url,url,7,7));
+        assertNull(DiscoveryArea.decode(result.replace("14.0","12.0"),url,url,7,7));assertNotNull(DiscoveryArea.decode(result.replace("14.0","13.0"),url,url,7,7));assertNull(DiscoveryArea.decode(result.replace("45.46420","90.0"),url,url,7,7));
         assertNull(DiscoveryArea.decode(result.replace("14.0","NaN"),url,url,7,7));assertNull(DiscoveryArea.decode(result+"x",url,url,7,7));
         assertFalse(DiscoveryArea.visitor("https://www.dovebevo.com/admin"));assertFalse(DiscoveryArea.visitor("https://evil.example/"));
         assertFalse(DiscoveryArea.visitor("https://me@www.dovebevo.com/"));assertNull(DiscoveryArea.decode("null",url,url,7,7));
@@ -27,7 +27,9 @@ public final class DiscoveryTest {
         DiscoveryArea area=new DiscoveryArea(45.4642,9.19,14);assertEquals("u0nd9",DiscoveryArea.geohash(area.lat,area.lon));
         assertEquals(9,area.cells().size());assertEquals(9,new HashSet<>(area.cells()).size());assertEquals("u0nd9",area.cells().get(0));
         assertEquals(0,area.metres(area.lat,area.lon),0.01);assertTrue(area.metres(45.4643,9.1901)>10&&area.metres(45.4643,9.1901)<20);
-        assertThrows(IOException.class,()->new DiscoveryArea(52,13,14));assertThrows(IOException.class,()->new DiscoveryArea(45,9,11.9));
+        assertThrows(IOException.class,()->new DiscoveryArea(52,13,14));assertThrows(IOException.class,()->new DiscoveryArea(45,9,12));
+        assertEquals(area.cells(),new DiscoveryArea(area.lat,area.lon,13).cells());
+        assertEquals("Zooming alone does not shrink the fixed request area",area.cells(),new DiscoveryArea(area.lat,area.lon,20).cells());
     }
     @Test public void actualMetadataSameDrinkBandSortAndModerationRemainIntact()throws Exception {
         DiscoveryData.Cell cell=DiscoveryData.parse(bytes(STATIC),bytes(PRICES),"u0nd9","2026-11-01");

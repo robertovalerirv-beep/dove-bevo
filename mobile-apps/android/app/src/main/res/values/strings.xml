@@ -93,7 +93,7 @@
     <string name="discovery_empty">Nessun prezzo segnalato per questo drink e questa fascia nella zona letta. Prova un altro drink o un’altra zona.</string>
     <string name="discovery_partial">Alcuni dati della zona non sono disponibili. La lista è parziale.</string>
     <string name="discovery_distance">%1$s dal centro della Mappa</string>
-    <string name="discovery_limit">Sono mostrati i primi 100 prezzi. Avvicina la Mappa per restringere la zona.</string>
+    <string name="discovery_limit">Sono mostrati i 100 prezzi più bassi della zona. Scegli un altro drink o sposta il centro della Mappa.</string>
     <string name="discovery_status_format">%1$s%2$s%3$s</string>
     <string name="discovery_status_line">\n%1$s</string>
 </resources>

@@ -13,7 +13,7 @@ import java.util.Set;
 final class DiscoveryArea {
     final double lat,lon,zoom;
     DiscoveryArea(double lat,double lon,double zoom)throws IOException {
-        if(!Double.isFinite(lat)||!Double.isFinite(lon)||!Double.isFinite(zoom)||lat<35.2||lat>47.2||lon<6.5||lon>18.6||zoom<12||zoom>24)throw NativeJson.invalid();
+        if(!Double.isFinite(lat)||!Double.isFinite(lon)||!Double.isFinite(zoom)||lat<35.2||lat>47.2||lon<6.5||lon>18.6||zoom<13||zoom>24)throw NativeJson.invalid();
         this.lat=lat;this.lon=lon;this.zoom=zoom;
     }
     static final String SCRIPT="""

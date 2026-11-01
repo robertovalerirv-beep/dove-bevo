@@ -208,6 +208,8 @@
   border-radius: var(--radius-pill);
   color: var(--ink-muted);
   font-weight: var(--weight-regular);
+  /* A field reads from the start: when the text wraps (320 px) it must not centre like a title. */
+  text-align: start;
 }
 .btn--ghost {
   border-color: transparent;

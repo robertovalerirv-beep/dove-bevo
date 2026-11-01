@@ -72,7 +72,7 @@ describe("warmUpMapWhenIdle", () => {
   let paint: (() => void) | undefined;
   let fetched: string[];
 
-  function page(observe: () => void) {
+  function page(observe: () => void, supported: readonly string[] = ["largest-contentful-paint"]) {
     fetched = [];
     paint = undefined;
     vi.useFakeTimers();
@@ -97,6 +97,7 @@ describe("warmUpMapWhenIdle", () => {
             callback({}, { disconnect: () => undefined });
           };
         }
+        static supportedEntryTypes = supported;
         observe = observe;
         disconnect = () => undefined;
       },
@@ -125,7 +126,18 @@ describe("warmUpMapWhenIdle", () => {
     expect(fetched).toEqual(META.split(" "));
   });
 
-  it("waits 3 s and goes on where the browser does not report the paint", () => {
+  // A browser that does not know the entry type does not throw: observe() returns and the callback never
+  // runs (WebKit releases without LCP). The fallback has to start from the list of supported types.
+  it("waits 3 s and goes on where the browser does not know the paint entry", () => {
+    page(() => undefined, ["navigation", "resource"]);
+    warmUpMapWhenIdle();
+    vi.advanceTimersByTime(2999);
+    expect(fetched).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(fetched).toEqual(META.split(" "));
+  });
+
+  it("waits 3 s and goes on where observe() throws", () => {
     page(() => {
       throw new TypeError("unsupported entry type");
     });

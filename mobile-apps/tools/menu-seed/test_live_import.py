@@ -34,7 +34,7 @@ class Fake:
         if url.startswith(m.SITE + "/data/"): return json.dumps({"c": [[123, "Roma"]], "v": [["n123", "Example", 1, 41.9, 12.5, "", 0]]}).encode()
         return self.menu
     def attest_binding(self):
-        return {"domain":"www.dovebevo.com", "worker":"dovebevo-staging", "database":m.DATABASE, "binding":"DB", "name":"dovebevo-staging", "verified":True}
+        return {"domain":"www.dovebevo.com", "worker":"dovebevo-staging", "database":m.DATABASE, "binding":"DB", "name":"dovebevo-staging", "environment":"production", "verified":True}
     def query(self, sql, params):
         self.queries.append(sql)
         if sql == m.INVALIDATE and self.fail_cache: raise m.Error("injected")
@@ -134,7 +134,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.f.queries, [])
     def test_provider_binding_fails_closed_and_excludes_secret_fields(self):
         settings = {"bindings": [{"name":"DB", "type":"d1", "id":m.DATABASE}, {"name":"SECRET", "value":"must-not-appear"}]}
-        domains = [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging"}]
+        domains = [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging", "environment":"production"}]
         database = {"uuid":m.DATABASE, "name":"dovebevo-staging"}
         def make_transport(settings_value, domains_value, database_value):
             t = m.Transport("a" * 32, "synthetic-token")
@@ -146,12 +146,16 @@ class Tests(unittest.TestCase):
         self.assertNotIn("must-not-appear", json.dumps(expected))
         bad_settings = {"bindings": [{"name":"DB", "type":"d1", "id":"wrong"}]}
         bad_domains = [{"hostname":"www.dovebevo.com", "service":"wrong"}]
-        disabled = [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging", "enabled":False}]
+        disabled = [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging", "environment":"production", "enabled":False}]
         bad_database = {"uuid":m.DATABASE, "name":"wrong"}
+        preview = [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging", "environment":"preview"}]
+        missing_environment = [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging"}]
         for s, d, b in ((bad_settings, domains, database), (settings, bad_domains, database),
-                        (settings, disabled, database), (settings, domains, bad_database)):
+                        (settings, disabled, database), (settings, preview, database), (settings, missing_environment, database), (settings, domains, bad_database)):
             with self.subTest(settings=s, domains=d, database=b):
-                with self.assertRaises(m.Error): make_transport(s,d,b).attest_binding()
+                self.f.attest_binding = make_transport(s,d,b).attest_binding
+                with self.assertRaises(m.Error): self.run_import(True)
+                self.assertEqual(self.f.queries, [])
         self.f.attest_binding = lambda: {"verified": False}
         with self.assertRaises(m.Error): self.run_import(True)
         self.assertEqual(self.f.queries, [])
@@ -169,7 +173,7 @@ class Tests(unittest.TestCase):
                 return Response(next(self.values))
         entries = [
             {"success": True, "result": {"bindings":[{"name":"DB", "type":"d1", "id":m.DATABASE}, {"name":"SECRET", "value":"private-value"}]}},
-            {"success": True, "result": [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging"}]},
+            {"success": True, "result": [{"hostname":"www.dovebevo.com", "service":"dovebevo-staging", "environment":"production"}]},
             {"success": True, "result": {"uuid":m.DATABASE, "name":"dovebevo-staging"}},
         ]
         transport = m.Transport("a" * 32, "token-value")

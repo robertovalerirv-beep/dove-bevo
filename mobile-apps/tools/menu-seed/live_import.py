@@ -146,11 +146,11 @@ class Transport:
         bindings = settings.get("bindings") if isinstance(settings, dict) else None
         if not isinstance(bindings, list) or sum(isinstance(b, dict) and b.get("name") == "DB" and b.get("type") == "d1" and b.get("id") == DATABASE for b in bindings) != 1:
             raise Error("provider binding attestation failed")
-        if not isinstance(domains, list) or not any(isinstance(d, dict) and d.get("hostname") == "www.dovebevo.com" and d.get("service") == "dovebevo-staging" and d.get("enabled") is not False for d in domains):
+        if not isinstance(domains, list) or not any(isinstance(d, dict) and d.get("hostname") == "www.dovebevo.com" and d.get("service") == "dovebevo-staging" and d.get("environment") == "production" and d.get("enabled") is not False for d in domains):
             raise Error("provider binding attestation failed")
         if not isinstance(database, dict) or database.get("uuid") != DATABASE or database.get("name") != "dovebevo-staging":
             raise Error("provider binding attestation failed")
-        return {"domain": "www.dovebevo.com", "worker": "dovebevo-staging", "database": DATABASE, "binding": "DB", "name": "dovebevo-staging", "verified": True}
+        return {"domain": "www.dovebevo.com", "worker": "dovebevo-staging", "database": DATABASE, "binding": "DB", "name": "dovebevo-staging", "environment": "production", "verified": True}
     def query(self, sql, params):
         endpoint = f"https://api.cloudflare.com/client/v4/accounts/{self.account}/d1/database/{DATABASE}/query"
         body = json.dumps({"sql": sql, "params": params}).encode()
@@ -185,7 +185,7 @@ def run(raw, transport, apply=False, approved=None):
         if r["source_url"] not in sources: sources[r["source_url"]] = hashlib.sha256(transport.fetch(r["source_url"])).hexdigest()
         if sources[r["source_url"]] != r["source_sha256"]: raise Error("source hash mismatch")
     attestation = transport.attest_binding()
-    expected_attestation = {"domain": "www.dovebevo.com", "worker": "dovebevo-staging", "database": DATABASE, "binding": "DB", "name": "dovebevo-staging", "verified": True}
+    expected_attestation = {"domain": "www.dovebevo.com", "worker": "dovebevo-staging", "database": DATABASE, "binding": "DB", "name": "dovebevo-staging", "environment": "production", "verified": True}
     if attestation != expected_attestation: raise Error("provider binding attestation failed")
     receipt = {"binding_attestation": expected_attestation, "schema_version": 1, "batch_id": doc["batch_id"], "manifest_sha256": manifest_hash, "mode": "apply" if apply else "dry_run", "provenance": "online_menu", "complete": False, "records": [], "cache_invalidated": [], "errors": []}
     affected = set()

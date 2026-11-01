@@ -84,4 +84,16 @@
     <string name="favorites_old">Prezzo datato: oltre 90 giorni.</string>
     <string name="favorites_open_named">Apri %1$s nella Mappa</string>
     <string name="favorites_remove_named">Rimuovi %1$s dai preferiti</string>
+    <string name="discovery_title">Scopri</string>
+    <string name="discovery_explanation">Confronta i prezzi segnalati nella zona che stai guardando sulla Mappa.</string>
+    <string name="discovery_choose_area">Scegli zona sulla Mappa</string>
+    <string name="discovery_unready">Apri una città e avvicina la Mappa, poi torna su Home per confrontare i prezzi della zona.</string>
+    <string name="discovery_unavailable">Prezzi della zona non verificabili. Controlla la connessione e aggiorna.</string>
+    <string name="discovery_loaded">%1$d prezzi per questo drink, dal più basso.</string>
+    <string name="discovery_empty">Nessun prezzo segnalato per questo drink e questa fascia nella zona letta. Prova un altro drink o un’altra zona.</string>
+    <string name="discovery_partial">Alcuni dati della zona non sono disponibili. La lista è parziale.</string>
+    <string name="discovery_distance">%1$s dal centro della Mappa</string>
+    <string name="discovery_limit">Sono mostrati i primi 100 prezzi. Avvicina la Mappa per restringere la zona.</string>
+    <string name="discovery_status_format">%1$s%2$s%3$s</string>
+    <string name="discovery_status_line">\n%1$s</string>
 </resources>

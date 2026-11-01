@@ -7,7 +7,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
-/** Five persistent controls. Only Mappa and Preferiti are selectable destinations. */
+/** Five persistent controls: Home discovery, Mappa and Preferiti destinations plus venue actions. */
 final class BottomNavigationBar extends LinearLayout {
     private final Button[] controls;
     private int columns;

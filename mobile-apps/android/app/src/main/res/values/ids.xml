@@ -41,4 +41,12 @@
     <item name="favorites_rows" type="id" />
     <item name="favorite_open" type="id" />
     <item name="favorite_remove" type="id" />
+    <item name="discovery_screen" type="id" />
+    <item name="discovery_drink" type="id" />
+    <item name="discovery_band" type="id" />
+    <item name="discovery_status" type="id" />
+    <item name="discovery_refresh" type="id" />
+    <item name="discovery_choose_area" type="id" />
+    <item name="discovery_rows" type="id" />
+    <item name="discovery_open" type="id" />
 </resources>

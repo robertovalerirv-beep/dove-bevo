@@ -306,15 +306,24 @@ public final class NativeUsabilityRuntimeTest {
             activity.findViewById(R.id.map_destination).performClick();
             assertSame(original, get("website")); assertEquals(index, web.copyBackForwardList().getCurrentIndex());
             assertEquals(ONE, web.getUrl()); assertFalse((Boolean)get("favoritesVisible"));
+            DiscoveryScreen home=new DiscoveryScreen(activity,
+                    url->{invoke("showMap");invoke("navigate",new Class<?>[]{String.class},url);},
+                    ()->invoke("showMap"),()->(Boolean)get("foreground"),
+                    new DiscoveryLoader(new FavoritePricesClient((url,max,call)->{throw new IOException("Unready owned map must not fetch");},()->"2026-11-01"),task->activity.runOnUiThread(task)));
+            set("discovery",home);((FrameLayout)get("content")).addView(home.view());home.view().setVisibility(View.GONE);
             activity.findViewById(R.id.favorites_destination).performClick();
             activity.findViewById(R.id.home).performClick();
             assertFalse((Boolean)get("favoritesVisible"));
-            assertTrue(activity.findViewById(R.id.map_destination).isSelected());
-            assertFalse(activity.findViewById(R.id.home).isSelected());
             assertSame(original, get("website"));
         });
-        await(() -> BrowserPolicy.HOME.equals(web.getUrl()) && !(Boolean)get("loading"));
-        assertOwnedDocument(2);
+        await(()->(Boolean)get("discoveryVisible"));
+        onMain(()->{
+            assertTrue(activity.findViewById(R.id.home).isSelected());assertFalse(activity.findViewById(R.id.map_destination).isSelected());
+            assertEquals(ONE,web.getUrl());assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertTrue(((TextView)activity.findViewById(R.id.discovery_status)).getText().toString().contains("Apri una città"));
+            activity.findViewById(R.id.map_destination).performClick();assertFalse((Boolean)get("discoveryVisible"));assertEquals(ONE,web.getUrl());assertSame(original,get("website"));
+        });
+        assertOwnedDocument(1);
     }
 
     @Test public void restoringFavoritesBeforeResumeWaitsForForegroundAndKeepsRetainedBrowser() throws Exception {

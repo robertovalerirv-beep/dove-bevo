@@ -34,6 +34,13 @@ final class FavoritePricesClient {
         }
         call.check();return FavoriteComparison.parse(file,prices,cell,today.get());
     }
+    DiscoveryData.Cell discoveryCell(String cell,String version,Call call)throws IOException{
+        if(cell==null||!cell.matches("[0-9b-hjkmnp-z]{5}")||version!=null&&!version.matches("[0-9]{8}"))throw NativeJson.invalid();
+        byte[] prices=get(ORIGIN+"/api/prices/"+cell,FavoriteComparison.PRICE_BYTES,call),file=null;
+        if(version!=null)try{file=get(ORIGIN+"/data/"+version+"/v/"+cell+".json",FavoriteComparison.STATIC_BYTES,call);}
+        catch(IOException unavailable){/* Independently approved public user venues may still be displayed. */}
+        call.check();return DiscoveryData.parse(file,prices,cell,today.get());
+    }
     private byte[] get(String url,int maximum,Call call)throws IOException{call.check();if(!allowed(url))throw NativeJson.invalid();byte[] bytes=transport.get(url,maximum,call);call.check();if(bytes==null||bytes.length>maximum)throw NativeJson.invalid();return bytes;}
     static boolean allowed(String url){return url!=null&&(url.equals(ORIGIN+"/api/health")||url.matches("https://www\\.dovebevo\\.com/api/prices/[0-9b-hjkmnp-z]{5}")||url.matches("https://www\\.dovebevo\\.com/data/[0-9]{8}/v/[0-9b-hjkmnp-z]{5}\\.json"));}
     interface Connections{HttpsURLConnection open(String url)throws IOException;}

@@ -68,15 +68,19 @@ public final class NativeUsabilityRuntimeTest {
     private static final String ONE = "https://www.dovebevo.com/bar/n123?c=u0nd9";
     private static final String HOLD = "https://www.dovebevo.com/bar/w9?c=sr2y7";
     private static final String FAILURE = "https://www.dovebevo.com/bar/r42?c=u0nd9";
+    private static final String APP_HOME = "https://www.dovebevo.com/mobile/";
+    private static final String APP_ONE = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9";
+    private static final String APP_HOLD = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fw9&c=sr2y7";
+    private static final String APP_FAILURE = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fr42&c=u0nd9";
     private static final String FIXTURE_HTML = """
-            <!doctype html><meta charset="utf-8">
+            <!doctype html><html OWNED_MOBILE_ATTRIBUTE><meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <meta http-equiv="Content-Security-Policy"
               content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
             <meta name="owned-response" content="OWNED_RESPONSE">
             <title>Owned native fixture</title><p>Local browser fixture</p>
             <button id="open-venue" style="min-height:64px;width:240px"
-              onclick="document.querySelector('section.map').setAttribute('data-selected','n123');history.pushState({inApp:true},'', '/bar/n123?c=u0nd9')">Open owned venue fixture</button>
+              onclick="document.querySelector('section.map').setAttribute('data-selected','n123');history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')">Open owned venue fixture</button>
             <section class="map" data-selected="OWNED_VENUE_KEY"></section>
             <dialog class="sheet sheet--bare" open aria-label="Locale di prova">
               <div class="sheet__body"><div class="scontrino"><div class="scontrino__paper">
@@ -89,6 +93,8 @@ public final class NativeUsabilityRuntimeTest {
     private final AtomicBoolean serverFailure = new AtomicBoolean(true);
     private final AtomicInteger documentResponses = new AtomicInteger();
     private volatile int presentationMode;
+    // The owned app page is valid by default; recovery cases use actual missing/false attributes.
+    private volatile int markerMode = 1;
     private final CountDownLatch release = new CountDownLatch(1);
     private final CountDownLatch holdStarted = new CountDownLatch(1);
     private MainActivity activity;
@@ -182,7 +188,7 @@ public final class NativeUsabilityRuntimeTest {
             assertNull(currentDialog());
             assertSame(original, get("website"));
             assertFalse((Boolean) get("favoritesVisible"));
-            assertEquals(ONE, web.getUrl());
+            assertEquals(APP_ONE, web.getUrl());
             assertTrue(activity.findViewById(R.id.map_destination).isSelected());
             assertFalse(activity.findViewById(R.id.save_venue).isSelected());
         });
@@ -198,7 +204,7 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> currentDialog().getListView().performItemClick(null, 0, 0));
         instrumentation.waitForIdleSync();
         onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick());
-        await(() -> ONE.equals(web.getUrl()) && (Boolean) get("hasUsablePage") && !(Boolean) get("loading"));
+        await(() -> APP_ONE.equals(web.getUrl()) && (Boolean) get("hasUsablePage") && !(Boolean) get("loading"));
         assertOwnedDocument(1);
         onMain(() -> {
             assertSame(original, get("website"));
@@ -210,6 +216,69 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_NEUTRAL).performClick());
         instrumentation.waitForIdleSync();
         assertTrue(store.load().isEmpty());
+    }
+
+    @Test public void mobileDocumentSharesItsCanonicalPublicVenueWithoutOpeningAChooser() throws Exception {
+        navigate(ONE);
+        AtomicReference<Intent> captured = new AtomicReference<>();
+        Instrumentation.ActivityMonitor monitor = new Instrumentation.ActivityMonitor() {
+            @Override public Instrumentation.ActivityResult onStartActivity(Intent intent) {
+                if (!Intent.ACTION_CHOOSER.equals(intent.getAction())) return null;
+                captured.set(new Intent(intent));
+                return new Instrumentation.ActivityResult(android.app.Activity.RESULT_CANCELED, null);
+            }
+        };
+        instrumentation.addMonitor(monitor);
+        try {
+            onMain(() -> {
+                set("testLabPolicy", TestLabPolicy.detect(() -> null));
+                assertEquals(APP_ONE, web.getUrl());
+                assertEquals(ONE, invoke("eligibleSavedVenue"));
+                assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.share, 0));
+            });
+            await(() -> captured.get() != null);
+            @SuppressWarnings("deprecation") Intent send = captured.get().getParcelableExtra(Intent.EXTRA_INTENT);
+            assertNotNull(send);
+            assertEquals(Intent.ACTION_SEND, send.getAction());
+            assertEquals("text/plain", send.getType());
+            assertEquals(ONE, send.getStringExtra(Intent.EXTRA_TEXT));
+            onMain(() -> {
+                assertEquals(APP_ONE, web.getUrl());
+                assertFalse((Boolean) get("failed"));
+            });
+            assertOwnedDocument(1);
+        } finally { instrumentation.removeMonitor(monitor); }
+    }
+
+    @Test public void missingAndFalseMobileMarkersShowRecoveryAndRetryTheActualAppDocument() throws Exception {
+        for (int invalid : new int[]{0, 2}) {
+            markerMode = invalid;
+            int response = documentResponses.get() + 1;
+            onMain(() -> invoke("navigate", new Class<?>[]{String.class}, ONE));
+            await(() -> (Boolean) get("failed") && !(Boolean) get("loading"));
+            assertOwnedDocument(response);
+            onMain(() -> {
+                assertEquals(APP_ONE, web.getUrl());
+                assertFalse((Boolean) get("hasUsablePage"));
+                assertNull(invoke("eligibleSavedVenue"));
+                assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
+                assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+                assertEquals(View.VISIBLE, ((View) get("errorPanel")).getVisibility());
+                assertEquals(View.GONE, web.getVisibility());
+            });
+            markerMode = 1;
+            int retryResponse = documentResponses.get() + 1;
+            onMain(() -> activity.findViewById(R.id.retry).performClick());
+            await(() -> APP_ONE.equals(web.getUrl()) && (Boolean) get("hasUsablePage")
+                    && !(Boolean) get("loading") && !(Boolean) get("failed"));
+            assertOwnedDocument(retryResponse);
+            assertEquals("Locale di prova", readVenue().name);
+            onMain(() -> {
+                assertEquals(ONE, invoke("eligibleSavedVenue"));
+                assertEquals(View.GONE, ((View) get("errorPanel")).getVisibility());
+                assertEquals(View.VISIBLE, web.getVisibility());
+            });
+        }
     }
 
     @Test public void visibleRecommendationEntryUsesActualVenueReaderAndOnlyInjectedApi() throws Exception {
@@ -305,7 +374,7 @@ public final class NativeUsabilityRuntimeTest {
             assertFalse(browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
             activity.findViewById(R.id.map_destination).performClick();
             assertSame(original, get("website")); assertEquals(index, web.copyBackForwardList().getCurrentIndex());
-            assertEquals(ONE, web.getUrl()); assertFalse((Boolean)get("favoritesVisible"));
+            assertEquals(APP_ONE, web.getUrl()); assertFalse((Boolean)get("favoritesVisible"));
             DiscoveryScreen home=new DiscoveryScreen(activity,
                     url->{invoke("showMap");invoke("navigate",new Class<?>[]{String.class},url);},
                     ()->invoke("showMap"),()->(Boolean)get("foreground"),
@@ -319,9 +388,9 @@ public final class NativeUsabilityRuntimeTest {
         await(()->(Boolean)get("discoveryVisible"));
         onMain(()->{
             assertTrue(activity.findViewById(R.id.home).isSelected());assertFalse(activity.findViewById(R.id.map_destination).isSelected());
-            assertEquals(ONE,web.getUrl());assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertEquals(APP_ONE,web.getUrl());assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
             assertTrue(((TextView)activity.findViewById(R.id.discovery_status)).getText().toString().contains("Apri una città"));
-            activity.findViewById(R.id.map_destination).performClick();assertFalse((Boolean)get("discoveryVisible"));assertEquals(ONE,web.getUrl());assertSame(original,get("website"));
+            activity.findViewById(R.id.map_destination).performClick();assertFalse((Boolean)get("discoveryVisible"));assertEquals(APP_ONE,web.getUrl());assertSame(original,get("website"));
         });
         assertOwnedDocument(1);
     }
@@ -358,7 +427,7 @@ public final class NativeUsabilityRuntimeTest {
             activity.findViewById(R.id.map_destination).performClick();
             assertSame(retained,get("website"));
             assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
-            assertEquals(ONE,web.getUrl());
+            assertEquals(APP_ONE,web.getUrl());
             invoke("onPause"); invoke("onResume");
             assertFalse("Consumed restoration must not override a later Mappa choice",(Boolean)get("favoritesVisible"));
         });
@@ -428,7 +497,7 @@ public final class NativeUsabilityRuntimeTest {
 
     @Test public void bundledPresentationUsesTheRealResponseNonceAndFailsClosedWhenAbsentOrDenied() throws Exception {
         presentationMode=1;
-        navigate(ONE);
+        navigateLegacy(ONE);
         JSONArray styled=presentationState();
         assertEquals("1",styled.getString(0));
         assertEquals(1,styled.getInt(1));
@@ -440,7 +509,7 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals("Locale di prova",readVenue().name);
         for(int mode:new int[]{2,3}) {
             presentationMode=mode;
-            navigate(BrowserPolicy.HOME);
+            navigateLegacy(BrowserPolicy.HOME);
             JSONArray rejected=presentationState();
             assertEquals("",rejected.getString(0));
             assertEquals(0,rejected.getInt(1));
@@ -451,7 +520,7 @@ public final class NativeUsabilityRuntimeTest {
         assertTrue("The test WebView must support actual document-start registration",
                 androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT));
         presentationMode=4;
-        navigate(ONE);
+        navigateLegacy(ONE);
         CountDownLatch complete=new CountDownLatch(1);
         AtomicReference<String> result=new AtomicReference<>();
         onMain(()->web.evaluateJavascript("(()=>{const initial=window.themeSeen.join('|');document.documentElement.dataset.theme='dark';window.dispatchEvent(new Event('themechange'));return [initial,window.themeSeen.join('|'),document.documentElement.dataset.theme];})()",
@@ -506,8 +575,8 @@ public final class NativeUsabilityRuntimeTest {
             assertTrue((Boolean)get("favoritesVisible"));assertEquals(View.VISIBLE,screen.view().getVisibility());assertEquals(View.GONE,web.getVisibility());
             assertEquals(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS,web.getImportantForAccessibility());assertNull(invoke("eligibleSavedVenue"));
             // A genuine app-client callback must update browser state without exposing its hidden document.
-            actualClient.onPageFinished(web,ONE);assertEquals(View.GONE,web.getVisibility());
-            actualClient.onReceivedHttpError(web,mainFrameRequest(ONE),new WebResourceResponse("text/html","UTF-8",500,"Service Unavailable",Collections.emptyMap(),new ByteArrayInputStream(new byte[0])));
+            actualClient.onPageFinished(web,APP_ONE);assertEquals(View.GONE,web.getVisibility());
+            actualClient.onReceivedHttpError(web,mainFrameRequest(APP_ONE),new WebResourceResponse("text/html","UTF-8",500,"Service Unavailable",Collections.emptyMap(),new ByteArrayInputStream(new byte[0])));
             assertTrue((Boolean)get("failed"));assertEquals(View.GONE,((View)get("errorPanel")).getVisibility());assertEquals(View.VISIBLE,screen.view().getVisibility());
             assertEquals(historySize,web.copyBackForwardList().getSize());assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
             invoke("goBack"); // System Back selects Mappa before touching retained browser history.
@@ -588,14 +657,14 @@ public final class NativeUsabilityRuntimeTest {
     @Test public void sameDocumentHistoryControlsAndNativeSavedStateRestoreAForwardEntry() throws Exception {
         navigate(BrowserPolicy.HOME);
         tapOwnedVenueButton();
-        await(() -> ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
+        await(() -> APP_ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
         assertOwnedDocument(1);
         onMain(() -> {
             assertFalse(((Button) get("forwardButton")).isEnabled());
             assertEquals(ONE, invoke("eligibleSavedVenue"));
             ((Button) get("backButton")).performClick();
         });
-        await(() -> BrowserPolicy.HOME.equals(web.getUrl()) && ((Button) get("forwardButton")).isEnabled());
+        await(() -> APP_HOME.equals(web.getUrl()) && ((Button) get("forwardButton")).isEnabled());
         assertOwnedDocument(1);
         Bundle activityState = new Bundle();
         onMain(() -> {
@@ -607,14 +676,14 @@ public final class NativeUsabilityRuntimeTest {
             installFixtureWebView();
             assertEquals(Boolean.TRUE, invoke("restoreHistory", new Class<?>[]{Bundle.class}, activityState));
         });
-        await(() -> BrowserPolicy.HOME.equals(web.getUrl()) && !(Boolean) get("loading"));
+        await(() -> APP_HOME.equals(web.getUrl()) && !(Boolean) get("loading"));
         assertOwnedDocument(1);
         onMain(() -> {
             assertFalse(((Button) get("backButton")).isEnabled());
             assertTrue(((Button) get("forwardButton")).isEnabled());
             ((Button) get("forwardButton")).performClick();
         });
-        await(() -> ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
+        await(() -> APP_ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
         assertOwnedDocument(1);
     }
 
@@ -636,7 +705,7 @@ public final class NativeUsabilityRuntimeTest {
             activity.findViewById(R.id.retry).performClick();
             // Before the replacement's page-start callback, the old stopped
             // request may still report finish with this identical URL.
-            actualClient.onPageFinished(web, HOLD);
+            actualClient.onPageFinished(web, APP_HOLD);
             assertTrue("An old finish before replacement start must keep loading active", (Boolean) get("loading"));
             assertTrue((Boolean) get("awaitingDocumentStart"));
             assertNull(invoke("eligibleSavedVenue"));
@@ -683,7 +752,7 @@ public final class NativeUsabilityRuntimeTest {
         assertTrue("Held second load did not start", holdStarted.await(10, TimeUnit.SECONDS));
         onMain(() -> {
             assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.refresh, 0));
-            assertEquals(HOLD, get("stoppedUrl"));
+            assertEquals(APP_HOLD, get("stoppedUrl"));
             assertFalse((Boolean) get("failed"));
             assertTrue((Boolean) get("hasUsablePage"));
             assertEquals(View.VISIBLE, web.getVisibility());
@@ -692,7 +761,7 @@ public final class NativeUsabilityRuntimeTest {
             int historySize = web.copyBackForwardList().getSize();
             // Deliver a delayed platform response to the actual app client.
             // No network request is made by this callback regression.
-            actualClient.onReceivedHttpError(web, mainFrameRequest(HOLD), new WebResourceResponse(
+            actualClient.onReceivedHttpError(web, mainFrameRequest(APP_HOLD), new WebResourceResponse(
                     "text/html", "UTF-8", 500, "Service Unavailable", Collections.emptyMap(),
                     new ByteArrayInputStream(new byte[0])));
             assertFalse("A stopped request must not become a new page failure", (Boolean) get("failed"));
@@ -731,7 +800,7 @@ public final class NativeUsabilityRuntimeTest {
         assertTrue("Held second load did not start", holdStarted.await(10, TimeUnit.SECONDS));
         onMain(() -> {
             assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.refresh, 0));
-            invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, web, HOLD, cancel);
+            invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, web, APP_HOLD, cancel);
             assertEquals(4, cancelled.get());
             assertFalse((Boolean) get("failed"));
             assertEquals(View.VISIBLE, web.getVisibility());
@@ -740,7 +809,7 @@ public final class NativeUsabilityRuntimeTest {
         hold.set(false); release.countDown();
         navigate(ONE);
         onMain(() -> {
-            invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, web, ONE, cancel);
+            invoke("rejectSslFailure", new Class<?>[]{WebView.class, String.class, Runnable.class}, web, APP_ONE, cancel);
             assertEquals(5, cancelled.get());
             assertTrue((Boolean) get("failed"));
             assertEquals(View.VISIBLE, ((LinearLayout) get("errorPanel")).getVisibility());
@@ -785,6 +854,16 @@ public final class NativeUsabilityRuntimeTest {
     private void navigate(String url) throws Exception {
         int minimumToken = documentResponses.get() + 1;
         onMain(() -> invoke("navigate", new Class<?>[]{String.class}, url));
+        String document = ONE.equals(url) ? APP_ONE : HOLD.equals(url) ? APP_HOLD
+                : FAILURE.equals(url) ? APP_FAILURE : BrowserPolicy.HOME.equals(url) ? APP_HOME : url;
+        await(() -> document.equals(web.getUrl()) && !(Boolean) get("loading") && (Boolean) get("hasUsablePage"));
+        assertOwnedDocument(minimumToken);
+    }
+
+    /** Legacy presentation regression: bypass production entry translation only for owned, network-blocked HTML. */
+    private void navigateLegacy(String url) throws Exception {
+        int minimumToken = documentResponses.get() + 1;
+        onMain(() -> web.loadUrl(url));
         await(() -> url.equals(web.getUrl()) && !(Boolean) get("loading") && (Boolean) get("hasUsablePage"));
         assertOwnedDocument(minimumToken);
     }
@@ -840,8 +919,12 @@ public final class NativeUsabilityRuntimeTest {
                 WebResourceResponse guarded = delegate.shouldInterceptRequest(view, request);
                 if (guarded != null) return guarded;
                 int responseToken = request.isForMainFrame() ? documentResponses.incrementAndGet() : 0;
-                String key = request.getUrl().getLastPathSegment();
+                Uri requested = request.getUrl();
+                String route = requested.getQueryParameter("path");
+                String key = route == null ? requested.getLastPathSegment() : Uri.parse(route).getLastPathSegment();
                 byte[] bytes = FIXTURE_HTML.replace("OWNED_RESPONSE", Integer.toString(responseToken))
+                        .replace("OWNED_MOBILE_ATTRIBUTE", markerMode == 1 ? "data-dovebevo-mobile-shell=\"1\""
+                                : markerMode == 2 ? "data-dovebevo-mobile-shell=\"false\"" : "")
                         .replace("OWNED_VENUE_KEY", key == null ? "" : key).getBytes(StandardCharsets.UTF_8);
                 if(presentationMode!=0) {
                     String nonce=presentationMode==2?"":" nonce=\"fixtureThemeNonce20261029\"";
@@ -856,7 +939,7 @@ public final class NativeUsabilityRuntimeTest {
                     bytes=html.getBytes(StandardCharsets.UTF_8);
                 }
                 InputStream body = new ByteArrayInputStream(bytes);
-                if (hold.get() && HOLD.equals(request.getUrl().toString())) body = new ByteArrayInputStream(bytes) {
+                if (hold.get() && APP_HOLD.equals(request.getUrl().toString())) body = new ByteArrayInputStream(bytes) {
                     @Override public synchronized int read(byte[] buffer, int offset, int length) {
                         try { if (!release.await(15, TimeUnit.SECONDS)) return -1; }
                         catch (InterruptedException error) { Thread.currentThread().interrupt(); return -1; }
@@ -864,7 +947,7 @@ public final class NativeUsabilityRuntimeTest {
                     }
                 };
                 int status = !"GET".equals(request.getMethod()) ? 403
-                        : FAILURE.equals(request.getUrl().toString()) && serverFailure.get() ? 500 : 200;
+                        : APP_FAILURE.equals(request.getUrl().toString()) && serverFailure.get() ? 500 : 200;
                 record("response=" + status + " token=" + responseToken + " main=" + request.isForMainFrame() + " url=" + request.getUrl());
                 Map<String,String> headers=new java.util.HashMap<>();headers.put("Cache-Control","no-store");
                 if(presentationMode!=0) headers.put("Content-Security-Policy","default-src 'none'; script-src 'nonce-fixtureThemeNonce20261029'; style-src 'nonce-"+(presentationMode==3?"deniedFixtureNonce20261029":"fixtureThemeNonce20261029")+"'");
@@ -878,7 +961,7 @@ public final class NativeUsabilityRuntimeTest {
             @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
                 record("started=" + url);
                 delegate.onPageStarted(view, url, icon);
-                if (HOLD.equals(url) && hold.get()) holdStarted.countDown();
+                if (APP_HOLD.equals(url) && hold.get()) holdStarted.countDown();
             }
             @Override public void onPageFinished(WebView view, String url) { record("finished=" + url); delegate.onPageFinished(view, url); }
             @Override public void doUpdateVisitedHistory(WebView view, String url, boolean reload) { record("history=" + url); delegate.doUpdateVisitedHistory(view, url, reload); }

@@ -206,6 +206,47 @@ class PlannerAcceptanceTests(unittest.TestCase):
         with self.assertRaisesRegex(planner.InputError, "OSM"):
             self.run_plan()
 
+    def test_separate_price_source_requires_same_literal_venue_identity(self):
+        self.add_source("other", "<p>Other Bar | Other Street 99 | Negroni €8.00</p>",
+                        url="https://example.com/other")
+        self.row()["source_id"] = "other"
+        self.assertIn("price_source_venue_identity_not_evidenced", self.reasons())
+        self.add_source("other", "<h1>Caffe Esempio</h1><p>Via Roma 10</p><p>Negroni €8.00</p>",
+                        url="https://other.example.com/menu")
+        self.assertEqual(self.reasons(), [])
+
+    def test_alcohol_free_and_large_shared_servings_held(self):
+        for text, drink, reason in (
+                ("Alcohol free Gin tonic €8.00", "gin_tonic", "alcohol_free_conflicts_with_drink_category"),
+                ("Gin tonic 1 litre €8.00", "gin_tonic", "large_or_shared_serving_held"),
+                ("Gin tonic for 4 people €8.00", "gin_tonic", "large_or_shared_serving_held"),
+                ("Negroni XXL €8.00", "negroni", "large_or_shared_serving_held")):
+            with self.subTest(text=text):
+                self.replace_price(text, item=text.replace(" €8.00", ""), drink=drink)
+                self.assertIn(reason, self.reasons())
+
+    def test_impossible_happy_hour_times_held(self):
+        self.add_source("menu", "<h1>Caffe Esempio</h1><p>Via Roma 10</p><p>Negroni €8.00</p>"
+                        "<p>Happy hour 99:99-99:99 Negroni €8.00</p>")
+        self.row().update(hh=1, hh_excerpt="Happy hour 99:99-99:99 Negroni €8.00")
+        self.assertIn("happy_hour_item_amount_and_time_conditions_not_explicit", self.reasons())
+
+    def test_malformed_google_thousands_group_is_held(self):
+        text = "Caffe Esempio | Via Roma 10 | 1.01 reviews"
+        self.add_source("google", text, "text/plain", "https://www.google.com/maps/place/example")
+        self.doc["candidates"][0]["review"].update(excerpt=text, count=101)
+        self.assertIn("visible_google_review_count_not_evidenced", self.reasons())
+
+    def test_osm_key_must_be_canonical_positive_at_most_15_digits(self):
+        for key in ("n0", "n001", "w1234567890123456"):
+            with self.subTest(key=key):
+                self.set_catalogue(key=key)
+                with self.assertRaisesRegex(planner.InputError, "OSM"):
+                    self.run_plan()
+        self.set_catalogue(key="n123456789012345")
+        self.doc["candidates"][0]["venue"]["key"] = "n123456789012345"
+        self.assertEqual(self.reasons(), [])
+
     def test_same_venue_drink_hh_conflicts_never_select_cheapest(self):
         second = copy.deepcopy(self.row())
         second["id"] = "row-2"

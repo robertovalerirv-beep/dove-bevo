@@ -352,7 +352,7 @@ def read_catalogue(spec, reader):
                 raise InputError("exact seven-element published venue tuple required")
             key, name, kind, lat, lon, addr, city_index = row
             string(key, "catalogue key", 160)
-            if not re.fullmatch(r"[nwr][0-9]+", key):
+            if not re.fullmatch(r"[nwr][1-9][0-9]{0,14}", key):
                 raise InputError("catalogue key must be an OSM node way or relation identity")
             string(name, "catalogue name", 240)
             integer(kind, "catalogue kind", 0, 4)
@@ -429,8 +429,10 @@ def review_reasons(spec, sources, venue):
         reasons.append("review_source_is_not_direct_google")
     # Accept an unambiguous adjacent number and review label; never infer count
     # from a bare number, rating, claim, or 100/101 boundary rounding.
-    matches = re.findall(r"(?<!\d)(\d[\d.,\s]*?)\s+(?:Google\s+)?(?:reviews|recensioni|avis|bewertungen)\b", spec["excerpt"], re.I)
-    counts = [int(re.sub(r"\D", "", match)) for match in matches]
+    matches = re.findall(r"(?<![\d.,])(\d[\d., ]*?)\s+(?:Google\s+)?(?:reviews|recensioni|avis|bewertungen)\b", spec["excerpt"], re.I)
+    valid_count = (len(matches) == 1 and
+                   re.fullmatch(r"(?:0|[1-9]\d{0,2})(?:(?:,\d{3})+|(?:\.\d{3})+|(?: \d{3})+)?", matches[0]))
+    counts = [int(re.sub(r"\D", "", matches[0]))] if valid_count else []
     if counts != [count]:
         reasons.append("visible_google_review_count_not_evidenced")
     proof = " " + normalize(spec["excerpt"]) + " "
@@ -450,7 +452,14 @@ def amount_cents(literal):
     return int(units) * 100 + int(decimals.ljust(2, "0") or "0")
 
 
-def price_reasons(row, sources):
+def valid_happy_hour_times(excerpt):
+    times = re.findall(r"\b(\d{1,2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?\b", excerpt)
+    return bool(times) and all(int(start_h) <= 23 and int(end_h) <= 23
+                               and int(start_m or 0) <= 59 and int(end_m or 0) <= 59
+                               for start_h, start_m, end_h, end_m in times)
+
+
+def price_reasons(row, sources, venue):
     obj(row, "id drink cents currency hh item serving context source_id excerpt amount_literal hh_excerpt", "price")
     for field, cap in (("id", 80), ("drink", 40), ("currency", 8), ("item", 100),
                        ("serving", 40), ("context", 120), ("source_id", 80),
@@ -464,6 +473,14 @@ def price_reasons(row, sources):
     reasons = excerpt_reasons(source, row["excerpt"])
     if source and source["spec"]["media_type"] != "text/html":
         reasons.append("price_requires_verified_raw_html_not_text_sidecar")
+    # Each menu source must independently contain the candidate's identity;
+    # a shared host or an identity proved by another source is insufficient.
+    if source and (source["text"] is None or any(
+            norm_space(excerpt) != excerpt or excerpt not in source["text"]
+            for excerpt in venue["identity_excerpts"]) or any(
+            not field or " " + normalize(field) + " " not in " " + normalize(" ".join(venue["identity_excerpts"])) + " "
+            for field in (venue["name"], venue["address"]))):
+        reasons.append("price_source_venue_identity_not_evidenced")
     excerpt = row["excerpt"]
     if row["currency"] != "EUR":
         reasons.append("non_eur_no_conversion_permitted")
@@ -493,6 +510,12 @@ def price_reasons(row, sources):
     item_context = normalize(row["item"] + " " + row["context"])
     if not re.search(r"\b(?:" + labels[row["drink"]] + r")\b", item_context):
         reasons.append("drink_category_not_explicit_in_item_or_context")
+    if row["drink"] != "alcohol_free" and re.search(
+            r"\b(?:alcohol free|alcoholfree|non alcoholic|nonalcoholic|no alcohol|zero alcohol|analcolic[oaie]|senza alcol|virgin|mocktail)\b", words):
+        reasons.append("alcohol_free_conflicts_with_drink_category")
+    if re.search(r"\b(?:xxl|xl|large format|magnum|jug|carafe|caraffa|litre|litres|liter|liters|litro|litri)\b", words) or re.search(
+            r"\b\d+(?:[.,]\d+)?\s*(?:l|litres?|liters?|litri|litro)\b|\b(?:for|per|pour|fur)\s+\d+\s*(?:people|persons?|persone|personnes|personen)\b", words):
+        reasons.append("large_or_shared_serving_held")
     if row["drink"] == "negroni" and re.search(r"\bsbagliato\b", item_context):
         reasons.append("sbagliato_cannot_be_plain_negroni")
     if (re.search(r"\b(from|starting|range|between|package|bundle|pitcher|cheapest|minimum|or|oppure|choice|selection|a scelta)\b", words)
@@ -517,7 +540,7 @@ def price_reasons(row, sources):
         if (row["item"] not in row["hh_excerpt"]
                 or row["amount_literal"] not in row["hh_excerpt"]
                 or not re.search(r"\b(?:happy hour|aperitivo)\b", normalize(row["hh_excerpt"]))
-                or not re.search(r"\b\d{1,2}(?::\d{2})?\s*[-–]\s*\d{1,2}(?::\d{2})?\b", row["hh_excerpt"])):
+                or not valid_happy_hour_times(row["hh_excerpt"])):
             reasons.append("happy_hour_item_amount_and_time_conditions_not_explicit")
     elif row["hh_excerpt"] is not None:
         raise InputError("hh 0 requires null hh_excerpt")
@@ -549,7 +572,7 @@ def plan(document, evidence_root):
         common = venue_reasons(candidate["venue"], venues, sources)
         common += review_reasons(candidate["review"], sources, candidate["venue"])
         for row in sequence(candidate["prices"], "prices", MAX_ROWS):
-            reasons = common + price_reasons(row, sources)
+            reasons = common + price_reasons(row, sources, candidate["venue"])
             if row["id"] in row_ids:
                 raise InputError("duplicate price id")
             row_ids.add(row["id"])

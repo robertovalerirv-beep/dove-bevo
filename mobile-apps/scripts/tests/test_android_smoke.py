@@ -5,6 +5,7 @@ import io
 import json
 import os
 import pathlib
+import re
 import signal
 import stat
 import subprocess
@@ -416,6 +417,19 @@ class AndroidSmokeTests(unittest.TestCase):
             with self.subTest(bad=bad[:50]), self.assertRaises((RuntimeError, ValueError)):
                 m.owned_instrumentation(bad)
 
+    def test_owned_suite_uses_one_bounded_ten_minute_process_budget(self):
+        m.ADB_OWNER = Proc(code=None)
+        with mock.patch.object(m.subprocess, 'run',
+                               return_value=subprocess.CompletedProcess([], 0, self.owned_output(), b'')) as run:
+            result = m.run_owned_instrumentation()
+        self.assertEqual(result['tests'], 35)
+        self.assertEqual(run.call_count, 2, 'One instrument invocation and final force-stop; no retries')
+        instrument, stop = run.call_args_list
+        self.assertEqual(instrument.args[0][7:14], ('shell', 'am', 'instrument', '-w', '-r', '-e', 'class'))
+        self.assertEqual(instrument.kwargs['timeout'], 600)
+        self.assertEqual(stop.args[0][7:], ('shell', 'am', 'force-stop', 'com.dovebevo.app'))
+        self.assertEqual(stop.kwargs['timeout'], 30, 'Other ADB operations retain their short deadline')
+
     def test_owned_class_allowlist_fresh_process_and_force_stop(self):
         with mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, self.owned_output(), b'')) as adb:
             m.run_owned_instrumentation()
@@ -484,7 +498,7 @@ class AndroidSmokeTests(unittest.TestCase):
 
     def test_owned_command_timeout_keeps_partial_streams_and_original_exception(self):
         m.ADB_OWNER = Proc(code=None)
-        error = subprocess.TimeoutExpired('owned fixture', 240, output=b'partial test output', stderr=b'partial stderr')
+        error = subprocess.TimeoutExpired('owned fixture', 600, output=b'partial test output', stderr=b'partial stderr')
         with mock.patch.object(m, 'adb', side_effect=[error, subprocess.CompletedProcess([], 0, b'crash detail', b'')]):
             with self.assertRaises(subprocess.TimeoutExpired) as caught: m.run_owned_instrumentation()
         self.assertIs(caught.exception, error)
@@ -587,6 +601,28 @@ class AndroidSmokeTests(unittest.TestCase):
              mock.patch('sys.stdout', new_callable=io.StringIO):
             with self.assertRaisesRegex(OSError, 'receipt disk failed'): m.main()
         self.assertTrue(m.OWNED_PASS)
+
+    def test_workflow_smoke_budget_is_bounded_inside_unchanged_job_and_sdk_limits(self):
+        workflow = (root / '.github/workflows/mobile-apps.yml').read_text()
+        android = workflow.split('\n  android:\n', 1)[1].split('\n  release-android:', 1)[0]
+        # Read numeric limits from their actual job/step scopes, not unrelated occurrences.
+        job_limits = re.findall(r'^    timeout-minutes: ([0-9]+)$', android, re.M)
+        self.assertEqual(len(job_limits), 1)
+        steps = re.split(r'(?=^      - )', android, flags=re.M)
+        smoke_steps = [step for step in steps if 'python3 -B mobile-apps/scripts/android-smoke.py --pr-quality' in step]
+        sdk_steps = [step for step in steps if '/sdkmanager"' in step]
+        self.assertEqual(len(smoke_steps), 1)
+        self.assertEqual(len(sdk_steps), 1)
+        def step_limit(step):
+            values = re.findall(r'^        timeout-minutes: ([0-9]+)$', step, re.M)
+            self.assertEqual(len(values), 1)
+            return int(values[0])
+        smoke_minutes, sdk_minutes, job_minutes = step_limit(smoke_steps[0]), step_limit(sdk_steps[0]), int(job_limits[0])
+        self.assertEqual((smoke_minutes, sdk_minutes, job_minutes), (18, 8, 25))
+        self.assertLess(600, smoke_minutes * 60, 'Startup, public probing and cleanup have aggregate room')
+        self.assertLess(smoke_minutes, job_minutes, 'The complete job remains the outer hard limit')
+        self.assertNotIn('continue-on-error', smoke_steps[0])
+        self.assertNotIn('|| true', smoke_steps[0])
 
     def test_workflow_keeps_required_job_and_release_dependency_without_blanket_override(self):
         workflow = (root / '.github/workflows/mobile-apps.yml').read_text()

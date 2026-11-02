@@ -25,9 +25,9 @@ final class DiscoveryControllerTests: XCTestCase {
         XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 1)
         let index = IndexPath(row: 0, section: 0)
         let cell = controller.tableView(controller.tableView, cellForRowAt: index)
-        let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
-        XCTAssertEqual(content.text, "Real current name")
-        let text = try XCTUnwrap(content.secondaryAttributedText).string
+        let labels = descendants(cell).compactMap { ($0 as? UILabel)?.text }
+        XCTAssertTrue(labels.contains("Real current name"))
+        let text = labels.joined(separator: "\n")
         for expected in ["Spritz · Normale", "5,50 €", "Via pubblica · Milano", "0 m dal centro mappa", "2026-10-28", "0 conferme"] {
             XCTAssertTrue(text.contains(expected), expected)
         }

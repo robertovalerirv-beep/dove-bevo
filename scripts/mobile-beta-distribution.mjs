@@ -51,6 +51,19 @@ const readyExternal = new Set([
 ]);
 const pendingExternal = new Set(["WAITING_FOR_BETA_REVIEW", "IN_BETA_REVIEW"]);
 const approvedExternal = new Set(["BETA_APPROVED", "READY_FOR_BETA_TESTING", "IN_BETA_TESTING"]);
+const acceptedReview = new Set(["WAITING_FOR_REVIEW", "IN_REVIEW", "APPROVED"]);
+
+function reviewEstablished(snapshot, expectedSubmissionId) {
+  return (
+    pendingExternal.has(snapshot.external_state) ||
+    approvedExternal.has(snapshot.external_state) ||
+    snapshot.submissions.some(
+      (submission) =>
+        acceptedReview.has(submission.state) &&
+        (!expectedSubmissionId || submission.id === expectedSubmissionId),
+    )
+  );
+}
 
 function exact(object, keys) {
   return (
@@ -435,6 +448,8 @@ export async function applyBetaDistribution(
     }
     const current = await fresh();
     if (!current.groups.every((g) => g.linked)) fail();
+    const existingSubmission = current.submissions.find((s) => acceptedReview.has(s.state));
+    if (existingSubmission) receipt.beta_review_submission_id = existingSubmission.id;
     const pending =
       current.submissions.some((s) => ["WAITING_FOR_REVIEW", "IN_REVIEW"].includes(s.state)) ||
       pendingExternal.has(current.external_state);
@@ -460,13 +475,19 @@ export async function applyBetaDistribution(
         201,
         async (body) => {
           const submitted = resource(body?.data, "betaAppReviewSubmissions");
+          receipt.beta_review_submission_id = submitted.id;
           const rows = await submissions(client, plan.build_id);
-          if (!rows.some((s) => s.id === submitted.id && s.state !== "REJECTED")) fail();
+          if (!rows.some((s) => s.id === submitted.id && acceptedReview.has(s.state))) fail();
         },
       );
     }
     receipt.after = await inspect(client, plan);
-    if (!eligible(receipt.after, now()) || !receipt.after.groups.every((g) => g.linked)) fail();
+    if (
+      !eligible(receipt.after, now()) ||
+      !receipt.after.groups.every((g) => g.linked) ||
+      !reviewEstablished(receipt.after, receipt.beta_review_submission_id)
+    )
+      fail();
     receipt.complete = true;
     receipt.owner_in_beta_testing = receipt.after.internal_state === "IN_BETA_TESTING";
     receipt.roberto_in_beta_testing = receipt.after.external_state === "IN_BETA_TESTING";

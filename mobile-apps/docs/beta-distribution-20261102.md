@@ -89,6 +89,14 @@ sets `owner_in_beta_testing` / `roberto_in_beta_testing` when the corresponding
 fresh build state actually equals `IN_BETA_TESTING`; a completed operation may
 still mean Roberto is waiting for Apple's beta review.
 
+Completion also requires fresh final evidence of pending/approved beta review or
+testing: either the external build state, or a validated pending/approved
+submission for the same build. The operator retains the created or previously
+validated submission ID, and a final submission-list proof must match that ID.
+A `READY_FOR_BETA_SUBMISSION` final state with no matching submission is
+incomplete even when the POST and its immediate read-back previously succeeded.
+Only read-only reconciliation follows that uncertainty; no second POST is sent.
+
 The tool does not create or invite testers, create groups, edit descriptions or
 review metadata, select a public App Store build, change public version 1.0.0,
 change privacy/trader settings, or submit/resubmit public App Store review.

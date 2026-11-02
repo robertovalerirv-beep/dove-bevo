@@ -393,6 +393,77 @@ test("pending and approved review or testing states never create duplicate submi
   }
 });
 
+test("a created submission disappearing from final READY state cannot produce success or a retry", async () => {
+  const f = fixture({ linked: new Set(["owner-group", "roberto-group"]) });
+  const plan = (await f.audit()).plan;
+  let readsAfterSubmission = 0;
+  f.state.intercept = (call) => {
+    if (
+      call.method === "GET" &&
+      call.path === "/v1/betaAppReviewSubmissions" &&
+      f.state.submission
+    ) {
+      // The immediate read-back confirms the new ID; the final snapshot loses it.
+      if (++readsAfterSubmission === 1) f.state.external = "READY_FOR_BETA_SUBMISSION";
+      else f.state.submission = null;
+    }
+  };
+  const receipt = await f.apply(plan);
+  assert.equal(receipt.complete, false);
+  assert.equal(receipt.beta_review_submission_id, "submission-62");
+  assert.equal(receipt.after.external_state, "READY_FOR_BETA_SUBMISSION");
+  assert.deepEqual(receipt.after.submissions, []);
+  assert.equal(f.calls.filter((c) => c.method === "POST").length, 1);
+  assert.ok(
+    f.calls
+      .slice(f.calls.findIndex((c) => c.method === "POST") + 1)
+      .every((c) => c.method === "GET"),
+  );
+});
+
+test("a final pending build state remains valid when the submission list is eventually consistent", async () => {
+  const f = fixture({ linked: new Set(["owner-group", "roberto-group"]) });
+  const plan = (await f.audit()).plan;
+  let readsAfterSubmission = 0;
+  f.state.intercept = (call) => {
+    if (
+      call.method === "GET" &&
+      call.path === "/v1/betaAppReviewSubmissions" &&
+      f.state.submission &&
+      ++readsAfterSubmission > 1
+    )
+      f.state.submission = null;
+  };
+  const receipt = await f.apply(plan);
+  assert.equal(receipt.complete, true);
+  assert.equal(receipt.beta_review_submission_id, "submission-62");
+  assert.equal(receipt.after.external_state, "WAITING_FOR_BETA_REVIEW");
+  assert.deepEqual(receipt.after.submissions, []);
+  assert.equal(receipt.roberto_in_beta_testing, false);
+  assert.equal(f.calls.filter((c) => c.method === "POST").length, 1);
+});
+
+test("READY final state requires the same validated submission ID, not a replacement", async () => {
+  const f = fixture({ linked: new Set(["owner-group", "roberto-group"]) });
+  const plan = (await f.audit()).plan;
+  let readsAfterSubmission = 0;
+  f.state.intercept = (call) => {
+    if (
+      call.method === "GET" &&
+      call.path === "/v1/betaAppReviewSubmissions" &&
+      f.state.submission
+    ) {
+      f.state.external = "READY_FOR_BETA_SUBMISSION";
+      if (++readsAfterSubmission > 1) f.state.submission.id = "replacement-submission";
+    }
+  };
+  const receipt = await f.apply(plan);
+  assert.equal(receipt.complete, false);
+  assert.equal(receipt.beta_review_submission_id, "submission-62");
+  assert.equal(receipt.after.submissions[0].id, "replacement-submission");
+  assert.equal(f.calls.filter((c) => c.method === "POST").length, 1);
+});
+
 test("a review submission for another build is never treated as pending for 62", async () => {
   const f = fixture({
     submission: { id: "other-submission", state: "WAITING_FOR_REVIEW", build: "build-52" },

@@ -9,3 +9,7 @@ The original importer/tracer/source-isolation code and atomic customer/history/r
 Prepared manifest SHA256: 85d71fa3bb484b734fa034ffa303110f5505f62fb05f712b6ec4fd43d613ae12
 
 The prior 92 new rows remain independently verified in the release-evidence file; these eleven are not added to that count. This focused retry follows fresh unchanged-source evidence, not changed hashes or access bypasses.
+
+## Approved successful audit groups
+
+Actual audit41462923492 artifact13150740811 ZIP SHA2568a2708d469148756c06301d22772daa7559d061074707fb4ba96770f55501220 wasindependentlydownloadedandverified. Groups1and2 containBirrlandina3andMondo4 eligiblefacts, allfourguardcountszero, identicalbefore/aftercurrentempty andnoerrors/cacheinvalidations. Tonicgroup0failedbeforebindingandremainsexcluded. Onlyindices1,2areapproved forapply; no11rowclaim. Allsource/manifest/core/groupbytesremainunchanged.

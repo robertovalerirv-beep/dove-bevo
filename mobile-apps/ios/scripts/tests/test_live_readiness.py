@@ -38,10 +38,39 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertLess(live.index("searchField.tap()"), live.index("waitForOrdinaryKeyboard()"))
         self.assertLess(live.index("waitForOrdinaryKeyboard()"), live.index('searchField.typeText("Milano")'))
         self.assertIn('XCTAssertEqual(searchField.value as? String, "Milano"', live)
-        keyboard = self.source.split("private func waitForOrdinaryKeyboard()", 1)[1].split("\n    private func", 1)[0]
+        ready = self.source.split("private func waitForOrdinaryKeyboard()", 1)[1].split("\n    private func", 1)[0]
+        self.assertIn("keyboards.allElementsBoundByIndex.contains", ready)
+        self.assertIn("self.isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)", ready)
+        self.assertLess(ready.index("guard keyboard.exists"), ready.index("frame: keyboard.frame"))
+        self.assertIn("self.app.windows.firstMatch.frame", ready)
+        keyboard = self.source.split("private func isOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
         self.assertIn("frame.width >= 250, frame.height >= 150", keyboard)
         self.assertIn("key.isHittable", keyboard)
-        self.assertIn("appFrame.contains(key.frame)", keyboard)
+        self.assertIn("windowFrame.contains(keyFrame)", keyboard)
+        simultaneous = live.split("let searchVisible =", 1)[1].split("city.tap()", 1)[0]
+        for required in ["keyboards.allElementsBoundByIndex", "self.isOrdinaryKeyboard(keyboard, frame: candidateFrame, windowFrame: windowFrame)",
+                         "Self.frameVisibleAboveKeyboard(fieldFrame", "Self.frameVisibleAboveKeyboard(cityFrame",
+                         "queryMatches && fieldHittable && cityHittable && fieldVisible && cityVisible"]:
+            self.assertIn(required, simultaneous)
+        self.assertNotIn("keyboards.firstMatch", simultaneous)
+        self.assertLess(simultaneous.index("guard keyboard.exists"), simultaneous.index("let candidateFrame = keyboard.frame"))
+
+    def test_keyboard_visibility_samples_actual_window_once_without_relaxing_geometry(self):
+        sample = self.source.split("let searchVisible =", 1)[1].split("city.tap()", 1)[0]
+        for lookup in ["self.app.windows.firstMatch.frame", "website.frame", "searchField.frame", "city.frame"]:
+            self.assertEqual(sample.count(lookup), 1, lookup)
+        self.assertNotIn("app.frame", sample)
+        self.assertIn("XCTWaiter.wait(for: [searchVisible], timeout: 45)", sample)
+        self.assertIn('sampleAttachment.name = "DoveBevo-search-visibility-sample"', sample)
+        self.assertIn("sampleAttachment.lifetime = .keepAlways", sample)
+        for condition in ["fieldExists", "cityExists", "queryMatches", "fieldHittable", "cityHittable",
+                          "fieldVisible", "cityVisible", "ordinaryKeyboard", "seconds="]:
+            self.assertIn(condition, sample)
+        geometry = self.source.split("private static func frameVisibleAboveKeyboard(", 1)[1].split("\n    private func", 1)[0]
+        for required in ["!rectangle.isNull && !rectangle.isInfinite", "rectangle.width > 0 && rectangle.height > 0",
+                         "allSatisfy { $0.isFinite }", "frame.width >= 44 && frame.height >= 44",
+                         "windowFrame.contains(frame) && websiteFrame.contains(frame)", "frame.maxY <= keyboardFrame.minY"]:
+            self.assertIn(required, geometry)
 
     def test_coverage_uses_the_actual_anchored_pattern_and_valid_positive_ratio(self):
         declaration = re.search(r'static let liveCoveragePattern\s*=\s*#"([^"]+)"#', self.source)

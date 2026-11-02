@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useState } from "preact/hooks";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import "./search.css";
 import type { Place } from "@site/shared/api-types";
 import { searchKey, searchWords } from "@site/shared/venue";
 import { it } from "@site/app/i18n/lang";
@@ -90,6 +91,7 @@ export function SearchSheet({
   const [bars, setBars] = useState<Hit[]>([]);
   const [barsState, setBarsState] = useState<"idle" | "loading" | "failed">("idle");
   const [active, setActive] = useState(-1);
+  const results = useRef<HTMLDivElement>(null);
   const listId = useId();
   const [europe, setEurope] = useState<City[]>([]);
   const [europeFailed, setEuropeFailed] = useState(false);
@@ -166,6 +168,20 @@ export function SearchSheet({
     ...bars.map((hit, i): Option => ({ id: `${listId}-b${String(i)}`, kind: "bar", hit })),
   ].slice(0, MAX_TOTAL);
   const cityById = useMemo(() => new Map(places.map((p) => [p[0], p[1]])), [places]);
+  const activeId = options[active]?.id;
+  useLayoutEffect(() => {
+    if (results.current) results.current.scrollTop = 0;
+  }, [query]);
+  useLayoutEffect(() => {
+    const container = results.current;
+    const option = container?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!container || !option) return;
+    // scrollIntoView would also pan the dialog/WebView and hide the original input.
+    const view = container.getBoundingClientRect();
+    const row = option.getBoundingClientRect();
+    if (row.top < view.top) container.scrollTop += row.top - view.top;
+    else if (row.bottom > view.bottom) container.scrollTop += row.bottom - view.bottom;
+  }, [activeId]);
 
   function choose(option: Option) {
     if (option.kind === "place") onPlace(option.place);
@@ -210,160 +226,166 @@ export function SearchSheet({
 
   return (
     <Sheet title={it.search.title} onClose={onClose}>
-      {hint && <p class="hint">{hint}</p>}
-      <input
-        type="text"
-        role="combobox"
-        class="field"
-        aria-label={it.search.label}
-        aria-autocomplete="list"
-        aria-expanded={options.length > 0}
-        aria-controls={listId}
-        aria-activedescendant={options[active]?.id}
-        placeholder={it.search.label}
-        value={query}
-        autofocus
-        autocomplete="off"
-        autocapitalize="off"
-        spellcheck={false}
-        enterkeyhint="search"
-        onInput={(e) => {
-          setQuery(e.currentTarget.value);
-          setActive(-1); // here, not in an effect: an arrow pressed right after typing must count
-        }}
-        onKeyDown={onKeyDown}
-      />
-      <p class="sr-only" role="status" aria-live="polite">
-        {announce}
-      </p>
-      {placesFailed && (
-        <p class="hint" role="alert">
-          {it.search.loadError}
-        </p>
-      )}
-      {barsState === "failed" && (
-        <p class="hint" role="alert">
-          {it.search.barsFailed}
-        </p>
-      )}
-      <ul
-        id={listId}
-        role="listbox"
-        aria-label={it.search.listLabel}
-        class="rows options"
-        hidden={options.length === 0}
-      >
-        {options.map((o, i) => (
-          <li
-            key={o.id}
-            id={o.id}
-            role="option"
-            aria-selected={i === active}
-            class="row option"
-            onClick={() => {
-              choose(o);
+      <div class="mobile-search">
+        <div class="mobile-search__input">
+          <input
+            type="text"
+            role="combobox"
+            class="field"
+            aria-label={it.search.label}
+            aria-autocomplete="list"
+            aria-expanded={options.length > 0}
+            aria-controls={listId}
+            aria-activedescendant={activeId}
+            placeholder={it.search.label}
+            value={query}
+            autofocus
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck={false}
+            enterkeyhint="search"
+            onInput={(e) => {
+              setQuery(e.currentTarget.value);
+              setActive(-1); // here, not in an effect: an arrow pressed right after typing must count
             }}
-          >
-            {o.kind === "place" ? (
-              <>
-                <span class="row__name">
-                  <Highlight text={o.place[1]} typed={typed} />
-                </span>
-                <span class="row__meta">
-                  {it.search.kindPlace} · {it.search.barsCount(o.place[4])}
-                </span>
-              </>
-            ) : o.kind === "mobile-city" || o.kind === "mobile-venue" ? (
-              <>
-                <span class="row__name">
-                  <Highlight
-                    text={o.kind === "mobile-city" ? o.city.name : o.venue.name}
-                    typed={typed}
-                  />
-                </span>
-                <span class="row__meta">
-                  {o.kind === "mobile-city"
-                    ? `${o.city.country} · ${o.city.currency} · ${String(o.city.venues.length)} locali nel catalogo app`
-                    : `${o.venue.city} · ${o.venue.currency}`}
-                </span>
-              </>
-            ) : (
-              <>
-                <span class="row__name">
-                  <Highlight text={o.hit[1]} typed={typed} />
-                </span>
-                <span class="row__meta">
-                  {[it.search.kindBar, cityById.get(o.hit[4])].filter(Boolean).join(" · ")}
-                </span>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-      {noneFound && (
-        <div class="search-none">
-          <p class="hint">{it.search.none}</p>
-          {barsState !== "failed" && (
-            <button
-              type="button"
-              class="btn btn--secondary"
-              onClick={() => {
-                onPropose(query.trim());
-              }}
-            >
-              {it.add.missingBar}
-            </button>
-          )}
+            onKeyDown={onKeyDown}
+          />
         </div>
-      )}
-      {!key && europe.length > 0 && (
-        <>
-          <h3 class="section-title">Città nel catalogo app</h3>
-          <ul class="rows">
-            {europe.map((city) => (
-              <li key={city.key}>
-                <a class="row" href={cityURL(city)}>
-                  <span class="row__name">{city.name}</span>
-                  <span class="row__meta">
-                    {city.country} · {city.currency} · {city.venues.length} locali
-                  </span>
-                </a>
+        <div class="mobile-search__results" ref={results}>
+          <p class="sr-only" role="status" aria-live="polite">
+            {announce}
+          </p>
+          <ul
+            id={listId}
+            role="listbox"
+            aria-label={it.search.listLabel}
+            class="rows options"
+            hidden={options.length === 0}
+          >
+            {options.map((o, i) => (
+              <li
+                key={o.id}
+                id={o.id}
+                role="option"
+                aria-selected={i === active}
+                class="row option"
+                onClick={() => {
+                  choose(o);
+                }}
+              >
+                {o.kind === "place" ? (
+                  <>
+                    <span class="row__name">
+                      <Highlight text={o.place[1]} typed={typed} />
+                    </span>
+                    <span class="row__meta">
+                      {it.search.kindPlace} · {it.search.barsCount(o.place[4])}
+                    </span>
+                  </>
+                ) : o.kind === "mobile-city" || o.kind === "mobile-venue" ? (
+                  <>
+                    <span class="row__name">
+                      <Highlight
+                        text={o.kind === "mobile-city" ? o.city.name : o.venue.name}
+                        typed={typed}
+                      />
+                    </span>
+                    <span class="row__meta">
+                      {o.kind === "mobile-city"
+                        ? `${o.city.country} · ${o.city.currency} · ${String(o.city.venues.length)} locali nel catalogo app`
+                        : `${o.venue.city} · ${o.venue.currency}`}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span class="row__name">
+                      <Highlight text={o.hit[1]} typed={typed} />
+                    </span>
+                    <span class="row__meta">
+                      {[it.search.kindBar, cityById.get(o.hit[4])].filter(Boolean).join(" · ")}
+                    </span>
+                  </>
+                )}
               </li>
             ))}
           </ul>
-        </>
-      )}
-      {europeFailed && (
-        <p class="hint">
-          Il catalogo Europa non è disponibile. La ricerca italiana resta disponibile.
-        </p>
-      )}
-      {!key && cheapest.length > 0 && (
-        <>
-          <h3 class="section-title">{it.search.cheapest}</h3>
-          <p class="hint">{drink}</p>
-          <ul class="rows" aria-label={it.search.cheapest}>
-            {cheapest.map((c) => (
-              <li key={c.venue.key}>
+          {hint && <p class="hint">{hint}</p>}
+          {placesFailed && (
+            <p class="hint" role="alert">
+              {it.search.loadError}
+            </p>
+          )}
+          {barsState === "failed" && (
+            <p class="hint" role="alert">
+              {it.search.barsFailed}
+            </p>
+          )}
+          {noneFound && (
+            <div class="search-none">
+              <p class="hint">{it.search.none}</p>
+              {barsState !== "failed" && (
                 <button
                   type="button"
-                  class="row"
+                  class="btn btn--secondary"
                   onClick={() => {
-                    onCheap(c.venue);
+                    onPropose(query.trim());
                   }}
                 >
-                  <span class="row__name">{c.venue.name}</span>
-                  <span class="row__price">{formatPrice(c.cents)}</span>
-                  <span class="row__meta">
-                    {[c.drink, c.venue.addr, formatDate(c.day)].filter(Boolean).join(" · ")}
-                  </span>
+                  {it.add.missingBar}
                 </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      <AppLegalLinks />
+              )}
+            </div>
+          )}
+          {!key && europe.length > 0 && (
+            <>
+              <h3 class="section-title">Città nel catalogo app</h3>
+              <ul class="rows">
+                {europe.map((city) => (
+                  <li key={city.key}>
+                    <a class="row" href={cityURL(city)}>
+                      <span class="row__name">{city.name}</span>
+                      <span class="row__meta">
+                        {city.country} · {city.currency} · {city.venues.length} locali
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {europeFailed && (
+            <p class="hint">
+              Il catalogo Europa non è disponibile. La ricerca italiana resta disponibile.
+            </p>
+          )}
+          {!key && cheapest.length > 0 && (
+            <>
+              <h3 class="section-title">{it.search.cheapest}</h3>
+              <p class="hint">{drink}</p>
+              <ul class="rows" aria-label={it.search.cheapest}>
+                {cheapest.map((c) => (
+                  <li key={c.venue.key}>
+                    <button
+                      type="button"
+                      class="row"
+                      onClick={() => {
+                        onCheap(c.venue);
+                      }}
+                    >
+                      <span class="row__name">{c.venue.name}</span>
+                      <span class="row__price">{formatPrice(c.cents)}</span>
+                      <span class="row__meta">
+                        {[c.drink, c.venue.addr, formatDate(c.day)].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <AppLegalLinks />
+        </div>
+      </div>
     </Sheet>
   );
 }

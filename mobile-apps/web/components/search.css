@@ -1,0 +1,36 @@
+/* Only the mobile search component uses this wrapper; the website Sheet stays unchanged. */
+html[data-dovebevo-mobile-shell="1"] .sheet:has(.mobile-search) {
+  height: min(720px, 95dvh);
+  overflow: hidden;
+}
+html[data-dovebevo-mobile-shell="1"] .sheet[open]:has(.mobile-search) {
+  display: flex;
+  flex-direction: column;
+}
+html[data-dovebevo-mobile-shell="1"] .sheet:has(.mobile-search) > .sheet__head {
+  flex: none;
+}
+html[data-dovebevo-mobile-shell="1"] .sheet:has(.mobile-search) > .sheet__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 16px max(8px, env(safe-area-inset-bottom));
+}
+.mobile-search {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.mobile-search__input {
+  flex: none;
+  padding-bottom: 8px;
+}
+.mobile-search__results {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}

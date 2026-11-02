@@ -4,8 +4,9 @@ import { fileURLToPath, URL, URLSearchParams } from "node:url";
 import path from "node:path";
 import { before, after, test } from "node:test";
 import { chromium } from "@playwright/test";
+import { contrastRatio } from "./contrast.mjs";
 import { pageCsp } from "../../../src/worker/lib/security-headers.ts";
-/* global document, structuredClone */
+/* global document, structuredClone, getComputedStyle */
 
 // Synthetic records exist only inside intercepted requests. No public read/write is used.
 const client = path.resolve(fileURLToPath(new URL("../../../dist/client/", import.meta.url)));
@@ -159,13 +160,15 @@ async function fixture(options = {}) {
       if (url.pathname === "/api/session") return route.fulfill({ json: { ok: true } });
       if (options.first401 && writes.filter((v) => v.path === url.pathname).length === 1)
         return route.fulfill({ status: 401, json: { error: "session" } });
-      if (url.pathname === "/api/mobile/prices/confirm")
+      if (url.pathname === "/api/mobile/prices/confirm") {
+        if (options.holdConfirm) await options.holdConfirm;
         return route.fulfill({
           status: options.confirmConflict ? 409 : 200,
           json: options.confirmConflict
             ? { error: "conflict" }
             : { status: "confirmed", confirmations: 3 },
         });
+      }
       if (url.pathname === "/api/mobile/prices/report")
         return route.fulfill({ json: { status: "reported" } });
       if (url.pathname === "/api/mobile/prices")
@@ -703,6 +706,109 @@ test("European venue and city search privacy links use the approved app policy",
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {
+    await f.close();
+  }
+});
+
+test("European price actions and orange drink choices remain readable on small phones", async () => {
+  let release;
+  const holdConfirm = new Promise((resolve) => {
+    release = resolve;
+  });
+  const f = await fixture({ holdConfirm });
+  try {
+    await openLondon(f, false);
+    for (const name of ["Spritz", "Birra media"]) {
+      const chip = f.page.getByRole("radio", { name, exact: true });
+      await chip.focus();
+      const colors = await chip.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          background: style.backgroundColor,
+          text: style.color,
+          outline: style.outlineColor,
+          outlineStyle: style.outlineStyle,
+        };
+      });
+      if (name === "Spritz") assert.equal(colors.background, "rgb(255, 90, 31)");
+      assert.ok(contrastRatio(colors.text, colors.background) >= 4.5, JSON.stringify(colors));
+      assert.equal(colors.outlineStyle, "solid");
+      assert.ok(contrastRatio(colors.outline, colors.background) >= 4.5, JSON.stringify(colors));
+      assert.ok(contrastRatio(colors.outline, "rgb(255, 255, 255)") >= 4.5, JSON.stringify(colors));
+    }
+    await openLondon(f);
+    const buttons = f.page.locator(".mobile-price--featured .price__actions .btn");
+    const row = async () => {
+      const boxes = await buttons.evaluateAll((items) =>
+        items.map((button) => {
+          const r = button.getBoundingClientRect();
+          return {
+            y: r.y,
+            width: r.width,
+            height: r.height,
+            scroll: button.scrollWidth,
+            client: button.clientWidth,
+          };
+        }),
+      );
+      assert.equal(boxes.length, 3);
+      assert.ok(
+        boxes.every(
+          (b) =>
+            Math.abs(b.y - boxes[0].y) < 1 &&
+            b.height >= 48 &&
+            b.width >= 48 &&
+            b.scroll <= b.client + 1,
+        ),
+        JSON.stringify(boxes),
+      );
+    };
+    for (const width of [393, 320]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      await row();
+    }
+    const request = f.page.waitForRequest("**/api/mobile/prices/confirm");
+    await buttons.first().click();
+    await request;
+    assert.deepEqual(await buttons.evaluateAll((items) => items.map((button) => button.disabled)), [
+      true,
+      true,
+      true,
+    ]);
+    await row();
+    release();
+    await buttons.first().waitFor({ state: "visible" });
+    await f.page.waitForFunction(
+      () => !document.querySelector(".mobile-price--featured .price__actions button")?.disabled,
+    );
+    await row();
+    await f.page.screenshot({ path: path.join(output, "orange-europe-venue-fixture.png") });
+    await f.page.evaluate(() => {
+      document.documentElement.style.fontSize = "32px";
+    });
+    const large = await buttons.evaluateAll((items) =>
+      items.map((button) => {
+        const r = button.getBoundingClientRect();
+        return {
+          y: r.y,
+          height: r.height,
+          font: Number.parseFloat(getComputedStyle(button).fontSize),
+          scroll: button.scrollWidth,
+          client: button.clientWidth,
+        };
+      }),
+    );
+    assert.ok(
+      large.every((b) => b.height >= 48 && b.font >= 26 && b.scroll <= b.client + 1),
+      JSON.stringify(large),
+    );
+    assert.ok(large[2].y > large[0].y);
+    await buttons.last().scrollIntoViewIfNeeded();
+    assert.ok(await buttons.last().isVisible());
+    assert.deepEqual(f.errors, []);
+    assert.equal(f.writes.length, 1, "Only the intercepted owned confirmation was submitted");
+  } finally {
+    release();
     await f.close();
   }
 });

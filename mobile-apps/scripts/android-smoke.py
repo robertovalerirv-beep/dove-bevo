@@ -76,8 +76,9 @@ def owned_instrumentation(output):
 def run_owned_instrumentation():
     classes = ",".join("com.dovebevo.app." + name for name in OWNED_CLASSES)
     try:
+        # Hosted runs exhausted 240 seconds at different passing cases; keep one bounded process.
         completed = adb("shell", "am", "instrument", "-w", "-r", "-e", "class", classes,
-                        "com.dovebevo.app.test/com.dovebevo.app.NativeFixtureRunner", timeout=240)
+                        "com.dovebevo.app.test/com.dovebevo.app.NativeFixtureRunner", timeout=600)
     except (subprocess.SubprocessError, OSError, RuntimeError) as error:
         owned_output_diagnostics(getattr(error, "stdout", b""), getattr(error, "stderr", b""),
                                  getattr(error, "returncode", None))

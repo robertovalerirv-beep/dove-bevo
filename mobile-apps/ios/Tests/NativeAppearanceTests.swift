@@ -4,14 +4,14 @@ import XCTest
 
 final class NativeAppearanceTests: XCTestCase {
     @MainActor
-    func testSelectedDestinationAndNativeTextHaveLegibleContrastOnWhiteAndAmber() throws {
+    func testSelectedDestinationAndNativeTextHaveLegibleContrastOnWhiteAndOrange() throws {
         let bar = NativeBottomBar()
         bar.update(destination: 0, venueActionsEnabled: false)
         let map = bar.button(for: .map)
         XCTAssertTrue(map.isSelected)
         XCTAssertEqual(map.configuration?.baseBackgroundColor, NativeAppearance.surface)
         XCTAssertEqual(map.configuration?.background.backgroundColor, NativeAppearance.surface)
-        XCTAssertEqual(map.configuration?.baseForegroundColor, NativeAppearance.ink)
+        XCTAssertEqual(map.configuration?.baseForegroundColor, NativeAppearance.accentText)
         XCTAssertTrue(map.accessibilityTraits.contains(.selected))
         XCTAssertGreaterThanOrEqual(try contrast(try XCTUnwrap(map.configuration?.baseForegroundColor), try XCTUnwrap(map.configuration?.baseBackgroundColor)), 4.5)
         XCTAssertFalse(bar.button(for: .save).isEnabled)
@@ -28,15 +28,31 @@ final class NativeAppearanceTests: XCTestCase {
             let foreground = try XCTUnwrap(configuration.baseForegroundColor)
             XCTAssertEqual(background, NativeAppearance.surface)
             XCTAssertEqual(configuration.baseBackgroundColor, NativeAppearance.surface)
-            XCTAssertEqual(foreground, button.isSelected ? NativeAppearance.ink : NativeAppearance.muted)
+            XCTAssertEqual(foreground, button.isSelected ? NativeAppearance.accentText : NativeAppearance.muted)
             XCTAssertGreaterThanOrEqual(try contrast(foreground, background), 4.5)
         }
         XCTAssertGreaterThanOrEqual(try contrast(NativeAppearance.muted, NativeAppearance.surface), 4.5)
-        XCTAssertGreaterThanOrEqual(try contrast(NativeAppearance.ink, NativeAppearance.accent), 4.5)
+        XCTAssertGreaterThanOrEqual(try contrast(NativeAppearance.onAccent, NativeAppearance.accent), 4.5)
         let navigation = UINavigationController(rootViewController: UIViewController())
         NativeAppearance.configure(navigation)
         XCTAssertEqual(navigation.navigationBar.standardAppearance.backgroundColor, NativeAppearance.surface)
         XCTAssertEqual(navigation.navigationBar.scrollEdgeAppearance?.backgroundColor, NativeAppearance.surface)
+        XCTAssertEqual(navigation.navigationBar.tintColor, NativeAppearance.accentText)
+    }
+
+    @MainActor
+    func testActualPrimaryAndSelectedConfigurationsUseOrangeWithAccessibleDarkInk() throws {
+        let originalOrange = UIColor(red: 1, green: 90 / 255, blue: 31 / 255, alpha: 1)
+        for configuration in [NativeAppearance.button(primary: true), NativeAppearance.button(selected: true)] {
+            let foreground = try XCTUnwrap(configuration.baseForegroundColor)
+            let background = try XCTUnwrap(configuration.baseBackgroundColor)
+            XCTAssertEqual(background, originalOrange)
+            XCTAssertEqual(foreground, NativeAppearance.onAccent)
+            XCTAssertGreaterThanOrEqual(try contrast(foreground, background), 4.5)
+            XCTAssertLessThan(try contrast(.white, background), 4.5)
+        }
+        XCTAssertGreaterThanOrEqual(try contrast(NativeAppearance.accentText, NativeAppearance.canvas), 4.5)
+        XCTAssertGreaterThanOrEqual(try contrast(NativeAppearance.accentText, NativeAppearance.surface), 4.5)
     }
 
     private func contrast(_ first: UIColor, _ second: UIColor) throws -> CGFloat {

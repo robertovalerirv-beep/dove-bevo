@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from "node:url";
 import path from "node:path";
 import { before, after, test } from "node:test";
 import { chromium } from "@playwright/test";
+import { contrastRatio } from "./contrast.mjs";
 import { pageCsp } from "../../../src/worker/lib/security-headers.ts";
 /* global document, getComputedStyle, history */
 
@@ -176,7 +177,7 @@ test("production mobile entry renders chips and preserves venue route across rel
       bg: getComputedStyle(el).backgroundColor,
       text: getComputedStyle(el).color,
     }));
-    assert.deepEqual(selected, { bg: "rgb(16, 24, 32)", text: "rgb(255, 255, 255)" });
+    assert.deepEqual(selected, { bg: "rgb(255, 90, 31)", text: "rgb(16, 24, 32)" });
     await chips.getByRole("checkbox", { name: "Spritz", exact: true }).focus();
     await f.page.keyboard.press("Space");
     assert.equal(
@@ -329,6 +330,47 @@ test("Italian city search in the production mobile entry links the approved app 
       await links.getByRole("link", { name: "Regole", exact: true }).getAttribute("href"),
       "/regole",
     );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("orange mobile controls retain readable selected, unselected and focused drink chips", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/");
+    const strip = f.page.locator(".mobile-drink-strip");
+    await strip.waitFor();
+    for (const name of ["Spritz", "Birra media"]) {
+      const option = strip
+        .locator("label")
+        .filter({ has: f.page.getByRole("checkbox", { name, exact: true }) });
+      const input = option.getByRole("checkbox");
+      await input.focus();
+      const colors = await option.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          background: style.backgroundColor,
+          text: style.color,
+          outline: style.outlineColor,
+          outlineStyle: style.outlineStyle,
+        };
+      });
+      if (name === "Spritz") assert.equal(colors.background, "rgb(255, 90, 31)");
+      assert.ok(contrastRatio(colors.text, colors.background) >= 4.5, JSON.stringify(colors));
+      assert.equal(colors.outlineStyle, "solid");
+      assert.ok(contrastRatio(colors.outline, colors.background) >= 4.5, JSON.stringify(colors));
+      assert.ok(contrastRatio(colors.outline, "rgb(255, 255, 255)") >= 4.5, JSON.stringify(colors));
+    }
+    const primary = await f.page.locator(".bottom .btn--primary").evaluate((button) => ({
+      background: getComputedStyle(button).backgroundColor,
+      text: getComputedStyle(button).color,
+    }));
+    assert.equal(primary.background, "rgb(255, 90, 31)");
+    assert.ok(contrastRatio(primary.text, primary.background) >= 4.5);
+    await f.page.screenshot({ path: path.join(output, "orange-map-controls-fixture.png") });
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {

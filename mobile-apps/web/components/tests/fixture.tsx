@@ -37,6 +37,15 @@ const venues: Venue[] = [600, 700, 800, 900, 1000].map((cents, index) => ({
   prices: [[`n${String(123 + index)}`, "spritz", 0, cents, "2026-10-28", 0, 0] as PriceRow],
 }));
 let version = 0;
+let confirmationMode: "success" | "failed" | "hold" = "success";
+let releaseConfirmation: (() => void) | undefined;
+function setConfirmation(mode: typeof confirmationMode) {
+  confirmationMode = mode;
+}
+function finishConfirmation() {
+  releaseConfirmation?.();
+  releaseConfirmation = undefined;
+}
 function bar(focus = ["spritz"], key = "n123") {
   render(
     <BarSheet
@@ -54,7 +63,12 @@ function bar(focus = ["spritz"], key = "n123") {
       actions={{
         confirm: async (row) => {
           calls.push({ kind: "confirm", drink: row[1] });
-          await new Promise((resolve) => setTimeout(resolve, 30));
+          if (confirmationMode === "failed") throw new Error("Owned confirmation failure");
+          if (confirmationMode === "hold")
+            await new Promise<void>((resolve) => {
+              releaseConfirmation = resolve;
+            });
+          else await new Promise((resolve) => setTimeout(resolve, 30));
           return { count: 3, counted: true };
         },
         changed: (found, row) => {
@@ -107,7 +121,18 @@ declare global {
       venue: Venue;
       parseCents: typeof parseCents;
       setLang: typeof setLang;
+      setConfirmation: typeof setConfirmation;
+      finishConfirmation: typeof finishConfirmation;
     };
   }
 }
-window.sheetFixture = { bar, price, calls, venue, parseCents, setLang };
+window.sheetFixture = {
+  bar,
+  price,
+  calls,
+  venue,
+  parseCents,
+  setLang,
+  setConfirmation,
+  finishConfirmation,
+};

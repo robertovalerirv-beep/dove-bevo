@@ -7,8 +7,8 @@ on:
       - ".github/workflows/mobile-italy-menu-k.yml"
   push:
     tags:
-      - "mobile-italy-menu-k-audit/20261102-v1"
-      - "mobile-italy-menu-k-seed/20261102-v1"
+      - "mobile-italy-menu-k-audit/20261102-v2"
+      - "mobile-italy-menu-k-seed/20261102-v2"
 permissions:
   contents: read
 concurrency:
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 env:
   MANIFEST: mobile-apps/data/italy-menu-seed-20261102-k.json
-  MANIFEST_SHA256: 253639d2916accff8e32c13896e6d48dcbe9ecf9a1e62d16ca74c5c6b19bed7a
+  MANIFEST_SHA256: 17ccdcda17618ea4c31232673dbc2360ad38522918a3da9fb199b8280dd2a197
   APPROVED_SOURCE_INDICES: ""
   COHORT_SHA256: 2e194dc66ccf25e511ac4b1a25a0d75774cecf6967f19a3fb124927da15126a7
   TRACER_SHA256: b23ec078472eafc8f0e0c5bf70b840a69e137a5cba06dd328d52478c46dddbd5
@@ -52,8 +52,8 @@ jobs:
     if: >-
       github.repository == 'robertovalerirv-beep/dove-bevo' &&
       github.event_name == 'push' && github.ref_type == 'tag' &&
-      (github.ref == 'refs/tags/mobile-italy-menu-k-audit/20261102-v1' ||
-      github.ref == 'refs/tags/mobile-italy-menu-k-seed/20261102-v1')
+      (github.ref == 'refs/tags/mobile-italy-menu-k-audit/20261102-v2' ||
+      github.ref == 'refs/tags/mobile-italy-menu-k-seed/20261102-v2')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -77,8 +77,8 @@ jobs:
         run: |
           set -euo pipefail
           case "$GITHUB_REF" in
-            refs/tags/mobile-italy-menu-k-audit/20261102-v1) mode_args=() ;;
-            refs/tags/mobile-italy-menu-k-seed/20261102-v1)
+            refs/tags/mobile-italy-menu-k-audit/20261102-v2) mode_args=() ;;
+            refs/tags/mobile-italy-menu-k-seed/20261102-v2)
               test -n "$APPROVED_SOURCE_INDICES"
               mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256" --approved-groups "$APPROVED_SOURCE_INDICES") ;;
             *) exit 2 ;;
@@ -86,7 +86,7 @@ jobs:
           output_dir="$RUNNER_TEMP/italy-menu-k/run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           python3 -I -S -B mobile-apps/tools/menu-seed/run_source_cohort.py --manifest "$MANIFEST" --output-dir "$output_dir" "${mode_args[@]}"
       - name: Verify public prices for completed selected source groups
-        if: always() && github.ref == 'refs/tags/mobile-italy-menu-k-seed/20261102-v1'
+        if: always() && github.ref == 'refs/tags/mobile-italy-menu-k-seed/20261102-v2'
         shell: bash
         run: |
           python3 -B - <<'PY'

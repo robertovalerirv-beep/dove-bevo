@@ -501,5 +501,13 @@
         ]
       ]
     ]
+  ],
+  "held_venues": [
+    {
+      "venue_key": "w223832309",
+      "reason": "Mandatory EUR 1 cover charge visibly printed at top and bottom of current drink PDF; legacy price route cannot expose it",
+      "source_sha256": "b71fdbfb3432e78819805d8260a34aa136b036b6c7465662f4a7ecc391e64d35",
+      "held_facts": 5
+    }
   ]
 }

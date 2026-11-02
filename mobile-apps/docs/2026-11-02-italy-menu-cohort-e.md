@@ -22,3 +22,7 @@ The original four no-overwrite SQL guards remain unchanged. Current prices, hist
 Legacy storage shows one price per venue/category/band; recipe and serving context remain in the source manifest and receipt. This cohort does not claim a complete item/brand menu catalogue or broad Italy coverage.
 
 No app binary, website interface, schema, new resource or recurring job changes. Local project writes remain held for the independent OneDrive repair. Remote publication does not establish OneDrive cloud sync.
+
+## Failed audit diagnosis and correction
+
+The v1 audit produced an empty receipt. The v2 observer proved the hosted run rejected the raw Mosto source hash after its fetch, before any binding attestation or D1 query. A fresh independent review found the exact menu text unchanged, including all ten M beer prices and the separate gin-on-tap item. Only Mosto is now pinned to the existing html_text_v1 representation, retaining the actual menu text while excluding HTML wrappers. No hash check, SQL guard, transport restriction or provider check was removed. The v1/v2 tags remain immutable; v3 is a new reviewed source commit and audit.

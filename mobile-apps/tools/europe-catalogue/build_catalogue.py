@@ -164,7 +164,7 @@ def main():
     version = hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16]
     for path, value in [(args.output, {"schema_version": 1, "version": version, "venues": rows}), (args.evidence, {"schema_version": 1, "catalogue_version": version, "accepted": evidence, "held": held})]:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(value, ensure_ascii=False, indent=2)+"\n", encoding="utf-8")
+        path.write_text(json.dumps(value, ensure_ascii=False, indent=2)+"\n", encoding="utf-8", newline="\n")
     print(json.dumps({"version": version, "accepted": len(rows), "held": {slug: len(items) for slug, items in held.items()}}))
 
 if __name__ == "__main__":

@@ -1,0 +1,40 @@
+# Public drink recommendations in the phone apps
+
+The owner approved an apps-only feature with shared voting storage. This explicitly permits narrowly additive recommendation endpoints and database tables, while preserving Roberto's website interface, existing prices, authentication, validation and unrelated backend behavior. The original Android20/iOS26 public submissions remain intact.
+
+## Customer behavior
+
+On an open venue, a visible native thumbs-up entry opens **Drink consigliati**. Both apps show the validated venue name and the nine existing catalog categories, their shared recommendation totals, and each installation's selected thumbs-up. Customers can recommend more than one category and undo a recommendation. Sort loaded rows by count descending with catalog order as the tie-breaker; zero votes is **Ancora nessun consiglio**, not a fabricated recommendation. The chooser explains that customers should recommend drinks they actually tried, and is not an inventory assertion that the venue serves every category.
+
+Recommendations belong to a venue and drink category, independently of price, price history, happy hour and price-accuracy confirmations. They survive price changes. No website buttons or page mutations are introduced. Website visitors do not get this new interface; every app customer sees the same aggregate totals. Names, counts and UI are native, using the existing fixed read-only venue-context capture before presenting a native screen. Capture does not scrape price rows or copy browser cookies.
+
+## Frozen API contract
+
+Base origin is **https://www.dovebevo.com**. Both methods use `/api/mobile/venues/<venue_key>/recommendations?c=<cell>`; `venue_key` matches the existing canonical `[nwru][1-9][0-9]{0,14}` rule, and `c` is the unique five-character geohash from the validated public venue URL. Reject duplicate/extra query parameters. Resolve the venue's actual public visibility server-side, using existing static/D1 validation; syntax alone is insufficient.
+
+- **GET** returns current counts and optionally own state. Native clients send `X-DoveBevo-Voter` with their locally generated lowercase UUIDv4. A public GET may omit it, yielding unselected own-state flags. If supplied, malformed identifiers are rejected.
+- **POST** uses the same URL, the required `X-DoveBevo-Voter` header, the fixed matching `Origin: https://www.dovebevo.com`, `Content-Type: application/json`, and exactly `{ "drink": "spritz", "recommended": true }` or false. Native clients derive the endpoint from validated venue context and never send names, device coordinates, prices or WebView credentials. Existing global real-secret, Origin and burst gates remain. POST is a set operation, never a blind increment; a repeated true or false is idempotent.
+- Both successful methods return HTTP200 and the same full snapshot: `{ "venue_key": "n123", "drinks": [{ "drink": "beer_draft", "count": 0, "recommended": false }, ...] }`. All nine catalog codes appear exactly once. `recommended` is boolean; `count` is a nonnegative safe integer. Clients reject wrong venue, duplicate/missing/unknown drink codes, malformed/oversized bodies, redirects or unexpected origins.
+- Return `Cache-Control: no-store` for this personalized response. Preserve existing error JSON conventions; native clients handle status without displaying untrusted server error text. Use400 invalid input,404 unavailable venue,429 quota, and ordinary service errors. An unavailable response never becomes a successful zero-count state.
+
+Catalog order and Italian labels: beer_draft/Birra media; spritz/Spritz; negroni/Negroni; sbagliato/Sbagliato; gin_tonic/Gin tonic; gin_lemon/Gin lemon; wine_glass/Calice di vino; alcohol_free/Analcolico; water/Acqua. The server imports the existing shared catalog. Native parity checks compare these codes against it. Two price bands for the same category share one recommendation.
+
+## Identity, persistence and abuse
+
+Each app installation generates an opaque random UUIDv4 and retains it in its own private, backup-excluded storage. Do not read/copy browser cookies, use advertising/platform device identifiers, fingerprint a phone, create an account, or put this value in URLs/logs. The server stores a purpose-separated HMAC scoped to installation + venue + drink; no raw identifier or IP is stored in recommendation rows. This approximates one active vote per installation/pair and does not prove one human. Reinstall/reset/another phone can produce another anonymous identity.
+
+Use the existing Worker/D1 and protected HASH_KEY without exposing or rotating it. Durable pair claims must not be deleted by the existing 48-hour transient-dedup cleanup. A future key rotation needs an explicit migration strategy and must not be presented as ordinary duplicate-safe continuity. Privacy text must disclose public votes, pseudonymous deduplication and retention until removal/service withdrawal.
+
+Use an additive indexed vote table with a unique pair/claim. Concurrent identical true requests create one vote; false removes only that installation's vote, cannot create a negative count, and cannot change another installation. A transactional mutation/read snapshot prevents counter drift. Same Wi-Fi/IP can contain multiple valid installations. Existing burst protection and separate daily installation/IP abuse quotas bound recommendations; IP limits are abuse budgets, not voter uniqueness. Set the new daily recommendation budget to50 attempts per installation and200 per IP, with removal exempt from the daily addition budget but still burst-limited. Repeating an already-set state must not increase totals. Never weaken existing website session/Origin/CSP/TLS rules.
+
+## Native state and automated-test safety
+
+Capture venue identity before presenting. The visible native entry is disabled unless current content is usable; generation/context checks reject A-to-B precommit races, hidden overlays, errors, navigation and inactive scenes. The new controller owns a frozen venue context and its own request generations. Retire callbacks when dismissed/deactivated. Each row disables while its write is pending; serialize/reconcile writes so retries/double taps cannot reverse a newer choice. Accept only authoritative snapshots; ambiguous timeout/cancellation shows retry/reconciliation rather than claiming success. Refresh on return. Network requests have bounded timeout/body size, use normal platform HTTPS validation, no redirects and no browser credentials.
+
+Android's native HTTP transport must explicitly enforce existing read-only Firebase Test Lab detection before POST; WebView interception does not protect a new native transport. Tests prove that no mutation reaches even a local sink in restricted mode. Normal live QA uses GET only. All recommend/undo/concurrency/abuse tests use owned fixtures/local D1 or injected native transports; no test votes enter public counts.
+
+## Delivery and acceptance
+
+Three exclusive writer lanes implement backend, Android and iOS; root owns this contract, privacy/release docs, integration, review and final checks. Reuse existing isolated OneDrive worktrees. The backend lane starts from owner main; native lanes start from build32 inputs. Root integrates the same backend commit into the app branch, but the production PR contains only additive backend changes. Main merge triggers the existing live migration/deploy pipeline; merge only after exact-head green checks and review. Verify deployed public GET without writes, then signed native beta distribution and read-only installed/runtime behavior. Do not replace pending public submissions during feature development.
+
+Completion requires shared-count correctness across distinct fixture installations, per-pair uniqueness/undo/concurrency, hidden/unknown venue and invalid drink rejection, retained price semantics, unchanged website interface, no raw identity at rest/logs, native context/network/read-only safety, accessible usable controls, current privacy disclosures, and actual provider deployment/build readback. Public store launch and physical acceptance remain separate evidence.

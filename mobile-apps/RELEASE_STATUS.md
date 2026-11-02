@@ -1,0 +1,298 @@
+# Mobile release status
+
+Last verified: 29 October 2026 (UTC).
+
+## Current native navigation delivery — build 41
+
+Signed source `c24c7be2a67039ac80385e809f5f68d0614307e4`, tag `mobile-beta/v1.0.0-bottom-navigation.4`, [run 40952554881](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40952554881), passed both checks and intended signers. Fresh execution includes **81 native iOS tests and four phone UI tests with zero failures**, plus Android checks and the independently verified local runtime/live browsing evidence. Both packages and bundled privacy bytes were independently checked. Provider readback confirms Android **Available to internal testers**, and iOS **Testing** for the existing owner and Roberto groups. Existing testers were preserved.
+
+Home, Mappa, Preferiti, Salva and Consigliati now share the bottom area; Condividi and Ricarica are in the top menu. Source is preserved in [app-only PR 78](https://github.com/robertovalerirv-beep/dove-bevo/pull/78), based on Roberto's main `efce911`, with no website, Worker or schema changes. This is the current testing release; the build-36 and older records below are dated history.
+
+**Public release is not verified.** Updated production submissions are now Android **41 in review** and iOS **1.0.0 (41) Waiting for Review**, with automatic release after approval. The verified replacement and updated original screenshots/descriptions were submitted together; Google required restarting the older review, and Apple version 26 was withdrawn before version 41 was submitted. Apple submission is `4db2c63c-3a65-4b6d-be43-dccdf0635790`. The physical-iPhone check remains pending. Original iPad capture 43 passed and all six Apple listing images were independently verified. PR42's Android live check encountered Cloudflare human verification, while its older Intel iOS job timed out before the city tap; those failed checks are retained. See [the complete navigation evidence and next steps](docs/2026-10-29-bottom-navigation-status.md).
+
+## Earlier build-36 checkpoint
+
+Both public store releases remain submitted: Google Play's production changes are
+**in review**, and Apple confirms iOS version 1.0.0, build 26, **Waiting for
+Review**. The latest native update, build **36**, is **Available to internal testers** in Google Play and **Testing** in TestFlight for the existing owner and Roberto groups. It adds native **Mappa / Preferiti** navigation and compares a chosen drink's recorded prices across local favourites, keeping normal and happy-hour prices separate. Automatic venue names and shared drink recommendations remain included. See [the exact build-36 delivery record](docs/2026-10-28-favourites-comparison-status.md) for checks, signed artifacts, live browsing evidence and limitations. Email delivery, installation and physical acceptance of build 36 remain unverified.
+
+The owner previously reported that build 34 opens the existing venue name, all nine recommendation categories and shared totals, scrolls and returns with Back on his personal iPhone. That is a limited human-reported check of build 34; public vote/undo and Android physical installation remain unverified.
+Internal build 21 is installed on the owner's iPhone. Physical evidence
+currently covers map/price rendering and reported venue Back behavior; neither
+store state establishes an approved public release.
+
+See [public drink recommendation delivery](docs/2026-10-28-drink-recommendations-status.md) for the exact build-34 source, tests, signed artifacts, deployed shared service and provider readback. The [earlier native usability update](docs/2026-10-28-native-update-status.md) retains build-31/32 evidence. Testing distribution does not replace the Android 20/iOS 26 public submissions or establish a public launch.
+
+The owner's later physical screenshots exposed build 31's confusing naming form. Corrected build 32 at `9b54a44733e4626eaafee4976c2534f77a939cab` keeps private bookmarks but uses the existing venue name automatically, without naming or rename forms. On a venue, use **â‹¯ at the top right â†’ Salva nei preferiti**; **Preferiti** reopens it. Public prices still use the website's orange **Aggiungi un prezzo qui** button. [Beta run 40760373576](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40760373576) passed both checks and signers: 47 Android units, 98 iOS guards, 35 Swift units and 4 phone UI cases. Separate Android native runtime and independent live browsing checks passed. Both stores' corrected testing availability is now verified; physical acceptance of the corrected flow remains open.
+
+## Source and scope
+
+The canonical repository is `robertovalerirv-beep/dove-bevo`; `codex/mobile-internal-testing-20261027` remains the historical reference for the superseded Android 20/iOS 26 submissions. Current mobile delivery and submitted build 41 are on `codex/mobile-native-navigation-main-20261029` in PR78, with signed source pinned above. Historical build-36 source and evidence remain on `codex/mobile-favourites-comparison-20261028`, frozen at `01ffc66531b255485122836a3a4777dbb51bd158` and tag `mobile-beta/v1.0.0-favourites-comparison.2`. The earlier build-34 source `388e200844ced599be4212e6d6af5c23744fe3f1` and tag `mobile-beta/v1.0.0-drink-recommendations.2` remain preserved.
+
+The initial mobile additions were app-only at owner baseline `8094d3c2494851a2e29a5c0b6f5eb8d4dcb88e50`. The owner's later narrow apps-only shared-voting exception adds one API and table in the existing Worker/D1: [PR 73](https://github.com/robertovalerirv-beep/dove-bevo/pull/73), merged and deployed at `1a58d7332d4275e0a56ed21c60240459afab1a5e`. The website interface, existing prices, price confirmations and session/security boundaries retain their behavior. See [ADR 0041](../docs/adr/0041-app-drink-recommendations.md). No new Cloudflare resource, secret or browser-cookie bridge was created.
+
+Older PR 62 remains an unchanged draft and the native source has not been merged to main. Prior outside-mobile tree-equality checks describe the earlier app-only release; the explicit shared-vote exception and its separate green backend PR describe the current change.
+
+Project source, worktrees, builds and evidence remain in the selected OneDrive
+project folder. Cloud synchronization is unverified. Credentials remain in
+protected OS/platform stores, outside source and OneDrive.
+
+## Android production review
+
+Signed version 1.0.0, versionCode **20**, was uploaded and saved in production
+from source `eaef11d564d1c78ad308e16efa7b20ef27bfcc7d`.
+Its AAB SHA-256 is
+`04a3270fbb7ae9196a619fda1c6290d074aa43518b2568cc8e062151d203198f`.
+Eleven changes were submitted. The latest publishing overview says **Changes in
+review / Your changes are now in review**; preliminary quick checks finished.
+Managed publishing is off. Review approval, public availability and a
+Play-delivered installation have not been established.
+
+The Italian listing includes four accepted, genuine build 14 screenshots at
+1080 by 1920. Original files and hashes are retained in
+`store-assets/android-screenshots/capture-provenance.json`; they are emulator
+captures, not evidence of physical-device behavior.
+
+The documented Firebase Test Lab restriction is disclosed in Sign-in Details.
+It limits automated Test Lab submissions and external actions; normal browsing
+requires no authentication and retains the website's ordinary behavior. See
+[the safety boundary](android/TEST_LAB_SAFETY.md); this is not a general network
+firewall or a claim about every review environment.
+
+The release 20 universal APK is non-debuggable, matches the approved signer,
+and has DEX/assets equal to the submitted AAB. Its SHA-256 is
+`d8907c868f7308a489322045a736197cea354b0a136ba9e6c78f8983cda9b8ff`.
+Both isolated real WebView/service-worker cases passed again on that exact APK
+in 1.1 seconds: restricted POSTs reached no local submission sink, and normal
+controls reached their expected local sinks. Fixtures used reserved `.invalid`
+origins and in-memory responses. Android unit results are **28 passed**, with
+lint at **zero errors and 24 warnings**.
+
+Normal live browsing passed on signed build 14: Milano search/selection, map
+tiles and markers, an existing venue, native back, share chooser, cold restart,
+offline privacy and network-restored reload. No shares or public contributions
+were sent. Directions opened Google Maps, but return navigation was unverified;
+permission denial/approximate access did not establish a successful location
+result. Independent release 20 testing now passed Milano search/selection,
+rendered map tiles/markers, an existing venue and native Back to the map.
+The original `release20-milano-map.png` is 1080 by 1920, SHA-256
+`00623bb3d4b08fa9428d01191b77b1db6a3374151943ef894eb2e99120e8ef9c`.
+These are emulator checks of the upload-signed APK, not a Play App Signing
+installation or a physical-phone test; other build 14 results remain separate.
+
+## iOS internal build and device testing
+
+`mobile-testing/v1.0.0-internal.11`, source
+`37aee19478ddd66ad33516b09e2aa7b2e4a49985`, ran as
+[40694213437](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40694213437).
+Ten Swift unit tests and 81 script guards passed. Signing job `122840500668`
+succeeded: archive, export, strict code-signature checks, actual certificate,
+profile and entitlement validation, and upload all completed.
+The verified IPA SHA-256 is
+`7ce3c3a552ffb41e8bf30c51782a99d97e7066d0cc7cf5165c806ff740958b23`.
+
+App Store Connect showed build **21 Ready to Test**, after the factual
+OS-framework-only encryption question was answered. At that initial setup, the
+manually distributed internal group contained one build and one existing Account
+Holder. The provider read-back at that time showed **Invited**; installation on the owner's iPhone 16
+Plus is now observed, but server-side **Accepted** status has not been read back.
+The separate external group **Roberto feedback** contains only the owner-requested
+Roberto tester. Builds 26 and 31 now read **Testing**, and his tester row reads
+**Invited** dated 28 October. No App Store Connect team roles or public invitation
+link were added. Email delivery and installation remain unverified.
+
+The owner's original 590 by 1280 JPEG shows the native iOS controls, rendered
+Milano tiles and price pins. The owner reports that Back works within venue
+selection. These are limited physical checks: location, offline recovery,
+sharing, directions and Forward remain untested on the phone. Source inspection
+confirms city selection changes the map camera without adding browser history,
+while opening a venue uses `pushState`; no Back defect is established.
+The image SHA-256 is
+`4358090143f04ad67ddb318d32b75af1afd10b882e37ff36939b15df5f72df50`.
+It is QA evidence, not an accepted medium-iPhone or iPad store screenshot. Do not
+resize or upscale it to satisfy store dimensions.
+
+Build 21 is **TestFlight Internal Only** and cannot be submitted for external
+testing or public App Store distribution. Normal eligible build 26 and genuine
+iOS store captures are now completed and submitted; remaining physical-device
+checks are still open. Digital Services Act trader
+status was verified **Active in 27 countries** on 28 October.
+
+The source now declares `ITSAppUsesNonExemptEncryption=false` (commit
+`be8605b`), matching its use of OS frameworks rather than custom cryptography.
+This source change is separate from the already uploaded internal build.
+
+## iOS live capture trial
+
+`mobile-capture/v1.0.0-xcode27.1-1` at source
+`99a35f2a5bf5b368409432dbbf28e1767e462dc9` ran as
+[40699367667](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40699367667)
+(workflow number 22), which **failed**. All eight other jobs were skipped; no
+credentials were supplied. The actual host used macOS 27.0.1, Xcode 27.1 and an
+iOS 27.0 iPhone 17 simulator. Ten unit tests and both native UI tests passed.
+After selecting Milano CittÃ , the live case failed its 45-second wait for the
+map's accessibility label (`BrowserSmokeTests.swift:88`). No GPU-termination
+line appeared in the job log; the underlying cause remains unknown. The iPad
+capture and final PNG-validation steps were skipped.
+
+The exporter reported 69 attachments and a manifest, but the always-run artifact
+upload reported no files, and the provider lists zero artifacts. The hidden
+`.build` exclusion was corrected with a narrowly scoped hidden-file opt-in for
+the existing credential-free artifact allowlist.
+
+The follow-up tag `mobile-capture/v1.0.0-xcode27.1-2`, source
+`7512b62725496daa106ea7442c718a427c7610ad`, ran as
+[40703342794](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40703342794)
+(workflow number 23). Ten unit tests and both native UI cases passed, but the
+live case failed the same exact-label assertion. Artifact **12823956355** was
+successfully downloaded and its ZIP SHA-256 verified as
+`7718ba103f2e39c3ffed381ac3fc25c635d7dab6508ffb73dbc8205567278706`.
+The genuine original 1206 by 2622 failed-test frame and recording show Milano
+tiles, two price pins and clusters during the assertion wait. The actual
+accessibility hierarchy contains **Mappa interattiva dei bar, region**, whereas
+the test required exact equality with **Mappa interattiva dei bar**. The hierarchy
+also contains the current **2 bar su 43 qui hanno un prezzo** status. This is a
+documented selector mismatch, not evidence of an absent map or a stale hierarchy.
+Lifecycle collection reports no renderer-termination event and the crash summary
+is empty; those collectors are best-effort. The test remains failed, and the
+iPad and final validated-capture steps were skipped.
+
+## External TestFlight candidate
+
+`mobile-beta/v1.0.0-roberto.1`, source
+`b070690a960532e7fd7f40195c62dd2614ed5986`, ran as
+[40707946369](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40707946369)
+(workflow/build number 24) and **failed before signing**. Both check jobs passed;
+the signer stopped at its `xcodebuild -version` pipeline with a broken-pipe
+exception. No IPA was created or uploaded. The first-line consumer `head -n 1`
+can close the pipe before Xcode finishes writing its complete version output.
+A reviewed full-consumption parser repair now passes the original-failure
+regression, nonzero-producer and minimum-version controls. The coordinator
+reran all 88 script guards successfully.
+This isolated lane requires fresh Android and iOS
+checks, retains the exact approved toolchain and signing verification, and
+uploads without the Internal Only restriction. It does not submit the public
+App Store version. The corrected tag `mobile-beta/v1.0.0-roberto.2`, source
+`88880558efe638e06f2fef69d74e5e789369b4cd`, succeeded as
+[40710808509](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40710808509)
+(build 26). Both check jobs and signing/upload job `122900311762` passed.
+Artifact **12826177998** has verified ZIP SHA-256
+`060bfeb7af10bcb11b424fcdbc4a93debbaebed9e5ec762b313c7cc376e96860`;
+the IPA SHA-256 is
+`41dbff7ebbe12eb0f79de1117f65431ab9dc0396d83352b02e3ec6ec2dc18218`.
+Independent checks confirm version/build, phone/tablet support, expected public
+profile metadata and `distributionScope=app-store`. The manifest attests strict
+signature validation and successful upload; Windows did not independently run
+Apple codesign or CMS trust verification.
+
+Apple subsequently processed build 26 and displayed **Ready to Submit**.
+Beta App Review was submitted with automatic tester notification selected.
+That beta review has now completed: build 26 displays **Testing** with the
+existing **Roberto feedback** group and one requested tester. Build 31 was
+subsequently signed, processed and assigned to the owner and Roberto groups;
+it also reads **Testing**. The tester row is **Invited**. No public link or
+developer-team role was created; email delivery and installation remain
+unverified. Beta description, feedback address and review instructions are saved.
+The public App Store version also has build 26 selected and saved. Its latest
+submission includes both verified original screenshots: medium Dynamic Island
+iPhone and 13-inch iPad, each uploaded and processed as **1 of 10 App
+Screenshots** in its respective slot. Apple confirmed **1 Item Submitted** on
+28 October at 16:10 UTC. Public review record
+`8f84f8ac-5654-4709-a448-6e55f622848a` displays **Waiting for Review** and the item
+**iOS App 1.0.0 / 1.0.0 (26)**. Automatic release after approval is selected.
+This public submission is separate from the now-testing external beta; public
+approval and public availability remain unverified.
+
+The third credential-free capture run,
+`mobile-capture/v1.0.0-xcode27.1-3`, source
+`be66b18ceea2ede8a7443f79d8b56462f0ec6872`, ran as
+[40709708958](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40709708958)
+(workflow number 25), **failed** at the positive-coverage assertion. Its reviewed test accepts only the base map label and
+the exact observed region suffix, adds positive live-price coverage checks,
+and retains map-style, native-error and privacy-return checks. The map-label
+and map-style assertions passed. The genuine failed-test frame still shows
+Milano tiles, price pins and 2 priced venues out of 43. The added coverage
+assertion required `isHittable`, although the owner's `.map__status` CSS uses
+`pointer-events:none` for this read-only status. Its actual runtime hit-test
+property was not exported; source and frame evidence support a test defect.
+The iPad and validated-capture steps were skipped. Artifact **12827130851** has
+verified SHA-256
+`b6ae550b671f99a15078801a6eabbfbfc8da463a85c565bbe4261ccb06b9f662`.
+A narrow test repair uses finite, nonempty on-screen geometry for this status.
+No website code was changed.
+
+The fourth capture tag `mobile-capture/v1.0.0-xcode27.1-4`, source
+`b1f69e0f338a481dbfaa0278db2d9be3324712a5`, ran as
+[40714924179](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40714924179)
+(workflow number 27). **All ten Swift units and all three iPhone UI cases
+passed**, including the live search/map/positive coverage/Privacy-return case.
+Its final named original PNG is 1206 by 2622, SHA-256
+`4805f62d67d20c209b51fdb87a1b955cbaa0ea5d5afe516bc8febb3d9adf85b0`.
+It is preserved unchanged in `store-assets/ios-screenshots/` with provenance.
+Independent source comparison confirms native app, project, generator and
+bundled resources match uploaded build 26; Debug branches only log diagnostics.
+The capture is an unsigned Debug simulator run, not binary-identical device
+evidence. Actual map tiles and existing price pins were visually inspected.
+
+The separate iPad Air 13-inch M4/iOS 27.0 runner failed before its live test
+started: `XCTDaemonErrorDomain Code=18`, **Timed out waiting for AX loaded
+notification**, followed by the eight-minute step timeout. No iPad screenshot
+was produced and the workflow remains failed. Artifact **12828892348** has
+verified SHA-256
+`dc27593965068f7282939d596a714fe8dd5aeb4c84c89f15f69a44a048805c53`.
+The capture script now explicitly waits for its selected simulator to boot,
+matching the passing phone startup pattern, and shuts down only a device it
+booted. Mocked command controls and independent review pass; the subsequent
+isolated run 28 also passed actual boot readiness and live capture. This single
+success does not establish the root cause of the earlier AX failure. An isolated
+iPad-only capture lane avoids repeating the passing phone suite.
+The existing AWS real-device connector requires reauthentication, so no free
+minutes or device availability were established and no session or charge was
+created.
+
+The isolated tag `mobile-ipad-capture/v1.0.0-preboot.1`, source
+`2c7e13b44b1f119c0f29123e796b4f2d6c5a4601`, succeeded as
+[40720750014](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40720750014)
+(workflow number 28), job `122930662962`. The selected iPad Air 13-inch M4/iOS
+27.0 completed explicit boot readiness before XCTest. The exact live search,
+map, positive coverage and Privacy-return case passed, followed by original
+PNG validation. All 93 local guards passed after integration; independent
+review confirms existing workflow job selections remain unchanged.
+
+The original iPad PNG is 2048 by 2732, SHA-256
+`d53d5b8c09cc09727f6de64c25dc0d1293511ccc1be344234ef6dfce155a5d75`.
+Its real Milano tiles, existing price pins, clusters and coverage counter were
+independently inspected. Artifact **12831890356** ZIP SHA-256 is
+`5fecf76d7ddf8cbdfd40f1fe9ce4aa16ca63b099b79afbeda6c19bd847ec1ec2`.
+Both originals and per-file provenance are preserved in
+`store-assets/ios-screenshots/`. Native app/project/resource inputs match build
+26 source; the simulator captures do not establish physical iPad behavior or
+binary identity with the signed Release app. No images were resized or rebuilt.
+
+## Retained failure history and remaining gates
+
+[RC.6 run 40436740241](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40436740241)
+failed live checks: Android encountered a data-center Cloudflare challenge;
+iOS 26.2 on Intel/Xcode 26.3 lost the city sheet after WebKit GPU crashes.
+Native tests passed, but production signing was skipped. No website security
+setting was changed to bypass either failure.
+
+[Internal.3](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40438320128)
+failed P12 import; the separate 3DES container preserved the original identity.
+[Internal.7](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40673414558)
+and [Internal.9](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40678519019)
+passed identity checks but failed profile discovery. A replacement profile kept
+the same bundle/certificate and preserved the old active profile; both CMS
+layers and DER/XML metadata were verified, without a revocation attestation.
+[Internal.10](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/40691660000)
+archived/exported, then stopped before the release manifest or upload. The exact
+silent command was not established; reviewed extraction compatibility repairs
+preceded Internal.11's successful end-to-end verification. Full older details
+remain in Git history and retained evidence.
+
+Next owners must read both public review decisions, verify store availability
+after approval and complete the remaining installed-device checks. Confirm
+Roberto's invitation delivery and gather his TestFlight feedback for the now
+available build 36 and its native drink comparison; build 31 still has the superseded manual-name form. Physical acceptance of build 36 remains open. Use
+[the device checklist](PHYSICAL_TEST_CHECKLIST.md). Upload, processing, review
+approval and public availability are separate states; none imply the next.

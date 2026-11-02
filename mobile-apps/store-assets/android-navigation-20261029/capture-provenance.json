@@ -1,0 +1,90 @@
+{
+  "schema": "dovebevo-original-store-captures/v1",
+  "recordedAtUtc": "2026-10-29T20:08:18.311685+00:00",
+  "platform": "Android",
+  "applicationId": "com.dovebevo.app",
+  "androidSourceCommit": "f30fa2bad5125c10ecfcc3014f23009e5cb9fe29",
+  "candidateSourceCommit": "9a3e5cf79500ea3d53cc232cb899eaf6158dc05c",
+  "installedDebugApkSHA256": "30268df58d13212ae4dac739cef5afb3908585262d4e4df3dc3be455fd45092e",
+  "captureRuntime": {
+    "kind": "owned headless emulator",
+    "androidApi": 36,
+    "dimensions": [1080, 1920],
+    "physicalDevice": false,
+    "pcForegroundControl": false
+  },
+  "sourceRelationship": "The candidate preserves the reviewed Android application inputs from androidSourceCommit; subsequent corrections are iOS source, tests and workflow changes.",
+  "captureTransformation": "None. Copied original PNG bytes only; no cropping, editing, resizing, generated content or image recompression.",
+  "publicContentWrites": false,
+  "dataExplanation": "Existing public venues and recorded prices are rendered as observed. Only the private test bookmark was created and subsequently removed; no public price, confirmation, venue, report or vote was submitted.",
+  "distributionLimit": "Debug emulator captures of the same Android source. They do not establish signed release binary identity, physical-device acceptance, provider approval or a public launch. Upload is a separate coordinator action after candidate verification.",
+  "evidenceReceipts": [
+    "test-evidence/bottom-navigation-20261029/android-runtime-verification.json",
+    "test-evidence/bottom-navigation-20261029/android-live-verification.json",
+    "test-evidence/bottom-navigation-20261029/android-live-shutdown.json"
+  ],
+  "omittedScenes": [
+    {
+      "originalWorkspaceRelativePath": "test-evidence/bottom-navigation-20261029/android-live-recommendations.png",
+      "reason": "Native recommendation modal obscures bottom icons and has partially visible scroll content. Omitted to retain clear scenes with all five bottom controls visible."
+    }
+  ],
+  "captures": [
+    {
+      "file": "01-home.png",
+      "scene": "Fully rendered service home and native bottom navigation",
+      "originalPath": "C:\\Users\\stefa\\OneDrive\\Dove Bevo\\test-evidence\\bottom-navigation-20261029\\android-loaded-home.png",
+      "originalWorkspaceRelativePath": "test-evidence/bottom-navigation-20261029/android-loaded-home.png",
+      "sha256": "4cc73e54bf6455e5eaa53d1a6c0e16f47e0105a30b435d10bc77f29aabadae20",
+      "bytes": 569825,
+      "width": 1080,
+      "height": 1920,
+      "originalUnedited": true,
+      "normalFontScale": 1.0,
+      "fiveBottomControlsVisible": true,
+      "renderedSceneInspected": true
+    },
+    {
+      "file": "02-milano-map.png",
+      "scene": "Actual Milano map with existing price markers and coverage",
+      "originalPath": "C:\\Users\\stefa\\OneDrive\\Dove Bevo\\test-evidence\\bottom-navigation-20261029\\android-live-milano-map.png",
+      "originalWorkspaceRelativePath": "test-evidence/bottom-navigation-20261029/android-live-milano-map.png",
+      "sha256": "5ed36cd77ed7a844e7d354832d8ff4f1e05647ac07a04c0fba5d4d2feb42a009",
+      "bytes": 525336,
+      "width": 1080,
+      "height": 1920,
+      "originalUnedited": true,
+      "normalFontScale": 1.0,
+      "fiveBottomControlsVisible": true,
+      "renderedSceneInspected": true
+    },
+    {
+      "file": "03-existing-venue.png",
+      "scene": "Existing Camparino in Galleria venue and recorded drink prices",
+      "originalPath": "C:\\Users\\stefa\\OneDrive\\Dove Bevo\\test-evidence\\bottom-navigation-20261029\\android-live-existing-venue.png",
+      "originalWorkspaceRelativePath": "test-evidence/bottom-navigation-20261029/android-live-existing-venue.png",
+      "sha256": "65eec31ae2c63870685a54bec79734bb7323e67589b6edca2876994ca12fa940",
+      "bytes": 189026,
+      "width": 1080,
+      "height": 1920,
+      "originalUnedited": true,
+      "normalFontScale": 1.0,
+      "fiveBottomControlsVisible": true,
+      "renderedSceneInspected": true
+    },
+    {
+      "file": "04-favourites-comparison.png",
+      "scene": "Private favourite using actual venue name with recorded normal beer price",
+      "originalPath": "C:\\Users\\stefa\\OneDrive\\Dove Bevo\\test-evidence\\bottom-navigation-20261029\\android-live-favourite-price.png",
+      "originalWorkspaceRelativePath": "test-evidence/bottom-navigation-20261029/android-live-favourite-price.png",
+      "sha256": "2b85f73ff5c24a5f083f095a44094800a76bfeaa7432c687392ca1300f81e1ac",
+      "bytes": 131469,
+      "width": 1080,
+      "height": 1920,
+      "originalUnedited": true,
+      "normalFontScale": 1.0,
+      "fiveBottomControlsVisible": true,
+      "renderedSceneInspected": true
+    }
+  ]
+}

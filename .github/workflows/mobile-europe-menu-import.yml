@@ -25,7 +25,6 @@ jobs:
     env:
       MANIFEST: mobile-apps/data/europe-menu-seed-20261101.json
       MANIFEST_SHA256: 1598bbf6def55b58fd168e58ee448b0d214ae56bf53abe704ddf1491c6336e97
-      RECEIPT: ${{ runner.temp }}/mobile-europe-menu-import/receipt.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,6 +32,8 @@ jobs:
           persist-credentials: false
       - name: Verify the exact reviewed manifest and transaction tests
         shell: bash
+        env:
+          RECEIPT: ${{ runner.temp }}/mobile-europe-menu-import/receipt.json
         run: |
           set -euo pipefail
           printf '%s  %s\n' "$MANIFEST_SHA256" "$MANIFEST" | sha256sum --check --strict
@@ -41,6 +42,7 @@ jobs:
       - name: Audit or apply the exact reviewed app-only batch
         shell: bash
         env:
+          RECEIPT: ${{ runner.temp }}/mobile-europe-menu-import/receipt.json
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |

@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "run_id": 41476225957,
+  "head_sha": "3a0abb70ef1eb8ba46f04237ef481219112ba8f2",
+  "artifact_id": 13157951791,
+  "artifact_sha256": "484132f27cefc637b231659339c87aabee007a7ec3e7d540330409089a704b5b",
+  "manifest_sha256": "7935c23a27e1c6a6260353c4149b100c09e5d0babab86c627d64b12b8faac55c",
+  "mode": "dry_run",
+  "complete": true,
+  "eligible": 50,
+  "guarded": 0,
+  "verification_scope": "coordinator actual provider ZIP plus independent subgroup-hash and provider-log reconciliation",
+  "groups": [
+    {
+      "index": 0,
+      "sha256": "d0e3d2d9083b75b2a7c8d959940026c1d300542bca529940bee698a4d62207d6",
+      "count": 5,
+      "outcomes": { "eligible_at_read": 5 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 1,
+      "sha256": "5cadbc583fef0ec8672f287264fe00a79a81a258c47c3c02b4cb713ae83a3bd8",
+      "count": 6,
+      "outcomes": { "eligible_at_read": 6 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 2,
+      "sha256": "0cb568b69b32e95494a1c280bbd4263944a8c6f4b7d303aea36565984e32e210",
+      "count": 7,
+      "outcomes": { "eligible_at_read": 7 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 3,
+      "sha256": "1b2dbc53138039aa56f6648e03190eb8ef10248d4ebfe65b0ebdc04a28a9a867",
+      "count": 1,
+      "outcomes": { "eligible_at_read": 1 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 4,
+      "sha256": "bd6c33aa9fae6a0306e0cfa3978fd93e5c71f0c5dfc6cf7a96a0efe19fe39aaf",
+      "count": 1,
+      "outcomes": { "eligible_at_read": 1 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 5,
+      "sha256": "7563a4204838393ed28e942c66ab245286ebc1f03110ea086a505b302b5b1167",
+      "count": 1,
+      "outcomes": { "eligible_at_read": 1 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 6,
+      "sha256": "9462d32b2f86bd3a9552f00d77b0fe3afaed1a51f560a999689f3400ebff9ae9",
+      "count": 2,
+      "outcomes": { "eligible_at_read": 2 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 7,
+      "sha256": "cd80f618c9555f5758151780b2e7f541463ad5199a7eae0991c40f556b074937",
+      "count": 6,
+      "outcomes": { "eligible_at_read": 6 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 8,
+      "sha256": "8f3f9cff9efc88bc34791b4869eb2bca290e95db15b156f37a541bff98a68d1e",
+      "count": 3,
+      "outcomes": { "eligible_at_read": 3 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 9,
+      "sha256": "2f24ec60ecf585c7fe429e5277cb2372411709be38664ca7571ff549a1032178",
+      "count": 3,
+      "outcomes": { "eligible_at_read": 3 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 10,
+      "sha256": "db6fcacf18442f1402d690834cdf6ff6b1c19d1c1bffcf48ca8af755330232e6",
+      "count": 4,
+      "outcomes": { "eligible_at_read": 4 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 11,
+      "sha256": "543792ce7db99a9aac0f66a23b111bf5abd5d00289fa1511c3c741e42e6a6d4a",
+      "count": 1,
+      "outcomes": { "eligible_at_read": 1 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 12,
+      "sha256": "6fce84b9bfe1826135485a52e12768a9fd2333f3f3eb5bb47aa39b29b8f5b4de",
+      "count": 1,
+      "outcomes": { "eligible_at_read": 1 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 13,
+      "sha256": "a4294f3ddc1028ffe925c9cc25018524456054e054b4ef6f00f9da4cd301ab29",
+      "count": 1,
+      "outcomes": { "eligible_at_read": 1 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 14,
+      "sha256": "2e8c26f1508db65ea191a15527212977cb42b412d6dce2d37059b59f8b3f1465",
+      "count": 3,
+      "outcomes": { "eligible_at_read": 3 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 15,
+      "sha256": "3a4bb9e76b11ae7319394b533b13e55d27e560e14f3eb84a98f072376e579d7e",
+      "count": 2,
+      "outcomes": { "eligible_at_read": 2 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    },
+    {
+      "index": 16,
+      "sha256": "34349a86cd42920afb3f58df67e3178a1c0663b81f3b0ff6c33e9d9cb929097f",
+      "count": 3,
+      "outcomes": { "eligible_at_read": 3 },
+      "guard_sums": {
+        "current_count": 0,
+        "history_count": 0,
+        "report_count": 0,
+        "hidden_count": 0
+      },
+      "before_after_equal": true,
+      "cache_invalidated": [],
+      "errors": []
+    }
+  ]
+}

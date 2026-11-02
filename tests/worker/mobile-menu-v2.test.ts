@@ -44,17 +44,9 @@ interface Cell {
 }
 
 async function get(path: string, bindings: Env = env) {
-  return worker.fetch(
-    new Request(ORIGIN + path),
-    bindings,
-    createExecutionContext(),
-  );
+  return worker.fetch(new Request(ORIGIN + path), bindings, createExecutionContext());
 }
-async function addSource(
-  key: string,
-  cell: string,
-  status: "approved" | "held" = "approved",
-) {
+async function addSource(key: string, cell: string, status: "approved" | "held" = "approved") {
   const id = crypto.randomUUID();
   await env.DB.prepare(
     "INSERT INTO mobile_menu_v2_sources" +
@@ -157,12 +149,7 @@ async function registerForeign() {
       " (venue_key,cell,name,kind,lat,lon,address,city,country,identity_url,identity_checked_on)" +
       " VALUES (?1,?2,'Fixture London Bar',1,51.5074,-0.1278,NULL,'London','GB',?3,?4)",
   )
-    .bind(
-      FOREIGN.key,
-      FOREIGN.cell,
-      "https://www.openstreetmap.org/node/910000001",
-      TODAY,
-    )
+    .bind(FOREIGN.key, FOREIGN.cell, "https://www.openstreetmap.org/node/910000001", TODAY)
     .run();
 }
 beforeEach(async () => {
@@ -194,9 +181,7 @@ describe("app-only named menu v2", () => {
         amount: 550,
       }),
     ]);
-    const response = await get(
-      "/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell,
-    );
+    const response = await get("/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell);
     expect(response.status, await response.clone().text()).toBe(200);
     const body = await response.json<Detail>();
     expect(body).toMatchObject({
@@ -208,10 +193,7 @@ describe("app-only named menu v2", () => {
       next_after: null,
       fee_coverage: { status: "unknown" },
     });
-    expect(body.offers.map((row) => row.id)).toEqual([
-      "fixture-aperol",
-      "fixture-campari",
-    ]);
+    expect(body.offers.map((row) => row.id)).toEqual(["fixture-aperol", "fixture-campari"]);
     expect(body.offers[1].serving).toEqual({ label: null, ml: null });
     expect(body.offers[0]).toMatchObject({
       amount_minor: 530,
@@ -238,9 +220,7 @@ describe("app-only named menu v2", () => {
     ).json<{ p: unknown[] }>();
     expect(legacy.p).toEqual([]);
     expect(
-      await env.DB.prepare(
-        "SELECT COUNT(*) AS n FROM mobile_prices_current WHERE venue_key=?1",
-      )
+      await env.DB.prepare("SELECT COUNT(*) AS n FROM mobile_prices_current WHERE venue_key=?1")
         .bind(ITALY.key)
         .first("n"),
     ).toBe(0);
@@ -272,9 +252,7 @@ describe("app-only named menu v2", () => {
       .bind(ITALY.key, ITALY.cell, sourceId)
       .run();
     const response = await (
-      await get(
-        "/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell,
-      )
+      await get("/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell)
     ).json<Detail>();
     expect(response.offers[0].amount_minor).toBe(530);
     expect(response.fees).toEqual(
@@ -317,9 +295,7 @@ describe("app-only named menu v2", () => {
 
   it("refuses to activate held sources and keeps source-use decisions immutable", async () => {
     const sourceId = await addSource(ITALY.key, ITALY.cell, "held");
-    await expect(
-      addOffer("held-active", ITALY.key, ITALY.cell, sourceId).run(),
-    ).rejects.toThrow();
+    await expect(addOffer("held-active", ITALY.key, ITALY.cell, sourceId).run()).rejects.toThrow();
     await addOffer("held-review", ITALY.key, ITALY.cell, sourceId, {
       status: "review",
     }).run();
@@ -336,28 +312,20 @@ describe("app-only named menu v2", () => {
       }).run(),
     ).rejects.toThrow();
     await expect(
-      env.DB.prepare(
-        "INSERT INTO mobile_menu_v2_fee_coverage VALUES (?1,?2,'explicit_no_fee',?3)",
-      )
+      env.DB.prepare("INSERT INTO mobile_menu_v2_fee_coverage VALUES (?1,?2,'explicit_no_fee',?3)")
         .bind(ITALY.key, ITALY.cell, sourceId)
         .run(),
     ).rejects.toThrow();
     await expect(
-      env.DB.prepare(
-        "UPDATE mobile_menu_v2_sources SET use_review_status='approved' WHERE id=?1",
-      )
+      env.DB.prepare("UPDATE mobile_menu_v2_sources SET use_review_status='approved' WHERE id=?1")
         .bind(sourceId)
         .run(),
     ).rejects.toThrow();
     await expect(
-      env.DB.prepare("DELETE FROM mobile_menu_v2_sources WHERE id=?1")
-        .bind(sourceId)
-        .run(),
+      env.DB.prepare("DELETE FROM mobile_menu_v2_sources WHERE id=?1").bind(sourceId).run(),
     ).rejects.toThrow();
     const detail = await (
-      await get(
-        "/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell,
-      )
+      await get("/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell)
     ).json<Detail>();
     expect(detail.offers).toEqual([]);
     expect(detail.fee_coverage.status).toBe("unknown");
@@ -378,12 +346,9 @@ describe("app-only named menu v2", () => {
       currency: "GBP",
       amount: 750,
     }).run();
-    const path =
-      "/api/mobile/v2/menu/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell;
+    const path = "/api/mobile/v2/menu/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell;
     expect((await get(path)).status).toBe(404);
-    const unresolved = await (
-      await get("/api/mobile/v2/menu/cells/" + FOREIGN.cell)
-    ).json<Cell>();
+    const unresolved = await (await get("/api/mobile/v2/menu/cells/" + FOREIGN.cell)).json<Cell>();
     expect(unresolved.venues).toEqual([]);
     expect(unresolved.unresolved_venues).toBe(1);
     await registerForeign(); // No Google review field or threshold.
@@ -403,15 +368,9 @@ describe("app-only named menu v2", () => {
       .run();
     expect((await get(path)).status).toBe(404);
     expect(
-      (
-        await (
-          await get("/api/mobile/v2/menu/cells/" + FOREIGN.cell)
-        ).json<Cell>()
-      ).venues,
+      (await (await get("/api/mobile/v2/menu/cells/" + FOREIGN.cell)).json<Cell>()).venues,
     ).toEqual([]);
-    await env.DB.prepare("DELETE FROM venues_hidden WHERE venue_key=?1")
-      .bind(FOREIGN.key)
-      .run();
+    await env.DB.prepare("DELETE FROM venues_hidden WHERE venue_key=?1").bind(FOREIGN.key).run();
     await env.DB.prepare(
       "INSERT INTO mobile_venues_moderation(venue_key,status,reason)" +
         " VALUES (?1,'review','fixture moderation')",
@@ -428,16 +387,10 @@ describe("app-only named menu v2", () => {
       const batch = [];
       for (let index = start; index < Math.min(start + 100, 501); index++) {
         batch.push(
-          addOffer(
-            "item-" + String(index).padStart(4, "0"),
-            FOREIGN.key,
-            FOREIGN.cell,
-            sourceId,
-            {
-              name: "Synthetic drink " + String(index),
-              amount: 300 + index,
-            },
-          ),
+          addOffer("item-" + String(index).padStart(4, "0"), FOREIGN.key, FOREIGN.cell, sourceId, {
+            name: "Synthetic drink " + String(index),
+            amount: 300 + index,
+          }),
         );
       }
       await env.DB.batch(batch);

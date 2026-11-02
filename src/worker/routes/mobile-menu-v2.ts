@@ -3,12 +3,7 @@ import { encodeGeohash } from "../../shared/geohash";
 import { OSM_KEY_PATTERN } from "../../shared/venue";
 import { ApiError } from "../lib/errors";
 import { cellFile } from "../lib/venues";
-import {
-  EvidenceDay,
-  HTTPS,
-  MobileCell,
-  MobileDrink,
-} from "./mobile-price-catalog";
+import { EvidenceDay, HTTPS, MobileCell, MobileDrink } from "./mobile-price-catalog";
 import type { AppEnv } from "../types";
 
 type Registry = {
@@ -73,8 +68,7 @@ type CoverageRow = Evidence & {
 };
 type Candidate = { venue_key: string; n: number };
 
-const SOURCE =
-  "s.id AS source_id, s.source_url, s.source_text_sha256, s.source_checked_on";
+const SOURCE = "s.id AS source_id, s.source_url, s.source_text_sha256, s.source_checked_on";
 const APPROVED =
   " JOIN mobile_menu_v2_sources s ON s.id = o.source_id" +
   " AND s.venue_key = o.venue_key AND s.cell = o.cell AND s.use_review_status = 'approved'";
@@ -151,8 +145,7 @@ function queryKey(value: string | undefined): string {
 }
 function cursor(value: string | undefined): string {
   if (value === undefined) return "";
-  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(value))
-    throw new ApiError("bad_request");
+  if (!/^[A-Za-z0-9._:-]{1,128}$/.test(value)) throw new ApiError("bad_request");
   return value;
 }
 function limit(value: string | undefined): number {
@@ -190,9 +183,7 @@ function staticVenue(
   if (!OSM_KEY_PATTERN.test(key)) return null;
   const row = file?.v.find((item) => item[0] === key);
   if (!row) return null;
-  const osmType = { n: "node", w: "way", r: "relation" }[
-    key[0] as "n" | "w" | "r"
-  ];
+  const osmType = { n: "node", w: "way", r: "relation" }[key[0] as "n" | "w" | "r"];
   return {
     key,
     cell,
@@ -203,8 +194,7 @@ function staticVenue(
     address: row[5] || null,
     city: file?.c[row[6]]?.[1] ?? null,
     country: "IT",
-    identity_url:
-      "https://www.openstreetmap.org/" + osmType + "/" + key.slice(1),
+    identity_url: "https://www.openstreetmap.org/" + osmType + "/" + key.slice(1),
   };
 }
 async function venue(env: Env, key: string, cell: string): Promise<Venue> {
@@ -312,8 +302,7 @@ mobileMenuV2.get("/venues/:key", async (c) => {
 // Bounded cell discovery lists only vetted active offers. Samples are base menu prices, not totals.
 mobileMenuV2.get("/cells/:cell", async (c) => {
   const cell = queryCell(c.req.param("cell"));
-  const after =
-    c.req.query("after") === undefined ? "" : queryKey(c.req.query("after"));
+  const after = c.req.query("after") === undefined ? "" : queryKey(c.req.query("after"));
   const requested = c.req.query("category");
   let code: string | null = null;
   if (requested !== undefined) {
@@ -355,22 +344,14 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
   )
     .bind(cell, ...keys)
     .all<Registry>();
-  const registry = new Map(
-    registryRows.results.map((row) => [row.venue_key, registryVenue(row)]),
-  );
-  const legacyFile = keys.some((key) => !registry.has(key))
-    ? await cellFile(c.env, cell)
-    : null;
+  const registry = new Map(registryRows.results.map((row) => [row.venue_key, registryVenue(row)]));
+  const legacyFile = keys.some((key) => !registry.has(key)) ? await cellFile(c.env, cell) : null;
   const visible = page
     .map((row) => ({
-      venue:
-        registry.get(row.venue_key) ??
-        staticVenue(legacyFile, row.venue_key, cell),
+      venue: registry.get(row.venue_key) ?? staticVenue(legacyFile, row.venue_key, cell),
       count: row.n,
     }))
-    .filter(
-      (row): row is { venue: Venue; count: number } => row.venue !== null,
-    );
+    .filter((row): row is { venue: Venue; count: number } => row.venue !== null);
   const unresolved = page.length - visible.length;
   const visibleKeys = visible.map((row) => row.venue.key);
   if (!visibleKeys.length)
@@ -380,8 +361,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
         cell,
         category: code,
         venues: [],
-        next_after:
-          candidates.results.length > 50 ? page.at(-1)?.venue_key : null,
+        next_after: candidates.results.length > 50 ? page.at(-1)?.venue_key : null,
         unresolved_venues: unresolved,
       },
       200,
@@ -443,8 +423,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
           states.get(row.venue.key)?.fee_count ?? 0,
         ),
       })),
-      next_after:
-        candidates.results.length > 50 ? page.at(-1)?.venue_key : null,
+      next_after: candidates.results.length > 50 ? page.at(-1)?.venue_key : null,
       unresolved_venues: unresolved,
     },
     200,

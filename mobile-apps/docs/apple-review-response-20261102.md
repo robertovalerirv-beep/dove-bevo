@@ -8,6 +8,8 @@ The six numbered English notes are in `mobile-apps/store-assets/app-review-notes
 
 The owner records a real iPhone running the latest public iOS available on the recording date, after the intended build is ready. Windows Phone Link cannot operate iOS. A simulator, Android recording, compile log or screenshot does not satisfy this physical-device request.
 
+Dated check, 2 November 2026: [Apple's release information](https://support.apple.com/en-sa/100100) lists iOS 27.2, released 26 October 2026. Verify Software Update again on the recording day and record the actual iPhone model, installed OS and app version/build. This device-evidence requirement does not change the known working Xcode 27.1 SDK configuration.
+
 1. **0:00–0:15:** Begin on the iPhone Home Screen and immediately tap Dove Bevo to launch it. The recording must begin with launching the app, as Apple requested. Show the real startup/loading flow; do not begin in Settings, TestFlight or another app.
 2. **0:15–0:35:** Continue in Dove Bevo. Show the rules/privacy and adult gate when available on a fresh install. Accept only if actually an adult. Deny optional location; search for a real supported city. Do not misrepresent a previously accepted gate as first launch.
 3. **0:35–1:00:** Open a real venue and its actual prices. Show source/check-date wording and currency/serving size when present in this installed build. Save a favourite and show its comparison. Do not invent missing prices or force different servings into one comparison.

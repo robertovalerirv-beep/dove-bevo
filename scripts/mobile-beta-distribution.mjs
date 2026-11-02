@@ -15,6 +15,9 @@ export const GROUPS = Object.freeze([
   Object.freeze({ name: "Roberto feedback", is_internal_group: false }),
 ]);
 const LIMIT = 256 * 1024;
+// Five six-GET inspections, three POSTs, three immediate read-backs, plus one
+// complete six-GET read-only reconciliation: at most 42 requests, no retries.
+const MAX_REQUESTS = 42;
 const id = (value) => typeof value === "string" && /^[A-Za-z0-9-]{1,100}$/.test(value);
 const fail = () => {
   throw new Error("Beta distribution scope or response invalid");
@@ -113,7 +116,7 @@ function clientFor(env, transport, diagnostics) {
   return async (path, payload, expected = 200) => {
     const target = new URL(ORIGIN + path);
     if (
-      ++calls > 40 ||
+      ++calls > MAX_REQUESTS ||
       target.origin !== ORIGIN ||
       !path.startsWith("/v1/") ||
       path.includes("..") ||
@@ -247,7 +250,12 @@ async function inspect(client, plan, diagnostics) {
   stage("VERSION_IDENTITY");
   const versionId = relationship(build, "preReleaseVersion", "preReleaseVersions").id;
   const version = included(body, "preReleaseVersions", versionId);
-  relationship(version, "app", "apps", APP_ID);
+  // Compound documents may omit nested linkage, but explicit contradictions fail.
+  if (version.relationships?.app?.data !== undefined) relationship(version, "app", "apps", APP_ID);
+  stage("VERSION_PARENT_FETCH");
+  const versionParent = await client(`/v1/preReleaseVersions/${versionId}/relationships/app`);
+  resource(versionParent.data, "apps", APP_ID);
+  stage("VERSION_IDENTITY");
   if (version.attributes?.version !== VERSION || version.attributes?.platform !== "IOS") fail();
   stage("BUILD_STATE");
   const a = build.attributes;

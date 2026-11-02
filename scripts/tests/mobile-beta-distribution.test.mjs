@@ -91,7 +91,7 @@ function fixture(overrides = {}) {
       "preReleaseVersions",
       "version-1",
       { version: state.version, platform: state.platform },
-      { app: rel("apps", state.versionApp ?? APP_ID) },
+      state.omitNestedVersionApp ? {} : { app: rel("apps", state.versionApp ?? APP_ID) },
     ),
     resource(
       "buildBetaDetails",
@@ -125,6 +125,8 @@ function fixture(overrides = {}) {
       }
       if (call.path === `/v1/builds/${state.buildId}`)
         return json({ data: build(), included: included() });
+      if (call.path === "/v1/preReleaseVersions/version-1/relationships/app")
+        return json({ data: { type: "apps", id: state.versionAppLink ?? APP_ID } });
       if (call.path === "/v1/betaGroups") {
         assert.equal(call.query.get("filter[app]"), APP_ID);
         assert.ok(
@@ -346,6 +348,28 @@ test("apply revalidates returned app, version, platform and relationship parents
   }
 });
 
+test("omitted nested version parent needs an independently matching app relationship", async () => {
+  const f = fixture({ omitNestedVersionApp: true });
+  const receipt = await f.audit();
+  assert.equal(receipt.complete, true);
+  assert.equal(receipt.ready, true);
+  assert.equal(
+    f.calls.filter((c) => c.path === "/v1/preReleaseVersions/version-1/relationships/app").length,
+    1,
+  );
+  for (const overrides of [
+    { omitNestedVersionApp: true, versionAppLink: "wrong-app" },
+    { versionAppLink: "wrong-app" },
+    { versionApp: "contradictory-app", versionAppLink: APP_ID },
+  ]) {
+    const bad = fixture(overrides);
+    const failed = await bad.audit();
+    assert.equal(failed.complete, false);
+    assert.equal(failed.plan, undefined);
+    assert.ok(bad.calls.every((c) => c.method === "GET"));
+  }
+});
+
 test("missing, duplicate, renamed, wrong-app or wrong-type groups cannot be distributed", async () => {
   const plan = (await fixture().audit()).plan;
   const original = fixture().state.groups;
@@ -387,7 +411,10 @@ test("processing, expired, export-blocked, rejected or public external audiences
 
 test("exact existing groups are linked and one exact-build beta review is submitted", async () => {
   const f = fixture();
-  const receipt = await f.apply((await f.audit()).plan);
+  const plan = (await f.audit()).plan;
+  const before = f.calls.length;
+  const receipt = await f.apply(plan);
+  assert.equal(f.calls.length - before, 36);
   assert.equal(receipt.complete, true);
   assert.equal(receipt.actions.length, 3);
   assert.ok(receipt.actions.every((a) => a.outcome === "confirmed_by_read_back"));
@@ -405,6 +432,28 @@ test("exact existing groups are linked and one exact-build beta review is submit
   assert.equal(second.complete, true);
   assert.deepEqual(second.actions, []);
   assert.equal(f.calls.filter((c) => c.method === "POST").length, 3);
+});
+
+test("worst-case final failure plus one reconciliation is bounded to 42 requests", async () => {
+  const f = fixture();
+  const plan = (await f.audit()).plan;
+  const before = f.calls.length;
+  let readsAfterSubmission = 0;
+  f.state.intercept = (call) => {
+    if (
+      call.method === "GET" &&
+      call.path === "/v1/betaAppReviewSubmissions" &&
+      f.state.submission &&
+      ++readsAfterSubmission === 2
+    )
+      return new globalThis.Response(null, { status: 503 });
+  };
+  const receipt = await f.apply(plan);
+  assert.equal(receipt.complete, false);
+  assert.equal(f.calls.length - before, 42);
+  assert.equal(f.calls.filter((c) => c.method === "POST").length, 3);
+  assert.ok(f.calls.slice(-6).every((c) => c.method === "GET"));
+  assert.equal(receipt.after.submissions[0].id, "submission-62");
 });
 
 test("pending and approved review or testing states never create duplicate submissions", async () => {
@@ -688,11 +737,11 @@ test("initial workflow is one exact read-only tag with no apply or public-releas
     new URL("../../.github/workflows/mobile-beta-distribution.yml", import.meta.url),
     "utf8",
   );
-  assert.match(workflow, /mobile-beta-distribution-audit\/20261102-v2/);
+  assert.match(workflow, /mobile-beta-distribution-audit\/20261102-v3/);
   assert.match(workflow, /github\.repository == 'robertovalerirv-beep\/dove-bevo'/);
   assert.match(
     workflow,
-    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261102-v2'/,
+    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261102-v3'/,
   );
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /contents: read/);

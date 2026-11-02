@@ -16,7 +16,7 @@ separate states. None establishes a public App Store launch or a real-phone test
 ## Read-only first
 
 The initial workflow accepts only
-`mobile-beta-distribution-audit/20261102-v2` in
+`mobile-beta-distribution-audit/20261102-v3` in
 `robertovalerirv-beep/dove-bevo`. It has `contents: read`, pinned actions, no apply
 step and no manual input. Its audit command is:
 
@@ -40,6 +40,11 @@ request index and numeric HTTP status (or null). It never serializes a provider
 message, URL, response body, contact or credential for diagnostics. The immutable
 v1 audit stopped with a generic error on both attempts; v2 adds this diagnostic
 boundary without changing distribution or identity checks.
+The v2 audit isolated a `VERSION_IDENTITY` failure with HTTP 200. The v3 operator
+independently reads the pre-release version's app-ID relationship, and requires
+the exact parent app. An omitted nested relationship is accepted only with that
+independent proof; an explicit contradictory nested relationship still fails.
+The included version and platform checks remain mandatory.
 
 The audit requires exactly one build numbered `62` for version `1.0.0`, platform
 `IOS`, and verifies its parent app and bundle. It requires both exact group names,
@@ -115,6 +120,10 @@ changes to `confirmed_by_read_back` only after successful provider response and
 read-back. The transport is fixed to Apple's HTTPS origin, rejects redirects,
 limits each request to 20 seconds and response JSON to 256 KiB, and bounds total
 requests. There are no automatic POST retries.
+The bound is 42 requests: five six-GET inspections, three possible POSTs, three
+immediate read-backs, and one six-GET reconciliation after failure. A successful
+full three-write operation takes 36 requests; a final failure plus reconciliation
+takes at most 42. Both paths have owned transport fixtures.
 
 If a request times out, the response is lost, or read-back fails, all further
 mutations stop. The tool attempts one read-only reconciliation and retains the
@@ -147,6 +156,9 @@ Apple's primary API contracts, checked 2 November 2026:
   platform.
 - [List beta groups](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-betagroups):
   app/name/ID filters, internal flag and app relationship.
+- [Get a pre-release version's app ID](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-prereleaseversions-_id_-relationships-app):
+  an identifier-only GET verifies the pre-release version's parent app even when
+  the compound build document omits nested linkage.
 - [Add builds to a beta group](https://developer.apple.com/documentation/appstoreconnectapi/post-v1-betagroups-_id_-relationships-builds):
   exact relationship POST, successful response `204`.
 - [List beta app review submissions](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-betaappreviewsubmissions):

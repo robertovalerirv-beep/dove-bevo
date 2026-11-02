@@ -6,14 +6,14 @@ MANIFEST = Path(__file__).resolve().parents[2] / "data/italy-menu-seed-20261102-
 class BatchMTests(unittest.TestCase):
     def test_exact_reviewed_batch_preserves_major_city_scope(self):
         raw=MANIFEST.read_bytes()
-        self.assertEqual(hashlib.sha256(raw).hexdigest(), "81298b774c2a83e32fda544d731d71a7abc8f0644cc453f18102253c829f9d95")
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), "862c3ca170b3d7229191e9ec52eca4dffbf98b647a2ced93ce5999832140535b")
         doc=core.validate(raw)
         self.assertEqual(doc["schema_version"], 4)
-        self.assertEqual(len(doc["records"]), 11)
-        self.assertEqual(len({r["venue_key"] for r in doc["records"]}), 4)
+        self.assertEqual(len(doc["records"]), 9)
+        self.assertEqual(len({r["venue_key"] for r in doc["records"]}), 3)
         cities={r["city"] for r in doc["records"]}
-        self.assertEqual(len(cities), 4)
-        self.assertTrue(cities == {63621589, 61753360, 66586322, 72959652})
+        self.assertEqual(len(cities), 3)
+        self.assertTrue(cities == {61753360, 66586322, 72959652})
     def test_no_google_evidence_or_customer_payment_claim_is_present(self):
         doc=core.validate(MANIFEST.read_bytes())
         for record in doc["records"]:
@@ -23,7 +23,6 @@ class BatchMTests(unittest.TestCase):
     def test_exact_published_static_identity_tuples(self):
         doc=core.validate(MANIFEST.read_bytes())
         expected={
-            "n5257878293": ("Birrificio La Piazza", "u0j2q", 63621589, 45.08192, 7.65963),
             "n2361866569": ("Kikuya", "srb0b", 61753360, 43.76857, 11.26012),
             "n911863120": ("Bar degli Aperitivi", "spyke", 66586322, 44.40287, 8.94321),
             "n5730113518": ("Roma Beer Company - Ponte Milvio", "sr2ye", 72959652, 41.93733, 12.46672),

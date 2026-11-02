@@ -49,3 +49,5 @@ original debug fixture screenshots under the app-specific external files
 rows; they are not public venue-price, physical-device or signed-release proof.
 Normal production browsing and any store screenshots require separate read-only
 verification after integration and deployment.
+
+Header band labels are measured rather than shortened: both full labels remain visible at narrow widths. Native full-screen panels include hardware cutout insets. Entering More, information, privacy or location help retires pending image reads/previews, and an active panel also fences late callbacks. Owned fixtures hold the real JavaScript callback through those panel entries and wait past the original fallback deadline.

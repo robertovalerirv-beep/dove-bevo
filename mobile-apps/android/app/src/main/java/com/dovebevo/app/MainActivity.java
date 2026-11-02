@@ -639,8 +639,11 @@ public final class MainActivity extends ComponentActivity {
         catch (ActivityNotFoundException | SecurityException error) { toast(R.string.external_unavailable); }
     }
     private boolean canSharePrice(WebView source,String captured,long epoch,long request) {
-        return foreground&&!destroyed&&testLabPolicy.allowsExternalActions()&&source==website&&!nativeDestinationVisible()&&epoch==venueCaptureEpoch&&request==shareCapture
+        return foreground&&!destroyed&&(informationDialog==null||!informationDialog.isShowing())&&(privacyDialog==null||!privacyDialog.isShowing())&&(locationHelpDialog==null||!locationHelpDialog.isShowing())&&testLabPolicy.allowsExternalActions()&&source==website&&!nativeDestinationVisible()&&epoch==venueCaptureEpoch&&request==shareCapture
             &&!failed&&!loading&&!awaitingDocumentStart&&hasUsablePage&&!documentHasHttpError&&captured.equals(source.getUrl());
+    }
+    private void retireSharePresentation() {
+        shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}
     }
     private void share() {
         if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
@@ -668,7 +671,7 @@ public final class MainActivity extends ComponentActivity {
     private void toast(int message) { Toast.makeText(this, message, Toast.LENGTH_SHORT).show(); }
     private void showMenu(View anchor) {
         if(!foreground||destroyed)return;
-        createBrowserMenu(anchor).show();
+        retireSharePresentation();createBrowserMenu(anchor).show();
     }
     private PopupMenu createBrowserMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
@@ -705,7 +708,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void showInformation() {
-        if(!foreground||destroyed)return;if(informationDialog!=null)informationDialog.dismiss();
+        if(!foreground||destroyed)return;retireSharePresentation();if(informationDialog!=null)informationDialog.dismiss();
         NativePanel panel=new NativePanel(this,"Altro",false);informationDialog=panel;
         ScrollView scroll=new ScrollView(this);LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(20),dp(4),dp(20),dp(20));scroll.addView(body);panel.body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         informationRow(body,"Cambia città / zona",R.drawable.native_map,this::showMap);
@@ -725,12 +728,14 @@ public final class MainActivity extends ComponentActivity {
         TextView label=new TextView(this);label.setText(title);label.setTextSize(16);label.setTextColor(getColor(R.color.shell_text));label.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(label,new LinearLayout.LayoutParams(0,-2,1));TextView arrow=new TextView(this);arrow.setText("›");arrow.setTextSize(22);arrow.setTextColor(getColor(R.color.muted_text));arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(arrow);body.addView(row,new LinearLayout.LayoutParams(-1,-2));View separator=new View(this);separator.setBackgroundColor(getColor(R.color.surface_line));body.addView(separator,new LinearLayout.LayoutParams(-1,dp(1)));
     }
     private void showBundledRules() {
+        retireSharePresentation();
         String rules;try(java.io.InputStream input=getAssets().open("terms.md")){rules=PrivacyDocument.read(input);}catch(IOException unavailable){rules=getString(R.string.rules_unavailable);}
         TextView text=new TextView(this);text.setText(rules);text.setTextSize(16);text.setPadding(dp(20),dp(12),dp(20),dp(20));text.setTextIsSelectable(true);ScrollView scroll=new ScrollView(this);scroll.addView(text);
         informationDialog=new AlertDialog.Builder(this).setTitle("Linee guida della community").setView(scroll).setPositiveButton(R.string.close,null).create();informationDialog.show();
     }
     private void showLocationHelp() {
         if (destroyed) return;
+        retireSharePresentation();
         cancelLocation();
         locationHelpDialog = new AlertDialog.Builder(this).setTitle(R.string.location_help_title)
                 .setMessage(R.string.location_help_body).setNegativeButton(R.string.close, null)
@@ -746,6 +751,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void showPrivacy() {
         if (destroyed) return;
+        retireSharePresentation();
         if (privacyDialog != null) privacyDialog.dismiss();
         String policy;
         try (InputStream asset = getAssets().open("privacy.md")) {

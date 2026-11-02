@@ -85,9 +85,37 @@ public class PriceShareRuntimeTest {
             File created=new File(new File(activity.getCacheDir(),"price-share"),uri.getLastPathSegment());assertTrue(created.getName().matches("price-[a-f0-9-]{36}\\.png"));assertTrue(created.delete());
         }finally{instrumentation.removeMonitor(monitor);onMain(()->{if(shown.get()!=null)shown.get().dismiss();});}
     }
+    @Test public void nativePanelsRetireHeldShareCallbacksAndTheirFiveSecondFallback()throws Exception {
+        load();String valid=evaluate(PriceShareSnapshot.SCRIPT);HoldingWebView held=(HoldingWebView)web;java.util.concurrent.atomic.AtomicInteger choosers=new java.util.concurrent.atomic.AtomicInteger();
+        Instrumentation.ActivityMonitor monitor=new Instrumentation.ActivityMonitor(){@Override public Instrumentation.ActivityResult onStartActivity(Intent intent){if(!Intent.ACTION_CHOOSER.equals(intent.getAction()))return null;choosers.incrementAndGet();return new Instrumentation.ActivityResult(android.app.Activity.RESULT_CANCELED,null);}};
+        instrumentation.addMonitor(monitor);
+        onMain(()->{setField("website",web);setField("hasUsablePage",true);setField("testLabPolicy",TestLabPolicy.detect(()->null));held.holdShare=true;});
+        try{
+            for(String method:new String[]{"showInformation","showPrivacy","showLocationHelp"})onMain(()->{
+                invoke("share");assertNotNull("Actual share read must be held",held.pending.get());long generation=(Long)getField("shareCapture");
+                if(method.equals("showInformation")){try{java.lang.reflect.Method factory=MainActivity.class.getDeclaredMethod("createBrowserMenu",android.view.View.class);factory.setAccessible(true);android.widget.PopupMenu menu=(android.widget.PopupMenu)factory.invoke(activity,new android.view.View(activity));assertTrue(menu.getMenu().performIdentifierAction(R.id.information,0));}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+                else invoke(method);
+                assertTrue("Native panel retires pending share",(Long)getField("shareCapture")>generation);held.pending.getAndSet(null).onReceiveValue(valid);assertNull(getField("shareDialog"));
+                String field=method.equals("showInformation")?"informationDialog":method.equals("showPrivacy")?"privacyDialog":"locationHelpDialog";android.app.Dialog panel=(android.app.Dialog)getField(field);assertNotNull(panel);assertTrue(panel.isShowing());panel.dismiss();
+            });
+            Thread.sleep(5300);instrumentation.waitForIdleSync();onMain(()->assertNull(getField("shareDialog")));assertEquals("Retired timeouts cannot open a chooser after the newer panel closes",0,choosers.get());
+        }finally{instrumentation.removeMonitor(monitor);onMain(()->{invoke("retireSharePresentation");setField("website",null);setField("hasUsablePage",false);held.holdShare=false;});}
+    }
+    @Test public void fullScreenPanelsApplySystemBarsAndHardwareCutoutInsets() {
+        org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT>=30);
+        onMain(()->{NativePanel panel=new NativePanel(activity,"Altro",false);panel.show();android.view.WindowInsets insets=new android.view.WindowInsets.Builder().setInsets(android.view.WindowInsets.Type.systemBars(),android.graphics.Insets.of(0,24,0,28)).setInsets(android.view.WindowInsets.Type.displayCutout(),android.graphics.Insets.of(36,0,12,0)).build();panel.body.dispatchApplyWindowInsets(insets);assertEquals(36,panel.body.getPaddingLeft());assertEquals(24,panel.body.getPaddingTop());assertEquals(12,panel.body.getPaddingRight());assertEquals(28,panel.body.getPaddingBottom());panel.dismiss();});
+    }
+    private Object getField(String name){try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField(name);field.setAccessible(true);return field.get(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+    private void setField(String name,Object value){try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField(name);field.setAccessible(true);field.set(activity,value);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+    private void invoke(String name){try{java.lang.reflect.Method method=MainActivity.class.getDeclaredMethod(name);method.setAccessible(true);method.invoke(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+    private static final class HoldingWebView extends WebView {
+        boolean holdShare;final AtomicReference<android.webkit.ValueCallback<String>> pending=new AtomicReference<>();
+        HoldingWebView(android.content.Context context){super(context);}
+        @Override public void evaluateJavascript(String script,android.webkit.ValueCallback<String> callback){if(holdShare&&script.equals(PriceShareSnapshot.SCRIPT)){pending.set(callback);return;}super.evaluateJavascript(script,callback);}
+    }
     private android.view.View findAction(android.view.View view,String label){if(label.contentEquals(view.getContentDescription()==null?"":view.getContentDescription()))return view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.view.View found=findAction(group.getChildAt(i),label);if(found!=null)return found;}}return null;}
     private String allText(android.view.View view){StringBuilder text=new StringBuilder();if(view instanceof android.widget.TextView)text.append(((android.widget.TextView)view).getText());if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++)text.append(' ').append(allText(group.getChildAt(i)));}return text.toString();}
-    private void load()throws Exception{CountDownLatch loaded=new CountDownLatch(1);onMain(()->{web=new WebView(activity);web.getSettings().setJavaScriptEnabled(true);web.getSettings().setBlockNetworkLoads(true);web.setWebViewClient(new WebViewClient(){@Override public void onPageFinished(WebView view,String url){loaded.countDown();}});activity.setContentView(web);web.loadDataWithBaseURL(URL,HTML,"text/html","UTF-8",null);});assertTrue("Owned DOM load deadline",loaded.await(5,TimeUnit.SECONDS));}
+    private void load()throws Exception{CountDownLatch loaded=new CountDownLatch(1);onMain(()->{web=new HoldingWebView(activity);web.getSettings().setJavaScriptEnabled(true);web.getSettings().setBlockNetworkLoads(true);web.setWebViewClient(new WebViewClient(){@Override public void onPageFinished(WebView view,String url){loaded.countDown();}});activity.setContentView(web);web.loadDataWithBaseURL(URL,HTML,"text/html","UTF-8",null);});assertTrue("Owned DOM load deadline",loaded.await(5,TimeUnit.SECONDS));}
     private String evaluate(String script)throws Exception{CountDownLatch done=new CountDownLatch(1);AtomicReference<String> result=new AtomicReference<>();onMain(()->web.evaluateJavascript(script,value->{result.set(value);done.countDown();}));assertTrue("Owned DOM callback deadline",done.await(5,TimeUnit.SECONDS));return result.get();}
     private void onMain(Runnable action){instrumentation.runOnMainSync(action);instrumentation.waitForIdleSync();}
 }

@@ -60,12 +60,16 @@ public final class DiscoveryRuntimeTest {
         onMain(()->{assertEquals("negroni",screen.selectedDrink());assertEquals(1,screen.selectedBand());assertEquals(0,rows().getChildCount());assertFalse(text(rows()).contains("0,00"));});
         assertEquals(before,requests.get());
     }
-    @Test public void narrow320HeaderStacksAndKeepsAllControlsInsideItsMeasuredWidth() {
+    @Test public void bandLabelsNeverEllipsizeOrOverflowAt320393And411Dp() {
         android.content.res.Resources resources=activity.getResources();android.content.res.Configuration saved=new android.content.res.Configuration(resources.getConfiguration());
         try{
-            onMain(()->{android.content.res.Configuration narrow=new android.content.res.Configuration(saved);narrow.screenWidthDp=320;resources.updateConfiguration(narrow,resources.getDisplayMetrics());});
             show(true,null);
-            onMain(()->{float density=resources.getDisplayMetrics().density;View root=screen.view();root.measure(View.MeasureSpec.makeMeasureSpec(Math.round(320*density),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(600*density),View.MeasureSpec.EXACTLY));root.layout(0,0,Math.round(320*density),Math.round(600*density));LinearLayout header=root.findViewWithTag("discovery.header");assertEquals(LinearLayout.VERTICAL,header.getOrientation());LinearLayout controls=(LinearLayout)header.getChildAt(1);for(int index=0;index<controls.getChildCount();index++){View control=controls.getChildAt(index);assertTrue(control.getLeft()>=0);assertTrue(control.getRight()<=controls.getWidth());assertTrue(control.getWidth()>=Math.round(44*density));assertTrue(control.getHeight()>=Math.round(44*density));}});
+            for(int width:new int[]{320,393,411})for(int selected:new int[]{0,1})onMain(()->{
+                android.content.res.Configuration configuration=new android.content.res.Configuration(saved);configuration.screenWidthDp=width;resources.updateConfiguration(configuration,resources.getDisplayMetrics());
+                Spinner band=activity.findViewById(R.id.discovery_band);band.setSelection(selected,false);float density=resources.getDisplayMetrics().density;View root=screen.view();root.measure(View.MeasureSpec.makeMeasureSpec(Math.round(width*density),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(600*density),View.MeasureSpec.EXACTLY));root.layout(0,0,Math.round(width*density),Math.round(600*density));
+                LinearLayout header=root.findViewWithTag("discovery.header");if(width==320)assertEquals(LinearLayout.VERTICAL,header.getOrientation());LinearLayout controls=(LinearLayout)header.getChildAt(1);for(int index=0;index<controls.getChildCount();index++){View control=controls.getChildAt(index);assertTrue(control.getLeft()>=0);assertTrue(control.getRight()<=controls.getWidth());assertTrue(control.getWidth()>=Math.round(44*density));assertTrue(control.getHeight()>=Math.round(44*density));}
+                TextView label=(TextView)band.getSelectedView();assertNotNull(label);assertEquals(activity.getString(selected==0?R.string.favorites_normal:R.string.favorites_happy_hour),label.getText().toString());android.text.Layout layout=label.getLayout();assertNotNull(layout);assertTrue(layout.getLineCount()>0);for(int line=0;line<layout.getLineCount();line++){assertEquals("Band label ellipsis at "+width+"dp",0,layout.getEllipsisCount(line));assertTrue("Band label overflow at "+width+"dp",layout.getLineWidth(line)<=label.getWidth()-label.getPaddingLeft()-label.getPaddingRight()+1);}
+            });
         }finally{onMain(()->resources.updateConfiguration(saved,resources.getDisplayMetrics()));}
     }
     private void show(boolean unavailable,DiscoveryArea area){onMain(()->{

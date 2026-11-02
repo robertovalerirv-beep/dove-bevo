@@ -6,4 +6,6 @@ Seventeen independent public source bodies are pinned. Named items, qualified se
 
 The unchanged original importer, tracer and source-isolation runner enforce exact source bytes, catalogue equality, production binding and atomic existing-price/history/report/hidden barriers. Approval indices are empty until actual audit receipts are independently reviewed. Protected operations are dispatched sequentially. Only completed inserted receipts plus fresh public reads count as published.
 
-Manifest SHA256: `64aefbe371e57e0659312ee77f0fbadb896c95df8f2711b7ab2f3628fb240623`.
+Manifest SHA256: `7935c23a27e1c6a6260353c4149b100c09e5d0babab86c627d64b12b8faac55c`.
+
+Independent pre-apply review corrected neutral water packaging descriptions at Kaffan, Rock House and Elfo. Dorian Gray's normal live response had the same pinned canonical hash but clearly lists Negroni and Aperol Spritz at seven EUR; the initial six-EUR reading came from stale extracted text. Both candidate amounts are corrected to 700 before any apply. No public price was changed by this correction. A new exact-manifest read-only audit is required; the original v1 audit remains a historical zero-write operation.

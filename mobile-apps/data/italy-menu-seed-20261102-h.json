@@ -305,7 +305,7 @@
       "source_format": "html_text_v1",
       "currency": "EUR",
       "menu_item": "Acqua - 50 cl",
-      "serving_note": "500 ml bottle; no inferred larger serving",
+      "serving_note": "500 ml serving; no inferred larger serving",
       "conditions": "none"
     },
     {
@@ -533,7 +533,7 @@
       "source_format": "raw",
       "currency": "EUR",
       "menu_item": "Acqua naturale - 50 cl",
-      "serving_note": "500 ml bottle; sparkling same price",
+      "serving_note": "500 ml serving; sparkling same price",
       "conditions": "none"
     },
     {
@@ -761,7 +761,7 @@
       "source_format": "html_text_v1",
       "currency": "EUR",
       "menu_item": "Acqua naturale - 50 cl",
-      "serving_note": "500 ml bottle; sparkling same price",
+      "serving_note": "500 ml serving; sparkling same price",
       "conditions": "none"
     },
     {
@@ -811,7 +811,7 @@
       "lon": 9.10574,
       "drink": "negroni",
       "hh": 0,
-      "cents": 600,
+      "cents": 700,
       "source_url": "https://doriangrays.it/drink-menu/",
       "source_sha256": "d2a80ba66f8d8afef1a0d22885f25fdd2bb0ed262a64d42dbfd1812676230add",
       "identity_note": "Owner Dorian Gray drink menu and Via Giorgio Asproni 35 Cagliari match existing catalogue. Full owner food home and events text reviewed without mandatory fee. Premium variants excluded.",
@@ -830,7 +830,7 @@
       "lon": 9.10574,
       "drink": "spritz",
       "hh": 0,
-      "cents": 600,
+      "cents": 700,
       "source_url": "https://doriangrays.it/drink-menu/",
       "source_sha256": "d2a80ba66f8d8afef1a0d22885f25fdd2bb0ed262a64d42dbfd1812676230add",
       "identity_note": "Owner Dorian Gray drink menu and Via Giorgio Asproni 35 Cagliari match existing catalogue. Full owner food home and events text reviewed without mandatory fee. Premium variants excluded.",

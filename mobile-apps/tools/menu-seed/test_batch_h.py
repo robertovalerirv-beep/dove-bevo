@@ -6,7 +6,7 @@ MANIFEST = Path(__file__).resolve().parents[2] / "data/italy-menu-seed-20261102-
 class BatchHTests(unittest.TestCase):
     def test_exact_reviewed_batch_preserves_major_city_scope(self):
         raw=MANIFEST.read_bytes()
-        self.assertEqual(hashlib.sha256(raw).hexdigest(), "64aefbe371e57e0659312ee77f0fbadb896c95df8f2711b7ab2f3628fb240623")
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), "7935c23a27e1c6a6260353c4149b100c09e5d0babab86c627d64b12b8faac55c")
         doc=core.validate(raw)
         self.assertEqual(doc["schema_version"], 4)
         self.assertEqual(len(doc["records"]), 50)

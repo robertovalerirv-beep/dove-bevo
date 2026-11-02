@@ -1,0 +1,7045 @@
+{
+  "schema_version": 1,
+  "checked_on": "2026-11-02",
+  "catalogue_version": "20261101",
+  "scope": "existing public unpriced nodes in four Italian city catalogues",
+  "inventory_complete": false,
+  "requested_nodes": 1718,
+  "source_candidates": 368,
+  "held_nodes": 1350,
+  "held_reason_counts": {
+    "no_url_tags": 1336,
+    "invalid_url_tags": 14
+  },
+  "not_node_targets": 38,
+  "remaining_menu_eligible": null,
+  "candidate_city_counts": {
+    "Milano": 177,
+    "Roma": 125,
+    "Torino": 50,
+    "Napoli": 16
+  },
+  "limits": [
+    "Unverified public OSM website/menu tags; no prices are approved by this source queue",
+    "Exact current OSM names and rounded coordinates matched the published catalogue",
+    "Some surrounding inventory cells failed; conservative completeness remains false",
+    "Relations and ways were not queried by the node-only metadata tool"
+  ],
+  "candidates": [
+    {
+      "key": "n1003136479",
+      "name": "Shatar Pub",
+      "kind": 2,
+      "lat": 45.47266,
+      "lon": 9.14297,
+      "address": "Via Daniele Ricciarelli 8",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Shatar Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.shatarpub.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10035801726",
+      "name": "Mathilda Cafe",
+      "kind": 1,
+      "lat": 45.48801,
+      "lon": 9.17064,
+      "address": "Via Cenisio 10",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Mathilda Cafe",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://mathildacafe.eatbu.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10049891804",
+      "name": "Ugo Cocktail Bar",
+      "kind": 1,
+      "lat": 45.45192,
+      "lon": 9.17352,
+      "address": "Via Corsico 12",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Ugo Cocktail Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ugobar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10171157780",
+      "name": "Rare Sports Pub",
+      "kind": 2,
+      "lat": 45.45105,
+      "lon": 9.19166,
+      "address": "Viale Bligny 21",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Rare Sports Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://raresportsbar.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10220153085",
+      "name": "Enoteca naturale",
+      "kind": 1,
+      "lat": 45.4534,
+      "lon": 9.18198,
+      "address": "Via Santa Croce 19",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Enoteca naturale",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://enotecanaturale.it/",
+        "website:menu": "https://linktr.ee/enotecanaturale"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10250780208",
+      "name": "Mag La Pusterla",
+      "kind": 1,
+      "lat": 45.45871,
+      "lon": 9.17829,
+      "address": "Via Edmondo De Amicis 22",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Mag La Pusterla",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://farmily.webflow.io/locali/mag-pusterla"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10692066207",
+      "name": "Harris Bar",
+      "kind": 1,
+      "lat": 45.45386,
+      "lon": 9.15809,
+      "address": "Via Andrea Solari 50",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Harris Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.harrisbarmilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10757256980",
+      "name": "Anarres",
+      "kind": 1,
+      "lat": 45.49301,
+      "lon": 9.22076,
+      "address": "Via Pietro Crespi 11",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Anarres",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.anarres.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11046200967",
+      "name": "Apophis Club",
+      "kind": 4,
+      "lat": 45.46259,
+      "lon": 9.19605,
+      "address": "Via Carlo Giuseppe Merlo 3",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Apophis Club",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.apophisclub.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11232198302",
+      "name": "Bar Taita",
+      "kind": 1,
+      "lat": 45.47292,
+      "lon": 9.23519,
+      "address": "Largo Oreste Murani 2",
+      "cell": "u0ndd",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bar Taita",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://bartaita.eatbu.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11545591134",
+      "name": "Santeria Toscana 31",
+      "kind": 2,
+      "lat": 45.44564,
+      "lon": 9.18835,
+      "address": "Viale Toscana 31",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Santeria Toscana 31",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.santeria.milano.it/toscana-31"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11776284205",
+      "name": "Bierfabrik",
+      "kind": 2,
+      "lat": 45.48026,
+      "lon": 9.21252,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bierfabrik",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.bierfabrik.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11879389710",
+      "name": "The Roof Milano Bar & Restaurant",
+      "kind": 1,
+      "lat": 45.46083,
+      "lon": 9.1887,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The Roof Milano Bar & Restaurant",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.deicavaliericollection.com/en/the-roof/index"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1189928796",
+      "name": "Lost in Town",
+      "kind": 1,
+      "lat": 45.48394,
+      "lon": 9.16403,
+      "address": "Via Piero della Francesca 38",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Lost in Town",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.lostintown-milano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11933928501",
+      "name": "Larga 8",
+      "kind": 2,
+      "lat": 45.44244,
+      "lon": 9.17906,
+      "address": "Via Giuseppe Meda 29",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Larga 8",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.larga8.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12040266987",
+      "name": "La Buttiga Franco's Room",
+      "kind": 2,
+      "lat": 45.44835,
+      "lon": 9.1867,
+      "address": "Via Gian Carlo Castelbarco 17",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "La Buttiga Franco's Room",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.labuttiga.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12072440574",
+      "name": "Magazzini Generali",
+      "kind": 4,
+      "lat": 45.4441,
+      "lon": 9.19526,
+      "address": "Via Pietrasanta 16",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Magazzini Generali",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.magazzinigenerali.org/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12138549985",
+      "name": "Daisy American Garden",
+      "kind": 1,
+      "lat": 45.44985,
+      "lon": 9.16781,
+      "address": "Ripa di Porta Ticinese 79",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Daisy American Garden",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.instagram.com/daisyamericangarden/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12312606584",
+      "name": "Lido Liquor Bar",
+      "kind": 1,
+      "lat": 45.45653,
+      "lon": 9.17324,
+      "address": "Piazzale Antonio Cantore 4n06",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Lido Liquor Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://lidoliquorbar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12314004032",
+      "name": "Noma29",
+      "kind": 2,
+      "lat": 45.48361,
+      "lon": 9.16422,
+      "address": "Via Piero della Francesca 29",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Noma29",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.noma29.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12348772101",
+      "name": "Ultramarino",
+      "kind": 1,
+      "lat": 45.47427,
+      "lon": 9.20935,
+      "address": "Via Lambro 9",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Ultramarino",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.instagram.com/ultramarino.bar/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12473545247",
+      "name": "Incipit23 Bistrot Letterario",
+      "kind": 1,
+      "lat": 45.48891,
+      "lon": 9.22933,
+      "address": "Via Casoretto 42",
+      "cell": "u0ndf",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Incipit23 Bistrot Letterario",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://bistrot.incipit23.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12561025805",
+      "name": "The Ghost Pub",
+      "kind": 2,
+      "lat": 45.4985,
+      "lon": 9.18634,
+      "address": "Piazzale Carlo Maciachini 10",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The Ghost Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://ghostpub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12797464515",
+      "name": "Alcatraz",
+      "kind": 4,
+      "lat": 45.4945,
+      "lon": 9.18263,
+      "address": "Via Valtellina 25",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Alcatraz",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://alcatrazmilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1285244654",
+      "name": "Bar Bianco",
+      "kind": 1,
+      "lat": 45.47355,
+      "lon": 9.17753,
+      "address": "Viale Ibsen 4",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bar Bianco",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.barbiancomilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12871171234",
+      "name": "Funky",
+      "kind": 1,
+      "lat": 45.45156,
+      "lon": 9.17452,
+      "address": "Ripa di Porta Ticinese 33",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Funky",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://funky.eatbu.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12875290990",
+      "name": "Bar Arca",
+      "kind": 1,
+      "lat": 45.4411,
+      "lon": 9.16909,
+      "address": "Via Rimini 38",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bar Arca",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.arcamilano.eu/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12895664961",
+      "name": "8 Malpighi",
+      "kind": 1,
+      "lat": 45.47459,
+      "lon": 9.20763,
+      "address": "Via Marcello Malpighi 8",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "8 Malpighi",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://malpighi8.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12898930855",
+      "name": "The View Milano",
+      "kind": 1,
+      "lat": 45.46493,
+      "lon": 9.18959,
+      "address": "Piazza del Duomo 21",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The View Milano",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://theviewmilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13062212242",
+      "name": "Officine Sbiellate",
+      "kind": 2,
+      "lat": 45.44995,
+      "lon": 9.18583,
+      "address": "Via Pietro Teuliè 20",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Officine Sbiellate",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.officinesbiellatemilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13091038735",
+      "name": "Porter House Milano",
+      "kind": 2,
+      "lat": 45.44492,
+      "lon": 9.1949,
+      "address": "Via Pompeo Leoni 5",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Porter House Milano",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.porterhousemilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13357512351",
+      "name": "Wave Cocktail Bar",
+      "kind": 1,
+      "lat": 45.45933,
+      "lon": 9.17724,
+      "address": "Via Edmondo De Amicis 28",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Wave Cocktail Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://wavecocktailbar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13381827013",
+      "name": "The Walrus Pub",
+      "kind": 2,
+      "lat": 45.45298,
+      "lon": 9.17212,
+      "address": "Via Vigevano 33",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The Walrus Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://thewalruspub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13447831809",
+      "name": "Baratie",
+      "kind": 1,
+      "lat": 45.45516,
+      "lon": 9.15799,
+      "address": "Via Enrico Stendhal 49",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Baratie",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://baratie.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13482201201",
+      "name": "Il Beerla",
+      "kind": 2,
+      "lat": 45.45139,
+      "lon": 9.18663,
+      "address": "Via Pietro Teuliè 1",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Il Beerla",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ilbeerla.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13538577001",
+      "name": "Buttiga",
+      "kind": 2,
+      "lat": 45.44715,
+      "lon": 9.20772,
+      "address": "Viale Isonzo 10",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Buttiga",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.labuttiga.it",
+        "website:menu": "https://www.labuttiga.it/_files/ugd/9fa049_9352b493e60e4f67aaa1b8b42d5e4483.pdf"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13543749848",
+      "name": "Offside Sports Pub",
+      "kind": 2,
+      "lat": 45.48715,
+      "lon": 9.1658,
+      "address": "Via Losanna 46",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Offside Sports Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.offsidesportspub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13547154401",
+      "name": "Da Giacomo",
+      "kind": 3,
+      "lat": 45.4396,
+      "lon": 9.22384,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Da Giacomo",
+      "name_agreement": true,
+      "url_tags": {
+        "website:menu": "https://www.leggimenu.it/menu/dagiacomocraftbeer"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13566623901",
+      "name": "Attimi Bar & Gelateria",
+      "kind": 1,
+      "lat": 45.46888,
+      "lon": 9.15633,
+      "address": "Piazza Riccardo Wagner 2",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Attimi Bar & Gelateria",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.cooperativaisemprevivi.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13639424103",
+      "name": "Myst",
+      "kind": 2,
+      "lat": 45.48392,
+      "lon": 9.23458,
+      "address": "",
+      "cell": "u0ndf",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Myst",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.mystmilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13641886702",
+      "name": "Alchimia",
+      "kind": 1,
+      "lat": 45.44601,
+      "lon": 9.18075,
+      "address": "Via Francesco Brioschi 17",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Alchimia",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.alchimia-milano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13655717569",
+      "name": "Church81",
+      "kind": 1,
+      "lat": 45.4286,
+      "lon": 9.17124,
+      "address": "Via della Chiesa Rossa 81",
+      "cell": "u0nd2",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Church81",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.church81.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13816813881",
+      "name": "Justme Milano",
+      "kind": 4,
+      "lat": 45.47313,
+      "lon": 9.17295,
+      "address": "Viale Guglielmo Shakespeare",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Justme Milano",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://milano.cavalliclub.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n14066139394",
+      "name": "Reeb",
+      "kind": 2,
+      "lat": 45.44659,
+      "lon": 9.19597,
+      "address": "Viale Toscana 6",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Reeb",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://reeb.pub/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n14079389601",
+      "name": "Bob The Other Side",
+      "kind": 1,
+      "lat": 45.48946,
+      "lon": 9.18922,
+      "address": "Via Pietro Borsieri 32",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bob The Other Side",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.bobmilano.it/the-other-side"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1679694028",
+      "name": "Birrificio Lambrate",
+      "kind": 2,
+      "lat": 45.47968,
+      "lon": 9.23447,
+      "address": "Via Camillo Golgi 60",
+      "cell": "u0ndd",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Birrificio Lambrate",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://birrificiolambrate.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1726715782",
+      "name": "O' Connell Country Pub",
+      "kind": 2,
+      "lat": 45.46968,
+      "lon": 9.18794,
+      "address": "Via Brera 3",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "O' Connell Country Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.oconnellirishpubmilanobrera.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1853370614",
+      "name": "Rita's Tikiroom",
+      "kind": 1,
+      "lat": 45.45049,
+      "lon": 9.16952,
+      "address": "Ripa di Porta Ticinese 69",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Rita's Tikiroom",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ritastikiroom.com/it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1923838407",
+      "name": "Brasserie Bruxelles",
+      "kind": 2,
+      "lat": 45.47874,
+      "lon": 9.21673,
+      "address": "Viale Abruzzi 33",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Brasserie Bruxelles",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.brasseriebruxelles.eu"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2093480255",
+      "name": "Spiller",
+      "kind": 2,
+      "lat": 45.49113,
+      "lon": 9.18599,
+      "address": "",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Spiller",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://spillerbirrerie.it",
+        "website:menu": "https://spillerbirrerie.it/menu/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2106515265",
+      "name": "Isola Della Birra",
+      "kind": 2,
+      "lat": 45.48971,
+      "lon": 9.18532,
+      "address": "Via Medardo Rosso 18",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Isola Della Birra",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.isoladellabirra.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2164541068",
+      "name": "Akane Lounge Bar",
+      "kind": 1,
+      "lat": 45.47886,
+      "lon": 9.21346,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Akane Lounge Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.akaneloungebar.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2219734555",
+      "name": "Dito Divino",
+      "kind": 1,
+      "lat": 45.46522,
+      "lon": 9.18403,
+      "address": "Via Gaetano Negri 8",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Dito Divino",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ditodivino.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2226485067",
+      "name": "Gate",
+      "kind": 4,
+      "lat": 45.49438,
+      "lon": 9.18191,
+      "address": "Via Valtellina 21",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Gate",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.gatemilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2226705938",
+      "name": "Pico Brew Station",
+      "kind": 2,
+      "lat": 45.4452,
+      "lon": 9.17669,
+      "address": "Via Ascanio Sforza 63",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Pico Brew Station",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.picobrew.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2262460457",
+      "name": "Spritz",
+      "kind": 1,
+      "lat": 45.45198,
+      "lon": 9.17659,
+      "address": "Ripa di Porta Ticinese 9",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Spritz",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.leggimenu.it/menu/spritznaviglimilano"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2262460459",
+      "name": "La Ringhiera",
+      "kind": 2,
+      "lat": 45.4521,
+      "lon": 9.17724,
+      "address": "Ripa di Porta Ticinese 5",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "La Ringhiera",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.laringhierapub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2272639841",
+      "name": "11 Clubroom",
+      "kind": 4,
+      "lat": 45.48242,
+      "lon": 9.18681,
+      "address": "Via Alessio di Tocqueville 11",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "11 Clubroom",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.11milano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2356391600",
+      "name": "Spiller",
+      "kind": 1,
+      "lat": 45.4622,
+      "lon": 9.19296,
+      "address": "Via Larga 8",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Spiller",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.spillerbirrerie.it/",
+        "website:menu": "https://www.spillerbirrerie.it/it/menu.html"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2447394517",
+      "name": "Nicol",
+      "kind": 1,
+      "lat": 45.45828,
+      "lon": 9.18751,
+      "address": "Corso Italia 14",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Nicol",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.nicol.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2540438679",
+      "name": "Balubà",
+      "kind": 1,
+      "lat": 45.46138,
+      "lon": 9.21191,
+      "address": "Via Carlo Foldi 1",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Balubà",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.balubabar.net/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n269924613",
+      "name": "Radetzky Café",
+      "kind": 1,
+      "lat": 45.47844,
+      "lon": 9.18505,
+      "address": "Largo La Foppa 5",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Radetzky Café",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.radetzky.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n269924649",
+      "name": "Scott Duff",
+      "kind": 2,
+      "lat": 45.47992,
+      "lon": 9.18327,
+      "address": "Via Alessandro Volta 13",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Scott Duff",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://scottduff.it/",
+        "website:menu": "https://scottduff.it/menu/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2719628296",
+      "name": "Blue Note",
+      "kind": 4,
+      "lat": 45.48953,
+      "lon": 9.18885,
+      "address": "Via Pietro Borsieri 37",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Blue Note",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.bluenotemilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2724178332",
+      "name": "LoolaPaloosa",
+      "kind": 4,
+      "lat": 45.48252,
+      "lon": 9.18719,
+      "address": "Corso Como 15",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "LoolaPaloosa",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.loolapaloosa.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2744645399",
+      "name": "Abbracci Bistrot",
+      "kind": 1,
+      "lat": 45.45126,
+      "lon": 9.17119,
+      "address": "Via Casale 7",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Abbracci Bistrot",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://abbraccibistrot.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2758108717",
+      "name": "Concordia Enoteca",
+      "kind": 2,
+      "lat": 45.45075,
+      "lon": 9.17075,
+      "address": "Ripa di Porta Ticinese 61",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Concordia Enoteca",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.cantinaconcordia.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2774913913",
+      "name": "Blues Canal",
+      "kind": 2,
+      "lat": 45.45158,
+      "lon": 9.17087,
+      "address": "Via Casale 7",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Blues Canal",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.bluescanalmilano.com/",
+        "website:menu": "https://www.bluescanalmilano.com/menu"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2915115151",
+      "name": "Moscow Mule Bar",
+      "kind": 1,
+      "lat": 45.48686,
+      "lon": 9.23011,
+      "address": "Via Teodosio, 60 60",
+      "cell": "u0ndf",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Moscow Mule Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.moscow-mule.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2933256401",
+      "name": "Casa Giuditta",
+      "kind": 1,
+      "lat": 45.46946,
+      "lon": 9.22204,
+      "address": "Via Carlo Goldoni 86",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Casa Giuditta",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.casagiudittamilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2993628023",
+      "name": "Armani Privè",
+      "kind": 4,
+      "lat": 45.47088,
+      "lon": 9.19299,
+      "address": "Via Alessandro Manzoni 31",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Armani Privè",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.milan.armanihotels.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n301979235",
+      "name": "Wizard",
+      "kind": 2,
+      "lat": 45.45043,
+      "lon": 9.16925,
+      "address": "Ripa di Porta Ticinese 69",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Wizard",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://thewizardpub.wordpress.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n304775595",
+      "name": "Bar Magenta",
+      "kind": 2,
+      "lat": 45.46569,
+      "lon": 9.17566,
+      "address": "Via Giosuè Carducci 13",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bar Magenta",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://barmagenta.it/",
+        "website:menu": "https://dishcovery.menu/app/restaurants/4ecf90248ea07eaf0fe52ab46e9545db"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3049190340",
+      "name": "Ceresio 7",
+      "kind": 1,
+      "lat": 45.48352,
+      "lon": 9.18031,
+      "address": "Via Ceresio 7",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Ceresio 7",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ceresio7.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3086120710",
+      "name": "Tipota Pub",
+      "kind": 2,
+      "lat": 45.44524,
+      "lon": 9.18067,
+      "address": "Via Francesco Brioschi 32",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Tipota Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.tipota.net/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3188691739",
+      "name": "Nidaba Theatre",
+      "kind": 2,
+      "lat": 45.44898,
+      "lon": 9.17565,
+      "address": "Via Emilio Gola 12",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Nidaba Theatre",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.nidaba.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3259520916",
+      "name": "Rock'n'Roll Milano",
+      "kind": 2,
+      "lat": 45.49253,
+      "lon": 9.20756,
+      "address": "Via Giuseppe Bruschetti 11",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Rock'n'Roll Milano",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.rocknrollclub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3280579636",
+      "name": "Sloan Square",
+      "kind": 1,
+      "lat": 45.46823,
+      "lon": 9.1779,
+      "address": "",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Sloan Square",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.sloansquare.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3308345146",
+      "name": "I Mas!",
+      "kind": 1,
+      "lat": 45.45196,
+      "lon": 9.17646,
+      "address": "Ripa di Porta Ticinese 11",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "I Mas!",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://lnx.mas-milano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3351978678",
+      "name": "Pinch",
+      "kind": 1,
+      "lat": 45.45073,
+      "lon": 9.17065,
+      "address": "Ripa di Porta Ticinese 63",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Pinch",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.pinchmilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n340096546",
+      "name": "Frida",
+      "kind": 2,
+      "lat": 45.48875,
+      "lon": 9.18711,
+      "address": "Via Antonio Pollaiuolo 3",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Frida",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.fridaisola.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3442415711",
+      "name": "MEZCA",
+      "kind": 1,
+      "lat": 45.4772,
+      "lon": 9.16996,
+      "address": "Corso Sempione 7",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "MEZCA",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.mezca.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3446519536",
+      "name": "Banco",
+      "kind": 2,
+      "lat": 45.45129,
+      "lon": 9.17181,
+      "address": "Alzaia Naviglio Grande 46",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Banco",
+      "name_agreement": true,
+      "url_tags": {
+        "website:menu": "https://mycontactlessmenu.mycia.it/r/q/6H4PYokdl/menu"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3476504958",
+      "name": "Sapori Solari - Cocktail Bistrot",
+      "kind": 2,
+      "lat": 45.47539,
+      "lon": 9.21326,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Sapori Solari - Cocktail Bistrot",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.saporisolari.com/cocktail-bistrot"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3578954006",
+      "name": "La buttiga beer room",
+      "kind": 2,
+      "lat": 45.49757,
+      "lon": 9.20868,
+      "address": "Via Melchiorre Gioia 194",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "La buttiga beer room",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.labuttiga.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n392260544",
+      "name": "Mulligan's",
+      "kind": 2,
+      "lat": 45.4894,
+      "lon": 9.16773,
+      "address": "Via Giuseppe Govone 28",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Mulligan's",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://mulliganspub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n392260637",
+      "name": "The Saints and the Scholars",
+      "kind": 2,
+      "lat": 45.48908,
+      "lon": 9.16752,
+      "address": "",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The Saints and the Scholars",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.thesaintspub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3931786270",
+      "name": "Steven Hill Coffe",
+      "kind": 1,
+      "lat": 45.46204,
+      "lon": 9.20968,
+      "address": "Via Amatore Sciesa 1",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Steven Hill Coffe",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.improntabirraia.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3976155261",
+      "name": "150UP",
+      "kind": 1,
+      "lat": 45.49025,
+      "lon": 9.18473,
+      "address": "Via Medardo Rosso 16",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "150UP",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://150up.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4041811656",
+      "name": "Afterline",
+      "kind": 1,
+      "lat": 45.48897,
+      "lon": 9.20557,
+      "address": "Via Giovanni Battista Sammartini 25",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Afterline",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.afterline.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4049918599",
+      "name": "Ginger Cocktail Lab",
+      "kind": 1,
+      "lat": 45.44967,
+      "lon": 9.17771,
+      "address": "Via Ascanio Sforza 21",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Ginger Cocktail Lab",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.gingercocktailab.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n408781426",
+      "name": "Woodstock",
+      "kind": 2,
+      "lat": 45.44746,
+      "lon": 9.15537,
+      "address": "Via Lodovico il Moro 3",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Woodstock",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.qodeup.com/woodstock"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4170005103",
+      "name": "Porta d'Oro",
+      "kind": 4,
+      "lat": 45.46235,
+      "lon": 9.19044,
+      "address": "Piazza Armando Diaz 3",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Porta d'Oro",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.portadoroclub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4170005832",
+      "name": "Shilling's",
+      "kind": 4,
+      "lat": 45.46195,
+      "lon": 9.19089,
+      "address": "Via Paolo da Cannobio 2",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Shilling's",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.shillings.it/it/shillings"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4170005990",
+      "name": "Venus Night Club",
+      "kind": 4,
+      "lat": 45.46264,
+      "lon": 9.18947,
+      "address": "Via Gaetano Giardino 1",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Venus Night Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.venusnightclub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n418360920",
+      "name": "Blues Bikers Pub",
+      "kind": 2,
+      "lat": 45.44692,
+      "lon": 9.18055,
+      "address": "Via Francesco Brioschi 7",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Blues Bikers Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.bluesbikerspub.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4193435493",
+      "name": "The wall",
+      "kind": 4,
+      "lat": 45.48754,
+      "lon": 9.2358,
+      "address": "Via Plezzo 16",
+      "cell": "u0ndf",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The wall",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.wallmilano.com/club/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4217061020",
+      "name": "The Club",
+      "kind": 4,
+      "lat": 45.47754,
+      "lon": 9.18415,
+      "address": "",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.theclubmilano.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4225439979",
+      "name": "Pineta Milano",
+      "kind": 4,
+      "lat": 45.48619,
+      "lon": 9.17386,
+      "address": "Via Messina 38",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Pineta Milano",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.pinetamilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4240962952",
+      "name": "Il Secco",
+      "kind": 1,
+      "lat": 45.45029,
+      "lon": 9.16971,
+      "address": "Via Angelo Fumagalli 2",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Il Secco",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ilsecco.com/it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4243123595",
+      "name": "The White Flag",
+      "kind": 2,
+      "lat": 45.44463,
+      "lon": 9.21055,
+      "address": "Via Brembo 7",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The White Flag",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.thewhiteflag.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4253568794",
+      "name": "Bar Bianco",
+      "kind": 1,
+      "lat": 45.47438,
+      "lon": 9.20167,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bar Bianco",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.barbiancomilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4277859379",
+      "name": "Birrificio Italiano",
+      "kind": 2,
+      "lat": 45.48831,
+      "lon": 9.20895,
+      "address": "Via Ferrante Aporti 12",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Birrificio Italiano",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.birrificio.it/it/birrificio-italiano-milano"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4338037593",
+      "name": "Mag Cafè",
+      "kind": 1,
+      "lat": 45.4513,
+      "lon": 9.17337,
+      "address": "Ripa di Porta Ticinese 43",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Mag Cafè",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.farmilygroup.com/locali/mag"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4394561475",
+      "name": "Fonderie Milanesi",
+      "kind": 1,
+      "lat": 45.45071,
+      "lon": 9.18421,
+      "address": "Via Giovenale 7",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Fonderie Milanesi",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.fonderiemilanesi.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4394561477",
+      "name": "Officina Milano",
+      "kind": 1,
+      "lat": 45.44991,
+      "lon": 9.1844,
+      "address": "Via Giovenale 7",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Officina Milano",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://officinamilano.eu/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4443912695",
+      "name": "Luca & Andrea",
+      "kind": 1,
+      "lat": 45.45152,
+      "lon": 9.17285,
+      "address": "Alzaia Naviglio Grande 34",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Luca & Andrea",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.lucaeandreabar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4449004403",
+      "name": "The Friends",
+      "kind": 2,
+      "lat": 45.48019,
+      "lon": 9.1934,
+      "address": "Via Monte Santo 12",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The Friends",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.thefriendspubmilano.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4540455890",
+      "name": "Amnesia",
+      "kind": 4,
+      "lat": 45.46304,
+      "lon": 9.24047,
+      "address": "Via Cavriana 7",
+      "cell": "u0ndd",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Amnesia",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.amnesiamilano.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4540472790",
+      "name": "Bamboobar",
+      "kind": 1,
+      "lat": 45.4705,
+      "lon": 9.19295,
+      "address": "Via Alessandro Manzoni 31",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bamboobar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.armanihotelmilano.com/it/bar-e-ristorante/armani-bamboo-bar/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4608531378",
+      "name": "Tom the ordinary market",
+      "kind": 1,
+      "lat": 45.45682,
+      "lon": 9.18429,
+      "address": "Via della Chiusa 1",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Tom the ordinary market",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://theordinarymarket.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4609417632",
+      "name": "Il bar Milano",
+      "kind": 1,
+      "lat": 45.4649,
+      "lon": 9.19183,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Il bar Milano",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.ilbarmilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4609459303",
+      "name": "KOKO",
+      "kind": 1,
+      "lat": 45.46089,
+      "lon": 9.20711,
+      "address": "Viale Regina Margherita 20",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "KOKO",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.kokomilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4641908025",
+      "name": "Ripamonti 130",
+      "kind": 2,
+      "lat": 45.43824,
+      "lon": 9.20008,
+      "address": "Via Giuseppe Ripamonti 130",
+      "cell": "u0nd3",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Ripamonti 130",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ripamonti130.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4663245593",
+      "name": "n'ombra de vin",
+      "kind": 1,
+      "lat": 45.47346,
+      "lon": 9.18799,
+      "address": "Via San Marco 2",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "n'ombra de vin",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.nombradevin.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4708357239",
+      "name": "Nik's & Co",
+      "kind": 2,
+      "lat": 45.49037,
+      "lon": 9.20378,
+      "address": "Via Giovanni Schiaparelli 14",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Nik's & Co",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://niksandco.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4714128503",
+      "name": "Circle",
+      "kind": 1,
+      "lat": 45.4533,
+      "lon": 9.15958,
+      "address": "Via Enrico Stendhal 36",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Circle",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://circlemilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4770096721",
+      "name": "Cape Town Cafe",
+      "kind": 2,
+      "lat": 45.45271,
+      "lon": 9.17567,
+      "address": "Via Vigevano 3",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Cape Town Cafe",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://capetowncafe.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4853779986",
+      "name": "Bibendum Baladin",
+      "kind": 3,
+      "lat": 45.47154,
+      "lon": 9.21452,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bibendum Baladin",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://bibendumenoteca.wixsite.com/site-bibe/gallery",
+        "website:menu": "https://bibendumenoteca.wixsite.com/site-bibe/menu"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4891357722",
+      "name": "Vetra",
+      "kind": 2,
+      "lat": 45.45168,
+      "lon": 9.17927,
+      "address": "Corso Luigi Manusardi 3",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Vetra",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://vetra.beer/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4915608521",
+      "name": "Ral8022",
+      "kind": 1,
+      "lat": 45.45235,
+      "lon": 9.17349,
+      "address": "Via Corsico 3",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Ral8022",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ralmilano.it/ral-cocktail-bar/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4949740193",
+      "name": "La Birrofila",
+      "kind": 2,
+      "lat": 45.43821,
+      "lon": 9.18458,
+      "address": "Via privata Sant'Ampellio 14",
+      "cell": "u0nd3",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "La Birrofila",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://labirrofila.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4954667207",
+      "name": "Happy Cafè",
+      "kind": 1,
+      "lat": 45.45146,
+      "lon": 9.18663,
+      "address": "Via Pietro Teuliè 1",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Happy Cafè",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.happycafemilano.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4978187693",
+      "name": "Nottingham Forest",
+      "kind": 1,
+      "lat": 45.46872,
+      "lon": 9.20671,
+      "address": "Viale Piave 1",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Nottingham Forest",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.nottingham-forest.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4985229451",
+      "name": "Beda House",
+      "kind": 2,
+      "lat": 45.49655,
+      "lon": 9.19227,
+      "address": "Via Gioacchino Murat 2",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Beda House",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.bedahouse.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4998313564",
+      "name": "B Cafè",
+      "kind": 1,
+      "lat": 45.46262,
+      "lon": 9.18345,
+      "address": "Via San Maurilio 20",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "B Cafè",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.bfamilygroup.it/cafe-about/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5154117623",
+      "name": "Bere Buona Birra",
+      "kind": 2,
+      "lat": 45.44805,
+      "lon": 9.20522,
+      "address": "Via Adige 13",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bere Buona Birra",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.berebuonabirra.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5176383323",
+      "name": "Vista Darsena",
+      "kind": 1,
+      "lat": 45.45316,
+      "lon": 9.17677,
+      "address": "Viale Gabriele d'Annunzio",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Vista Darsena",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.vistadarsena.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5183186489",
+      "name": "Eppol Liquors $ Kitchen",
+      "kind": 1,
+      "lat": 45.47487,
+      "lon": 9.20768,
+      "address": "Via Marcello Malpighi 7",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Eppol Liquors $ Kitchen",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.eppolmilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n524320493",
+      "name": "Birrificio Lambrate",
+      "kind": 2,
+      "lat": 45.48571,
+      "lon": 9.23151,
+      "address": "Via Privata Adelchi 5",
+      "cell": "u0ndf",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Birrificio Lambrate",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.birrificiolambrate.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5290174186",
+      "name": "Morna",
+      "kind": 1,
+      "lat": 45.45276,
+      "lon": 9.16631,
+      "address": "Via Tortona 30/A",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Morna",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/people/Morna/100032074466214/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5336318126",
+      "name": "The Gallery Bar",
+      "kind": 2,
+      "lat": 45.45226,
+      "lon": 9.16021,
+      "address": "Via Enrico Stendhal 30",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "The Gallery Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://thegallerybarmilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n534340615",
+      "name": "Au Vieux Strasbourg",
+      "kind": 2,
+      "lat": 45.47367,
+      "lon": 9.23423,
+      "address": "Via Gaetano Strambio 29",
+      "cell": "u0ndd",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Au Vieux Strasbourg",
+      "name_agreement": true,
+      "url_tags": {
+        "website:menu": "https://sites.google.com/view/strassmenu/home-page"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n540813357",
+      "name": "55 Milano",
+      "kind": 1,
+      "lat": 45.48591,
+      "lon": 9.16045,
+      "address": "Via Piero della Francesca 55",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "55 Milano",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.55milano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n540813367",
+      "name": "Il Gattopardo",
+      "kind": 4,
+      "lat": 45.48523,
+      "lon": 9.16144,
+      "address": "Via Piero della Francesca 47",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Il Gattopardo",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ilgattopardomilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5486359530",
+      "name": "Ligh Lime",
+      "kind": 4,
+      "lat": 45.44445,
+      "lon": 9.21619,
+      "address": "Via Tullo Massarani 6",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Ligh Lime",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.limemilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5538301816",
+      "name": "Brewfist pub",
+      "kind": 2,
+      "lat": 45.44635,
+      "lon": 9.17772,
+      "address": "Via Ettore Troilo 14",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Brewfist pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.brewfistpub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5567294347",
+      "name": "Wave Cocktail Bar",
+      "kind": 1,
+      "lat": 45.45921,
+      "lon": 9.17744,
+      "address": "Via Edmondo De Amicis 28",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Wave Cocktail Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.wavecocktailbar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5690450190",
+      "name": "Pavè - Birra",
+      "kind": 2,
+      "lat": 45.47919,
+      "lon": 9.20281,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Pavè - Birra",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.pavemilano.com/en/birra/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5783643554",
+      "name": "Basin",
+      "kind": 1,
+      "lat": 45.48786,
+      "lon": 9.16441,
+      "address": "Via Cenisio 42",
+      "cell": "u0ndb",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Basin",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://instagram.com/basinmilano?igshid=YmMyMTA2M2Y="
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5827501471",
+      "name": "LeccoMilano",
+      "kind": 1,
+      "lat": 45.47692,
+      "lon": 9.20414,
+      "address": "Via Lecco 5",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "LeccoMilano",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.leccomilano.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5846483812",
+      "name": "BackDoor43",
+      "kind": 1,
+      "lat": 45.45132,
+      "lon": 9.17349,
+      "address": "Ripa di Porta Ticinese 43",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "BackDoor43",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.farmilygroup.com/locali/backdoor"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6053139596",
+      "name": "Euro Jolly",
+      "kind": 1,
+      "lat": 45.45405,
+      "lon": 9.17108,
+      "address": "Corso Cristoforo Colombo 13",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Euro Jolly",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://jollybiliardi.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6087470974",
+      "name": "Extasià",
+      "kind": 4,
+      "lat": 45.4635,
+      "lon": 9.19852,
+      "address": "Largo Augusto 7",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Extasià",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.extasiadiscotopless.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6237867330",
+      "name": "Bob Milano",
+      "kind": 1,
+      "lat": 45.48925,
+      "lon": 9.18922,
+      "address": "",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bob Milano",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.bobmilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6298787243",
+      "name": "Cafè Gorille",
+      "kind": 1,
+      "lat": 45.4856,
+      "lon": 9.19161,
+      "address": "Via Gaetano De Castillia 20",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Cafè Gorille",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.cafegorille.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6302943485",
+      "name": "Iter",
+      "kind": 1,
+      "lat": 45.45118,
+      "lon": 9.17444,
+      "address": "Via Mario Fusetti 1",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Iter",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.farmilygroup.com/locali/iter"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6357751985",
+      "name": "Morgante cocktail & soul",
+      "kind": 1,
+      "lat": 45.4522,
+      "lon": 9.17497,
+      "address": "Vicolo Lavandai 2a",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Morgante cocktail & soul",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.morgantecocktail.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6370709685",
+      "name": "Volt Club",
+      "kind": 4,
+      "lat": 45.45689,
+      "lon": 9.18408,
+      "address": "Via Molino delle Armi 16",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Volt Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.voltclub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6380520757",
+      "name": "BeerShow",
+      "kind": 1,
+      "lat": 45.4891,
+      "lon": 9.18923,
+      "address": "",
+      "cell": "u0ndc",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "BeerShow",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://beershowmilano.wixsite.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6449478161",
+      "name": "Tucano",
+      "kind": 4,
+      "lat": 45.43319,
+      "lon": 9.2021,
+      "address": "",
+      "cell": "u0nd3",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Tucano",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.discotucano.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6504496125",
+      "name": "Madison",
+      "kind": 1,
+      "lat": 45.4508,
+      "lon": 9.19932,
+      "address": "Viale Sabotino 12",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Madison",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.madisonmilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n667274860",
+      "name": "La Belle Alliance",
+      "kind": 2,
+      "lat": 45.44625,
+      "lon": 9.17922,
+      "address": "Via Evangelista Torricelli 1",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "La Belle Alliance",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.labellealliance.it",
+        "website:menu": "https://www.labellealliance.it/doc/labellealliance-menu.pdf"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6726568582",
+      "name": "Micrò",
+      "kind": 1,
+      "lat": 45.43093,
+      "lon": 9.173,
+      "address": "",
+      "cell": "u0nd2",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Micrò",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.spaziomicro.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6788402885",
+      "name": "Colibrì",
+      "kind": 1,
+      "lat": 45.46152,
+      "lon": 9.19582,
+      "address": "Via Laghetto 9/11",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Colibrì",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.colibrimilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6847063985",
+      "name": "PoP",
+      "kind": 1,
+      "lat": 45.47634,
+      "lon": 9.20508,
+      "address": "Via Alessandro Tadino 5",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "PoP",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.pop-milano.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6910530501",
+      "name": "Apollo",
+      "kind": 4,
+      "lat": 45.44732,
+      "lon": 9.17471,
+      "address": "Via Giosuè Borsi 9",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Apollo",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.apollomilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6915202747",
+      "name": "Agua Sancta",
+      "kind": 1,
+      "lat": 45.47913,
+      "lon": 9.1859,
+      "address": "",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Agua Sancta",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.aguasancta.it/",
+        "website:menu": "http://www.aguasancta.it/wp-content/uploads/2021/05/menu_2021-.pdf"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6918625411",
+      "name": "Milano Cafè",
+      "kind": 1,
+      "lat": 45.48306,
+      "lon": 9.16995,
+      "address": "Via Giulio Cesare Procaccini 37",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Milano Cafè",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.milanocafe.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6919857026",
+      "name": "Gipsy",
+      "kind": 1,
+      "lat": 45.47954,
+      "lon": 9.23757,
+      "address": "",
+      "cell": "u0ndd",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Gipsy",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://gipsy.fun/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n702126366",
+      "name": "Jazz Cafè",
+      "kind": 1,
+      "lat": 45.47729,
+      "lon": 9.17073,
+      "address": "Corso Sempione 8",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Jazz Cafè",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.jazzcafe.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n702128300",
+      "name": "Pils Pub",
+      "kind": 1,
+      "lat": 45.47731,
+      "lon": 9.17464,
+      "address": "Via Agostino Bertani 2",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Pils Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.pilspub.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n702128708",
+      "name": "Living",
+      "kind": 1,
+      "lat": 45.47636,
+      "lon": 9.17316,
+      "address": "Piazza Sempione 2",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Living",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.livingmilano.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7027043785",
+      "name": "UGO",
+      "kind": 1,
+      "lat": 45.45175,
+      "lon": 9.17359,
+      "address": "Via Corsico 12",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "UGO",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ugobar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7126823730",
+      "name": "Big Store de Milàn",
+      "kind": 1,
+      "lat": 45.45766,
+      "lon": 9.17725,
+      "address": "Via Conca del Naviglio 10",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Big Store de Milàn",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/pages/Big-Store-De-Milan/1823761261247304"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7243592661",
+      "name": "Marco's",
+      "kind": 1,
+      "lat": 45.46271,
+      "lon": 9.17276,
+      "address": "Via San Vittore 6",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Marco's",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://marco-s.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n746951476",
+      "name": "King's Pub",
+      "kind": 2,
+      "lat": 45.45132,
+      "lon": 9.17769,
+      "address": "Alzaia Naviglio Pavese 8",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "King's Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://kingspub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7953838530",
+      "name": "Terrazza Duomo 21",
+      "kind": 1,
+      "lat": 45.4649,
+      "lon": 9.18959,
+      "address": "Piazza del Duomo 21",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Terrazza Duomo 21",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://terrazzaduomo21.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n8669591011",
+      "name": "Winelivery Bar Navigli",
+      "kind": 1,
+      "lat": 45.45205,
+      "lon": 9.17043,
+      "address": "Via Casale 3a",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Winelivery Bar Navigli",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.winelivery.com/it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9041317710",
+      "name": "Babila Bistro",
+      "kind": 1,
+      "lat": 45.46413,
+      "lon": 9.20337,
+      "address": "Via Conservatorio 2a",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Babila Bistro",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.babilahostel.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9253921240",
+      "name": "10gradinord",
+      "kind": 2,
+      "lat": 45.44396,
+      "lon": 9.15436,
+      "address": "Via Giacomo Watt 5",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "10gradinord",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.10gradinord.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9286197152",
+      "name": "Spiller",
+      "kind": 2,
+      "lat": 45.45606,
+      "lon": 9.16483,
+      "address": "Via Andrea Solari 6",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Spiller",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.spillerbirrerie.it/it/",
+        "website:menu": "https://www.spillerbirrerie.it/it/menu/milano-solari-mi.pdf"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9379505885",
+      "name": "Carico",
+      "kind": 1,
+      "lat": 45.4561,
+      "lon": 9.17016,
+      "address": "Via Savona 1",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Carico",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.carico.io/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9466149450",
+      "name": "Cobà",
+      "kind": 2,
+      "lat": 45.44842,
+      "lon": 9.1774,
+      "address": "Via Ascanio Sforza 37a",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Cobà",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://cobamilano.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9888148629",
+      "name": "Terrazza Martini",
+      "kind": 1,
+      "lat": 45.46186,
+      "lon": 9.19,
+      "address": "Piazza Armando Diaz 7",
+      "cell": "u0nd9",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Terrazza Martini",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.martini.com/terrazza-martini/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9900533217",
+      "name": "Norah was drunk",
+      "kind": 1,
+      "lat": 45.48621,
+      "lon": 9.2332,
+      "address": "Piazza Pietro Gobetti 169",
+      "cell": "u0ndf",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Norah was drunk",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://norah-was-drunk.mailchimpsites.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9962701124",
+      "name": "Bobino",
+      "kind": 1,
+      "lat": 45.4536,
+      "lon": 9.16985,
+      "address": "Piazzale Stazione Genova 4",
+      "cell": "u0nd8",
+      "cityID": 62505581,
+      "city": "Milano",
+      "osm_name": "Bobino",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://bobino.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10012023318",
+      "name": "Städlin",
+      "kind": 1,
+      "lat": 41.87195,
+      "lon": 12.47017,
+      "address": "",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Städlin",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.stadlin.club"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10313435009",
+      "name": "Room26",
+      "kind": 4,
+      "lat": 41.8343,
+      "lon": 12.47039,
+      "address": "Piazza Guglielmo Marconi 31",
+      "cell": "sr2vg",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Room26",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.room26.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10675838160",
+      "name": "Pork'n'Roll",
+      "kind": 2,
+      "lat": 41.90775,
+      "lon": 12.53647,
+      "address": "Via Carlo Caneva 15/a",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Pork'n'Roll",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.porknroll.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10692773572",
+      "name": "Mate Bar",
+      "kind": 1,
+      "lat": 41.89164,
+      "lon": 12.4691,
+      "address": "Via Benedetta 17",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Mate Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.m8bar.com/",
+        "website:menu": "http://www.m8bar.com/menu/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10797762152",
+      "name": "Full Moon Club",
+      "kind": 1,
+      "lat": 41.88716,
+      "lon": 12.46824,
+      "address": "Via Luigi Santini 13",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Full Moon Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://fullmoonclub.org/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10871463929",
+      "name": "The Druid's Den",
+      "kind": 2,
+      "lat": 41.89578,
+      "lon": 12.49894,
+      "address": "Via di San Martino ai Monti 27",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "The Druid's Den",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.druidspubrome.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10914778781",
+      "name": "Oro Bistrot",
+      "kind": 1,
+      "lat": 41.89618,
+      "lon": 12.48484,
+      "address": "",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Oro Bistrot",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.orobistrot.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11161724105",
+      "name": "Pandorum, Ludopub",
+      "kind": 2,
+      "lat": 41.882,
+      "lon": 12.45633,
+      "address": "Via Santa Sofia 2",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Pandorum, Ludopub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.pandorumroma.com/ludopub.html"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11300371543",
+      "name": "Lana Mixology & Rooftop bar",
+      "kind": 1,
+      "lat": 41.87219,
+      "lon": 12.47695,
+      "address": "Via del Porto Fluviale 35",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Lana Mixology & Rooftop bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://lanarooftop.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11358804388",
+      "name": "Scomodo Food & Music-Saint Lawrence",
+      "kind": 1,
+      "lat": 41.88328,
+      "lon": 12.53242,
+      "address": "Via Casilina 198",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Scomodo Food & Music-Saint Lawrence",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://scomodofoodmusic.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11481060811",
+      "name": "Slargo",
+      "kind": 1,
+      "lat": 41.91287,
+      "lon": 12.51803,
+      "address": "Largo Ravenna 10",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Slargo",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.slargo.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11482527483",
+      "name": "Mr Hyde Pub",
+      "kind": 2,
+      "lat": 41.88226,
+      "lon": 12.51528,
+      "address": "Largo Vercelli 7",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Mr Hyde Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://mrhydepub.it/",
+        "website:menu": "https://mrhydepub.it/menu/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11482527484",
+      "name": "Salotto Stadlin",
+      "kind": 2,
+      "lat": 41.88232,
+      "lon": 12.5154,
+      "address": "Largo Vercelli 9",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Salotto Stadlin",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.salottostadlin.net/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11573930304",
+      "name": "Tre de Tutto",
+      "kind": 2,
+      "lat": 41.86117,
+      "lon": 12.49134,
+      "address": "Via Giustino de Jacobis 19",
+      "cell": "sr2yh",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Tre de Tutto",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://tredetuttogarbatella.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11608407754",
+      "name": "IL PIPISTRELLO",
+      "kind": 4,
+      "lat": 41.90685,
+      "lon": 12.48903,
+      "address": "",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "IL PIPISTRELLO",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://pipistrello-nightclub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11662271569",
+      "name": "Morrison’s",
+      "kind": 2,
+      "lat": 41.90692,
+      "lon": 12.46797,
+      "address": "Via Ennio Quirino Visconti 88",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Morrison’s",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://morrisons.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11709312168",
+      "name": "Censured Gay Cruising Bar",
+      "kind": 1,
+      "lat": 41.89686,
+      "lon": 12.4962,
+      "address": "Via dei Quattro Cantoni 5",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Censured Gay Cruising Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.censuredclubroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11964573970",
+      "name": "Hopside",
+      "kind": 2,
+      "lat": 41.87048,
+      "lon": 12.48217,
+      "address": "Via Francesco Negri 39/41",
+      "cell": "sr2yh",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Hopside",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.hopside.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11964591570",
+      "name": "Cantina Dei Papi",
+      "kind": 1,
+      "lat": 41.89085,
+      "lon": 12.4685,
+      "address": "Via della Scala 71",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Cantina Dei Papi",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://cantinadeipapi.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11999789369",
+      "name": "Luppolo12",
+      "kind": 1,
+      "lat": 41.89946,
+      "lon": 12.51453,
+      "address": "Via dei Marrucini 12",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Luppolo12",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://luppolo12.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12004708197",
+      "name": "Spillo",
+      "kind": 2,
+      "lat": 41.86127,
+      "lon": 12.54839,
+      "address": "Via Marco Decumio 37",
+      "cell": "sr2yj",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Spillo",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.spillobirraecucina.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12169960724",
+      "name": "Le Bon Bock",
+      "kind": 2,
+      "lat": 41.8765,
+      "lon": 12.44366,
+      "address": "Circonvallazione Gianicolense 249",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Le Bon Bock",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.lebonbock.com/",
+        "website:menu": "https://www.lebonbock.com/list/LeBonBock_List.pdf"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12208734201",
+      "name": "Beer Style",
+      "kind": 2,
+      "lat": 41.88108,
+      "lon": 12.56375,
+      "address": "Via dei Platani 42b",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Beer Style",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.beerstyle.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1253979817",
+      "name": "Ketumbar",
+      "kind": 2,
+      "lat": 41.87697,
+      "lon": 12.47506,
+      "address": "Via Galvani 24",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Ketumbar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ketumbar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12827403102",
+      "name": "Fonclea",
+      "kind": 2,
+      "lat": 41.90611,
+      "lon": 12.46042,
+      "address": "Via Crescenzio 82a",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Fonclea",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://fonclea.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12836592200",
+      "name": "Ninkasi Craft Beer House",
+      "kind": 2,
+      "lat": 41.88843,
+      "lon": 12.51892,
+      "address": "Via Acireale 22",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Ninkasi Craft Beer House",
+      "name_agreement": true,
+      "url_tags": {
+        "website:menu": "https://app.yhop.beer/pub/627"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1286797433",
+      "name": "Il Treppio",
+      "kind": 2,
+      "lat": 41.9048,
+      "lon": 12.44736,
+      "address": "Via Angelo Emo 61",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Il Treppio",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.iltreppio.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1312443019",
+      "name": "Blind Pig",
+      "kind": 2,
+      "lat": 41.87493,
+      "lon": 12.52028,
+      "address": "Via Gino Capponi 45",
+      "cell": "sr2yh",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Blind Pig",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.blindpig.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13372324001",
+      "name": "Terraza Monti",
+      "kind": 1,
+      "lat": 41.89888,
+      "lon": 12.49063,
+      "address": "Via Nazionale 82",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Terraza Monti",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.aghotels.it/it/the-glam/hotel-con-lounge-bar-roma-centro?_gfc_cli=16034471406315273&_ga=2.33335932.358905528.1603447148-616702909.1603447148"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13608768801",
+      "name": "Mad For Beer Pub",
+      "kind": 2,
+      "lat": 41.87631,
+      "lon": 12.44869,
+      "address": "Via Federico Ozanam 62",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Mad For Beer Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.madforbeer.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13615361101",
+      "name": "Scomodo Estate",
+      "kind": 1,
+      "lat": 41.90093,
+      "lon": 12.51879,
+      "address": "Piazzale del Verano",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Scomodo Estate",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://scomodo.org/estate/sanlorenzo/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13618872301",
+      "name": "Ritual Lab - Centocelle",
+      "kind": 1,
+      "lat": 41.89005,
+      "lon": 12.56339,
+      "address": "Via delle Rose 37/E",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Ritual Lab - Centocelle",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ritual-lab.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13783244172",
+      "name": "Club Cabaret Voltaire Roma",
+      "kind": 1,
+      "lat": 41.89676,
+      "lon": 12.49229,
+      "address": "Via Panisperna 87",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Club Cabaret Voltaire Roma",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.galleriacabaretvoltaire.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13954111601",
+      "name": "Pub Mc Queen",
+      "kind": 2,
+      "lat": 41.8988,
+      "lon": 12.45308,
+      "address": "Via Bonifacio Ottavo 18",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Pub Mc Queen",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://pubmcqueen.com/",
+        "website:menu": "https://pubmcqueen.com/cucina/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13970892347",
+      "name": "Pub Ludico Game",
+      "kind": 2,
+      "lat": 41.91207,
+      "lon": 12.52655,
+      "address": "Via Gian Luca Squarcialupo 8",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Pub Ludico Game",
+      "name_agreement": true,
+      "url_tags": {
+        "website:menu": "https://www.canva.com/design/DAFLeRJ0s-0/boSiHSvZWMRNqRUUwZEbNA/view?website#2:ass.-culturale-ludico-game"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13983610301",
+      "name": "Metropolita",
+      "kind": 1,
+      "lat": 41.92742,
+      "lon": 12.46137,
+      "address": "Piazza Gentile da Fabriano 2",
+      "cell": "sr2ye",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Metropolita",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://metropolita.it/",
+        "website:menu": "http://metropolita.it/cena/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n14281984601",
+      "name": "Paprika Club Prive",
+      "kind": 4,
+      "lat": 41.87361,
+      "lon": 12.52494,
+      "address": "Via Clelia 1",
+      "cell": "sr2yj",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Paprika Club Prive",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.paprikaclubprive.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n14322967902",
+      "name": "The Court",
+      "kind": 1,
+      "lat": 41.89011,
+      "lon": 12.49566,
+      "address": "Via Labicana 125",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "The Court",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://manfredihotels.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1591520835",
+      "name": "Bodeguita Del Rum",
+      "kind": 2,
+      "lat": 41.85913,
+      "lon": 12.45054,
+      "address": "Via Portuense 527",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Bodeguita Del Rum",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://bodeguitadelrum.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1600983246",
+      "name": "Trenta Formiche",
+      "kind": 4,
+      "lat": 41.88378,
+      "lon": 12.53148,
+      "address": "Via del Mandrione 3",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Trenta Formiche",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.30formiche.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1829423506",
+      "name": "Birreria Csa La Torre",
+      "kind": 1,
+      "lat": 41.93097,
+      "lon": 12.55374,
+      "address": "Via Carlo Giuseppe Bertero 13",
+      "cell": "sr2yt",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Birreria Csa La Torre",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://csalatorre.net/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1917232843",
+      "name": "Il Locale",
+      "kind": 1,
+      "lat": 41.93828,
+      "lon": 12.53482,
+      "address": "Viale Adriatico 9/11",
+      "cell": "sr2yt",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Il Locale",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ilocale.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2244935532",
+      "name": "Capitan Cosmo",
+      "kind": 1,
+      "lat": 41.89777,
+      "lon": 12.46831,
+      "address": "Via dei Cartari 7",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Capitan Cosmo",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.facebook.com/CapitanCosmo"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2244950710",
+      "name": "Pub Cuccagna",
+      "kind": 1,
+      "lat": 41.89732,
+      "lon": 12.47315,
+      "address": "Via della Cuccagna 17/18",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Pub Cuccagna",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.cucagnapub.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2244954388",
+      "name": "Escopazzo",
+      "kind": 4,
+      "lat": 41.89539,
+      "lon": 12.47938,
+      "address": "Via d'Aracoeli 41",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Escopazzo",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.escopazzo.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2244959592",
+      "name": "Level Club",
+      "kind": 4,
+      "lat": 41.89945,
+      "lon": 12.47023,
+      "address": "Vicolo del Fico 3",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Level Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://levelroma.eu/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2244964954",
+      "name": "The Yellow Bar",
+      "kind": 2,
+      "lat": 41.90488,
+      "lon": 12.5045,
+      "address": "Via Palestro 40",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "The Yellow Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://the-yellow.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2244977014",
+      "name": "Cesari's Terrace",
+      "kind": 1,
+      "lat": 41.89994,
+      "lon": 12.47993,
+      "address": "Via di Pietra 89",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Cesari's Terrace",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.9-hotel-cesari-rome.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2244979909",
+      "name": "The Cotton Club",
+      "kind": 4,
+      "lat": 41.92254,
+      "lon": 12.51175,
+      "address": "Via Bellinzona 2",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "The Cotton Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.cottonclubroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2273997542",
+      "name": "L'Antica Birreria Peroni",
+      "kind": 2,
+      "lat": 41.89877,
+      "lon": 12.48246,
+      "address": "Via di San Marcello 19",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "L'Antica Birreria Peroni",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.anticabirreriaperoni.net/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2274002831",
+      "name": "Minerva Roof Garden",
+      "kind": 1,
+      "lat": 41.89768,
+      "lon": 12.4776,
+      "address": "Piazza della Minerva 69",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Minerva Roof Garden",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.minervaroofgarden.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2274883508",
+      "name": "Le Coppelle 52",
+      "kind": 2,
+      "lat": 41.90083,
+      "lon": 12.47627,
+      "address": "Piazza delle Coppelle 52",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Le Coppelle 52",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.facebook.com/pages/Coppelle52-cocktail-e-wine/142575442456507"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2296865963",
+      "name": "Salotto 42",
+      "kind": 1,
+      "lat": 41.90011,
+      "lon": 12.47939,
+      "address": "Piazza di Pietra 42",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Salotto 42",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.salotto42.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2572173425",
+      "name": "Alexander Bar",
+      "kind": 1,
+      "lat": 41.89243,
+      "lon": 12.57483,
+      "address": "Viale Palmiro Togliatti 954/956",
+      "cell": "sr2yq",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Alexander Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/pages/Alexander-Bar/154151091286798"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n257351831",
+      "name": "Bar San Calisto",
+      "kind": 1,
+      "lat": 41.88905,
+      "lon": 12.47074,
+      "address": "Piazza di San Calisto 3/4/5",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Bar San Calisto",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://barsancalisto.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2616968237",
+      "name": "28DiVino Jazz",
+      "kind": 4,
+      "lat": 41.88204,
+      "lon": 12.52426,
+      "address": "Via Mirandola 21",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "28DiVino Jazz",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.28divino.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2689710722",
+      "name": "Hop Corner - birra bistrot",
+      "kind": 2,
+      "lat": 41.88339,
+      "lon": 12.53913,
+      "address": "Via di San Barnaba 3",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Hop Corner - birra bistrot",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.hopcorner.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2791024986",
+      "name": "Coyote",
+      "kind": 4,
+      "lat": 41.87522,
+      "lon": 12.47486,
+      "address": "Via di Monte Testaccio 48b",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Coyote",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://coyotebar.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2818358459",
+      "name": "Ma Che Siete Venuti A Fà",
+      "kind": 2,
+      "lat": 41.89173,
+      "lon": 12.46918,
+      "address": "Via Benedetta 25",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Ma Che Siete Venuti A Fà",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.football-pub.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2835819625",
+      "name": "Peso Bistrot",
+      "kind": 1,
+      "lat": 41.87376,
+      "lon": 12.46999,
+      "address": "Lungotevere degli Artigiani",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Peso Bistrot",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.pesoroma.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3631760159",
+      "name": "Birrifugio",
+      "kind": 2,
+      "lat": 41.87757,
+      "lon": 12.46608,
+      "address": "Via Federico Rosazza 4",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Birrifugio",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.birrifugio.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3670898299",
+      "name": "Nottingham",
+      "kind": 2,
+      "lat": 41.86039,
+      "lon": 12.5541,
+      "address": "Via del Quadraro 24",
+      "cell": "sr2yj",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Nottingham",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://nottinghamroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3736269126",
+      "name": "Finn Pub",
+      "kind": 2,
+      "lat": 41.88249,
+      "lon": 12.45662,
+      "address": "Viale di Villa Pamphili 54/56",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Finn Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.finnpub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3781269001",
+      "name": "Vini e Cucina Blasi",
+      "kind": 1,
+      "lat": 41.89678,
+      "lon": 12.47644,
+      "address": "Via di Torre Argentina 12",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Vini e Cucina Blasi",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://viniecucinapantheon.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3900276688",
+      "name": "drunk",
+      "kind": 2,
+      "lat": 41.86114,
+      "lon": 12.55351,
+      "address": "Via dei Fontej 12f",
+      "cell": "sr2yj",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "drunk",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.drunkroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3997755066",
+      "name": "Shari Vari",
+      "kind": 1,
+      "lat": 41.89714,
+      "lon": 12.47632,
+      "address": "Via di Torre Argentina 78",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Shari Vari",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.sharivari.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4086833684",
+      "name": "The Hole",
+      "kind": 2,
+      "lat": 41.8884,
+      "lon": 12.47809,
+      "address": "Via dei Vascellari 16",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "The Hole",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/The-Hole-Trastevere-141126852915526/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4192923989",
+      "name": "Anima Mundi",
+      "kind": 1,
+      "lat": 41.88939,
+      "lon": 12.48353,
+      "address": "Via del Velabro 1",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Anima Mundi",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.animamundiroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4391696165",
+      "name": "Barley Wine",
+      "kind": 2,
+      "lat": 41.86366,
+      "lon": 12.55301,
+      "address": "Viale dei Consoli 117",
+      "cell": "sr2yj",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Barley Wine",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.barleywine.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4438125791",
+      "name": "Officine San Giovanni",
+      "kind": 1,
+      "lat": 41.8852,
+      "lon": 12.51116,
+      "address": "Largo Brindisi 25",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Officine San Giovanni",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.officinesangiovannibistrot.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4439097392",
+      "name": "Brasserie 4:20",
+      "kind": 2,
+      "lat": 41.87891,
+      "lon": 12.4686,
+      "address": "Via Portuense 82",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Brasserie 4:20",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://brasserie420.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4455036146",
+      "name": "Fiddler's Elbow",
+      "kind": 2,
+      "lat": 41.89631,
+      "lon": 12.49728,
+      "address": "Via dell'Olmata 43",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Fiddler's Elbow",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://thefiddlerselbow.wordpress.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4457772839",
+      "name": "Lanificio",
+      "kind": 4,
+      "lat": 41.926,
+      "lon": 12.53918,
+      "address": "Via di Pietralata 159",
+      "cell": "sr2yt",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Lanificio",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.lanificio.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4598483005",
+      "name": "Studio7 Roma",
+      "kind": 4,
+      "lat": 41.97338,
+      "lon": 12.44217,
+      "address": "Via di Grottarossa 175",
+      "cell": "sr2yg",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Studio7 Roma",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://studio7roma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4644258945",
+      "name": "Zazie nel metro",
+      "kind": 2,
+      "lat": 41.8911,
+      "lon": 12.53131,
+      "address": "Via Ettore Giovenale 16",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Zazie nel metro",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/zazienelmetropigneto/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4656387042",
+      "name": "Boogie Club",
+      "kind": 2,
+      "lat": 41.86288,
+      "lon": 12.45782,
+      "address": "Via Gaetano Astolfi 63-65",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Boogie Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://boogieclub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4659895863",
+      "name": "Fanfulla",
+      "kind": 4,
+      "lat": 41.89063,
+      "lon": 12.53024,
+      "address": "Via Fanfulla da Lodi 5a",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Fanfulla",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.fanfulla5a.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4659895867",
+      "name": "Braccio Da Montone Bar",
+      "kind": 1,
+      "lat": 41.88926,
+      "lon": 12.53154,
+      "address": "Via Braccio da Montone 88/90",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Braccio Da Montone Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/BarBraccioDaMontone/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4733710159",
+      "name": "Finnegan Irish Pub",
+      "kind": 2,
+      "lat": 41.89473,
+      "lon": 12.49194,
+      "address": "Via Leonina 66;67",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Finnegan Irish Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.finneganpub.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4798279234",
+      "name": "The Magick Bar",
+      "kind": 1,
+      "lat": 41.91956,
+      "lon": 12.46993,
+      "address": "Lungotevere Guglielmo Oberdan 2",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "The Magick Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://themagickbar.com/",
+        "website:menu": "https://themagickbar.com/qr-menu/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5046596464",
+      "name": "The Naughty Monkey",
+      "kind": 2,
+      "lat": 41.9059,
+      "lon": 12.47244,
+      "address": "Via Marianna Dionigi 44",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "The Naughty Monkey",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/The-Naughty-Monkey-1494387420848997/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5247115784",
+      "name": "L'Alibi",
+      "kind": 4,
+      "lat": 41.87536,
+      "lon": 12.47443,
+      "address": "Via di Monte Testaccio 34",
+      "cell": "sr2y5",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "L'Alibi",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://alibiclubroma.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5297868390",
+      "name": "Piper Club",
+      "kind": 4,
+      "lat": 41.91891,
+      "lon": 12.5012,
+      "address": "Via Tagliamento 9",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Piper Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://piperclub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5297884193",
+      "name": "Il Bosco delle Fragole",
+      "kind": 4,
+      "lat": 41.93405,
+      "lon": 12.45231,
+      "address": "Piazzale dello Stadio Olimpico 8",
+      "cell": "sr2ye",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Il Bosco delle Fragole",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://ilboscodellefragole.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5297890588",
+      "name": "Project Roma",
+      "kind": 4,
+      "lat": 41.83517,
+      "lon": 12.47007,
+      "address": "Viale della Civiltà del Lavoro 50/52",
+      "cell": "sr2vg",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Project Roma",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://projectroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5297903141",
+      "name": "Too Club",
+      "kind": 4,
+      "lat": 41.87605,
+      "lon": 12.48555,
+      "address": "Viale di Porta Ardeatina 119",
+      "cell": "sr2yh",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Too Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://tooclub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5298550733",
+      "name": "Room 26",
+      "kind": 4,
+      "lat": 41.83461,
+      "lon": 12.47066,
+      "address": "Piazza Guglielmo Marconi 31",
+      "cell": "sr2vg",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Room 26",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.room26.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5298561395",
+      "name": "Circolo Degli Illuminati",
+      "kind": 4,
+      "lat": 41.86458,
+      "lon": 12.481,
+      "address": "Via Giuseppe Libetta 1",
+      "cell": "sr2yh",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Circolo Degli Illuminati",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://circolodegliilluminati.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5298561396",
+      "name": "Rashõmon Club",
+      "kind": 4,
+      "lat": 41.86468,
+      "lon": 12.48121,
+      "address": "Via degli Argonauti 16",
+      "cell": "sr2yh",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Rashõmon Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.rashomonclub.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5338606931",
+      "name": "Avalon",
+      "kind": 2,
+      "lat": 41.88533,
+      "lon": 12.51795,
+      "address": "Via Terni 21",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Avalon",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.leggendadiavalonroma.it/index.php"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5381094382",
+      "name": "Spazio Novecento",
+      "kind": 4,
+      "lat": 41.83454,
+      "lon": 12.46973,
+      "address": "Piazza Guglielmo Marconi 26/b",
+      "cell": "sr2vg",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Spazio Novecento",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.spazionovecento.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5414168653",
+      "name": "Gordon Bennet",
+      "kind": 2,
+      "lat": 41.83547,
+      "lon": 12.50639,
+      "address": "Via Tazio Nuvolari 165",
+      "cell": "sr2vu",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Gordon Bennet",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://gordonbennett.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5506371670",
+      "name": "Shamrock Pub Roma",
+      "kind": 2,
+      "lat": 41.89323,
+      "lon": 12.48892,
+      "address": "Via del Colosseo 1",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Shamrock Pub Roma",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.shamrockpubroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5552446179",
+      "name": "Be.Re.",
+      "kind": 2,
+      "lat": 41.9067,
+      "lon": 12.45656,
+      "address": "Via Vespasiano 2",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Be.Re.",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://be-re.eu"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5597406207",
+      "name": "Eternal City Brewing",
+      "kind": 2,
+      "lat": 41.85108,
+      "lon": 12.40215,
+      "address": "",
+      "cell": "sr2y4",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Eternal City Brewing",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.eternalcitybrewing.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5598775186",
+      "name": "Almalu Trastavere",
+      "kind": 1,
+      "lat": 41.89043,
+      "lon": 12.46874,
+      "address": "Via della Scala 77",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Almalu Trastavere",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/almalu.trastevere.roma"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5730113518",
+      "name": "Roma Beer Company - Ponte Milvio",
+      "kind": 2,
+      "lat": 41.93733,
+      "lon": 12.46672,
+      "address": "Piazzale di Ponte Milvio 40-42",
+      "cell": "sr2ye",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Roma Beer Company - Ponte Milvio",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.romabeercompany.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5825531457",
+      "name": "Mr. Brown Pub",
+      "kind": 2,
+      "lat": 41.89128,
+      "lon": 12.46998,
+      "address": "Vicolo del Cinque 29",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Mr. Brown Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/mrbrowntrastevere/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6185600359",
+      "name": "Bender Pub",
+      "kind": 2,
+      "lat": 41.93405,
+      "lon": 12.53419,
+      "address": "Via Nomentana 434",
+      "cell": "sr2yt",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Bender Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://benderpub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6185755385",
+      "name": "Crash Vibes & Wines",
+      "kind": 1,
+      "lat": 41.92257,
+      "lon": 12.51279,
+      "address": "Via San Marino 47b",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Crash Vibes & Wines",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://crashroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6253603993",
+      "name": "Gus Bar & Social Club",
+      "kind": 2,
+      "lat": 41.90535,
+      "lon": 12.4732,
+      "address": "Via dei Cosmati 3",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Gus Bar & Social Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://gusroma.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6254411052",
+      "name": "Spunky Centocelle",
+      "kind": 2,
+      "lat": 41.89244,
+      "lon": 12.56606,
+      "address": "Via dei Ciclamini 115-117",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Spunky Centocelle",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://spunky-centocelle.business.site/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6313982811",
+      "name": "Opificio Balduina",
+      "kind": 2,
+      "lat": 41.91604,
+      "lon": 12.43875,
+      "address": "Largo Giorgio Maccagno 13",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Opificio Balduina",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.thefork.it/ristorante/opificio-balduina/440085?cc=18174-54f"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6314038708",
+      "name": "Vecchio Franklyn Karaoke",
+      "kind": 1,
+      "lat": 41.90888,
+      "lon": 12.52598,
+      "address": "Piazza delle Crociate 21/23",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Vecchio Franklyn Karaoke",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.vecchiofranklyn.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6341768881",
+      "name": "Tiepolo - Bistrot Bottiglieria",
+      "kind": 2,
+      "lat": 41.92423,
+      "lon": 12.46936,
+      "address": "Via Giovanni Battista Tiepolo 3",
+      "cell": "sr2ye",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Tiepolo - Bistrot Bottiglieria",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://tiepolobistrot.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6373899833",
+      "name": "Magic Fly",
+      "kind": 4,
+      "lat": 41.97262,
+      "lon": 12.44213,
+      "address": "Via Bassanello 15",
+      "cell": "sr2yg",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Magic Fly",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.magicfly.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6467683804",
+      "name": "Traffic Live",
+      "kind": 4,
+      "lat": 41.89343,
+      "lon": 12.58806,
+      "address": "Via Prenestina 738",
+      "cell": "sr2yq",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Traffic Live",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.trafficlive.org/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6573371207",
+      "name": "Voodoo Bar",
+      "kind": 1,
+      "lat": 41.89342,
+      "lon": 12.4981,
+      "address": "Via delle Terme di Traiano 4",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Voodoo Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/voodobar/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6573379647",
+      "name": "The Sanctuary - Eco Retreat",
+      "kind": 1,
+      "lat": 41.89343,
+      "lon": 12.49833,
+      "address": "Via delle Terme di Traiano 4",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "The Sanctuary - Eco Retreat",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.thesanctuaryroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7021964107",
+      "name": "Klang Roma",
+      "kind": 2,
+      "lat": 41.89244,
+      "lon": 12.52852,
+      "address": "Via Stefano Colonna 9",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Klang Roma",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/klangroma/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7022428800",
+      "name": "Beige Roma",
+      "kind": 1,
+      "lat": 41.89085,
+      "lon": 12.4712,
+      "address": "Via del Politeama 13/14",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Beige Roma",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.beige-roma.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7159105150",
+      "name": "New Devil's Kiss",
+      "kind": 2,
+      "lat": 41.90638,
+      "lon": 12.53812,
+      "address": "Via di San Romano 51",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "New Devil's Kiss",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.newdevilskiss.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7572704586",
+      "name": "Jungle Juice Brewing",
+      "kind": 2,
+      "lat": 41.87881,
+      "lon": 12.53502,
+      "address": "Via del Mandrione 109",
+      "cell": "sr2yj",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Jungle Juice Brewing",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.junglejuicebrewing.com/tap-room/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n766869078",
+      "name": "Harry's Bar",
+      "kind": 1,
+      "lat": 41.90908,
+      "lon": 12.48832,
+      "address": "Via Vittorio Veneto 150",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Harry's Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.harrysbar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7775360886",
+      "name": "Enoteca del Frate",
+      "kind": 1,
+      "lat": 41.90888,
+      "lon": 12.46005,
+      "address": "Via degli Scipioni 118",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Enoteca del Frate",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://ristorante.enotecadelfrate.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7912200670",
+      "name": "Mister Songs",
+      "kind": 2,
+      "lat": 41.90736,
+      "lon": 12.45017,
+      "address": "Via Candia 149/a",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Mister Songs",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://mistersongs.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7958866580",
+      "name": "Satyrus Temporary Bar",
+      "kind": 1,
+      "lat": 41.91613,
+      "lon": 12.48142,
+      "address": "Scalea Bruno Zevi",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Satyrus Temporary Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://satyrus.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7966149761",
+      "name": "Pentatonic",
+      "kind": 2,
+      "lat": 41.82027,
+      "lon": 12.48204,
+      "address": "Viale Oscar Sinigaglia 18",
+      "cell": "sr2vu",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Pentatonic",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.villaggiocultura.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n8084582733",
+      "name": "Spirito",
+      "kind": 1,
+      "lat": 41.8892,
+      "lon": 12.53063,
+      "address": "Via Braccio da Montone 66",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Spirito",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.club-spirito.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n8085279836",
+      "name": "Bar Buseto",
+      "kind": 1,
+      "lat": 41.88922,
+      "lon": 12.52465,
+      "address": "Via del Pigneto 24a",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Bar Buseto",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.buseto.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n8679009184",
+      "name": "Bandana Republic",
+      "kind": 2,
+      "lat": 41.91083,
+      "lon": 12.50107,
+      "address": "Via Alessandria 44",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Bandana Republic",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.bandanarepublic.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n8974752141",
+      "name": "Magnebevo",
+      "kind": 1,
+      "lat": 41.88894,
+      "lon": 12.52629,
+      "address": "Via del Pigneto 93",
+      "cell": "sr2ym",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Magnebevo",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://magnebevo.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n962348457",
+      "name": "Ice Club",
+      "kind": 1,
+      "lat": 41.89409,
+      "lon": 12.48856,
+      "address": "Via della Madonna dei Monti 18/19",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Ice Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.iceclubroma.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9862494432",
+      "name": "Pier 21",
+      "kind": 2,
+      "lat": 41.90117,
+      "lon": 12.46308,
+      "address": "Lungotevere in Sassia 3",
+      "cell": "sr2y7",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Pier 21",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.pier21.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9919861981",
+      "name": "Artisan",
+      "kind": 2,
+      "lat": 41.89587,
+      "lon": 12.51389,
+      "address": "",
+      "cell": "sr2yk",
+      "cityID": 72959652,
+      "city": "Roma",
+      "osm_name": "Artisan",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.instagram.com/artisanbeerbar/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10066775918",
+      "name": "Milk",
+      "kind": 4,
+      "lat": 45.05531,
+      "lon": 7.67217,
+      "address": "Via Paolo Sacchi 65",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Milk",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.milktorino.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10270117696",
+      "name": "Birreria Rosselli",
+      "kind": 2,
+      "lat": 45.05415,
+      "lon": 7.65064,
+      "address": "",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Birreria Rosselli",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.rossellipub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10690639561",
+      "name": "Bere In Tipografia",
+      "kind": 1,
+      "lat": 45.06996,
+      "lon": 7.7004,
+      "address": "Piazza Santa Giulia 10",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Bere In Tipografia",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://bereintipografia.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10802670657",
+      "name": "Il Cartoccio",
+      "kind": 2,
+      "lat": 45.07849,
+      "lon": 7.64594,
+      "address": "Corso Lecce 28",
+      "cell": "u0j2m",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Il Cartoccio",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/thebetterbeer/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n10860421818",
+      "name": "CAP10100",
+      "kind": 4,
+      "lat": 45.05948,
+      "lon": 7.69417,
+      "address": "Corso Moncalieri 18",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "CAP10100",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.cap10100.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11049343309",
+      "name": "EDIT Porto Urbano",
+      "kind": 1,
+      "lat": 45.0627,
+      "lon": 7.69511,
+      "address": "",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "EDIT Porto Urbano",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.portourbanotorino.it/",
+        "website:menu": "https://www.portourbanotorino.it/menu/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11283291611",
+      "name": "La Mole Pub",
+      "kind": 2,
+      "lat": 45.07831,
+      "lon": 7.67003,
+      "address": "Via San Domenico 51",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "La Mole Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.lamolepub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11984505562",
+      "name": "Gorilla",
+      "kind": 1,
+      "lat": 45.05934,
+      "lon": 7.68315,
+      "address": "",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Gorilla",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.gorillabar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12001151299",
+      "name": "TONO Birreria Metzger",
+      "kind": 2,
+      "lat": 45.07749,
+      "lon": 7.69964,
+      "address": "Via Catania 37",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "TONO Birreria Metzger",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://tonohifi.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1234453071",
+      "name": "Birrificio Torino",
+      "kind": 2,
+      "lat": 45.07812,
+      "lon": 7.69318,
+      "address": "Via Parma 30",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Birrificio Torino",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.birrificiotorino.com/",
+        "website:menu": "https://qrco.de/BirrificioTorino-Menu"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12415652320",
+      "name": "Hum.us",
+      "kind": 1,
+      "lat": 45.08157,
+      "lon": 7.6985,
+      "address": "Via Perugia 67",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Hum.us",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.hum.us"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12814478305",
+      "name": "Bar interno Sirio",
+      "kind": 1,
+      "lat": 45.05143,
+      "lon": 7.66688,
+      "address": "Corso Filippo Turati 46",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Bar interno Sirio",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.siriobar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n12848984268",
+      "name": "Magazzino sul Po",
+      "kind": 4,
+      "lat": 45.06518,
+      "lon": 7.69842,
+      "address": "Via Murazzi del Po Ferdinando Buscaglione (Fred) 18",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Magazzino sul Po",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://magazzinosulpo.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13555975291",
+      "name": "Adelaide! Bottega Bar",
+      "kind": 1,
+      "lat": 45.06032,
+      "lon": 7.69106,
+      "address": "",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Adelaide! Bottega Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://adelaide.superbexperience.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1390037905",
+      "name": "St. Martin",
+      "kind": 2,
+      "lat": 45.07602,
+      "lon": 7.66927,
+      "address": "Corso San Martino 0b",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "St. Martin",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.stmartinpub.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1464809930",
+      "name": "Cafè Neruda",
+      "kind": 2,
+      "lat": 45.09158,
+      "lon": 7.6758,
+      "address": "Via Errico Giachino 28",
+      "cell": "u0j2w",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Cafè Neruda",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.cafeneruda.org/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n1739196541",
+      "name": "Birrificio San Paolo",
+      "kind": 2,
+      "lat": 45.05599,
+      "lon": 7.64919,
+      "address": "Via Airasca 11 D",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Birrificio San Paolo",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.birrificiosanpaolo.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2016414027",
+      "name": "Garage Club",
+      "kind": 4,
+      "lat": 45.06372,
+      "lon": 7.6671,
+      "address": "",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Garage Club",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.garageclub.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2810028759",
+      "name": "Sir Francis Drake",
+      "kind": 2,
+      "lat": 45.06458,
+      "lon": 7.64227,
+      "address": "Via Monginevro 82b",
+      "cell": "u0j2m",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Sir Francis Drake",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://sirfrancisdrake.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n306553710",
+      "name": "Margò",
+      "kind": 2,
+      "lat": 45.06906,
+      "lon": 7.69737,
+      "address": "Via Michele Buniva 9",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Margò",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://margotorino.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3224067524",
+      "name": "DDR",
+      "kind": 2,
+      "lat": 45.05953,
+      "lon": 7.68015,
+      "address": "Via Claudio Luigi Berthollet 9",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "DDR",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.ddrtorino.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3352071960",
+      "name": "Caffè della Caduta",
+      "kind": 1,
+      "lat": 45.06956,
+      "lon": 7.70229,
+      "address": "Via Eusebio Bava 39",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Caffè della Caduta",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.teatrodellacaduta.org/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3594109640",
+      "name": "Cab41",
+      "kind": 4,
+      "lat": 45.05389,
+      "lon": 7.65838,
+      "address": "Via Fratelli Carle 41",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Cab41",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.cab41.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3766235167",
+      "name": "La casa del demone",
+      "kind": 2,
+      "lat": 45.07425,
+      "lon": 7.68173,
+      "address": "Via San Domenico 3b",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "La casa del demone",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.lacasadeldemone.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3773222126",
+      "name": "Night Club Babilonia",
+      "kind": 4,
+      "lat": 45.07857,
+      "lon": 7.66903,
+      "address": "Via Giacinto Avet 3",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Night Club Babilonia",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.babiloniatorino.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n3888902054",
+      "name": "Ambhara Bar",
+      "kind": 1,
+      "lat": 45.07897,
+      "lon": 7.68351,
+      "address": "Via Borgo Dora 10",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Ambhara Bar",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.ambharabar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4519719635",
+      "name": "Tauer Bakery",
+      "kind": 1,
+      "lat": 45.05726,
+      "lon": 7.68238,
+      "address": "Via Madama Cristina 22",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Tauer Bakery",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.tauer-to.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4665090546",
+      "name": "The Isle of Skye",
+      "kind": 2,
+      "lat": 45.07292,
+      "lon": 7.66544,
+      "address": "",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "The Isle of Skye",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.isleofskyepub.it/",
+        "website:menu": "https://l.ead.me/bc5Nad"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4690969018",
+      "name": "Corner House",
+      "kind": 2,
+      "lat": 45.04729,
+      "lon": 7.63964,
+      "address": "Corso Sebastopoli 230",
+      "cell": "u0j2m",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Corner House",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.cornerhouse.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4734594014",
+      "name": "Rol",
+      "kind": 2,
+      "lat": 45.06195,
+      "lon": 7.64733,
+      "address": "Via San Bernardino 9d",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Rol",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.birreriarol.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4734598127",
+      "name": "FuoriLuogo",
+      "kind": 1,
+      "lat": 45.06257,
+      "lon": 7.64741,
+      "address": "Via Dante Di Nanni 120a",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "FuoriLuogo",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.fuoriluogo.org/",
+        "website:menu": "https://www.fuoriluogo.org/menu-fuoriluogo/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4735665559",
+      "name": "The Duke of Wellington",
+      "kind": 2,
+      "lat": 45.0554,
+      "lon": 7.66127,
+      "address": "Via Sebastiano Caboto 26d",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "The Duke of Wellington",
+      "name_agreement": true,
+      "url_tags": {
+        "website:menu": "https://hello.onyonapp.com/app/merchant/the-duke-of-wellington/menu/the-duke-of-wellington"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4735666675",
+      "name": "Tiffany",
+      "kind": 1,
+      "lat": 45.05664,
+      "lon": 7.65623,
+      "address": "Via Giovanni Da Verazzano 43b",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Tiffany",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://tiffanyloungebar.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4735827400",
+      "name": "Bicierin Ciclofficina con Cucina",
+      "kind": 2,
+      "lat": 45.05696,
+      "lon": 7.68092,
+      "address": "",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Bicierin Ciclofficina con Cucina",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://it-it.facebook.com/bicierin/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4735867714",
+      "name": "TheBeach",
+      "kind": 4,
+      "lat": 45.06523,
+      "lon": 7.69851,
+      "address": "Via Murazzi del Po Ferdinando Buscaglione (Fred) 22",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "TheBeach",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://thebeachmurazzi.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4735870578",
+      "name": "Oro Birra",
+      "kind": 2,
+      "lat": 45.07379,
+      "lon": 7.69172,
+      "address": "Corso Regina Margherita 97 B",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Oro Birra",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.orobirra.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4736052792",
+      "name": "Bar Cavour",
+      "kind": 1,
+      "lat": 45.06957,
+      "lon": 7.68494,
+      "address": "",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Bar Cavour",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://barcavour.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4736055639",
+      "name": "Jumping Jester",
+      "kind": 2,
+      "lat": 45.06366,
+      "lon": 7.68174,
+      "address": "Via Giuseppe Mazzini 2l",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Jumping Jester",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://jumping-jester-torino.web.app/",
+        "website:menu": "https://jumping-jester-torino.web.app"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4736078515",
+      "name": "Skjuma",
+      "kind": 2,
+      "lat": 45.07851,
+      "lon": 7.67135,
+      "address": "Via Santa Chiara 45h",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Skjuma",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://skjuma.com/",
+        "website:menu": "https://torino.beerguide.it/venues/skjuma-craft-beers/menu"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4736083899",
+      "name": "Shore",
+      "kind": 1,
+      "lat": 45.07668,
+      "lon": 7.68081,
+      "address": "Piazza Emanuele Filiberto 10",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Shore",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://shoretorino.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4736084304",
+      "name": "Magic Lair",
+      "kind": 2,
+      "lat": 45.07882,
+      "lon": 7.67034,
+      "address": "Corso Principe Oddone 14f",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Magic Lair",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://magiclair.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5117627166",
+      "name": "Blah Blah",
+      "kind": 1,
+      "lat": 45.06883,
+      "lon": 7.68947,
+      "address": "Via Po 21",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Blah Blah",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.blahblahtorino.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5257878293",
+      "name": "Birrificio La Piazza",
+      "kind": 2,
+      "lat": 45.08192,
+      "lon": 7.65963,
+      "address": "",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Birrificio La Piazza",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.birrificiolapiazza.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5345204623",
+      "name": "Smile Tree",
+      "kind": 1,
+      "lat": 45.07647,
+      "lon": 7.67872,
+      "address": "Piazza della Consolata 9b",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Smile Tree",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://smiletreetorino.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6740134259",
+      "name": "Six Nations Murphy’s Pub",
+      "kind": 2,
+      "lat": 45.06045,
+      "lon": 7.68595,
+      "address": "Corso Vittorio Emanuele II 28",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Six Nations Murphy’s Pub",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "http://www.sixnationspub.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9101869033",
+      "name": "Flora",
+      "kind": 1,
+      "lat": 45.06366,
+      "lon": 7.69605,
+      "address": "",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Flora",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://floratorino.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9488941563",
+      "name": "Cannella bistrot",
+      "kind": 2,
+      "lat": 45.06933,
+      "lon": 7.7215,
+      "address": "Corso Casale 180",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Cannella bistrot",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/cannellabistrot/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9680161617",
+      "name": "La Santa Wine & Spirits",
+      "kind": 1,
+      "lat": 45.07105,
+      "lon": 7.67748,
+      "address": "Via Stampatori 19/h",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "La Santa Wine & Spirits",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.lasantatorino.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9907368246",
+      "name": "Hops Torino",
+      "kind": 2,
+      "lat": 45.06706,
+      "lon": 7.6976,
+      "address": "",
+      "cell": "u0j2r",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Hops Torino",
+      "name_agreement": true,
+      "url_tags": {
+        "website:menu": "https://app.yhop.beer/pub/641"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9933713554",
+      "name": "Il peccato",
+      "kind": 2,
+      "lat": 45.06538,
+      "lon": 7.65333,
+      "address": "",
+      "cell": "u0j2q",
+      "cityID": 63621589,
+      "city": "Torino",
+      "osm_name": "Il peccato",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.ilpeccatopubkaraoke.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11769184869",
+      "name": "\"Frank Malone\" pub e birreria",
+      "kind": 2,
+      "lat": 40.84595,
+      "lon": 14.23731,
+      "address": "Via Tito Angelini 13b",
+      "cell": "sr607",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "\"Frank Malone\" pub e birreria",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://frankmalonebrewstore.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n11881016827",
+      "name": "Salvatore Cautero Champagne",
+      "kind": 1,
+      "lat": 40.85269,
+      "lon": 14.24527,
+      "address": "Via Salvator Rosa 297",
+      "cell": "sr60k",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Salvatore Cautero Champagne",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://cauterochampagne.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13226434723",
+      "name": "The Belliner",
+      "kind": 1,
+      "lat": 40.851,
+      "lon": 14.25084,
+      "address": "",
+      "cell": "sr60k",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "The Belliner",
+      "name_agreement": true,
+      "url_tags": {
+        "website:menu": "https://campari.mycontactlessmenu.mycia.it/r/q/k3dTDOXeY/menu"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n13739499391",
+      "name": "Mosto - Birra & Cocktail alla spina",
+      "kind": 2,
+      "lat": 40.8442,
+      "lon": 14.23042,
+      "address": "Via Enrico Alvino 59",
+      "cell": "sr607",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Mosto - Birra & Cocktail alla spina",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.mosto.beer/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2476422277",
+      "name": "Big Pit",
+      "kind": 2,
+      "lat": 40.85224,
+      "lon": 14.23093,
+      "address": "Via Raffaele Stasi 25",
+      "cell": "sr607",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Big Pit",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.bigpit.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n2508912755",
+      "name": "La Locanda di Robin Hood",
+      "kind": 1,
+      "lat": 40.83034,
+      "lon": 14.24905,
+      "address": "",
+      "cell": "sr60k",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "La Locanda di Robin Hood",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.robinhoodnapoli.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n4248905411",
+      "name": "El Sombrero",
+      "kind": 2,
+      "lat": 40.83184,
+      "lon": 14.21922,
+      "address": "",
+      "cell": "sr607",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "El Sombrero",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.elsombrerodiagostinomassa.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5257951821",
+      "name": "Kestè",
+      "kind": 1,
+      "lat": 40.84586,
+      "lon": 14.25583,
+      "address": "Via San Giovanni Maggiore Pignatelli 26/27",
+      "cell": "sr60k",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Kestè",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.kestenapoli.com/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n5296233606",
+      "name": "Cammarota Spritz",
+      "kind": 1,
+      "lat": 40.84212,
+      "lon": 14.24756,
+      "address": "Vico Lungo Teatro Nuovo 31",
+      "cell": "sr60k",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Cammarota Spritz",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.cammarotaspritz.com"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6158510788",
+      "name": "Hoppy Ending",
+      "kind": 2,
+      "lat": 40.84247,
+      "lon": 14.22197,
+      "address": "Via Santa Maria della Libera 30",
+      "cell": "sr607",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Hoppy Ending",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.facebook.com/hoppyending"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6255387686",
+      "name": "Bierkeller",
+      "kind": 2,
+      "lat": 40.8458,
+      "lon": 14.23037,
+      "address": "Via Enrico Alvino 118",
+      "cell": "sr607",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Bierkeller",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.biergarten-bierkeller.it/home-bierkeller/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6292846886",
+      "name": "Spazionea",
+      "kind": 1,
+      "lat": 40.85048,
+      "lon": 14.2521,
+      "address": "Via Santa Maria di Costantinopoli 53",
+      "cell": "sr60k",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Spazionea",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.spazionea.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6498637285",
+      "name": "Dama Caffé",
+      "kind": 1,
+      "lat": 40.84655,
+      "lon": 14.2499,
+      "address": "Via Maddaloni 5",
+      "cell": "sr60k",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Dama Caffé",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "http://www.cafedelprofessore.it"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n6562169185",
+      "name": "lanificio25",
+      "kind": 4,
+      "lat": 40.85467,
+      "lon": 14.26401,
+      "address": "Piazza Enrico De Nicola 46",
+      "cell": "sr60k",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "lanificio25",
+      "name_agreement": true,
+      "url_tags": {
+        "contact:website": "https://www.lanificio25.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n7082440682",
+      "name": "Bar fly",
+      "kind": 4,
+      "lat": 40.82423,
+      "lon": 14.21986,
+      "address": "",
+      "cell": "sr605",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Bar fly",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://barflynapoli.it/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    },
+    {
+      "key": "n9408742217",
+      "name": "Biergarten",
+      "kind": 2,
+      "lat": 40.84169,
+      "lon": 14.22727,
+      "address": "Via Mattia Preti 10 A",
+      "cell": "sr607",
+      "cityID": 428339558,
+      "city": "Napoli",
+      "osm_name": "Biergarten",
+      "name_agreement": true,
+      "url_tags": {
+        "website": "https://www.biergarten-bierkeller.it/home-biergarten/"
+      },
+      "rejected_url_tags": [],
+      "state": "candidate",
+      "reason": "unverified_primary_links"
+    }
+  ]
+}

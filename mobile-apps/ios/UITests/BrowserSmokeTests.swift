@@ -636,6 +636,11 @@ final class BrowserSmokeTests: XCTestCase {
         let enabled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in save.exists && save.isEnabled }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed, "The actual current website venue must be eligible for native saving")
         save.tap()
+        let chooser = app.tables["favorites.saveChooser"]
+        XCTAssertTrue(chooser.waitForExistence(timeout: 15), "Saving must offer separate private venue and actual drink choices")
+        let venueChoice = chooser.cells["favorites.saveVenue"]
+        XCTAssertTrue(venueChoice.isHittable)
+        venueChoice.tap()
         let confirmation = app.alerts["Preferito salvato"]
         XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
         confirmation.buttons["Chiudi"].tap()

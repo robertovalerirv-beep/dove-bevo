@@ -4446,9 +4446,7 @@
       "osm_name": "Volpini",
       "name_agreement": true,
       "url_tags": {},
-      "rejected_url_tags": [
-        "website"
-      ]
+      "rejected_url_tags": ["website"]
     },
     {
       "key": "n2128214065",

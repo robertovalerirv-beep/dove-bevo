@@ -30,7 +30,7 @@ public final class DrinkFavoritesRuntimeTest {
       <section data-dovebevo-share="1" data-version="1" data-venue="n123" data-venue-name="Locale verificato" data-drink="spritz" data-drink-name="Spritz" data-hh="1" data-amount-minor="700" data-currency="EUR" data-serving="" data-provenance="Segnalato il 02/11/2026" data-confirmations="0" data-tier="neutro" data-location="Milano">7,00 €</section></div></article></div></dialog><script>document.querySelector('dialog').showModal()</script></body></html>
       """;
     private final Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
-    private MainActivity activity;private HeldWeb web;private SavedDrinkUi chooser;private SavedDrinkScreen screen;
+    private MainActivity activity;private HeldWeb web;private SavedDrinkUi chooser;private SavedDrinkScreen screen;private FavoritesScreen favorites;
     private SharedPreferences rules;private boolean hadRule;private String oldRule;private File directory;
     private SavedDrinkStore drinks;private SavedVenueStore venues;private SavedVenueFile oldFile;
     @Before public void setUp()throws Exception {
@@ -40,7 +40,7 @@ public final class DrinkFavoritesRuntimeTest {
         oldFile=new SavedVenueFile(directory);venues=new SavedVenueStore(oldFile);drinks=new SavedDrinkStore(new SavedVenueFile(directory,"saved-drinks-v1"));
     }
     @After public void tearDown(){
-        onMain(()->{if(chooser!=null)chooser.dismiss();if(screen!=null)screen.close();field("website",null);if(web!=null)web.destroy();activity.finish();});
+        onMain(()->{if(chooser!=null)chooser.dismiss();if(favorites!=null)favorites.close();else if(screen!=null)screen.close();field("website",null);if(web!=null)web.destroy();activity.finish();});
         SharedPreferences.Editor edit=rules.edit();if(hadRule)edit.putString("accepted_rules_version",oldRule);else edit.remove("accepted_rules_version");assertTrue(edit.commit());
         for(String name:new String[]{"saved-venues-v1.bin","saved-venues-v1.tmp","saved-drinks-v1.bin","saved-drinks-v1.tmp"}){File f=new File(directory,name);if(f.exists())assertTrue(f.delete());}assertTrue(directory.delete());
     }
@@ -79,7 +79,7 @@ public final class DrinkFavoritesRuntimeTest {
     @Test public void hiddenReadIsUnavailableAndRemovalDoesNotTouchVenueFavourite()throws Exception {
         drinks.save(URL,"Saved offline name",RecommendationDrink.SPRITZ,1);venues.save(URL,"Old venue favourite");byte[] before=oldFile.read();
         showScreen(new AtomicReference<>(),true);awaitRows("Prezzo non disponibile");
-        onMain(()->{assertFalse(allText(screen.view()).contains("7,00"));screen.view().findViewWithTag("drink_favourite_remove").performClick();});
+        onMain(()->{try{java.lang.reflect.Field f=SavedDrinkScreen.class.getDeclaredField("cells");f.setAccessible(true);assertTrue("Hidden fixture must be a successfully parsed current cell",((java.util.Map<?,?>)f.get(screen)).containsKey("u0nd9"));}catch(ReflectiveOperationException error){throw new AssertionError(error);}assertFalse(allText(screen.view()).contains("7,00"));screen.view().findViewWithTag("drink_favourite_remove").performClick();});
         assertTrue(drinks.load().isEmpty());assertArrayEquals(before,oldFile.read());
     }
     private void showScreen(AtomicReference<String> opened,boolean hidden){
@@ -87,10 +87,10 @@ public final class DrinkFavoritesRuntimeTest {
             if(url.endsWith("health"))return bytes("{\"status\":\"ok\",\"data_version\":\"20261031\"}");
             if(url.endsWith("catalog.json"))throw new IOException("No foreign fixture");
             if(url.contains("/data/"))return bytes("{\"c\":[[1,\"Milano\"]],\"v\":[[\"n123\",\"Locale attuale\",1,45.4642,9.19,\"\",0]]}");
-            if(url.endsWith("/api/prices/u0nd9"))return bytes(hidden?"{\"p\":[],\"u\":[],\"h\":[\"n123\"]}":"{\"p\":[[\"n123\",\"spritz\",0,400,\"2026-11-02\",0,0],[\"n123\",\"spritz\",1,700,\"2026-11-02\",0,0]],\"u\":[],\"h\":[]}");
+            if(url.endsWith("/api/prices/u0nd9"))return bytes(hidden?"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[\"n123\"]}":"{\"p\":[[\"n123\",\"spritz\",0,400,\"2026-11-02\",0,0],[\"n123\",\"spritz\",1,700,\"2026-11-02\",0,0]],\"u\":[],\"pend\":[],\"h\":[]}");
             throw new IOException("Unexpected owned URL");
         },()->"2026-11-02");
-        onMain(()->{screen=new SavedDrinkScreen(activity,drinks,new FavoritesLoader(client,task->activity.runOnUiThread(task)),opened::set,()->true);activity.setContentView(screen.view());screen.show();});
+        onMain(()->{favorites=new FavoritesScreen(activity,venues,opened::set,()->true,new FavoritesLoader(client,task->activity.runOnUiThread(task)),drinks,new FavoritesLoader(client,task->activity.runOnUiThread(task)));activity.setContentView(favorites.view());favorites.show();favorites.view().findViewWithTag("favourites_drink_tab").performClick();try{java.lang.reflect.Field f=FavoritesScreen.class.getDeclaredField("drinkPane");f.setAccessible(true);screen=(SavedDrinkScreen)f.get(favorites);}catch(ReflectiveOperationException error){throw new AssertionError(error);}});
     }
     private void load()throws Exception {load(URL);}
     private void load(String route)throws Exception {

@@ -81,4 +81,14 @@ final class MobileEntry {
         if (identity == null || drink == null || (band != 0 && band != 1)) return null;
         return venueDocument(identity) + "&drink=" + drink.code + "&hh=" + band;
     }
+
+    static boolean matchesDrink(String raw, RecommendationDrink drink, int band) {
+        if (publicVenue(raw) == null || drink == null || (band != 0 && band != 1)) return false;
+        String selected = null, selectedBand = null;
+        for (String part : URI.create(raw).getRawQuery().split("&")) {
+            if (part.startsWith("drink=")) selected = part.substring(6);
+            if (part.startsWith("hh=")) selectedBand = part.substring(3);
+        }
+        return selected == null || (selected.equals(drink.code) && selectedBand.equals(Integer.toString(band)));
+    }
 }

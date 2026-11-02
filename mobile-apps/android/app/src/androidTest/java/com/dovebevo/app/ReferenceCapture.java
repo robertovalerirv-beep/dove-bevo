@@ -9,7 +9,7 @@ import java.io.FileOutputStream;
 final class ReferenceCapture {
     static void save(String name) {
         if(!"true".equals(InstrumentationRegistry.getArguments().getString("captureReference")))return;
-        if(!name.matches("(?:discovery|share|information)-owned-fixture\\.png"))throw new AssertionError("Unknown fixture capture");
+        if(!name.matches("(?:discovery|share|information|drink-save|drink-list)-owned-fixture\\.png"))throw new AssertionError("Unknown fixture capture");
         try{
             android.app.Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();instrumentation.waitForIdleSync();
             try{Thread.sleep(450);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new AssertionError(interrupted);}

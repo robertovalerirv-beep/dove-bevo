@@ -17,7 +17,7 @@ concurrency:
 env:
   MANIFEST: mobile-apps/data/italy-menu-seed-20261102-j.json
   MANIFEST_SHA256: 0ec141814249b653723f8c70cfa192310aabd9e7925a90bbcdbb2568a4756faf
-  APPROVED_SOURCE_INDICES: ""
+  APPROVED_SOURCE_INDICES: "0"
   COHORT_SHA256: 2e194dc66ccf25e511ac4b1a25a0d75774cecf6967f19a3fb124927da15126a7
   TRACER_SHA256: b23ec078472eafc8f0e0c5bf70b840a69e137a5cba06dd328d52478c46dddbd5
   IMPORTER_SHA256: a6ee8ea2f8277584beb83f22baae7787448b83db417fa80716b61e8f431fad78
@@ -47,7 +47,7 @@ jobs:
   reviewed-import:
     needs: preservation
     concurrency:
-      group: dovebevo-one-off-menu-jmport
+      group: dovebevo-one-off-menu-import
       cancel-in-progress: false
     if: >-
       github.repository == 'robertovalerirv-beep/dove-bevo' &&

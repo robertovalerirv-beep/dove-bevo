@@ -51,3 +51,9 @@ class ReceiptBindingTests(unittest.TestCase):
         for outcome in ("eligible_at_read","indeterminate","not_attempted"):
             receipt["records"][0]["outcome"]=outcome
             with self.subTest(outcome=outcome),self.assertRaises(ValueError):verifier.validate_receipt(doc,raw,receipt)
+
+class WorkflowLockTests(unittest.TestCase):
+    def test_protected_writer_uses_shared_import_lock(self):
+        workflow = (Path(__file__).resolve().parents[3] / ".github/workflows/mobile-italy-menu-j.yml").read_text(encoding="utf-8")
+        protected = workflow.split("\n  reviewed-import:\n", 1)[1]
+        self.assertIn("\n    concurrency:\n      group: dovebevo-one-off-menu-import\n      cancel-in-progress: false\n", protected)

@@ -7,7 +7,7 @@ import { after, before, test } from "node:test";
 import { build } from "vite";
 import preact from "@preact/preset-vite";
 import { chromium } from "@playwright/test";
-/* global window */
+/* global window, document, getComputedStyle */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "../../../..");
@@ -368,6 +368,117 @@ test("mobile venue privacy uses the approved app policy and preserves translated
         "/regole",
       );
     }
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+async function assertActionRow(actions, count = 3) {
+  const boxes = await actions.evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const r = button.getBoundingClientRect();
+      return {
+        x: r.x,
+        y: r.y,
+        width: r.width,
+        height: r.height,
+        scroll: button.scrollWidth,
+        client: button.clientWidth,
+      };
+    }),
+  );
+  assert.equal(boxes.length, count);
+  assert.ok(
+    boxes.every((b) => Math.abs(b.y - boxes[0].y) < 1),
+    JSON.stringify(boxes),
+  );
+  assert.ok(
+    boxes.every((b) => b.width >= 48 && b.height >= 48 && b.scroll <= b.client + 1),
+    JSON.stringify(boxes),
+  );
+}
+
+test("three price actions retain a phone row across languages and confirmation states", async () => {
+  mkdirSync(path.join(here, "../../test-results"), { recursive: true });
+  const f = await fixture();
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.locator("h2.scontrino__name").waitFor();
+    const actions = f.page.locator(".mobile-price--featured .price__actions .btn");
+    for (const width of [393, 320]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      await assertActionRow(actions);
+      await f.page.screenshot({
+        path: path.join(here, "../../test-results", `price-actions-${width}-fixture.png`),
+      });
+    }
+    await f.page.evaluate(() => window.sheetFixture.setConfirmation("hold"));
+    await actions.first().click();
+    await f.page.waitForFunction(
+      () =>
+        document
+          .querySelector(".mobile-price--featured .price__actions button")
+          ?.getAttribute("aria-disabled") === "true",
+    );
+    await assertActionRow(actions);
+    await f.page.evaluate(() => window.sheetFixture.finishConfirmation());
+    await f.page.getByRole("button", { name: "Confermato", exact: true }).waitFor();
+    await assertActionRow(actions);
+    assert.equal(await actions.first().getAttribute("aria-disabled"), "true");
+    await f.page.evaluate(() => {
+      window.sheetFixture.setConfirmation("failed");
+      window.sheetFixture.bar(["gin_tonic"]);
+    });
+    await actions.first().click();
+    await f.page.getByRole("alert").waitFor();
+    await assertActionRow(actions);
+    assert.equal(await actions.first().getAttribute("aria-disabled"), null);
+    await f.page.evaluate(async () => {
+      await window.sheetFixture.setLang("en");
+      window.sheetFixture.bar(["gin_tonic"]);
+    });
+    await f.page.getByRole("button", { name: "Report an error", exact: true }).first().waitFor();
+    for (const width of [393, 320]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      await assertActionRow(actions);
+    }
+    const review = f.page.locator("li.mobile-price").filter({ hasText: "Medium beer" });
+    await review.getByRole("button", { name: "Price actions", exact: false }).click();
+    await assertActionRow(review.locator(".price__actions .btn"), 2);
+    assert.equal(await review.getByRole("button", { name: "It changed", exact: true }).count(), 0);
+    await f.page.evaluate(() => {
+      document.documentElement.style.fontSize = "32px";
+    });
+    const large = await actions.evaluateAll((buttons) =>
+      buttons.map((button) => {
+        const r = button.getBoundingClientRect();
+        return {
+          y: r.y,
+          width: r.width,
+          height: r.height,
+          font: Number.parseFloat(getComputedStyle(button).fontSize),
+          scroll: button.scrollWidth,
+          client: button.clientWidth,
+        };
+      }),
+    );
+    assert.ok(
+      large.every(
+        (b) => b.font >= 26 && b.width >= 48 && b.height >= 48 && b.scroll <= b.client + 1,
+      ),
+      JSON.stringify(large),
+    );
+    assert.ok(large[2].y > large[0].y, "Large text reflows instead of shrinking to force one row");
+    const body = await f.page
+      .locator(".sheet__body")
+      .evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth }));
+    assert.ok(body.scroll <= body.width + 1, JSON.stringify(body));
+    await actions.last().scrollIntoViewIfNeeded();
+    assert.ok(await actions.last().isVisible());
+    await f.page.screenshot({
+      path: path.join(here, "../../test-results", "price-actions-large-text-fixture.png"),
+    });
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

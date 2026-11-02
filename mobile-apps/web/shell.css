@@ -6,9 +6,9 @@
   --ink: #101820;
   --ink-muted: #5d6670;
   --line-soft: #e7eaed;
-  --spritz: #101820;
-  --on-spritz: #fff;
-  --spritz-text: #315c72;
+  --spritz: #ff5a1f;
+  --on-spritz: #101820;
+  --spritz-text: #b93a0b;
   --affare: #e1f3e3;
   --on-affare: #226332;
   --giusto: #fff0cb;
@@ -103,12 +103,15 @@ html[data-dovebevo-mobile-shell="1"] .drink-option {
   font: 500 14px/1.2 var(--font-sans);
 }
 html[data-dovebevo-mobile-shell="1"] .drink-option:has(input:checked) {
-  background: var(--ink);
-  color: #fff;
+  background: var(--spritz);
+  color: var(--on-spritz);
   border-color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--ink);
 }
-html[data-dovebevo-mobile-shell="1"] .drink-option:focus-within {
-  outline: 2px solid #2459b7;
+html[data-dovebevo-mobile-shell="1"] .drink-option:focus-within,
+html[data-dovebevo-mobile-shell="1"] .drink-option:has(input:focus-visible) {
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 html[data-dovebevo-mobile-shell="1"] .btn {
@@ -203,4 +206,17 @@ html[data-dovebevo-mobile-shell="1"] .chip {
 }
 html[data-dovebevo-mobile-shell="1"] .row {
   padding-block: 12px;
+}
+
+/* The isolated European view uses the same brand and readable selection cues. */
+html[data-dovebevo-mobile-shell="1"] .europe-drinks button.selected {
+  background: var(--spritz);
+  color: var(--on-spritz);
+  border-color: var(--ink);
+  font-weight: 700;
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+html[data-dovebevo-mobile-shell="1"] .europe-drinks button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }

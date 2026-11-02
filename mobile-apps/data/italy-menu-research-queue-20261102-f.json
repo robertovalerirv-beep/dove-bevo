@@ -1,0 +1,505 @@
+{
+  "schema_version": 1,
+  "status": "source_reviewed_research_not_imported",
+  "checked_on": "2026-11-02",
+  "priority": "Italy first, no Google review minimum",
+  "columns": [
+    "venue_key",
+    "cell",
+    "city",
+    "identity_note",
+    "source_url",
+    "source_format",
+    "items: drink,cents,menu_item,optional serving_note"
+  ],
+  "venues": [
+    [
+      "n1737407713",
+      "srb10",
+      61753360,
+      "Via Fiesolana 25r, Firenze",
+      "https://www.rexfirenze.com/cocktail.html",
+      "html_text_v1",
+      [
+        [
+          "spritz",
+          800,
+          "Spritz - Grandi Classici"
+        ],
+        [
+          "negroni",
+          800,
+          "Negroni - Grandi Classici; premium Negroni Corner excluded"
+        ],
+        [
+          "alcohol_free",
+          700,
+          "Mocktails: Volevo Nascere Campari / Amarcord"
+        ]
+      ]
+    ],
+    [
+      "n11279492046",
+      "u0nd9",
+      62505581,
+      "Via Tito Livio 33a, Milano",
+      "https://headbangerspub.com/menu/",
+      "html_text_v1",
+      [
+        [
+          "alcohol_free",
+          1000,
+          "Turbonegro and explicitly marked alcohol-free versions"
+        ]
+      ]
+    ],
+    [
+      "n2361698562",
+      "srb10",
+      61753360,
+      "Via Santa Caterina d'Alessandria 16, Firenze",
+      "https://www.theflorenceirishpub.com/menu-tfip/",
+      "html_text_v1",
+      [
+        [
+          "gin_tonic",
+          700,
+          "Gin Tonic"
+        ],
+        [
+          "gin_lemon",
+          700,
+          "Gin Lemon"
+        ],
+        [
+          "negroni",
+          800,
+          "Negroni"
+        ],
+        [
+          "sbagliato",
+          700,
+          "Negroni Sbagliato"
+        ]
+      ]
+    ],
+    [
+      "n2280684307",
+      "u20f2",
+      64778090,
+      "San Marco 5185, Venezia",
+      "https://www.qodeup.com/index.php/home/index/devilsforestpub/it",
+      "html_text_v1",
+      [
+        [
+          "spritz",
+          700,
+          "Spritz Aperol / Select / Bitter; other variants excluded"
+        ],
+        [
+          "negroni",
+          900,
+          "Negroni Campari vermouth gin; named house variant excluded"
+        ],
+        [
+          "water",
+          200,
+          "Acqua 0,5 l",
+          "Per bottle, 500 ml"
+        ],
+        [
+          "wine_glass",
+          500,
+          "Vino della casa red / white / Prosecco glass; other wines excluded",
+          "Per HOUSE wine glass; volume not stated"
+        ]
+      ]
+    ],
+    [
+      "n12420479412",
+      "srbj4",
+      667350399,
+      "Via Goito 9/2a, Bologna",
+      "https://guero.it/menu/",
+      "html_text_v1",
+      [
+        [
+          "spritz",
+          600,
+          "Spritz prosecco soda aperitivo or Campari"
+        ],
+        [
+          "negroni",
+          1000,
+          "Negroni Martini Rosso, Campari, Beefeater Dry"
+        ],
+        [
+          "sbagliato",
+          800,
+          "Negroni Sbagliato"
+        ],
+        [
+          "water",
+          100,
+          "Acqua Panna / Perrier / San Pellegrino 0,5 l",
+          "Per bottle, 500 ml"
+        ]
+      ]
+    ],
+    [
+      "n5910006531",
+      "sr60k",
+      428339558,
+      "Caffè Letterario Intra Moenia, Piazza Bellini 70, Napoli; owner embedded map matches within 10 m",
+      "https://www.intramoenia.it/wp-content/uploads/2026/07/Menu_ESTATE_2026_WEB.pdf",
+      "raw",
+      [
+        [
+          "water",
+          200,
+          "Acqua minerale 0,50 l",
+          "Per bottle, 500 ml"
+        ],
+        [
+          "beer_draft",
+          650,
+          "Nastro Azzurro alla spina 0,40 l",
+          "Per draught beer, 400 ml; 200 ml serving excluded"
+        ],
+        [
+          "negroni",
+          900,
+          "Negroni"
+        ],
+        [
+          "sbagliato",
+          900,
+          "Sbagliato"
+        ],
+        [
+          "wine_glass",
+          600,
+          "Ordinary white / red / rose / Prosecco calice; fortified wines excluded",
+          "Per ordinary wine glass; volume not stated"
+        ],
+        [
+          "spritz",
+          700,
+          "Spritz Aperol / Campari; other named variants excluded"
+        ]
+      ]
+    ],
+    [
+      "n4690645928",
+      "spzqg",
+      69300007,
+      "Via Nazario Sauro 5, Parma",
+      "https://tonicpub.com/menu-tonic/",
+      "html_text_v1",
+      [
+        [
+          "gin_tonic",
+          600,
+          "Gin Tonic - COCKTAIL BASE"
+        ],
+        [
+          "gin_lemon",
+          600,
+          "Gin Lemon - COCKTAIL BASE"
+        ],
+        [
+          "negroni",
+          800,
+          "Negroni"
+        ],
+        [
+          "sbagliato",
+          700,
+          "Sbagliato"
+        ]
+      ]
+    ],
+    [
+      "n12957673484",
+      "spzqg",
+      69300007,
+      "Borgo delle Colonne 26, Parma; EUR inferred from Italian venue context",
+      "https://www.santeria.parma.it/drinklist/",
+      "html_text_v1",
+      [
+        [
+          "negroni",
+          700,
+          "Negroni bicchiere; bottle excluded"
+        ],
+        [
+          "spritz",
+          650,
+          "Spritz Aperol / Campari / Cynar"
+        ],
+        [
+          "alcohol_free",
+          1000,
+          "Seven named alcohol-free menu cocktails"
+        ],
+        [
+          "beer_draft",
+          600,
+          "Sans Souci alla spina - MEDIA",
+          "Per MEDIA draught beer; piccola excluded; millilitre volume not stated"
+        ]
+      ]
+    ],
+    [
+      "n671406139",
+      "srbj1",
+      667350399,
+      "The Irish Times, Via Paradiso 1/d, Bologna; service and cover explicitly free",
+      "https://theirishtimespub.altervista.org/wp-content/uploads/2026/08/The-Irish-Times-Pub-Menu-Italiano-e-Inglese-2026-2027-1_compressed.pdf",
+      "raw",
+      [
+        [
+          "spritz",
+          600,
+          "Spritz Aperol / Campari"
+        ],
+        [
+          "negroni",
+          800,
+          "Negroni"
+        ],
+        [
+          "sbagliato",
+          800,
+          "Sbagliato"
+        ],
+        [
+          "wine_glass",
+          600,
+          "Listed Pecorino / Prosecco / Sangiovese / Cerasuolo / Montepulciano glasses",
+          "Per wine glass; volume not stated"
+        ]
+      ]
+    ],
+    [
+      "n4712450866",
+      "spzvb",
+      69300003,
+      "Via Taglio 21, Modena",
+      "https://www.birrlandina.it/wp-content/uploads/2026/10/menuOTT26.pdf",
+      "raw",
+      [
+        [
+          "spritz",
+          650,
+          "Spritz Aperol / Campari"
+        ],
+        [
+          "gin_lemon",
+          900,
+          "Gin Lemon"
+        ],
+        [
+          "wine_glass",
+          600,
+          "Calice Prosecco DOCG",
+          "Per Prosecco DOCG glass; volume not stated"
+        ]
+      ]
+    ],
+    [
+      "w223832309",
+      "srbfw",
+      69300020,
+      "Via Cesare Clementini 33, Rimini; current shared owner menu also lists Riccione; EUR inferred from Italian context",
+      "https://www.birro.it/wp-content/themes/rosa-child/pdf-menu/menu-web-drink.pdf",
+      "raw",
+      [
+        [
+          "spritz",
+          800,
+          "Spritz Aperol / Campari"
+        ],
+        [
+          "negroni",
+          800,
+          "Negroni"
+        ],
+        [
+          "alcohol_free",
+          800,
+          "Fruit / Virgin Colada alcohol-free cocktails"
+        ],
+        [
+          "wine_glass",
+          500,
+          "White / red / Prosecco wine glass",
+          "Per wine glass; volume not stated"
+        ],
+        [
+          "gin_tonic",
+          800,
+          "Standard Gin Tonic; optional premium gins excluded"
+        ]
+      ]
+    ],
+    [
+      "n13243514001",
+      "srbst",
+      69300015,
+      "Via Zara 48, Ravenna",
+      "https://www.soulclubravenna.it/menu.pdf",
+      "raw",
+      [
+        [
+          "alcohol_free",
+          700,
+          "House Analcolico a Strati / Ananas e Zenzero / Americano 0.0; premium signature 0.0 versions excluded"
+        ]
+      ]
+    ],
+    [
+      "n3122575934",
+      "spz2s",
+      1677276966,
+      "Piazza Chiara Gambacorti 11, Pisa",
+      "https://www.elevencafepisa.com/menus",
+      "html_text_v1",
+      [
+        [
+          "negroni",
+          700,
+          "Negroni Classico; other named variants excluded"
+        ]
+      ]
+    ],
+    [
+      "n2512765483",
+      "spz2s",
+      1677276966,
+      "Piazza Chiara Gambacorti 43/45, Pisa",
+      "https://margotpisa.it/menu-e-listino-prezzi/",
+      "html_text_v1",
+      [
+        [
+          "spritz",
+          600,
+          "Spritz Aperol / Campari / Select / Cynar - Prosecco"
+        ]
+      ]
+    ],
+    [
+      "n13143015823",
+      "spz2s",
+      1677276966,
+      "Scaccomalto, Via Santa Cecilia 32/34, Pisa",
+      "https://muditabrewery.com/menu-taproom/",
+      "html_text_v1",
+      [
+        [
+          "spritz",
+          600,
+          "Spritz"
+        ],
+        [
+          "wine_glass",
+          600,
+          "Calice rosso Prunicce / bianco Malvasia, Cantina Pakravan Papi",
+          "Per wine glass; volume not stated"
+        ],
+        [
+          "water",
+          100,
+          "Acqua minerale naturale o frizzante 0,5 l",
+          "Per bottle, 500 ml"
+        ]
+      ]
+    ],
+    [
+      "n9130024158",
+      "spz3q",
+      1822616932,
+      "Franklin 33, Via San Giorgio 43, Lucca; current owner-linked image visually reviewed; query-free URL same bytes",
+      "https://ec8f94cdaa.clvaw-cdnwnd.com/5a6431be126ebfea2a8cfc0cc02d2173/200000101-4abac4abae/Pag%207%20Drink%20List%20Ing.jpeg",
+      "raw",
+      [
+        [
+          "water",
+          300,
+          "Lurisia Still & Sparkling 500 ml",
+          "Per bottle, 500 ml"
+        ]
+      ]
+    ],
+    [
+      "n4713736698",
+      "srb10",
+      61753360,
+      "Green Store Pub - La Guerrina, Viale Malta 1/r, Firenze; business-authored hosted menu phone matches",
+      "https://www.qodeup.com/greenstorepublaguerrina",
+      "html_text_v1",
+      [
+        [
+          "spritz",
+          600,
+          "Spritz Aperol / Campari"
+        ],
+        [
+          "negroni",
+          700,
+          "Negroni gin vermouth rosso bitter"
+        ]
+      ]
+    ],
+    [
+      "n2953813432",
+      "u205n",
+      64778102,
+      "Borsa, Piazza dei Signori 26, Vicenza; Winter Drinks 2026; EUR inferred from Italian context",
+      "https://www.barborsa.com/cocktail/",
+      "html_text_v1",
+      [
+        [
+          "negroni",
+          900,
+          "Classic Negroni con bitter vermouth dry gin"
+        ],
+        [
+          "alcohol_free",
+          600,
+          "No alcool no problem: Americano analcolico / Negroni Zero / Gin Tonic dell'autista / Tropic / Virgin Colada"
+        ]
+      ]
+    ],
+    [
+      "n12896391885",
+      "u205n",
+      64778102,
+      "Contrà Daniele Manin 20a, Vicenza",
+      "https://www.quintanaexperience.com/wp-content/uploads/2026/01/menu-inverno-2026.pdf",
+      "raw",
+      [
+        [
+          "alcohol_free",
+          800,
+          "Analcolici: fruit-based laboratory cocktails and artisanal sodas"
+        ]
+      ]
+    ],
+    [
+      "n7104749309",
+      "u220d",
+      64776486,
+      "Nadamas, Piazza delle Erbe / Obstmarkt 43-44, Bolzano; current owner PDF final public URL; EUR inferred from Italian context",
+      "https://static1.squarespace.com/static/674495a6f587bbbea828ca4/t/67a4ddc45d631b193927c006/1738857925803/NADAMAS-BZ-Drinks.pdf",
+      "raw",
+      [
+        [
+          "spritz",
+          450,
+          "Aperol / Campari / Select Spritz"
+        ]
+      ]
+    ]
+  ]
+}

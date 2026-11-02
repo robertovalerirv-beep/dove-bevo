@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Exercise the installed live-service app on an owned ephemeral CI emulator."""
 import json
+import hashlib
+from collections import Counter
 import os
 from pathlib import Path
 import re
@@ -29,6 +31,103 @@ DIAGNOSTIC_ERRORS = []
 DIAGNOSTIC_LIMIT = 16_384
 SERIAL = "emulator-5554"
 LAUNCH_STAGES = ("initial", "after_decline", "resume", "after_restart")
+OWNED_CLASSES = {"NativeUsabilityRuntimeTest": 21, "RecommendationsRuntimeTest": 6,
+                 "FavoritesRuntimeTest": 5, "DiscoveryRuntimeTest": 2, "EuropePricesRuntimeTest": 1}
+PUBLIC_STAGES = ("home", "search", "map", "resume", "restart")
+PUBLIC_STAGE = None
+OWNED_PASS = False
+
+
+class PublicProbeBlocked(RuntimeError):
+    def __init__(self, stage, evidence):
+        super().__init__("Public probe BLOCKED by Cloudflare challenge; no protection interaction attempted")
+        self.stage, self.evidence = stage, evidence
+
+
+def owned_instrumentation(output):
+    text = output.decode("utf-8", "strict")
+    if len(output) > 2_000_000 or not re.search(r"^OK \(35 tests\)\s*$", text, re.M) or not re.search(r"^INSTRUMENTATION_CODE: -1\s*$", text, re.M):
+        raise RuntimeError("Owned instrumentation missing explicit 35-case PASS")
+    if re.search(r"FAILURES|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|shortMsg=", text):
+        raise RuntimeError("Owned instrumentation failed")
+    cases, started, fields = [], set(), {}
+    for line in text.splitlines():
+        if line.startswith("INSTRUMENTATION_STATUS: ") and "=" in line:
+            key, value = line.split(": ", 1)[1].split("=", 1)
+            fields[key] = value
+        elif line.startswith("INSTRUMENTATION_STATUS_CODE: "):
+            code = int(line.split(": ", 1)[1])
+            identity = (fields.get("class"), fields.get("test"))
+            if (code not in (0, 1) or fields.get("numtests") != "35" or not identity[1]
+                    or identity[0] not in {"com.dovebevo.app." + name for name in OWNED_CLASSES}):
+                raise RuntimeError("Owned instrumentation failure, skip or invalid case")
+            if code == 1:
+                if identity in started: raise RuntimeError("Duplicate owned test start")
+                started.add(identity)
+            else:
+                if identity not in started or identity in cases: raise RuntimeError("Missing or duplicate owned test result")
+                cases.append(identity)
+            fields = {}
+    if len(cases) != 35 or set(cases) != started or Counter(c.rsplit(".", 1)[1] for c, _ in cases) != Counter(OWNED_CLASSES):
+        raise RuntimeError("Owned instrumentation incomplete case set")
+    return {"result": "passed", "tests": 35, "cases": [list(case) for case in cases]}
+
+
+def run_owned_instrumentation():
+    classes = ",".join("com.dovebevo.app." + name for name in OWNED_CLASSES)
+    output = adb("shell", "am", "instrument", "-w", "-r", "-e", "class", classes,
+                 "com.dovebevo.app.test/com.dovebevo.app.NativeFixtureRunner", timeout=240).stdout
+    result = owned_instrumentation(output)
+    (EVIDENCE / "owned-instrumentation.json").write_text(json.dumps(result, indent=2) + "\n")
+    # Discard process-wide fixture interceptors before unmodified production launch.
+    adb("shell", "am", "force-stop", "com.dovebevo.app")
+    return result
+
+
+def cloudflare_challenge(ui):
+    for web in ui.iter("node"):
+        if web.get("class") != "android.webkit.WebView" or web.get("package") != "com.dovebevo.app": continue
+        labels = {value.strip() for n in web.iter("node") for value in (n.get("text", ""), n.get("content-desc", ""))}
+        checkbox = any(n.get("class") == "android.widget.CheckBox" and n.get("text") == "Verify you are human" for n in web.iter("node"))
+        if checkbox and {"www.dovebevo.com", "Performing security verification", "Verify you are human", "Cloudflare"} <= labels:
+            return True
+    return False
+
+
+def evidence_hash(name):
+    raw = (EVIDENCE / name).read_bytes()
+    if not raw or len(raw) > 20_000_000: raise RuntimeError("Invalid public probe evidence")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def valid_pr_block_receipt():
+    result = json.loads((EVIDENCE / "smoke-result.json").read_text())
+    owned = json.loads((EVIDENCE / "owned-instrumentation.json").read_text())
+    proof = result.get("public_probe", {})
+    cases = owned.get("cases", [])
+    return (result.get("result") == "blocked" and result.get("blocker") == "cloudflare_challenge"
+            and result.get("owned") == owned and owned.get("result") == "passed" and owned.get("tests") == 35
+            and len(cases) == 35 and all(isinstance(c, list) and len(c) == 2 and all(isinstance(v, str) for v in c) for c in cases)
+            and len(set(map(tuple, cases))) == 35
+            and Counter(c[0] for c in cases) == Counter({"com.dovebevo.app." + name: count for name, count in OWNED_CLASSES.items()})
+            and result.get("cleanup") == {"result": "passed", "errors": []}
+            and not result.get("diagnostic_write_error") and proof.get("stage") in PUBLIC_STAGES
+            and proof.get("result") == "blocked" and proof.get("evidence") == {
+                name: evidence_hash(name) for name in ("public-blocked-ui.xml", "public-blocked.png")}
+            and (EVIDENCE / "public-blocked.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+            and cloudflare_challenge(ET.parse(EVIDENCE / "public-blocked-ui.xml").getroot()))
+
+
+def ci_entry(pr_quality=False):
+    try:
+        main()
+    except PublicProbeBlocked:
+        if (pr_quality and os.environ.get("GITHUB_EVENT_NAME") == "pull_request"
+                and os.environ.get("GITHUB_REPOSITORY") == "robertovalerirv-beep/dove-bevo"
+                and valid_pr_block_receipt()):
+            print("::warning::Owned Android quality checks passed; public production probe BLOCKED by Cloudflare. See original XML/PNG evidence; this is not a public-probe pass.")
+            return
+        raise
 
 
 def safe_text(value):
@@ -292,7 +391,12 @@ def tree():
     adb("shell", "uiautomator", "dump", "/sdcard/dove-ui.xml", timeout=20)
     data = adb("exec-out", "cat", "/sdcard/dove-ui.xml").stdout
     (EVIDENCE / "latest-ui.xml").write_bytes(data)
-    return ET.fromstring(data)
+    ui = ET.fromstring(data)
+    if OWNED_PASS and PUBLIC_STAGE in PUBLIC_STAGES and cloudflare_challenge(ui):
+        (EVIDENCE / "public-blocked-ui.xml").write_bytes(data)
+        screenshot("public-blocked.png")
+        raise PublicProbeBlocked(PUBLIC_STAGE, {name: evidence_hash(name) for name in ("public-blocked-ui.xml", "public-blocked.png")})
+    return ui
 
 
 def app_not_foreground():
@@ -354,7 +458,8 @@ def city_result(ui, name):
 
 
 def main():
-    global ADB_OWNER
+    global ADB_OWNER, PUBLIC_STAGE, OWNED_PASS
+    PUBLIC_STAGE, OWNED_PASS = None, False
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     result = {"checks": [], "package": "com.dovebevo.app", "result": "failed"}
     emulator = failure = None
@@ -387,6 +492,9 @@ def main():
         adb("shell", "input", "keyevent", "82")
         apk = ROOT / "mobile-apps/android/app/build/outputs/apk/debug/app-debug.apk"
         adb("install", "-r", str(apk), timeout=60)
+        adb("install", "-r", str(ROOT / "mobile-apps/android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"), timeout=60)
+        result["owned"] = run_owned_instrumentation()
+        OWNED_PASS = True
         launch_app("initial")
         result["checks"].append("production package launched")
         accept_rules = wait_for("native adult usage rules", lambda: find("Ho almeno 18 anni e accetto"), 15)
@@ -405,10 +513,12 @@ def main():
             raise RuntimeError("Declining the rules opened the online service")
         tap(accept_rules)
         result["checks"].append("offline privacy and declined rules retain the gate; explicit acceptance opens service")
+        PUBLIC_STAGE = "home"
         search = wait_for("live website city-search control", lambda: find("Cerca città o bar"), 90)
         result["checks"].append("live website rendered inside WebView")
         screenshot("01-live-home.png")
         tap(search)
+        PUBLIC_STAGE = "search"
         edit = wait_for("city-search input", lambda: next((n for n in tree().iter("node")
                            if n.get("class") == "android.widget.EditText" and n.get("enabled") == "true"), None))
         tap(edit)
@@ -416,41 +526,50 @@ def main():
         milano = wait_for("clickable Milano city result", lambda: city_result(tree(), "Milano"))
         screenshot("02-milano-search.png")
         tap(milano)
+        PUBLIC_STAGE = "map"
         wait_for("live map initialized after city selection", map_ready)
         screenshot("03-milano-map.png")
         result["checks"].append("live city search and result selection")
         adb("shell", "input", "keyevent", "3")
         launch_app("resume")
+        PUBLIC_STAGE = "resume"
         wait_for("app resumed", lambda: find("Cerca città o bar"))
         result["checks"].append("background and resume")
         adb("shell", "am", "force-stop", "com.dovebevo.app")
         launch_app("after_restart")
+        PUBLIC_STAGE = "restart"
         wait_for("accepted app restarts into live service", lambda: find("Cerca città o bar"), 90)
         if find("Ho almeno 18 anni e accetto") is not None:
             raise RuntimeError("Explicit rules acceptance did not survive a process restart")
         result["checks"].append("accepted rules survive a process restart")
         result["result"] = "passed"
+        result["public_probe"] = {"result": "passed"}
     except BaseException as error:
         result["error"] = safe_text(error)
+        if isinstance(error, PublicProbeBlocked) and OWNED_PASS and PUBLIC_STAGE in PUBLIC_STAGES and error.stage == PUBLIC_STAGE:
+            result.update(result="blocked", blocker="cloudflare_challenge",
+                          public_probe={"result": "blocked", "stage": error.stage, "evidence": error.evidence})
         failure = error
     finally:
+        PUBLIC_STAGE = None
         if emulator is not None and emulator.poll() is None and ADB_OWNER is not None:
             try:
                 screenshot("last-state.png")
                 tree()
-            except (subprocess.SubprocessError, OSError, RuntimeError, ET.ParseError):
-                pass
+            except (subprocess.SubprocessError, OSError, RuntimeError, ET.ParseError) as error:
+                DIAGNOSTIC_ERRORS.append(safe_text(error))
         errors = cleanup_runtime(emulator, captures) + DIAGNOSTIC_ERRORS
         result["cleanup"] = {"result": "failed" if errors else "passed", "errors": errors}
         if errors:
             result["result"] = "failed"
         try:
             (EVIDENCE / "smoke-result.json").write_text(json.dumps(result, indent=2) + "\n")
-        except OSError as error:
+            if json.loads((EVIDENCE / "smoke-result.json").read_text()) != result:
+                raise RuntimeError("Smoke receipt read-back mismatch")
+        except (OSError, ValueError, RuntimeError) as error:
             result["result"] = "failed"
             result["diagnostic_write_error"] = safe_text(error)
-            if failure is None:
-                failure = error
+            failure = error
     print(json.dumps(result))
     if failure is not None:
         raise failure
@@ -459,4 +578,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] not in ([], ["--pr-quality"]): raise SystemExit("Unexpected Android smoke arguments")
+    ci_entry(pr_quality=sys.argv[1:] == ["--pr-quality"])

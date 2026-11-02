@@ -66,6 +66,7 @@ class AndroidSmokeTests(unittest.TestCase):
         m.FAILURES.clear()
         m.STARTUP.clear()
         m.DIAGNOSTIC_ERRORS.clear()
+        m.PUBLIC_STAGE, m.OWNED_PASS = None, False
         self.addCleanup(lambda: [setattr(m, k, v) for k, v in self.saved.items()])
         p = mock.patch.object(signal, 'SIGKILL', 9, create=True)
         p.start()
@@ -378,5 +379,123 @@ class AndroidSmokeTests(unittest.TestCase):
     def test_required_ui_checks_retained(self):
         for text in ['native adult usage rules', 'live website city-search control', 'clickable Milano city result', 'live map initialized after city selection', 'accepted app restarts into live service']:
             self.assertIn(text, source)
+
+    def owned_output(self):
+        lines = []
+        for name, count in m.OWNED_CLASSES.items():
+            for number in range(count):
+                for code in (1, 0):
+                    lines.extend([f'INSTRUMENTATION_STATUS: class=com.dovebevo.app.{name}',
+                                  f'INSTRUMENTATION_STATUS: test=case{number}',
+                                  'INSTRUMENTATION_STATUS: numtests=35', f'INSTRUMENTATION_STATUS_CODE: {code}'])
+        return ('\n'.join(lines) + '\nOK (35 tests)\nINSTRUMENTATION_CODE: -1\n').encode()
+
+    def challenge_xml(self):
+        return b'<hierarchy><node class="android.webkit.WebView" package="com.dovebevo.app"><node text="www.dovebevo.com"/><node text="Performing security verification"/><node class="android.widget.CheckBox" text="Verify you are human"/><node text="Cloudflare"/></node></hierarchy>'
+
+    def blocked_receipt(self):
+        owned = m.owned_instrumentation(self.owned_output())
+        (m.EVIDENCE / 'owned-instrumentation.json').write_text(json.dumps(owned))
+        (m.EVIDENCE / 'public-blocked-ui.xml').write_bytes(self.challenge_xml())
+        (m.EVIDENCE / 'public-blocked.png').write_bytes(b'\x89PNG\r\n\x1a\nfixture-only')
+        proof = {name: m.evidence_hash(name) for name in ('public-blocked-ui.xml', 'public-blocked.png')}
+        result = {'result': 'blocked', 'blocker': 'cloudflare_challenge', 'owned': owned,
+                  'public_probe': {'result': 'blocked', 'stage': 'home', 'evidence': proof},
+                  'cleanup': {'result': 'passed', 'errors': []}}
+        (m.EVIDENCE / 'smoke-result.json').write_text(json.dumps(result))
+        return result, m.PublicProbeBlocked('home', proof)
+
+    def test_owned_instrumentation_requires_every_explicit_unskipped_case(self):
+        good = self.owned_output()
+        self.assertEqual(m.owned_instrumentation(good)['tests'], 35)
+        for bad in [b'', good.replace(b'OK (35 tests)', b''), good.replace(b'INSTRUMENTATION_CODE: -1', b''),
+                    good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -2', 1),
+                    good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -3', 1),
+                    good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -4', 1),
+                    good.replace(b'case0', b'case1', 2), good + b'\nFAILURES!!!\n']:
+            with self.subTest(bad=bad[:50]), self.assertRaises((RuntimeError, ValueError)):
+                m.owned_instrumentation(bad)
+
+    def test_owned_class_allowlist_fresh_process_and_force_stop(self):
+        with mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, self.owned_output(), b'')) as adb:
+            m.run_owned_instrumentation()
+        self.assertEqual(adb.call_count, 2)
+        args = adb.call_args_list[0].args
+        self.assertEqual(args[:7], ('shell', 'am', 'instrument', '-w', '-r', '-e', 'class'))
+        self.assertEqual(set(args[7].split(',')), {'com.dovebevo.app.' + name for name in m.OWNED_CLASSES})
+        self.assertNotIn('PublicBrowseRuntimeTest', args[7])
+        self.assertEqual(adb.call_args_list[1].args, ('shell', 'am', 'force-stop', 'com.dovebevo.app'))
+
+    def test_only_exact_challenge_inside_app_webview_is_recognized(self):
+        good = self.challenge_xml()
+        self.assertTrue(m.cloudflare_challenge(m.ET.fromstring(good)))
+        for bad in [good.replace(b'Cloudflare', b'Network error'), good.replace(b'com.dovebevo.app', b'other.app'),
+                    good.replace(b'www.dovebevo.com', b'other.invalid'), good.replace(b'android.widget.CheckBox', b'android.widget.TextView')]:
+            self.assertFalse(m.cloudflare_challenge(m.ET.fromstring(bad)))
+        with mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, good, b'')), mock.patch.object(m, 'screenshot') as shot:
+            m.tree()  # Not public-stage or owned-pass: never special-case this state.
+            m.PUBLIC_STAGE, m.OWNED_PASS = 'home', True
+            shot.side_effect = lambda name: (m.EVIDENCE / name).write_bytes(b'\x89PNG\r\n\x1a\nfixture-only')
+            with self.assertRaises(m.PublicProbeBlocked): m.tree()
+            shot.assert_called_once_with('public-blocked.png')
+
+    def test_pr_only_wrapper_preserves_pass_and_recognized_block_but_never_generic_failure(self):
+        with mock.patch.object(m, 'main') as main:
+            m.ci_entry(pr_quality=True)
+            main.assert_called_once()
+        _, blocked = self.blocked_receipt()
+        env = {'GITHUB_EVENT_NAME': 'pull_request', 'GITHUB_REPOSITORY': 'robertovalerirv-beep/dove-bevo'}
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(m, 'main', side_effect=blocked), mock.patch('sys.stdout', new_callable=io.StringIO) as output:
+            m.ci_entry(pr_quality=True)
+        self.assertIn('BLOCKED', output.getvalue())
+        self.assertNotIn('public production probe passed', output.getvalue())
+        for event, flag in [('push', True), ('pull_request', False)]:
+            with mock.patch.dict(os.environ, {**env, 'GITHUB_EVENT_NAME': event}, clear=True), mock.patch.object(m, 'main', side_effect=blocked):
+                with self.assertRaises(m.PublicProbeBlocked): m.ci_entry(pr_quality=flag)
+        with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(m, 'main', side_effect=RuntimeError('timeout/crash')):
+            with self.assertRaisesRegex(RuntimeError, 'timeout/crash'): m.ci_entry(pr_quality=True)
+
+    def test_invalid_receipt_owned_cleanup_or_artifacts_are_always_fatal(self):
+        env = {'GITHUB_EVENT_NAME': 'pull_request', 'GITHUB_REPOSITORY': 'robertovalerirv-beep/dove-bevo'}
+        for change in ['owned', 'missing-owned-cases', 'cleanup', 'receipt', 'evidence', 'stage']:
+            result, blocked = self.blocked_receipt()
+            if change == 'owned': result['owned'] = {'result': 'failed', 'tests': 34}
+            if change == 'missing-owned-cases':
+                result['owned']['cases'] = []
+                (m.EVIDENCE / 'owned-instrumentation.json').write_text(json.dumps(result['owned']))
+            if change == 'cleanup': result['cleanup'] = {'result': 'failed', 'errors': ['still running']}
+            if change == 'stage': result['public_probe']['stage'] = 'native-rules'
+            if change == 'evidence': (m.EVIDENCE / 'public-blocked-ui.xml').write_bytes(b'<hierarchy/>')
+            (m.EVIDENCE / 'smoke-result.json').write_text('invalid' if change == 'receipt' else json.dumps(result))
+            with mock.patch.dict(os.environ, env, clear=True), mock.patch.object(m, 'main', side_effect=blocked):
+                with self.subTest(change=change), self.assertRaises((m.PublicProbeBlocked, ValueError)):
+                    m.ci_entry(pr_quality=True)
+
+    def test_receipt_write_failure_cannot_be_reclassified_as_public_block(self):
+        _, blocked = self.blocked_receipt()
+        # Main is tested through actual finalization; all Android collaborators are local doubles.
+        def await_fixture(description, *args):
+            if description == 'live website city-search control': raise blocked
+            return m.ET.fromstring('<node bounds="[0,0][10,10]"/>')
+        privacy = m.ET.fromstring('<hierarchy><node text="Roberto Valeri dovebevo@gmail.com"/></hierarchy>')
+        with mock.patch.object(m, 'prepare_runtime'), mock.patch.object(m, 'port_open', return_value=False), \
+             mock.patch.object(m, 'run'), mock.patch.object(m.subprocess, 'Popen', return_value=Proc(code=None)), \
+             mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, b'', b'')), \
+             mock.patch.object(m, 'tree', return_value=privacy), mock.patch.object(m, 'screenshot'), \
+             mock.patch.object(m, 'run_owned_instrumentation', return_value=m.owned_instrumentation(self.owned_output())), \
+             mock.patch.object(m, 'wait_for', side_effect=await_fixture), mock.patch.object(m, 'cleanup_runtime', return_value=[]), \
+             mock.patch.object(pathlib.Path, 'write_text', side_effect=OSError('receipt disk failed')), \
+             mock.patch('sys.stdout', new_callable=io.StringIO):
+            with self.assertRaisesRegex(OSError, 'receipt disk failed'): m.main()
+        self.assertTrue(m.OWNED_PASS)
+
+    def test_workflow_keeps_required_job_and_release_dependency_without_blanket_override(self):
+        workflow = (root / '.github/workflows/mobile-apps.yml').read_text()
+        android = workflow.split('\n  android:\n', 1)[1].split('\n  release-android:', 1)[0]
+        self.assertIn(':app:assembleDebugAndroidTest', android)
+        self.assertIn('python3 -B mobile-apps/scripts/android-smoke.py --pr-quality', android)
+        self.assertNotIn('continue-on-error', android)
+        self.assertNotIn('|| true', android)
+        self.assertIn('needs: [android, ios]', workflow)
 if __name__ == '__main__':
     unittest.main()

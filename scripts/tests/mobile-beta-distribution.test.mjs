@@ -348,6 +348,17 @@ test("audit records renamed same-app groups privately but produces no plan for h
   assert.ok(f.calls.every((call) => call.method === "GET"));
 });
 
+test("bounded group-name metadata rejects controls, lone surrogates and oversized names", async () => {
+  for (const name of ["private\u0000name", "private\ud800name", "x".repeat(121)]) {
+    const groups = fixture().state.groups.map((group) => ({ ...group }));
+    groups[0].name = name;
+    const receipt = await fixture({ groups }).audit();
+    assert.equal(receipt.complete, false);
+    assert.equal(receipt.failure.app_groups[0].name, null);
+    assert.ok(!JSON.stringify(receipt.failure).includes(JSON.stringify(name).slice(1, -1)));
+  }
+});
+
 test("invalid local plan/hash is rejected before accessing credentials or transport", async () => {
   const f = fixture();
   const plan = (await f.audit()).plan;

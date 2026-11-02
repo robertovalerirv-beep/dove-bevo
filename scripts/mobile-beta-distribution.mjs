@@ -355,7 +355,7 @@ async function inspect(client, plan, diagnostics) {
       name:
         typeof group.attributes?.name === "string" &&
         group.attributes.name.length <= 120 &&
-        !/[\u0000-\u001f\u007f-\u009f\ud800-\udfff]/.test(group.attributes.name)
+        !/[\p{Cc}\p{Cs}]/u.test(group.attributes.name)
           ? group.attributes.name
           : null,
       is_internal_group:

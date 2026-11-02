@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "city": "London",
+  "country": "GB",
+  "currency": "GBP",
+  "observed_at_ms": 1793575516359,
+  "provider": "firecrawl-maps",
+  "capability": "businesses/search",
+  "workflow": {
+    "version": "2.2.1",
+    "digest": "sha256:a912041630b7c85d928d80b42ab6e3e7b491d292d7d31fc8587f23ecdfcb6904"
+  },
+  "query": "bars in central London",
+  "coverage": {
+    "returned": 20,
+    "has_more": true,
+    "next_cursor": "20"
+  },
+  "venues": [
+    {
+      "name": "Tequila Mockingbird Covent Garden",
+      "address": "42 William IV St, London WC2N 4DD",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Events Venue",
+        "Pub"
+      ],
+      "feature_id": "0x48760557bc257699:0x26047841cf3a14aa",
+      "place_id": "ChIJmXYlvFcFdkgRqhQ6z0F4BCY",
+      "latitude": 51.509582599999995,
+      "longitude": -0.12618849999999998,
+      "review_count": 417,
+      "website": "http://www.tequilamock.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x48760557bc257699%3A0x26047841cf3a14aa"
+    },
+    {
+      "name": "The Three Lanterns",
+      "address": "5 Lisle St, London WC2H 7BG",
+      "categories": [
+        "Sports bar",
+        "Pub"
+      ],
+      "feature_id": "0x48760516f03b777d:0x5af8032fea28b14c",
+      "place_id": "ChIJfXc78BYFdkgRTLEo6i8D-Fo",
+      "latitude": 51.5113035,
+      "longitude": -0.1314099,
+      "review_count": 803,
+      "website": "https://www.socialpubandkitchen.co.uk/three-lanterns-leicester-square?utm_source=gmb&utm_medium=organic&utm_campaign=homepage",
+      "maps_url": "https://maps.firecrawl.dev/place/0x48760516f03b777d%3A0x5af8032fea28b14c"
+    },
+    {
+      "name": "Simmons Bar | Leicester Square",
+      "address": "28a Leicester Square, London WC2H 7LE",
+      "categories": [
+        "Cocktail bar",
+        "Bar"
+      ],
+      "feature_id": "0x487605795b667501:0xf6472f388c6505c0",
+      "place_id": "ChIJAXVmW3kFdkgRwAVljDgvR_Y",
+      "latitude": 51.5102397,
+      "longitude": -0.1293888,
+      "review_count": 2773,
+      "website": "https://www.simmonsbar.co.uk/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487605795b667501%3A0xf6472f388c6505c0"
+    },
+    {
+      "name": "All Bar One Leicester Square",
+      "address": "46 Leicester Square, London WC2H 7LU",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Wine bar"
+      ],
+      "feature_id": "0x487604d222bd7597:0xb3e335d75f597292",
+      "place_id": "ChIJl3W9ItIEdkgRknJZX9c147M",
+      "latitude": 51.5100723,
+      "longitude": -0.13062759999999998,
+      "review_count": 6978,
+      "website": "https://www.allbarone.co.uk/national-search/london/all-bar-one-leicester-square?utm_source=google&utm_medium=organic&utm_campaign=gmb-homepage",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487604d222bd7597%3A0xb3e335d75f597292"
+    },
+    {
+      "name": "Thirst Bar Soho",
+      "address": "53 Greek St, London W1D 3DR",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Club",
+        "Lounge bar"
+      ],
+      "feature_id": "0x487604d2cf7b67c1:0xe73038a0e96a27bf",
+      "place_id": "ChIJwWd7z9IEdkgRvydq6aA4MOc",
+      "latitude": 51.5142616,
+      "longitude": -0.1311466,
+      "review_count": 2178,
+      "website": "https://thirstbar.com/soho/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487604d2cf7b67c1%3A0xe73038a0e96a27bf"
+    },
+    {
+      "name": "The Escapologist",
+      "address": "35 Earlham St, Seven Dials, London WC2H 9LD",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Wine bar"
+      ],
+      "feature_id": "0x48760554aae20dc1:0xd2440eb3eafa1083",
+      "place_id": "ChIJwQ3iqlQFdkgRgxD66rMORNI",
+      "latitude": 51.5138764,
+      "longitude": -0.1264947,
+      "review_count": 1632,
+      "website": "https://www.escapologistbar.co.uk/?utm_medium=organic&utm_source=gbp&utm_campaign=homepage",
+      "maps_url": "https://maps.firecrawl.dev/place/0x48760554aae20dc1%3A0xd2440eb3eafa1083"
+    },
+    {
+      "name": "8 at The Londoner",
+      "address": "38 Leicester Square, London WC2H 7DX",
+      "categories": [
+        "Bar",
+        "Lounge bar"
+      ],
+      "feature_id": "0x487605b540c0098f:0x9e460e28ec6787df",
+      "place_id": "ChIJjwnAQLUFdkgR34dn7CgORp4",
+      "latitude": 51.5098433,
+      "longitude": -0.1305759,
+      "review_count": 448,
+      "website": "https://www.thelondoner.com/restaurants-bars/8-at-the-londoner?utm_source=Yext&utm_medium=Organic&utm_campaign=8",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487605b540c0098f%3A0x9e460e28ec6787df"
+    },
+    {
+      "name": "The Thin White Duke",
+      "address": "22B Great Windmill St, London W1D 7LD",
+      "categories": [
+        "Cocktail bar",
+        "Art cafe",
+        "Bar",
+        "Cafe",
+        "Coffee shop",
+        "Dim Sum restaurant",
+        "Pub",
+        "Recording studio",
+        "Restaurant"
+      ],
+      "feature_id": "0x487605069b22ecb3:0x9bf88e8800f99637",
+      "place_id": "ChIJs-wimwYFdkgRN5b5AIiO-Js",
+      "latitude": 51.511628599999995,
+      "longitude": -0.1344678,
+      "review_count": 460,
+      "website": "https://www.thethinwhiteduke.london/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487605069b22ecb3%3A0x9bf88e8800f99637"
+    },
+    {
+      "name": "The Spy Bar",
+      "address": "57 Whitehall, London SW1A 2BX",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x48760500044491e5:0xba0e51a7aa562dd3",
+      "place_id": "ChIJ5ZFEBAAFdkgR0y1WqqdRDro",
+      "latitude": 51.505609,
+      "longitude": -0.1264702,
+      "review_count": 88,
+      "website": "https://theowo.london/the-spy-bar",
+      "maps_url": "https://maps.firecrawl.dev/place/0x48760500044491e5%3A0xba0e51a7aa562dd3"
+    },
+    {
+      "name": "Blind Spot London",
+      "address": "45 St Martin's Ln, London WC2N 4HX",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Bar & grill",
+        "British restaurant",
+        "Events Venue",
+        "Lounge bar",
+        "Restaurant",
+        "Wine bar"
+      ],
+      "feature_id": "0x487604cdcdd0c1a3:0x2df0c9381cb2cccf",
+      "place_id": "ChIJo8HQzc0EdkgRz8yyHDjJ8C0",
+      "latitude": 51.5104889,
+      "longitude": -0.1264987,
+      "review_count": 676,
+      "website": "https://morgansoriginals.com/st-martins-lane/restaurants-bars/blind-spot?utm_source=google-gmb&utm_medium=organic&utm_campaign=gmb",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487604cdcdd0c1a3%3A0x2df0c9381cb2cccf"
+    },
+    {
+      "name": "Be At One - Russell Street",
+      "address": "24-26 Russell St, London WC2B 5HF",
+      "categories": [
+        "Cocktail bar",
+        "Bar"
+      ],
+      "feature_id": "0x487604cb04d813b7:0xef3274c69abc68d1",
+      "place_id": "ChIJtxPYBMsEdkgR0Wi8msZ0Mu8",
+      "latitude": 51.5130049,
+      "longitude": -0.1209407,
+      "review_count": 2160,
+      "website": "https://www.beatone.co.uk/russell-street-covent-garden?utm_source=gmb&utm_medium=organic&utm_campaign=homepage",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487604cb04d813b7%3A0xef3274c69abc68d1"
+    },
+    {
+      "name": "Disrepute",
+      "address": "4 Kingly Ct, Carnaby, London W1F 9RR",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Wine bar"
+      ],
+      "feature_id": "0x487604d5a7fa3b53:0x7955b84e7c4d727f",
+      "place_id": "ChIJUzv6p9UEdkgRf3JNfE64VXk",
+      "latitude": 51.5122358,
+      "longitude": -0.1383323,
+      "review_count": 1232,
+      "website": "https://www.disrepute.co.uk/?utm_medium=organic&utm_source=gbp&utm_campaign=homepage",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487604d5a7fa3b53%3A0x7955b84e7c4d727f"
+    },
+    {
+      "name": "Dovetail Bar - Covent Garden at El Ta'koy",
+      "address": "Basement, 3 Henrietta St, London WC2E 8PS",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Events Venue",
+        "Pub"
+      ],
+      "feature_id": "0x48760544d0fcad43:0xc6b47b94aca920c8",
+      "place_id": "ChIJQ6380EQFdkgRyCCprJR7tMY",
+      "latitude": 51.5113032,
+      "longitude": -0.122941,
+      "review_count": 444,
+      "website": "http://dovetailbars.co.uk/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x48760544d0fcad43%3A0xc6b47b94aca920c8"
+    },
+    {
+      "name": "The Harp, Covent Garden",
+      "address": "47 Chandos Pl, London WC2N 4HS",
+      "categories": [
+        "Pub",
+        "Bar",
+        "Restaurant"
+      ],
+      "feature_id": "0x487604cc29d97429:0x52cdf9e1d104cf66",
+      "place_id": "ChIJKXTZKcwEdkgRZs8E0eH5zVI",
+      "latitude": 51.509719399999994,
+      "longitude": -0.1259429,
+      "review_count": 3776,
+      "website": "https://www.harpcoventgarden.com/?utm_source=googlemybusiness&utm_medium=organic&utm_campaign=yext&utm_content=P180&y_source=1_MTIyMzcxOTUtNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487604cc29d97429%3A0x52cdf9e1d104cf66"
+    },
+    {
+      "name": "Kitty Hawk",
+      "address": "8 St. Martin's Pl, London WC2N 4JH",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Modern European restaurant",
+        "Restaurant"
+      ],
+      "feature_id": "0x4876051401a7c19b:0x38a6ca45ed93c72f",
+      "place_id": "ChIJm8GnARQFdkgRL8eT7UXKpjg",
+      "latitude": 51.5093148,
+      "longitude": -0.126847,
+      "review_count": 764,
+      "website": "https://etmcollection.co.uk/kitty-hawk",
+      "maps_url": "https://maps.firecrawl.dev/place/0x4876051401a7c19b%3A0x38a6ca45ed93c72f"
+    },
+    {
+      "name": "Blame Gloria - Cocktail Bar in Covent Garden",
+      "address": "20 Bedford St, London WC2E 9HP",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Wine bar"
+      ],
+      "feature_id": "0x487605b926d0b54d:0x172981276ef26219",
+      "place_id": "ChIJTbXQJrkFdkgRGWLybieBKRc",
+      "latitude": 51.510879,
+      "longitude": -0.1248443,
+      "review_count": 2805,
+      "website": "https://www.blamegloria.co.uk/bars/covent-garden?utm_medium=organic&utm_source=gbp&utm_campaign=homepage",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487605b926d0b54d%3A0x172981276ef26219"
+    },
+    {
+      "name": "Georgie's Bar",
+      "address": "10 Northumberland Ave, London WC2N 5AE",
+      "categories": [
+        "Bar"
+      ],
+      "feature_id": "0x487605e4cb3196c7:0x68e63da120208dc5",
+      "place_id": "ChIJx5Yxy-QFdkgRxY0gIKE95mg",
+      "latitude": 51.5067941,
+      "longitude": -0.1245903,
+      "review_count": 9,
+      "website": "https://www.corinthia.com/en-gb/london/kerridges/georgies-bar/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487605e4cb3196c7%3A0x68e63da120208dc5"
+    },
+    {
+      "name": "Joshua's Tavern at The Londoner",
+      "address": "38 Leicester Square, London WC2H 7DX",
+      "categories": [
+        "Pub",
+        "Bar",
+        "British restaurant"
+      ],
+      "feature_id": "0x487605e134a8a121:0x9e6bd26f835a1985",
+      "place_id": "ChIJIaGoNOEFdkgRhRlag2_Sa54",
+      "latitude": 51.5098265,
+      "longitude": -0.1301449,
+      "review_count": 127,
+      "website": "https://www.thelondoner.com/restaurants-bars/joshuas-tavern?utm_source=Yext&utm_medium=Organic&utm_campaign=Joshuas",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487605e134a8a121%3A0x9e6bd26f835a1985"
+    },
+    {
+      "name": "Upstairs At Rules",
+      "address": "34-35 Maiden Ln, London WC2E 7LB",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x487604cbf5c1ac45:0xad4bb0b6910c78c",
+      "place_id": "ChIJRazB9csEdkgRjMcQaQu71Ao",
+      "latitude": 51.510765799999994,
+      "longitude": -0.1231863,
+      "review_count": 170,
+      "website": "https://rules.co.uk/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487604cbf5c1ac45%3A0xad4bb0b6910c78c"
+    },
+    {
+      "name": "Be At One Piccadilly",
+      "address": "20 Great Windmill St, London W1D 7LA",
+      "categories": [
+        "Cocktail bar",
+        "Bar"
+      ],
+      "feature_id": "0x487604d38fc3d089:0x8ebf14f99e726ce9",
+      "place_id": "ChIJidDDj9MEdkgR6WxynvkUv44",
+      "latitude": 51.5114978,
+      "longitude": -0.134327,
+      "review_count": 2787,
+      "website": "https://www.beatone.co.uk/piccadilly-circus?utm_source=gmb&utm_medium=organic&utm_campaign=homepage",
+      "maps_url": "https://maps.firecrawl.dev/place/0x487604d38fc3d089%3A0x8ebf14f99e726ce9"
+    }
+  ]
+}

@@ -1,0 +1,349 @@
+{
+  "schema_version": 1,
+  "city": "Madrid",
+  "country": "ES",
+  "currency": "EUR",
+  "observed_at_ms": 1793575553408,
+  "provider": "firecrawl-maps",
+  "capability": "businesses/search",
+  "workflow": {
+    "version": "2.2.1",
+    "digest": "sha256:a912041630b7c85d928d80b42ab6e3e7b491d292d7d31fc8587f23ecdfcb6904"
+  },
+  "query": "bares en el centro de Madrid",
+  "coverage": {
+    "returned": 20,
+    "has_more": true,
+    "next_cursor": "20"
+  },
+  "venues": [
+    {
+      "name": "El Minibar",
+      "address": "C/ del Mesón de Paños, 1, Centro, 28013 Madrid",
+      "categories": [
+        "Tapas bar",
+        "Bar",
+        "Cocktail bar",
+        "Restaurant",
+        "Spanish restaurant"
+      ],
+      "feature_id": "0xd42287b736bcfd7:0x8f825fae51d65eee",
+      "place_id": "ChIJ189rc3soQg0R7l7WUa5fgo8",
+      "latitude": 40.4163335,
+      "longitude": -3.7091914,
+      "review_count": 8519,
+      "website": "http://www.instagram.com/barelminibar",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd42287b736bcfd7%3A0x8f825fae51d65eee"
+    },
+    {
+      "name": "Inclan Brutal Bar & Restaurante temático",
+      "address": "C. de Álvarez Gato, 4, Centro, 28012 Madrid",
+      "categories": [
+        "Bar",
+        "Restaurant",
+        "Cocktail bar",
+        "Meat products store",
+        "Mediterranean restaurant",
+        "Spanish restaurant",
+        "Tapas restaurant"
+      ],
+      "feature_id": "0xd42288066c3fa3f:0x4c115f1b554bf55a",
+      "place_id": "ChIJP_rDZoAoQg0RWvVLVRtfEUw",
+      "latitude": 40.415062299999995,
+      "longitude": -3.7019135,
+      "review_count": 20904,
+      "website": "http://www.inclanbrutalbar.com/?utm_source=google&utm_medium=GMB",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd42288066c3fa3f%3A0x4c115f1b554bf55a"
+    },
+    {
+      "name": "Matador",
+      "address": "C. de la Cruz, 39, Centro, 28012 Madrid",
+      "categories": [
+        "Tapas restaurant",
+        "Tapas bar"
+      ],
+      "feature_id": "0xd42287fd89bac67:0x4a3d06b30aa9d2cd",
+      "place_id": "ChIJZ6yb2H8oQg0RzdKpCrMGPUo",
+      "latitude": 40.4147474,
+      "longitude": -3.7028291,
+      "review_count": 4196,
+      "website": null,
+      "maps_url": "https://maps.firecrawl.dev/place/0xd42287fd89bac67%3A0x4a3d06b30aa9d2cd"
+    },
+    {
+      "name": "Bodega de la Ardosa",
+      "address": "C. de Colón, 13, Centro, 28004 Madrid",
+      "categories": [
+        "Tapas bar",
+        "Beer hall",
+        "Tavern",
+        "Winery"
+      ],
+      "feature_id": "0xd422888128612f3:0x85881175e523c211",
+      "place_id": "ChIJ8xKGEogoQg0REcIj5XURiIU",
+      "latitude": 40.4237683,
+      "longitude": -3.7017596,
+      "review_count": 7825,
+      "website": "http://www.laardosa.es/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd422888128612f3%3A0x85881175e523c211"
+    },
+    {
+      "name": "Rosi La Loca",
+      "address": "C. de Cádiz, 4, Centro, 28012 Madrid",
+      "categories": [
+        "Restaurant",
+        "Lounge bar"
+      ],
+      "feature_id": "0xd4228794c010283:0x62b53647e666590f",
+      "place_id": "ChIJgwIBTHkoQg0RD1lm5kc2tWI",
+      "latitude": 40.415804699999995,
+      "longitude": -3.7029553,
+      "review_count": 27067,
+      "website": "http://www.rosilaloca.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd4228794c010283%3A0x62b53647e666590f"
+    },
+    {
+      "name": "Calle 365 Discoteca y cócteles Madrid",
+      "address": "Calle de Echegaray, 18, Centro, 28014 Madrid",
+      "categories": [
+        "Bar",
+        "Disco club",
+        "Club",
+        "Cocktail bar",
+        "Hot dog stand",
+        "Musical club",
+        "Night club"
+      ],
+      "feature_id": "0xd422915dbed1681:0x68e861ab0226e865",
+      "place_id": "ChIJgRbt2xUpQg0RZegmAqth6Gg",
+      "latitude": 40.415216099999995,
+      "longitude": -3.6996419,
+      "review_count": 14403,
+      "website": "https://calle365madrid.com/?utm_source=gmb&utm_medium=organic&utm_campaign=gmb_website",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd422915dbed1681%3A0x68e861ab0226e865"
+    },
+    {
+      "name": "La Terraza de Madriz",
+      "address": "Pl. de Santo Domingo, 2, Centro, 28013 Madrid",
+      "categories": [
+        "Bar & grill"
+      ],
+      "feature_id": "0xd4229850cf9f2dd:0x284e46bcca53d5f",
+      "place_id": "ChIJ3fL5DIUpQg0RXz2lzGvkhAI",
+      "latitude": 40.4198987,
+      "longitude": -3.7080402,
+      "review_count": 2406,
+      "website": null,
+      "maps_url": "https://maps.firecrawl.dev/place/0xd4229850cf9f2dd%3A0x284e46bcca53d5f"
+    },
+    {
+      "name": "D-Sunset Madrid",
+      "address": "C. de Espoz y Mina, 14, Centro, 28012 Madrid",
+      "categories": [
+        "Bar",
+        "Restaurant",
+        "Breakfast restaurant",
+        "Brunch restaurant",
+        "Cocktail bar",
+        "Dessert restaurant",
+        "Diner",
+        "Lunch restaurant",
+        "Tapas bar",
+        "Tapas restaurant"
+      ],
+      "feature_id": "0xd4229c9e085e91f:0x4e235f698f629e90",
+      "place_id": "ChIJH-mF4MkpQg0RkJ5ij2lfI04",
+      "latitude": 40.4156335,
+      "longitude": -3.7023858,
+      "review_count": 2345,
+      "website": "https://d-sunset.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd4229c9e085e91f%3A0x4e235f698f629e90"
+    },
+    {
+      "name": "Viva Madrid",
+      "address": "C. de Manuel Fernández y González, nº 7, Centro, 28014 Madrid",
+      "categories": [
+        "Bar",
+        "Bistro",
+        "Cocktail bar",
+        "Restaurant"
+      ],
+      "feature_id": "0xd4229829ef256e9:0x1a02ee064235b00e",
+      "place_id": "ChIJ6VbynoIpQg0RDrA1QgbuAho",
+      "latitude": 40.4151864,
+      "longitude": -3.6998424,
+      "review_count": 2532,
+      "website": "http://vivamadrid1856.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd4229829ef256e9%3A0x1a02ee064235b00e"
+    },
+    {
+      "name": "Lovo Cocktail Bar Madrid",
+      "address": "Calle de Echegaray, 20, Centro, 28014 Madrid",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Disco club",
+        "Function room facility"
+      ],
+      "feature_id": "0xd42293222d4eb21:0xdad08774c82b6b25",
+      "place_id": "ChIJIevUIjIpQg0RJWsryHSH0No",
+      "latitude": 40.4150097,
+      "longitude": -3.6996145,
+      "review_count": 2401,
+      "website": "http://www.lovobar.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd42293222d4eb21%3A0xdad08774c82b6b25"
+    },
+    {
+      "name": "Taberna Callaito",
+      "address": "C. de Jacometrezo, 1, Centro, 28013 Madrid",
+      "categories": [
+        "Beer hall"
+      ],
+      "feature_id": "0xd42290043e0c65f:0x1e8e8c10deb4ae1d",
+      "place_id": "ChIJX8bgQwApQg0RHa603hCMjh4",
+      "latitude": 40.420044999999995,
+      "longitude": -3.7065869,
+      "review_count": 269,
+      "website": null,
+      "maps_url": "https://maps.firecrawl.dev/place/0xd42290043e0c65f%3A0x1e8e8c10deb4ae1d"
+    },
+    {
+      "name": "Bar em Madrid",
+      "address": "Calle de la Magdalena, 48, Centro, Centro, 28012 Madrid",
+      "categories": [
+        "Bar"
+      ],
+      "feature_id": "0xd42270073d488c1:0xf331010ddf6e9cfb",
+      "place_id": "ChIJwYjUcwAnQg0R-5xu3w0BMfM",
+      "latitude": 40.412405199999995,
+      "longitude": -3.6995662,
+      "review_count": 12,
+      "website": null,
+      "maps_url": "https://maps.firecrawl.dev/place/0xd42270073d488c1%3A0xf331010ddf6e9cfb"
+    },
+    {
+      "name": "Malaspina",
+      "address": "C. de Cádiz, 9, Centro, 28012 Madrid",
+      "categories": [
+        "Tavern",
+        "Restaurant",
+        "Spanish restaurant",
+        "Tapas bar"
+      ],
+      "feature_id": "0xd422880817be545:0xec67a98723299c5f",
+      "place_id": "ChIJReV7gYAoQg0RX5wpI4epZ-w",
+      "latitude": 40.4158435,
+      "longitude": -3.7026826,
+      "review_count": 6225,
+      "website": "https://www.facebook.com/taberna.malaspina.1",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd422880817be545%3A0xec67a98723299c5f"
+    },
+    {
+      "name": "Bandida Tapas & Cocktail Bar",
+      "address": "C. de la Cruz, 8, Centro, 28012 Madrid",
+      "categories": [
+        "Tapas bar",
+        "Cocktail bar"
+      ],
+      "feature_id": "0xd4229d985a6428d:0x8a81ea3c1fec2899",
+      "place_id": "ChIJjUKmhdkpQg0RmSjsHzzqgYo",
+      "latitude": 40.416087999999995,
+      "longitude": -3.7012402,
+      "review_count": 1276,
+      "website": "https://bandidamadrid.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd4229d985a6428d%3A0x8a81ea3c1fec2899"
+    },
+    {
+      "name": "Taberna Almería",
+      "address": "C. de las Aguas, 9, Centro, 28005 Madrid",
+      "categories": [
+        "Tapas bar",
+        "Tavern"
+      ],
+      "feature_id": "0xd4227d791e3d613:0x2f928f3d8fbf32ed",
+      "place_id": "ChIJE9bjkdcnQg0R7TK_jz2Pki8",
+      "latitude": 40.4108844,
+      "longitude": -3.7124007,
+      "review_count": 2051,
+      "website": null,
+      "maps_url": "https://maps.firecrawl.dev/place/0xd4227d791e3d613%3A0x2f928f3d8fbf32ed"
+    },
+    {
+      "name": "Wanderlust Bar",
+      "address": "C. del Bonetillo, 14, Centro, Centro, 28013 Madrid",
+      "categories": [
+        "Cocktail bar",
+        "Beer hall",
+        "Hookah bar",
+        "Pub",
+        "Sports bar"
+      ],
+      "feature_id": "0xd4228794229ca2f:0x1347f87a8229a258",
+      "place_id": "ChIJL8opQnkoQg0RWKIpgnr4RxM",
+      "latitude": 40.4168855,
+      "longitude": -3.709037,
+      "review_count": 901,
+      "website": "https://barwanderlust.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd4228794229ca2f%3A0x1347f87a8229a258"
+    },
+    {
+      "name": "El Tigre Sidra Bar",
+      "address": "C. de las Infantas, 23, Centro, 28004 Madrid",
+      "categories": [
+        "Tapas bar",
+        "Bar",
+        "Cider bar"
+      ],
+      "feature_id": "0xd42288685e1ab21:0xe3121cc3b13ea7f2",
+      "place_id": "ChIJIavhhYYoQg0R8qc-scMcEuM",
+      "latitude": 40.4203579,
+      "longitude": -3.6978537,
+      "review_count": 27674,
+      "website": "https://www.facebook.com/Restaurante-Sidreria-El-Tigre-158330920891550/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd42288685e1ab21%3A0xe3121cc3b13ea7f2"
+    },
+    {
+      "name": "Taberna de Angel Sierra",
+      "address": "C. de Gravina, 11, Centro, 28004 Madrid",
+      "categories": [
+        "Tavern"
+      ],
+      "feature_id": "0xd422885f8d8d66f:0x883f6338c93ff549",
+      "place_id": "ChIJb9bY-IUoQg0RSfU_yThjP4g",
+      "latitude": 40.4230118,
+      "longitude": -3.6974145,
+      "review_count": 2745,
+      "website": "https://tabernaangelsierra.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd422885f8d8d66f%3A0x883f6338c93ff549"
+    },
+    {
+      "name": "La Paradita Tapas Bar",
+      "address": "C. de Carlos III, 1, Centro, 28013 Madrid",
+      "categories": [
+        "Tapas bar"
+      ],
+      "feature_id": "0xd42291c24e4d285:0xf8e76535f21d69a8",
+      "place_id": "ChIJhdLkJBwpQg0RqGkd8jVl5_g",
+      "latitude": 40.4178593,
+      "longitude": -3.7107658,
+      "review_count": 2934,
+      "website": "https://barlaparadita.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd42291c24e4d285%3A0xf8e76535f21d69a8"
+    },
+    {
+      "name": "La Venencia",
+      "address": "Calle de Echegaray, 7, Centro, Centro, 28014 Madrid",
+      "categories": [
+        "Bar",
+        "Tavern"
+      ],
+      "feature_id": "0xd4228810eb286a1:0x2b84d4360e8a4a30",
+      "place_id": "ChIJoYayDoEoQg0RMEqKDjbUhCs",
+      "latitude": 40.415835699999995,
+      "longitude": -3.6995633,
+      "review_count": 3309,
+      "website": "http://www.lavenencia.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0xd4228810eb286a1%3A0x2b84d4360e8a4a30"
+    }
+  ]
+}

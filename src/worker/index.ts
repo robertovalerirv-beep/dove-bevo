@@ -18,6 +18,7 @@ import { seo, seoPages } from "./routes/seo";
 import { session } from "./routes/session";
 import { venues } from "./routes/venues";
 import { mobileRecommendations } from "./routes/mobile-recommendations";
+import { mobilePrices } from "./routes/mobile-prices";
 import type { AppEnv } from "./types";
 
 const app = new Hono<AppEnv>();
@@ -41,11 +42,20 @@ app.get("/api/admin/*", rateLimit);
 // burn the free-plan quota in minutes (red-team audit 14/10/2026, ADR 0021).
 app.get("/api/prices/*", readLimit);
 app.get("/api/mobile/venues/*", readLimit);
+app.get("/api/mobile/prices/*", readLimit);
 // Website contribution writes need a session (SPEC 9.1; /api/events is exempt by D-06).
 // Apps-only recommendations use their separately validated anonymous installation claim (ADR 0041).
 app.on(
   "POST",
-  ["/api/prices", "/api/prices/*", "/api/reports", "/api/venues", "/api/venues/*"],
+  [
+    "/api/prices",
+    "/api/prices/*",
+    "/api/reports",
+    "/api/venues",
+    "/api/venues/*",
+    "/api/mobile/prices",
+    "/api/mobile/prices/*",
+  ],
   requireSession,
 );
 
@@ -60,6 +70,7 @@ app.route("/api/venues", venues);
 app.route("/api/reports", reports);
 app.route("/api/events", events);
 app.route("/api/mobile/venues", mobileRecommendations);
+app.route("/api/mobile/prices", mobilePrices);
 app.route("/", seo);
 
 // Every page runs the Worker first (run_worker_first in wrangler.jsonc) and is handed to the static

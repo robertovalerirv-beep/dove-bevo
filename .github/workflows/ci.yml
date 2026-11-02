@@ -34,6 +34,8 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm run test
+      - name: European catalogue identity and serving source guards
+        run: python3 -B -m unittest discover -s mobile-apps/tools/europe-catalogue -p 'test_*.py' -q
       - run: node scripts/check-feature-list.mjs
       - run: node scripts/check-workflows.mjs
       - run: node scripts/check-config.mjs

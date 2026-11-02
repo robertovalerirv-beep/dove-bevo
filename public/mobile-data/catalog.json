@@ -1,0 +1,390 @@
+{
+  "schema_version": 1,
+  "version": "c8cfbf1e0e5231a9",
+  "venues": [
+    {
+      "key": "n10271152937",
+      "name": "Viva Madrid",
+      "kind": 2,
+      "lat": 40.41519,
+      "lon": -3.69985,
+      "cell": "ezjmg",
+      "city": "Madrid",
+      "country": "ES",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=1874322105587576846",
+        "review_count": 2532,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n1428141699",
+      "name": "La Venencia",
+      "kind": 1,
+      "lat": 40.4158,
+      "lon": -3.69957,
+      "cell": "ezjmg",
+      "city": "Madrid",
+      "country": "ES",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=3135864569193974320",
+        "review_count": 3309,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n1675771405",
+      "name": "Taberna Almería",
+      "kind": 1,
+      "lat": 40.41086,
+      "lon": -3.71238,
+      "cell": "ezjmg",
+      "city": "Madrid",
+      "country": "ES",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=3427959760949818093",
+        "review_count": 2051,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n2585147466",
+      "name": "Bodega de la Ardosa",
+      "kind": 1,
+      "lat": 40.42377,
+      "lon": -3.70177,
+      "cell": "ezjmg",
+      "city": "Madrid",
+      "country": "ES",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=9621959801930236433",
+        "review_count": 7825,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n3897299367",
+      "name": "Taberna de Ángel Sierra",
+      "kind": 1,
+      "lat": 40.42302,
+      "lon": -3.69746,
+      "cell": "ezjmg",
+      "city": "Madrid",
+      "country": "ES",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=9817674808236701001",
+        "review_count": 2745,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n4643813080",
+      "name": "El minibar",
+      "kind": 1,
+      "lat": 40.41629,
+      "lon": -3.7092,
+      "cell": "ezjmg",
+      "city": "Madrid",
+      "country": "ES",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=10340932896698031854",
+        "review_count": 8519,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n11850731835",
+      "name": "The Cambridge public house",
+      "kind": 1,
+      "lat": 48.86145,
+      "lon": 2.36417,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=2425138856856459647",
+        "review_count": 1210,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n12105378201",
+      "name": "Dirty Dick",
+      "kind": 1,
+      "lat": 48.88153,
+      "lon": 2.33754,
+      "cell": "u09wj",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=17450642718738722238",
+        "review_count": 1826,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n1235238111",
+      "name": "Sister Midnight",
+      "kind": 1,
+      "lat": 48.88146,
+      "lon": 2.34075,
+      "cell": "u09wj",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=908603482981633670",
+        "review_count": 299,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n12789329603",
+      "name": "Bar du Central",
+      "kind": 1,
+      "lat": 48.85948,
+      "lon": 2.30668,
+      "cell": "u09tu",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=8124602366324627331",
+        "review_count": 1119,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n254005128",
+      "name": "Bar nouveau",
+      "kind": 2,
+      "lat": 48.8615,
+      "lon": 2.35756,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=8628426939287441279",
+        "review_count": 728,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n2575207523",
+      "name": "Holiday bar",
+      "kind": 1,
+      "lat": 48.85254,
+      "lon": 2.34532,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=5966597067533629060",
+        "review_count": 191,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n2852733801",
+      "name": "Le Bar",
+      "kind": 1,
+      "lat": 48.84976,
+      "lon": 2.33802,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=5492544245997905514",
+        "review_count": 167,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n3170317826",
+      "name": "Le Pantalon",
+      "kind": 1,
+      "lat": 48.84569,
+      "lon": 2.342,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=5237158263426800285",
+        "review_count": 863,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n3265513124",
+      "name": "Little Red Door",
+      "kind": 1,
+      "lat": 48.86366,
+      "lon": 2.36359,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=14221331569511863422",
+        "review_count": 3025,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n329135152",
+      "name": "Little Temple Bar",
+      "kind": 2,
+      "lat": 48.85225,
+      "lon": 2.33443,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=4451323639562898225",
+        "review_count": 1252,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n5602730924",
+      "name": "Le Carlie",
+      "kind": 1,
+      "lat": 48.8627,
+      "lon": 2.35211,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=4136382887422166592",
+        "review_count": 1750,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n6113199663",
+      "name": "Moonshiner",
+      "kind": 1,
+      "lat": 48.85566,
+      "lon": 2.37115,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=11722847064281882602",
+        "review_count": 2752,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n9937387117",
+      "name": "The Pub",
+      "kind": 1,
+      "lat": 48.85506,
+      "lon": 2.3627,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=13752424555751347818",
+        "review_count": 381,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "w53669421",
+      "name": "Velvet Bar Paris",
+      "kind": 1,
+      "lat": 48.86075,
+      "lon": 2.34538,
+      "cell": "u09tv",
+      "city": "Paris",
+      "country": "FR",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=1234686795852097153",
+        "review_count": 1345,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n12349017101",
+      "name": "The Thin White Duke",
+      "kind": 1,
+      "lat": 51.51161,
+      "lon": -0.13443,
+      "cell": "gcpvh",
+      "city": "London",
+      "country": "GB",
+      "currency": "GBP",
+      "google": {
+        "url": "https://www.google.com/maps?cid=11238889584886126135",
+        "review_count": 460,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n5572572357",
+      "name": "Disrepute",
+      "kind": 1,
+      "lat": 51.51221,
+      "lon": -0.1384,
+      "cell": "gcpvh",
+      "city": "London",
+      "country": "GB",
+      "currency": "GBP",
+      "google": {
+        "url": "https://www.google.com/maps?cid=8743096898842096255",
+        "review_count": 1232,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n6044678286",
+      "name": "The Escapologist",
+      "kind": 1,
+      "lat": 51.51389,
+      "lon": -0.12639,
+      "cell": "gcpvj",
+      "city": "London",
+      "country": "GB",
+      "currency": "GBP",
+      "google": {
+        "url": "https://www.google.com/maps?cid=15151251212285382787",
+        "review_count": 1632,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "w993781413",
+      "name": "The Three Lanterns",
+      "kind": 2,
+      "lat": 51.51131,
+      "lon": -0.13145,
+      "cell": "gcpvj",
+      "city": "London",
+      "country": "GB",
+      "currency": "GBP",
+      "google": {
+        "url": "https://www.google.com/maps?cid=6554992761964638540",
+        "review_count": 803,
+        "checked_on": "2026-11-01"
+      }
+    }
+  ]
+}

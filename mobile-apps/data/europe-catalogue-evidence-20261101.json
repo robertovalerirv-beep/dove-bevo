@@ -1,0 +1,480 @@
+{
+  "schema_version": 1,
+  "catalogue_version": "c8cfbf1e0e5231a9",
+  "accepted": [
+    {
+      "key": "w993781413",
+      "business_name": "The Three Lanterns",
+      "match": "exact name",
+      "distance_m": 2.89,
+      "official_website": "https://www.socialpubandkitchen.co.uk/three-lanterns-leicester-square?utm_source=gmb&utm_medium=organic&utm_campaign=homepage",
+      "osm_url": "https://www.openstreetmap.org/way/993781413",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "960f32fcb06852094918006ca336fe8f15f6f0655215b79a659e85425e451d4a",
+      "osm_sha256": "1f36ed36ae45f6b8f45a09311ab84c9e688df3d4c3ff89810ede6bef4432a429"
+    },
+    {
+      "key": "n6044678286",
+      "business_name": "The Escapologist",
+      "match": "exact name",
+      "distance_m": 7.57,
+      "official_website": "https://www.escapologistbar.co.uk/?utm_medium=organic&utm_source=gbp&utm_campaign=homepage",
+      "osm_url": "https://www.openstreetmap.org/node/6044678286",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "960f32fcb06852094918006ca336fe8f15f6f0655215b79a659e85425e451d4a",
+      "osm_sha256": "1f36ed36ae45f6b8f45a09311ab84c9e688df3d4c3ff89810ede6bef4432a429"
+    },
+    {
+      "key": "n12349017101",
+      "business_name": "The Thin White Duke",
+      "match": "exact name",
+      "distance_m": 3.36,
+      "official_website": "https://www.thethinwhiteduke.london/",
+      "osm_url": "https://www.openstreetmap.org/node/12349017101",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "960f32fcb06852094918006ca336fe8f15f6f0655215b79a659e85425e451d4a",
+      "osm_sha256": "1f36ed36ae45f6b8f45a09311ab84c9e688df3d4c3ff89810ede6bef4432a429"
+    },
+    {
+      "key": "n5572572357",
+      "business_name": "Disrepute",
+      "match": "exact name",
+      "distance_m": 4.98,
+      "official_website": "https://www.disrepute.co.uk/?utm_medium=organic&utm_source=gbp&utm_campaign=homepage",
+      "osm_url": "https://www.openstreetmap.org/node/5572572357",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "960f32fcb06852094918006ca336fe8f15f6f0655215b79a659e85425e451d4a",
+      "osm_sha256": "1f36ed36ae45f6b8f45a09311ab84c9e688df3d4c3ff89810ede6bef4432a429"
+    },
+    {
+      "key": "n12789329603",
+      "business_name": "Bar du Central",
+      "match": "exact name",
+      "distance_m": 3.49,
+      "official_website": "https://www.barducentral-paris.com/",
+      "osm_url": "https://www.openstreetmap.org/node/12789329603",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n11850731835",
+      "business_name": "The Cambridge Public House",
+      "match": "exact name",
+      "distance_m": 2.37,
+      "official_website": "https://www.thecambridge.paris/",
+      "osm_url": "https://www.openstreetmap.org/node/11850731835",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n254005128",
+      "business_name": "Bar Nouveau",
+      "match": "exact name",
+      "distance_m": 8.76,
+      "official_website": "http://barnouveau.fr/",
+      "osm_url": "https://www.openstreetmap.org/node/254005128",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n3265513124",
+      "business_name": "Little Red Door",
+      "match": "exact name",
+      "distance_m": 6.34,
+      "official_website": "http://www.lrdparis.com/",
+      "osm_url": "https://www.openstreetmap.org/node/3265513124",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n3170317826",
+      "business_name": "Le Pantalon",
+      "match": "exact name",
+      "distance_m": 3.63,
+      "official_website": null,
+      "osm_url": "https://www.openstreetmap.org/node/3170317826",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n12105378201",
+      "business_name": "Dirty Dick",
+      "match": "exact name",
+      "distance_m": 3.03,
+      "official_website": "https://www.instagram.com/dirtydickparis/",
+      "osm_url": "https://www.openstreetmap.org/node/12105378201",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n9937387117",
+      "business_name": "The Pub",
+      "match": "exact name",
+      "distance_m": 4.71,
+      "official_website": "http://www.thepubparis.com/",
+      "osm_url": "https://www.openstreetmap.org/node/9937387117",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n329135152",
+      "business_name": "Little Temple Bar",
+      "match": "exact name",
+      "distance_m": 2.47,
+      "official_website": "http://www.littletemplebar.fr/",
+      "osm_url": "https://www.openstreetmap.org/node/329135152",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n2852733801",
+      "business_name": "Le Bar",
+      "match": "exact name",
+      "distance_m": 6.21,
+      "official_website": "https://www.pariszigzag.fr/sortir-paris/bars-cafes-terrasses-paris/le-bar-entre-velours-et-penombre",
+      "osm_url": "https://www.openstreetmap.org/node/2852733801",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "w53669421",
+      "business_name": "Velvet Bar Paris",
+      "match": "exact name",
+      "distance_m": 4.53,
+      "official_website": "http://www.velvet-bar.fr/",
+      "osm_url": "https://www.openstreetmap.org/way/53669421",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n6113199663",
+      "business_name": "Moonshiner",
+      "match": "exact name",
+      "distance_m": 5.95,
+      "official_website": "https://moonshinerbar.fr/",
+      "osm_url": "https://www.openstreetmap.org/node/6113199663",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n2575207523",
+      "business_name": "Holiday bar",
+      "match": "exact name",
+      "distance_m": 2.71,
+      "official_website": null,
+      "osm_url": "https://www.openstreetmap.org/node/2575207523",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n5602730924",
+      "business_name": "Le Carlie",
+      "match": "exact name",
+      "distance_m": 7.51,
+      "official_website": "https://linktr.ee/lecarliemarais?utm_source=linktree_profile_share&ltsid=2973213d-54c3-4435-88bc-183f1584d9cc",
+      "osm_url": "https://www.openstreetmap.org/node/5602730924",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n1235238111",
+      "business_name": "Sister Midnight",
+      "match": "exact name",
+      "distance_m": 8.32,
+      "official_website": "http://sistermidnightparis.com/",
+      "osm_url": "https://www.openstreetmap.org/node/1235238111",
+      "osm_timestamp": "2026-11-01T23:25:47Z",
+      "provider_sha256": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+      "osm_sha256": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af"
+    },
+    {
+      "key": "n4643813080",
+      "business_name": "El Minibar",
+      "match": "exact name",
+      "distance_m": 4.94,
+      "official_website": "http://www.instagram.com/barelminibar",
+      "osm_url": "https://www.openstreetmap.org/node/4643813080",
+      "osm_timestamp": "2026-11-01T23:27:50Z",
+      "provider_sha256": "f7a6f9281ddfe1cb885a2a4beb0c9a38d6fd6d49f088ad17b2126c389453f8d1",
+      "osm_sha256": "f758081e289b55751ea9bd5f255caaa82ac4a5735cd5ce12855f5466ad8f795b"
+    },
+    {
+      "key": "n2585147466",
+      "business_name": "Bodega de la Ardosa",
+      "match": "exact name",
+      "distance_m": 1.27,
+      "official_website": "http://www.laardosa.es/",
+      "osm_url": "https://www.openstreetmap.org/node/2585147466",
+      "osm_timestamp": "2026-11-01T23:27:50Z",
+      "provider_sha256": "f7a6f9281ddfe1cb885a2a4beb0c9a38d6fd6d49f088ad17b2126c389453f8d1",
+      "osm_sha256": "f758081e289b55751ea9bd5f255caaa82ac4a5735cd5ce12855f5466ad8f795b"
+    },
+    {
+      "key": "n10271152937",
+      "business_name": "Viva Madrid",
+      "match": "exact name",
+      "distance_m": 0.46,
+      "official_website": "http://vivamadrid1856.com/",
+      "osm_url": "https://www.openstreetmap.org/node/10271152937",
+      "osm_timestamp": "2026-11-01T23:27:50Z",
+      "provider_sha256": "f7a6f9281ddfe1cb885a2a4beb0c9a38d6fd6d49f088ad17b2126c389453f8d1",
+      "osm_sha256": "f758081e289b55751ea9bd5f255caaa82ac4a5735cd5ce12855f5466ad8f795b"
+    },
+    {
+      "key": "n1675771405",
+      "business_name": "Taberna Almería",
+      "match": "exact name",
+      "distance_m": 3.59,
+      "official_website": null,
+      "osm_url": "https://www.openstreetmap.org/node/1675771405",
+      "osm_timestamp": "2026-11-01T23:27:50Z",
+      "provider_sha256": "f7a6f9281ddfe1cb885a2a4beb0c9a38d6fd6d49f088ad17b2126c389453f8d1",
+      "osm_sha256": "f758081e289b55751ea9bd5f255caaa82ac4a5735cd5ce12855f5466ad8f795b"
+    },
+    {
+      "key": "n3897299367",
+      "business_name": "Taberna de Angel Sierra",
+      "match": "exact name",
+      "distance_m": 4.41,
+      "official_website": "https://tabernaangelsierra.com/",
+      "osm_url": "https://www.openstreetmap.org/node/3897299367",
+      "osm_timestamp": "2026-11-01T23:27:50Z",
+      "provider_sha256": "f7a6f9281ddfe1cb885a2a4beb0c9a38d6fd6d49f088ad17b2126c389453f8d1",
+      "osm_sha256": "f758081e289b55751ea9bd5f255caaa82ac4a5735cd5ce12855f5466ad8f795b"
+    },
+    {
+      "key": "n1428141699",
+      "business_name": "La Venencia",
+      "match": "exact name",
+      "distance_m": 4.15,
+      "official_website": "http://www.lavenencia.com/",
+      "osm_url": "https://www.openstreetmap.org/node/1428141699",
+      "osm_timestamp": "2026-11-01T23:27:50Z",
+      "provider_sha256": "f7a6f9281ddfe1cb885a2a4beb0c9a38d6fd6d49f088ad17b2126c389453f8d1",
+      "osm_sha256": "f758081e289b55751ea9bd5f255caaa82ac4a5735cd5ce12855f5466ad8f795b"
+    }
+  ],
+  "held": {
+    "london": [
+      {
+        "name": "Tequila Mockingbird Covent Garden",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Simmons Bar | Leicester Square",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "All Bar One Leicester Square",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Thirst Bar Soho",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "8 at The Londoner",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "The Spy Bar",
+        "reason": "review threshold or location identity"
+      },
+      {
+        "name": "Blind Spot London",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Be At One - Russell Street",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Dovetail Bar - Covent Garden at El Ta'koy",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "The Harp, Covent Garden",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Kitty Hawk",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Blame Gloria - Cocktail Bar in Covent Garden",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Georgie's Bar",
+        "reason": "review threshold or location identity"
+      },
+      {
+        "name": "Joshua's Tavern at The Londoner",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Upstairs At Rules",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Be At One Piccadilly",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      }
+    ],
+    "paris": [
+      {
+        "name": "Harry's New York Bar",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Bar Le Vanart",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "De Vie",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "La Resistance",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Caveau Montpensier",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "La Clap",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      }
+    ],
+    "madrid": [
+      {
+        "name": "Inclan Brutal Bar & Restaurante temático",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Matador",
+        "reason": "ambiguous OSM identity",
+        "matches": 2
+      },
+      {
+        "name": "Rosi La Loca",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Calle 365 Discoteca y cócteles Madrid",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "La Terraza de Madriz",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "D-Sunset Madrid",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Lovo Cocktail Bar Madrid",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Taberna Callaito",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Bar em Madrid",
+        "reason": "review threshold or location identity"
+      },
+      {
+        "name": "Malaspina",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Bandida Tapas & Cocktail Bar",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "Wanderlust Bar",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "El Tigre Sidra Bar",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      },
+      {
+        "name": "La Paradita Tapas Bar",
+        "reason": "no corroborated OSM identity",
+        "matches": 0
+      }
+    ],
+    "berlin": [
+      {
+        "reason": "missing complete business or OSM snapshot"
+      }
+    ],
+    "milano": [
+      {
+        "reason": "missing complete business or OSM snapshot"
+      }
+    ],
+    "roma": [
+      {
+        "reason": "missing complete business or OSM snapshot"
+      }
+    ],
+    "torino": [
+      {
+        "reason": "missing complete business or OSM snapshot"
+      }
+    ],
+    "firenze": [
+      {
+        "reason": "missing complete business or OSM snapshot"
+      }
+    ]
+  }
+}

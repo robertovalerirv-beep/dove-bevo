@@ -27,8 +27,12 @@ remained false. Exactly 35 owned runtime cases and the separate actual GBP/EUR
 native read also passed. No public price, vote, confirmation, report or venue
 contribution was created.
 
-Google screenshot upload and provider read-back are **pending coordinator
-execution** in this preserved asset record. These screenshots and SDK checks
+The coordinator uploaded these exact three files to Google Play Console on
+2 November 2026 and saved them in map, Scopri, venue order. The four superseded
+listing placements were removed while the source assets remained in the library.
+Only the venue screenshot was labelled for its generated Spritz illustration.
+The console confirmed the listing was saved and ready to send for review.
+These screenshots and SDK checks
 do not establish physical-device acceptance, a signed release installation,
 store approval or a public mobile release.
 

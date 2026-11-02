@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { encodeGeohash } from "../../shared/geohash";
-import { OSM_KEY_PATTERN } from "../../shared/venue";
+import { distanceMeters, DUPLICATE_METERS, ITALY, OSM_KEY_PATTERN } from "../../shared/venue";
+import { sameName } from "../lib/same-name";
 import { ApiError } from "../lib/errors";
 import { cellFile } from "../lib/venues";
 import { EvidenceDay, HTTPS, MobileCell, MobileDrink } from "./mobile-price-catalog";
@@ -17,6 +18,12 @@ type Registry = {
   city: string;
   country: string;
   identity_url: string;
+  identity_kind: "osm" | "owner_verified";
+  identity_fingerprint: string | null;
+  identity_text_sha256: string | null;
+  identity_geo_url: string | null;
+  identity_geo_text_sha256: string | null;
+  identity_geo_hash_basis: "raw_utf8" | "html_text_v1" | null;
 };
 type Venue = {
   key: string;
@@ -29,6 +36,7 @@ type Venue = {
   city: string | null;
   country: string;
   identity_url: string;
+  identity_kind: "osm" | "owner_verified";
 };
 type Evidence = {
   source_id: string;
@@ -67,6 +75,14 @@ type CoverageRow = Evidence & {
   fee_count: number;
 };
 type Candidate = { venue_key: string; n: number };
+type Nearby = {
+  name: string;
+  lat: number;
+  lon: number;
+  address?: string | null;
+  venue_key?: string;
+};
+const OWNER_KEY_PATTERN = /^m[0-9a-f]{24}$/;
 
 const SOURCE = "s.id AS source_id, s.source_url, s.source_text_sha256, s.source_checked_on";
 const APPROVED =
@@ -140,7 +156,8 @@ function queryCell(value: string | undefined): string {
   return parsed.data;
 }
 function queryKey(value: string | undefined): string {
-  if (!value || !OSM_KEY_PATTERN.test(value)) throw new ApiError("bad_request");
+  if (!value || !(OSM_KEY_PATTERN.test(value) || OWNER_KEY_PATTERN.test(value)))
+    throw new ApiError("bad_request");
   return value;
 }
 function cursor(value: string | undefined): string {
@@ -156,12 +173,45 @@ function limit(value: string | undefined): number {
   return n;
 }
 function registryVenue(row: Registry): Venue {
-  if (
-    !OSM_KEY_PATTERN.test(row.venue_key) ||
-    encodeGeohash(row.lat, row.lon, 5) !== row.cell ||
-    !row.identity_url.startsWith("https://www.openstreetmap.org/")
-  )
-    throw new ApiError("busy");
+  if (encodeGeohash(row.lat, row.lon, 5) !== row.cell) throw new ApiError("busy");
+  if (row.identity_kind === "osm") {
+    const type = { n: "node", w: "way", r: "relation" }[row.venue_key[0] as "n" | "w" | "r"];
+    if (
+      !OSM_KEY_PATTERN.test(row.venue_key) ||
+      row.country === "IT" ||
+      row.identity_fingerprint !== null ||
+      row.identity_text_sha256 !== null ||
+      row.identity_geo_url !== null ||
+      row.identity_geo_text_sha256 !== null ||
+      row.identity_geo_hash_basis !== null ||
+      row.identity_url !== "https://www.openstreetmap.org/" + type + "/" + row.venue_key.slice(1)
+    )
+      throw new ApiError("busy");
+  } else if (row.identity_kind === "owner_verified") {
+    if (
+      row.country !== "IT" ||
+      !OWNER_KEY_PATTERN.test(row.venue_key) ||
+      !row.identity_fingerprint ||
+      !/^[0-9a-f]{64}$/.test(row.identity_fingerprint) ||
+      row.venue_key !== "m" + row.identity_fingerprint.slice(0, 24) ||
+      !row.address ||
+      row.address.trim().length < 3 ||
+      !row.identity_text_sha256 ||
+      !/^[0-9a-f]{64}$/.test(row.identity_text_sha256) ||
+      !row.identity_geo_url ||
+      !HTTPS.safeParse(row.identity_geo_url).success ||
+      !row.identity_geo_text_sha256 ||
+      !/^[0-9a-f]{64}$/.test(row.identity_geo_text_sha256) ||
+      !row.identity_geo_hash_basis ||
+      !HTTPS.safeParse(row.identity_url).success ||
+      row.identity_url.startsWith("https://www.openstreetmap.org/") ||
+      row.lat < ITALY.south ||
+      row.lat > ITALY.north ||
+      row.lon < ITALY.west ||
+      row.lon > ITALY.east
+    )
+      throw new ApiError("busy");
+  } else throw new ApiError("busy");
   return {
     key: row.venue_key,
     cell: row.cell,
@@ -173,8 +223,59 @@ function registryVenue(row: Registry): Venue {
     city: row.city,
     country: row.country,
     identity_url: row.identity_url,
+    identity_kind: row.identity_kind,
   };
 }
+function addressKey(value: string | null | undefined): string {
+  return (value ?? "").normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
+}
+function nearbyDuplicate(
+  place: Venue,
+  original: Awaited<ReturnType<typeof cellFile>>,
+  users: readonly Nearby[],
+  peers: readonly Nearby[],
+): boolean {
+  const close = (lat: number, lon: number) =>
+    distanceMeters(place.lat, place.lon, lat, lon) < DUPLICATE_METERS;
+  const matches = (candidate: Nearby) =>
+    close(candidate.lat, candidate.lon) &&
+    (sameName(candidate.name, place.name) ||
+      (!!place.address &&
+        !!candidate.address &&
+        addressKey(candidate.address) === addressKey(place.address)));
+  return (
+    !!original?.v.some((row) =>
+      matches({
+        name: row[1],
+        lat: row[3],
+        lon: row[4],
+        address: row[5],
+      }),
+    ) ||
+    users.some(matches) ||
+    peers.some((peer) => peer.venue_key !== place.key && matches(peer))
+  );
+}
+async function assertOwnerUnconflicted(env: Env, place: Venue): Promise<void> {
+  if (place.identity_kind !== "owner_verified") return;
+  const [original, users, peers] = await Promise.all([
+    cellFile(env, place.cell),
+    env.DB.prepare(
+      "SELECT name,lat,lon FROM venues_user WHERE cell=?1 AND status IN ('approved','pending')",
+    )
+      .bind(place.cell)
+      .all<Nearby>(),
+    env.DB.prepare(
+      "SELECT venue_key,name,lat,lon,address FROM mobile_menu_v2_venues" +
+        " WHERE cell=?1 AND identity_kind='owner_verified'",
+    )
+      .bind(place.cell)
+      .all<Nearby>(),
+  ]);
+  if (nearbyDuplicate(place, original, users.results, peers.results))
+    throw new ApiError("not_found");
+}
+
 function staticVenue(
   file: Awaited<ReturnType<typeof cellFile>>,
   key: string,
@@ -195,16 +296,21 @@ function staticVenue(
     city: file?.c[row[6]]?.[1] ?? null,
     country: "IT",
     identity_url: "https://www.openstreetmap.org/" + osmType + "/" + key.slice(1),
+    identity_kind: "osm",
   };
 }
 async function venue(env: Env, key: string, cell: string): Promise<Venue> {
   const registry = await env.DB.prepare(
-    "SELECT venue_key,cell,name,kind,lat,lon,address,city,country,identity_url" +
+    "SELECT venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind,identity_url,identity_fingerprint,identity_text_sha256,identity_geo_url,identity_geo_text_sha256,identity_geo_hash_basis" +
       " FROM mobile_menu_v2_venues WHERE venue_key=?1 AND cell=?2",
   )
     .bind(key, cell)
     .first<Registry>();
-  if (registry) return registryVenue(registry);
+  if (registry) {
+    const place = registryVenue(registry);
+    await assertOwnerUnconflicted(env, place);
+    return place;
+  }
   const original = staticVenue(await cellFile(env, cell), key, cell);
   if (!original) throw new ApiError("not_found");
   return original;
@@ -337,7 +443,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
     );
   const marks = keys.map(() => "?").join(",");
   const registryRows = await c.env.DB.prepare(
-    "SELECT venue_key,cell,name,kind,lat,lon,address,city,country,identity_url" +
+    "SELECT venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind,identity_url,identity_fingerprint,identity_text_sha256,identity_geo_url,identity_geo_text_sha256,identity_geo_hash_basis" +
       " FROM mobile_menu_v2_venues WHERE cell=? AND venue_key IN (" +
       marks +
       ")",
@@ -345,12 +451,41 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
     .bind(cell, ...keys)
     .all<Registry>();
   const registry = new Map(registryRows.results.map((row) => [row.venue_key, registryVenue(row)]));
-  const legacyFile = keys.some((key) => !registry.has(key)) ? await cellFile(c.env, cell) : null;
+  const hasOwner = [...registry.values()].some((place) => place.identity_kind === "owner_verified");
+  const legacyFile =
+    keys.some((key) => !registry.has(key)) || hasOwner ? await cellFile(c.env, cell) : null;
+  let userRows: Nearby[] = [];
+  let peerRows: Nearby[] = [];
+  if (hasOwner) {
+    const [users, peers] = await Promise.all([
+      c.env.DB.prepare(
+        "SELECT name,lat,lon FROM venues_user WHERE cell=?1 AND status IN ('approved','pending')",
+      )
+        .bind(cell)
+        .all<Nearby>(),
+      c.env.DB.prepare(
+        "SELECT venue_key,name,lat,lon,address FROM mobile_menu_v2_venues" +
+          " WHERE cell=?1 AND identity_kind='owner_verified'",
+      )
+        .bind(cell)
+        .all<Nearby>(),
+    ]);
+    userRows = users.results;
+    peerRows = peers.results;
+  }
   const visible = page
-    .map((row) => ({
-      venue: registry.get(row.venue_key) ?? staticVenue(legacyFile, row.venue_key, cell),
-      count: row.n,
-    }))
+    .map((row) => {
+      const place = registry.get(row.venue_key) ?? staticVenue(legacyFile, row.venue_key, cell);
+      return {
+        venue:
+          place &&
+          place.identity_kind === "owner_verified" &&
+          nearbyDuplicate(place, legacyFile, userRows, peerRows)
+            ? null
+            : place,
+        count: row.n,
+      };
+    })
     .filter((row): row is { venue: Venue; count: number } => row.venue !== null);
   const unresolved = page.length - visible.length;
   const visibleKeys = visible.map((row) => row.venue.key);

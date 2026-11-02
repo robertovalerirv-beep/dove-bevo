@@ -146,12 +146,68 @@ function addFee(
 async function registerForeign() {
   await env.DB.prepare(
     "INSERT INTO mobile_menu_v2_venues" +
-      " (venue_key,cell,name,kind,lat,lon,address,city,country,identity_url,identity_checked_on)" +
-      " VALUES (?1,?2,'Fixture London Bar',1,51.5074,-0.1278,NULL,'London','GB',?3,?4)",
+      " (venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind,identity_url,identity_checked_on)" +
+      " VALUES (?1,?2,'Fixture London Bar',1,51.5074,-0.1278,NULL,'London','GB','osm',?3,?4)",
   )
     .bind(FOREIGN.key, FOREIGN.cell, "https://www.openstreetmap.org/node/910000001", TODAY)
     .run();
 }
+interface OwnerOptions {
+  key?: string;
+  fingerprint?: string;
+  name?: string;
+  lat?: number;
+  lon?: number;
+  address?: string | null;
+  ownerUrl?: string;
+  ownerHash?: string | null;
+  geoUrl?: string | null;
+  geoHash?: string | null;
+  geoHashBasis?: string | null;
+}
+async function ownerRow(options: OwnerOptions = {}): Promise<string> {
+  const ownerUrl = options.ownerUrl ?? "https://owner.example/locations/fixture-milano";
+  const address = options.address === undefined ? "Via Esempio 12, Milano" : options.address;
+  const normalizedAddress = (address ?? "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/gu, " ")
+    .toLowerCase();
+  const payload = "dovebevo-v2-owner-it\n" + ownerUrl + "\n" + normalizedAddress;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+  const fingerprint =
+    options.fingerprint ??
+    Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const key = options.key ?? "m" + fingerprint.slice(0, 24);
+  await env.DB.prepare(
+    "INSERT INTO mobile_menu_v2_venues" +
+      " (venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind," +
+      " identity_url,identity_text_sha256,identity_geo_url,identity_geo_text_sha256," +
+      " identity_geo_hash_basis,identity_fingerprint,identity_checked_on)" +
+      " VALUES (?1,?2,?3,1,?4,?5,?6,'Milano','IT','owner_verified'," +
+      " ?7,?8,?9,?10,?11,?12,?13)",
+  )
+    .bind(
+      key,
+      ITALY.cell,
+      options.name ?? "Fixture New Owner Bar",
+      options.lat ?? 45.4464,
+      options.lon ?? 9.2284,
+      address,
+      ownerUrl,
+      options.ownerHash === undefined ? "b".repeat(64) : options.ownerHash,
+      options.geoUrl === undefined
+        ? "https://www.openstreetmap.org/node/999000111"
+        : options.geoUrl,
+      options.geoHash === undefined ? "c".repeat(64) : options.geoHash,
+      options.geoHashBasis === undefined ? "raw_utf8" : options.geoHashBasis,
+      fingerprint,
+      TODAY,
+    )
+    .run();
+  return key;
+}
+
 beforeEach(async () => {
   // Immutable source snapshots intentionally remain; every test uses a new UUID.
   await env.DB.batch([
@@ -415,5 +471,57 @@ describe("app-only named menu v2", () => {
     expect(new Set(ids).size).toBe(501);
     expect(ids[0]).toBe("item-0000");
     expect(ids.at(-1)).toBe("item-0500");
+  });
+  it("shows an owner-verified Italian branch absent the static map, then hides a duplicate proposal", async () => {
+    const key = await ownerRow();
+    const sourceId = await addSource(key, ITALY.cell);
+    await addOffer("owner-fixture-drink", key, ITALY.cell, sourceId).run();
+    const path = "/api/mobile/v2/menu/venues/" + key + "?cell=" + ITALY.cell;
+    const detailResponse = await get(path);
+    expect(detailResponse.status, await detailResponse.clone().text()).toBe(200);
+    const detail = await detailResponse.json<Detail>();
+    expect(detail.venue).toMatchObject({
+      key,
+      country: "IT",
+      identity_kind: "owner_verified",
+      address: "Via Esempio 12, Milano",
+    });
+    expect(detail.offers).toHaveLength(1);
+    const cell = await (
+      await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?category=beer_draft")
+    ).json<Cell>();
+    expect(cell.venues.map((venue) => venue.key)).toEqual([key]);
+    await env.DB.prepare(
+      "INSERT INTO venues_user(name,kind,lat,lon,cell,status,confirmations,day)" +
+        " VALUES ('Fixture New Owner Bar',1,45.4464,9.2284,?1,'pending',1,?2)",
+    )
+      .bind(ITALY.cell, TODAY)
+      .run();
+    expect((await get(path)).status).toBe(404);
+    const blockedCell = await (await get("/api/mobile/v2/menu/cells/" + ITALY.cell)).json<Cell>();
+    expect(blockedCell.venues).toEqual([]);
+    expect(blockedCell.unresolved_venues).toBe(1);
+  });
+
+  it("rejects mismatched owner identity and suppresses an existing static OSM duplicate", async () => {
+    await expect(ownerRow({ key: "m" + "0".repeat(24) })).rejects.toThrow();
+    await expect(ownerRow({ address: null })).rejects.toThrow();
+    await expect(ownerRow({ geoHash: null })).rejects.toThrow();
+    await expect(ownerRow({ ownerUrl: "http://owner.example/branch" })).rejects.toThrow();
+    const key = await ownerRow({
+      ownerUrl: "https://owner.example/locations/duplicate",
+      address: "Via Altro 99, Milano",
+      name: "Bistrot Duomo",
+      lat: 45.46353,
+      lon: 9.18979,
+    });
+    const sourceId = await addSource(key, ITALY.cell);
+    await addOffer("duplicate-fixture-drink", key, ITALY.cell, sourceId).run();
+    expect((await get("/api/mobile/v2/menu/venues/" + key + "?cell=" + ITALY.cell)).status).toBe(
+      404,
+    );
+    const cell = await (await get("/api/mobile/v2/menu/cells/" + ITALY.cell)).json<Cell>();
+    expect(cell.venues).toEqual([]);
+    expect(cell.unresolved_venues).toBe(1);
   });
 });

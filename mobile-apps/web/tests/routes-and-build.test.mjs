@@ -46,6 +46,26 @@ test("malformed duplicate and external venue routes fail closed", () => {
   assert.equal(mobilePath({ pathname: "/", search: "?path=/bar/n123&c=u0nd9" }), "/");
 });
 
+test("Safari 16.4 routes retain identity and map position without URLSearchParams.size", () => {
+  const descriptor = Object.getOwnPropertyDescriptor(URLSearchParams.prototype, "size");
+  assert.ok(descriptor);
+  assert.equal(Reflect.deleteProperty(URLSearchParams.prototype, "size"), true);
+  try {
+    const venue = mobileURL("/bar/n123?c=u0nd9", origin);
+    assert.equal(venue, "/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+    assert.equal(mobilePath(new URL(venue, origin)), "/bar/n123");
+    assert.equal(mobileURL("/?at=51.5074,-0.1278", origin), "/mobile/?at=51.5074%2C-0.1278");
+    assert.throws(() => mobileURL("/bar/n123?c=u0nd9&c=u0nd8", origin), TypeError);
+    assert.equal(
+      mobilePath(new URL("/mobile/?path=/bar/n123&path=/bar/n456&c=u0nd9", origin)),
+      "/",
+    );
+    assert.equal(mobileURL("/bar/n123?c=u0nd9&token=private", origin), venue);
+  } finally {
+    Object.defineProperty(URLSearchParams.prototype, "size", descriptor);
+  }
+});
+
 test("compile-time seams preserve original source and reject upstream drift", () => {
   const app = read("app/app.tsx"),
     map = read("app/lib/maplibre-map.ts");
@@ -76,6 +96,8 @@ test("happy-hour and longer amounts retain separate readable price and HH cues",
   assert.deepEqual(mobilePinLabel("6,00 € Happy hour"), { amount: "6,00", detail: "HH" });
   assert.deepEqual(mobilePinLabel("6,00 € HH"), { amount: "6,00", detail: "HH" });
   assert.deepEqual(mobilePinLabel("125,00 €"), { amount: "125,00", detail: "" });
+  assert.deepEqual(mobilePinLabel("£7.50"), { amount: "7.50", detail: "£" });
+  assert.deepEqual(mobilePinLabel("7,50 £ HH"), { amount: "7,50", detail: "£ HH" });
 });
 
 test("existing website service worker returns its legacy shell offline, requiring a native marker check", async () => {

@@ -5,11 +5,52 @@ import { CATALOG } from "../../src/shared/catalog";
 import worker from "../../src/worker/index";
 import { purgeOldKeys } from "../../src/worker/lib/db";
 import { createSession } from "../../src/worker/lib/session";
+import type {
+  MobileCatalog,
+  MobileCatalogVenue,
+} from "../../src/worker/routes/mobile-price-catalog";
 
 const ORIGIN = "https://dovebevo.example";
 const BAR = "n2420779240";
 const CELL = "u0nd9";
 const VOTER = "719576dd-2184-49e9-831d-bc2de0c5f542";
+const foreign = {
+  key: "n910000003",
+  name: "Test Paris Recommendations Bar",
+  kind: 1,
+  lat: 48.8566,
+  lon: 2.3522,
+  cell: "u09tv",
+  city: "Paris",
+  country: "FR",
+  currency: "EUR",
+  google: {
+    url: "https://www.google.com/maps/place/Test",
+    review_count: 101,
+    checked_on: "2026-01-01",
+  },
+} satisfies MobileCatalogVenue;
+const foreignCatalog = {
+  schema_version: 1,
+  version: "recommendations-europe-test-v1",
+  venues: [foreign],
+} satisfies MobileCatalog;
+function catalogueBindings(data: unknown = foreignCatalog): Partial<Env> {
+  return {
+    ASSETS: {
+      fetch: async (input: RequestInfo | URL) => {
+        const request = new Request(input);
+        return new URL(request.url).pathname === "/mobile-data/catalog.json"
+          ? Response.json(data)
+          : env.ASSETS.fetch(request);
+      },
+    } as unknown as Env["ASSETS"],
+  };
+}
+const foreignOptions = () => ({
+  path: path(foreign.key, `c=${foreign.cell}`),
+  bindings: catalogueBindings(),
+});
 let sequence = 0;
 const nextIp = () => `198.18.${String(Math.floor(++sequence / 250))}.${String(sequence % 250)}`;
 const path = (venue = BAR, query = `c=${CELL}`) =>
@@ -57,12 +98,12 @@ interface Snapshot {
   venue_key: string;
   drinks: { drink: string; count: number; recommended: boolean }[];
 }
-async function snapshot(response: Response): Promise<Snapshot> {
+async function snapshot(response: Response, venue = BAR): Promise<Snapshot> {
   expect(response.status).toBe(200);
   expect(response.headers.get("Cache-Control")).toBe("no-store");
   const result: Snapshot = await response.json();
   expect(Object.keys(result).sort()).toEqual(["drinks", "venue_key"]);
-  expect(result.venue_key).toBe(BAR);
+  expect(result.venue_key).toBe(venue);
   expect(result.drinks.map((row) => row.drink)).toEqual(CATALOG.map((drink) => drink.code));
   for (const row of result.drinks) {
     expect(Object.keys(row).sort()).toEqual(["count", "drink", "recommended"]);
@@ -82,6 +123,7 @@ beforeEach(async () => {
       "venues_user",
       "prices_current",
       "price_obs",
+      "mobile_venues_moderation",
     ].map((table) => env.DB.prepare(`DELETE FROM ${table}`)),
   );
 });
@@ -90,6 +132,150 @@ describe("native public drink recommendations", () => {
   it("returns all nine categories without an installation header", async () => {
     const result = await snapshot(await request("GET", null));
     expect(result.drinks.every((row) => row.count === 0 && !row.recommended)).toBe(true);
+  });
+
+  it("resolves a foreign catalogue venue and preserves anonymous GET and idempotent voting", async () => {
+    const options = foreignOptions();
+    const empty = await snapshot(await request("GET", null, undefined, options), foreign.key);
+    expect(empty.drinks.every((row) => row.count === 0 && !row.recommended)).toBe(true);
+    for (const recommended of [true, true, false, false]) {
+      const result = await snapshot(await choose(recommended, VOTER, options), foreign.key);
+      expect(result.drinks.find((row) => row.drink === "spritz")).toEqual({
+        drink: "spritz",
+        count: recommended ? 1 : 0,
+        recommended,
+      });
+    }
+  });
+
+  it("keeps votes independent of currency, price and serving for a GBP venue", async () => {
+    const london = {
+      ...foreign,
+      key: "n910000004",
+      name: "Test London Recommendations Bar",
+      lat: 51.5074,
+      lon: -0.1278,
+      cell: "gcpvj",
+      country: "GB",
+      city: "London",
+      currency: "GBP",
+    } satisfies MobileCatalogVenue;
+    const options = {
+      path: path(london.key, `c=${london.cell}`),
+      bindings: catalogueBindings({ ...foreignCatalog, venues: [london] }),
+    };
+    const result = await snapshot(await choose(true, VOTER, options), london.key);
+    expect(result.drinks.find((row) => row.drink === "spritz")?.count).toBe(1);
+    expect(JSON.stringify(result)).not.toMatch(/currency|serving|amount_minor|price/);
+    expect(
+      (
+        await request(
+          "POST",
+          VOTER,
+          { drink: "spritz", recommended: true, currency: "GBP" },
+          options,
+        )
+      ).status,
+    ).toBe(400);
+    expect((await snapshot(await request())).drinks.every((row) => row.count === 0)).toBe(true);
+  });
+
+  it("rejects wrong foreign cells and absent catalogue keys without adding votes", async () => {
+    for (const url of [path(foreign.key), path("n999999", `c=${foreign.cell}`)]) {
+      for (const method of ["GET", "POST"]) {
+        const response = await request(
+          method,
+          VOTER,
+          method === "POST" ? { drink: "spritz", recommended: true } : undefined,
+          { path: url, bindings: catalogueBindings() },
+        );
+        expect(response.status).toBe(404);
+        expect(await response.json()).toMatchObject({ error: { code: "not_found" } });
+      }
+    }
+    expect(
+      await env.DB.prepare("SELECT COUNT(*) AS n FROM mobile_recommendations").first("n"),
+    ).toBe(0);
+  });
+
+  it.each(["review", "hidden"])(
+    "lets app moderation %s block foreign GET and POST without deleting votes",
+    async (status) => {
+      const options = foreignOptions();
+      await snapshot(await choose(true, VOTER, options), foreign.key);
+      await env.DB.prepare("INSERT INTO mobile_venues_moderation VALUES (?1, ?2, 'test')")
+        .bind(foreign.key, status)
+        .run();
+      expect((await request("GET", VOTER, undefined, options)).status).toBe(404);
+      expect((await choose(true, crypto.randomUUID(), options)).status).toBe(404);
+      expect((await choose(false, VOTER, options)).status).toBe(404);
+      expect(
+        await env.DB.prepare("SELECT COUNT(*) AS n FROM mobile_recommendations").first("n"),
+      ).toBe(1);
+    },
+  );
+
+  it("never resurrects a legacy-hidden key through the foreign catalogue, even with a mismatched stored cell", async () => {
+    await env.DB.prepare("INSERT INTO venues_hidden VALUES (?1, ?2, 'Hidden', '2026-01-01')")
+      .bind(foreign.key, CELL)
+      .run();
+    const options = foreignOptions();
+    expect((await request("GET", VOTER, undefined, options)).status).toBe(404);
+    expect((await choose(true, VOTER, options)).status).toBe(404);
+  });
+
+  it("fails closed with 503 when the fallback catalogue is unavailable, HTML or malformed", async () => {
+    for (const response of [
+      new Response("unavailable", { status: 503 }),
+      new Response("<html>SPA fallback</html>", { headers: { "Content-Type": "text/html" } }),
+      Response.json({ schema_version: 1, venues: [] }),
+    ]) {
+      const bindings = {
+        ASSETS: {
+          fetch: (input: RequestInfo | URL) => {
+            const request = new Request(input);
+            return new URL(request.url).pathname === "/mobile-data/catalog.json"
+              ? Promise.resolve(response.clone())
+              : env.ASSETS.fetch(request);
+          },
+        } as unknown as Env["ASSETS"],
+      };
+      const options = { path: path(foreign.key, `c=${foreign.cell}`), bindings };
+      for (const method of ["GET", "POST"]) {
+        const result = await request(
+          method,
+          VOTER,
+          method === "POST" ? { drink: "spritz", recommended: true } : undefined,
+          options,
+        );
+        expect(result.status).toBe(503);
+        expect(await result.json()).toMatchObject({ error: { code: "busy" } });
+      }
+    }
+    expect(
+      await env.DB.prepare("SELECT COUNT(*) AS n FROM mobile_recommendations").first("n"),
+    ).toBe(0);
+  });
+
+  it("keeps known Italian legacy and approved user venues independent of app catalogue availability", async () => {
+    const bindings = {
+      ASSETS: {
+        fetch: (input: RequestInfo | URL) => {
+          const request = new Request(input);
+          if (new URL(request.url).pathname === "/mobile-data/catalog.json")
+            throw new Error("Known legacy/user resolution must not read the app catalogue");
+          return env.ASSETS.fetch(request);
+        },
+      } as unknown as Env["ASSETS"],
+    };
+    await snapshot(await request("GET", null, undefined, { bindings }));
+    await snapshot(await choose(true, VOTER, { bindings }));
+    await env.DB.prepare(
+      "INSERT INTO venues_user (id, name, kind, lat, lon, cell, status) VALUES (44, 'Approved', 1, 45.46, 9.19, ?1, 'approved')",
+    )
+      .bind(CELL)
+      .run();
+    await snapshot(await choose(true, VOTER, { bindings, path: path("u44") }), "u44");
   });
 
   it("sets and removes one installation's vote idempotently without a browser session", async () => {
@@ -272,7 +458,7 @@ describe("native public drink recommendations", () => {
           method,
           VOTER,
           method === "POST" ? { drink: "spritz", recommended: true } : undefined,
-          { path: url },
+          { path: url, bindings: catalogueBindings() },
         );
         expect(response.status).toBe(404);
         expect(await response.json()).toMatchObject({ error: { code: "not_found" } });

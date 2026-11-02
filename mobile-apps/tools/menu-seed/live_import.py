@@ -20,6 +20,7 @@ LIMITS = {"beer_draft": (250, 1200), "spritz": (250, 1500), "negroni": (400, 200
           "sbagliato": (400, 2000), "gin_tonic": (400, 2000), "gin_lemon": (400, 2000),
           "wine_glass": (200, 1500), "alcohol_free": (200, 1200), "water": (50, 600)}
 RECORD_FIELDS = set("venue_key name cell city lat lon drink hh cents source_url source_sha256 google_reviews google_url identity_note".split())
+SCHEMA4_FIELDS = (RECORD_FIELDS - {"google_reviews", "google_url"}) | {"source_format", "currency", "menu_item", "serving_note", "conditions"}
 MAX_SOURCE_BYTES = 8 * 1024 * 1024
 MAX_HTML_TEXT = 1024 * 1024
 INSERT = """INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
@@ -139,7 +140,7 @@ def geo(lat, lon):
 def validate(raw):
     if len(raw) > 1024 * 1024: raise Error("manifest too large")
     doc = strict_json(raw)
-    if not isinstance(doc, dict) or set(doc) != {"schema_version", "batch_id", "checked_on", "data_version", "records"} or type(doc["schema_version"]) is not int or doc["schema_version"] not in (1, 2):
+    if not isinstance(doc, dict) or set(doc) != {"schema_version", "batch_id", "checked_on", "data_version", "records"} or type(doc["schema_version"]) is not int or doc["schema_version"] not in (1, 2, 4):
         raise Error("invalid manifest schema")
     if not text(doc["batch_id"], 80) or not re.fullmatch(r"[A-Za-z0-9._-]+", doc["batch_id"]): raise Error("invalid batch id")
     if not isinstance(doc["data_version"], str) or not re.fullmatch(r"[0-9]{8}", doc["data_version"]): raise Error("invalid data version")
@@ -150,9 +151,9 @@ def validate(raw):
     if not isinstance(doc["records"], list) or not 1 <= len(doc["records"]) <= 200: raise Error("invalid record count")
     seen = set()
     for r in doc["records"]:
-        fields = RECORD_FIELDS | {"source_format"} if doc["schema_version"] == 2 else RECORD_FIELDS
+        fields = SCHEMA4_FIELDS if doc["schema_version"] == 4 else (RECORD_FIELDS | {"source_format"} if doc["schema_version"] == 2 else RECORD_FIELDS)
         if not isinstance(r, dict) or set(r) != fields: raise Error("invalid record schema")
-        if doc["schema_version"] == 2 and r["source_format"] not in ("raw", "html_text_v1"): raise Error("invalid source format")
+        if doc["schema_version"] in (2, 4) and r["source_format"] not in ("raw", "html_text_v1"): raise Error("invalid source format")
         if not isinstance(r["venue_key"], str) or not re.fullmatch(r"[nwr][1-9][0-9]{0,14}", r["venue_key"]): raise Error("invalid OSM key")
         if not text(r["name"], 240) or not text(r["identity_note"], 1000): raise Error("missing venue identity evidence")
         if not isinstance(r["cell"], str) or not re.fullmatch(r"[0-9bcdefghjkmnpqrstuvwxyz]{5}", r["cell"]): raise Error("invalid cell")
@@ -161,9 +162,13 @@ def validate(raw):
             if type(r[k]) not in (int, float) or not math.isfinite(r[k]) or not lo <= r[k] <= hi: raise Error("invalid coordinates")
         if geo(r["lat"], r["lon"]) != r["cell"]: raise Error("cell mismatch")
         if not isinstance(r["drink"], str) or r["drink"] not in LIMITS or type(r["cents"]) is not int or not LIMITS[r["drink"]][0] <= r["cents"] <= LIMITS[r["drink"]][1] or type(r["hh"]) is not int or r["hh"] not in (0, 1): raise Error("invalid drink price")
-        if type(r["google_reviews"]) is not int or not 100 < r["google_reviews"] <= 100000000: raise Error("invalid review count")
+        if doc["schema_version"] == 4:
+            if r["currency"] != "EUR" or r["hh"] != 0 or r["conditions"] != "none": raise Error("unsupported conditional price")
+            if not text(r["menu_item"], 240) or not text(r["serving_note"], 160): raise Error("missing menu context")
+        else:
+            if type(r["google_reviews"]) is not int or not 100 < r["google_reviews"] <= 100000000: raise Error("invalid review count")
+            google_evidence_url(r["google_url"])
         url(r["source_url"])
-        google_evidence_url(r["google_url"])
         if not isinstance(r["source_sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", r["source_sha256"]): raise Error("invalid source hash")
         key = (r["venue_key"], r["drink"], r["hh"])
         if key in seen: raise Error("duplicate record")

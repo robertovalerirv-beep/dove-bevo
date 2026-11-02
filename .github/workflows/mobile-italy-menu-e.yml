@@ -7,8 +7,8 @@ on:
       - ".github/workflows/mobile-italy-menu-e.yml"
   push:
     tags:
-      - "mobile-italy-menu-e-audit/20261102-v3"
-      - "mobile-italy-menu-e-seed/20261102-v3"
+      - "mobile-italy-menu-e-audit/20261102-v4"
+      - "mobile-italy-menu-e-seed/20261102-v4"
 permissions:
   contents: read
 concurrency:
@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: false
 env:
   MANIFEST: mobile-apps/data/italy-menu-seed-20261102-e.json
-  MANIFEST_SHA256: 6f604cb3cd35d2bb9281be7fbff5796adab8db58933ebea3e9a11c1f6faaaa7d
+  MANIFEST_SHA256: 97150b3ad803c14dba22fd9ed917162ea74ba46a12d217d2ad3295ea7d4da081
   TRACER_SHA256: b23ec078472eafc8f0e0c5bf70b840a69e137a5cba06dd328d52478c46dddbd5
   IMPORTER_SHA256: a6ee8ea2f8277584beb83f22baae7787448b83db417fa80716b61e8f431fad78
 jobs:
@@ -45,8 +45,8 @@ jobs:
     if: >-
       github.repository == 'robertovalerirv-beep/dove-bevo' &&
       github.event_name == 'push' && github.ref_type == 'tag' &&
-      (github.ref == 'refs/tags/mobile-italy-menu-e-audit/20261102-v3' ||
-      github.ref == 'refs/tags/mobile-italy-menu-e-seed/20261102-v3')
+      (github.ref == 'refs/tags/mobile-italy-menu-e-audit/20261102-v4' ||
+      github.ref == 'refs/tags/mobile-italy-menu-e-seed/20261102-v4')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -70,8 +70,8 @@ jobs:
         run: |
           set -euo pipefail
           case "$GITHUB_REF" in
-            refs/tags/mobile-italy-menu-e-audit/20261102-v3) mode_args=(); expected=dry_run ;;
-            refs/tags/mobile-italy-menu-e-seed/20261102-v3) mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256"); expected=apply ;;
+            refs/tags/mobile-italy-menu-e-audit/20261102-v4) mode_args=(); expected=dry_run ;;
+            refs/tags/mobile-italy-menu-e-seed/20261102-v4) mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256"); expected=apply ;;
             *) exit 2 ;;
           esac
           mkdir -p "$(dirname "$RECEIPT")"
@@ -83,10 +83,10 @@ jobs:
           assert receipt["complete"] is True and receipt["mode"] == sys.argv[1]
           assert receipt["manifest_sha256"] == os.environ["MANIFEST_SHA256"]
           assert receipt["batch_id"] == "italy-major-cities-20261102-e"
-          assert len(receipt["records"]) == 21 and not receipt["errors"]
+          assert len(receipt["records"]) == 17 and not receipt["errors"]
           PY
       - name: Public read-back of newly inserted rows
-        if: github.ref == 'refs/tags/mobile-italy-menu-e-seed/20261102-v3'
+        if: github.ref == 'refs/tags/mobile-italy-menu-e-seed/20261102-v4'
         shell: bash
         run: |
           python3 -B mobile-apps/tools/menu-seed/verify_batch_d.py --manifest "$MANIFEST" --receipt "${{ runner.temp }}/italy-menu-e/receipt-${{ github.run_id }}-${{ github.run_attempt }}.json" --output "${{ runner.temp }}/italy-menu-e/public-readback.json"

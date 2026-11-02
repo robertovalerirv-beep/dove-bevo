@@ -6,13 +6,13 @@ MANIFEST = Path(__file__).resolve().parents[2] / "data/italy-menu-seed-20261102-
 class BatchETests(unittest.TestCase):
     def test_exact_reviewed_batch_preserves_major_city_scope(self):
         raw=MANIFEST.read_bytes()
-        self.assertEqual(hashlib.sha256(raw).hexdigest(), "6f604cb3cd35d2bb9281be7fbff5796adab8db58933ebea3e9a11c1f6faaaa7d")
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), "97150b3ad803c14dba22fd9ed917162ea74ba46a12d217d2ad3295ea7d4da081")
         doc=core.validate(raw)
         self.assertEqual(doc["schema_version"], 4)
-        self.assertEqual(len(doc["records"]), 21)
-        self.assertEqual(len({r["venue_key"] for r in doc["records"]}), 8)
+        self.assertEqual(len(doc["records"]), 17)
+        self.assertEqual(len({r["venue_key"] for r in doc["records"]}), 7)
         cities={r["city"] for r in doc["records"]}
-        self.assertEqual(len(cities), 6)
+        self.assertEqual(len(cities), 5)
         self.assertTrue({72959652,63621589,428339558}.issubset(cities))
     def test_no_google_evidence_or_customer_payment_claim_is_present(self):
         doc=core.validate(MANIFEST.read_bytes())

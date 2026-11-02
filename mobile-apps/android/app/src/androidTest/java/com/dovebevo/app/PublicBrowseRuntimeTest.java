@@ -61,6 +61,10 @@ public final class PublicBrowseRuntimeTest {
           const milano = options.filter(o => /-p[0-9]+$/.test(o.id) && o.querySelector('.row__name')?.textContent.trim() === 'Milano');
           const v = window.visualViewport, r = canvas?.getBoundingClientRect();
           const sheet = document.querySelector('dialog[open]')?.getBoundingClientRect();
+          const metas = [...document.querySelectorAll('meta[name="viewport"]')];
+          const css = e => {if (!e) return null; const s=getComputedStyle(e), out={};
+            for(const k of ['width','height','minWidth','maxWidth','minHeight','maxHeight','zoom','transform','position','overflowX','overflowY']) out[k]=(s[k]||'').slice(0,100);
+            return out;};
           return {origin: location.origin, path: location.pathname.slice(0,100), title, challenge,
             marker: document.documentElement.getAttribute('data-dovebevo-mobile-shell') === '1',
             search: !!document.querySelector('header.top button.search-field'),
@@ -69,7 +73,11 @@ public final class PublicBrowseRuntimeTest {
             center: (map?.getAttribute('data-center') || '').slice(0,60),
             zoom: Number(map?.getAttribute('data-zoom') || 0),
             venueHeading: (document.querySelector('h2.scontrino__name')?.textContent || '').trim().slice(0,120),
-            viewport: {innerWidth,innerHeight,dpr:devicePixelRatio,scrollX,scrollY,
+            viewport: {innerWidth,innerHeight,outerWidth,outerHeight,dpr:devicePixelRatio,scrollX,scrollY,
+              screen:{width:screen.width,height:screen.height,availWidth:screen.availWidth,availHeight:screen.availHeight},
+              topFrame:window.top===window,viewportMetaCount:metas.length,viewportMetas:metas.slice(0,8).map(m=>(m.content||'').slice(0,200)),
+              computed:{html:css(document.documentElement),body:css(document.body),app:css(document.querySelector('.app')),
+                strip:css(document.querySelector('.mobile-drink-strip')),option:css(document.querySelector('.drink-option'))},
               clientWidth:document.documentElement.clientWidth,clientHeight:document.documentElement.clientHeight,
               bodyWidth:document.body?.getBoundingClientRect().width,bodyHeight:document.body?.getBoundingClientRect().height,
               documentWidth:document.documentElement.scrollWidth,documentHeight:document.documentElement.scrollHeight,
@@ -79,7 +87,7 @@ public final class PublicBrowseRuntimeTest {
               sheet:sheet?{left:sheet.left,top:sheet.top,width:sheet.width,height:sheet.height}:null,
               overflow:[...document.querySelectorAll('body *')].map(e=>{const r=e.getBoundingClientRect();
                 return {tag:e.tagName,cls:(typeof e.className==='string'?e.className:'').slice(0,80),
-                  x:r.x,y:r.y,w:r.width,h:r.height};}).filter(r=>r.w>0&&r.h>0&&(r.x<0||r.x+r.w>document.documentElement.clientWidth+2)).slice(0,20)},
+                  x:r.x,y:r.y,w:r.width,h:r.height,offsetParent:e.offsetParent?{tag:e.offsetParent.tagName,cls:(typeof e.offsetParent.className==='string'?e.offsetParent.className:'').slice(0,80)}:null};}).filter(r=>r.w>0&&r.h>0&&(r.x<0||r.x+r.w>document.documentElement.clientWidth+2)).slice(0,20)},
             canvas: !!canvas && canvas.width > 0 && canvas.height > 0 && canvas.clientWidth > 0 && canvas.clientHeight > 0};
         })()
         """;
@@ -397,6 +405,13 @@ public final class PublicBrowseRuntimeTest {
                         .put("scale", web.getScale()).put("wide_viewport", web.getSettings().getUseWideViewPort())
                         .put("overview", web.getSettings().getLoadWithOverviewMode())
                         .put("text_zoom", web.getSettings().getTextZoom()));
+                android.util.DisplayMetrics metrics = activity.getResources().getDisplayMetrics();
+                android.content.res.Configuration config = activity.getResources().getConfiguration();
+                frame.get().put("display_metrics", new JSONObject().put("width_pixels", metrics.widthPixels)
+                        .put("height_pixels", metrics.heightPixels).put("density", metrics.density)
+                        .put("density_dpi", metrics.densityDpi).put("scaled_density", metrics.scaledDensity));
+                frame.get().put("configuration", new JSONObject().put("screen_width_dp", config.screenWidthDp)
+                        .put("screen_height_dp", config.screenHeightDp).put("font_scale", config.fontScale));
                 if (Build.VERSION.SDK_INT >= 30 && activity.getWindow().getDecorView().getRootWindowInsets() != null) {
                     WindowInsets insets = activity.getWindow().getDecorView().getRootWindowInsets();
                     android.graphics.Insets ime = insets.getInsets(WindowInsets.Type.ime());

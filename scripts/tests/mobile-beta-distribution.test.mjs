@@ -282,7 +282,7 @@ test("failure diagnostics expose only a fixed stage, numeric status and bounded 
 
 test("group failure diagnostics retain only bounded counts, booleans and fixed enums", async () => {
   const groups = fixture().state.groups.map((g) => ({ ...g }));
-  groups[0].publicLink = null;
+  groups[0].publicLink = "invalid-private-value";
   const f = fixture({ groups });
   const receipt = await f.audit();
   assert.equal(receipt.complete, false); // Diagnostic collection never relaxes the guard.
@@ -299,7 +299,7 @@ test("group failure diagnostics retain only bounded counts, booleans and fixed e
         resource_identity_valid: true,
         is_internal_group: true,
         parent: "MATCH",
-        public_link: "NULL",
+        public_link: "INVALID",
       },
       {
         matches: 1,
@@ -323,7 +323,7 @@ test("group failure diagnostics retain only bounded counts, booleans and fixed e
       id: "owner-group",
       name: "Dove Bevo owner testing",
       is_internal_group: true,
-      public_link: "NULL",
+      public_link: "INVALID",
     },
     {
       id: "roberto-group",
@@ -333,6 +333,23 @@ test("group failure diagnostics retain only bounded counts, booleans and fixed e
     },
   ]);
   assert.ok(!JSON.stringify(receipt.failure).includes("PRIVATE"));
+});
+
+test("Apple's null public-link field is valid only for the verified internal group", async () => {
+  const groups = fixture().state.groups.map((group) => ({ ...group }));
+  groups[0].publicLink = null;
+  const f = fixture({ groups });
+  const receipt = await f.audit();
+  assert.equal(receipt.complete, true);
+  assert.equal(receipt.ready, true);
+  assert.equal(receipt.before.groups[0].public_link_enabled, null);
+  for (const externalValue of [null, undefined, true, "invalid"]) {
+    const badGroups = groups.map((group) => ({ ...group }));
+    badGroups[1].publicLink = externalValue;
+    const rejected = await fixture({ groups: badGroups }).audit();
+    assert.equal(rejected.plan, undefined);
+    assert.notEqual(rejected.ready, true);
+  }
 });
 
 test("audit records renamed same-app groups privately but produces no plan for historical-name mismatch", async () => {
@@ -838,11 +855,11 @@ test("initial workflow is one exact read-only tag with no apply or public-releas
     new URL("../../.github/workflows/mobile-beta-distribution.yml", import.meta.url),
     "utf8",
   );
-  assert.match(workflow, /mobile-beta-distribution-audit\/20261102-v5/);
+  assert.match(workflow, /mobile-beta-distribution-audit\/20261102-v6/);
   assert.match(workflow, /github\.repository == 'robertovalerirv-beep\/dove-bevo'/);
   assert.match(
     workflow,
-    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261102-v5'/,
+    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261102-v6'/,
   );
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /contents: read/);

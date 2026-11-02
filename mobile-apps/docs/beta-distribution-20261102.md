@@ -16,7 +16,7 @@ separate states. None establishes a public App Store launch or a real-phone test
 ## Read-only first
 
 The initial workflow accepts only
-`mobile-beta-distribution-audit/20261102-v5` in
+`mobile-beta-distribution-audit/20261102-v6` in
 `robertovalerirv-beep/dove-bevo`. It has `contents: read`, pinned actions, no apply
 step and no manual input. Its audit command is:
 
@@ -63,6 +63,11 @@ uniqueness checks; an unexpected name produces no plan. Apply still filters by
 the two plan-pinned IDs. No tester, email/contact endpoint, broader account group
 list or raw provider error is requested or retained. Group metadata is never
 printed in logs. Identity and public-link guards remain unchanged.
+The v5 audit verified both exact names, roles and app parents, and isolated a null
+public-link field on the internal group. The v6 operator accepts null only after
+that expected internal group's name, role and parent app are validated. The
+external group still requires an explicit disabled public link (`false`);
+external null, missing, enabled or invalid values never produce a plan.
 
 The audit requires exactly one build numbered `62` for version `1.0.0`, platform
 `IOS`, and verifies its parent app and bundle. It requires both exact group names,

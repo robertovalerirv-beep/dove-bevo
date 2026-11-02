@@ -386,7 +386,12 @@ async function inspect(client, plan, diagnostics) {
     )
       fail();
     const publicLink = group.attributes.publicLinkEnabled;
-    if (publicLink !== undefined && typeof publicLink !== "boolean") fail();
+    if (
+      publicLink !== undefined &&
+      typeof publicLink !== "boolean" &&
+      !(expected.is_internal_group && publicLink === null)
+    )
+      fail();
     stage("GROUP_MEMBERSHIP");
     groups.push({
       id: group.id,

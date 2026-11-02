@@ -136,3 +136,28 @@ history/report/moderation/hidden/legacy guards, independent serving variants,
 source/catalogue drift and strict mocked HTTP batch envelopes. They perform no
 provider access and no public writes. The coordinator owns independent review,
 fresh integrated tests, live audit and any later publication.
+
+## First live cohort: 2 November 2026
+
+The combined apps-only client and importer merged in PR92 at
+`e2e99b0714a432c89c1706b5c90b41996a09c0fc`; deployment41370258174 succeeded.
+The immutable audit and seed tags point to
+`55633786eaec29bc1383f2f87b38c4b4697f7511`. Manifest SHA-256 is
+`1598bbf6def55b58fd168e58ee448b0d214ae56bf53abe704ddf1491c6336e97`;
+the24-venue catalogue version is `c8cfbf1e0e5231a9`.
+
+Read-only [audit41368490625](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/41368490625)
+found21 eligible variants, with complete receipt SHA-256
+`cd199d7673cf4e67d148b55b922fda4a054b8dcc91d0cf19dd163c9372d9eab2`.
+Guarded [apply41368910603](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/41368910603)
+inserted all21, with complete receipt SHA-256
+`afdcae9b1a44da68ca74a501f764908ff78e1adf115fe342c81a391f385e2c63`.
+
+Coordinator public read-back verified all21 exact amount/currency/serving/source
+tuples: four GBP variants and17 EUR variants, including six explicitly qualified
+happy-hour variants. They cover Escapologist London, Little Temple Paris,
+Le Carlie Paris and Viva Madrid. `observed_on` and `confirmed_on` are null and
+customer confirmations are zero. Local Android tests separately exercised the
+actual production native HTTPS parser against12 of these London/Paris rows.
+The full24-venue catalogue and this four-venue price cohort remain partial
+coverage. No completeness or public app-store release is implied.

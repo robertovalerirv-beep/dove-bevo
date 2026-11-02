@@ -6,6 +6,26 @@ Italian localization of app `6827324444`, version `1.0.0` / resource
 notes or contacts, upload a private demo video, or submit the app for review.
 No live request was made during implementation.
 
+## Live outcome - do not reapply this historical plan
+
+The coordinator's subsequent GET-only audit passed on 2 November 2026. One apply
+attempt reserved the first legacy screenshot, then stopped before the first PUT
+or any old-image deletion. A separate read confirmed AWAITING_UPLOAD, the exact
+expected filename/size, no checksum, and no usable upload operations. The exact
+failed post-reservation guard cannot be established from the sanitized receipt.
+There was no automatic retry. The unused reservation was independently checked,
+removed through its exact legacy resource, and verified absent.
+
+The coordinator then uploaded all six original files using the current App Store
+Connect App Previews and Screenshots controls, waited for processing, and removed
+only the previous recoverable placements. A fresh reload confirmed all three
+current iPhone and all three current iPad placements after the cleanup. This
+legacy operator has no proven successful live upload against the current asset
+model. Do not reapply its historical plan or treat its unit tests as live upload
+proof. Future automation needs a separately reviewed current Asset Library
+contract and fresh provider reconciliation. Private physical-device review video
+and public app approval remain separate work.
+
 ## Reviewed local asset plan
 
 The separate asset packager supplies

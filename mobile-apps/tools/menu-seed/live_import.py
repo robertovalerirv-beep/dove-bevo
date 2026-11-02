@@ -105,6 +105,25 @@ def url(value):
     except ValueError:
         raise Error("invalid source URL")
 
+def google_evidence_url(value):
+    """Allow canonical public Google CID evidence without relaxing menu-fetch URLs."""
+    if not text(value, 2048): raise Error("invalid Google URL")
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        raise Error("invalid Google URL") from None
+    if parsed.query:
+        match = re.fullmatch(r"https://(?:(?:www\.|maps\.)?google\.(?:com|it|fr|de|es|co\.uk))(?::443)?/maps\?cid=([1-9][0-9]{0,19})", value)
+        if not match or int(match[1]) > 18_446_744_073_709_551_615:
+            raise Error("invalid Google URL")
+        host = url(value.split("?", 1)[0])
+    else:
+        host = url(value)
+    if not re.fullmatch(r"(?:www\.|maps\.)?google\.(?:com|it|fr|de|es|co\.uk)", host):
+        raise Error("invalid Google URL")
+    return host
+
+
 def geo(lat, lon):
     boxes = [[-180., 180.], [-90., 90.]]
     bits = []
@@ -144,7 +163,7 @@ def validate(raw):
         if not isinstance(r["drink"], str) or r["drink"] not in LIMITS or type(r["cents"]) is not int or not LIMITS[r["drink"]][0] <= r["cents"] <= LIMITS[r["drink"]][1] or type(r["hh"]) is not int or r["hh"] not in (0, 1): raise Error("invalid drink price")
         if type(r["google_reviews"]) is not int or not 100 < r["google_reviews"] <= 100000000: raise Error("invalid review count")
         url(r["source_url"])
-        if not re.fullmatch(r"(?:www\.|maps\.)?google\.(?:com|it|fr|de|es|co\.uk)", url(r["google_url"])): raise Error("invalid Google URL")
+        google_evidence_url(r["google_url"])
         if not isinstance(r["source_sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", r["source_sha256"]): raise Error("invalid source hash")
         key = (r["venue_key"], r["drink"], r["hh"])
         if key in seen: raise Error("duplicate record")

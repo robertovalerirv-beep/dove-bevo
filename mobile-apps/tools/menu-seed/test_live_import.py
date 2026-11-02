@@ -61,6 +61,35 @@ class Tests(unittest.TestCase):
         result = self.run_import()
         self.assertEqual(result["records"][0]["outcome"], "eligible_at_read")
         self.assertTrue(all(q in (m.CURRENT, m.PRESENCE) for q in self.f.queries))
+    def test_google_evidence_accepts_exact_public_cid_but_sources_stay_query_free(self):
+        for host in ("www.google.com", "maps.google.it", "google.co.uk", "www.google.fr", "www.google.de", "google.es"):
+            for cid in ("1", "14642652223940811783", "18446744073709551615"):
+                evidence = f"https://{host}/maps?cid={cid}"
+                self.assertEqual(m.google_evidence_url(evidence), host)
+                self.record["google_url"] = evidence
+                self.assertTrue(m.validate(self.raw()))
+                with self.assertRaises(m.Error): m.url(evidence)
+                self.record["source_url"] = evidence
+                with self.assertRaises(m.Error): m.validate(self.raw())
+                self.record["source_url"] = "https://example.com/menu"
+        self.assertEqual(m.google_evidence_url("https://www.google.com:443/maps?cid=1"), "www.google.com")
+        self.assertEqual(m.google_evidence_url("https://www.google.com/maps/place/example"), "www.google.com")
+
+    def test_google_cid_rejects_ambiguous_encoded_extra_and_out_of_range_forms(self):
+        base = "https://www.google.com/maps?"
+        invalid = [base + query for query in ("cid=0", "cid=01", "cid=-1", "cid=+1", "cid=18446744073709551616",
+            "cid=999999999999999999999", "cid=1.0", "cid=1&cid=2", "cid=1&", "cid=1&hl=it", "cid=1?cid=2",
+            "%63id=1", "cid=%31", "cid=1%26hl=it", "CID=1", "cid=", "cid= 1", "cid=1 ")]
+        invalid += ["http://www.google.com/maps?cid=1", "https://www.google.com.evil.example/maps?cid=1",
+            "https://user@www.google.com/maps?cid=1", "https://www.google.com:444/maps?cid=1",
+            "https://www.google.com/maps/?cid=1", "https://www.google.com/maps/place/a?cid=1",
+            "https://www.google.com/maps?cid=1#fragment", "https://www.google.com/maps?cid=1#",
+            "https://www.google.com/maps?cid=1\n", " https://www.google.com/maps?cid=1"]
+        for value in invalid:
+            with self.subTest(value=value), self.assertRaises(m.Error): m.google_evidence_url(value)
+        for value in ("https://example.com/menu?price=1", "https://www.google.com/maps?cid=1"):
+            with self.assertRaises(m.Error): m.url(value)
+
     def test_insert_idempotent_and_cache_retry(self):
         first = self.run_import(True)
         self.assertEqual(first["records"][0]["outcome"], "inserted")

@@ -1,0 +1,61 @@
+name: Reviewed app-only Europe menu batch
+
+on:
+  push:
+    tags:
+      - "mobile-europe-menu-audit/20261101-v1"
+      - "mobile-europe-menu-seed/20261101-v1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dovebevo-europe-menu-import
+  cancel-in-progress: false
+
+jobs:
+  reviewed-batch:
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      (github.ref == 'refs/tags/mobile-europe-menu-audit/20261101-v1' ||
+       github.ref == 'refs/tags/mobile-europe-menu-seed/20261101-v1')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      MANIFEST: mobile-apps/data/europe-menu-seed-20261101.json
+      MANIFEST_SHA256: 55a98e7350478c9f9a2c4944a76d1a3e3f353cbbf894051fd945924bf2831c07
+      RECEIPT: ${{ runner.temp }}/mobile-europe-menu-import/receipt.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify the exact reviewed manifest and transaction tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' "$MANIFEST_SHA256" "$MANIFEST" | sha256sum --check --strict
+          python3 -B -m unittest discover -s mobile-apps/tools/europe-menu-import -p 'test_import_menu.py' -v
+          mkdir -p "$(dirname "$RECEIPT")"
+      - name: Audit or apply the exact reviewed app-only batch
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          case "$GITHUB_REF" in
+            refs/tags/mobile-europe-menu-audit/20261101-v1) mode_args=() ;;
+            refs/tags/mobile-europe-menu-seed/20261101-v1) mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256") ;;
+            *) exit 2 ;;
+          esac
+          python3 -B mobile-apps/tools/europe-menu-import/import_menu.py \
+            --manifest "$MANIFEST" --receipt "$RECEIPT" "${mode_args[@]}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: europe-menu-receipt-${{ github.run_id }}
+          path: ${{ runner.temp }}/mobile-europe-menu-import/receipt.json
+          retention-days: 30
+          if-no-files-found: warn

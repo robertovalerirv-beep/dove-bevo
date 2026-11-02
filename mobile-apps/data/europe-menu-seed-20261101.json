@@ -1,0 +1,380 @@
+{
+  "schema_version": 1,
+  "batch_id": "europe-menu-seed-20261101-v1",
+  "catalog": {
+    "url": "https://www.dovebevo.com/mobile-data/catalog.json",
+    "sha256": "3e7bcc7f44ed3a52d22c666db5febb433ddb343379b96a4085d191f5c811c497",
+    "version": "c8cfbf1e0e5231a9",
+    "schema_version": 1
+  },
+  "sources": [
+    {
+      "id": "carlie-cocktails",
+      "url": "https://www.lecarlie.fr/menus",
+      "fetch_url": "https://www.lecarlie.fr/menus",
+      "index_url": "https://www.lecarlie.fr/menus",
+      "format": "html_text_v1",
+      "sha256": "f4c2cd9d78a029dded3a76168b1579f276e85c72ab55292624d6f28bbfc8add0",
+      "raw_evidence_sha256": "3f1bbb3331911244787958d1334c514d2bcd7fd56991355613e5734fe03be572",
+      "checked_on": "2026-11-01",
+      "identity_note": "Le Carlie, 177 rue Saint Martin, 75003 Paris. Official menu identifies the same venue/address and labels individual Happy Hour versus Hors Happy Hour amounts."
+    },
+    {
+      "id": "carlie-softs",
+      "url": "https://www.lecarlie.fr/menus?location=Le+Carlie&menu=softs",
+      "fetch_url": "https://www.lecarlie.fr/menus?location=Le+Carlie&menu=softs",
+      "index_url": "https://www.lecarlie.fr/menus?location=Le+Carlie&menu=softs",
+      "format": "html_text_v1",
+      "sha256": "2eb21fe624a01ac55964af47a4f9b60ae897a0c65e0d16dba366d9d83c510be9",
+      "raw_evidence_sha256": "5239674b3e2a48c9c9dea9a7259526c1c7ecf43aac3f506a023ddd2f2b4b1752",
+      "checked_on": "2026-11-01",
+      "identity_note": "Le Carlie, 177 rue Saint Martin, 75003 Paris. Official menu identifies the same venue/address and labels individual Happy Hour versus Hors Happy Hour amounts."
+    },
+    {
+      "id": "carlie-wine",
+      "url": "https://www.lecarlie.fr/menus?location=Le+Carlie&menu=vins--bulles",
+      "fetch_url": "https://www.lecarlie.fr/menus?location=Le+Carlie&menu=vins--bulles",
+      "index_url": "https://www.lecarlie.fr/menus?location=Le+Carlie&menu=vins--bulles",
+      "format": "html_text_v1",
+      "sha256": "939f4914f5cda5ade421987bf5b909e76a9f295f5b422aa9b3d61717b80b0662",
+      "raw_evidence_sha256": "42d814fce2ec9554e36ca8b621641346aaa89f49b007b52362083442226b41e6",
+      "checked_on": "2026-11-01",
+      "identity_note": "Le Carlie, 177 rue Saint Martin, 75003 Paris. Official menu identifies the same venue/address and labels individual Happy Hour versus Hors Happy Hour amounts."
+    },
+    {
+      "id": "escapologist-menu",
+      "url": "https://24-social.com/nightcap-group/1790601902-7ddrinksmenusep",
+      "fetch_url": "https://24-social.com/nightcap-group/1790601902-7ddrinksmenusep",
+      "index_url": "https://www.escapologistbar.co.uk/menus",
+      "format": "pdf_raw_v1",
+      "sha256": "83ea3058d25062bdd785ad18fe143662d27ba805da5819f7f4aa2fb0fb7803a4",
+      "raw_evidence_sha256": "83ea3058d25062bdd785ad18fe143662d27ba805da5819f7f4aa2fb0fb7803a4",
+      "checked_on": "2026-11-01",
+      "identity_note": "The Escapologist, 35 Earlham Street, London WC2H 9LD. Current official menus page links this PDF; GBP prices and paired promotion remain distinct."
+    },
+    {
+      "id": "temple-menu",
+      "url": "https://www.littletemplebar.fr/_files/ugd/731ff6_5fb78f858ba84fb89e534d70841835e2.pdf",
+      "fetch_url": "https://1f94fa8c-ab27-46ae-9837-7db5742263b7.filesusr.com/ugd/731ff6_5fb78f858ba84fb89e534d70841835e2.pdf",
+      "index_url": "https://www.littletemplebar.fr/",
+      "format": "pdf_raw_v1",
+      "sha256": "9f9b314ed62b2a04dae5eaf7126782a733390cd7dc972ba5f4f51f5fae89a011",
+      "raw_evidence_sha256": "9f9b314ed62b2a04dae5eaf7126782a733390cd7dc972ba5f4f51f5fae89a011",
+      "checked_on": "2026-11-01",
+      "identity_note": "Little Temple Bar, 12 rue Princesse, 75006 Paris. Current official CARTE links this PDF; PDF labels euros including service."
+    },
+    {
+      "id": "viva-menu",
+      "url": "https://www.vivamadrid1856.com/wp-content/uploads/2026/03/ESPANOL-CARTA-COCTELES-2026-VM.pdf",
+      "fetch_url": "https://www.vivamadrid1856.com/wp-content/uploads/2026/03/ESPANOL-CARTA-COCTELES-2026-VM.pdf",
+      "index_url": "https://www.vivamadrid1856.com/",
+      "format": "pdf_raw_v1",
+      "sha256": "50563681a01f874303aab177baf4743c93c6d628f3c727bf99827849c8bff34d",
+      "raw_evidence_sha256": "50563681a01f874303aab177baf4743c93c6d628f3c727bf99827849c8bff34d",
+      "checked_on": "2026-11-01",
+      "identity_note": "Viva Madrid, C. de Manuel Fernandez y Gonzalez 7, Madrid. Current official homepage CARTA COCTELES links this PDF; section headings and serving layout inspected."
+    }
+  ],
+  "records": [
+    {
+      "venue": "n329135152",
+      "cell": "u09tv",
+      "drink": "spritz",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 900,
+      "source_id": "temple-menu",
+      "menu_item": "Spritz Aperol",
+      "conditions": "Single drink or specified glass; ordinary menu price. PDF page 5."
+    },
+    {
+      "venue": "n329135152",
+      "cell": "u09tv",
+      "drink": "spritz",
+      "hh": 1,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 800,
+      "source_id": "temple-menu",
+      "menu_item": "Spritz Aperol",
+      "conditions": "HH column; official homepage weekday 17:00-20:00 PDF page 5."
+    },
+    {
+      "venue": "n329135152",
+      "cell": "u09tv",
+      "drink": "alcohol_free",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 800,
+      "source_id": "temple-menu",
+      "menu_item": "Cocktail alcohol free",
+      "conditions": "Single drink or specified glass; ordinary menu price. PDF page 5."
+    },
+    {
+      "venue": "n329135152",
+      "cell": "u09tv",
+      "drink": "alcohol_free",
+      "hh": 1,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 600,
+      "source_id": "temple-menu",
+      "menu_item": "Cocktail alcohol free",
+      "conditions": "HH column; official homepage weekday 17:00-20:00 PDF page 5."
+    },
+    {
+      "venue": "n329135152",
+      "cell": "u09tv",
+      "drink": "beer_draft",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "ml",
+        "ml": 250
+      },
+      "amount_minor": 450,
+      "source_id": "temple-menu",
+      "menu_item": "Temple Lager 4,2°",
+      "conditions": "cl converted exactly x10 to ml PDF page 2."
+    },
+    {
+      "venue": "n329135152",
+      "cell": "u09tv",
+      "drink": "beer_draft",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "ml",
+        "ml": 500
+      },
+      "amount_minor": 800,
+      "source_id": "temple-menu",
+      "menu_item": "Temple Lager 4,2°",
+      "conditions": "cl converted exactly x10 to ml PDF page 2."
+    },
+    {
+      "venue": "n329135152",
+      "cell": "u09tv",
+      "drink": "beer_draft",
+      "hh": 1,
+      "currency": "EUR",
+      "serving": {
+        "unit": "ml",
+        "ml": 500
+      },
+      "amount_minor": 600,
+      "source_id": "temple-menu",
+      "menu_item": "Temple Lager 4,2°",
+      "conditions": "HH applies only to third 50cl column; cl converted exactly x10 to ml PDF page 2."
+    },
+    {
+      "venue": "n329135152",
+      "cell": "u09tv",
+      "drink": "wine_glass",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "glass",
+        "ml": 140
+      },
+      "amount_minor": 700,
+      "source_id": "temple-menu",
+      "menu_item": "Coup de Savate bio (Pinot Noir & Syrah - Rouge)",
+      "conditions": "14cl converted exactly to 140ml; bottle price not used PDF page 7."
+    },
+    {
+      "venue": "n6044678286",
+      "cell": "gcpvj",
+      "drink": "spritz",
+      "hh": 0,
+      "currency": "GBP",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 1300,
+      "source_id": "escapologist-menu",
+      "menu_item": "Aperol Spritz",
+      "conditions": "Single drink or specified glass; ordinary menu price. PDF page 11."
+    },
+    {
+      "venue": "n6044678286",
+      "cell": "gcpvj",
+      "drink": "alcohol_free",
+      "hh": 0,
+      "currency": "GBP",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 750,
+      "source_id": "escapologist-menu",
+      "menu_item": "Crodino Spritz 0.0%",
+      "conditions": "Single drink or specified glass; ordinary menu price. PDF page 10."
+    },
+    {
+      "venue": "n6044678286",
+      "cell": "gcpvj",
+      "drink": "wine_glass",
+      "hh": 0,
+      "currency": "GBP",
+      "serving": {
+        "unit": "glass",
+        "ml": 175
+      },
+      "amount_minor": 720,
+      "source_id": "escapologist-menu",
+      "menu_item": "Ca' Del Lago Soave DOC Italy | 2023",
+      "conditions": "Single drink or specified glass; ordinary menu price. PDF page 13."
+    },
+    {
+      "venue": "n6044678286",
+      "cell": "gcpvj",
+      "drink": "wine_glass",
+      "hh": 0,
+      "currency": "GBP",
+      "serving": {
+        "unit": "glass",
+        "ml": 250
+      },
+      "amount_minor": 920,
+      "source_id": "escapologist-menu",
+      "menu_item": "Ca' Del Lago Soave DOC Italy | 2023",
+      "conditions": "Single drink or specified glass; ordinary menu price. PDF page 13."
+    },
+    {
+      "venue": "n10271152937",
+      "cell": "ezjmg",
+      "drink": "alcohol_free",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 1000,
+      "source_id": "viva-menu",
+      "menu_item": "ORANGE BLISS",
+      "conditions": "10EUR section price covers four named alcohol-free cocktails; single selected item retained PDF page 7."
+    },
+    {
+      "venue": "n10271152937",
+      "cell": "ezjmg",
+      "drink": "wine_glass",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "glass"
+      },
+      "amount_minor": 450,
+      "source_id": "viva-menu",
+      "menu_item": "Tinto",
+      "conditions": "No volume printed; unspecified glass preserved PDF page 9."
+    },
+    {
+      "venue": "n5602730924",
+      "cell": "u09tv",
+      "drink": "spritz",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 900,
+      "source_id": "carlie-cocktails",
+      "menu_item": "Spritz / Apérol Spritz",
+      "conditions": "Official menu header HH16-23h; gin upgrades are separately priced and excluded"
+    },
+    {
+      "venue": "n5602730924",
+      "cell": "u09tv",
+      "drink": "spritz",
+      "hh": 1,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 750,
+      "source_id": "carlie-cocktails",
+      "menu_item": "Spritz / Apérol Spritz",
+      "conditions": "Official menu header HH16-23h; gin upgrades are separately priced and excluded"
+    },
+    {
+      "venue": "n5602730924",
+      "cell": "u09tv",
+      "drink": "gin_tonic",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 900,
+      "source_id": "carlie-cocktails",
+      "menu_item": "Gin tonic",
+      "conditions": "Official menu header HH16-23h; gin upgrades are separately priced and excluded"
+    },
+    {
+      "venue": "n5602730924",
+      "cell": "u09tv",
+      "drink": "gin_tonic",
+      "hh": 1,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 750,
+      "source_id": "carlie-cocktails",
+      "menu_item": "Gin tonic",
+      "conditions": "Official menu header HH16-23h; gin upgrades are separately priced and excluded"
+    },
+    {
+      "venue": "n5602730924",
+      "cell": "u09tv",
+      "drink": "alcohol_free",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 700,
+      "source_id": "carlie-softs",
+      "menu_item": "Tropical Zing",
+      "conditions": "Official menu HH16-23h"
+    },
+    {
+      "venue": "n5602730924",
+      "cell": "u09tv",
+      "drink": "alcohol_free",
+      "hh": 1,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 600,
+      "source_id": "carlie-softs",
+      "menu_item": "Tropical Zing",
+      "conditions": "Official menu HH16-23h"
+    },
+    {
+      "venue": "n5602730924",
+      "cell": "u09tv",
+      "drink": "wine_glass",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "glass"
+      },
+      "amount_minor": 500,
+      "source_id": "carlie-wine",
+      "menu_item": "Chardonnay",
+      "conditions": "Unspecified glass; no bottle amount used"
+    }
+  ]
+}

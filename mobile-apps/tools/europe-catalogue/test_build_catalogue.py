@@ -83,7 +83,9 @@ class CatalogueIdentityTests(unittest.TestCase):
     def test_committed_cohort_reproduces_exact_catalogue_and_source_evidence(self):
         root = Path(__file__).resolve().parents[3]
         inputs = root / "mobile-apps/data/europe-catalogue-inputs-20261101"
-        catalog = json.loads((root / "public/mobile-data/catalog.json").read_bytes())
+        baseline = (root / "mobile-apps/data/europe-catalogue-baseline-20261101.json").read_bytes()
+        self.assertEqual(hashlib.sha256(baseline).hexdigest(), "3e7bcc7f44ed3a52d22c666db5febb433ddb343379b96a4085d191f5c811c497")
+        catalog = json.loads(baseline)
         proof = json.loads((root / "mobile-apps/data/europe-catalogue-evidence-20261101.json").read_bytes())
         rows = []
         for city in ["london", "paris", "madrid"]:
@@ -97,6 +99,38 @@ class CatalogueIdentityTests(unittest.TestCase):
         rows.sort(key=lambda row: (row["country"], row["city"], row["key"]))
         self.assertEqual(rows, catalog["venues"])
         self.assertEqual(len(rows), 24)
+        self.assertEqual(catalog["version"], hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16])
+        active = json.loads((root / "public/mobile-data/catalog.json").read_bytes())
+        old_keys = {row["key"] for row in rows}
+        self.assertEqual([row for row in active["venues"] if row["key"] in old_keys], rows)
+
+    def test_additive_berlin_cohort_reproduces_all34_rows_and_complete_proof(self):
+        root = Path(__file__).resolve().parents[3]
+        inputs = root / "mobile-apps/data/europe-catalogue-inputs-20261102-berlin"
+        original = root / "mobile-apps/data/europe-catalogue-inputs-20261101"
+        catalog = json.loads((root / "public/mobile-data/catalog.json").read_bytes())
+        proof = json.loads((root / "mobile-apps/data/europe-catalogue-evidence-20261102-berlin.json").read_bytes())
+        rows, expected_proof, held = [], [], {}
+        for slug in catalogue.CITIES:
+            provider, osm = inputs / (slug + ".json"), inputs / (slug + "-osm.json")
+            if not provider.exists() or not osm.exists():
+                held[slug] = [{"reason": "missing complete business or OSM snapshot"}]
+                continue
+            if slug != "berlin":
+                self.assertEqual(provider.read_bytes(), (original / provider.name).read_bytes())
+                self.assertEqual(osm.read_bytes(), (original / osm.name).read_bytes())
+            accepted, held[slug] = catalogue.join_city(slug, json.loads(provider.read_bytes()), json.loads(osm.read_bytes()), date(2026, 11, 2))
+            for venue, evidence in accepted:
+                rows.append(venue)
+                expected_proof.append({**evidence, "provider_sha256": hashlib.sha256(provider.read_bytes()).hexdigest(), "osm_sha256": hashlib.sha256(osm.read_bytes()).hexdigest()})
+        rows.sort(key=lambda row: (row["country"], row["city"], row["key"]))
+        self.assertEqual(rows, catalog["venues"])
+        self.assertEqual(len(rows), 34)
+        self.assertEqual(len({row["key"] for row in rows}), 34)
+        self.assertEqual(len([row for row in rows if row["country"] == "DE" and row["city"] == "Berlin"]), 10)
+        self.assertEqual(proof["accepted"], expected_proof)
+        self.assertEqual(proof["held"], held)
+        self.assertEqual(proof["catalogue_version"], catalog["version"])
         self.assertEqual(catalog["version"], hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16])
 
 if __name__ == "__main__": unittest.main()

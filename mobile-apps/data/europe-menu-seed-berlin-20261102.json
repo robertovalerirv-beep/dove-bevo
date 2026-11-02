@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "batch_id": "berlin-menu-20261102-v1",
+  "catalog": {
+    "url": "https://www.dovebevo.com/mobile-data/catalog.json",
+    "sha256": "3608eeed8bdd200c3d388bc9a24c47c651202b43f7f7149daf9b358d713fcb5b",
+    "version": "8dba6d321be21f71",
+    "schema_version": 1
+  },
+  "sources": [
+    {
+      "id": "berlin-monkey-menu-20261102",
+      "url": "https://monkeybarberlin.de/wp-content/uploads/sites/11/2023/11/25hours_hotel_bikini_berlin_monkey_bar.pdf",
+      "fetch_url": "https://monkeybarberlin.de/wp-content/uploads/sites/11/2023/11/25hours_hotel_bikini_berlin_monkey_bar.pdf",
+      "index_url": "https://monkeybarberlin.de/drinks/",
+      "format": "pdf_raw_v1",
+      "sha256": "af0fd673aec3f701d627726795ed070242a0e3d45b6affc86b403978f6116637",
+      "raw_evidence_sha256": "af0fd673aec3f701d627726795ed070242a0e3d45b6affc86b403978f6116637",
+      "checked_on": "2026-11-02",
+      "identity_note": "Monkey Bar, Budapester Strasse 40, Berlin; official drinks page linked PDF at retained check; canonical OSM n2727229961 exact-name match within 7.67m. PDF pages1-3 and legible detail crops visually inspected."
+    }
+  ],
+  "records": [
+    {
+      "venue": "n2727229961",
+      "cell": "u336x",
+      "drink": "spritz",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "amount_minor": 1200,
+      "source_id": "berlin-monkey-menu-20261102",
+      "menu_item": "Aperol Spritz",
+      "conditions": "Ordinary menu price; no HH claim. PDF page 2; Euro notice page3. Single drink; no volume claimed."
+    },
+    {
+      "venue": "n2727229961",
+      "cell": "u336x",
+      "drink": "water",
+      "hh": 0,
+      "currency": "EUR",
+      "serving": {
+        "unit": "ml",
+        "ml": 500
+      },
+      "amount_minor": 300,
+      "source_id": "berlin-monkey-menu-20261102",
+      "menu_item": "Soda Water [still/sparkling]",
+      "conditions": "Ordinary menu price; no HH claim. PDF page 2; Euro notice page3. Literal still/sparkling wording retained; no brand inferred"
+    }
+  ]
+}

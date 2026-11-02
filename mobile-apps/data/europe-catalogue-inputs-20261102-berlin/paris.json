@@ -1,0 +1,335 @@
+{
+  "schema_version": 1,
+  "city": "Paris",
+  "country": "FR",
+  "currency": "EUR",
+  "observed_at_ms": 1793575553749,
+  "provider": "firecrawl-maps",
+  "capability": "businesses/search",
+  "workflow": {
+    "version": "2.2.1",
+    "digest": "sha256:a912041630b7c85d928d80b42ab6e3e7b491d292d7d31fc8587f23ecdfcb6904"
+  },
+  "query": "bars in central Paris",
+  "coverage": {
+    "returned": 20,
+    "has_more": true,
+    "next_cursor": "20"
+  },
+  "venues": [
+    {
+      "name": "Harry's New York Bar",
+      "address": "5 Rue Daunou, 75002 Paris",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x47e66e30f9a044bb:0x2cff382141df8050",
+      "place_id": "ChIJu0Sg-TBu5kcRUIDfQSE4_yw",
+      "latitude": 48.8692018,
+      "longitude": 2.3320688,
+      "review_count": 3031,
+      "website": "https://www.harrysbar.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66e30f9a044bb%3A0x2cff382141df8050"
+    },
+    {
+      "name": "Bar du Central",
+      "address": "99 Rue Saint-Dominique, 75007 Paris",
+      "categories": [
+        "Brasserie",
+        "Brewery",
+        "Cocktail bar",
+        "Modern French restaurant",
+        "Restaurant"
+      ],
+      "feature_id": "0x47e66fd77266585f:0x70c062ce6213d783",
+      "place_id": "ChIJX1hmctdv5kcRg9cTYs5iwHA",
+      "latitude": 48.859475,
+      "longitude": 2.3067302,
+      "review_count": 1119,
+      "website": "https://www.barducentral-paris.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66fd77266585f%3A0x70c062ce6213d783"
+    },
+    {
+      "name": "Bar Le Vanart",
+      "address": "11 Rue des Tournelles, 75004 Paris",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Beer hall",
+        "Pub",
+        "Wine bar"
+      ],
+      "feature_id": "0x47e6720023bec0ed:0x90089911f7e7c55b",
+      "place_id": "ChIJ7cC-IwBy5kcRW8Xn9xGZCJA",
+      "latitude": 48.854281,
+      "longitude": 2.3672157,
+      "review_count": 213,
+      "website": "https://www.instagram.com/vanartbar/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e6720023bec0ed%3A0x90089911f7e7c55b"
+    },
+    {
+      "name": "The Cambridge Public House",
+      "address": "8 Rue de Poitou, 75003 Paris",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x47e66fa84be5537f:0x21a7d2f0fded197f",
+      "place_id": "ChIJf1PlS6hv5kcRfxnt_fDSpyE",
+      "latitude": 48.8614428,
+      "longitude": 2.3641391,
+      "review_count": 1210,
+      "website": "https://www.thecambridge.paris/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66fa84be5537f%3A0x21a7d2f0fded197f"
+    },
+    {
+      "name": "Bar Nouveau",
+      "address": "5 Rue des Haudriettes, 75003 Paris",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x47e66fc8e5838ae1:0x77be5495fea38f7f",
+      "place_id": "ChIJ4YqD5chv5kcRf4-j_pVUvnc",
+      "latitude": 48.8614263,
+      "longitude": 2.3575819,
+      "review_count": 728,
+      "website": "http://barnouveau.fr/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66fc8e5838ae1%3A0x77be5495fea38f7f"
+    },
+    {
+      "name": "Little Red Door",
+      "address": "60 Rue Charlot, 75003 Paris",
+      "categories": [
+        "Cocktail bar",
+        "Bar"
+      ],
+      "feature_id": "0x47e66e065c14f5df:0xc55c51b6f1cd947e",
+      "place_id": "ChIJ3_UUXAZu5kcRfpTN8bZRXMU",
+      "latitude": 48.8636097,
+      "longitude": 2.3636334999999997,
+      "review_count": 3025,
+      "website": "http://www.lrdparis.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66e065c14f5df%3A0xc55c51b6f1cd947e"
+    },
+    {
+      "name": "Le Pantalon",
+      "address": "7 Rue Royer-Collard, 75005 Paris",
+      "categories": [
+        "Bar"
+      ],
+      "feature_id": "0x47e671c2c8fd1025:0x48ae1fb1640e5a9d",
+      "place_id": "ChIJJRD9yMJx5kcRnVoOZLEfrkg",
+      "latitude": 48.84567,
+      "longitude": 2.3419627999999997,
+      "review_count": 863,
+      "website": null,
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e671c2c8fd1025%3A0x48ae1fb1640e5a9d"
+    },
+    {
+      "name": "Dirty Dick",
+      "address": "10 Rue Frochot, 75009 Paris",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x47e66e45d62a91d3:0xf22d231860adadbe",
+      "place_id": "ChIJ05Eq1kVu5kcRvq2tYBgjLfI",
+      "latitude": 48.8815448,
+      "longitude": 2.3375062,
+      "review_count": 1826,
+      "website": "https://www.instagram.com/dirtydickparis/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66e45d62a91d3%3A0xf22d231860adadbe"
+    },
+    {
+      "name": "The Pub",
+      "address": "4 Rue Caron, 75004 Paris",
+      "categories": [
+        "Bar",
+        "Beer hall",
+        "Pub",
+        "Sports bar"
+      ],
+      "feature_id": "0x47e671152427807b:0xbeda6d451deb166a",
+      "place_id": "ChIJe4AnJBVx5kcRahbrHUVt2r4",
+      "latitude": 48.8550214,
+      "longitude": 2.3626661,
+      "review_count": 381,
+      "website": "http://www.thepubparis.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e671152427807b%3A0xbeda6d451deb166a"
+    },
+    {
+      "name": "De Vie",
+      "address": "22-24 Rue Saint-Sauveur, 75002 Paris",
+      "categories": [
+        "Cocktail bar",
+        "Bistro",
+        "Cafe",
+        "Restaurant"
+      ],
+      "feature_id": "0x47e66feca9992657:0x75842e7dc4e1ae1",
+      "place_id": "ChIJVyaZqexv5kcR4RpO3OdCWAc",
+      "latitude": 48.8662389,
+      "longitude": 2.3479422,
+      "review_count": 262,
+      "website": "https://www.devie.bar/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66feca9992657%3A0x75842e7dc4e1ae1"
+    },
+    {
+      "name": "La Resistance",
+      "address": "16 Rue Sainte-Croix de la Bretonnerie, 75004 Paris",
+      "categories": [
+        "Bar",
+        "Cocktail bar"
+      ],
+      "feature_id": "0x47e66e02dbcc0cef:0xcbc8fcd983114a0c",
+      "place_id": "ChIJ7wzM2wJu5kcRDEoRg9n8yMs",
+      "latitude": 48.8581211,
+      "longitude": 2.3567532,
+      "review_count": 685,
+      "website": "http://www.laresistanceparis.fr/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66e02dbcc0cef%3A0xcbc8fcd983114a0c"
+    },
+    {
+      "name": "Little Temple Bar",
+      "address": "12 Rue Princesse, 75006 Paris",
+      "categories": [
+        "Irish pub",
+        "Bar",
+        "Cocktail bar",
+        "Pub",
+        "Sports bar"
+      ],
+      "feature_id": "0x47e671d994874f2b:0x3dc647441c720b31",
+      "place_id": "ChIJK0-HlNlx5kcRMQtyHERHxj0",
+      "latitude": 48.8522313,
+      "longitude": 2.3344077,
+      "review_count": 1252,
+      "website": "http://www.littletemplebar.fr/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e671d994874f2b%3A0x3dc647441c720b31"
+    },
+    {
+      "name": "Le Bar",
+      "address": "27 Rue de Condé, 75006 Paris",
+      "categories": [
+        "Cocktail bar",
+        "Bar"
+      ],
+      "feature_id": "0x47e671db89513afb:0x4c396fe417d2266a",
+      "place_id": "ChIJ-zpRidtx5kcRaibSF-RvOUw",
+      "latitude": 48.8497123,
+      "longitude": 2.3380535,
+      "review_count": 167,
+      "website": "https://www.pariszigzag.fr/sortir-paris/bars-cafes-terrasses-paris/le-bar-entre-velours-et-penombre",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e671db89513afb%3A0x4c396fe417d2266a"
+    },
+    {
+      "name": "Velvet Bar Paris",
+      "address": "43 Rue Saint-Honoré, 75001 Paris",
+      "categories": [
+        "Cocktail bar",
+        "Bar",
+        "Lounge bar"
+      ],
+      "feature_id": "0x47e66e1f51c5e5ab:0x11227d1963a12681",
+      "place_id": "ChIJq-XFUR9u5kcRgSahYxl9IhE",
+      "latitude": 48.8607768,
+      "longitude": 2.3454208,
+      "review_count": 1345,
+      "website": "http://www.velvet-bar.fr/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66e1f51c5e5ab%3A0x11227d1963a12681"
+    },
+    {
+      "name": "Moonshiner",
+      "address": "5 Rue Sedaine, 75011 Paris",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x47e67200a0803e75:0xa2afeb4b6ec09fea",
+      "place_id": "ChIJdT6AoABy5kcR6p_Abkvrr6I",
+      "latitude": 48.8556969,
+      "longitude": 2.3712084,
+      "review_count": 2752,
+      "website": "https://moonshinerbar.fr/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e67200a0803e75%3A0xa2afeb4b6ec09fea"
+    },
+    {
+      "name": "Caveau Montpensier",
+      "address": "15 Rue de Montpensier, 75001 Paris",
+      "categories": [
+        "Bar",
+        "Pub",
+        "Restaurant"
+      ],
+      "feature_id": "0x47e66e251d661277:0x73c9a8c395644092",
+      "place_id": "ChIJdxJmHSVu5kcRkkBklcOoyXM",
+      "latitude": 48.8646502,
+      "longitude": 2.3366647,
+      "review_count": 404,
+      "website": "http://acmparis.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66e251d661277%3A0x73c9a8c395644092"
+    },
+    {
+      "name": "Holiday bar",
+      "address": "15 Rue Xavier Privas, 75005 Paris",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x47e6712ad7c2336d:0x52cd9c6ba83ab684",
+      "place_id": "ChIJbTPC1ypx5kcRhLY6qGuczVI",
+      "latitude": 48.8525658,
+      "longitude": 2.3453268,
+      "review_count": 191,
+      "website": null,
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e6712ad7c2336d%3A0x52cd9c6ba83ab684"
+    },
+    {
+      "name": "Le Carlie",
+      "address": "177 Rue Saint-Martin, 75003 Paris",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x47e66e1bb8ec4127:0x3967625213cd8640",
+      "place_id": "ChIJJ0HsuBtu5kcRQIbNE1JiZzk",
+      "latitude": 48.8627259,
+      "longitude": 2.3520221,
+      "review_count": 1750,
+      "website": "https://linktr.ee/lecarliemarais?utm_source=linktree_profile_share&ltsid=2973213d-54c3-4435-88bc-183f1584d9cc",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66e1bb8ec4127%3A0x3967625213cd8640"
+    },
+    {
+      "name": "La Clap",
+      "address": "22 Rue Linné, 75005 Paris",
+      "categories": [
+        "Bar",
+        "Restaurant",
+        "Cocktail bar",
+        "Gay bar",
+        "Halal restaurant",
+        "Hamburger restaurant",
+        "Queer bar",
+        "Brasserie",
+        "Salsa bar",
+        "Wine bar"
+      ],
+      "feature_id": "0x47e671007cc2907d:0xa5e9bfefbaed5480",
+      "place_id": "ChIJfZDCfABx5kcRgFTtuu-_6aU",
+      "latitude": 48.8454688,
+      "longitude": 2.3549426,
+      "review_count": 289,
+      "website": null,
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e671007cc2907d%3A0xa5e9bfefbaed5480"
+    },
+    {
+      "name": "Sister Midnight",
+      "address": "4 Rue Viollet-le-Duc, 75009 Paris",
+      "categories": [
+        "Cocktail bar"
+      ],
+      "feature_id": "0x47e66f856786d795:0xc9c020dc4cd8e86",
+      "place_id": "ChIJldeGZ4Vv5kcRho7NxA0CnAw",
+      "latitude": 48.8814703,
+      "longitude": 2.340862,
+      "review_count": 299,
+      "website": "http://sistermidnightparis.com/",
+      "maps_url": "https://maps.firecrawl.dev/place/0x47e66f856786d795%3A0xc9c020dc4cd8e86"
+    }
+  ]
+}

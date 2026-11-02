@@ -1,7 +1,167 @@
 {
   "schema_version": 1,
-  "version": "c8cfbf1e0e5231a9",
+  "version": "8dba6d321be21f71",
   "venues": [
+    {
+      "key": "n1161567853",
+      "name": "The Wash Bar",
+      "kind": 1,
+      "lat": 52.53421,
+      "lon": 13.39799,
+      "cell": "u33db",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=4108040712758133599",
+        "review_count": 205,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n12604740501",
+      "name": "Honey Lou Bar",
+      "kind": 1,
+      "lat": 52.48014,
+      "lon": 13.43806,
+      "cell": "u33d9",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=14483622209555132223",
+        "review_count": 441,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n1391604297",
+      "name": "Bar Tausend",
+      "kind": 1,
+      "lat": 52.52082,
+      "lon": 13.38471,
+      "cell": "u33db",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=2884057346066362488",
+        "review_count": 716,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n2720667492",
+      "name": "Bar Zentral",
+      "kind": 1,
+      "lat": 52.50505,
+      "lon": 13.32903,
+      "cell": "u336x",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=3148970253312955770",
+        "review_count": 583,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n2727229961",
+      "name": "Monkey Bar",
+      "kind": 1,
+      "lat": 52.50566,
+      "lon": 13.33769,
+      "cell": "u336x",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=13276033865075301693",
+        "review_count": 7592,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n332554291",
+      "name": "Vincent Piano Bar",
+      "kind": 1,
+      "lat": 52.52159,
+      "lon": 13.38609,
+      "cell": "u33db",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=3495199606357405552",
+        "review_count": 1025,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n3419393693",
+      "name": "Windhorst",
+      "kind": 1,
+      "lat": 52.51844,
+      "lon": 13.38619,
+      "cell": "u33db",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=13159768003418168639",
+        "review_count": 590,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n4948140228",
+      "name": "The Curtain Club",
+      "kind": 1,
+      "lat": 52.51022,
+      "lon": 13.37525,
+      "cell": "u33d8",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=7801003747404220243",
+        "review_count": 396,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n652877991",
+      "name": "Mein Haus am See",
+      "kind": 1,
+      "lat": 52.52998,
+      "lon": 13.40082,
+      "cell": "u33db",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=10715637694252733095",
+        "review_count": 2562,
+        "checked_on": "2026-11-01"
+      }
+    },
+    {
+      "key": "n86005430",
+      "name": "Newton Bar",
+      "kind": 1,
+      "lat": 52.51293,
+      "lon": 13.39123,
+      "cell": "u33d8",
+      "city": "Berlin",
+      "country": "DE",
+      "currency": "EUR",
+      "google": {
+        "url": "https://www.google.com/maps?cid=14589872669737981726",
+        "review_count": 1893,
+        "checked_on": "2026-11-01"
+      }
+    },
     {
       "key": "n10271152937",
       "name": "Viva Madrid",

@@ -31,3 +31,17 @@ mobile-apps/data/europe-catalogue-inputs-20261101/
 mobile-apps/data/europe-catalogue-evidence-20261101.json
 public/mobile-data/catalog.json
 mobile-apps/data/europe-menu-seed-20261101.json
+
+# Immutable Berlin cohort source bytes and reviewed generated pins.
+mobile-apps/data/europe-catalogue-inputs-20261102-berlin/london.json
+mobile-apps/data/europe-catalogue-inputs-20261102-berlin/london-osm.json
+mobile-apps/data/europe-catalogue-inputs-20261102-berlin/paris.json
+mobile-apps/data/europe-catalogue-inputs-20261102-berlin/paris-osm.json
+mobile-apps/data/europe-catalogue-inputs-20261102-berlin/madrid.json
+mobile-apps/data/europe-catalogue-inputs-20261102-berlin/madrid-osm.json
+mobile-apps/data/europe-catalogue-inputs-20261102-berlin/berlin.json
+mobile-apps/data/europe-catalogue-inputs-20261102-berlin/berlin-osm.json
+mobile-apps/data/europe-catalogue-inputs-20261102-berlin/source-provenance.json
+mobile-apps/data/europe-catalogue-baseline-20261101.json
+mobile-apps/data/europe-catalogue-evidence-20261102-berlin.json
+mobile-apps/data/europe-menu-seed-berlin-20261102.json

@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "city": "Berlin",
+  "country": "DE",
+  "currency": "EUR",
+  "observed_at_ms": 1793575553292,
+  "provider": "firecrawl-maps",
+  "capability": "businesses/search",
+  "raw_source_sha256": "53c590ce0baa0887636b41ef66f24ed7a643765729970a39adffe1e10b9dc416",
+  "venues": [
+    {
+      "name": "Bar Zentral",
+      "address": "Lotte-Lenya-Bogen 551, 10623 Berlin-Bezirk Charlottenburg-Wilmersdorf",
+      "latitude": 52.5050572,
+      "longitude": 13.3290399,
+      "review_count": 583,
+      "website": "http://barzentral.de/",
+      "feature_id": "0x47a850fc28ffbc63:0x2bb363c2ecfd957a"
+    },
+    {
+      "name": "Vincent Piano Bar",
+      "address": "Schiffbauerdamm 6/7, 10117 Berlin",
+      "latitude": 52.5215415,
+      "longitude": 13.3860048,
+      "review_count": 1025,
+      "website": "http://vincent-bar.de/hauptseite/",
+      "feature_id": "0x47a851c2463080c9:0x308171860c04af70"
+    },
+    {
+      "name": "Newton Bar",
+      "address": "Charlottenstraße 57, 10117 Berlin",
+      "latitude": 52.5129883,
+      "longitude": 13.3912125,
+      "review_count": 1893,
+      "website": "http://www.newton-bar.de/",
+      "feature_id": "0x47a851da8ad605a7:0xca79a3e485e9971e"
+    },
+    {
+      "name": "Tausend",
+      "address": "Schiffbauerdamm 11, 10117 Berlin",
+      "latitude": 52.5207369,
+      "longitude": 13.3844524,
+      "review_count": 716,
+      "website": "http://www.tausendberlin.com/",
+      "feature_id": "0x47a851c3cd43c323:0x28063ae038243078"
+    },
+    {
+      "name": "Honey Lou Bar",
+      "address": "Anzengruberstraße 3, 12043 Berlin-Bezirk Neukölln",
+      "latitude": 52.480142,
+      "longitude": 13.4380694,
+      "review_count": 441,
+      "website": "http://www.honeylou.bar/",
+      "feature_id": "0x47a84f5d999c83f3:0xc90029a97d7def3f"
+    },
+    {
+      "name": "the wash bar",
+      "address": "Brunnenstraße 163, 10119 Berlin",
+      "latitude": 52.534215499999995,
+      "longitude": 13.3979286,
+      "review_count": 205,
+      "website": "https://thewashbar.berlin/",
+      "feature_id": "0x47a851b3600c152b:0x3902b1434eca835f"
+    },
+    {
+      "name": "Mein Haus am See",
+      "address": "Brunnenstraße 197-198, 10119 Berlin",
+      "latitude": 52.5299428,
+      "longitude": 13.4007965,
+      "review_count": 2562,
+      "website": "http://mein-haus-am-see.com/",
+      "feature_id": "0x47a851e4f7dac0a3:0x94b597b583b852a7"
+    },
+    {
+      "name": "Windhorst",
+      "address": "Dorotheenstraße 65, 10117 Berlin",
+      "latitude": 52.5183791,
+      "longitude": 13.3865159,
+      "review_count": 590,
+      "website": "http://windhorst-bar.de/",
+      "feature_id": "0x47a851c378fd15cb:0xb6a0e346924a9d3f"
+    },
+    {
+      "name": "The Curtain Club",
+      "address": "Potsdamer Platz 3, 10785 Berlin",
+      "latitude": 52.510172999999995,
+      "longitude": 13.375372,
+      "review_count": 396,
+      "website": "https://www.ritzcarlton.com/en/hotels/berzt-the-ritz-carlton-berlin/dining/?scid=feed67b0-9a2f-4de1-8df6-114544116108",
+      "feature_id": "0x47a851c90e1dc40d:0x6c42bb93a7850753"
+    },
+    {
+      "name": "Monkey Bar",
+      "address": "Budapester Str. 40, 10787 Berlin-Bezirk Charlottenburg-Wilmersdorf",
+      "latitude": 52.50572,
+      "longitude": 13.33776,
+      "review_count": 7592,
+      "website": "http://www.monkeybarberlin.de/",
+      "feature_id": "0x47a85055611510f9:0xb83df275f9de9d3d"
+    }
+  ]
+}

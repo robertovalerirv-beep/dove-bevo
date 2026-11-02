@@ -194,7 +194,7 @@ describe("app-only named menu v2", () => {
       fee_coverage: { status: "unknown" },
     });
     expect(body.offers.map((row) => row.id)).toEqual(["fixture-aperol", "fixture-campari"]);
-    expect(body.offers[1].serving).toEqual({ label: null, ml: null });
+    expect(body.offers[1]?.serving).toEqual({ label: null, ml: null });
     expect(body.offers[0]).toMatchObject({
       amount_minor: 530,
       currency: "EUR",
@@ -254,7 +254,7 @@ describe("app-only named menu v2", () => {
     const response = await (
       await get("/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell)
     ).json<Detail>();
-    expect(response.offers[0].amount_minor).toBe(530);
+    expect(response.offers[0]?.amount_minor).toBe(530);
     expect(response.fees).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

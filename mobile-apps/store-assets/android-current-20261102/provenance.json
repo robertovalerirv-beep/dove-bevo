@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "package": "com.dovebevo.app",
+  "app_version": "1.0.0",
+  "build_number": 62,
+  "capture_binary": "local SDK debug build; not signed Play-delivered binary",
+  "production_source_commit": "8a408fe677d8e7962601c26eaec9bbfb009980b0",
+  "production_android_main_tree": "3ebc355aeba8d3e2e1d330b978730d8c486e52fb",
+  "capture_test_source_commit": "0c59263661f90984d8be7b60ba4f67a918788d73",
+  "production_source_tree_verified_identical": true,
+  "deployed_mobile_source_commit": "3164f371310b0ae1bffae6a9b21f1690542428b8",
+  "deployed_css": {
+    "path": "/assets/mobile/index-BBo3TjuM.css",
+    "sha256": "5e9e1aa4ca45723001f565b434857ff25554fc92f3f2e782b430b4cd37ad1c33",
+    "ordinary_https_get_verified_at": "2026-11-02T03:34:49.532Z",
+    "drink_option_position_relative": true
+  },
+  "catalogue": {
+    "version": "8dba6d321be21f71",
+    "venues": 34,
+    "sha256": "3608eeed8bdd200c3d388bc9a24c47c651202b43f7f7149daf9b358d713fcb5b"
+  },
+  "capture_device": {
+    "type": "Android SDK emulator",
+    "model": "sdk_gphone64_x86_64",
+    "api": 36,
+    "pixels": [1080, 1920],
+    "density_dpi": 420,
+    "physical_device": false
+  },
+  "method": "Normal MainActivity; ordinary pointer, keyboard and Back; original Instrumentation UiAutomation PNG bytes",
+  "image_edits": false,
+  "runtime_css_override": false,
+  "viewport_or_zoom_override": false,
+  "diagnostic_method_executed": false,
+  "wide_viewport": false,
+  "overview": false,
+  "public_contributions": 0,
+  "acceptance": {
+    "normal_capture": "PASS one case,14.824 seconds; map and venue visible geometry guarded",
+    "owned_cases": "PASS exactly35,78 seconds; existing strict result parser",
+    "actual_native_gbp_eur": "PASS one case,4.238 seconds;12 real rows; matching catalogue version",
+    "each_execution_count": 1,
+    "independent_image_review": "coordinator review lane; publication decision separate"
+  },
+  "google_screenshot_upload_status": "pending coordinator upload and read-back",
+  "public_store_release_claimed": false,
+  "images": [
+    {
+      "file": "milano-map.png",
+      "bytes": 497790,
+      "sha256": "e7ad62ef9b232a22d8d8a6bc78615d282851cc6c50423eb5d2c5823eb0ec1e85",
+      "width": 1080,
+      "height": 1920,
+      "color_mode": "RGB",
+      "captured_at": "2026-11-02T03:35:13.357683Z"
+    },
+    {
+      "file": "milano-native-scopri-beer.png",
+      "bytes": 145767,
+      "sha256": "cfdc3eeda8cce17fe7b3036064745c3c05cace7ce36ba629fed582356d42ff76",
+      "width": 1080,
+      "height": 1920,
+      "color_mode": "RGB",
+      "captured_at": "2026-11-02T03:35:15.380393Z"
+    },
+    {
+      "file": "milano-actual-venue.png",
+      "bytes": 129004,
+      "sha256": "4ca552a6edd3bd71eefa86bd69492984d185c65ebb0a8423589f56236e681d2c",
+      "width": 1080,
+      "height": 1920,
+      "color_mode": "RGB",
+      "captured_at": "2026-11-02T03:35:16.613682Z"
+    }
+  ]
+}

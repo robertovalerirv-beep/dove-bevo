@@ -45,6 +45,8 @@ export default defineConfig({
           return path.join(here, "components/AddPriceSheet.tsx");
         if (source === "./components/DrinkMenu")
           return path.join(here, "components/DrinkStrip.tsx");
+        if (source === "./components/SearchSheet")
+          return path.join(here, "components/SearchSheet.tsx");
         return null;
       },
       transform(code, id) {

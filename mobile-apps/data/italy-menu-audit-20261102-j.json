@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "run_id": 41487116989,
+  "head_sha": "ea5994d2c7c56223eed14bec8fddc4a0cf453ec8",
+  "artifact_id": 13162970642,
+  "artifact_sha256": "59508a9bd979502acb7a5cae3bf563418448cec98835fcfc201230eff5250a89",
+  "manifest_sha256": "0ec141814249b653723f8c70cfa192310aabd9e7925a90bbcdbb2568a4756faf",
+  "mode": "dry_run",
+  "complete": true,
+  "guarded": 7,
+  "eligible": 2,
+  "group_sha256": "a2e53cfcf8b7f44924bd2ca46fddf3b41256d731bdda08756f3852c35bbb4fd9",
+  "before_after_equal": true,
+  "errors": [],
+  "cache_invalidated": [],
+  "verification_scope": "coordinator actual provider ZIP plus independent exact subgroup and field reconciliation"
+}

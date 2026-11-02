@@ -1,0 +1,422 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-02T17:53:59.620557+00:00",
+  "scope": "existing static OSM catalogue nearest city within 15 km",
+  "data_version": "20261101",
+  "final_data_version": "20261101",
+  "complete": false,
+  "remaining_menu_eligible": null,
+  "errors": [],
+  "cities": [
+    {
+      "city": 62505581,
+      "name": "Milano",
+      "expected_static_venues": 682,
+      "valid_static_venues": 682,
+      "count_matches_places": true,
+      "current_priced_venues": 29,
+      "current_price_rows": 71,
+      "current_priced_venues_by_drink": {
+        "alcohol_free": 5,
+        "beer_draft": 20,
+        "gin_lemon": 5,
+        "gin_tonic": 18,
+        "negroni": 4,
+        "sbagliato": 4,
+        "spritz": 9,
+        "water": 2,
+        "wine_glass": 4
+      },
+      "hidden_venues": 0,
+      "complete": false,
+      "errors": [
+        {
+          "cell": "u0n6j",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0n6k",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0n6n",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0n6p",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0n6t",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0n9b",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0n9g",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0ndj",
+          "error": "fetch_or_json_error"
+        }
+      ],
+      "known_public_unpriced_venues": 653
+    },
+    {
+      "city": 72959652,
+      "name": "Roma",
+      "expected_static_venues": 547,
+      "valid_static_venues": 547,
+      "count_matches_places": true,
+      "current_priced_venues": 4,
+      "current_price_rows": 14,
+      "current_priced_venues_by_drink": {
+        "alcohol_free": 2,
+        "beer_draft": 3,
+        "gin_lemon": 0,
+        "gin_tonic": 1,
+        "negroni": 2,
+        "sbagliato": 0,
+        "spritz": 2,
+        "water": 1,
+        "wine_glass": 3
+      },
+      "hidden_venues": 0,
+      "complete": false,
+      "errors": [
+        {
+          "cell": "sr2vb",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2vc",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2vs",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2vt",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2wp",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2wr",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2wx",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2wz",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2xp",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2y0",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2y1",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2y2",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2y8",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2yb",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2yy",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2z4",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2z5",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2zh",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2zj",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr2zn",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr3n8",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr3nb",
+          "error": "fetch_or_json_error"
+        }
+      ],
+      "known_public_unpriced_venues": 543
+    },
+    {
+      "city": 63621589,
+      "name": "Torino",
+      "expected_static_venues": 359,
+      "valid_static_venues": 359,
+      "count_matches_places": true,
+      "current_priced_venues": 9,
+      "current_price_rows": 36,
+      "current_priced_venues_by_drink": {
+        "alcohol_free": 6,
+        "beer_draft": 3,
+        "gin_lemon": 2,
+        "gin_tonic": 4,
+        "negroni": 6,
+        "sbagliato": 2,
+        "spritz": 4,
+        "water": 5,
+        "wine_glass": 4
+      },
+      "hidden_venues": 0,
+      "complete": false,
+      "errors": [
+        {
+          "cell": "spvre",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "spvrf",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "spvrs",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "spvrw",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "spvxc",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "spvxe",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "spvxf",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j2d",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j2f",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j2g",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j2s",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j2t",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j34",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j87",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j8c",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j8d",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j8e",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j8g",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j90",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j91",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "u0j94",
+          "error": "fetch_or_json_error"
+        }
+      ],
+      "known_public_unpriced_venues": 350
+    },
+    {
+      "city": 428339558,
+      "name": "Napoli",
+      "expected_static_venues": 215,
+      "valid_static_venues": 215,
+      "count_matches_places": true,
+      "current_priced_venues": 5,
+      "current_price_rows": 14,
+      "current_priced_venues_by_drink": {
+        "alcohol_free": 1,
+        "beer_draft": 4,
+        "gin_lemon": 0,
+        "gin_tonic": 0,
+        "negroni": 2,
+        "sbagliato": 1,
+        "spritz": 2,
+        "water": 1,
+        "wine_glass": 3
+      },
+      "hidden_venues": 0,
+      "complete": false,
+      "errors": [
+        {
+          "cell": "sr4p8",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4p9",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pb",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pc",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pd",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pe",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pf",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pg",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4ps",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pt",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pu",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pv",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4pw",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4px",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4py",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr4r8",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr60b",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr60c",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr60e",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr60h",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr60j",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr610",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr61n",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr61p",
+          "error": "fetch_or_json_error"
+        },
+        {
+          "cell": "sr620",
+          "error": "fetch_or_json_error"
+        }
+      ],
+      "known_public_unpriced_venues": 210
+    }
+  ],
+  "limits": [
+    "Sequential public snapshots, not an atomic database snapshot",
+    "Catalogue counts reconcile but some surrounding static-cell requests failed; conservative complete remains false",
+    "Unpriced known public venues are research targets, not verified menu eligibility",
+    "No venue or price was imported by this read-only inventory"
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "cohort": "Berlin additive 2026-11-02",
+  "evidence_checked_on": "2026-11-02",
+  "raw_provider_sha256": "53c590ce0baa0887636b41ef66f24ed7a643765729970a39adffe1e10b9dc416",
+  "raw_osm_sha256": "de62d7668560ea56f59559b5f3664f0f81434e57d3bbfd1c6734f7bf011724f8",
+  "raw_provider_retained_in_git": false,
+  "business_filter": "Only ten previously reviewed current-builder-accepted public business records; keep required identity/address/coordinates/count/official-site fields only; no reviews/photos/provider workflow payload.",
+  "osm_filter": "Retain all24 narrow-query candidate geometries and name/amenity/site/address tags, preserving identity ambiguity checks; other tags omitted.",
+  "original_inputs_byte_exact_sha256": {
+    "london.json": "960f32fcb06852094918006ca336fe8f15f6f0655215b79a659e85425e451d4a",
+    "london-osm.json": "1f36ed36ae45f6b8f45a09311ab84c9e688df3d4c3ff89810ede6bef4432a429",
+    "paris.json": "225ebbe269751a74f3476aba3b9e52db573801171c0faab8e058396f8c180a63",
+    "paris-osm.json": "77ad306e23e41854072dbaeedb9306b8c467016e01459b63c9ac0793da6a09af",
+    "madrid.json": "f7a6f9281ddfe1cb885a2a4beb0c9a38d6fd6d49f088ad17b2126c389453f8d1",
+    "madrid-osm.json": "f758081e289b55751ea9bd5f255caaa82ac4a5735cd5ce12855f5466ad8f795b"
+  },
+  "new_filtered_inputs_sha256": {
+    "berlin.json": "c095b7c02d910800c54da4c7a0d2e3f29ef351c328454cc3809256917494d779",
+    "berlin-osm.json": "f0873566b8d263015b03781f7ad7b3ae87208c90aa2d776ca9806298a6938e35"
+  },
+  "historical24_catalogue_sha256": "3e7bcc7f44ed3a52d22c666db5febb433ddb343379b96a4085d191f5c811c497",
+  "historical21_manifest_sha256": "1598bbf6def55b58fd168e58ee448b0d214ae56bf53abe704ddf1491c6336e97",
+  "review_count_evidence": "Retained primary-business Maps snapshot checked2026-11-01; count>100. No new provider request or independent visible Google browser check by this preparation.",
+  "menu_source": {
+    "id": "berlin-monkey-menu-20261102",
+    "url": "https://monkeybarberlin.de/wp-content/uploads/sites/11/2023/11/25hours_hotel_bikini_berlin_monkey_bar.pdf",
+    "fetch_url": "https://monkeybarberlin.de/wp-content/uploads/sites/11/2023/11/25hours_hotel_bikini_berlin_monkey_bar.pdf",
+    "index_url": "https://monkeybarberlin.de/drinks/",
+    "format": "pdf_raw_v1",
+    "sha256": "af0fd673aec3f701d627726795ed070242a0e3d45b6affc86b403978f6116637",
+    "raw_evidence_sha256": "af0fd673aec3f701d627726795ed070242a0e3d45b6affc86b403978f6116637",
+    "checked_on": "2026-11-02",
+    "identity_note": "Monkey Bar, Budapester Strasse 40, Berlin; official drinks page linked PDF at retained check; canonical OSM n2727229961 exact-name match within 7.67m. PDF pages1-3 and legible detail crops visually inspected.",
+    "raw_bytes": 1883886,
+    "index_raw_sha256": "544b089500e80d095b362e8ebe28dec3c103b777f84e4caae57ff51ee65f7c6b",
+    "index_raw_retained_in_git": false,
+    "pdf_or_images_retained_in_git": false,
+    "visual_layout_verified": true
+  },
+  "held_menu_facts": [
+    {
+      "menu_item": "Roseblood White DPO",
+      "drink": "wine_glass",
+      "amount_minor": 1100,
+      "currency": "EUR",
+      "serving": {
+        "unit": "glass",
+        "ml": 125
+      },
+      "reasons": [
+        "MULTIPLE_NAMED_ITEMS_SHARE_ONE_VARIANT_IDENTITY; do not select or infer a minimum"
+      ]
+    },
+    {
+      "menu_item": "Grauburgunder (Groh)",
+      "drink": "wine_glass",
+      "amount_minor": 950,
+      "currency": "EUR",
+      "serving": {
+        "unit": "glass",
+        "ml": 125
+      },
+      "reasons": [
+        "MULTIPLE_NAMED_ITEMS_SHARE_ONE_VARIANT_IDENTITY; do not select or infer a minimum"
+      ]
+    },
+    {
+      "menu_item": "Shiraz & Cabernet Sauvignon Koonunga Hill",
+      "drink": "wine_glass",
+      "amount_minor": 950,
+      "currency": "EUR",
+      "serving": {
+        "unit": "glass",
+        "ml": 125
+      },
+      "reasons": [
+        "MULTIPLE_NAMED_ITEMS_SHARE_ONE_VARIANT_IDENTITY; do not select or infer a minimum"
+      ]
+    },
+    {
+      "menu_item": "Trikki Tikki",
+      "drink": "alcohol_free",
+      "amount_minor": 1300,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "reasons": [
+        "AMOUNT_OUTSIDE_UNCHANGED_EUR_CATEGORY_BOUNDS",
+        "MULTIPLE_NAMED_ITEMS_SHARE_ONE_VARIANT_IDENTITY; do not select or infer a minimum"
+      ]
+    },
+    {
+      "menu_item": "Hey Mate",
+      "drink": "alcohol_free",
+      "amount_minor": 1300,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "reasons": [
+        "AMOUNT_OUTSIDE_UNCHANGED_EUR_CATEGORY_BOUNDS",
+        "MULTIPLE_NAMED_ITEMS_SHARE_ONE_VARIANT_IDENTITY; do not select or infer a minimum"
+      ]
+    },
+    {
+      "menu_item": "Cosmo25",
+      "drink": "alcohol_free",
+      "amount_minor": 1300,
+      "currency": "EUR",
+      "serving": {
+        "unit": "drink"
+      },
+      "reasons": [
+        "AMOUNT_OUTSIDE_UNCHANGED_EUR_CATEGORY_BOUNDS",
+        "MULTIPLE_NAMED_ITEMS_SHARE_ONE_VARIANT_IDENTITY; do not select or infer a minimum"
+      ]
+    }
+  ]
+}

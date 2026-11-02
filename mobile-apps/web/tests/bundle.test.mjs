@@ -203,6 +203,60 @@ test("production mobile entry renders chips and preserves venue route across rel
   }
 });
 
+test("drink checkboxes stay inside the narrow scrolling strip and viewport", async () => {
+  const f = await fixture({ width: 412, height: 540 });
+  f.page.setDefaultTimeout(5000);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.locator(".mobile-drink-strip input").last().waitFor({ state: "attached" });
+    const geometry = await f.page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      inputs: [...document.querySelectorAll(".drink-option input")].map((input) => ({
+        parent: input.offsetParent?.className,
+        right: input.getBoundingClientRect().right,
+      })),
+    }));
+    assert.equal(geometry.width, 412);
+    assert.ok(geometry.scrollWidth <= 412, JSON.stringify(geometry));
+    assert.ok(geometry.inputs.every((input) => input.parent === "drink-option"));
+    const strip = f.page.locator(".mobile-drink-strip");
+    await strip.getByRole("checkbox", { name: "Acqua", exact: true }).focus();
+    await f.page.keyboard.press("Space");
+    assert.equal(
+      await strip.getByRole("checkbox", { name: "Acqua", exact: true }).isChecked(),
+      true,
+    );
+    assert.equal(await f.page.evaluate(() => document.documentElement.scrollWidth), 412);
+    const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
+    assert.ok(locate && locate.x >= 0 && locate.x + locate.width <= 412);
+    await f.page.locator(".search-field").click();
+    const dialog = f.page.getByRole("dialog");
+    await dialog.waitFor();
+    await dialog.getByRole("combobox").fill("Milano");
+    for (const height of [320, 540]) {
+      await f.page.setViewportSize({ width: 412, height });
+      const box = await dialog.boundingBox();
+      assert.ok(box && box.x >= 0 && box.x + box.width <= 412);
+      assert.ok(box.y >= 0 && box.y + box.height <= height + 1);
+      assert.equal(await f.page.evaluate(() => document.documentElement.scrollWidth), 412);
+    }
+    await f.page.keyboard.press("Escape");
+    assert.equal(await dialog.getByRole("combobox").inputValue(), "");
+    await f.page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+    const canvas = f.page.locator(".maplibregl-canvas");
+    await canvas.waitFor();
+    const mapBox = await canvas.boundingBox();
+    assert.ok(mapBox && mapBox.x >= 0 && mapBox.x + mapBox.width <= 412);
+    assert.ok(mapBox.y < 540 && mapBox.y + mapBox.height > 0);
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("visible price-pin head and geographic tip both open the correct venue", async () => {
   const f = await fixture();
   try {

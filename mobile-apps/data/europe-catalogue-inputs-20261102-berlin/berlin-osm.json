@@ -1,0 +1,340 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API 0.7.62.11 87bfad18",
+  "osm3s": {
+    "timestamp_osm_base": "2026-11-02T00:39:47Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "raw_source_sha256": "de62d7668560ea56f59559b5f3664f0f81434e57d3bbfd1c6734f7bf011724f8",
+  "elements": [
+    {
+      "type": "node",
+      "id": 86001835,
+      "lat": 52.512055,
+      "lon": 13.3918753,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "30",
+        "addr:postcode": "10117",
+        "addr:street": "Anton-Wilhelm-Amo-Straße",
+        "amenity": "bar",
+        "name": "Bellboy Berlin",
+        "website": "https://bellboybar.com/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 86005430,
+      "lat": 52.5129305,
+      "lon": 13.3912298,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "57",
+        "addr:postcode": "10117",
+        "addr:street": "Charlottenstraße",
+        "amenity": "bar",
+        "name": "Newton Bar",
+        "website": "https://www.newton-bar.de/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 332554291,
+      "lat": 52.5215879,
+      "lon": 13.38609,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "6",
+        "addr:postcode": "10117",
+        "addr:street": "Schiffbauerdamm",
+        "amenity": "bar",
+        "name": "Vincent Piano Bar",
+        "website": "http://vincent-bar.de/hauptseite/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 437615122,
+      "lat": 52.5217997,
+      "lon": 13.4076645,
+      "tags": {
+        "addr:housenumber": "11",
+        "addr:postcode": "10178",
+        "addr:street": "Karl-Liebknecht-Straße",
+        "amenity": "pub",
+        "name": "Oase Deluxe",
+        "website": "http://oasecocktail-berlin.de/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 652877991,
+      "lat": 52.529979,
+      "lon": 13.4008182,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "125",
+        "addr:postcode": "10119",
+        "addr:street": "Torstraße",
+        "amenity": "bar",
+        "contact:website": "https://www.mein-haus-am-see.club/",
+        "name": "Mein Haus am See"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1161567853,
+      "lat": 52.5342121,
+      "lon": 13.3979872,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "163",
+        "addr:postcode": "10119",
+        "addr:street": "Brunnenstraße",
+        "amenity": "bar",
+        "name": "The Wash Bar",
+        "website": "https://thewashbar.berlin/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1295438384,
+      "lat": 52.528723,
+      "lon": 13.3882109,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "11",
+        "addr:postcode": "10115",
+        "addr:street": "Novalisstraße",
+        "amenity": "bar",
+        "name": "Reingold",
+        "website": "https://cms.reingold.de/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1391604297,
+      "lat": 52.5208236,
+      "lon": 13.3847097,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "11",
+        "addr:postcode": "10117",
+        "addr:street": "Schiffbauerdamm",
+        "amenity": "bar",
+        "name": "Bar Tausend",
+        "website": "https://tausendberlin.com/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 2720667492,
+      "lat": 52.5050525,
+      "lon": 13.3290327,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "551",
+        "addr:postcode": "10623",
+        "addr:street": "Lotte-Lenya-Bogen",
+        "amenity": "bar",
+        "contact:website": "http://www.barzentral.de/",
+        "name": "Bar Zentral"
+      }
+    },
+    {
+      "type": "node",
+      "id": 2727229961,
+      "lat": 52.5056642,
+      "lon": 13.3376934,
+      "tags": {
+        "addr:housenumber": "40",
+        "addr:street": "Budapester Straße",
+        "amenity": "bar",
+        "name": "Monkey Bar",
+        "website": "https://monkeybarberlin.de/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 3095237129,
+      "lat": 52.5375226,
+      "lon": 13.4118694,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "155",
+        "addr:postcode": "10435",
+        "addr:street": "Schönhauser Allee",
+        "amenity": "pub",
+        "name": "Bar Central",
+        "website": "http://www.bar-central.eu/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 3136935125,
+      "lat": 52.4931716,
+      "lon": 13.384595,
+      "tags": {
+        "amenity": "pub",
+        "name": "Bar Centrale"
+      }
+    },
+    {
+      "type": "node",
+      "id": 3239758885,
+      "lat": 52.5273496,
+      "lon": 13.4039576,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "20",
+        "addr:postcode": "10119",
+        "addr:street": "Steinstraße",
+        "amenity": "bar",
+        "contact:website": "https://cocktailbar-steinkeller.de/",
+        "name": "Bar Steinkeller"
+      }
+    },
+    {
+      "type": "node",
+      "id": 3419393693,
+      "lat": 52.5184424,
+      "lon": 13.3861893,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "65",
+        "addr:postcode": "10117",
+        "addr:street": "Dorotheenstraße",
+        "amenity": "bar",
+        "name": "Windhorst",
+        "website": "https://www.windhorst-bar.de/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 4411407835,
+      "lat": 52.5306192,
+      "lon": 13.3350137,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "17",
+        "addr:postcode": "10551",
+        "addr:street": "Wiclefstraße",
+        "amenity": "pub",
+        "name": "Nord-West-Oase"
+      }
+    },
+    {
+      "type": "node",
+      "id": 4732222721,
+      "lat": 52.5018457,
+      "lon": 13.3340212,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "33",
+        "addr:postcode": "10789",
+        "addr:street": "Augsburger Straße",
+        "amenity": "bar",
+        "name": "Bar Centrale Novantesimominuto"
+      }
+    },
+    {
+      "type": "node",
+      "id": 4948140228,
+      "lat": 52.5102176,
+      "lon": 13.3752486,
+      "tags": {
+        "addr:housenumber": "3",
+        "addr:street": "Potsdamer Platz",
+        "amenity": "bar",
+        "name": "The Curtain Club"
+      }
+    },
+    {
+      "type": "node",
+      "id": 5868881267,
+      "lat": 52.513162,
+      "lon": 13.3945066,
+      "tags": {
+        "addr:city": "Berlin",
+        "addr:housenumber": "20",
+        "addr:postcode": "10117",
+        "addr:street": "Taubenstraße",
+        "amenity": "bar",
+        "name": "Glasweise Weinbar",
+        "website": "https://www.glasweiseweinbar.de"
+      }
+    },
+    {
+      "type": "node",
+      "id": 7659253637,
+      "lat": 52.4787098,
+      "lon": 13.344949,
+      "tags": {
+        "amenity": "bar",
+        "name": "Sweet Monkey Bar"
+      }
+    },
+    {
+      "type": "node",
+      "id": 10314935583,
+      "lat": 52.5306019,
+      "lon": 13.4017406,
+      "tags": {
+        "addr:housenumber": "25",
+        "addr:street": "Weinbergsweg",
+        "amenity": "bar",
+        "name": "Bar 100 Gramm"
+      }
+    },
+    {
+      "type": "node",
+      "id": 11599708040,
+      "lat": 52.5305167,
+      "lon": 13.4016781,
+      "tags": {
+        "addr:housenumber": "26",
+        "addr:street": "Weinbergsweg",
+        "amenity": "bar",
+        "name": "100 Gramm Lounge"
+      }
+    },
+    {
+      "type": "node",
+      "id": 12604740501,
+      "lat": 52.4801394,
+      "lon": 13.4380633,
+      "tags": {
+        "addr:housenumber": "3",
+        "addr:postcode": "12043",
+        "addr:street": "Anzengruberstraße",
+        "amenity": "bar",
+        "name": "Honey Lou Bar",
+        "website": "https://www.honeylou.bar/"
+      }
+    },
+    {
+      "type": "node",
+      "id": 13327110717,
+      "lat": 52.5226965,
+      "lon": 13.4003393,
+      "tags": {
+        "addr:housenumber": "3",
+        "addr:street": "Kleine Präsidentenstraße",
+        "amenity": "bar",
+        "name": "The Coven"
+      }
+    },
+    {
+      "type": "node",
+      "id": 14145559648,
+      "lat": 52.5238199,
+      "lon": 13.4010312,
+      "tags": {
+        "addr:housenumber": "4",
+        "addr:street": "Oranienburger Straße",
+        "amenity": "bar",
+        "name": "Vault"
+      }
+    }
+  ]
+}

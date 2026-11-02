@@ -4,12 +4,12 @@ App-only changes retain the five owner-selected bottom controls, orange accents,
 normal browser security/history, private favourites and existing contribution
 handlers. Scopri uses the existing validated loader and all nine categories plus
 normal/happy-hour filters. Illustrated category cards show actual loaded counts;
-compact result ordering restarts within each currency/serving group. Unknown
+compact result ordering restarts within each currency/serving group. The category rail is the drink selector; only the price-band control remains in the compact header. Exact currency/serving, source/check-or-report day and stale state remain visible; the labelled disclosure opens full address, source conditions and confirmations. Unknown
 legacy serving sizes remain explicitly labelled. No deal badge, menu price,
 venue photo or customer confirmation is invented.
 
 The nine offline JPEGs in `app/src/main/assets/reference-drinks` are generic
-AI-generated category/community illustrations supplied for this task. Their
+AI-generated category/community illustrations supplied for this task. The existing first-party BrandMark is reused on the share poster. Their
 byte hashes are in the adjacent provenance file. Gin Lemon uses the lemon-garnish
 Gin Tonic illustration. They are explicitly not photographs of the listed venue.
 
@@ -20,7 +20,7 @@ are fenced by document epoch, foreground state and request generation. Invalid,
 missing or unavailable price metadata keeps the previous URL-sharing behaviour.
 It never introduces a general JavaScript/native mutation bridge.
 
-A valid snapshot opens a branded image preview with original currency, serving,
+A valid snapshot opens a full-screen dark branded image preview with original currency, serving,
 price band, source text, confirmations and any actual comparison tier/location.
 The drink illustration is labelled. Only the user's explicit Share image action
 creates a PNG under the app's private `cache/price-share` directory. A non-exported
@@ -29,7 +29,7 @@ bookmarks and other private storage are outside its paths. Sharing includes the
 canonical public venue URL. Stale preview actions are refused. Old generated
 images are opportunistically removed after 24 hours on a later share.
 
-Informazioni is a local menu for the existing map-area, guidance, bundled rules,
+Altro is a full-screen local information menu for the existing map-area, guidance, bundled rules,
 privacy, contact and actual installed-version information. No account, report
 history, fake functionality or new permission is added.
 

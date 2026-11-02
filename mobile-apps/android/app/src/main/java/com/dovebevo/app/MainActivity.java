@@ -96,7 +96,7 @@ public final class MainActivity extends ComponentActivity {
     private ConnectivityManager connectivity;
     private ConnectivityManager.NetworkCallback networkCallback;
     private AlertDialog privacyDialog;
-    private AlertDialog shareDialog, informationDialog;
+    private android.app.Dialog shareDialog, informationDialog;
     private long shareCapture;
     private TestLabPolicy testLabPolicy;
     private String mobileThemeScript;
@@ -705,21 +705,24 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void showInformation() {
-        if(!foreground||destroyed)return;
-        if(informationDialog!=null)informationDialog.dismiss();
-        LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(16),dp(8),dp(16),dp(16));
-        java.util.function.BiConsumer<String,Runnable> row=(label,action)->{Button button=new Button(this);button.setText(label+"  ›");NativeAppearance.button(button,false);button.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);button.setOnClickListener(v->{if(foreground&&!destroyed){informationDialog.dismiss();action.run();}});body.addView(button,new LinearLayout.LayoutParams(-1,-2));};
-        row.accept("Cambia città / zona",this::showMap);
-        row.accept("Come funziona",()->{informationDialog=new AlertDialog.Builder(this).setTitle("Come funziona").setMessage("Cerca una città sulla Mappa, scegli un drink e confronta i prezzi. Home apre Scopri per la zona della Mappa. Preferiti resta sul tuo dispositivo. Le fonti del menu e le segnalazioni sono indicate nei dettagli disponibili.").setPositiveButton(R.string.close,null).create();informationDialog.show();});
-        row.accept("Linee guida della community",()->showBundledRules());
-        row.accept(getString(R.string.privacy),this::showPrivacy);
-        row.accept("Contatti",()->openExternal("mailto:dovebevo@gmail.com"));
-        String installedVersion;try{installedVersion=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(android.content.pm.PackageManager.NameNotFoundException missing){installedVersion="non disponibile";}
-        TextView version=new TextView(this);version.setText("Versione app  "+installedVersion);version.setTextSize(14);version.setPadding(dp(12),dp(16),dp(12),dp(16));body.addView(version);
-        try(java.io.InputStream input=getAssets().open("reference-drinks/community-cheers.jpg")){android.widget.ImageView art=new android.widget.ImageView(this);art.setImageBitmap(android.graphics.BitmapFactory.decodeStream(input));art.setAdjustViewBounds(true);art.setContentDescription("Illustrazione della community Dove Bevo");body.addView(art,new LinearLayout.LayoutParams(-1,dp(150)));}catch(IOException missing){/* Optional illustration, never a venue photo. */}
-        TextView motto=new TextView(this);motto.setText("Stessi posti. Più trasparenza.");motto.setTextSize(20);NativeAppearance.title(motto);motto.setPadding(dp(12),dp(12),dp(12),0);body.addView(motto);
-        ScrollView scroll=new ScrollView(this);scroll.addView(body);
-        informationDialog=new AlertDialog.Builder(this).setTitle("Informazioni").setView(scroll).setPositiveButton(R.string.close,null).create();informationDialog.show();NativeAppearance.button(informationDialog.getButton(AlertDialog.BUTTON_POSITIVE),false);
+        if(!foreground||destroyed)return;if(informationDialog!=null)informationDialog.dismiss();
+        NativePanel panel=new NativePanel(this,"Altro",false);informationDialog=panel;
+        ScrollView scroll=new ScrollView(this);LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(20),dp(4),dp(20),dp(20));scroll.addView(body);panel.body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        informationRow(body,"Cambia città / zona",R.drawable.native_map,this::showMap);
+        informationRow(body,"Come funziona",android.R.drawable.ic_menu_help,()->{informationDialog=new AlertDialog.Builder(this).setTitle("Come funziona").setMessage("Cerca una città sulla Mappa, scegli un drink e confronta i prezzi. Home apre Scopri per la zona della Mappa. Preferiti resta sul tuo dispositivo. Le fonti del menu e le segnalazioni sono indicate nei dettagli disponibili.").setPositiveButton(R.string.close,null).create();informationDialog.show();});
+        informationRow(body,"Linee guida della community",android.R.drawable.ic_menu_agenda,this::showBundledRules);
+        informationRow(body,getString(R.string.privacy),android.R.drawable.ic_menu_info_details,this::showPrivacy);
+        informationRow(body,"Contatti",android.R.drawable.ic_dialog_email,()->openExternal("mailto:dovebevo@gmail.com"));
+        String version;try{android.content.pm.PackageInfo installed=getPackageManager().getPackageInfo(getPackageName(),0);long code=Build.VERSION.SDK_INT>=28?installed.getLongVersionCode():installed.versionCode;version=installed.versionName+" ("+code+")";}catch(android.content.pm.PackageManager.NameNotFoundException missing){version="non disponibile";}
+        LinearLayout versionRow=new LinearLayout(this);versionRow.setGravity(Gravity.CENTER_VERTICAL);versionRow.setMinimumHeight(dp(52));TextView versionLabel=new TextView(this);versionLabel.setText("Versione app");versionLabel.setTextSize(16);versionLabel.setTextColor(getColor(R.color.shell_text));versionRow.addView(versionLabel,new LinearLayout.LayoutParams(0,-2,1));TextView installed=new TextView(this);installed.setText(version);installed.setTextSize(14);installed.setTextColor(getColor(R.color.muted_text));versionRow.addView(installed);body.addView(versionRow);
+        LinearLayout community=new LinearLayout(this);community.setGravity(Gravity.CENTER_VERTICAL);community.setPadding(dp(8),dp(8),dp(12),dp(8));community.setBackground(NativeAppearance.shape(this,R.color.shell_background,12,false));
+        try(java.io.InputStream input=getAssets().open("reference-drinks/community-cheers.jpg")){android.widget.ImageView art=new android.widget.ImageView(this);art.setImageBitmap(android.graphics.BitmapFactory.decodeStream(input));art.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);art.setContentDescription("Illustrazione della community Dove Bevo");community.addView(art,new LinearLayout.LayoutParams(dp(128),dp(104)));}catch(IOException missing){/* Optional community illustration. */}
+        TextView motto=new TextView(this);motto.setText("Stessi posti.\nPiù trasparenza.");motto.setTextSize(18);NativeAppearance.title(motto);community.addView(motto,new LinearLayout.LayoutParams(0,-2,1));LinearLayout.LayoutParams card=new LinearLayout.LayoutParams(-1,-2);card.topMargin=dp(12);body.addView(community,card);panel.show();
+    }
+    private void informationRow(LinearLayout body,String title,int icon,Runnable action) {
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setMinimumHeight(dp(52));row.setPadding(0,dp(8),0,dp(8));row.setFocusable(true);row.setContentDescription(title);row.setAccessibilityDelegate(new View.AccessibilityDelegate(){@Override public void onInitializeAccessibilityNodeInfo(View host,android.view.accessibility.AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(host,info);info.setClassName(Button.class.getName());}});row.setOnClickListener(v->{if(foreground&&!destroyed){informationDialog.dismiss();action.run();}});
+        android.widget.ImageView image=new android.widget.ImageView(this);image.setImageResource(icon);image.setColorFilter(getColor(R.color.shell_text));image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);LinearLayout.LayoutParams iconSize=new LinearLayout.LayoutParams(dp(22),dp(22));iconSize.rightMargin=dp(14);row.addView(image,iconSize);
+        TextView label=new TextView(this);label.setText(title);label.setTextSize(16);label.setTextColor(getColor(R.color.shell_text));label.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(label,new LinearLayout.LayoutParams(0,-2,1));TextView arrow=new TextView(this);arrow.setText("›");arrow.setTextSize(22);arrow.setTextColor(getColor(R.color.muted_text));arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(arrow);body.addView(row,new LinearLayout.LayoutParams(-1,-2));View separator=new View(this);separator.setBackgroundColor(getColor(R.color.surface_line));body.addView(separator,new LinearLayout.LayoutParams(-1,dp(1)));
     }
     private void showBundledRules() {
         String rules;try(java.io.InputStream input=getAssets().open("terms.md")){rules=PrivacyDocument.read(input);}catch(IOException unavailable){rules=getString(R.string.rules_unavailable);}

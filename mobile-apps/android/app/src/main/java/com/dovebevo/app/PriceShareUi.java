@@ -1,12 +1,10 @@
 package com.dovebevo.app;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.ClipData;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -26,17 +24,14 @@ import java.util.function.Supplier;
 /** User-invoked local image preview and scoped system share. No network or public contribution. */
 final class PriceShareUi {
     private PriceShareUi() {}
-    static AlertDialog show(Activity activity,PriceShareSnapshot price,Supplier<Boolean> current) {
+    static android.app.Dialog show(Activity activity,PriceShareSnapshot price,Supplier<Boolean> current) {
         if(!current.get())return null;
         Bitmap poster=poster(activity,price);
-        ImageView image=new ImageView(activity);image.setImageBitmap(poster);image.setAdjustViewBounds(true);
-        image.setTag("price_share_poster");image.setContentDescription(price.accessibilityDescription());
-        ScrollView scroll=new ScrollView(activity);scroll.setBackgroundColor(0xff101820);image.setPadding(16,16,16,16);scroll.addView(image,new ScrollView.LayoutParams(-1,-2));
-        AlertDialog dialog=new AlertDialog.Builder(activity).setTitle("Condividi prezzo").setView(scroll)
-            .setNegativeButton("Chiudi",null).setPositiveButton("Condividi immagine",null).create();
-        dialog.show();
-        NativeAppearance.button(dialog.getButton(AlertDialog.BUTTON_POSITIVE),true);NativeAppearance.button(dialog.getButton(AlertDialog.BUTTON_NEGATIVE),false);
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view->{
+        NativePanel dialog=new NativePanel(activity,"Condividi",true);
+        ImageView image=new ImageView(activity);image.setImageBitmap(poster);image.setAdjustViewBounds(true);image.setTag("price_share_poster");image.setContentDescription(price.accessibilityDescription());
+        ScrollView scroll=new ScrollView(activity);image.setPadding(24,16,24,16);scroll.addView(image,new ScrollView.LayoutParams(-1,-2));dialog.body.addView(scroll,new android.widget.LinearLayout.LayoutParams(-1,0,1));
+        android.widget.Button send=new android.widget.Button(activity);send.setId(R.id.price_share_send);send.setText("Condividi immagine");NativeAppearance.button(send,true);android.widget.LinearLayout.LayoutParams buttonSize=new android.widget.LinearLayout.LayoutParams(-1,-2);buttonSize.setMargins(24,12,24,20);dialog.body.addView(send,buttonSize);
+        send.setOnClickListener(view->{
             if(!current.get()){dialog.dismiss();return;}
             try{
                 File directory=new File(activity.getCacheDir(),"price-share");
@@ -49,7 +44,7 @@ final class PriceShareUi {
                 activity.startActivity(Intent.createChooser(intent(price,uri),"Condividi immagine"));
             }catch(IOException|RuntimeException unavailable){Toast.makeText(activity,"Condivisione immagine non disponibile",Toast.LENGTH_SHORT).show();}
         });
-        return dialog;
+        dialog.show();return dialog;
     }
     static Intent intent(PriceShareSnapshot price,Uri uri) {
         Intent send=new Intent(Intent.ACTION_SEND).setType("image/png").putExtra(Intent.EXTRA_STREAM,uri)
@@ -68,7 +63,8 @@ final class PriceShareUi {
         int amountY=580+drink.getHeight()+90,nameY=amountY+40,locationY=nameY+name.getHeight()+16,detailY=locationY+(price.location.isEmpty()?0:location.getHeight())+20;
         Bitmap image=Bitmap.createBitmap(900,detailY+provenance.getHeight()+170,Bitmap.Config.ARGB_8888);
         Canvas canvas=new Canvas(image);canvas.drawColor(0xfff7f3e9);
-        Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);paint.setColor(0xffff5a1f);canvas.drawCircle(76,70,30,paint);
+        Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);paint.setColor(0xffff5a1f);
+        try(java.io.InputStream input=activity.getAssets().open("reference-drinks/brand-mark.png")){Bitmap mark=android.graphics.BitmapFactory.decodeStream(input);if(mark!=null)canvas.drawBitmap(mark,null,new android.graphics.RectF(46,28,120,108),paint);}catch(IOException missing){/* Bundled brand image is optional only if an installation is damaged. */}
         paint.setColor(0xff111a21);paint.setTypeface(Typeface.DEFAULT_BOLD);paint.setTextSize(44);canvas.drawText("Dove Bevo",125,85,paint);
         DrinkArtwork artwork=new DrinkArtwork(activity,price.drink);artwork.layout(0,0,780,390);canvas.save();canvas.translate(60,130);artwork.draw(canvas);canvas.restore();
         paint.setTextSize(23);paint.setTypeface(Typeface.DEFAULT);canvas.drawText("Illustrazione del drink · non foto del locale",60,552,paint);

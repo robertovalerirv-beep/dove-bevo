@@ -34,11 +34,11 @@ public final class DiscoveryRuntimeTest {
     @After public void tearDown(){onMain(()->{if(screen!=null)screen.close();activity.finish();});SharedPreferences.Editor edit=rules.edit();if(hadPrevious)edit.putString("accepted_rules_version",previous);else edit.remove("accepted_rules_version");assertTrue(edit.commit());}
     @Test public void actualPricesSortAndFiltersKeepDateContextWithoutAnyBookmarkFile()throws Exception {
         show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();assertEquals(20,requests.get());ReferenceCapture.save("discovery-owned-fixture.png");
-        onMain(()->{assertEquals(2,rows().getChildCount());assertTrue(text(rows().getChildAt(0)).contains("Locale due"));assertTrue(text(rows().getChildAt(0)).contains("6,00"));assertTrue(text(rows().getChildAt(0)).contains("oltre 90"));assertTrue(text(rows().getChildAt(0)).contains("dal centro della Mappa"));assertTrue(text(rows().getChildAt(1)).contains("2 conferme"));assertFalse(text(rows()).contains("Affare"));
+        onMain(()->{assertEquals(2,rows().getChildCount());View panel=rows().getChildAt(0).findViewWithTag("discovery.details");assertEquals(View.GONE,panel.getVisibility());rows().getChildAt(0).findViewById(R.id.discovery_details).performClick();assertEquals(View.VISIBLE,panel.getVisibility());assertTrue(text(rows().getChildAt(0)).contains("Locale due"));assertTrue(text(rows().getChildAt(0)).contains("6,00"));assertTrue(text(rows().getChildAt(0)).contains("oltre 90"));assertTrue(text(rows().getChildAt(0)).contains("dal centro della Mappa"));assertTrue(text(rows().getChildAt(1)).contains("2 conferme"));assertFalse(text(rows()).contains("Affare"));
             ((Spinner)activity.findViewById(R.id.discovery_band)).setSelection(1);});
         onMain(()->{assertEquals(1,rows().getChildCount());assertTrue(text(rows().getChildAt(0)).contains("5,00"));assertTrue(text(rows().getChildAt(0)).contains("27/10/2026"));rows().getChildAt(0).findViewById(R.id.discovery_open).performClick();});
         assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",opened.get());assertEquals(20,requests.get());
-        onMain(()->{((Spinner)activity.findViewById(R.id.discovery_drink)).setSelection(RecommendationDrink.NEGRONI.ordinal());});
+        onMain(()->{activity.findViewById(R.id.discovery_screen).findViewWithTag("discovery.category.negroni").performClick();});
         onMain(()->{assertEquals(0,rows().getChildCount());assertTrue(status().contains("Nessun prezzo"));assertFalse(status().contains("0,00"));});
     }
     @Test public void unreadyAndUnavailableAreExplicitAndBackgroundCannotRefresh()throws Exception {
@@ -49,6 +49,7 @@ public final class DiscoveryRuntimeTest {
     }
     @Test public void nineIllustratedCategoriesUseActualCountsAndKeepBandWithoutNewRequests()throws Exception {
         show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();int before=requests.get();
+        onMain(()->{assertNull(activity.findViewById(R.id.discovery_drink));assertTrue(rows().getChildAt(0).getHeight()>0);assertTrue(rows().getChildAt(0).getHeight()<=Math.round(120*activity.getResources().getDisplayMetrics().density));});
         onMain(()->{
             LinearLayout tiles=activity.findViewById(R.id.discovery_screen).findViewWithTag("discovery_categories");
             assertEquals(9,tiles.getChildCount());assertTrue(text(tiles.getChildAt(RecommendationDrink.SPRITZ.ordinal())).contains("2 prezzi"));
@@ -63,7 +64,7 @@ public final class DiscoveryRuntimeTest {
         FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable)throw new IOException("Owned offline response");String body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");
         screen=new DiscoveryScreen(activity,opened::set,()->{},active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));activity.setContentView(screen.view());screen.show(area);
     });}
-    private void awaitLoaded()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(!status().contains("Caricamento")));if(loaded.get())return;Thread.sleep(10);}fail("Owned discovery did not complete");}
+    private void awaitLoaded()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(!status().contains("Caricamento")&&(rows().getChildCount()==0||rows().getChildAt(0).getHeight()>0)));if(loaded.get())return;Thread.sleep(10);}fail("Owned discovery did not complete");}
     private LinearLayout rows(){return activity.findViewById(R.id.discovery_rows);}private String status(){return((TextView)activity.findViewById(R.id.discovery_status)).getText().toString();}
     private String text(View view){StringBuilder s=new StringBuilder();if(view instanceof TextView)s.append(((TextView)view).getText());if(view instanceof android.view.ViewGroup){android.view.ViewGroup g=(android.view.ViewGroup)view;for(int i=0;i<g.getChildCount();i++)s.append(' ').append(text(g.getChildAt(i)));}return s.toString();}
     private void onMain(Runnable action){instrumentation.runOnMainSync(action);instrumentation.waitForIdleSync();}

@@ -48,5 +48,11 @@
       "bytes": 191069,
       "sha256": "3e9691bbbab6e300d74afdf6747e6f8fd4be85f271bf2bea921762db11c081c8"
     }
-  ]
+  ],
+  "brand_mark": {
+    "file": "brand-mark.png",
+    "bytes": 49325,
+    "sha256": "207de06f188d2f29c09bf7fde414207a10baebc0c585de08bb77cb29c6389e9d",
+    "source": "Existing Dove Bevo BrandMark asset; copied byte-for-byte from iOS asset catalogue"
+  }
 }

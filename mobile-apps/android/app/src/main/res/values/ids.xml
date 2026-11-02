@@ -50,4 +50,6 @@
     <item name="discovery_rows" type="id" />
     <item name="discovery_open" type="id" />
     <item name="information" type="id" />
+    <item name="discovery_details" type="id" />
+    <item name="price_share_send" type="id" />
 </resources>

@@ -12,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: dovebevo-one-off-menu-import
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 env:
   MANIFEST: mobile-apps/data/italy-menu-seed-20261102-d.json
@@ -38,6 +38,9 @@ jobs:
           python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_batch_d.py' -v
   reviewed-import:
     needs: preservation
+    concurrency:
+      group: dovebevo-one-off-menu-import
+      cancel-in-progress: false
     if: >-
       github.repository == 'robertovalerirv-beep/dove-bevo' &&
       github.event_name == 'push' && github.ref_type == 'tag' &&

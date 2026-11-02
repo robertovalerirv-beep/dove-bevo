@@ -1,0 +1,17 @@
+1. Purpose and audience
+Dove Bevo helps adults find bars and compare drink prices, save favourite venues privately, and view aggregate drink recommendations. It provides venue information; it does not sell, deliver or process payment for alcohol.
+
+2. Access and demonstration
+No account, sign-in or demo credentials are required. On first launch, read the rules/privacy information and confirm that you are 18 or older. Location is optional: deny permission and search for a city to browse. Open a venue to view prices and recommendations, save it to Favourites, and open Scopri to explore an area. Internet access is required for maps and current server data. Price-entry, venue-proposal and reporting forms can be inspected and cancelled without submitting public content.
+
+3. Contributions and safety
+Contributions are structured numeric prices, price confirmations and drink-category votes. Venue proposals include a name, type and map location. Pending proposals are excluded from normal venue browsing, but may appear labelled as unconfirmed in the price-entry venue picker. Report controls accept reasons including incorrect information and offensive content. Reports are handled by the operator; they do not guarantee immediate removal. The app has no public author profiles, direct messages, comments, review text or photo uploads. We do not claim a consumer user-blocking feature. Support and content complaints: dovebevo@gmail.com.
+
+4. External services
+The app uses the first-party HTTPS service at www.dovebevo.com on Cloudflare, Cloudflare Turnstile for contribution protection, and OpenFreeMap/OpenStreetMap mapping. Directions open Apple Maps after the user chooses directions. Sharing and email open system interfaces only after the user's action. There is no native advertising or tracking SDK.
+
+5. Regional differences
+Venue coverage varies by area: Italy and selected European cities are available, including Paris, London and Madrid. Available menu prices preserve their stated currency and serving size: GBP for the UK and EUR for covered euro-area venues, without currency conversion. In the new European menu dataset, source checks are distinguished from customer observations. Older Italian records retain their existing reporting-date format; those dates do not establish a customer payment. Missing prices remain unavailable rather than being estimated. The core consumer features are the same across supported regions.
+
+6. Business model and regulated services
+Consumer features are free. Any venue sponsorship or verified-manager agreement is arranged outside the app. Sponsored placement is labelled and does not purchase customer prices or change cheapest-price comparisons. The app provides information about venues and drinks, not regulated financial, medical or gambling services, alcohol ordering, or fulfilment. Map attribution is provided in the app. Operator: Roberto Valeri; contact: dovebevo@gmail.com.

@@ -63,7 +63,7 @@ def geohash(lat, lon):
 def city_cells(lat, lon):
     if not coordinates(lat, lon):
         raise Invalid("invalid_city_coordinates")
-    # Original import rounds venue coordinates to 5 decimals after assignment.
+    # Original import rounds venue coordinates to 5 decimals before assignment.
     # Ten extra metres conservatively cover that sub-metre rounding displacement.
     angle = 15.01 / 6371
     latitude = math.degrees(angle)

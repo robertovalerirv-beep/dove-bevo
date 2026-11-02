@@ -4,6 +4,37 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-11-01 · SPEC 1.16 e correzioni dalla revisione della 1.15 (ramo `fix/review-1-15`)
+
+**Richiesta di Roberto:** una PR unica con tutto ciò che i tre revisori aggiornati hanno trovato sul commit `1272b30` (SPEC 1.15). SPEC 1.16 decisa da Roberto il 01/11/2026 in chat («tutto dentro»).
+
+**Fatto**
+1. Download anticipato della mappa (`map-warmup.ts`): il supporto all'LCP si legge da `PerformanceObserver.supportedEntryTypes`; prima `observe()` con un tipo sconosciuto non dava errore e sui browser senza LCP (WebKit più vecchi) il download non partiva mai (MF-01, ADR 0045 §3).
+2. Nonce messo su `index.html` appena esce dagli asset, prima che `seoPages` aggiunga i suoi tag: il JSON-LD e gli altri tag del Worker restano senza nonce (SPEC 13.1, 1.16). Header e CSP identici.
+3. `csp.spec.ts`: anche `/privacy`, `/regole`, `/admin` e l'inserimento di un prezzo con Turnstile (stub, nessuna scrittura in D1), con i messaggi Trusted Types.
+4. SPEC 1.16 (riga di versione, registro, 13.1); ADR 0045: stato «decisa», file CSS emesso vuoto, punto 1 e ripiego dell'LCP.
+5. Stile scuro: il pallino delle città chiede `circle_11` (lo sprite non ha `circle-11`); test su ogni immagine dello stile. Lo stile chiaro rigenerato riprende un controllo di tipo di OpenFreeMap sul filtro `boundary_3`.
+6. Campo di ricerca: `text-align: start`; a 320 px il testo va a capo partendo dall'icona invece che centrato.
+
+**Test cambiati e perché:** `tests/worker/seo.test.ts` e `tests/security/csp-nonce.spec.ts` (requisito cambiato con la 1.16: nonce sui tag di `index.html`, mai sul JSON-LD); `tests/unit/map-warmup.test.ts` (nuovo caso del comportamento reale; lo stub ha `supportedEntryTypes`). Gli altri test sono nuovi.
+
+**Prove**
+- Ogni test nuovo fallisce prima della correzione e per il motivo giusto (LCP: nessun download dopo 3 s; nonce: JSON-LD con nonce; sprite: `circle-11` non nello sprite; ricerca: testo a 20 px dall'icona invece di ≤ 12).
+- Contro-prova dello sprite nel browser: con gli stili vecchi la console mostra `Image "circle-11" could not be loaded`, con i nuovi nessun avviso, nei due temi.
+- Lint, formattazione, typecheck, workflow, configurazione verdi; Vitest 749/749; `npm audit` 0; feature list ok (tag `spec-approved-14`, 128/134); shell 40.066 B su 51.200.
+- Playwright su Chromium (`chromium`, `-writes`, `-proposals`, `security`): 242 passati, 0 falliti. Chromium del container (1243) tramite una configurazione locale non salvata; **WebKit non c'è nel container: lo verifica la CI**.
+- Revisori sul diff: `security-reviewer` OK (13 casi con il Worker vero: HEAD, 304, `Range`, errori SEO, 10 percorsi di pagina), `spec-reviewer` OK to close, `ux-a11y-reviewer` OK (390/360/320, due temi, due lingue, axe senza violazioni).
+
+**Da verificare a mano (Roberto)**
+- Su iPhone Safari, dopo il deploy: il download anticipato della mappa ora parte (prova con rete lenta, MF-02).
+- Sorgente di una pagina città o bar su www.dovebevo.com: il JSON-LD senza `nonce`, gli script della pagina con.
+- Turnstile con le chiavi vere: nessun «Refused to…» in console al primo prezzo (SPEC 22).
+- Di sera (Fuori orario): i pallini delle città sulla mappa scura.
+
+**Notati dal revisore UX, fuori da questa PR:** a 320 px «Aggiungi prezzo» va a capo nella barra; le attribuzioni hanno un fondo chiaro sulla mappa scura; lo stile scuro mostra meno città a zoom basso.
+
+---
+
 ## 2026-11-01 · Revisori allineati alla SPEC 1.15 (ramo `claude/reviewers-update`)
 
 **Richiesta di Roberto:** tenere il ruolo dei tre revisori e portarli al livello del progetto di oggi.

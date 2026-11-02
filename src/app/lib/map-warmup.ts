@@ -36,6 +36,10 @@ export function warmUpMapWhenIdle() {
   };
   const afterPaint = () => {
     try {
+      // observe() with an unknown type does not throw (it only logs a warning), so the support is read
+      // first; older browsers have no list at all.
+      const types = PerformanceObserver.supportedEntryTypes as readonly string[] | undefined;
+      if (!types?.includes("largest-contentful-paint")) throw new TypeError("no paint entry");
       new PerformanceObserver((_list, observer) => {
         observer.disconnect();
         setTimeout(idle, 300);

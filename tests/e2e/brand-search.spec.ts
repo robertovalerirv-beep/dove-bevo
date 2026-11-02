@@ -324,3 +324,25 @@ test("M4-13 results: exact name first, then the start of the name, nearest first
   expect(rows[2]).toMatch(/^Bar Sport(?!Centrale).*Rozzano/);
   expect(rows[3]).toMatch(/^Bar Sport ?Centrale/);
 });
+
+// The search button looks like a field (pages/mappa.md): its text starts after the icon at every width,
+// also at 320 px where it wraps to two lines (a centred wrap read as a title, not as a field).
+for (const width of [390, 320]) {
+  test(`the search field text starts after its icon at ${String(width)} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/");
+    const field = page.getByRole("button", { name: "Cerca città o bar" });
+    const gap = await field.evaluate((button) => {
+      const icon = button.querySelector("svg");
+      const text = [...button.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
+      if (!icon || !text) return Number.NaN;
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const left = Math.min(...[...range.getClientRects()].map((r) => r.left));
+      return left - icon.getBoundingClientRect().right;
+    });
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(12); // the button's gap, not leftover centring space
+    expect((await field.boundingBox())?.height).toBe(48);
+  });
+}

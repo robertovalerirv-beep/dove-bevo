@@ -12,7 +12,14 @@ if (!existsSync("dist/client/index.html")) {
   writeFileSync(
     "dist/client/index.html",
     '<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Dove bevo</title>' +
-      '<meta name="description" content="shell"></head><body><div id="app"></div></body></html>',
+      '<meta name="description" content="shell">' +
+      // The tags the Worker stamps with the page nonce (SPEC 13.1): inline theme script, inline CSS,
+      // the entry module and a module preload, one per line as in the build (a tag glued to the next
+      // would read as the '"><script' break-out the escaping tests look for).
+      "\n<script>document.documentElement.dataset.theme='light'</script>\n<style>:root{}</style>" +
+      '\n<script type="module" src="/assets/stub-index.js"></script>' +
+      '\n<link rel="modulepreload" href="/assets/stub-chunk.js">\n' +
+      '</head><body><div id="app"></div></body></html>',
   );
 }
 

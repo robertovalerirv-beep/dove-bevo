@@ -1,0 +1,117 @@
+name: Reviewed Italy menu batch J
+on:
+  pull_request:
+    paths:
+      - "mobile-apps/tools/menu-seed/**"
+      - "mobile-apps/data/italy-menu-seed-20261102-j.json"
+      - ".github/workflows/mobile-italy-menu-j.yml"
+  push:
+    tags:
+      - "mobile-italy-menu-j-audit/20261102-v1"
+      - "mobile-italy-menu-j-seed/20261102-v1"
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  MANIFEST: mobile-apps/data/italy-menu-seed-20261102-j.json
+  MANIFEST_SHA256: 0ec141814249b653723f8c70cfa192310aabd9e7925a90bbcdbb2568a4756faf
+  APPROVED_SOURCE_INDICES: ""
+  COHORT_SHA256: 2e194dc66ccf25e511ac4b1a25a0d75774cecf6967f19a3fb124927da15126a7
+  TRACER_SHA256: b23ec078472eafc8f0e0c5bf70b840a69e137a5cba06dd328d52478c46dddbd5
+  IMPORTER_SHA256: a6ee8ea2f8277584beb83f22baae7787448b83db417fa80716b61e8f431fad78
+jobs:
+  preservation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify immutable source, manifest and all preservation cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' "$MANIFEST_SHA256" "$MANIFEST" | sha256sum --check --strict
+          printf '%s  %s\n' "$IMPORTER_SHA256" mobile-apps/tools/menu-seed/live_import.py | sha256sum --check --strict
+          printf '%s  %s\n' "$TRACER_SHA256" mobile-apps/tools/menu-seed/run_import_with_diagnostics.py | sha256sum --check --strict
+          printf '%s  %s\n' "$COHORT_SHA256" mobile-apps/tools/menu-seed/run_source_cohort.py | sha256sum --check --strict
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_live_import.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_no_google.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_batch_j.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_menu_discovery.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_import_diagnostics.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_source_cohort.py' -v
+  reviewed-import:
+    needs: preservation
+    concurrency:
+      group: dovebevo-one-off-menu-jmport
+      cancel-in-progress: false
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      (github.ref == 'refs/tags/mobile-italy-menu-j-audit/20261102-v1' ||
+      github.ref == 'refs/tags/mobile-italy-menu-j-seed/20261102-v1')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify source and manifest again before protected access
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' "$MANIFEST_SHA256" "$MANIFEST" | sha256sum --check --strict
+          printf '%s  %s\n' "$IMPORTER_SHA256" mobile-apps/tools/menu-seed/live_import.py | sha256sum --check --strict
+          printf '%s  %s\n' "$TRACER_SHA256" mobile-apps/tools/menu-seed/run_import_with_diagnostics.py | sha256sum --check --strict
+          printf '%s  %s\n' "$COHORT_SHA256" mobile-apps/tools/menu-seed/run_source_cohort.py | sha256sum --check --strict
+      - name: Audit each reviewed source independently
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          case "$GITHUB_REF" in
+            refs/tags/mobile-italy-menu-j-audit/20261102-v1) mode_args=() ;;
+            refs/tags/mobile-italy-menu-j-seed/20261102-v1)
+              test -n "$APPROVED_SOURCE_INDICES"
+              mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256" --approved-groups "$APPROVED_SOURCE_INDICES") ;;
+            *) exit 2 ;;
+          esac
+          output_dir="$RUNNER_TEMP/italy-menu-j/run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          python3 -I -S -B mobile-apps/tools/menu-seed/run_source_cohort.py --manifest "$MANIFEST" --output-dir "$output_dir" "${mode_args[@]}"
+      - name: Verify public prices for completed selected source groups
+        if: always() && github.ref == 'refs/tags/mobile-italy-menu-j-seed/20261102-v1'
+        shell: bash
+        run: |
+          python3 -B - <<'PY'
+          import json, os, subprocess, sys
+          from pathlib import Path
+          output = Path(os.environ["RUNNER_TEMP"]) / "italy-menu-j" / ("run-"+os.environ["GITHUB_RUN_ID"]+"-"+os.environ["GITHUB_RUN_ATTEMPT"])
+          summary = json.loads((output/"summary.json").read_text())
+          assert summary["mode"] == "apply" and summary["manifest_sha256"] == os.environ["MANIFEST_SHA256"]
+          approved = {int(x) for x in os.environ["APPROVED_SOURCE_INDICES"].split(",")}
+          selected = [g for g in summary["groups"] if g["selected"]]
+          assert {g["index"] for g in selected} == approved
+          failures = []
+          for group in selected:
+              index = group["index"]
+              receipt = output / ("group-"+str(index)+"-receipt.json")
+              if not group["complete"]:
+                  failures.append(index)
+                  continue
+              subprocess.run([sys.executable,"-B","mobile-apps/tools/menu-seed/verify_batch_d.py","--manifest",str(output/("group-"+str(index)+"-manifest.json")),"--receipt",str(receipt),"--output",str(output/("group-"+str(index)+"-public.json"))],check=True)
+          assert not failures, "Selected source groups incomplete; no complete-cohort claim"
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: italy-menu-j-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/italy-menu-j/
+          retention-days: 30
+          if-no-files-found: warn

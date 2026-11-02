@@ -1,0 +1,49 @@
+name: Read-only K public source diagnosis
+on:
+  push:
+    tags:
+      - "mobile-italy-menu-k-source/20261102-v1"
+permissions:
+  contents: read
+jobs:
+  public-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Capture canonical public menu text without provider credentials
+        shell: bash
+        run: |
+          python3 -B - <<'PY'
+          import hashlib,json,os,re,sys
+          from pathlib import Path
+          from urllib.request import Request,build_opener
+          core_path=Path("mobile-apps/tools/menu-seed/live_import.py")
+          assert hashlib.sha256(core_path.read_bytes()).hexdigest()=="a6ee8ea2f8277584beb83f22baae7787448b83db417fa80716b61e8f431fad78"
+          sys.path.insert(0,str(core_path.parent))
+          import live_import as core
+          url="https://www.fuoriluogo.org/menu"
+          with build_opener(core.NoRedirect()).open(Request(url,headers={"User-Agent":"DoveBevoMenuAudit/1"}),timeout=20) as response:
+              body=response.read(core.MAX_SOURCE_BYTES+1)
+              assert response.status==200 and response.geturl()==url
+          assert len(body)<=core.MAX_SOURCE_BYTES
+          parser=core.HTMLTextV1()
+          parser.feed(body.decode("utf-8"));parser.close()
+          canonical=re.sub(r"\s+"," "," ".join(parser.parts)).strip()
+          assert len(canonical.encode())<=core.MAX_HTML_TEXT
+          evidence={"source_url":url,"source_format":"html_text_v1","raw_bytes":len(body),"source_sha256":core.source_digest(body,"html_text_v1"),"canonical_text":canonical,"scope":"public source diagnosis only - no credentials or database access"}
+          out=Path(os.environ["RUNNER_TEMP"])/"k-public-source"
+          out.mkdir(exist_ok=False)
+          (out/"fuoriluogo-canonical.json").write_text(json.dumps(evidence,ensure_ascii=True)+"\n",encoding="utf-8")
+          print(json.dumps({k:v for k,v in evidence.items() if k!="canonical_text"}))
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: italy-k-public-source-${{ github.run_id }}
+          path: ${{ runner.temp }}/k-public-source/
+          retention-days: 30
+          if-no-files-found: warn

@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-11-02T17:27:03.219566+00:00",
+  "checked_at": "2026-11-02T22:16:34.812804+00:00",
   "scope": "new rows imported and currently publicly verified by this expansion; not historical whole-database coverage",
-  "new_prices": 175,
-  "venues": 54,
+  "new_prices": 183,
+  "venues": 56,
   "cities": 24,
-  "public_cells_checked": 27,
+  "public_cells_checked": 28,
   "city_new_price_counts": {
-    "Milano": 23,
+    "Milano": 24,
     "Roma": 11,
-    "Torino": 26,
+    "Torino": 33,
     "Napoli": 14,
     "Palermo": 5,
     "Genova": 4,
@@ -33,13 +33,13 @@
     "Casteddu/Cagliari": 3
   },
   "drink_new_price_counts": {
-    "alcohol_free": 26,
-    "beer_draft": 17,
-    "gin_lemon": 8,
-    "gin_tonic": 18,
-    "negroni": 30,
-    "sbagliato": 11,
-    "spritz": 29,
+    "alcohol_free": 28,
+    "beer_draft": 18,
+    "gin_lemon": 9,
+    "gin_tonic": 19,
+    "negroni": 31,
+    "sbagliato": 12,
+    "spritz": 30,
     "water": 14,
     "wine_glass": 22
   },
@@ -119,6 +119,16 @@
       "inserted": 2,
       "skipped_existing_or_guarded": 7,
       "reconciliation_run_id": 41487116989
+    },
+    {
+      "batch": "k",
+      "run_id": 41535348975,
+      "head_sha": "19c0111ccea0cf233fe08ed41acd4169064d58b8",
+      "overall_conclusion": "success",
+      "artifact_id": 13184206342,
+      "artifact_sha256": "773fe5fc042860c40f8158fbe455730f7a20d360cdf58747cf4d9bf12ad3eebf",
+      "inserted": 8,
+      "audit_run_id": 41534835163
     }
   ],
   "manifest_sha256": {
@@ -128,7 +138,8 @@
     "g": "85d71fa3bb484b734fa034ffa303110f5505f62fb05f712b6ec4fd43d613ae12",
     "h": "7935c23a27e1c6a6260353c4149b100c09e5d0babab86c627d64b12b8faac55c",
     "i": "d93e71ca7a105c47651d5e845026c25d58d2545ae97ab810361d88133a7b3f0d",
-    "j": "0ec141814249b653723f8c70cfa192310aabd9e7925a90bbcdbb2568a4756faf"
+    "j": "0ec141814249b653723f8c70cfa192310aabd9e7925a90bbcdbb2568a4756faf",
+    "k": "17ccdcda17618ea4c31232673dbc2360ad38522918a3da9fb199b8280dd2a197"
   },
   "held": {
     "tonic": 4,

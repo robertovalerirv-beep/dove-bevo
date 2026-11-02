@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 10
     env:
       MANIFEST: mobile-apps/data/europe-menu-seed-20261101.json
-      MANIFEST_SHA256: 55a98e7350478c9f9a2c4944a76d1a3e3f353cbbf894051fd945924bf2831c07
+      MANIFEST_SHA256: 1598bbf6def55b58fd168e58ee448b0d214ae56bf53abe704ddf1491c6336e97
       RECEIPT: ${{ runner.temp }}/mobile-europe-menu-import/receipt.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

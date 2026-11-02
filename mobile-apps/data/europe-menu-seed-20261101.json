@@ -101,7 +101,7 @@
       },
       "amount_minor": 800,
       "source_id": "temple-menu",
-      "menu_item": "Spritz Aperol",
+      "menu_item": "Spritz Aperol - Happy hour: lun-ven 17:00-20:00",
       "conditions": "HH column; official homepage weekday 17:00-20:00 PDF page 5."
     },
     {
@@ -129,7 +129,7 @@
       },
       "amount_minor": 600,
       "source_id": "temple-menu",
-      "menu_item": "Cocktail alcohol free",
+      "menu_item": "Cocktail alcohol free - Happy hour: lun-ven 17:00-20:00",
       "conditions": "HH column; official homepage weekday 17:00-20:00 PDF page 5."
     },
     {
@@ -174,7 +174,7 @@
       },
       "amount_minor": 600,
       "source_id": "temple-menu",
-      "menu_item": "Temple Lager 4,2°",
+      "menu_item": "Temple Lager 4,2° - Happy hour: lun-ven 17:00-20:00",
       "conditions": "HH applies only to third 50cl column; cl converted exactly x10 to ml PDF page 2."
     },
     {
@@ -303,7 +303,7 @@
       },
       "amount_minor": 750,
       "source_id": "carlie-cocktails",
-      "menu_item": "Spritz / Apérol Spritz",
+      "menu_item": "Spritz / Apérol Spritz - Happy hour: 16:00-23:00",
       "conditions": "Official menu header HH16-23h; gin upgrades are separately priced and excluded"
     },
     {
@@ -331,7 +331,7 @@
       },
       "amount_minor": 750,
       "source_id": "carlie-cocktails",
-      "menu_item": "Gin tonic",
+      "menu_item": "Gin tonic - Happy hour: 16:00-23:00",
       "conditions": "Official menu header HH16-23h; gin upgrades are separately priced and excluded"
     },
     {
@@ -359,7 +359,7 @@
       },
       "amount_minor": 600,
       "source_id": "carlie-softs",
-      "menu_item": "Tropical Zing",
+      "menu_item": "Tropical Zing - Happy hour: 16:00-23:00",
       "conditions": "Official menu HH16-23h"
     },
     {

@@ -8,7 +8,7 @@ must already be deployed before a live audit can succeed.
 
 The reviewed manifest is `mobile-apps/data/europe-menu-seed-20261101.json`:
 
-- SHA-256 `55a98e7350478c9f9a2c4944a76d1a3e3f353cbbf894051fd945924bf2831c07`.
+- SHA-256 `1598bbf6def55b58fd168e58ee448b0d214ae56bf53abe704ddf1491c6336e97`.
 - Catalogue schema 1, version `c8cfbf1e0e5231a9`, exact raw SHA-256
   `3e7bcc7f44ed3a52d22c666db5febb433ddb343379b96a4085d191f5c811c497`.
 - 21 variants at four catalogue venues: Little Temple Bar (8), The Escapologist

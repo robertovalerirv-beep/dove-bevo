@@ -13,6 +13,17 @@ SPEC.loader.exec_module(m)
 ROOT = Path(__file__).resolve().parents[3]
 
 
+class ReviewedMenuContextTests(unittest.TestCase):
+    def test_happy_hour_windows_are_in_the_public_menu_item_not_only_private_evidence(self):
+        doc = m.validate((ROOT / 'mobile-apps/data/europe-menu-seed-20261101.json').read_bytes())
+        hours = {'n329135152': 'Happy hour: lun-ven 17:00-20:00',
+                 'n5602730924': 'Happy hour: 16:00-23:00'}
+        rows = [row for row in doc['records'] if row['hh'] == 1]
+        self.assertEqual(len(rows), 6)
+        for row in rows:
+            self.assertIn(hours[row['venue']], row['menu_item'])
+
+
 class SQLiteTransport:
     """Real migration schema + a transaction, with a fake network boundary."""
     def __init__(self):

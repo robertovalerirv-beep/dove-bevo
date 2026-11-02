@@ -1,17 +1,17 @@
-# Prepared wider Italian menu cohort F
+# Italian cohort F: 43 prices live, seven pending
 
-50 reviewed facts,19existingvenues,12Italian cities; noGoogle reviewminimum. Combined manifest SHA256 2867191f50d8752b68fce907d09a474bbfd8f3da4ce87f76ffbf50c73e3558b1. Fresh coordinator and independent source GETs using unchanged importer UserAgent/NoRedirect reproduced all19raw orhtml_text_v1digests; all50livecatalogue names,keys,coordinates,cities matched data20261101.
+Forty-three reviewed menu prices across 17 existing venues are inserted and publicly verified. The prepared manifest contains 50 facts across 19 venues and 12 cities; it is not a claim that all 50 were imported.
 
-All named prices, recipe/serving exclusions and current owner links were independently reviewed. New PDFs/images received actual visual checks, including all28IrishTimes pages and all17Franklin images. Recipe groups and volumes remain explicit; no silent currency conversion, price date or customer confirmation is fabricated. EUR forSanteria/Borsa/Nadamas is an explicit contextual inference, recorded inidentity_note.
+Actual audit 41456927168 verified 18 source groups / 46 eligible facts, all four starting guards zero and no writes. Tonic group 6 failed before database access and was excluded from approval.
 
-Birrodromo ALL5facts are held: its currentactualPDF visiblyprints COPERTO1EURO at top andbottom. These facts remain inresearchqueue/heldledger and are absent fromapplymanifest. Legacycategory data cannot display this mandatoryfee, so it is never represented as conditionsnone. No otherheldorunsupported source is silentlypromoted.
+Actual seed 41458331801 inserted 43 with zero skipped or indeterminate rows. Seventeen completed groups have exact expected database rows and 43 public proofs; fresh independent public API reads matched every amount, date and active flag. Birrlandina group 9 failed its source fetch before binding/database access, leaving three facts pending. Tonic's four facts remain unselected and unattempted. The workflow's overall failure correctly reports this partial outcome.
 
-Source-isolated audit defaults read-only, with identical original atomic preservationguards. APPROVED_SOURCE_INDICES is EMPTY. No F apply is authorised bytheworkflow untilthecoordinator has reviewed real sourcegroupaudit receipts andpinned an explicitapprovedsubset. Prepared files andpassing tests do notestablish public import.
+The release-evidence JSON records heads, artifact hashes, counts and fresh public checks. Manifest SHA: `2867191f50d8752b68fce907d09a474bbfd8f3da4ce87f76ffbf50c73e3558b1`.
 
-Operator-onlymenu-seed code/Italydata/docs are excludedfromunneedednative PRbuilds; realnative, presentation, mobileweb andothercatalogue/importer paths stilltriggernativechecks. Mobiletagpushes/generalCI remain unchanged. Buildinputs were independentlyinspectedbeforethenarrowfilter change.
+All named recipes, serving exclusions and owner links were independently reviewed. Actual visual checks covered complete new PDFs/images, including all 28 Irish Times pages and 17 Franklin images. EUR for Santeria, Borsa and Nadamas is a recorded contextual inference. No customer payment dates, confirmations, currency conversions or Google review counts are invented.
 
-## Protected source-group approval
+Birrodromo's five facts remain held outside the apply manifest: the actual current PDF visibly prints a mandatory EUR 1 cover charge. Legacy category pricing cannot display that fee, so these prices are never labelled unconditional.
 
-Actual F auditrun41456927168 at8a0452c57e457b4c967e2f576d21270e45744b78: artifact13146727897 ZIP SHA2566eaf11084f50b094698db01f8fdd2f23f3e8defc0f1adeb19706018c483579d0 and summarySHAa91ca2c00dcc98564396e34ad471a58f09bc6b571464b340ad1aca190ec418d0 independentlyverified. All19groups exactly partitionthe50manifestfacts. Eighteencompletegroups/46facts hadverifiedproductionbinding, allfourguardszero, identicalbefore/after/currentempty, noerrors orinvalidations. Tonicgroup6/fourfacts failedbeforebindingafterfetch andremainHELD; no sourcepinis changed. Only sourceindices0,1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18 are approvedforapply. No46insertclaimuntilactualapplyreceipts/publicproof.
+D/E/F PR checks use separate workflow concurrency; the protected import job retains the shared global lock. Protected operations are dispatched sequentially after terminal readback. Unapproved groups never instantiate a transport. Operator-only menu files are excluded from unnecessary native PR builds; native code, assets, app web and other catalogue paths still trigger their existing checks. General CI and mobile tag pushes are unchanged.
 
-D/E/Fworkflow-level concurrency is nowuniqueperworkflow/event/ref; sharedone-offglobalserialization moves totheprotected reviewed-import job. PRfixturechecks cannolongerconsume that importlock. One-running/one-pending replacementrisk remains, so protectedtagdispatch stayssequentialafterterminalreadback. GeneralCIandactualsource/SQL/pinsunchanged.
+No local project files were written during the independent OneDrive repair hold. These data results do not establish public Android/iOS launch or complete Italian coverage.

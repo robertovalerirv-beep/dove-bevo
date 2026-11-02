@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-02T14:20:46.071412+00:00",
+  "scope": "new rows imported and currently publicly verified by this expansion; not historical whole-database coverage",
+  "new_prices": 92,
+  "venues": 35,
+  "cities": 17,
+  "public_cells_checked": 19,
+  "city_new_price_counts": {
+    "Milano": 16,
+    "Roma": 6,
+    "Torino": 7,
+    "Napoli": 9,
+    "Palermo": 5,
+    "Genova": 4,
+    "Padova": 6,
+    "Trieste": 3,
+    "Firenze": 9,
+    "Venezia": 4,
+    "Bologna": 8,
+    "Parma": 4,
+    "Ravenna": 1,
+    "Pisa": 5,
+    "Lucca": 1,
+    "Vicenza": 3,
+    "Bolzano": 1
+  },
+  "drink_new_price_counts": {
+    "alcohol_free": 13,
+    "beer_draft": 3,
+    "gin_lemon": 4,
+    "gin_tonic": 5,
+    "negroni": 21,
+    "sbagliato": 9,
+    "spritz": 22,
+    "water": 6,
+    "wine_glass": 9
+  },
+  "operations": [
+    {
+      "batch": "d",
+      "run_id": 41440199789,
+      "head_sha": "b9de6da56671ec051ae6dc7bcdbc71960be1d66c",
+      "overall_conclusion": "success",
+      "artifact_id": 13139316152,
+      "artifact_sha256": "882da412a205acb3e59453514ee209512032f546ddb335622b0b1edb77a9d002",
+      "inserted": 32
+    },
+    {
+      "batch": "e",
+      "run_id": 41451134559,
+      "head_sha": "4da2bfa6deb093916a6587491d06064aa508094c",
+      "overall_conclusion": "failure",
+      "artifact_id": 13143964612,
+      "artifact_sha256": "01d41a7308d565d288e916d5c4e5a5514d567bc1566c7103ca230f0f72cb1161",
+      "inserted": 5
+    },
+    {
+      "batch": "e",
+      "run_id": 41459225312,
+      "head_sha": "70f9baa714f3642b64c86bced3663b0ebb787180",
+      "overall_conclusion": "success",
+      "artifact_id": 13147388701,
+      "artifact_sha256": "cc2f2b073450ecd21bf4b11a2349a9e726fdef2f969c8e541b9fb4c1ce583d92",
+      "inserted": 12
+    },
+    {
+      "batch": "f",
+      "run_id": 41458331801,
+      "head_sha": "70f9baa714f3642b64c86bced3663b0ebb787180",
+      "overall_conclusion": "failure",
+      "artifact_id": 13147547937,
+      "artifact_sha256": "859aeb485afac94333292c8c188831bd7af34ffc7aca8ac0a7fe55bf726a42da",
+      "inserted": 43
+    }
+  ],
+  "manifest_sha256": {
+    "d": "189db1e198ec6c984358cff25b91cb4f1c464a0050a106f616c7804b4680a1dc",
+    "e": "97150b3ad803c14dba22fd9ed917162ea74ba46a12d217d2ad3295ea7d4da081",
+    "f": "2867191f50d8752b68fce907d09a474bbfd8f3da4ce87f76ffbf50c73e3558b1"
+  },
+  "held": {
+    "mondo_liquido": 4,
+    "tonic": 4,
+    "birrlandina": 3,
+    "birrodromo_mandatory_fee": 5
+  },
+  "limits": [
+    "Italy-wide and major-city completeness is not established",
+    "Each row represents one supported category and qualified serving; not every named product",
+    "Menu-check dates are not customer payment dates",
+    "No fabricated confirmations, venue keys, review counts or currency conversion",
+    "Public iOS and Android store launch is not established by these data receipts"
+  ]
+}

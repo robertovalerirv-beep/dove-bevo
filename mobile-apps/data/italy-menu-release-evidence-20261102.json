@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-11-02T14:20:46.071412+00:00",
+  "checked_at": "2026-11-02T15:21:18.104075+00:00",
   "scope": "new rows imported and currently publicly verified by this expansion; not historical whole-database coverage",
-  "new_prices": 92,
-  "venues": 35,
-  "cities": 17,
-  "public_cells_checked": 19,
+  "new_prices": 96,
+  "venues": 36,
+  "cities": 18,
+  "public_cells_checked": 20,
   "city_new_price_counts": {
     "Milano": 16,
     "Roma": 6,
@@ -23,15 +23,16 @@
     "Pisa": 5,
     "Lucca": 1,
     "Vicenza": 3,
-    "Bolzano": 1
+    "Bolzano": 1,
+    "Brescia": 4
   },
   "drink_new_price_counts": {
     "alcohol_free": 13,
     "beer_draft": 3,
-    "gin_lemon": 4,
-    "gin_tonic": 5,
-    "negroni": 21,
-    "sbagliato": 9,
+    "gin_lemon": 5,
+    "gin_tonic": 6,
+    "negroni": 22,
+    "sbagliato": 10,
     "spritz": 22,
     "water": 6,
     "wine_glass": 9
@@ -72,15 +73,24 @@
       "artifact_id": 13147547937,
       "artifact_sha256": "859aeb485afac94333292c8c188831bd7af34ffc7aca8ac0a7fe55bf726a42da",
       "inserted": 43
+    },
+    {
+      "batch": "g",
+      "run_id": 41464943802,
+      "head_sha": "07b9769416e26eb6b97db1f943ac9d62e60ec3ed",
+      "overall_conclusion": "failure",
+      "artifact_id": 13149759319,
+      "artifact_sha256": "fdeefa6bad32d65ec6441453e6ded083e0ee6aaf849ef6eef54d7d2f4bb4e58e",
+      "inserted": 4
     }
   ],
   "manifest_sha256": {
     "d": "189db1e198ec6c984358cff25b91cb4f1c464a0050a106f616c7804b4680a1dc",
     "e": "97150b3ad803c14dba22fd9ed917162ea74ba46a12d217d2ad3295ea7d4da081",
-    "f": "2867191f50d8752b68fce907d09a474bbfd8f3da4ce87f76ffbf50c73e3558b1"
+    "f": "2867191f50d8752b68fce907d09a474bbfd8f3da4ce87f76ffbf50c73e3558b1",
+    "g": "85d71fa3bb484b734fa034ffa303110f5505f62fb05f712b6ec4fd43d613ae12"
   },
   "held": {
-    "mondo_liquido": 4,
     "tonic": 4,
     "birrlandina": 3,
     "birrodromo_mandatory_fee": 5

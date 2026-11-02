@@ -7,8 +7,8 @@ on:
       - ".github/workflows/mobile-italy-menu-m.yml"
   push:
     tags:
-      - "mobile-italy-menu-m-audit/20261102-v1"
-      - "mobile-italy-menu-m-seed/20261102-v1"
+      - "mobile-italy-menu-m-audit/20261102-v2"
+      - "mobile-italy-menu-m-seed/20261102-v2"
 permissions:
   contents: read
 concurrency:
@@ -52,8 +52,8 @@ jobs:
     if: >-
       github.repository == 'robertovalerirv-beep/dove-bevo' &&
       github.event_name == 'push' && github.ref_type == 'tag' &&
-      (github.ref == 'refs/tags/mobile-italy-menu-m-audit/20261102-v1' ||
-      github.ref == 'refs/tags/mobile-italy-menu-m-seed/20261102-v1')
+      (github.ref == 'refs/tags/mobile-italy-menu-m-audit/20261102-v2' ||
+      github.ref == 'refs/tags/mobile-italy-menu-m-seed/20261102-v2')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -77,8 +77,8 @@ jobs:
         run: |
           set -euo pipefail
           case "$GITHUB_REF" in
-            refs/tags/mobile-italy-menu-m-audit/20261102-v1) mode_args=() ;;
-            refs/tags/mobile-italy-menu-m-seed/20261102-v1)
+            refs/tags/mobile-italy-menu-m-audit/20261102-v2) mode_args=() ;;
+            refs/tags/mobile-italy-menu-m-seed/20261102-v2)
               test -n "$APPROVED_SOURCE_INDICES"
               mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256" --approved-groups "$APPROVED_SOURCE_INDICES") ;;
             *) exit 2 ;;
@@ -86,7 +86,7 @@ jobs:
           output_dir="$RUNNER_TEMP/italy-menu-m/run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           python3 -I -S -B mobile-apps/tools/menu-seed/run_source_cohort.py --manifest "$MANIFEST" --output-dir "$output_dir" "${mode_args[@]}"
       - name: Verify public prices for completed selected source groups
-        if: always() && github.ref == 'refs/tags/mobile-italy-menu-m-seed/20261102-v1'
+        if: always() && github.ref == 'refs/tags/mobile-italy-menu-m-seed/20261102-v2'
         shell: bash
         run: |
           python3 -B - <<'PY'

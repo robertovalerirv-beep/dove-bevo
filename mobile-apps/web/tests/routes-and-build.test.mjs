@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { URL } from "node:url";
+import { URL, URLSearchParams } from "node:url";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
 import { mobilePath, mobileURL, mobileDefaultDrink } from "../routes.ts";

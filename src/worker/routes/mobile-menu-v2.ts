@@ -264,7 +264,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
     venues: visible.map((row) => ({
       ...row.venue, matching_offer_count: row.count,
       sample_offers: samples.get(row.venue.key) ?? [],
-      fee_coverage: coverage(states.get(row.venue.key) ?? null, Number(states.get(row.venue.key)?.fee_count ?? 0)),
+      fee_coverage: coverage(states.get(row.venue.key) ?? null, states.get(row.venue.key)?.fee_count ?? 0),
     })),
     next_after: candidates.results.length > 50 ? page.at(-1)?.venue_key : null,
     unresolved_venues: unresolved,

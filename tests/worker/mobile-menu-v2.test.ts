@@ -8,6 +8,30 @@ const TODAY = new Date().toISOString().slice(0, 10);
 const ITALY = { key: "n2420779240", cell: "u0nd9" }; // Published fixture identity only.
 const FOREIGN = { key: "n910000001", cell: "gcpvj" }; // Synthetic test identity, never imported.
 
+interface Detail {
+  schema_version: number;
+  price_scope: string;
+  coverage: { complete: boolean; basis: string };
+  venue: { key: string; name: string; country: string };
+  stored_offer_count: number;
+  next_after: string | null;
+  offers: {
+    id: string; serving: { label: string | null; ml: number | null };
+    amount_minor: number; currency: string; currency_exponent: number;
+    source: { url: string; text_sha256: string; checked_on: string };
+  }[];
+  fees: {
+    basis: string; amount_minor: number | null; currency: string | null;
+    currency_exponent: number | null; rate_bps: number | null; applicability: string;
+  }[];
+  fee_coverage: { status: string };
+}
+interface Cell {
+  coverage: { complete: boolean };
+  venues: { key: string; matching_offer_count: number; sample_offers: { id: string }[] }[];
+  unresolved_venues: number;
+}
+
 async function get(path: string, bindings: Env = env) {
   return worker.fetch(new Request(ORIGIN + path), bindings, createExecutionContext());
 }
@@ -89,7 +113,7 @@ describe("app-only named menu v2", () => {
     ]);
     const response = await get("/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell);
     expect(response.status, await response.clone().text()).toBe(200);
-    const body = await response.json<any>();
+    const body = await response.json<Detail>();
     expect(body).toMatchObject({
       schema_version: 2, price_scope: "menu_item_only",
       coverage: { complete: false, basis: "verified_source_items_only" },
@@ -97,20 +121,20 @@ describe("app-only named menu v2", () => {
       stored_offer_count: 2, next_after: null,
       fee_coverage: { status: "unknown" },
     });
-    expect(body.offers.map((row: any) => row.id)).toEqual(["fixture-aperol", "fixture-campari"]);
+    expect(body.offers.map((row) => row.id)).toEqual(["fixture-aperol", "fixture-campari"]);
     expect(body.offers[1].serving).toEqual({ label: null, ml: null });
     expect(body.offers[0]).toMatchObject({
       amount_minor: 530, currency: "EUR", currency_exponent: 2,
       source: { url: "https://official.example/test-menu", text_sha256: "a".repeat(64), checked_on: TODAY },
     });
-    const cell = await (await get("/api/mobile/v2/menu/cells/u0nd9?category=beer_draft")).json<any>();
+    const cell = await (await get("/api/mobile/v2/menu/cells/u0nd9?category=beer_draft")).json<Cell>();
     expect(cell.venues).toHaveLength(1);
     expect(cell.venues[0]).toMatchObject({
       key: ITALY.key, matching_offer_count: 2,
       sample_offers: [{ id: "fixture-aperol" }],
     });
     expect(cell.coverage.complete).toBe(false);
-    const legacy = await (await get("/api/venues/" + ITALY.key + "/prices")).json<any>();
+    const legacy = await (await get("/api/venues/" + ITALY.key + "/prices")).json<{ p: unknown[] }>();
     expect(legacy.p).toEqual([]);
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM mobile_prices_current WHERE venue_key=?1")
       .bind(ITALY.key).first("n")).toBe(0);
@@ -133,7 +157,7 @@ describe("app-only named menu v2", () => {
       " VALUES (?1,?2,'documented_partial',?3)"
     ).bind(ITALY.key, ITALY.cell, sourceId).run();
     const response = await (await get("/api/mobile/v2/menu/venues/" + ITALY.key +
-      "?cell=" + ITALY.cell)).json<any>();
+      "?cell=" + ITALY.cell)).json<Detail>();
     expect(response.offers[0].amount_minor).toBe(530);
     expect(response.fees).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -175,7 +199,7 @@ describe("app-only named menu v2", () => {
       "DELETE FROM mobile_menu_v2_sources WHERE id=?1"
     ).bind(sourceId).run()).rejects.toThrow();
     const detail = await (await get("/api/mobile/v2/menu/venues/" + ITALY.key +
-      "?cell=" + ITALY.cell)).json<any>();
+      "?cell=" + ITALY.cell)).json<Detail>();
     expect(detail.offers).toEqual([]);
     expect(detail.fee_coverage.status).toBe("unknown");
     const post = await worker.fetch(new Request(ORIGIN + "/api/mobile/v2/menu/venues/" + ITALY.key, {
@@ -191,18 +215,18 @@ describe("app-only named menu v2", () => {
     }).run();
     const path = "/api/mobile/v2/menu/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell;
     expect((await get(path)).status).toBe(404);
-    const unresolved = await (await get("/api/mobile/v2/menu/cells/" + FOREIGN.cell)).json<any>();
+    const unresolved = await (await get("/api/mobile/v2/menu/cells/" + FOREIGN.cell)).json<Cell>();
     expect(unresolved.venues).toEqual([]);
     expect(unresolved.unresolved_venues).toBe(1);
     await registerForeign(); // No Google review field or threshold.
-    const detail = await (await get(path)).json<any>();
+    const detail = await (await get(path)).json<Detail>();
     expect(detail.venue).toMatchObject({ country: "GB", name: "Fixture London Bar" });
     expect(detail.offers[0]).toMatchObject({ currency: "GBP", amount_minor: 750 });
     await env.DB.prepare(
       "INSERT INTO venues_hidden(venue_key,cell,name,day) VALUES (?1,?2,'Fixture London Bar',?3)"
     ).bind(FOREIGN.key, FOREIGN.cell, TODAY).run();
     expect((await get(path)).status).toBe(404);
-    expect((await (await get("/api/mobile/v2/menu/cells/" + FOREIGN.cell)).json<any>()).venues).toEqual([]);
+    expect((await (await get("/api/mobile/v2/menu/cells/" + FOREIGN.cell)).json<Cell>()).venues).toEqual([]);
     await env.DB.prepare("DELETE FROM venues_hidden WHERE venue_key=?1").bind(FOREIGN.key).run();
     await env.DB.prepare(
       "INSERT INTO mobile_venues_moderation(venue_key,status,reason)" +
@@ -231,9 +255,9 @@ describe("app-only named menu v2", () => {
         "?cell=" + FOREIGN.cell + (after ? "&after=" + after : "");
       const response = await get(path);
       expect(response.status, await response.clone().text()).toBe(200);
-      const body = await response.json<any>();
+      const body = await response.json<Detail>();
       expect(body.stored_offer_count).toBe(501);
-      ids.push(...body.offers.map((row: any) => row.id));
+      ids.push(...body.offers.map((row) => row.id));
       after = body.next_after;
     } while (after);
     expect(ids).toHaveLength(501);

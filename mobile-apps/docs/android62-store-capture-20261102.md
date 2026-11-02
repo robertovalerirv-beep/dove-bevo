@@ -35,3 +35,24 @@ adb -s emulator-5580 shell am instrument -w -r -e class com.dovebevo.app.PublicB
 ```
 
 Inspect instrumentation `OK`/`FAILURES` output: adb's shell exit status alone does not establish a passing test. Keep unsuccessful originals and logs. Recheck source/build parity before using future images; do not label captures from a patched source as build-62 evidence.
+
+
+## Causal containment diagnostic
+
+A separate test, `diagnosticDrinkContainmentRestoresTheActualViewportWithoutPanning`, requires `publicBrowse=true` and the additional `containmentDiagnostic=true` opt-in. It is explicitly diagnostic, and every output filename and provenance purpose says that its images are forbidden as store assets. The regular store-capture method never changes CSS or production settings.
+
+The first native candidate (`setUseWideViewPort(true)`, debug build 63 at `d6156a31970a4633d3daee0c18696cfc9df747e0`) did not fix the problem. Runtime metadata confirms that flag was active while the same overflow and map-visibility failure remained. It is not an established solution.
+
+The bounded measurements then showed that the clipped horizontal drink strip's absolutely positioned hidden inputs used `HEADER.top` as their containing block, outside the strip's overflow clip. The last hidden input's x coordinate plus its one-pixel width matched the expanded 800-pixel document extent. Native screen/outer widths and computed html/body/app widths remained approximately 412 pixels; there was one correct viewport meta, top-frame execution, density 2.625 and font scale 1.
+
+The explicitly authorized one-property A/B test applies `style.position = "relative"` only to the nine existing `.drink-option` labels after reproducing the bad map. It changes no scroll offset, zoom, viewport meta, user agent, security policy or network behavior. The browser automatically clamps the now-contained document extent. In the genuine 11.220-second passing run:
+
+- inner/document dimensions changed from 800 x 1049 to 412 x 540;
+- native WebView pan changed from 253/1337 physical pixels to 0/0;
+- visual viewport offset changed from 96.38/509.33 CSS pixels to 0/0;
+- the same real map became fully visible;
+- an existing venue opened through the actual same-document map list fitted a 412-pixel sheet at x=0, instead of a 640-pixel sheet at x=80.
+
+The original diagnostic before/after/venue images and complete geometry are retained under `test-evidence/android63-modern-store-20261102/DIAGNOSTIC-ONLY-css-ab-v2`. They were directly viewed and not edited. Native Scopri reopening intentionally loads a fresh document and discards a runtime-only property; therefore the causal diagnostic uses the real map-list link to keep this one-off experiment in the same document. A first diagnostic run exposed that distinction and remains retained as a failed attempt.
+
+This establishes the CSS overflow mechanism. It does not establish deployment, a public store release, or usable store assets. The remaining acceptance check is the reviewed scoped CSS fix deployed in the actual mobile frontend, followed by the unchanged stock build-62 source with no runtime override and a new original capture set.

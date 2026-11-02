@@ -47,6 +47,7 @@ public final class PublicBrowseRuntimeTest {
     private boolean hadRulesVersion;
     private String priorRulesVersion;
     private File captureDirectory;
+    private boolean runtimeContainmentDiagnostic;
     private final JSONArray capturedImages = new JSONArray();
 
     // Read only fixed, bounded public document state. Never retain body text, query tokens or storage.
@@ -69,7 +70,7 @@ public final class PublicBrowseRuntimeTest {
             marker: document.documentElement.getAttribute('data-dovebevo-mobile-shell') === '1',
             search: !!document.querySelector('header.top button.search-field'),
             input: !!document.querySelector('input[role="combobox"][aria-autocomplete="list"]'),
-            milanoOptions: milano.length, ready: map?.getAttribute('data-ready') === 'true',
+            milanoOptions: milano.length, listOptions: document.querySelectorAll('dialog[open] a.row[href^="/bar/"]').length, ready: map?.getAttribute('data-ready') === 'true',
             center: (map?.getAttribute('data-center') || '').slice(0,60),
             zoom: Number(map?.getAttribute('data-zoom') || 0),
             venueHeading: (document.querySelector('h2.scontrino__name')?.textContent || '').trim().slice(0,120),
@@ -265,6 +266,54 @@ public final class PublicBrowseRuntimeTest {
         capture("milano-actual-venue", venueState, app);
     }
 
+    @Test(timeout = 180000) public void diagnosticDrinkContainmentRestoresTheActualViewportWithoutPanning() throws Exception {
+        Assume.assumeTrue("Explicit diagnostic only; never a store capture",
+                "true".equals(InstrumentationRegistry.getArguments().getString("containmentDiagnostic")));
+        runtimeContainmentDiagnostic = true;
+        PackageInfo app = instrumentation.getTargetContext().getPackageManager()
+                .getPackageInfo(instrumentation.getTargetContext().getPackageName(), 0);
+        captureDirectory = new File(instrumentation.getTargetContext().getFilesDir(),
+                "viewport-containment-diagnostic-20261102/" + UUID.randomUUID());
+        assertTrue(captureDirectory.mkdirs());
+        awaitVisibleBrowser();
+        awaitState("diagnostic-original-document", 45, s -> s.optBoolean("marker") && s.optBoolean("search"));
+        tapDocumentControl("document.querySelector('header.top button.search-field')");
+        awaitState("diagnostic-search-input", 10, s -> s.optBoolean("input"));
+        tapDocumentControl("document.querySelector('input[role=\"combobox\"][aria-autocomplete=\"list\"]')");
+        instrumentation.sendStringSync("Milano");
+        awaitState("diagnostic-milano-option", 30, s -> s.optInt("milanoOptions") == 1);
+        dismissVisibleKeyboard();
+        tapDocumentControl("[...document.querySelectorAll('[role=\"listbox\"] [role=\"option\"]')].find(o => /-p[0-9]+$/.test(o.id) && o.querySelector('.row__name')?.textContent.trim() === 'Milano')");
+        awaitState("diagnostic-original-map", 60, PublicBrowseRuntimeTest::milanoMapReady);
+        Thread.sleep(500);
+        JSONObject before = new JSONObject(evaluate(STATE));
+        assertTrue("The original overflow must reproduce before this narrow causal experiment",
+                before.getJSONObject("viewport").getDouble("innerWidth") > before.getJSONObject("viewport").getDouble("clientWidth") * 1.5);
+        capture("DIAGNOSTIC-ONLY-before-containment", before, app);
+        // Explicitly authorized A/B experiment only. Never run in the store-capture method.
+        // One CSS property only; no scroll, zoom, viewport, content, security or request changes.
+        assertEquals("Exactly the nine actual filter options receive the diagnostic property", "9",
+                evaluate("(() => {const options=[...document.querySelectorAll('.mobile-drink-strip .drink-option')]; for(const e of options)e.style.position='relative'; return options.length;})()"));
+        JSONObject after = awaitState("diagnostic-contained-map", 10, value -> {
+            JSONObject v = value.optJSONObject("viewport");
+            return v != null && Math.abs(v.optDouble("innerWidth") - v.optDouble("clientWidth")) <= 2;
+        });
+        assertVisibleMapGeometry(after);
+        Thread.sleep(1000); // Settle the real WebView compositor after the causal layout change.
+        capture("DIAGNOSTIC-ONLY-after-containment", new JSONObject(evaluate(STATE)), app);
+        Bundle measured = new Bundle(); measured.putString("containment_diagnostic", "DIAGNOSTIC ONLY runtime CSS property; before=" + before + "; after=" + after);
+        instrumentation.sendStatus(0, measured);
+        // Stay in this actual document: native Scopri reopening would navigate a fresh document
+        // and correctly discard the one-off diagnostic property.
+        tapDocumentControl("document.querySelector('button.map__list')");
+        awaitState("diagnostic-actual-map-list", 10, value -> value.optInt("listOptions") > 0);
+        tapDocumentControl("document.querySelector('dialog[open] a.row[href^=\"/bar/\"]')");
+        JSONObject venue = awaitState("diagnostic-actual-venue", 45, value -> value.optBoolean("marker") && !value.optString("venueHeading").isEmpty());
+        assertVisibleVenueGeometry(venue);
+        Thread.sleep(500);
+        capture("DIAGNOSTIC-ONLY-contained-venue", new JSONObject(evaluate(STATE)), app);
+    }
+
     private static void assertVisibleMapGeometry(JSONObject state) throws Exception {
         JSONObject viewport = state.getJSONObject("viewport"), visual = viewport.getJSONObject("visual");
         JSONObject canvas = viewport.getJSONObject("canvas");
@@ -396,6 +445,7 @@ public final class PublicBrowseRuntimeTest {
                 .put("sdk_int", Build.VERSION.SDK_INT).put("device_model", Build.MODEL)
                 .put("method", "Instrumentation UiAutomation.takeScreenshot; original lossless PNG; no edits")
                 .put("production_https", "https://www.dovebevo.com").put("public_contributions", 0)
+                .put("purpose", runtimeContainmentDiagnostic ? "DIAGNOSTIC ONLY runtime CSS property; forbidden as store assets" : "unaltered production candidate")
                 .put("images", capturedImages);
         AtomicReference<JSONObject> frame = new AtomicReference<>();
         onMain(() -> {

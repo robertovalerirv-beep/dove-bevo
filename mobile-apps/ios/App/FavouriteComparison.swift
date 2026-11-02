@@ -49,6 +49,7 @@ struct CurrentFavouriteVenue: Equatable {
 struct FavouriteComparisonSnapshot {
     let venues: [URL: CurrentFavouriteVenue]
     let unavailable: Set<URL>
+    var europe: EuropeSnapshot? = nil
 }
 
 struct FavouriteComparisonRow {
@@ -56,16 +57,27 @@ struct FavouriteComparisonRow {
     let current: CurrentFavouriteVenue?
     let price: FavouritePrice?
     let unavailable: Bool
-    var name: String { current?.name ?? saved.label }
+    var europeVenue: EuropeVenue? = nil
+    var europePrice: EuropePrice? = nil
+    var name: String { europeVenue?.name ?? current?.name ?? saved.label }
+    var displayPrice: NativeComparablePrice? { europePrice.map(NativeComparablePrice.europe) ?? price.map(NativeComparablePrice.legacy) }
 
     static func sorted(saved: [SavedVenue], snapshot: FavouriteComparisonSnapshot?, drink: String, band: ComparisonBand) -> [FavouriteComparisonRow] {
-        saved.map { entry in
+        saved.flatMap { entry -> [FavouriteComparisonRow] in
+            if let venue = snapshot?.europe?.venues[entry.url.lastPathComponent], venue.url == entry.url {
+                let variants = venue.prices.filter { $0.drink == drink && $0.band == band && !$0.quarantined }
+                if variants.isEmpty { return [FavouriteComparisonRow(saved: entry, current: nil, price: nil, unavailable: false, europeVenue: venue)] }
+                return variants.map { FavouriteComparisonRow(saved: entry, current: nil, price: nil, unavailable: false, europeVenue: venue, europePrice: $0) }
+            }
             let current = snapshot?.venues[entry.url]
-            return FavouriteComparisonRow(saved: entry, current: current, price: current?.price(drink: drink, band: band),
-                                          unavailable: snapshot?.unavailable.contains(entry.url) ?? true)
+            return [FavouriteComparisonRow(saved: entry, current: current, price: current?.price(drink: drink, band: band),
+                                          unavailable: snapshot?.unavailable.contains(entry.url) ?? true)]
         }.sorted {
-            if let left = $0.price, let right = $1.price, left.cents != right.cents { return left.cents < right.cents }
-            if ($0.price != nil) != ($1.price != nil) { return $0.price != nil }
+            if let left = $0.displayPrice, let right = $1.displayPrice {
+                if left.group != right.group { return left.group < right.group }
+                if left.amountMinor != right.amountMinor { return left.amountMinor < right.amountMinor }
+            }
+            if ($0.displayPrice != nil) != ($1.displayPrice != nil) { return $0.displayPrice != nil }
             let order = $0.name.localizedCaseInsensitiveCompare($1.name)
             return order == .orderedSame ? $0.saved.url.absoluteString < $1.saved.url.absoluteString : order == .orderedAscending
         }

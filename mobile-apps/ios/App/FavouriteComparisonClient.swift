@@ -1,14 +1,18 @@
 import Foundation
 
 enum ComparisonEndpoint: Equatable {
-    case health, venues(version: String, cell: String), prices(cell: String)
+    case health, venues(version: String, cell: String), prices(cell: String), mobileCatalog, mobilePrices(cell: String)
 
     var maximumBytes: Int {
-        switch self { case .health: return 8192; case .venues: return 2 * 1024 * 1024; case .prices: return 512 * 1024 }
+        switch self { case .health: return 8192; case .venues, .mobileCatalog, .mobilePrices: return 2 * 1024 * 1024; case .prices: return 512 * 1024 }
     }
 
     func url() throws -> URL {
         switch self {
+        case .mobileCatalog: return URL(string: "https://www.dovebevo.com/mobile-data/catalog.json")!
+        case .mobilePrices(let cell):
+            guard ComparisonJSON.matches(cell, "^[0-9b-hjkmnp-z]{5}$") else { throw ComparisonReadError.invalidData }
+            return URL(string: "https://www.dovebevo.com/api/mobile/prices/cells/\(cell)")!
         case .health: return URL(string: "https://www.dovebevo.com/api/health")!
         case .venues(let version, let cell):
             guard ComparisonJSON.matches(version, "^[0-9]{8}$"), ComparisonJSON.matches(cell, "^[0-9b-hjkmnp-z]{5}$") else { throw ComparisonReadError.invalidData }
@@ -36,22 +40,24 @@ final class ComparisonCancellation: RecommendationRequest {
 
 final class FavouriteComparisonClient: FavouriteComparisonServing {
     private let transport: ComparisonReadTransport
+    private let includeEurope: Bool
     private let today: () -> String
     private let schedule: (TimeInterval, @escaping () -> Void) -> RecommendationRequest
 
-    init(transport: ComparisonReadTransport = ComparisonHTTPTransport(), today: @escaping () -> String = { ComparisonJSON.today() },
+    init(transport: ComparisonReadTransport = ComparisonHTTPTransport(), includeEurope: Bool = true, today: @escaping () -> String = { ComparisonJSON.today() },
          schedule: @escaping (TimeInterval, @escaping () -> Void) -> RecommendationRequest = { delay, action in
              let item = DispatchWorkItem(block: action)
              DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
              return ComparisonCancellation { item.cancel() }
          }) {
         self.transport = transport
+        self.includeEurope = includeEurope
         self.today = today
         self.schedule = schedule
     }
 
     func load(_ saved: [SavedVenue], completion: @escaping (FavouriteComparisonSnapshot) -> Void) -> RecommendationRequest {
-        let operation = ComparisonLoad(saved: saved, transport: transport, today: today, completion: completion)
+        let operation = ComparisonLoad(saved: saved, transport: transport, includeEurope: includeEurope, today: today, completion: completion)
         operation.start(schedule: schedule)
         return operation
     }
@@ -60,6 +66,9 @@ final class FavouriteComparisonClient: FavouriteComparisonServing {
 private final class ComparisonLoad: RecommendationRequest {
     private let saved: [SavedVenue]
     private let transport: ComparisonReadTransport
+    private let includeEurope: Bool
+    private var catalog: EuropeCatalog?
+    private var europe = EuropeSnapshot()
     private let today: () -> String
     private var completion: ((FavouriteComparisonSnapshot) -> Void)?
     private var deadline: RecommendationRequest?
@@ -71,10 +80,11 @@ private final class ComparisonLoad: RecommendationRequest {
     private var results: [URL: CurrentFavouriteVenue] = [:]
     private var unavailable = Set<URL>()
 
-    init(saved: [SavedVenue], transport: ComparisonReadTransport, today: @escaping () -> String,
+    init(saved: [SavedVenue], transport: ComparisonReadTransport, includeEurope: Bool, today: @escaping () -> String,
          completion: @escaping (FavouriteComparisonSnapshot) -> Void) {
         self.saved = saved
         self.transport = transport
+        self.includeEurope = includeEurope
         self.today = today
         self.completion = completion
     }
@@ -84,13 +94,28 @@ private final class ComparisonLoad: RecommendationRequest {
               saved.allSatisfy({ ComparisonJSON.cell(from: $0) != nil }) else { finish(); return }
         guard !saved.isEmpty else { finish(); return }
         deadline = schedule(60) { [weak self] in self?.finish() }
+        if includeEurope {
+            fetch(.mobileCatalog) { [weak self] result in
+                guard let self else { return }
+                self.catalog = try? EuropeJSON.catalog(result.get())
+                self.startHealth()
+            }
+        } else { startHealth() }
+    }
+
+    private func startHealth() {
         fetch(.health) { [weak self] result in
             guard let self else { return }
             do {
                 self.version = try ComparisonJSON.version(result.get())
                 self.queued = Array(Set(self.saved.compactMap { ComparisonJSON.cell(from: $0) })).sorted()
                 self.pump()
-            } catch { self.finish() }
+            } catch {
+                if self.includeEurope {
+                    self.queued = Array(Set(self.saved.compactMap { ComparisonJSON.cell(from: $0) })).sorted()
+                    self.pump()
+                } else { self.finish() }
+            }
         }
     }
 
@@ -99,8 +124,9 @@ private final class ComparisonLoad: RecommendationRequest {
         while activeCells.count < 3 && !queued.isEmpty {
             let cell = queued.removeFirst()
             activeCells.insert(cell)
+            if includeEurope && !EuropeJSON.italianCell(cell) { fetchEurope(cell, resolved: nil); continue }
             let needsStatic = saved.contains { ComparisonJSON.cell(from: $0) == cell && !$0.url.lastPathComponent.hasPrefix("u") }
-            if needsStatic {
+            if needsStatic && !version.isEmpty {
                 fetch(.venues(version: version, cell: cell)) { [weak self] result in
                     self?.fetchPrices(cell, staticData: try? result.get())
                 }
@@ -113,14 +139,36 @@ private final class ComparisonLoad: RecommendationRequest {
         fetch(.prices(cell: cell)) { [weak self] result in
             guard let self else { return }
             let resolved = try? ComparisonJSON.resolve(staticData: staticData, priceData: result.get(), cell: cell, today: self.today())
-            self.completed(cell, venues: resolved)
+            self.fetchEurope(cell, resolved: resolved)
+        }
+    }
+
+    private func fetchEurope(_ cell: String, resolved: [String: CurrentFavouriteVenue]?) {
+        guard let catalog, catalog.venues.values.contains(where: { $0.cell == cell }) else {
+            completed(cell, venues: resolved); return
+        }
+        fetch(.mobilePrices(cell: cell)) { [weak self] result in
+            guard let self else { return }
+            let governed = Set(catalog.venues.keys)
+            if let mobile = try? EuropeJSON.resolve(result.get(), catalog: catalog, cell: cell, today: self.today()) {
+                self.europe.venues.merge(mobile.venues) { _, latest in latest }
+                let filtered = resolved?.filter { !mobile.hidden.contains($0.key) && (!governed.contains($0.key) || mobile.legacy.contains($0.key)) }
+                self.completed(cell, venues: filtered)
+            } else {
+                self.europe.unavailableCells.insert(cell)
+                self.completed(cell, venues: resolved?.filter { !governed.contains($0.key) })
+            }
         }
     }
 
     private func completed(_ cell: String, venues: [String: CurrentFavouriteVenue]?) {
         guard completion != nil else { return }
         for entry in saved where ComparisonJSON.cell(from: entry) == cell {
-            if let venue = venues?[entry.url.lastPathComponent] { results[entry.url] = venue }
+            if let known = catalog?.venues[entry.url.lastPathComponent], known.cell != cell {
+                unavailable.insert(entry.url); continue
+            }
+            if let venue = europe.venues[entry.url.lastPathComponent], venue.url == entry.url { unavailable.remove(entry.url) }
+            else if let venue = venues?[entry.url.lastPathComponent] { results[entry.url] = venue }
             else { unavailable.insert(entry.url) }
         }
         activeCells.remove(cell)
@@ -153,8 +201,9 @@ private final class ComparisonLoad: RecommendationRequest {
 
     private func finish() {
         guard let callback = completion else { return }
-        let missing = Set(saved.map(\.url)).subtracting(results.keys)
-        let value = FavouriteComparisonSnapshot(venues: results, unavailable: unavailable.union(missing))
+        let available = Set(results.keys).union(europe.venues.values.map(\.url))
+        let missing = Set(saved.map(\.url)).subtracting(available)
+        let value = FavouriteComparisonSnapshot(venues: results, unavailable: unavailable.union(missing), europe: includeEurope ? europe : nil)
         cancel()
         callback(value)
     }

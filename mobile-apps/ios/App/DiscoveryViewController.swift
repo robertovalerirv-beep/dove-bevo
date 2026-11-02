@@ -9,7 +9,7 @@ final class DiscoveryViewController: UITableViewController {
     private let onMap: () -> Void
     private(set) var area: DiscoveryArea?
     private var snapshot: DiscoverySnapshot?
-    private var rows: [(venue: DiscoveryVenue, price: FavouritePrice)] = []
+    private var rows: [DiscoveryPresentedRow] = []
     private var request: RecommendationRequest?
     private var generation = UUID()
     private var visible = false
@@ -172,7 +172,7 @@ final class DiscoveryViewController: UITableViewController {
 
     private func render() {
         guard isViewLoaded else { return }
-        let allRows = snapshot?.rows(drink: drink.code, band: band) ?? []
+        let allRows = snapshot?.displayRows(drink: drink.code, band: band) ?? []
         rows = Array(allRows.prefix(200))
         for (index, button) in drinkButtons.enumerated() {
             let category = DrinkCategory.all[index], selected = category == drink
@@ -192,17 +192,17 @@ final class DiscoveryViewController: UITableViewController {
             statusLabel.accessibilityIdentifier = "discovery.loading"
         } else if let snapshot {
             let suffix = allRows.count > 200 ? " Mostrati i primi 200 prezzi." : ""
-            if snapshot.unavailableCells.count == snapshot.area.cells.count && snapshot.venues.isEmpty {
+            if snapshot.unavailableCells.count == snapshot.area.cells.count && snapshot.venues.isEmpty && snapshot.europe?.venues.isEmpty != false {
                 statusLabel.text = "Prezzi della zona non disponibili. Controlla la connessione e tocca Ricarica."
                 statusLabel.accessibilityIdentifier = "discovery.unavailable"
             } else if !snapshot.unavailableCells.isEmpty {
-                statusLabel.text = "\(allRows.count) locali con un prezzo per \(drink.name). Alcune parti della zona non sono disponibili: Ricarica per riprovare.\(suffix)"
+                statusLabel.text = "\(allRows.count) prezzi per \(drink.name). Alcune parti della zona non sono disponibili: Ricarica per riprovare.\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.partial"
             } else if allRows.isEmpty {
                 statusLabel.text = "Nessun prezzo segnalato per \(drink.name) · \(band.name) in questa zona. Prova un altro drink o una zona diversa nella mappa."
                 statusLabel.accessibilityIdentifier = "discovery.empty"
             } else {
-                statusLabel.text = "\(allRows.count) locali con un prezzo per \(drink.name) · \(band.name).\(suffix)"
+                statusLabel.text = "\(allRows.count) prezzi per \(drink.name) · \(band.name).\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.loaded"
             }
         } else {
@@ -234,40 +234,40 @@ final class DiscoveryViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "Dal prezzo più basso" }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "Per valuta e formato · dal prezzo più basso" }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        "Prezzi segnalati nella zona del centro mappa, non una classifica personale. Le distanze sono dal centro della mappa. Mappa e prezzi richiedono internet."
+        "Valute e formati diversi non sono confrontabili; i prezzi italiani precedenti non dichiarano il formato. Prezzi nella zona del centro mappa, non una classifica personale. Le distanze sono dal centro della mappa. Mappa e prezzi richiedono internet."
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "discoveryVenue", for: indexPath)
         let row = rows[indexPath.row]
-        let amount = String(format: "%d,%02d €", row.price.cents / 100, row.price.cents % 100)
-        let metres = snapshot?.area.distance(latitude: row.venue.latitude, longitude: row.venue.longitude) ?? 0
+        let amount = row.price.amount
+        let metres = snapshot?.area.distance(latitude: row.latitude, longitude: row.longitude) ?? 0
         let distance = metres < 1000 ? "\(Int(metres.rounded())) m" : String(format: "%.1f km", metres / 1000)
-        let location = [row.venue.address, row.venue.city ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
-        let confirmations = row.price.confirmations == 1 ? "1 conferma" : "\(row.price.confirmations) conferme"
-        let old = row.price.isOld(today: ComparisonJSON.today()) ? " · Da confermare: oltre 90 giorni" : ""
-        let details = "\(drink.name) · \(band.name)\n\(amount)\n\(location.isEmpty ? "" : location + "\n")\(distance) dal centro mappa\nSegnalato il \(row.price.observedOn) · \(confirmations)\(old)"
+        let location = row.location
+        let evidence = row.price.details(today: ComparisonJSON.today())
+        let details = "\(drink.name) · \(band.name)\n\(amount)\n\(location.isEmpty ? "" : location + "\n")\(distance) dal centro mappa\n\(evidence)"
         let visual = NSMutableAttributedString(string: "\(drink.name) · \(band.name)\n", attributes: [
             .font: UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
         ])
         visual.append(NSAttributedString(string: "\(amount)\n", attributes: [
             .font: UIFontMetrics(forTextStyle: .title2).scaledFont(for: UIFont.systemFont(ofSize: 22, weight: .bold), compatibleWith: traitCollection), .foregroundColor: NativeAppearance.ink
         ]))
-        visual.append(NSAttributedString(string: "\(location.isEmpty ? "" : location + "\n")\(distance) dal centro mappa\nSegnalato il \(row.price.observedOn) · \(confirmations)\(old)", attributes: [
+        visual.append(NSAttributedString(string: "\(location.isEmpty ? "" : location + "\n")\(distance) dal centro mappa\n\(evidence)", attributes: [
             .font: UIFont.preferredFont(forTextStyle: .footnote, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
         ]))
         var content = cell.defaultContentConfiguration()
-        content.text = row.venue.name; content.secondaryAttributedText = visual
+        content.text = row.name; content.secondaryAttributedText = visual
         content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
         content.textProperties.color = NativeAppearance.ink; content.textProperties.numberOfLines = 0
         content.secondaryTextProperties.numberOfLines = 0; content.textToSecondaryTextVerticalPadding = 8
         content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 12)
         cell.contentConfiguration = content; cell.backgroundConfiguration = NativeAppearance.card()
         cell.accessoryType = .disclosureIndicator; cell.tintColor = NativeAppearance.muted
-        cell.accessibilityIdentifier = "discovery.venue.\(row.venue.key)"
-        cell.accessibilityLabel = row.venue.name; cell.accessibilityValue = details
+        cell.accessibilityIdentifier = "discovery.venue.\(row.key)"
+        if case .europe = row.price { cell.accessibilityIdentifier = "discovery.venue.\(row.key).\(row.price.group)" }
+        cell.accessibilityLabel = row.name; cell.accessibilityValue = details
         cell.accessibilityHint = "Apre questo locale nella mappa"
         return cell
     }
@@ -275,7 +275,7 @@ final class DiscoveryViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         guard canRead, rows.indices.contains(indexPath.row),
-              let url = SavedVenuePolicy.canonicalURL(rows[indexPath.row].venue.url) else { return }
+              let url = SavedVenuePolicy.canonicalURL(rows[indexPath.row].url) else { return }
         onOpen(url)
     }
 }

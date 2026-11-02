@@ -57,6 +57,26 @@ struct DiscoverySnapshot {
     let area: DiscoveryArea
     let venues: [DiscoveryVenue]
     let unavailableCells: Set<String>
+    var europe: EuropeSnapshot? = nil
+
+    func displayRows(drink: String, band: ComparisonBand) -> [DiscoveryPresentedRow] {
+        let original = rows(drink: drink, band: band).filter { europe?.venues[$0.venue.key] == nil }.map { row in
+            DiscoveryPresentedRow(key: row.venue.key, name: row.venue.name, url: row.venue.url, latitude: row.venue.latitude,
+                longitude: row.venue.longitude, location: [row.venue.address, row.venue.city ?? ""].filter { !$0.isEmpty }.joined(separator: " · "), price: .legacy(row.price))
+        }
+        let added = (europe?.venues.values.map { $0 } ?? []).flatMap { venue in
+            venue.prices.filter { $0.drink == drink && $0.band == band && !$0.quarantined }.map { price in
+                DiscoveryPresentedRow(key: venue.key, name: venue.name, url: venue.url, latitude: venue.latitude, longitude: venue.longitude,
+                    location: venue.city, price: .europe(price))
+            }
+        }
+        return (original + added).sorted {
+            if $0.price.group != $1.price.group { return $0.price.group < $1.price.group }
+            if $0.price.amountMinor != $1.price.amountMinor { return $0.price.amountMinor < $1.price.amountMinor }
+            let order = $0.name.localizedCaseInsensitiveCompare($1.name)
+            return order == .orderedSame ? $0.key < $1.key : order == .orderedAscending
+        }
+    }
 
     func rows(drink: String, band: ComparisonBand) -> [(venue: DiscoveryVenue, price: FavouritePrice)] {
         venues.compactMap { venue in venue.price(drink: drink, band: band).map { (venue: venue, price: $0) } }.sorted {

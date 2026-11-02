@@ -5,7 +5,7 @@ import XCTest
 final class FavouriteComparisonClientTests: XCTestCase {
     func testSharedCellReadsOnceAndAllCategoriesAreResolvedWithoutMutations() throws {
         let transport = DelayedComparisonTransport()
-        let client = FavouriteComparisonClient(transport: transport, today: { "2026-10-29" })
+        let client = FavouriteComparisonClient(transport: transport, includeEurope: false, today: { "2026-10-29" })
         var received: FavouriteComparisonSnapshot?
         let operation = client.load([ComparisonFixtures.saved("n123"), ComparisonFixtures.saved("n124")]) { received = $0 }
         defer { operation.cancel() }
@@ -22,7 +22,7 @@ final class FavouriteComparisonClientTests: XCTestCase {
     func testGlobalDeadlineRetiresQueuedAndActiveWorkAtThreeRequestCap() throws {
         let transport = DelayedComparisonTransport()
         let timer = ManualComparisonDeadline()
-        let client = FavouriteComparisonClient(transport: transport, today: { "2026-10-29" }, schedule: timer.schedule)
+        let client = FavouriteComparisonClient(transport: transport, includeEurope: false, today: { "2026-10-29" }, schedule: timer.schedule)
         let saved = ["u0nd9", "u0nd8", "u0nd7", "u0nd6"].enumerated().map { ComparisonFixtures.saved("n\($0.offset + 1)", cell: $0.element) }
         var received: FavouriteComparisonSnapshot?
         let operation = client.load(saved) { received = $0 }
@@ -41,7 +41,7 @@ final class FavouriteComparisonClientTests: XCTestCase {
     func testUserOnlySkipsStaticAndMixedStaticFailureStillAllowsApprovedUser() throws {
         for mixed in [false, true] {
             let transport = DelayedComparisonTransport()
-            let client = FavouriteComparisonClient(transport: transport, today: { "2026-10-29" })
+            let client = FavouriteComparisonClient(transport: transport, includeEurope: false, today: { "2026-10-29" })
             let user = ComparisonFixtures.saved("u5")
             var output: FavouriteComparisonSnapshot?
             let operation = client.load(mixed ? [user, ComparisonFixtures.saved("n123")] : [user]) { output = $0 }
@@ -59,7 +59,7 @@ final class FavouriteComparisonClientTests: XCTestCase {
 
     func testCancelAndFailedHealthCannotPublishEmptySuccessOrStartCells() throws {
         let transport = DelayedComparisonTransport()
-        let client = FavouriteComparisonClient(transport: transport)
+        let client = FavouriteComparisonClient(transport: transport, includeEurope: false)
         var output: FavouriteComparisonSnapshot?
         let operation = client.load([ComparisonFixtures.saved("n123")]) { output = $0 }
         operation.cancel()

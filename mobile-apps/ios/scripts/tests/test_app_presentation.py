@@ -76,8 +76,12 @@ class AppPresentationGuards(unittest.TestCase):
     def test_native_reference_palette_keeps_real_price_and_vote_data(self):
         favourites = (IOS / "App/SavedVenuesViewController.swift").read_text(encoding="utf-8")
         self.assertIn("content.secondaryAttributedText = visual", favourites)
-        self.assertIn("price.observedOn", favourites)
-        self.assertIn("price.confirmations", favourites)
+        self.assertIn("row.displayPrice", favourites)
+        self.assertIn("price.details(today:", favourites)
+        prices = (IOS / "App/EuropePrices.swift").read_text(encoding="utf-8")
+        for required in ["case legacy(FavouritePrice), europe(EuropePrice)", "price.observedOn", "price.confirmations",
+                         "let observedOn: String?", "let sourceCheckedOn: String?", "Fonte verificata il", "observed == nil"]:
+            self.assertIn(required, prices)
         self.assertIn("cell.accessibilityValue =", favourites)
         self.assertNotIn("store.save(", favourites)
         votes = (IOS / "App/RecommendationsViewController.swift").read_text(encoding="utf-8")

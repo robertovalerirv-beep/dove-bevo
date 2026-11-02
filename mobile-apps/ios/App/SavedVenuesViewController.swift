@@ -247,21 +247,20 @@ final class SavedVenuesViewController: UITableViewController {
         let visual = NSMutableAttributedString(string: "\(drink.name) · \(band.name)\n", attributes: [
             .font: UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
         ])
-        if let price = row.price {
-            let amount = String(format: "%d,%02d €", price.cents / 100, price.cents % 100)
-            let confirmations = price.confirmations == 1 ? "1 conferma" : "\(price.confirmations) conferme"
-            let old = price.isOld(today: ComparisonJSON.today()) ? " · Da confermare: oltre 90 giorni" : ""
-            details = "\(amount) · \(band.name)\nSegnalato il \(price.observedOn) · \(confirmations)\(old)"
+        if let price = row.displayPrice {
+            let amount = price.amount
+            let evidence = price.details(today: ComparisonJSON.today())
+            details = "\(amount) · \(band.name)\n\(evidence)"
             visual.append(NSAttributedString(string: "\(amount)\n", attributes: [
                 .font: UIFontMetrics(forTextStyle: .title2).scaledFont(for: UIFont.systemFont(ofSize: 22, weight: .bold), compatibleWith: traitCollection), .foregroundColor: NativeAppearance.ink
             ]))
-            visual.append(NSAttributedString(string: "Segnalato il \(price.observedOn) · \(confirmations)\(old)", attributes: [
+            visual.append(NSAttributedString(string: evidence, attributes: [
                 .font: UIFont.preferredFont(forTextStyle: .footnote, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
             ]))
         } else if busy { details = "Caricamento prezzi…" }
         else if row.unavailable { details = "Prezzo non disponibile" }
         else { details = "Nessun prezzo segnalato per \(drink.name) · \(band.name)" }
-        if row.price == nil {
+        if row.displayPrice == nil {
             visual.append(NSAttributedString(string: details, attributes: [
                 .font: UIFont.preferredFont(forTextStyle: .body, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
             ]))
@@ -277,6 +276,7 @@ final class SavedVenuesViewController: UITableViewController {
         cell.tintColor = NativeAppearance.muted
         cell.contentConfiguration = content; cell.accessoryType = .disclosureIndicator
         cell.accessibilityIdentifier = "savedVenue.\(row.saved.url.lastPathComponent)"
+        if let price = row.europePrice { cell.accessibilityIdentifier = "savedVenue.\(row.saved.url.lastPathComponent).\(price.group)" }
         cell.accessibilityLabel = row.name
         cell.accessibilityValue = "\(drink.name), \(details)"
         cell.accessibilityHint = "Apre il locale nella mappa"
@@ -284,7 +284,7 @@ final class SavedVenuesViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        "I preferiti sono privati e salvati in questa app. L'elenco è disponibile offline; mappa e prezzi richiedono internet. Rimuovi una voce con Rimuovi o scorrendo la riga."
+        "Prezzi ordinati per valuta e formato; valute o volumi diversi non sono confrontabili. I prezzi italiani precedenti non dichiarano il formato. I preferiti sono privati e salvati in questa app. L'elenco è disponibile offline; mappa e prezzi richiedono internet. Rimuovi una voce con Rimuovi o scorrendo la riga."
     }
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

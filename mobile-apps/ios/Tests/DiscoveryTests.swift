@@ -93,7 +93,7 @@ final class DiscoveryTests: XCTestCase {
     func testDiscoveryReadsAtMostThreeRequestsAndNineCellsThenReturnsRealRows() throws {
         let transport = DelayedComparisonTransport()
         let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
-        let client = DiscoveryClient(transport: transport, today: { "2026-10-29" })
+        let client = DiscoveryClient(transport: transport, includeEurope: false, today: { "2026-10-29" })
         var output: DiscoverySnapshot?
         let operation = client.load(area) { output = $0 }
         defer { operation.cancel() }
@@ -110,6 +110,7 @@ final class DiscoveryTests: XCTestCase {
             case .prices(let cell):
                 try transport.complete(index, .success(ComparisonFixtures.prices(cell == "u0nd9" ? [["n123", "spritz", 0, 600, "2026-10-28", 0, 0]] : [])))
             case .health: XCTFail("Health must be read only once")
+            case .mobileCatalog, .mobilePrices: XCTFail("This explicit legacy-only fixture must not request the Europe adapter")
             }
             index += 1
         }
@@ -121,7 +122,7 @@ final class DiscoveryTests: XCTestCase {
 
     func testGlobalDeadlineAndCancelRetireActiveAndQueuedReadsAndLateResults() throws {
         let transport = DelayedComparisonTransport(), timer = ManualComparisonDeadline()
-        let client = DiscoveryClient(transport: transport, schedule: timer.schedule)
+        let client = DiscoveryClient(transport: transport, includeEurope: false, schedule: timer.schedule)
         let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
         var output: DiscoverySnapshot?
         let operation = client.load(area) { output = $0 }
@@ -146,7 +147,7 @@ final class DiscoveryTests: XCTestCase {
         let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
         for reversed in [false, true] {
             let transport = DelayedComparisonTransport()
-            let client = DiscoveryClient(transport: transport, today: { "2026-10-29" })
+            let client = DiscoveryClient(transport: transport, includeEurope: false, today: { "2026-10-29" })
             var output: DiscoverySnapshot?
             let operation = client.load(area) { output = $0 }
             defer { operation.cancel() }
@@ -165,6 +166,7 @@ final class DiscoveryTests: XCTestCase {
                         (cell == area.cells[0] ? [["n456", "spritz", 0, 900, "2026-10-28", 0, 0]] : [])
                     try transport.complete(index, .success(ComparisonFixtures.prices(rows)))
                 case .health: XCTFail("Only the first request may be health")
+                case .mobileCatalog, .mobilePrices: XCTFail("Explicit legacy-only fixture")
                 }
             }
             XCTAssertEqual(output?.venues.map(\.key), ["n456"])

@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "status": "prepared_not_imported",
+  "checked_on": "2026-11-02",
+  "data_version": "20261101",
+  "manifest_sha256": "2867191f50d8752b68fce907d09a474bbfd8f3da4ce87f76ffbf50c73e3558b1",
+  "facts": 50,
+  "venues": [
+    {
+      "key": "n1737407713",
+      "name": "Rex",
+      "cell": "srb10",
+      "city": 61753360,
+      "facts": 3,
+      "source_format": "html_text_v1",
+      "source_sha256": "63f0e35aa80eb2a1ea8a2533462885598ab3a824cca6cd6e991b843d611f2c23",
+      "source_bytes": 11640
+    },
+    {
+      "key": "n11279492046",
+      "name": "Headbangers",
+      "cell": "u0nd9",
+      "city": 62505581,
+      "facts": 1,
+      "source_format": "html_text_v1",
+      "source_sha256": "1fb2c0af19ce7f5e057c7450012da8a36d99c91381aa79374a9bcd5edf9fad4d",
+      "source_bytes": 144211
+    },
+    {
+      "key": "n2361698562",
+      "name": "The Florence Irish Pub",
+      "cell": "srb10",
+      "city": 61753360,
+      "facts": 4,
+      "source_format": "html_text_v1",
+      "source_sha256": "870e226c7b9c36845732ce0b8040c573de652ee3fc642643803e27b76673ddfc",
+      "source_bytes": 116360
+    },
+    {
+      "key": "n2280684307",
+      "name": "Devil's Forest",
+      "cell": "u20f2",
+      "city": 64778090,
+      "facts": 4,
+      "source_format": "html_text_v1",
+      "source_sha256": "d25b4bbc99df9708d684feeda337e9f1a99a5cceb2e835f43a40fbb51f630424",
+      "source_bytes": 1037703
+    },
+    {
+      "key": "n12420479412",
+      "name": "Guero",
+      "cell": "srbj4",
+      "city": 667350399,
+      "facts": 4,
+      "source_format": "html_text_v1",
+      "source_sha256": "f18e69aba558d191e947eb5f6a93f723701246b5fc0dfeee9cdfc9e72b5d19e3",
+      "source_bytes": 379821
+    },
+    {
+      "key": "n5910006531",
+      "name": "Caffé Letterario",
+      "cell": "sr60k",
+      "city": 428339558,
+      "facts": 6,
+      "source_format": "raw",
+      "source_sha256": "f913d94bacf473323b36fe335218986d26bc358e303faf256eb4a92d24229038",
+      "source_bytes": 300240
+    },
+    {
+      "key": "n4690645928",
+      "name": "Tonic",
+      "cell": "spzqg",
+      "city": 69300007,
+      "facts": 4,
+      "source_format": "html_text_v1",
+      "source_sha256": "e5c05a5b372bd8d87ccf136dcc4bb4c62a491d5053b7a57280d2063eb3ffe6e1",
+      "source_bytes": 200127
+    },
+    {
+      "key": "n12957673484",
+      "name": "Santeria",
+      "cell": "spzqg",
+      "city": 69300007,
+      "facts": 4,
+      "source_format": "html_text_v1",
+      "source_sha256": "fdb03c16621e1ad795dfa2582fc7307e612a788fee435a48e23fdb9639f008db",
+      "source_bytes": 436087
+    },
+    {
+      "key": "n671406139",
+      "name": "The Irish Times",
+      "cell": "srbj1",
+      "city": 667350399,
+      "facts": 4,
+      "source_format": "raw",
+      "source_sha256": "9aa345f049fd06abb7e44d2cf5b00f0582a219dbf60b6f8a852cac4e4893b368",
+      "source_bytes": 1352607
+    },
+    {
+      "key": "n4712450866",
+      "name": "Birrlandina",
+      "cell": "spzvb",
+      "city": 69300003,
+      "facts": 3,
+      "source_format": "raw",
+      "source_sha256": "14bf7261fd0720d9149d94c4069699379e7e27ee818d1de46470ce009b4cda57",
+      "source_bytes": 3001070
+    },
+    {
+      "key": "n13243514001",
+      "name": "Soul Club",
+      "cell": "srbst",
+      "city": 69300015,
+      "facts": 1,
+      "source_format": "raw",
+      "source_sha256": "48528c767a03a4887bf05b91087764bc340b3dbe1f0ee97cfc4cab7959f70bda",
+      "source_bytes": 2471255
+    },
+    {
+      "key": "n3122575934",
+      "name": "Eleven Café",
+      "cell": "spz2s",
+      "city": 1677276966,
+      "facts": 1,
+      "source_format": "html_text_v1",
+      "source_sha256": "63f5ea9bb032adfdc0aa0e165cec324fbf44d877d757ddc9d1dcb68254a002c1",
+      "source_bytes": 1164429
+    },
+    {
+      "key": "n2512765483",
+      "name": "Margot",
+      "cell": "spz2s",
+      "city": 1677276966,
+      "facts": 1,
+      "source_format": "html_text_v1",
+      "source_sha256": "fa28232cd482b81bf8e2008538d29a8db8f15546dc857f827bb4e8afa73b44e1",
+      "source_bytes": 143719
+    },
+    {
+      "key": "n13143015823",
+      "name": "ScaccoMalto - Tap Room",
+      "cell": "spz2s",
+      "city": 1677276966,
+      "facts": 3,
+      "source_format": "html_text_v1",
+      "source_sha256": "0db631af21f96215e4b651f925a5899e474fde23044864eb129b85c4f918f2ff",
+      "source_bytes": 112801
+    },
+    {
+      "key": "n9130024158",
+      "name": "Franklin 33",
+      "cell": "spz3q",
+      "city": 1822616932,
+      "facts": 1,
+      "source_format": "raw",
+      "source_sha256": "d2802969f96527d0da201a90d4e246f6966e5b08c52daca189ba9013f4e43f8a",
+      "source_bytes": 83561
+    },
+    {
+      "key": "n4713736698",
+      "name": "Green Store Pub - La Guerrina",
+      "cell": "srb10",
+      "city": 61753360,
+      "facts": 2,
+      "source_format": "html_text_v1",
+      "source_sha256": "c7d88ba7bf897d7547b44d58797f02e1dbb722928b55318a3b52beabc0332249",
+      "source_bytes": 963272
+    },
+    {
+      "key": "n2953813432",
+      "name": "Borsa",
+      "cell": "u205n",
+      "city": 64778102,
+      "facts": 2,
+      "source_format": "html_text_v1",
+      "source_sha256": "4d5a854dbf500e38e9e98d435fecc54edb81790caf9f1332dd098905de7d8dda",
+      "source_bytes": 109195
+    },
+    {
+      "key": "n12896391885",
+      "name": "Quintana",
+      "cell": "u205n",
+      "city": 64778102,
+      "facts": 1,
+      "source_format": "raw",
+      "source_sha256": "1eeb39e0ddb65fdbfc47abeffcbde95a323c5b052fa6d2034ff4095c06835d63",
+      "source_bytes": 79260
+    },
+    {
+      "key": "n7104749309",
+      "name": "Nadamas",
+      "cell": "u220d",
+      "city": 64776486,
+      "facts": 1,
+      "source_format": "raw",
+      "source_sha256": "96c98199a2db6bd9d98a9a655d7e2c81fbaaa5f1f4fc55bb60c7dd3a0442a53d",
+      "source_bytes": 782564
+    }
+  ],
+  "held": [
+    {
+      "venue_key": "w223832309",
+      "reason": "Mandatory EUR 1 cover charge visibly printed at top and bottom of current drink PDF; legacy price route cannot expose it",
+      "source_sha256": "b71fdbfb3432e78819805d8260a34aa136b036b6c7465662f4a7ecc391e64d35",
+      "held_facts": 5
+    }
+  ],
+  "limitations": [
+    "Legacy category prices cannot retain every named menu option or mandatory fee",
+    "Serving recipe and currency inference qualifications remain explicit in manifest",
+    "No public writes or D1 queries were made by preparation",
+    "Final independent menu-condition review and protected audits still required"
+  ]
+}

@@ -13,6 +13,9 @@ on:
   pull_request:
     paths:
       - "mobile-apps/**"
+      - "!mobile-apps/tools/menu-seed/**"
+      - "!mobile-apps/data/italy-menu-*.json"
+      - "!mobile-apps/docs/*-italy-menu-*.md"
       - ".github/workflows/mobile-apps.yml"
 
 permissions:

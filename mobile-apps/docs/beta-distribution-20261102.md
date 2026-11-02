@@ -107,6 +107,20 @@ validates the plan and offline tests before the step receiving credentials. Its
 each. Independent review precedes publishing that immutable apply tag; source
 preparation does not establish that distribution happened.
 
+The reviewed apply subsequently completed in
+[run 41374536874](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/41374536874)
+on 2 November 2026. All three actions were confirmed by read-back: both existing
+group/build links and the beta review submission. The final snapshot reports both
+groups linked, internal and external states `IN_BETA_TESTING`, and beta review
+`APPROVED`. Roberto's external public link remains disabled. No operation was
+retried. The receipt is complete and pins the same reviewed plan hash.
+The exact artifact ZIP SHA-256 is
+`e945dbbbaa5bb09d550117dae28fc79dd48e76a628416b67a6e7beb6715dc4a5`;
+the extracted receipt SHA-256 is
+`cc1e9b8cc81a8df8b8c2cf3868f1581fbe28b7363daefa7b305c31b6c3ed54c8`.
+These are TestFlight distribution states. Public App Store review and installed
+phone checks have separate evidence.
+
 For an authorized operator environment, the guarded CLI is:
 
 ```sh

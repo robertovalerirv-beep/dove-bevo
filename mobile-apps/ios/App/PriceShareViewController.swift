@@ -5,10 +5,10 @@ import UIKit
         let width: CGFloat = 1080
         let textWidth: CGFloat = 952
         let paragraph = NSMutableParagraphStyle(); paragraph.lineBreakMode = .byWordWrapping; paragraph.lineSpacing = 5
-        func attributes(_ size: CGFloat, weight: UIFont.Weight = .regular, color: UIColor = NativeAppearance.ink) -> [NSAttributedString.Key: Any] {
-            [.font: UIFont.systemFont(ofSize: size, weight: weight), .foregroundColor: color, .paragraphStyle: paragraph]
+        @MainActor func attributes(_ size: CGFloat, weight: UIFont.Weight = .regular, color: UIColor? = nil) -> [NSAttributedString.Key: Any] {
+            [.font: UIFont.systemFont(ofSize: size, weight: weight), .foregroundColor: color ?? NativeAppearance.ink, .paragraphStyle: paragraph]
         }
-        func height(_ text: String, _ attributes: [NSAttributedString.Key: Any]) -> CGFloat {
+        @MainActor func height(_ text: String, _ attributes: [NSAttributedString.Key: Any]) -> CGFloat {
             ceil((text as NSString).boundingRect(with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
                 options: [.usesLineFragmentOrigin, .usesFontLeading], attributes: attributes, context: nil).height)
         }
@@ -40,7 +40,7 @@ import UIKit
             UIColor.white.setFill(); UIBezierPath(roundedRect: pill, cornerRadius: 44).fill()
             (value.amount as NSString).draw(in: pill.insetBy(dx: 22, dy: 10), withAttributes: attributes(48, weight: .bold))
             var y: CGFloat = 686
-            func draw(_ text: String, style: [NSAttributedString.Key: Any]) {
+            @MainActor func draw(_ text: String, style: [NSAttributedString.Key: Any]) {
                 let h = height(text, style)
                 (text as NSString).draw(in: CGRect(x: 64, y: y, width: textWidth, height: h),
                     withAttributes: style)

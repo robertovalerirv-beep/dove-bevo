@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import {
   APP_ID,
   VERSION_ID,
+  BUILD_ID,
   LOCALIZATION_ID,
   SETS,
   canonicalPlan,
@@ -116,8 +117,22 @@ function server(f, tweak = {}) {
         object("appStoreVersions", tweak.wrongParent ? "wrong" : VERSION_ID, {
           platform: "IOS",
           versionString: "1.0.0",
+          appStoreState:
+            tweak.wrongState || (tweak.stateAfterStaging && next === 6)
+              ? "WAITING_FOR_REVIEW"
+              : "PREPARE_FOR_SUBMISSION",
         }),
       ]);
+    if (pathname === `/v1/appStoreVersions/${VERSION_ID}/relationships/build`)
+      return response(object("builds", tweak.wrongBuild ? "wrong-build" : BUILD_ID));
+    if (pathname === `/v1/builds/${BUILD_ID}`)
+      return response(
+        object("builds", BUILD_ID, {
+          version: tweak.wrongNumber ? "63" : "62",
+          processingState: tweak.invalidBuild ? "PROCESSING" : "VALID",
+          expired: !!tweak.expired,
+        }),
+      );
     if (pathname === `/v1/appStoreVersions/${VERSION_ID}/appStoreVersionLocalizations`)
       return response([object("appStoreVersionLocalizations", LOCALIZATION_ID, { locale: "it" })]);
     if (pathname === `/v1/appStoreVersionLocalizations/${LOCALIZATION_ID}/appScreenshotSets`)
@@ -215,7 +230,7 @@ test("audit validates exact local pack and fixed parent chain using GET only", a
     const s = server(f),
       result = await run(f, s);
     assert.equal(result.phase, "audited");
-    assert.equal(s.calls.length, 5);
+    assert.equal(s.calls.length, 7);
     assert.ok(s.calls.every((c) => c.method === "GET"));
     assert.ok(!JSON.stringify(result).includes("TEST_JWT"));
   } finally {
@@ -564,6 +579,31 @@ test("every ASC request regenerates its short-lived token throughout six uploads
       Array.from({ length: generations }, (_, i) => `Bearer ROTATING_JWT_${i + 1}`),
     );
     assert.ok(!/ROTATING_JWT|TEST_JWT/.test(await readFile(f.receiptFile, "utf8")));
+  } finally {
+    await f.close();
+  }
+});
+
+for (const fault of ["wrongState", "wrongBuild", "wrongNumber", "invalidBuild", "expired"])
+  test(`release ${fault} guard prevents staging`, async () => {
+    const f = await fixture();
+    try {
+      const s = server(f, { [fault]: true });
+      await assert.rejects(run(f, s, { apply: true }));
+      assert.ok(s.calls.every((c) => c.method === "GET"));
+    } finally {
+      await f.close();
+    }
+  });
+
+test("changed submission state after six staged images prevents original deletion", async () => {
+  const f = await fixture();
+  try {
+    const s = server(f, { stateAfterStaging: true });
+    await assert.rejects(run(f, s, { apply: true }));
+    assert.equal(s.calls.filter((c) => c.method === "POST").length, 6);
+    assert.ok(!s.calls.some((c) => c.method === "DELETE"));
+    assert.equal([...s.records.keys()].filter((id) => id.startsWith("old-")).length, 6);
   } finally {
     await f.close();
   }

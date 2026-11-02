@@ -56,6 +56,14 @@ The fixed parent chain is established by Apple's parent-scoped lists: app →
 version (iOS / 1.0.0) → Italian localization → both fixed display sets. Initial set
 membership must be exactly the planned three original IDs per set. Paginated,
 oversized, unsupported, redirected or unexpected responses fail closed.
+Both before staging and before deleting originals, the version must still be
+`PREPARE_FOR_SUBMISSION`. Its explicit build relationship must be exactly
+`ff8ec5ad-3325-4f0e-b0d0-74e66d5a63cf`; a direct build read must confirm number
+`62`, `VALID` processing and `expired: false`. This checks existing state without
+selecting a build or changing submission metadata. The primary
+[build relationship](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-appstoreversions-_id_-relationships-build)
+and [build read](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-builds-_id_)
+endpoints supply these read-only guards.
 
 Each new screenshot is reserved, uploaded using all exact contiguous byte ranges
 in Apple's upload operations, committed with its whole-file MD5 and `uploaded:

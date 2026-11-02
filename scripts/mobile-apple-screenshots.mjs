@@ -8,6 +8,7 @@ import { tokenFor } from "./mobile-store-status.mjs";
 
 export const APP_ID = "6827324444";
 export const VERSION_ID = "e01a5724-9314-4ed6-9353-abc5c4a21a07";
+export const BUILD_ID = "ff8ec5ad-3325-4f0e-b0d0-74e66d5a63cf";
 export const LOCALIZATION_ID = "7e96802e-cee8-4777-9384-4f743912be38";
 export const SETS = Object.freeze({
   "eb509607-4f07-442f-bb14-3c7b7d49fdf5": { type: "APP_IPHONE_61", width: 1206, height: 2622 },
@@ -279,9 +280,24 @@ export async function screenshots(env, options) {
       );
       const version = versions.find((v) => v.id === VERSION_ID);
       check(
-        version?.attributes?.platform === "IOS" && version.attributes.versionString === "1.0.0",
+        version?.attributes?.platform === "IOS" &&
+          version.attributes.versionString === "1.0.0" &&
+          version.attributes.appStoreState === "PREPARE_FOR_SUBMISSION",
       );
       parentIfPresent(version, "app", "apps", APP_ID);
+      parentIfPresent(version, "build", "builds", BUILD_ID);
+      resource(
+        (await api(`/v1/appStoreVersions/${VERSION_ID}/relationships/build`)).data,
+        "builds",
+        BUILD_ID,
+      );
+      const build = resource((await api(`/v1/builds/${BUILD_ID}`)).data, "builds", BUILD_ID);
+      check(
+        build.attributes?.version === "62" &&
+          build.attributes.processingState === "VALID" &&
+          build.attributes.expired === false,
+      );
+      parentIfPresent(build, "app", "apps", APP_ID);
       const locales = list(
         await api(`/v1/appStoreVersions/${VERSION_ID}/appStoreVersionLocalizations?limit=200`),
         "appStoreVersionLocalizations",

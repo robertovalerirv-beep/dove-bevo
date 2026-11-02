@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-11-02T17:17:21.260711+00:00",
+  "checked_at": "2026-11-02T17:27:03.219566+00:00",
   "scope": "new rows imported and currently publicly verified by this expansion; not historical whole-database coverage",
-  "new_prices": 173,
+  "new_prices": 175,
   "venues": 54,
   "cities": 24,
   "public_cells_checked": 27,
@@ -27,14 +27,14 @@
     "Brescia": 4,
     "Ancona": 5,
     "Perugia": 7,
-    "Livorno": 7,
+    "Livorno": 9,
     "Lecce": 1,
     "Verona": 7,
     "Casteddu/Cagliari": 3
   },
   "drink_new_price_counts": {
-    "alcohol_free": 25,
-    "beer_draft": 16,
+    "alcohol_free": 26,
+    "beer_draft": 17,
     "gin_lemon": 8,
     "gin_tonic": 18,
     "negroni": 30,
@@ -108,6 +108,17 @@
       "inserted": 30,
       "reconciliation_run_id": 41487116989,
       "reconciled_after_current_records": 1
+    },
+    {
+      "batch": "j",
+      "run_id": 41490704668,
+      "head_sha": "bc3a23b0cacdd698cc38e116b08e3304863bf8cf",
+      "overall_conclusion": "success",
+      "artifact_id": 13164526144,
+      "artifact_sha256": "dcdd848e4b7b0055ef78bbba9801419b2ffc1cf610e37d22913c0719b43ec394",
+      "inserted": 2,
+      "skipped_existing_or_guarded": 7,
+      "reconciliation_run_id": 41487116989
     }
   ],
   "manifest_sha256": {
@@ -122,8 +133,7 @@
   "held": {
     "tonic": 4,
     "birrlandina": 3,
-    "birrodromo_mandatory_fee": 5,
-    "queen_victoria_unattempted": 2
+    "birrodromo_mandatory_fee": 5
   },
   "limits": [
     "Italy-wide and major-city completeness is not established",

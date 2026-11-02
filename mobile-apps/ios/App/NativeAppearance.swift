@@ -8,7 +8,9 @@ import UIKit
     static let ink = UIColor(red: 16 / 255, green: 24 / 255, blue: 32 / 255, alpha: 1)
     static let muted = UIColor(red: 93 / 255, green: 102 / 255, blue: 112 / 255, alpha: 1)
     static let line = UIColor(red: 231 / 255, green: 234 / 255, blue: 238 / 255, alpha: 1)
-    static let accent = UIColor(red: 245 / 255, green: 181 / 255, blue: 33 / 255, alpha: 1)
+    static let accent = UIColor(red: 255 / 255, green: 90 / 255, blue: 31 / 255, alpha: 1)
+    static let onAccent = UIColor(red: 27 / 255, green: 22 / 255, blue: 17 / 255, alpha: 1)
+    static let accentText = UIColor(red: 185 / 255, green: 58 / 255, blue: 11 / 255, alpha: 1)
     static let disabled = UIColor(red: 148 / 255, green: 155 / 255, blue: 163 / 255, alpha: 1)
     static let radius: CGFloat = 16
 
@@ -23,14 +25,14 @@ import UIKit
         navigation.navigationBar.standardAppearance = appearance
         navigation.navigationBar.scrollEdgeAppearance = appearance
         navigation.navigationBar.compactAppearance = appearance
-        navigation.navigationBar.tintColor = ink
+        navigation.navigationBar.tintColor = accentText
         navigation.view.backgroundColor = surface
     }
 
     static func button(primary: Bool = false, selected: Bool = false, traits: UITraitCollection? = nil) -> UIButton.Configuration {
         var configuration = UIButton.Configuration.filled()
-        configuration.baseBackgroundColor = selected ? accent : (primary ? ink : canvas)
-        configuration.baseForegroundColor = primary && !selected ? surface : ink
+        configuration.baseBackgroundColor = primary || selected ? accent : canvas
+        configuration.baseForegroundColor = primary || selected ? onAccent : ink
         configuration.background.cornerRadius = radius
         configuration.cornerStyle = .fixed
         configuration.titleLineBreakMode = .byWordWrapping
@@ -57,6 +59,6 @@ import UIKit
     static func configure(_ table: UITableView) {
         table.backgroundColor = canvas
         table.separatorStyle = .none
-        table.tintColor = ink
+        table.tintColor = accentText
     }
 }

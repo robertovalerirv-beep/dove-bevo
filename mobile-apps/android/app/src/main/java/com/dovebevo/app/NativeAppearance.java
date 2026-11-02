@@ -61,15 +61,15 @@ final class NativeAppearance {
         button.setBackgroundTintList(null);
         android.graphics.drawable.StateListDrawable state = new android.graphics.drawable.StateListDrawable();
         state.addState(new int[]{-android.R.attr.state_enabled}, shape(context, R.color.surface_line, 12, false));
-        state.addState(new int[]{}, shape(context, primary ? R.color.shell_text : R.color.surface, 12, !primary));
+        state.addState(new int[]{}, shape(context, primary ? R.color.colorPrimary : R.color.surface, 12, !primary));
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22101820), state, null));
         button.setTextColor(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled},new int[]{}},
-                new int[]{context.getColor(R.color.muted_text),context.getColor(primary ? R.color.surface : R.color.shell_text)}));
+                new int[]{context.getColor(R.color.muted_text),context.getColor(primary ? R.color.on_brand : R.color.shell_text)}));
     }
 
     static void destination(Button button, boolean selected) {
         Context context = button.getContext();
-        int ink = context.getColor(R.color.shell_text);
+        int ink = context.getColor(R.color.brand_text);
         button.setSelected(selected);
         button.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
         button.setTextColor(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled},new int[]{}},

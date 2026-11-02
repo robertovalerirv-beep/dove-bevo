@@ -704,7 +704,7 @@
     "milestone": "MF",
     "descrizione": "Il primo tocco riusa i file già scaricati",
     "verifica": "e2e: i tre file di MapLibre hanno `Cache-Control` con cache lunga (`immutable`) e dopo il tocco su «Esplora la mappa» non c'è nessuna richiesta di rete nuova oltre a quelle già viste; la mappa è pronta; il service worker non ha voci in più nella cache (`pwa.spec.ts` invariato); nessuna richiesta a `/api/*` o `/data/*` in più; CSP senza violazioni. La prova che il tocco non riscarica nulla (cache del browser, che con il certificato autofirmato dei test non si può ottenere) è una verifica a mano su telefono con rete lenta",
-    "passes": false
+    "passes": true
   },
   {
     "id": "MF-03",

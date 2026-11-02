@@ -7,8 +7,8 @@ on:
       - ".github/workflows/mobile-italy-menu-e.yml"
   push:
     tags:
-      - "mobile-italy-menu-e-audit/20261102-v1"
-      - "mobile-italy-menu-e-seed/20261102-v1"
+      - "mobile-italy-menu-e-audit/20261102-v2"
+      - "mobile-italy-menu-e-seed/20261102-v2"
 permissions:
   contents: read
 concurrency:
@@ -17,6 +17,7 @@ concurrency:
 env:
   MANIFEST: mobile-apps/data/italy-menu-seed-20261102-e.json
   MANIFEST_SHA256: 553f57c7d459bbad862e991b4e5efea744b86323962261681f28550b58009369
+  TRACER_SHA256: b23ec078472eafc8f0e0c5bf70b840a69e137a5cba06dd328d52478c46dddbd5
   IMPORTER_SHA256: a6ee8ea2f8277584beb83f22baae7787448b83db417fa80716b61e8f431fad78
 jobs:
   preservation:
@@ -33,17 +34,19 @@ jobs:
           set -euo pipefail
           printf '%s  %s\n' "$MANIFEST_SHA256" "$MANIFEST" | sha256sum --check --strict
           printf '%s  %s\n' "$IMPORTER_SHA256" mobile-apps/tools/menu-seed/live_import.py | sha256sum --check --strict
+          printf '%s  %s\n' "$TRACER_SHA256" mobile-apps/tools/menu-seed/run_import_with_diagnostics.py | sha256sum --check --strict
           python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_live_import.py' -v
           python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_no_google.py' -v
           python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_batch_e.py' -v
           python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_menu_discovery.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_import_diagnostics.py' -v
   reviewed-import:
     needs: preservation
     if: >-
       github.repository == 'robertovalerirv-beep/dove-bevo' &&
       github.event_name == 'push' && github.ref_type == 'tag' &&
-      (github.ref == 'refs/tags/mobile-italy-menu-e-audit/20261102-v1' ||
-      github.ref == 'refs/tags/mobile-italy-menu-e-seed/20261102-v1')
+      (github.ref == 'refs/tags/mobile-italy-menu-e-audit/20261102-v2' ||
+      github.ref == 'refs/tags/mobile-italy-menu-e-seed/20261102-v2')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -57,6 +60,7 @@ jobs:
           set -euo pipefail
           printf '%s  %s\n' "$MANIFEST_SHA256" "$MANIFEST" | sha256sum --check --strict
           printf '%s  %s\n' "$IMPORTER_SHA256" mobile-apps/tools/menu-seed/live_import.py | sha256sum --check --strict
+          printf '%s  %s\n' "$TRACER_SHA256" mobile-apps/tools/menu-seed/run_import_with_diagnostics.py | sha256sum --check --strict
       - name: Audit or apply only this exact reviewed cohort
         shell: bash
         env:
@@ -66,12 +70,12 @@ jobs:
         run: |
           set -euo pipefail
           case "$GITHUB_REF" in
-            refs/tags/mobile-italy-menu-e-audit/20261102-v1) mode_args=(); expected=dry_run ;;
-            refs/tags/mobile-italy-menu-e-seed/20261102-v1) mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256"); expected=apply ;;
+            refs/tags/mobile-italy-menu-e-audit/20261102-v2) mode_args=(); expected=dry_run ;;
+            refs/tags/mobile-italy-menu-e-seed/20261102-v2) mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256"); expected=apply ;;
             *) exit 2 ;;
           esac
           mkdir -p "$(dirname "$RECEIPT")"
-          python3 -I -S -B mobile-apps/tools/menu-seed/live_import.py --manifest "$MANIFEST" --receipt "$RECEIPT" "${mode_args[@]}"
+          python3 -I -S -B mobile-apps/tools/menu-seed/run_import_with_diagnostics.py --manifest "$MANIFEST" --receipt "$RECEIPT" "${mode_args[@]}"
           python3 -B - "$expected" <<'PY'
           import json, os, sys
           from pathlib import Path
@@ -82,7 +86,7 @@ jobs:
           assert len(receipt["records"]) == 21 and not receipt["errors"]
           PY
       - name: Public read-back of newly inserted rows
-        if: github.ref == 'refs/tags/mobile-italy-menu-e-seed/20261102-v1'
+        if: github.ref == 'refs/tags/mobile-italy-menu-e-seed/20261102-v2'
         shell: bash
         run: |
           python3 -B mobile-apps/tools/menu-seed/verify_batch_d.py --manifest "$MANIFEST" --receipt "${{ runner.temp }}/italy-menu-e/receipt-${{ github.run_id }}-${{ github.run_attempt }}.json" --output "${{ runner.temp }}/italy-menu-e/public-readback.json"
@@ -90,6 +94,6 @@ jobs:
         if: always()
         with:
           name: italy-menu-e-receipt-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/italy-menu-e/*.json
+          path: ${{ runner.temp }}/italy-menu-e/*.json*
           retention-days: 30
           if-no-files-found: warn

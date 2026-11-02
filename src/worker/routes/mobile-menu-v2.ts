@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { encodeGeohash } from "../../shared/geohash";
+import { encodeGeohash, visibleCells } from "../../shared/geohash";
 import { distanceMeters, DUPLICATE_METERS, ITALY, OSM_KEY_PATTERN } from "../../shared/venue";
 import { sameName } from "../lib/same-name";
 import { ApiError } from "../lib/errors";
@@ -18,7 +18,7 @@ type Registry = {
   city: string;
   country: string;
   identity_url: string;
-  identity_kind: "osm" | "owner_verified";
+  identity_kind: string;
   identity_fingerprint: string | null;
   identity_text_sha256: string | null;
   identity_geo_url: string | null;
@@ -174,7 +174,9 @@ function limit(value: string | undefined): number {
 }
 function registryVenue(row: Registry): Venue {
   if (encodeGeohash(row.lat, row.lon, 5) !== row.cell) throw new ApiError("busy");
+  let identityKind: Venue["identity_kind"];
   if (row.identity_kind === "osm") {
+    identityKind = "osm";
     const type = { n: "node", w: "way", r: "relation" }[row.venue_key[0] as "n" | "w" | "r"];
     if (
       !OSM_KEY_PATTERN.test(row.venue_key) ||
@@ -188,6 +190,7 @@ function registryVenue(row: Registry): Venue {
     )
       throw new ApiError("busy");
   } else if (row.identity_kind === "owner_verified") {
+    identityKind = "owner_verified";
     if (
       row.country !== "IT" ||
       !OWNER_KEY_PATTERN.test(row.venue_key) ||
@@ -223,15 +226,28 @@ function registryVenue(row: Registry): Venue {
     city: row.city,
     country: row.country,
     identity_url: row.identity_url,
-    identity_kind: row.identity_kind,
+    identity_kind: identityKind,
   };
 }
 function addressKey(value: string | null | undefined): string {
   return (value ?? "").normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
 }
+function duplicateCells(place: Venue): string[] {
+  // A venue near a geohash edge may have an existing neighbour in the next cell.
+  const latSpan = DUPLICATE_METERS / 110_000;
+  const lonSpan = latSpan / Math.cos((place.lat * Math.PI) / 180);
+  const cells = visibleCells({
+    south: place.lat - latSpan,
+    north: place.lat + latSpan,
+    west: place.lon - lonSpan,
+    east: place.lon + lonSpan,
+  });
+  if (!cells || !cells.includes(place.cell)) throw new ApiError("busy");
+  return cells;
+}
 function nearbyDuplicate(
   place: Venue,
-  original: Awaited<ReturnType<typeof cellFile>>,
+  originals: readonly Awaited<ReturnType<typeof cellFile>>[],
   users: readonly Nearby[],
   peers: readonly Nearby[],
 ): boolean {
@@ -244,13 +260,15 @@ function nearbyDuplicate(
         !!candidate.address &&
         addressKey(candidate.address) === addressKey(place.address)));
   return (
-    !!original?.v.some((row) =>
-      matches({
-        name: row[1],
-        lat: row[3],
-        lon: row[4],
-        address: row[5],
-      }),
+    originals.some((original) =>
+      original?.v.some((row) =>
+        matches({
+          name: row[1],
+          lat: row[3],
+          lon: row[4],
+          address: row[5],
+        }),
+      ),
     ) ||
     users.some(matches) ||
     peers.some((peer) => peer.venue_key !== place.key && matches(peer))
@@ -258,21 +276,27 @@ function nearbyDuplicate(
 }
 async function assertOwnerUnconflicted(env: Env, place: Venue): Promise<void> {
   if (place.identity_kind !== "owner_verified") return;
-  const [original, users, peers] = await Promise.all([
-    cellFile(env, place.cell),
+  const cells = duplicateCells(place);
+  const marks = cells.map(() => "?").join(",");
+  const [originals, users, peers] = await Promise.all([
+    Promise.all(cells.map((cell) => cellFile(env, cell))),
     env.DB.prepare(
-      "SELECT name,lat,lon FROM venues_user WHERE cell=?1 AND status IN ('approved','pending')",
+      "SELECT name,lat,lon FROM venues_user WHERE cell IN (" +
+        marks +
+        ") AND status IN ('approved','pending')",
     )
-      .bind(place.cell)
+      .bind(...cells)
       .all<Nearby>(),
     env.DB.prepare(
       "SELECT venue_key,name,lat,lon,address FROM mobile_menu_v2_venues" +
-        " WHERE cell=?1 AND identity_kind='owner_verified'",
+        " WHERE cell IN (" +
+        marks +
+        ") AND identity_kind='owner_verified'",
     )
-      .bind(place.cell)
+      .bind(...cells)
       .all<Nearby>(),
   ]);
-  if (nearbyDuplicate(place, original, users.results, peers.results))
+  if (nearbyDuplicate(place, originals, users.results, peers.results))
     throw new ApiError("not_found");
 }
 
@@ -410,21 +434,37 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
   const cell = queryCell(c.req.param("cell"));
   const after = c.req.query("after") === undefined ? "" : queryKey(c.req.query("after"));
   const requested = c.req.query("category");
+  const requestedMany = c.req.query("categories");
+  if (requested !== undefined && requestedMany !== undefined) throw new ApiError("bad_request");
   let code: string | null = null;
+  let codes: string[] | null = null;
   if (requested !== undefined) {
     const parsed = MobileDrink.safeParse(requested);
     if (!parsed.success) throw new ApiError("bad_request");
     code = parsed.data;
+    codes = [code];
   }
+  if (requestedMany !== undefined) {
+    const parts = requestedMany.split(",");
+    if (parts.length < 1 || parts.length > 9 || new Set(parts).size !== parts.length)
+      throw new ApiError("bad_request");
+    codes = parts.map((part) => {
+      const parsed = MobileDrink.safeParse(part);
+      if (!parsed.success) throw new ApiError("bad_request");
+      return parsed.data;
+    });
+  }
+  const categoryClause = codes ? " AND o.category IN (" + codes.map(() => "?").join(",") + ")" : "";
   const candidates = await c.env.DB.prepare(
     "SELECT o.venue_key, COUNT(*) AS n FROM mobile_menu_v2_offers o" +
       APPROVED +
-      " WHERE o.cell=?1 AND o.venue_key>?2 AND o.status='active'" +
-      " AND (?3 IS NULL OR o.category=?3) AND" +
+      " WHERE o.cell=? AND o.venue_key>? AND o.status='active'" +
+      categoryClause +
+      " AND" +
       PUBLIC +
       " GROUP BY o.venue_key ORDER BY o.venue_key LIMIT 51",
   )
-    .bind(cell, after, code)
+    .bind(cell, after, ...(codes ?? []))
     .all<Candidate>();
   const page = candidates.results.slice(0, 50);
   const keys = page.map((row) => row.venue_key);
@@ -434,6 +474,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
         ...envelope,
         cell,
         category: code,
+        categories: codes,
         venues: [],
         next_after: null,
         unresolved_venues: 0,
@@ -451,25 +492,37 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
     .bind(cell, ...keys)
     .all<Registry>();
   const registry = new Map(registryRows.results.map((row) => [row.venue_key, registryVenue(row)]));
-  const hasOwner = [...registry.values()].some((place) => place.identity_kind === "owner_verified");
+  const ownerPlaces = [...registry.values()].filter(
+    (place) => place.identity_kind === "owner_verified",
+  );
+  const hasOwner = ownerPlaces.length > 0;
   const legacyFile =
     keys.some((key) => !registry.has(key)) || hasOwner ? await cellFile(c.env, cell) : null;
+  let duplicateFiles: Awaited<ReturnType<typeof cellFile>>[] = [];
   let userRows: Nearby[] = [];
   let peerRows: Nearby[] = [];
   if (hasOwner) {
-    const [users, peers] = await Promise.all([
+    const cells = [...new Set(ownerPlaces.flatMap(duplicateCells))];
+    const marks = cells.map(() => "?").join(",");
+    const [otherFiles, users, peers] = await Promise.all([
+      Promise.all(cells.filter((other) => other !== cell).map((other) => cellFile(c.env, other))),
       c.env.DB.prepare(
-        "SELECT name,lat,lon FROM venues_user WHERE cell=?1 AND status IN ('approved','pending')",
+        "SELECT name,lat,lon FROM venues_user WHERE cell IN (" +
+          marks +
+          ") AND status IN ('approved','pending')",
       )
-        .bind(cell)
+        .bind(...cells)
         .all<Nearby>(),
       c.env.DB.prepare(
         "SELECT venue_key,name,lat,lon,address FROM mobile_menu_v2_venues" +
-          " WHERE cell=?1 AND identity_kind='owner_verified'",
+          " WHERE cell IN (" +
+          marks +
+          ") AND identity_kind='owner_verified'",
       )
-        .bind(cell)
+        .bind(...cells)
         .all<Nearby>(),
     ]);
+    duplicateFiles = [legacyFile, ...otherFiles];
     userRows = users.results;
     peerRows = peers.results;
   }
@@ -480,7 +533,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
         venue:
           place &&
           place.identity_kind === "owner_verified" &&
-          nearbyDuplicate(place, legacyFile, userRows, peerRows)
+          nearbyDuplicate(place, duplicateFiles, userRows, peerRows)
             ? null
             : place,
         count: row.n,
@@ -495,6 +548,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
         ...envelope,
         cell,
         category: code,
+        categories: codes,
         venues: [],
         next_after: candidates.results.length > 50 ? page.at(-1)?.venue_key : null,
         unresolved_venues: unresolved,
@@ -503,22 +557,25 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
       { "Cache-Control": "no-store" },
     );
   let samples = new Map<string, ReturnType<typeof offer>[]>();
-  if (code && visibleKeys.length) {
+  if (codes && visibleKeys.length) {
+    const categoryMarks = codes.map(() => "?").join(",");
     const sampleMarks = visibleKeys.map(() => "?").join(",");
     const result = await c.env.DB.prepare(
       "SELECT * FROM (SELECT " +
         OFFER_COLS +
         "," +
-        " ROW_NUMBER() OVER (PARTITION BY o.venue_key,o.currency,o.currency_exponent" +
+        " ROW_NUMBER() OVER (PARTITION BY o.venue_key,o.category,o.currency,o.currency_exponent" +
         " ORDER BY CASE WHEN o.price_context='regular' THEN 0 ELSE 1 END," +
         " o.amount_minor,o.id) AS rank FROM mobile_menu_v2_offers o" +
         APPROVED +
-        " WHERE o.cell=? AND o.category=? AND o.status='active'" +
+        " WHERE o.cell=? AND o.category IN (" +
+        categoryMarks +
+        ") AND o.status='active'" +
         " AND o.venue_key IN (" +
         sampleMarks +
-        ")) WHERE rank=1",
+        ")) WHERE rank=1 ORDER BY venue_key,category,currency,currency_exponent",
     )
-      .bind(cell, code, ...visibleKeys)
+      .bind(cell, ...codes, ...visibleKeys)
       .all<OfferRow>();
     samples = new Map();
     for (const row of result.results) {
@@ -549,6 +606,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
       ...envelope,
       cell,
       category: code,
+      categories: codes,
       venues: visible.map((row) => ({
         ...row.venue,
         matching_offer_count: row.count,

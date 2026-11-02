@@ -34,11 +34,18 @@ interface Detail {
   fee_coverage: { status: string };
 }
 interface Cell {
+  category?: string | null;
+  categories?: string[] | null;
   coverage: { complete: boolean };
   venues: {
     key: string;
     matching_offer_count: number;
-    sample_offers: { id: string }[];
+    sample_offers: {
+      id: string;
+      category: string | null;
+      amount_minor: number;
+      currency: string;
+    }[];
   }[];
   unresolved_venues: number;
 }
@@ -282,6 +289,54 @@ describe("app-only named menu v2", () => {
     ).toBe(0);
   });
 
+  it("reads several drink categories in one cell request without changing single-category results", async () => {
+    const sourceId = await addSource(ITALY.key, ITALY.cell);
+    await env.DB.batch([
+      addOffer("multi-beer-high", ITALY.key, ITALY.cell, sourceId, {
+        category: "beer_draft",
+        amount: 600,
+      }),
+      addOffer("multi-beer-low", ITALY.key, ITALY.cell, sourceId, {
+        category: "beer_draft",
+        amount: 450,
+      }),
+      addOffer("multi-spritz", ITALY.key, ITALY.cell, sourceId, {
+        category: "spritz",
+        amount: 550,
+      }),
+      addOffer("multi-wine", ITALY.key, ITALY.cell, sourceId, {
+        category: "wine_glass",
+        amount: 700,
+      }),
+    ]);
+    const multi = await (
+      await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?categories=beer_draft,spritz")
+    ).json<Cell>();
+    expect(multi).toMatchObject({
+      category: null,
+      categories: ["beer_draft", "spritz"],
+    });
+    expect(multi.venues).toHaveLength(1);
+    expect(multi.venues[0]?.matching_offer_count).toBe(3);
+    expect(multi.venues[0]?.sample_offers).toMatchObject([
+      { id: "multi-beer-low", category: "beer_draft", amount_minor: 450, currency: "EUR" },
+      { id: "multi-spritz", category: "spritz", amount_minor: 550, currency: "EUR" },
+    ]);
+    const single = await (
+      await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?category=beer_draft")
+    ).json<Cell>();
+    expect(single.venues[0]?.matching_offer_count).toBe(2);
+    expect(single.venues[0]?.sample_offers.map((offer) => offer.id)).toEqual(["multi-beer-low"]);
+    for (const query of [
+      "categories=beer_draft,beer_draft",
+      "categories=beer_draft,nope",
+      "categories=",
+      "category=beer_draft&categories=spritz",
+    ]) {
+      expect((await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?" + query)).status).toBe(400);
+    }
+  });
+
   it("keeps fixed and percentage fees separate and never infers an all-in price", async () => {
     const sourceId = await addSource(ITALY.key, ITALY.cell);
     await addOffer("fee-example-drink", ITALY.key, ITALY.cell, sourceId).run();
@@ -501,6 +556,30 @@ describe("app-only named menu v2", () => {
     const blockedCell = await (await get("/api/mobile/v2/menu/cells/" + ITALY.cell)).json<Cell>();
     expect(blockedCell.venues).toEqual([]);
     expect(blockedCell.unresolved_venues).toBe(1);
+  });
+
+  it("suppresses a same-name user proposal across a geohash boundary", async () => {
+    const key = await ownerRow({
+      ownerUrl: "https://owner.example/locations/edge-fixture",
+      name: "Fixture Edge Bar",
+      lat: 45.4464,
+      lon: 9.2284,
+    });
+    const sourceId = await addSource(key, ITALY.cell);
+    await addOffer("edge-fixture-drink", key, ITALY.cell, sourceId).run();
+    const path = "/api/mobile/v2/menu/venues/" + key + "?cell=" + ITALY.cell;
+    expect((await get(path)).status).toBe(200);
+    await env.DB.prepare(
+      "INSERT INTO venues_user(name,kind,lat,lon,cell,status,confirmations,day)" +
+        " VALUES ('Fixture Edge Bar',1,45.4464,9.2286,'u0ndd','pending',1,?1)",
+    )
+      .bind(TODAY)
+      .run();
+    // The neighbour is only about 16 metres away, although its geohash differs.
+    expect((await get(path)).status).toBe(404);
+    const list = await (await get("/api/mobile/v2/menu/cells/" + ITALY.cell)).json<Cell>();
+    expect(list.venues).toEqual([]);
+    expect(list.unresolved_venues).toBe(1);
   });
 
   it("rejects mismatched owner identity and suppresses an existing static OSM duplicate", async () => {

@@ -280,6 +280,55 @@ async function openLondon(f, venue = true) {
       () => !document.querySelector(".europe-coverage")?.textContent.includes("Caricamento"),
     );
 }
+
+test("saved European beer HH focus selects the actual band and retains serving provenance", async () => {
+  const f = await fixture({
+    snapshot(value, cell) {
+      if (cell === "gcpvj")
+        value.rows.push(
+          price(catalog.venues[0], "beer_draft", 450, { unit: "ml", ml: 400 }, false, { hh: 1 }),
+        );
+    },
+  });
+  try {
+    await f.page.goto(origin + "/mobile/?path=%2Fbar%2Fn1001&c=gcpvj&drink=beer_draft&hh=1");
+    const featured = f.page.locator(".mobile-price--featured");
+    await featured.waitFor();
+    assert.equal(await featured.getAttribute("data-drink"), "beer_draft");
+    assert.equal(await featured.getAttribute("data-hh"), "1");
+    assert.equal(await featured.getAttribute("data-currency"), "GBP");
+    assert.equal(await featured.getAttribute("data-serving"), "400 ml");
+    assert.match(await featured.innerText(), /4[,.]50/);
+    await f.page.reload();
+    await featured.waitFor();
+    assert.equal(await featured.getAttribute("data-hh"), "1");
+    assert.equal(await f.page.locator('[data-testid="saved-drink-unavailable"]').count(), 0);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("missing European saved band stays unavailable instead of showing normal beer as featured", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto(origin + "/mobile/?path=%2Fbar%2Fn1001&c=gcpvj&drink=beer_draft&hh=1");
+    await f.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.match(
+      await f.page.getByTestId("saved-drink-unavailable").innerText(),
+      /Birra media.*Happy hour/,
+    );
+    assert.equal(await f.page.locator(".mobile-price--featured").count(), 0);
+    assert.equal(await f.page.locator("[data-dovebevo-share]").count(), 0);
+    assert.match(await f.page.locator(".prices").innerText(), /400 ml/);
+    assert.match(await f.page.locator(".prices").innerText(), /568 ml/);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
 async function changeCity(page, name) {
   await page.getByRole("button", { name: "Cambia città", exact: true }).click();
   await page.getByRole("button", { name: new RegExp(`^${name}`) }).click();

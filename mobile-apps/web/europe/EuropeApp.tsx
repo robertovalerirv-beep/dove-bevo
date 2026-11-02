@@ -19,7 +19,7 @@ import { sharePresentation } from "../share-presentation";
 import type * as MapModule from "@site/app/lib/maplibre-map";
 import type { VenueMap, MapView } from "@site/app/lib/maplibre-map";
 import { drinkImage } from "../drink-images";
-import { mobilePath } from "../routes";
+import { mobilePath, mobileFocus } from "../routes";
 import {
   loadCity,
   submitPrice,
@@ -69,11 +69,12 @@ const defaultServing = (drink: string): Serving | null =>
 
 export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props) {
   useLang();
+  const initialFocus = mobileFocus(location);
   const groups = useMemo(() => cities(catalog), [catalog]);
   const [city, setCity] = useState(initialCity),
     [venueKey, setVenueKey] = useState<string | null>(initialVenue?.key ?? null);
-  const [drink, setDrink] = useState("spritz"),
-    [band, setBand] = useState<0 | 1>(0),
+  const [drink, setDrink] = useState(initialFocus?.drink ?? "spritz"),
+    [band, setBand] = useState<0 | 1>(initialFocus?.hh ?? 0),
     [serveChoice, setServeChoice] = useState("");
   const [loaded, setLoaded] = useState<{ scope: string; snapshot: Snapshot } | null>(null),
     [loadError, setLoadError] = useState(false),
@@ -177,6 +178,11 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
       }
       const group = groups.find((g) => g.venues.some((v) => v.key === selected.key));
       if (group) {
+        const focus = mobileFocus(location);
+        if (focus) {
+          setDrink(focus.drink);
+          setBand(focus.hh);
+        }
         setCity(group);
         setVenueKey(selected.key);
         return;
@@ -477,10 +483,24 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
         .sort(
           (a, b) =>
             Number(b.drink === drink) - Number(a.drink === drink) ||
+            Number(b.drink === drink && b.hh === band) -
+              Number(a.drink === drink && a.hh === band) ||
             a.drink.localeCompare(b.drink) ||
             a.hh - b.hh,
         )
     : [];
+  const requested =
+    venue &&
+    mobilePath(location) === `/bar/${venue.key}` &&
+    new URLSearchParams(location.search).get("c") === venue.cell
+      ? mobileFocus(location)
+      : null;
+  const requestedUnavailable =
+    snapshot &&
+    requested &&
+    !venueRows.some(
+      (row) => row.drink === requested.drink && row.hh === requested.hh && row.status === "active",
+    );
   return (
     <div class="app europe-app" ref={root}>
       <header class="europe-top">
@@ -796,7 +816,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
       {selectedVenue && !picker && !list && (
         <Sheet title={selectedVenue.name} bare onClose={closeVenue}>
           <div class="scontrino mobile-venue europe-venue">
-            <DrinkHero drink={venueRows[0]?.drink ?? drink} />
+            <DrinkHero drink={requested?.drink ?? venueRows[0]?.drink ?? drink} />
             <div class="scontrino__paper">
               <p class="bar__kind">
                 {it.kinds[selectedVenue.kind]} · {selectedVenue.city} · {selectedVenue.country}
@@ -810,13 +830,19 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
               </p>
               <h3 class="section-title">{it.bar.prices}</h3>
               {venueRows.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
+              {requestedUnavailable && (
+                <p class="hint" role="status" data-testid="saved-drink-unavailable">
+                  {t("Prezzo del drink preferito non disponibile", "Saved drink price unavailable")}
+                  {`: ${it.drinks[requested.drink] ?? requested.drink} · ${requested.hh ? "Happy hour" : t("Normale", "Normal")}.`}
+                </p>
+              )}
               <ul class="prices">
                 {venueRows.map((row, index) => (
                   <PriceItem
                     key={row.revision}
                     row={row}
                     venue={selectedVenue}
-                    featured={index === 0}
+                    featured={index === 0 && !requestedUnavailable}
                     tier={priceTier(row, rows)}
                     busy={busy || queued}
                     onConfirm={() => {

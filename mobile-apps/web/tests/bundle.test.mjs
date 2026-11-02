@@ -6,7 +6,7 @@ import { before, after, test } from "node:test";
 import { chromium } from "@playwright/test";
 import { contrastRatio } from "./contrast.mjs";
 import { pageCsp } from "../../../src/worker/lib/security-headers.ts";
-/* global document, getComputedStyle, history */
+/* global document, getComputedStyle, history, dispatchEvent, PopStateEvent */
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const client = path.join(root, "dist/client");
@@ -33,7 +33,7 @@ const rows = [
   ["n123", "beer_draft", 0, 500, "2026-11-01", 0, 0],
   ["n456", "spritz", 1, 600, "2026-11-01", 0, 0],
 ];
-async function fixture(viewport = { width: 390, height: 844 }) {
+async function fixture(viewport = { width: 390, height: 844 }, priceRows = rows) {
   const context = await browser.newContext({
     viewport,
     serviceWorkers: "block",
@@ -101,10 +101,10 @@ async function fixture(viewport = { width: 390, height: 844 }) {
       });
     if (/^\/api\/prices\//.test(url.pathname))
       return route.fulfill({
-        json: { p: url.pathname.endsWith("u0nd9") ? rows : [], u: [], pend: [], h: [], g: [] },
+        json: { p: url.pathname.endsWith("u0nd9") ? priceRows : [], u: [], pend: [], h: [], g: [] },
       });
     if (/^\/api\/venues\/n123\/prices$/.test(url.pathname))
-      return route.fulfill({ json: { p: rows.filter((r) => r[0] === "n123"), h: [] } });
+      return route.fulfill({ json: { p: priceRows.filter((r) => r[0] === "n123"), h: [] } });
     if (/^\/assets\/mobile\/|^\/fonts\/|^\/brand\//.test(url.pathname)) {
       const file = path.resolve(client, url.pathname.slice(1));
       assert.ok(file.startsWith(client + path.sep));
@@ -126,6 +126,68 @@ async function fixture(viewport = { width: 390, height: 844 }) {
   });
   return { context, page, writes, errors, close: () => context.close() };
 }
+
+test("saved beer happy-hour route reopens the matching actual row across reload", async () => {
+  const f = await fixture(undefined, [...rows, ["n123", "beer_draft", 1, 400, "2026-11-01", 2, 0]]);
+  try {
+    await f.page.goto(
+      "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=beer_draft&hh=1",
+    );
+    const featured = f.page.locator(".mobile-price--featured");
+    await featured.waitFor();
+    assert.match(await featured.innerText(), /Birra media[\s\S]*HH[\s\S]*4,00/);
+    assert.equal(await featured.getAttribute("data-drink"), "beer_draft");
+    assert.equal(await featured.getAttribute("data-hh"), "1");
+    await f.page.reload();
+    await featured.waitFor();
+    assert.match(await featured.innerText(), /4,00/);
+    await f.page.evaluate(() => {
+      history.pushState({ inApp: true }, "", "/mobile/");
+      dispatchEvent(new PopStateEvent("popstate"));
+    });
+    const strip = f.page.locator(".mobile-drink-strip");
+    await strip.getByText("Spritz", { exact: true }).click();
+    await strip.getByText("Birra media", { exact: true }).click();
+    await f.page.goBack();
+    await featured.waitFor();
+    assert.equal(await featured.getAttribute("data-hh"), "1");
+    await f.page.screenshot({ path: path.join(output, "saved-beer-happy-hour-fixture.png") });
+    await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
+    assert.equal(
+      await strip.getByRole("checkbox", { name: "Birra media", exact: true }).isChecked(),
+      true,
+    );
+    assert.equal(
+      await strip.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
+      false,
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("missing saved happy-hour price is explicit and never promotes normal price", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto(
+      "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=beer_draft&hh=1",
+    );
+    await f.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.match(
+      await f.page.getByTestId("saved-drink-unavailable").innerText(),
+      /Birra media.*Happy hour/,
+    );
+    assert.equal(await f.page.locator(".mobile-price--featured").count(), 0);
+    assert.equal(await f.page.locator("[data-dovebevo-share]").count(), 0);
+    assert.match(await f.page.locator(".prices").innerText(), /5,00/);
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
 
 test("production mobile entry renders chips and preserves venue route across reload and close", async () => {
   const f = await fixture();

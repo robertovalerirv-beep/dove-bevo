@@ -34,7 +34,7 @@ public class PriceShareRuntimeTest {
       <section data-dovebevo-share="1" data-version="1" data-venue="n123" data-venue-name="Locale reale" data-drink="spritz" data-drink-name="Spritz" data-hh="0" data-amount-minor="1300" data-currency="GBP" data-serving="drink" data-provenance="Dal menu online · verificato il 02/11/2026 · Aperol Spritz" data-confirmations="0" data-tier="neutro" data-location="London">£13.00</section></div></article></div></dialog><script>document.querySelector('dialog').showModal()</script></body></html>
       """;
     @Before public void setUp(){rules=instrumentation.getTargetContext().getSharedPreferences("dovebevo_rules",0);hadPrevious=rules.contains("accepted_rules_version");previous=rules.getString("accepted_rules_version",null);assertTrue(rules.edit().remove("accepted_rules_version").commit());activity=(MainActivity)instrumentation.startActivitySync(new Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK));}
-    @After public void tearDown(){onMain(()->{if(web!=null)web.destroy();activity.finish();});SharedPreferences.Editor edit=rules.edit();if(hadPrevious)edit.putString("accepted_rules_version",previous);else edit.remove("accepted_rules_version");assertTrue(edit.commit());}
+    @After public void tearDown(){onMain(()->{setField("website",null);if(web!=null)web.destroy();activity.finish();});SharedPreferences.Editor edit=rules.edit();if(hadPrevious)edit.putString("accepted_rules_version",previous);else edit.remove("accepted_rules_version");assertTrue(edit.commit());}
     @Test public void actualVisibleDomBindsVenueAndHiddenOrWrongHeadingFallsBack()throws Exception {
         load();String raw=evaluate(PriceShareSnapshot.SCRIPT);PriceShareSnapshot snapshot=PriceShareSnapshot.decode(raw,URL,URL,1,1);assertNotNull(raw,snapshot);assertEquals("£13.00",snapshot.amountLabel());
         evaluate("document.querySelector('h2').textContent='Other venue'");assertEquals("null",evaluate(PriceShareSnapshot.SCRIPT));
@@ -89,10 +89,15 @@ public class PriceShareRuntimeTest {
         load();String valid=evaluate(PriceShareSnapshot.SCRIPT);HoldingWebView held=(HoldingWebView)web;java.util.concurrent.atomic.AtomicInteger choosers=new java.util.concurrent.atomic.AtomicInteger();
         Instrumentation.ActivityMonitor monitor=new Instrumentation.ActivityMonitor(){@Override public Instrumentation.ActivityResult onStartActivity(Intent intent){if(!Intent.ACTION_CHOOSER.equals(intent.getAction()))return null;choosers.incrementAndGet();return new Instrumentation.ActivityResult(android.app.Activity.RESULT_CANCELED,null);}};
         instrumentation.addMonitor(monitor);
-        onMain(()->{setField("website",web);setField("hasUsablePage",true);setField("testLabPolicy",TestLabPolicy.detect(()->null));held.holdShare=true;});
         try{
+        onMain(()->{
+            assertNotNull("The actual owned document must first pass the fixed reader",PriceShareSnapshot.decode(valid,URL,URL,1,1));
+            // This WebView uses an owned navigation delegate, so bind the corresponding completed-document state explicitly.
+            setField("website",web);setField("hasUsablePage",true);setField("failed",false);setField("loading",false);setField("awaitingDocumentStart",false);setField("documentHasHttpError",false);setField("stoppedUrl",null);setField("testLabPolicy",TestLabPolicy.detect(()->null));held.holdShare=true;
+            assertTrue("Owned Activity must actually be resumed",(Boolean)getField("foreground"));assertNotNull("Ready owned venue: url="+web.getUrl()+", destroyed="+getField("destroyed")+", favorites="+getField("favoritesVisible")+", discovery="+getField("discoveryVisible"),invoke("eligibleSavedVenue"));
+        });
             for(String method:new String[]{"showInformation","showPrivacy","showLocationHelp"})onMain(()->{
-                invoke("share");assertNotNull("Actual share read must be held",held.pending.get());long generation=(Long)getField("shareCapture");
+                invoke("share");assertNotNull("Actual share read must be held before "+method,held.pending.get());long generation=(Long)getField("shareCapture");
                 if(method.equals("showInformation")){try{java.lang.reflect.Method factory=MainActivity.class.getDeclaredMethod("createBrowserMenu",android.view.View.class);factory.setAccessible(true);android.widget.PopupMenu menu=(android.widget.PopupMenu)factory.invoke(activity,new android.view.View(activity));assertTrue(menu.getMenu().performIdentifierAction(R.id.information,0));}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
                 else invoke(method);
                 assertTrue("Native panel retires pending share",(Long)getField("shareCapture")>generation);held.pending.getAndSet(null).onReceiveValue(valid);assertNull(getField("shareDialog"));
@@ -107,7 +112,7 @@ public class PriceShareRuntimeTest {
     }
     private Object getField(String name){try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField(name);field.setAccessible(true);return field.get(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
     private void setField(String name,Object value){try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField(name);field.setAccessible(true);field.set(activity,value);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
-    private void invoke(String name){try{java.lang.reflect.Method method=MainActivity.class.getDeclaredMethod(name);method.setAccessible(true);method.invoke(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+    private Object invoke(String name){try{java.lang.reflect.Method method=MainActivity.class.getDeclaredMethod(name);method.setAccessible(true);return method.invoke(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
     private static final class HoldingWebView extends WebView {
         boolean holdShare;final AtomicReference<android.webkit.ValueCallback<String>> pending=new AtomicReference<>();
         HoldingWebView(android.content.Context context){super(context);}
@@ -115,7 +120,7 @@ public class PriceShareRuntimeTest {
     }
     private android.view.View findAction(android.view.View view,String label){if(label.contentEquals(view.getContentDescription()==null?"":view.getContentDescription()))return view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.view.View found=findAction(group.getChildAt(i),label);if(found!=null)return found;}}return null;}
     private String allText(android.view.View view){StringBuilder text=new StringBuilder();if(view instanceof android.widget.TextView)text.append(((android.widget.TextView)view).getText());if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++)text.append(' ').append(allText(group.getChildAt(i)));}return text.toString();}
-    private void load()throws Exception{CountDownLatch loaded=new CountDownLatch(1);onMain(()->{web=new HoldingWebView(activity);web.getSettings().setJavaScriptEnabled(true);web.getSettings().setBlockNetworkLoads(true);web.setWebViewClient(new WebViewClient(){@Override public void onPageFinished(WebView view,String url){loaded.countDown();}});activity.setContentView(web);web.loadDataWithBaseURL(URL,HTML,"text/html","UTF-8",null);});assertTrue("Owned DOM load deadline",loaded.await(5,TimeUnit.SECONDS));}
+    private void load()throws Exception{CountDownLatch loaded=new CountDownLatch(1);onMain(()->{web=new HoldingWebView(activity);web.getSettings().setJavaScriptEnabled(true);web.getSettings().setBlockNetworkLoads(true);web.setWebViewClient(new WebViewClient(){@Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view,android.webkit.WebResourceRequest request){String body=URL.equals(request.getUrl().toString())?HTML:"";return new android.webkit.WebResourceResponse("text/html","UTF-8",new java.io.ByteArrayInputStream(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}@Override public void onPageFinished(WebView view,String url){if(URL.equals(url))loaded.countDown();}});activity.setContentView(web);web.loadUrl(URL);});assertTrue("Owned DOM load deadline",loaded.await(5,TimeUnit.SECONDS));}
     private String evaluate(String script)throws Exception{CountDownLatch done=new CountDownLatch(1);AtomicReference<String> result=new AtomicReference<>();onMain(()->web.evaluateJavascript(script,value->{result.set(value);done.countDown();}));assertTrue("Owned DOM callback deadline",done.await(5,TimeUnit.SECONDS));return result.get();}
     private void onMain(Runnable action){instrumentation.runOnMainSync(action);instrumentation.waitForIdleSync();}
 }

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { CATALOG, findDrink } from "../../shared/catalog";
 import { CELL_PATTERN } from "../../shared/venue";
-import { getMobileRecommendations, setMobileRecommendation } from "../lib/db";
+import { getMobileRecommendations, isHidden, setMobileRecommendation } from "../lib/db";
 import { ApiError } from "../lib/errors";
 import { readJson } from "../lib/guards";
 import {
@@ -14,6 +14,7 @@ import { clientIp } from "../lib/quota";
 import { publicVenueName } from "../lib/venues";
 import type { AppEnv } from "../types";
 import { VenueKey } from "./venues";
+import { resolveMobileVenue } from "./mobile-price-catalog";
 
 const Voter = z
   .string()
@@ -26,6 +27,21 @@ const Choice = z.strictObject({
     .refine((drink) => findDrink(drink) !== undefined),
   recommended: z.boolean(),
 });
+
+/** Keep legacy/user venues independent of the app catalogue; only OSM misses fall back. */
+async function recommendationVenueName(
+  env: Env,
+  key: string,
+  cell: string,
+): Promise<string | null> {
+  const legacyName = await publicVenueName(env, key, cell);
+  if (legacyName !== null || key.startsWith("u")) return legacyName;
+  // A legacy hide is authoritative even if its stored cell differs. The fallback
+  // must never resurrect it through the separately curated app catalogue.
+  if (await isHidden(env.DB, key)) return null;
+  const { venue } = await resolveMobileVenue(env, key, cell);
+  return venue.name;
+}
 
 export const mobileRecommendations = new Hono<AppEnv>();
 
@@ -44,7 +60,8 @@ mobileRecommendations.on(["GET", "POST"], "/:key/recommendations", async (c) => 
   if ((header !== undefined || c.req.method === "POST") && !parsed.success) {
     throw new ApiError("bad_request");
   }
-  if ((await publicVenueName(c.env, key.data, cell.data)) === null) throw new ApiError("not_found");
+  if ((await recommendationVenueName(c.env, key.data, cell.data)) === null)
+    throw new ApiError("not_found");
 
   const voter = parsed.success ? parsed.data : null;
   const claims = voter === null ? [] : await recommendationClaims(c.env, voter, key.data);

@@ -37,7 +37,8 @@ export function mobileURL(path: string, origin = location.origin): string {
   } else if (value.searchParams.has("at")) {
     params.set("at", value.searchParams.get("at") ?? "");
   }
-  return ENTRY + (params.size ? `?${params}` : "");
+  const query = params.toString();
+  return ENTRY + (query ? `?${query}` : "");
 }
 
 export function mobileDefaultDrink(websiteDefault: string): string {

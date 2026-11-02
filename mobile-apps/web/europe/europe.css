@@ -1,0 +1,333 @@
+.europe-app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+  background: #fff;
+  color: #101820;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.europe-top {
+  flex: none;
+  padding: 5px 12px 9px;
+  background: #fff;
+  border-bottom: 1px solid #e7eaed;
+  z-index: 2;
+}
+.europe-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+}
+.europe-search {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 4px;
+  border: 0;
+  background: #fff;
+  color: #101820;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.europe-search .icon {
+  flex: none;
+  width: 23px;
+  height: 23px;
+}
+.europe-currency {
+  display: inline-block;
+  margin: 0;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #f0f3f5;
+  color: #35424d;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.europe-drinks {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 3px 0;
+  scrollbar-width: none;
+}
+.europe-drinks button {
+  flex: none;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 24px;
+  background: #f2f3f4;
+  color: #101820;
+  font-size: 14px;
+  font-weight: 600;
+}
+.europe-drinks button.selected {
+  background: #101820;
+  color: #fff;
+}
+.europe-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.europe-filter-row label:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.europe-filter-row select {
+  max-width: 100%;
+  min-height: 48px;
+  padding: 4px 6px;
+  border: 1px solid #d7dde2;
+  border-radius: 9px;
+  background: #fff;
+  color: #101820;
+  font-size: 16px;
+}
+.europe-band {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  font-size: 13px;
+}
+.europe-band input {
+  width: 22px;
+  height: 22px;
+  accent-color: #101820;
+}
+.europe-map {
+  position: relative;
+  flex: 1;
+  min-height: 160px;
+  overflow: hidden;
+  background: #f3f5f3;
+}
+.europe-map .map__canvas {
+  position: absolute;
+  inset: 0;
+}
+.europe-locate {
+  position: absolute;
+  z-index: 3;
+  right: 14px;
+  bottom: 140px;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #e0e5e9;
+  border-radius: 50%;
+  background: #fff;
+  color: #243747;
+  box-shadow: 0 2px 8px #10182020;
+}
+.europe-coverage {
+  position: absolute;
+  z-index: 2;
+  left: 12px;
+  right: 12px;
+  bottom: 26px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid #e2e6e9;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 7px #10182010;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.europe-map .map__attribution {
+  position: absolute;
+  z-index: 2;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 100%;
+  padding: 2px 4px;
+  background: #ffffffed;
+  font-size: 10px;
+  text-align: right;
+}
+.europe-map-error {
+  position: absolute;
+  z-index: 4;
+  top: 70px;
+  left: 12px;
+  right: 12px;
+  padding: 14px;
+  border: 1px solid #d4dbe0;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+}
+.europe-bottom {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 8px 12px;
+  gap: 8px;
+  border-top: 1px solid #e7eaed;
+  background: #fff;
+}
+.europe-bottom .btn {
+  min-height: 48px;
+  width: 100%;
+  border-radius: 11px;
+  font-size: 14px;
+  line-height: 1.3;
+}
+.europe-notice-layer {
+  position: fixed;
+  z-index: 20;
+  left: 12px;
+  right: 12px;
+  bottom: max(78px, calc(env(safe-area-inset-bottom) + 62px));
+  pointer-events: none;
+  max-height: 45dvh;
+  overflow-y: auto;
+}
+.europe-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+  z-index: 10;
+  margin: 0;
+  pointer-events: auto;
+  padding: 12px;
+  border: 1px solid #d6e1e8;
+  border-radius: 12px;
+  background: #edf5fa;
+  color: #182c3a;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.europe-notice .btn {
+  flex: none;
+  min-height: 48px;
+  min-width: 64px;
+  padding: 6px 9px;
+  background: #fff;
+}
+.europe-serving {
+  display: block;
+  color: #5d6670;
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 3px;
+}
+.europe-venue .price__meta a {
+  color: #315c72;
+  text-underline-offset: 3px;
+}
+.europe-venue .price__meta {
+  overflow-wrap: anywhere;
+}
+.europe-venue .price__value {
+  font-size: 18px;
+}
+.europe-venue .mobile-price--featured .price__value {
+  font-size: 27px;
+}
+.europe-venue .price__actions [disabled] {
+  opacity: 0.6;
+}
+.europe-price-form .europe-field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 12px 0;
+  color: #101820;
+  font-size: 14px;
+  font-weight: 600;
+}
+.europe-price-form .field {
+  width: 100%;
+  min-height: 48px;
+  font-size: 16px;
+}
+.europe-price-form .europe-currency {
+  white-space: normal;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.europe-report {
+  font-size: 16px;
+  line-height: 1.4;
+}
+.europe-report fieldset {
+  padding: 8px 0;
+  border: 0;
+}
+.europe-radio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 6px 0;
+}
+.europe-radio input {
+  width: 22px;
+  height: 22px;
+  accent-color: #101820;
+}
+.europe-report .btn {
+  min-height: 48px;
+  width: 100%;
+  border-radius: 11px;
+}
+.europe-unavailable {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  height: 100dvh;
+  text-align: center;
+}
+.europe-unavailable h1 {
+  font-size: 25px;
+  margin: 0;
+}
+.europe-unavailable p {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.europe-unavailable .btn {
+  min-height: 48px;
+}
+@media (max-width: 359px) {
+  .europe-filter-row {
+    align-items: flex-start;
+  }
+  .europe-filter-row label:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .europe-currency {
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+  .europe-price-form .mobile-price-form__art img {
+    height: 110px;
+  }
+}

@@ -3,7 +3,7 @@ import "@site/app/styles/base.css";
 import "@site/app/styles/app.css";
 import "./shell.css";
 import "./components/sheets.css";
-import { App } from "@site/app/app";
+import { AppHost } from "./AppHost";
 import { installTrustedTypes } from "@site/app/lib/trusted-types";
 import type * as MapModule from "@site/app/lib/maplibre-map";
 
@@ -15,4 +15,4 @@ document.documentElement.dataset.dovebevoMobileShell = "1";
 let map: Promise<typeof MapModule> | null = null;
 const loadMap = () => (map ??= import("@site/app/lib/maplibre-map"));
 const root = document.getElementById("app");
-if (root) render(<App loadMap={loadMap} />, root);
+if (root) render(<AppHost loadMap={loadMap} />, root);

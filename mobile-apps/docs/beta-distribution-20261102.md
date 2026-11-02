@@ -88,10 +88,24 @@ reviewed audit after upload; do not substitute build 52 or another build.
 The audit produces canonical UTF-8 JSON with LF newlines and a final newline. The
 plan identifies the exact app, build ID, build number, version, two group IDs,
 their names and types, and `submit_beta_review_if_needed: true`. The receipt
-contains SHA-256 of these exact bytes. A future apply workflow must be a separate
-reviewed change with its own exact trigger and fixed plan hash. This initial
-workflow cannot apply a plan. Do not add a generic input accepting arbitrary
-app IDs, group IDs or unreviewed hashes.
+contains SHA-256 of these exact bytes. The audit workflow cannot apply a plan.
+The separate apply workflow has its own exact trigger and fixed plan hash; do not
+add a generic input accepting arbitrary app IDs, group IDs or unreviewed hashes.
+
+The successful read-only audit
+[41374144641](https://github.com/robertovalerirv-beep/dove-bevo/actions/runs/41374144641)
+at `2026-11-02T01:45:47.341Z` verified `VALID`, nonexpired build 62, both exact
+existing groups, no existing beta review submission and no mutations. The
+reviewed canonical plan is
+[`mobile-apps/data/beta-distribution-20261102.json`](../data/beta-distribution-20261102.json),
+SHA-256 `8faec4021b7bf33775780ac1a7e62efd4059d4d57468fe740084a8c6e0d129c9`.
+The separate apply workflow accepts only
+`mobile-beta-distribution-apply/20261102-v1`, uses that exact plan and literal hash,
+and serializes build-62 operations without cancelling a running operation. It
+validates the plan and offline tests before the step receiving credentials. Its
+18-minute job limit accommodates the bounded 48 requests of at most 20 seconds
+each. Independent review precedes publishing that immutable apply tag; source
+preparation does not establish that distribution happened.
 
 For an authorized operator environment, the guarded CLI is:
 

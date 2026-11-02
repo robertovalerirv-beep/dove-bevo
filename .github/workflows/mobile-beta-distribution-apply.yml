@@ -1,0 +1,52 @@
+name: Apply reviewed Dove Bevo build 62 TestFlight plan
+
+on:
+  push:
+    tags:
+      - "mobile-beta-distribution-apply/20261102-v1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dove-bevo-testflight-build-62
+  cancel-in-progress: false
+
+jobs:
+  apply-reviewed-beta:
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/tags/mobile-beta-distribution-apply/20261102-v1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify exact-build and no-retry boundaries offline
+        run: node --test scripts/tests/mobile-store-status.test.mjs scripts/tests/mobile-beta-distribution.test.mjs
+      - name: Verify reviewed canonical plan without release credentials
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          import { validatePlan } from './scripts/mobile-beta-distribution.mjs';
+          validatePlan(await readFile('mobile-apps/data/beta-distribution-20261102.json'), '8faec4021b7bf33775780ac1a7e62efd4059d4d57468fe740084a8c6e0d129c9');
+          NODE
+      - name: Apply only the reviewed build links and beta review submission
+        run: >-
+          node scripts/mobile-beta-distribution.mjs "$OUTPUT_PATH" --apply
+          --plan mobile-apps/data/beta-distribution-20261102.json
+          --approved-plan-sha 8faec4021b7bf33775780ac1a7e62efd4059d4d57468fe740084a8c6e0d129c9
+        env:
+          OUTPUT_PATH: ${{ runner.temp }}/dove-bevo-beta-62-apply.json
+          DOVEBEVO_ASC_PRIVATE_KEY: ${{ secrets.DOVEBEVO_ASC_PRIVATE_KEY }}
+          DOVEBEVO_ASC_KEY_ID: ${{ secrets.DOVEBEVO_ASC_KEY_ID }}
+          DOVEBEVO_ASC_ISSUER_ID: ${{ secrets.DOVEBEVO_ASC_ISSUER_ID }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-beta-62-apply
+          path: ${{ runner.temp }}/dove-bevo-beta-62-apply.json
+          if-no-files-found: warn
+          retention-days: 14

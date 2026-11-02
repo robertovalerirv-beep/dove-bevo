@@ -873,3 +873,53 @@ test("initial workflow is one exact read-only tag with no apply or public-releas
   for (const [, action] of workflow.matchAll(/uses:\s*(\S+)/g))
     assert.match(action, /@[a-f0-9]{40}$/);
 });
+
+test("separate apply workflow pins the audited canonical bytes and exact existing identities", async () => {
+  const reviewedSha = "8faec4021b7bf33775780ac1a7e62efd4059d4d57468fe740084a8c6e0d129c9";
+  const bytes = await readFile(
+    new URL("../../mobile-apps/data/beta-distribution-20261102.json", import.meta.url),
+  );
+  assert.equal(sha256(bytes), reviewedSha);
+  assert.equal(bytes.includes(13), false);
+  const plan = validatePlan(bytes, reviewedSha);
+  assert.equal(plan.app_id, "6827324444");
+  assert.equal(plan.build_id, "ff8ec5ad-3325-4f0e-b0d0-74e66d5a63cf");
+  assert.equal(plan.build_number, "62");
+  assert.equal(plan.version, "1.0.0");
+  assert.deepEqual(plan.groups, [
+    {
+      id: "c8a85ec6-997c-4a9c-b241-7a1efbf756eb",
+      name: "Dove Bevo owner testing",
+      is_internal_group: true,
+    },
+    {
+      id: "31303001-c08a-4696-a87b-447304705279",
+      name: "Roberto feedback",
+      is_internal_group: false,
+    },
+  ]);
+  const workflow = await readFile(
+    new URL("../../.github/workflows/mobile-beta-distribution-apply.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(workflow, /github\.repository == 'robertovalerirv-beep\/dove-bevo'/);
+  assert.match(workflow, /github\.event_name == 'push'/);
+  assert.match(
+    workflow,
+    /github\.ref == 'refs\/tags\/mobile-beta-distribution-apply\/20261102-v1'/,
+  );
+  assert.match(workflow, /contents: read/);
+  assert.match(workflow, /persist-credentials: false/);
+  assert.match(workflow, /cancel-in-progress: false/);
+  assert.match(workflow, /--plan mobile-apps\/data\/beta-distribution-20261102.json/);
+  assert.ok(workflow.includes("--approved-plan-sha " + reviewedSha));
+  assert.equal([...workflow.matchAll(/--apply/g)].length, 1);
+  assert.ok(
+    !/workflow_dispatch|inputs:|pull_request|environment:|contents: write|latest/.test(workflow),
+  );
+  const beforeSteps = workflow.slice(0, workflow.indexOf("    steps:"));
+  assert.ok(!beforeSteps.includes("runner.temp"));
+  assert.ok(!beforeSteps.includes("secrets."));
+  for (const [, action] of workflow.matchAll(/uses:\s*(\S+)/g))
+    assert.match(action, /@[a-f0-9]{40}$/);
+});

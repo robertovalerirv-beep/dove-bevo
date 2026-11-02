@@ -33,7 +33,7 @@ public final class DiscoveryRuntimeTest {
     }
     @After public void tearDown(){onMain(()->{if(screen!=null)screen.close();activity.finish();});SharedPreferences.Editor edit=rules.edit();if(hadPrevious)edit.putString("accepted_rules_version",previous);else edit.remove("accepted_rules_version");assertTrue(edit.commit());}
     @Test public void actualPricesSortAndFiltersKeepDateContextWithoutAnyBookmarkFile()throws Exception {
-        show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();assertEquals(20,requests.get());
+        show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();assertEquals(20,requests.get());ReferenceCapture.save("discovery-owned-fixture.png");
         onMain(()->{assertEquals(2,rows().getChildCount());assertTrue(text(rows().getChildAt(0)).contains("Locale due"));assertTrue(text(rows().getChildAt(0)).contains("6,00"));assertTrue(text(rows().getChildAt(0)).contains("oltre 90"));assertTrue(text(rows().getChildAt(0)).contains("dal centro della Mappa"));assertTrue(text(rows().getChildAt(1)).contains("2 conferme"));assertFalse(text(rows()).contains("Affare"));
             ((Spinner)activity.findViewById(R.id.discovery_band)).setSelection(1);});
         onMain(()->{assertEquals(1,rows().getChildCount());assertTrue(text(rows().getChildAt(0)).contains("5,00"));assertTrue(text(rows().getChildAt(0)).contains("27/10/2026"));rows().getChildAt(0).findViewById(R.id.discovery_open).performClick();});
@@ -42,7 +42,7 @@ public final class DiscoveryRuntimeTest {
         onMain(()->{assertEquals(0,rows().getChildCount());assertTrue(status().contains("Nessun prezzo"));assertFalse(status().contains("0,00"));});
     }
     @Test public void unreadyAndUnavailableAreExplicitAndBackgroundCannotRefresh()throws Exception {
-        show(true,null);onMain(()->{assertTrue(status().contains("Apri una cittÃ "));assertFalse(activity.findViewById(R.id.discovery_refresh).isEnabled());});assertEquals(0,requests.get());
+        show(true,null);onMain(()->{assertTrue(status().contains("Apri una città"));assertFalse(activity.findViewById(R.id.discovery_refresh).isEnabled());});assertEquals(0,requests.get());
         onMain(()->{try{screen.show(new DiscoveryArea(45.4642,9.19,14));}catch(IOException impossible){throw new AssertionError(impossible);}});awaitLoaded();
         onMain(()->{assertTrue(status().contains("non verificabili"));assertEquals(0,rows().getChildCount());active.set(false);screen.pause();screen.refresh();});
         int count=requests.get();onMain(()->screen.refresh());assertEquals(count,requests.get());

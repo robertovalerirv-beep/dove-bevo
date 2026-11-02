@@ -49,4 +49,5 @@
     <item name="discovery_choose_area" type="id" />
     <item name="discovery_rows" type="id" />
     <item name="discovery_open" type="id" />
+    <item name="information" type="id" />
 </resources>

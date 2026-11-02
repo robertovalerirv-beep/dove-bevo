@@ -21,7 +21,7 @@ final class DrinkArtwork extends View {
     private final RecommendationDrink drink;
     DrinkArtwork(Context context, RecommendationDrink drink) {
         super(context); this.drink = drink;
-        setContentDescription("Illustrazione di " + NativePricePresentation.category(drink) + "; non ÃƒÂ¨ una foto del locale");
+        setContentDescription("Illustrazione di " + NativePricePresentation.category(drink) + "; non è una foto del locale");
         String name = filename(drink);
         Bitmap cached = CACHE.containsKey(name) ? CACHE.get(name).get() : null;
         if (cached == null) {
@@ -29,17 +29,18 @@ final class DrinkArtwork extends View {
                 BitmapFactory.Options options = new BitmapFactory.Options(); options.inSampleSize = 2;
                 cached = BitmapFactory.decodeStream(in, null, options);
                 if (cached != null) CACHE.put(name, new SoftReference<>(cached));
-            } catch (IOException absent) { /* Accessible local illustration until an asset is bundled. */ }
+            } catch (IOException absent) { /* Missing artwork stays neutral; never fabricate a venue photograph. */ }
         }
         photo = cached;
+        if(photo==null)setContentDescription("Illustrazione del drink non disponibile");
     }
     static String filename(RecommendationDrink drink) {
         return switch (drink) {
-            case BEER_DRAFT -> "beer-scene.png";
-            case SPRITZ -> "spritz-scene.png";
-            case GIN_TONIC, GIN_LEMON -> "gin-tonic-scene.png";
-            case WINE_GLASS -> "wine-scene.png";
-            default -> drink.code.replace('_', '-') + "-scene.png";
+            case BEER_DRAFT -> "beer-scene.jpg";
+            case SPRITZ -> "spritz-scene.jpg";
+            case GIN_TONIC, GIN_LEMON -> "gin-tonic-scene.jpg";
+            case WINE_GLASS -> "wine-scene.jpg";
+            default -> drink.code.replace('_', '-') + "-scene.jpg";
         };
     }
     @Override protected void onDraw(Canvas canvas) {
@@ -54,12 +55,6 @@ final class DrinkArtwork extends View {
             canvas.drawBitmap(photo, null, new RectF((w-dw)/2, (h-dh)/2, (w+dw)/2, (h+dh)/2), paint);
         } else {
             canvas.drawColor(Color.rgb(255, 240, 221));
-            paint.setColor(drink == RecommendationDrink.WATER ? 0xff8bc5d5 : 0xffef8d32);
-            canvas.drawRoundRect(new RectF(w*.33f,h*.2f,w*.67f,h*.72f), w*.07f,w*.07f,paint);
-            paint.setColor(0xfffdfaf5); paint.setStrokeWidth(Math.max(2,w*.025f));
-            canvas.drawLine(w*.4f,h*.29f,w*.4f,h*.55f,paint);
-            paint.setColor(0xff493b2b); canvas.drawRect(w*.48f,h*.72f,w*.52f,h*.85f,paint);
-            canvas.drawRoundRect(new RectF(w*.36f,h*.84f,w*.64f,h*.88f),3,3,paint);
         }
         canvas.restore();
     }

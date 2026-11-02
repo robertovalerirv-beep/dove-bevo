@@ -96,6 +96,8 @@ public final class MainActivity extends ComponentActivity {
     private ConnectivityManager connectivity;
     private ConnectivityManager.NetworkCallback networkCallback;
     private AlertDialog privacyDialog;
+    private AlertDialog shareDialog, informationDialog;
+    private long shareCapture;
     private TestLabPolicy testLabPolicy;
     private String mobileThemeScript;
 
@@ -636,7 +638,26 @@ public final class MainActivity extends ComponentActivity {
         try { startActivity(intent); }
         catch (ActivityNotFoundException | SecurityException error) { toast(R.string.external_unavailable); }
     }
+    private boolean canSharePrice(WebView source,String captured,long epoch,long request) {
+        return foreground&&!destroyed&&testLabPolicy.allowsExternalActions()&&source==website&&!nativeDestinationVisible()&&epoch==venueCaptureEpoch&&request==shareCapture
+            &&!failed&&!loading&&!awaitingDocumentStart&&hasUsablePage&&!documentHasHttpError&&captured.equals(source.getUrl());
+    }
     private void share() {
+        if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
+        if(website==null||!foreground||destroyed||nativeDestinationVisible())return;
+        WebView source=website;String captured=source.getUrl();long epoch=venueCaptureEpoch,request=++shareCapture;
+        if(eligibleSavedVenue()==null||!MobileEntry.isDocument(captured)){shareUrl();return;}
+        final boolean[] finished={false};
+        source.postDelayed(()->{if(!finished[0]&&canSharePrice(source,captured,epoch,request)){finished[0]=true;shareUrl();}},5000);
+        try{source.evaluateJavascript(PriceShareSnapshot.SCRIPT,result->{
+            if(finished[0]||!canSharePrice(source,captured,epoch,request))return;finished[0]=true;
+            PriceShareSnapshot snapshot=PriceShareSnapshot.decode(result,captured,source.getUrl(),epoch,venueCaptureEpoch);
+            if(snapshot==null){shareUrl();return;}
+            if(shareDialog!=null)shareDialog.dismiss();
+            shareDialog=PriceShareUi.show(this,snapshot,()->canSharePrice(source,captured,epoch,request));
+        });}catch(RuntimeException unavailable){if(!finished[0]&&canSharePrice(source,captured,epoch,request)){finished[0]=true;shareUrl();}}
+    }
+    private void shareUrl() {
         if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
         String url = BrowserPolicy.shareUrl(website == null ? null : website.getUrl());
         Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url)
@@ -657,6 +678,7 @@ public final class MainActivity extends ComponentActivity {
         menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, loading?R.string.stop_loading:R.string.refresh).setEnabled(mapActive);
         menu.getMenu().add(Menu.NONE, R.id.forward, Menu.NONE, R.string.forward)
                 .setEnabled(mapActive && website.canGoForward());
+        menu.getMenu().add(Menu.NONE, R.id.information, Menu.NONE, "Informazioni");
         menu.getMenu().add(Menu.NONE, R.id.location_help, Menu.NONE, R.string.location_help);
         menu.getMenu().add(Menu.NONE, R.id.privacy, Menu.NONE, R.string.privacy);
         menu.getMenu().add(Menu.NONE, R.id.support, Menu.NONE, R.string.support);
@@ -673,6 +695,7 @@ public final class MainActivity extends ComponentActivity {
             if (item.getItemId() == R.id.forward) {
                 if(!nativeDestinationVisible()&&website!=null)goForward();return true;
             }
+            if (item.getItemId() == R.id.information) { showInformation(); return true; }
             if (item.getItemId() == R.id.location_help) { showLocationHelp(); return true; }
             if (item.getItemId() == R.id.privacy) { showPrivacy(); return true; }
             if (item.getItemId() == R.id.support) { openExternal("mailto:dovebevo@gmail.com"); return true; }
@@ -681,6 +704,28 @@ public final class MainActivity extends ComponentActivity {
         return menu;
     }
 
+    private void showInformation() {
+        if(!foreground||destroyed)return;
+        if(informationDialog!=null)informationDialog.dismiss();
+        LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(16),dp(8),dp(16),dp(16));
+        java.util.function.BiConsumer<String,Runnable> row=(label,action)->{Button button=new Button(this);button.setText(label+"  ›");NativeAppearance.button(button,false);button.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);button.setOnClickListener(v->{if(foreground&&!destroyed){informationDialog.dismiss();action.run();}});body.addView(button,new LinearLayout.LayoutParams(-1,-2));};
+        row.accept("Cambia città / zona",this::showMap);
+        row.accept("Come funziona",()->{informationDialog=new AlertDialog.Builder(this).setTitle("Come funziona").setMessage("Cerca una città sulla Mappa, scegli un drink e confronta i prezzi. Home apre Scopri per la zona della Mappa. Preferiti resta sul tuo dispositivo. Le fonti del menu e le segnalazioni sono indicate nei dettagli disponibili.").setPositiveButton(R.string.close,null).create();informationDialog.show();});
+        row.accept("Linee guida della community",()->showBundledRules());
+        row.accept(getString(R.string.privacy),this::showPrivacy);
+        row.accept("Contatti",()->openExternal("mailto:dovebevo@gmail.com"));
+        String installedVersion;try{installedVersion=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(android.content.pm.PackageManager.NameNotFoundException missing){installedVersion="non disponibile";}
+        TextView version=new TextView(this);version.setText("Versione app  "+installedVersion);version.setTextSize(14);version.setPadding(dp(12),dp(16),dp(12),dp(16));body.addView(version);
+        try(java.io.InputStream input=getAssets().open("reference-drinks/community-cheers.jpg")){android.widget.ImageView art=new android.widget.ImageView(this);art.setImageBitmap(android.graphics.BitmapFactory.decodeStream(input));art.setAdjustViewBounds(true);art.setContentDescription("Illustrazione della community Dove Bevo");body.addView(art,new LinearLayout.LayoutParams(-1,dp(150)));}catch(IOException missing){/* Optional illustration, never a venue photo. */}
+        TextView motto=new TextView(this);motto.setText("Stessi posti. Più trasparenza.");motto.setTextSize(20);NativeAppearance.title(motto);motto.setPadding(dp(12),dp(12),dp(12),0);body.addView(motto);
+        ScrollView scroll=new ScrollView(this);scroll.addView(body);
+        informationDialog=new AlertDialog.Builder(this).setTitle("Informazioni").setView(scroll).setPositiveButton(R.string.close,null).create();informationDialog.show();NativeAppearance.button(informationDialog.getButton(AlertDialog.BUTTON_POSITIVE),false);
+    }
+    private void showBundledRules() {
+        String rules;try(java.io.InputStream input=getAssets().open("terms.md")){rules=PrivacyDocument.read(input);}catch(IOException unavailable){rules=getString(R.string.rules_unavailable);}
+        TextView text=new TextView(this);text.setText(rules);text.setTextSize(16);text.setPadding(dp(20),dp(12),dp(20),dp(20));text.setTextIsSelectable(true);ScrollView scroll=new ScrollView(this);scroll.addView(text);
+        informationDialog=new AlertDialog.Builder(this).setTitle("Linee guida della community").setView(scroll).setPositiveButton(R.string.close,null).create();informationDialog.show();
+    }
     private void showLocationHelp() {
         if (destroyed) return;
         cancelLocation();
@@ -977,6 +1022,7 @@ public final class MainActivity extends ComponentActivity {
         resolveLocationResult();
     }
     @Override protected void onPause() {
+        shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}if(informationDialog!=null){informationDialog.dismiss();informationDialog=null;}
         discoveryCapture++;
         venueCaptureEpoch++;
         foreground = false;
@@ -1014,6 +1060,7 @@ public final class MainActivity extends ComponentActivity {
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
+        shareCapture++;if(shareDialog!=null)shareDialog.dismiss();if(informationDialog!=null)informationDialog.dismiss();
         discoveryCapture++;
         venueCaptureEpoch++;
         destroyed = true;

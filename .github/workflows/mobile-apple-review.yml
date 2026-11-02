@@ -1,0 +1,38 @@
+name: Audit Apple App Review preparation
+
+on:
+  push:
+    tags:
+      - "mobile-apple-review-audit/20261102-v1"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/tags/mobile-apple-review-audit/20261102-v1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify fixed identities, exact notes and no-write guards
+        run: node --test scripts/tests/mobile-store-status.test.mjs scripts/tests/mobile-apple-review.test.mjs
+      - name: Audit the fixed version and its review attachments
+        run: node scripts/mobile-apple-review.mjs "$OUTPUT_PATH"
+        env:
+          OUTPUT_PATH: ${{ runner.temp }}/apple-review-audit.json
+          DOVEBEVO_ASC_PRIVATE_KEY: ${{ secrets.DOVEBEVO_ASC_PRIVATE_KEY }}
+          DOVEBEVO_ASC_KEY_ID: ${{ secrets.DOVEBEVO_ASC_KEY_ID }}
+          DOVEBEVO_ASC_ISSUER_ID: ${{ secrets.DOVEBEVO_ASC_ISSUER_ID }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: apple-review-audit
+          path: ${{ runner.temp }}/apple-review-audit.json
+          if-no-files-found: warn
+          retention-days: 14

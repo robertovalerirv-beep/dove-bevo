@@ -6,7 +6,7 @@ import { formatDate, formatPrice, todayRome } from "@site/app/lib/format";
 import { isStale, type Tier } from "@site/app/lib/tiers";
 import { directionsUrl } from "@site/app/lib/geo";
 import { drinkIcon, Icon } from "@site/app/components/Icon";
-import { LegalLinks } from "@site/app/components/LegalLinks";
+import { AppLegalLinks } from "./AppLegalLinks";
 import { Sheet } from "@site/app/components/Sheet";
 import { HoursList, VerifiedBadge } from "@site/app/components/Verified";
 import { drinkImage } from "@mobile/drink-images";
@@ -364,7 +364,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         >
           {it.actions.reportBar}
         </button>
-        <LegalLinks />
+        <AppLegalLinks />
       </div>
     </Sheet>
   );

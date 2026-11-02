@@ -311,3 +311,27 @@ test("visible price-pin head and geographic tip both open the correct venue", as
     await f.close();
   }
 });
+
+test("Italian city search in the production mobile entry links the approved app privacy policy", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/");
+    await f.page.locator(".search-field").click();
+    const links = f.page
+      .getByRole("dialog")
+      .getByRole("navigation", { name: "Informazioni", exact: true });
+    await links.waitFor();
+    assert.equal(
+      await links.getByRole("link", { name: "Privacy", exact: true }).getAttribute("href"),
+      "https://github.com/robertovalerirv-beep/dove-bevo/blob/main/mobile-apps/privacy.md",
+    );
+    assert.equal(
+      await links.getByRole("link", { name: "Regole", exact: true }).getAttribute("href"),
+      "/regole",
+    );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});

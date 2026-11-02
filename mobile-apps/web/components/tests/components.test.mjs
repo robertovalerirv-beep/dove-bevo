@@ -344,3 +344,32 @@ test("quick seen price and venue-drink-price navigation retain real callbacks", 
     await f.close();
   }
 });
+
+test("mobile venue privacy uses the approved app policy and preserves translated rules links", async () => {
+  const f = await fixture();
+  try {
+    for (const [language, label, rules] of [
+      ["it", "Informazioni", "Regole"],
+      ["en", "Information", "Rules"],
+    ]) {
+      await f.page.evaluate(async (value) => {
+        await window.sheetFixture.setLang(value);
+        window.sheetFixture.bar();
+      }, language);
+      const links = f.page.getByRole("navigation", { name: label, exact: true });
+      await links.waitFor();
+      assert.equal(await links.getByRole("link").count(), 2);
+      assert.equal(
+        await links.getByRole("link", { name: "Privacy", exact: true }).getAttribute("href"),
+        "https://github.com/robertovalerirv-beep/dove-bevo/blob/main/mobile-apps/privacy.md",
+      );
+      assert.equal(
+        await links.getByRole("link", { name: rules, exact: true }).getAttribute("href"),
+        "/regole",
+      );
+    }
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});

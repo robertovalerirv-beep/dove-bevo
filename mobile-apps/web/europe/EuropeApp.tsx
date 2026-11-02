@@ -13,7 +13,7 @@ import { locate } from "@site/app/lib/locate";
 import { Icon, drinkIcon } from "@site/app/components/Icon";
 import { LangMenu } from "@site/app/components/LangMenu";
 import { Sheet } from "@site/app/components/Sheet";
-import { LegalLinks } from "@site/app/components/LegalLinks";
+import { AppLegalLinks } from "../components/AppLegalLinks";
 import type * as MapModule from "@site/app/lib/maplibre-map";
 import type { VenueMap, MapView } from "@site/app/lib/maplibre-map";
 import { drinkImage } from "../drink-images";
@@ -738,7 +738,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
             >
               {t("Mappa italiana originale", "Original Italian map")}
             </a>
-            <LegalLinks />
+            <AppLegalLinks />
           </div>
         </Sheet>
       )}
@@ -871,7 +871,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
             >
               {it.actions.reportBar}
             </button>
-            <LegalLinks />
+            <AppLegalLinks />
           </div>
         </Sheet>
       )}

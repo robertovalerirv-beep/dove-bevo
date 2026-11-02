@@ -6,7 +6,7 @@ import { loadPlaces, type Venue } from "@site/app/lib/data";
 import { formatDate, formatPrice } from "@site/app/lib/format";
 import { searchBars, type Hit } from "@site/app/lib/search";
 import { leadWord, MIN_CHARS } from "@site/app/lib/search-match";
-import { LegalLinks } from "@site/app/components/LegalLinks";
+import { AppLegalLinks } from "./AppLegalLinks";
 import { Sheet } from "@site/app/components/Sheet";
 import { loadCatalog } from "../europe/api";
 import { cities, cityURL, venueURL, type City, type Venue as MobileVenue } from "../europe/model";
@@ -363,7 +363,7 @@ export function SearchSheet({
           </ul>
         </>
       )}
-      <LegalLinks />
+      <AppLegalLinks />
     </Sheet>
   );
 }

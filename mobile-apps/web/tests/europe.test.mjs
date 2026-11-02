@@ -679,3 +679,30 @@ test("legacy Italian search opens real app catalogue coordinates without synthet
     await f.close();
   }
 });
+
+test("European venue and city search privacy links use the approved app policy", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f);
+    async function checkLinks() {
+      const links = f.page.getByRole("navigation", { name: "Informazioni", exact: true });
+      await links.waitFor();
+      assert.equal(
+        await links.getByRole("link", { name: "Privacy", exact: true }).getAttribute("href"),
+        "https://github.com/robertovalerirv-beep/dove-bevo/blob/main/mobile-apps/privacy.md",
+      );
+      assert.equal(
+        await links.getByRole("link", { name: "Regole", exact: true }).getAttribute("href"),
+        "/regole",
+      );
+    }
+    await checkLinks();
+    await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
+    await f.page.getByRole("button", { name: "Cambia citt\u00e0", exact: true }).click();
+    await checkLinks();
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});

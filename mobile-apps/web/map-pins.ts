@@ -10,6 +10,10 @@ const GLYPH: Record<Tier, string> = { affare: "↓", giusto: "=", salato: "↑",
 
 /** Happy-hour semantics stay visible without squeezing the whole phrase into the price circle. */
 export function mobilePinLabel(label: string): { amount: string; detail: string } {
+  const pounds =
+    /^£\s*([0-9]+[.,][0-9]{2})(?:\s+(.+))?$/.exec(label.trim()) ??
+    /^([0-9]+[.,][0-9]{2})\s*£(?:\s+(.+))?$/.exec(label.trim());
+  if (pounds?.[1]) return { amount: pounds[1], detail: pounds[2] ? "£ HH" : "£" };
   const match = /^(.*?)\s*€(?:\s+(.+))?$/.exec(label.trim());
   return { amount: match?.[1]?.trim() ?? label.trim(), detail: match?.[2] ? "HH" : "" };
 }

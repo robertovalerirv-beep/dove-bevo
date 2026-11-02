@@ -25,3 +25,17 @@ Apply41356129179 succeeded with17 inserts, a complete receipt, zero customer con
 ## Coverage limits
 
 This is the first live batch, not complete European coverage. The current catalogue and price contract support existing Italian venues and EUR categories. No unmatched venue, inferred menu price, unspecified draft-beer volume, premium variant mapped to a classic, fabricated vote or confirmation is eligible. Other cities and currencies require separately verified compatible catalogue coverage.
+
+## 2026-11-02 batch C: prepared, not imported
+
+Eight normal-band prices concern two existing Firenze venues: Green Street Bar (`n4224393624`, four rows) and PanicAle (`n12541095156`, four rows), both in `srb10`. The fresh public catalogue data version is `20261031`. Exact normalized names and unique Google marker distances of4.89m and4.00m match existing OSM identities. Retained primary Google business facts checked on1November show223 and460 reviews. No venue metadata or catalogue row is changed.
+
+Green's current official menu index directly links the visually inspected images: classic Negroni EUR9, Negroni Sbagliato EUR9, classic Spritz EUR7 and generic nonalcoholic mixed drink EUR5. Its standard Gin Tonic/Gin Lemon EUR8 facts are held: the legacy public price tuple cannot carry the distinction from premium EUR11. No arbitrary minimum or premium-brand substitution is imported. The private research record retains all ten original facts and the two held qualifications.
+
+PanicAle's current official menu embeds a public guest menu. Its ordinary public GET JSON identifies the restaurant and EUR currency and lists classic Gin Lemon, Gin Tonic, Negroni and Negroni Sbagliato at EUR7 each. Differently priced spritz brands, beers, wines and mocktails are held. Only the public menu representation is pinned; no private authentication or operator URL is used. Full menu images/PDF and raw research files remain private local evidence and are not committed.
+
+Manifest SHA-256 is `c501f0f9a0143edeb88a8dc23e796e32da2a6133a6c3c3f134ea6c958a366ea1`. All three source pins use existing `raw` format (two linked images and the guest JSON). The existing source URL query ban remains intact. A dedicated Google-evidence validator accepts canonical HTTPS `/maps?cid=<positive uint64>` evidence only, without allowing queries in any fetched menu source or accepting duplicate/encoded/extra CID parameters. Existing query-free Google place proof URLs remain supported.
+
+The new workflow accepts only exact tags `mobile-italy-menu-c-audit/20261102-v1` and `mobile-italy-menu-c-seed/20261102-v1` in Roberto's repository. Audit remains read-only; applying additionally requires the exact manifest SHA. Existing Cloudflare secrets, binding attestation, customer/history/report/hidden guards, cache invalidation and complete receipt checks remain. Runner temporary receipt paths occur only in step contexts. No audit tag, seed tag, provider call or public import has been performed by this source preparation.
+
+The legacy schema stores a generic dated curated price with no customer confirmations; this date records an online menu check, not a customer's payment or visit. These eight prepared rows do not increase the live batch totals until an independently reviewed audit, apply receipt and public read-back establish actual publication. Separate European currency/serving storage and its publication remain separately tracked.

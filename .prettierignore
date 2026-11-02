@@ -25,3 +25,9 @@ public/map/
 .claude/worktrees/
 docs/materiali/
 backup-*/
+
+# Exact-byte public research evidence and deterministic generated catalogue pins.
+mobile-apps/data/europe-catalogue-inputs-20261101/
+mobile-apps/data/europe-catalogue-evidence-20261101.json
+public/mobile-data/catalog.json
+mobile-apps/data/europe-menu-seed-20261101.json

@@ -229,17 +229,20 @@ export async function screenshots(env, options) {
       journal = await journalFactory(receiptFile, "wx", 0o600);
       await persist();
     }
-    const token = tokenProvider(env);
-    check(
-      typeof token === "string" &&
-        token.length > 0 &&
-        token.length <= 16384 &&
-        !/[\r\n]/.test(token),
-    );
+    const issuedTokens = new Set();
     let requests = 0;
     async function api(route, method = "GET", data) {
       check(++requests <= 400);
       check(/^\/v1\/[A-Za-z0-9/?=&_-]+$/.test(route));
+      // Six uploads and processing polls can outlive the helper's short token lifetime.
+      const token = tokenProvider(env);
+      check(
+        typeof token === "string" &&
+          token.length > 0 &&
+          token.length <= 16384 &&
+          !/[\r\n]/.test(token),
+      );
+      issuedTokens.add(token);
       const response = await transport(ORIGIN + route, {
         method,
         redirect: "error",
@@ -360,7 +363,11 @@ export async function screenshots(env, options) {
       check((await members(asset.setId)).some((r) => r.id === row.id));
       const parts = uploadParts(row.attributes.uploadOperations, asset.bytes);
       for (const part of parts) {
-        check(Object.values(part.headers).every((value) => !value.includes(token)));
+        check(
+          Object.values(part.headers).every((value) =>
+            [...issuedTokens].every((token) => !value.includes(token)),
+          ),
+        );
         receipt.operations.push({
           method: "PUT",
           id: row.id,

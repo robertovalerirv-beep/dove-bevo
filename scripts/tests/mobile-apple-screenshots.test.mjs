@@ -531,3 +531,40 @@ for (const [type, key, parentType] of [
       await f.close();
     }
   });
+
+test("every ASC request regenerates its short-lived token throughout six uploads", async () => {
+  const f = await fixture();
+  try {
+    const s = server(f),
+      received = [];
+    let generations = 0;
+    const transport = async (url, options) => {
+      if (new URL(url).origin === "https://api.appstoreconnect.apple.com") {
+        received.push(options.headers.Authorization);
+        // The standard server still independently checks its fixed API/storage separation.
+        return s.transport(url, {
+          ...options,
+          headers: { ...options.headers, Authorization: "Bearer TEST_JWT" },
+        });
+      }
+      assert.equal(options.headers.Authorization, undefined);
+      assert.ok(!Object.values(options.headers).some((v) => /ROTATING_JWT/.test(v)));
+      return s.transport(url, options);
+    };
+    const result = await run(
+      f,
+      { transport },
+      { apply: true, tokenProvider: () => `ROTATING_JWT_${++generations}` },
+    );
+    assert.equal(result.phase, "complete");
+    assert.equal(generations, received.length);
+    assert.ok(generations > 30);
+    assert.deepEqual(
+      received,
+      Array.from({ length: generations }, (_, i) => `Bearer ROTATING_JWT_${i + 1}`),
+    );
+    assert.ok(!/ROTATING_JWT|TEST_JWT/.test(await readFile(f.receiptFile, "utf8")));
+  } finally {
+    await f.close();
+  }
+});

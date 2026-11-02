@@ -1,0 +1,71 @@
+name: One-off reviewed Italy menu batch C
+
+on:
+  push:
+    tags:
+      - "mobile-italy-menu-c-audit/20261102-v1"
+      - "mobile-italy-menu-c-seed/20261102-v1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dovebevo-one-off-menu-import
+  cancel-in-progress: false
+
+jobs:
+  reviewed-batch-c:
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      (github.ref == 'refs/tags/mobile-italy-menu-c-audit/20261102-v1' ||
+      github.ref == 'refs/tags/mobile-italy-menu-c-seed/20261102-v1')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      MANIFEST: mobile-apps/data/menu-seed-existing-20261102-c.json
+      MANIFEST_SHA256: c501f0f9a0143edeb88a8dc23e796e32da2a6133a6c3c3f134ea6c958a366ea1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify exact reviewed manifest and preservation tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' "$MANIFEST_SHA256" "$MANIFEST" | sha256sum --check --strict
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_live_import.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_batch_c.py' -v
+      - name: Read-only audit or exact-tag guarded import
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          RECEIPT: ${{ runner.temp }}/mobile-italy-menu-c/receipt-${{ github.run_id }}-${{ github.run_attempt }}.json
+        run: |
+          set -euo pipefail
+          case "$GITHUB_REF" in
+            refs/tags/mobile-italy-menu-c-audit/20261102-v1) mode_args=(); expected_mode=dry_run ;;
+            refs/tags/mobile-italy-menu-c-seed/20261102-v1) mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256"); expected_mode=apply ;;
+            *) exit 2 ;;
+          esac
+          mkdir -p "$(dirname "$RECEIPT")"
+          python3 -B mobile-apps/tools/menu-seed/live_import.py --manifest "$MANIFEST" --receipt "$RECEIPT" "${mode_args[@]}"
+          python3 -B - "$expected_mode" <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          receipt = json.loads(Path(os.environ["RECEIPT"]).read_text(encoding="utf-8"))
+          assert receipt["complete"] is True
+          assert receipt["mode"] == sys.argv[1]
+          assert receipt["manifest_sha256"] == os.environ["MANIFEST_SHA256"]
+          assert receipt["batch_id"] == "existing-venues-firenze-20261102-c"
+          assert len(receipt["records"]) == 8 and not receipt["errors"]
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: mobile-italy-menu-c-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mobile-italy-menu-c/receipt-${{ github.run_id }}-${{ github.run_attempt }}.json
+          retention-days: 30
+          if-no-files-found: warn

@@ -10,6 +10,8 @@ import { AppLegalLinks } from "./AppLegalLinks";
 import { Sheet } from "@site/app/components/Sheet";
 import { HoursList, VerifiedBadge } from "@site/app/components/Verified";
 import { drinkImage } from "@mobile/drink-images";
+import { sharePresentation } from "../share-presentation";
+import { DrinkHero } from "./DrinkHero";
 import "./sheets.css";
 
 export interface BarActions {
@@ -98,7 +100,7 @@ function PriceItem({
     else if (!featured && !expanded && focusedControls) toggle.current?.focus();
   }, [featured, expanded, focusedToggle, focusedControls]);
   const showActions = featured || expanded;
-  const artwork = featured ? drinkImage(drink) : undefined;
+  const artwork = drinkImage(drink);
 
   async function confirm() {
     if (state === "busy" || state === "done" || state === "already") return;
@@ -114,10 +116,30 @@ function PriceItem({
   }
 
   return (
-    <li class={`price mobile-price${featured ? " mobile-price--featured" : ""}`}>
+    <li
+      class={`price mobile-price${featured ? " mobile-price--featured" : ""}${expanded ? " mobile-price--expanded" : ""}`}
+      {...sharePresentation(
+        featured && !inReview && row[0] === venue.key
+          ? {
+              venue: venue.key,
+              venueName: venue.name,
+              drink,
+              drinkName: it.drinks[drink] ?? drink,
+              hh,
+              amountMinor: cents,
+              currency: "EUR",
+              serving: "",
+              provenance: `${currentLang() === "en" ? "Price record date" : "Data del prezzo"}: ${formatDate(day)}`,
+              confirmations: count,
+              tier,
+              location: venue.city,
+            }
+          : null,
+      )}
+    >
       <span class="price__icon">
         {artwork ? (
-          <img src={artwork} width="1024" height="1536" alt="" decoding="async" />
+          <img src={artwork} width="1536" height="1024" alt="" decoding="async" loading="lazy" />
         ) : (
           <Icon name={drinkIcon(drink)} />
         )}
@@ -259,6 +281,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   return (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
+        <DrinkHero drink={active[0]?.[1] ?? focus[0] ?? "spritz"} />
         <div class="scontrino__paper">
           <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
           <h2 class="scontrino__name" tabIndex={-1}>

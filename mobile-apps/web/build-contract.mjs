@@ -37,7 +37,43 @@ export function transformApp(source) {
     "useState<string[]>([DEFAULT_DRINK])",
     "useState<string[]>([mobileDefaultDrink(DEFAULT_DRINK)])",
   );
-  return 'import { mobilePath, mobileURL, mobileDefaultDrink } from "@mobile/routes";\n' + result;
+  result = once(
+    result,
+    '<p class="map__status" data-testid="map-status" role="status">',
+    '<p class="map__status" data-testid="map-status" role="status" data-mobile-selection={showMeter ? drinks.map((code) => it.drinks[code] ?? code).join(" · ") : undefined}>',
+  );
+  const tree = ts.createSourceFile(
+    "app.tsx",
+    result,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  const buttons = [];
+  function visit(node) {
+    if (
+      ts.isJsxElement(node) &&
+      node.openingElement.tagName.getText(tree) === "button" &&
+      node.openingElement.attributes.properties.some(
+        (attribute) =>
+          ts.isJsxAttribute(attribute) &&
+          attribute.name.getText(tree) === "class" &&
+          attribute.initializer?.text === "btn search-field",
+      )
+    )
+      buttons.push(node);
+    ts.forEachChild(node, visit);
+  }
+  visit(tree);
+  if (buttons.length !== 1) throw new Error("Map search presentation seam changed");
+  result =
+    result.slice(0, buttons[0].getStart(tree)) +
+    '<MobileSearchButton venues={inView} onOpen={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
+    result.slice(buttons[0].end);
+  return (
+    'import { mobilePath, mobileURL, mobileDefaultDrink } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\n' +
+    result
+  );
 }
 
 export function transformMap(source, styleURLExpression) {

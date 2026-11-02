@@ -52,7 +52,7 @@ html[data-dovebevo-mobile-shell="1"] .brand {
   clip-path: inset(50%);
 }
 html[data-dovebevo-mobile-shell="1"] .search-field {
-  min-height: 48px;
+  min-height: 44px;
   padding: 8px 4px;
   border: 0;
   border-radius: 0;
@@ -61,6 +61,11 @@ html[data-dovebevo-mobile-shell="1"] .search-field {
   color: var(--ink);
   font: 650 17px/1.3 var(--font-sans);
   justify-content: space-between;
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-map-city {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 html[data-dovebevo-mobile-shell="1"] .search-field > .icon {
   order: 1;
@@ -85,7 +90,7 @@ html[data-dovebevo-mobile-shell="1"] .mobile-drink-strip {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding: 2px 0;
+  padding: 0;
   scrollbar-width: none;
 }
 html[data-dovebevo-mobile-shell="1"] .drink-option {
@@ -94,7 +99,7 @@ html[data-dovebevo-mobile-shell="1"] .drink-option {
   flex: none;
   min-height: 48px;
   min-width: 48px;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 1px solid transparent;
   border-radius: 24px;
   background: #f2f3f4;
@@ -148,6 +153,20 @@ html[data-dovebevo-mobile-shell="1"] .map__status {
 }
 html[data-dovebevo-mobile-shell="1"] .map__status .meter {
   display: none;
+}
+html[data-dovebevo-mobile-shell="1"] .map__status[data-mobile-selection] {
+  display: block;
+  padding: 9px 13px;
+  font-weight: 650;
+}
+html[data-dovebevo-mobile-shell="1"] .map__status[data-mobile-selection]::after {
+  content: attr(data-mobile-selection);
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.35;
 }
 html[data-dovebevo-mobile-shell="1"] .map__stack {
   top: 12px;

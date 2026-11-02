@@ -313,6 +313,34 @@ test("European venue preserves identity, explicit pounds and source-check proven
     assert.match(await f.page.locator(".map").getAttribute("data-zoom"), /^\d{1,2}\.\d$/);
     assert.match(await f.page.locator(".bar__addr").innerText(), /London · GBP/);
     const featured = f.page.locator(".mobile-price--featured");
+    const share = await featured.evaluate((row) => ({ ...row.dataset }));
+    assert.equal(share.dovebevoShare, "1");
+    assert.equal(share.venue, "n1001");
+    assert.equal(share.venueName, catalog.venues[0].name);
+    assert.equal(share.amountMinor, "750");
+    assert.equal(share.currency, "GBP");
+    assert.equal(share.serving, "Drink singolo");
+    assert.equal(share.hh, "0");
+    assert.equal(share.confirmations, "2");
+    assert.match(
+      share.provenance,
+      /Da menu online.*Fonte verificata.*Spritz <menu> · HH Mon–Fri 17–19/,
+    );
+    const secondaryMenu = f.page
+      .locator(".mobile-price:not(.mobile-price--featured)")
+      .filter({ hasText: "568 ml" })
+      .getByRole("link", { name: "Menu", exact: true });
+    await f.page
+      .context()
+      .route("https://official.fixture.test/drinks.pdf", (route) =>
+        route.fulfill({ contentType: "text/html", body: "Owned menu fixture" }),
+      );
+    const popupPromise = f.page.waitForEvent("popup");
+    await secondaryMenu.click();
+    const menuPopup = await popupPromise;
+    await menuPopup.waitForURL("https://official.fixture.test/drinks.pdf");
+    await menuPopup.close();
+    assert.equal(await f.page.locator(".mobile-price--expanded").count(), 0);
     assert.match(
       await featured.innerText(),
       /Spritz[\s\S]*7,50[\s\S]*Fonte verificata[\s\S]*Spritz <menu> · HH Mon–Fri 17–19/,
@@ -346,6 +374,52 @@ test("European venue preserves identity, explicit pounds and source-check proven
     await f.page.screenshot({ path: path.join(output, "europe-venue-fixture.png") });
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("all nine price categories load genuine artwork and keep the small-screen Save action reachable", async () => {
+  const f = await fixture({ viewport: { width: 402, height: 600 } });
+  try {
+    await openLondon(f);
+    await addPrice(f);
+    const select = f.page.getByRole("combobox", { name: "Cosa hai bevuto?" });
+    const images = new Set();
+    for (const code of [
+      "spritz",
+      "beer_draft",
+      "gin_tonic",
+      "gin_lemon",
+      "negroni",
+      "sbagliato",
+      "wine_glass",
+      "alcohol_free",
+      "water",
+    ]) {
+      await select.selectOption(code);
+      const image = f.page.locator(".mobile-price-form__art img");
+      await image.evaluate((element) => element.decode());
+      const dimensions = await image.evaluate((element) => ({
+        width: element.naturalWidth,
+        height: element.naturalHeight,
+        visibleHeight: element.getBoundingClientRect().height,
+        src: element.currentSrc,
+      }));
+      assert.ok(dimensions.width >= 1000 && dimensions.height >= 1000);
+      assert.equal(dimensions.visibleHeight, 88);
+      images.add(dimensions.src);
+    }
+    assert.equal(images.size, 8, "Gin lemon shares the generic lemon-garnished gin image");
+    await f.page
+      .getByRole("button", { name: "Salva prezzo", exact: true })
+      .scrollIntoViewIfNeeded();
+    assert.equal(
+      await f.page.getByRole("button", { name: "Salva prezzo", exact: true }).isVisible(),
+      true,
+    );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
   } finally {
     await f.close();
   }

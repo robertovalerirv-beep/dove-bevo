@@ -14,6 +14,8 @@ import { Icon, drinkIcon } from "@site/app/components/Icon";
 import { LangMenu } from "@site/app/components/LangMenu";
 import { Sheet } from "@site/app/components/Sheet";
 import { AppLegalLinks } from "../components/AppLegalLinks";
+import { DrinkHero } from "../components/DrinkHero";
+import { sharePresentation } from "../share-presentation";
 import type * as MapModule from "@site/app/lib/maplibre-map";
 import type { VenueMap, MapView } from "@site/app/lib/maplibre-map";
 import { drinkImage } from "../drink-images";
@@ -794,6 +796,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
       {selectedVenue && !picker && !list && (
         <Sheet title={selectedVenue.name} bare onClose={closeVenue}>
           <div class="scontrino mobile-venue europe-venue">
+            <DrinkHero drink={venueRows[0]?.drink ?? drink} />
             <div class="scontrino__paper">
               <p class="bar__kind">
                 {it.kinds[selectedVenue.kind]} · {selectedVenue.city} · {selectedVenue.country}
@@ -812,6 +815,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
                   <PriceItem
                     key={row.revision}
                     row={row}
+                    venue={selectedVenue}
                     featured={index === 0}
                     tier={priceTier(row, rows)}
                     busy={busy || queued}
@@ -908,6 +912,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
 
 function PriceItem({
   row,
+  venue,
   featured,
   tier,
   busy,
@@ -916,6 +921,7 @@ function PriceItem({
   onReport,
 }: {
   row: Price;
+  venue: Venue;
   featured: boolean;
   tier: Tier;
   busy: boolean;
@@ -924,14 +930,54 @@ function PriceItem({
   onReport: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const art = featured ? drinkImage(row.drink) : undefined;
+  const art = drinkImage(row.drink);
   const day = row.observed_on ?? row.provenance.source_checked_on;
   const stale = day ? isStale(day, todayRome()) : false;
   return (
-    <li class={`price mobile-price${featured ? " mobile-price--featured" : ""}`}>
+    <li
+      class={`price mobile-price${featured ? " mobile-price--featured" : ""}${expanded ? " mobile-price--expanded" : ""}`}
+      {...sharePresentation(
+        featured && row.status === "active" && row.venue === venue.key
+          ? {
+              venue: venue.key,
+              venueName: venue.name,
+              drink: row.drink,
+              drinkName: it.drinks[row.drink] ?? row.drink,
+              hh: row.hh,
+              amountMinor: row.amount_minor,
+              currency: row.currency,
+              serving: servingLabel(row.serving),
+              provenance:
+                row.provenance.kind === "online_menu"
+                  ? [
+                      t("Da menu online", "Online menu"),
+                      row.provenance.source_checked_on
+                        ? `${t("Fonte verificata", "Source checked")} ${formatDate(row.provenance.source_checked_on)}`
+                        : "",
+                      row.provenance.menu_item ?? "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : [
+                      row.observed_on
+                        ? `${t("Segnalato il", "Reported")} ${formatDate(row.observed_on)}`
+                        : t("Prezzo segnalato", "Reported price"),
+                      row.confirmed_on
+                        ? `${t("Confermato il", "Confirmed")} ${formatDate(row.confirmed_on)}`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · "),
+              confirmations: row.confirmations,
+              tier,
+              location: venue.city,
+            }
+          : null,
+      )}
+    >
       <span class="price__icon">
         {art ? (
-          <img src={art} width="1024" height="1536" alt="" />
+          <img src={art} width="1536" height="1024" alt="" loading="lazy" />
         ) : (
           <Icon name={drinkIcon(row.drink)} />
         )}

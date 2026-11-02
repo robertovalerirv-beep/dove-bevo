@@ -1,0 +1,24 @@
+name: Italy menu source preservation
+on:
+  pull_request:
+    paths:
+      - "mobile-apps/tools/menu-seed/live_import.py"
+      - "mobile-apps/tools/menu-seed/test_no_google.py"
+      - ".github/workflows/mobile-italy-menu-source.yml"
+permissions:
+  contents: read
+concurrency:
+  group: italy-menu-source-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-preservation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Preserve historical imports and validate no-review manifests
+        run: |
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_live_import.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_no_google.py' -v

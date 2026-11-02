@@ -42,10 +42,22 @@ public final class DiscoveryRuntimeTest {
         onMain(()->{assertEquals(0,rows().getChildCount());assertTrue(status().contains("Nessun prezzo"));assertFalse(status().contains("0,00"));});
     }
     @Test public void unreadyAndUnavailableAreExplicitAndBackgroundCannotRefresh()throws Exception {
-        show(true,null);onMain(()->{assertTrue(status().contains("Apri una città"));assertFalse(activity.findViewById(R.id.discovery_refresh).isEnabled());});assertEquals(0,requests.get());
+        show(true,null);onMain(()->{assertTrue(status().contains("Apri una cittÃ "));assertFalse(activity.findViewById(R.id.discovery_refresh).isEnabled());});assertEquals(0,requests.get());
         onMain(()->{try{screen.show(new DiscoveryArea(45.4642,9.19,14));}catch(IOException impossible){throw new AssertionError(impossible);}});awaitLoaded();
         onMain(()->{assertTrue(status().contains("non verificabili"));assertEquals(0,rows().getChildCount());active.set(false);screen.pause();screen.refresh();});
         int count=requests.get();onMain(()->screen.refresh());assertEquals(count,requests.get());
+    }
+    @Test public void nineIllustratedCategoriesUseActualCountsAndKeepBandWithoutNewRequests()throws Exception {
+        show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();int before=requests.get();
+        onMain(()->{
+            LinearLayout tiles=activity.findViewById(R.id.discovery_screen).findViewWithTag("discovery_categories");
+            assertEquals(9,tiles.getChildCount());assertTrue(text(tiles.getChildAt(RecommendationDrink.SPRITZ.ordinal())).contains("2 prezzi"));
+            assertTrue(tiles.getChildAt(RecommendationDrink.SPRITZ.ordinal()).isSelected());
+            ((Spinner)activity.findViewById(R.id.discovery_band)).setSelection(1);
+            tiles.getChildAt(RecommendationDrink.NEGRONI.ordinal()).performClick();
+        });
+        onMain(()->{assertEquals("negroni",screen.selectedDrink());assertEquals(1,screen.selectedBand());assertEquals(0,rows().getChildCount());assertFalse(text(rows()).contains("0,00"));});
+        assertEquals(before,requests.get());
     }
     private void show(boolean unavailable,DiscoveryArea area){onMain(()->{
         FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable)throw new IOException("Owned offline response");String body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");

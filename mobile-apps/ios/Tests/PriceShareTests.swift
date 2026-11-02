@@ -126,6 +126,25 @@ final class PriceShareTests: XCTestCase {
 
     @MainActor func testActualIsolatedWebKitReaderRequiresCurrentVisibleVenueAndSinglePriceMarker() throws {
         let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 700), configuration: WKWebViewConfiguration())
+        let host = UIViewController()
+        web.translatesAutoresizingMaskIntoConstraints = false
+        host.view.addSubview(web)
+        NSLayoutConstraint.activate([
+            web.leadingAnchor.constraint(equalTo: host.view.leadingAnchor),
+            web.trailingAnchor.constraint(equalTo: host.view.trailingAnchor),
+            web.topAnchor.constraint(equalTo: host.view.safeAreaLayoutGuide.topAnchor),
+            web.bottomAnchor.constraint(equalTo: host.view.safeAreaLayoutGuide.bottomAnchor)
+        ])
+        let mounted = try OwnedReferenceWindow(root: host)
+        defer {
+            web.stopLoading(); web.navigationDelegate = nil
+            web.removeFromSuperview(); mounted.close()
+        }
+        XCTAssertTrue(web.window === mounted.window)
+        XCTAssertTrue(mounted.window.isKeyWindow)
+        XCTAssertEqual(mounted.window.windowScene?.activationState, .foregroundActive)
+        XCTAssertGreaterThan(web.bounds.width, 0)
+        XCTAssertGreaterThan(web.bounds.height, 0)
         let loaded = expectation(description: "Owned share fixture")
         let delegate = ShareFixtureNavigationDelegate(loaded); web.navigationDelegate = delegate
         let html = #"""
@@ -139,7 +158,13 @@ final class PriceShareTests: XCTestCase {
         let data = Data(html.utf8)
         XCTAssertNotNil(web.loadSimulatedRequest(URLRequest(url: document),
             response: URLResponse(url: document, mimeType: "text/html", expectedContentLength: data.count, textEncodingName: "UTF-8"), responseData: data))
-        wait(for: [loaded], timeout: 15)
+        let navigationResult = XCTWaiter.wait(for: [loaded], timeout: 15)
+        XCTAssertEqual(navigationResult, .completed, "The mounted owned WebKit fixture must finish before reading its DOM")
+        guard navigationResult == .completed else {
+            throw NSError(domain: "OwnedShareFixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mounted WebKit navigation did not finish"])
+        }
+        if let error = delegate.error { throw error }
+        XCTAssertEqual(web.url, document)
         let initial = try evaluate(web, PriceShareReader.script)
         XCTAssertEqual(PriceShareSnapshot.parse(initial, currentURL: document)?.amount, "6,50 £")
         _ = try evaluate(web, "document.querySelector('#price').style.display='none';true")
@@ -164,6 +189,19 @@ final class PriceShareTests: XCTestCase {
 
 private final class ShareFixtureNavigationDelegate: NSObject, WKNavigationDelegate {
     private let loaded: XCTestExpectation
+    private var settled = false
+    private(set) var error: Error?
     init(_ loaded: XCTestExpectation) { self.loaded = loaded }
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { loaded.fulfill() }
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { finish() }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        finish(error)
+    }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { finish(error) }
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        finish(NSError(domain: "OwnedShareFixture", code: 2, userInfo: [NSLocalizedDescriptionKey: "Owned WebKit process terminated"]))
+    }
+    private func finish(_ error: Error? = nil) {
+        guard !settled else { return }
+        settled = true; self.error = error; loaded.fulfill()
+    }
 }

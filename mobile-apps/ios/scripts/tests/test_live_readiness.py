@@ -53,7 +53,7 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertLess(live.index("searchField.tap()"), live.index("waitForOrdinaryKeyboard()"))
         self.assertLess(live.index("waitForOrdinaryKeyboard()"), live.index('searchField.typeText("Milano")'))
         self.assertIn('XCTAssertEqual(searchField.value as? String, "Milano"', live)
-        ready = self.source.split("private func waitForOrdinaryKeyboard()", 1)[1].split("\n    private func", 1)[0]
+        ready = self.source.split("private func waitForOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
         self.assertIn("keyboards.allElementsBoundByIndex.contains", ready)
         self.assertIn("self.isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)", ready)
         self.assertLess(ready.index("guard keyboard.exists"), ready.index("frame: keyboard.frame"))
@@ -69,6 +69,21 @@ class LiveReadinessTests(unittest.TestCase):
             self.assertIn(required, simultaneous)
         self.assertNotIn("keyboards.firstMatch", simultaneous)
         self.assertLess(simultaneous.index("guard keyboard.exists"), simultaneous.index("let candidateFrame = keyboard.frame"))
+
+    def test_observed_keyboard_tutorial_requires_real_keys_after_its_scoped_action(self):
+        helper = self.source.split("private func dismissKeyboardIntroductionIfPresent(", 1)[1].split("\n    private func", 1)[0]
+        for required in ['"Speed up your typing"', 'app.buttons["Continue"]',
+                         'guard introduction.waitForExistence(timeout: 2)',
+                         'appFrame.contains(buttonFrame)', 'withOffset(offset).tap()',
+                         'waitForOrdinaryKeyboard(timeout: 10)',
+                         'searchField.isHittable', 'assertNoNativeRecovery()']:
+            self.assertIn(required, helper)
+        self.assertNotIn('"exists == false"', helper)
+        self.assertLess(helper.index('withOffset(offset).tap()'), helper.index('waitForOrdinaryKeyboard(timeout: 10)'))
+        self.assertLess(helper.index('waitForOrdinaryKeyboard(timeout: 10)'), helper.index('DoveBevo-keyboard-introduction-after-continue'))
+        ready = self.source.split("private func waitForOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
+        self.assertIn('timeout: TimeInterval = 15', ready)
+        self.assertIn('XCTWaiter.wait(for: [ready], timeout: timeout)', ready)
 
     def test_keyboard_visibility_samples_actual_window_once_without_relaxing_geometry(self):
         sample = self.source.split("let searchVisible =", 1)[1].split("city.tap()", 1)[0]

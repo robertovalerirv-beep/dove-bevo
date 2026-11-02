@@ -448,7 +448,7 @@ final class BrowserSmokeTests: XCTestCase {
         waitForNativePageReady()
     }
 
-    private func waitForOrdinaryKeyboard() {
+    private func waitForOrdinaryKeyboard(timeout: TimeInterval = 15) {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             let windowFrame = self.app.windows.firstMatch.frame
             return self.app.keyboards.allElementsBoundByIndex.contains { keyboard in
@@ -456,7 +456,7 @@ final class BrowserSmokeTests: XCTestCase {
                 return self.isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)
             }
         }, object: nil)
-        let result = XCTWaiter.wait(for: [ready], timeout: 15)
+        let result = XCTWaiter.wait(for: [ready], timeout: timeout)
         if result != .completed { attachState(named: "DoveBevo-original-field-keyboard-not-ready") }
         XCTAssertEqual(result, .completed, "The existing field must have an ordinary visible keyboard before typing")
     }
@@ -819,10 +819,13 @@ final class BrowserSmokeTests: XCTestCase {
         // or re-resolving this transient keyboard element as its process changes.
         let offset = CGVector(dx: buttonFrame.midX - appFrame.minX, dy: buttonFrame.midY - appFrame.minY)
         app.coordinate(withNormalizedOffset: .zero).withOffset(offset).tap()
-        attachScreen(named: "DoveBevo-keyboard-introduction-after-continue")
-        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: introduction)
-        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 10), .completed, "The observed keyboard tutorial did not dismiss")
+        // The actual failed-run screenshot showed ordinary keys after this tap,
+        // although the tutorial-disappearance predicate timed out. Require the
+        // usable visible keyboard instead of inferring readiness from absence.
+        waitForOrdinaryKeyboard(timeout: 10)
+        attachState(named: "DoveBevo-keyboard-introduction-after-continue")
         XCTAssertTrue(searchField.exists, "The original city search sheet was lost while dismissing the tutorial")
+        XCTAssertTrue(searchField.isHittable, "The original city search field must remain reachable with the ordinary keyboard")
         assertNoNativeRecovery()
     }
 

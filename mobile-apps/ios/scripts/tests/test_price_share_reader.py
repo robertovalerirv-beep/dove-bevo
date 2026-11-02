@@ -93,6 +93,18 @@ class PriceShareReaderTests(unittest.TestCase):
         information = browser.split("private func showInformation()", 1)[1].split("private func showPrivacy()", 1)[0]
         self.assertIn("pushViewController(information", information)
 
+    def test_owned_webkit_fixture_is_mounted_before_loading_and_keeps_reader_deadlines(self):
+        source = (IOS / "Tests/PriceShareTests.swift").read_text(encoding="utf-8")
+        fixture = source.split("func testActualIsolatedWebKitReaderRequiresCurrentVisibleVenueAndSinglePriceMarker()", 1)[1].split("@MainActor private func evaluate", 1)[0]
+        self.assertIn("OwnedReferenceWindow(root: host)", fixture)
+        self.assertLess(fixture.index("OwnedReferenceWindow(root: host)"), fixture.index("web.loadSimulatedRequest"))
+        self.assertIn("web.window === mounted.window", fixture)
+        self.assertIn("mounted.window.isKeyWindow", fixture)
+        self.assertIn("timeout: 15", fixture)
+        self.assertIn("guard navigationResult == .completed", fixture)
+        evaluator = source.split("@MainActor private func evaluate", 1)[1].split("@MainActor private func descendants", 1)[0]
+        self.assertIn("timeout: 5", evaluator)
+
     def test_approved_jpegs_are_byte_exact_and_every_category_has_real_photo(self):
         root = IOS / "App/Assets.xcassets"
         evidence = json.loads((IOS / "Design/reference-artwork-provenance.json").read_text(encoding="utf-8"))

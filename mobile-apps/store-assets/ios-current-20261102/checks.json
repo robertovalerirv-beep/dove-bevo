@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "planSHA256": "24c42f35e9dfd836fb89b02ef6f32061b196264e7431b96f1371b5ea895cf3c1",
+  "canonicalNodeJSON": true,
+  "assets": 6,
+  "old": 6,
+  "sourceCopiesByteExact": true,
+  "pngIHDRAndAllChunkCRCChecked": true,
+  "priorServerMD5AllMatch": true,
+  "noSymlinksOrPathEscapes": true,
+  "imageEditing": false,
+  "physicalDeviceEvidence": false,
+  "files": [
+    {
+      "path": "assets/01-iphone-milano-map.png",
+      "bytes": 519306,
+      "sha256": "9c9572ad8349ac00071e40060eb25adc121c73d3c8629f34c15307d3c14bec16",
+      "md5": "1553c8fb53da5add8da105e6e3cded6a"
+    },
+    {
+      "path": "assets/02-iphone-venue.png",
+      "bytes": 253874,
+      "sha256": "a7c4203446899740d381b0e12ce6e48280a0a73ef6589dffa3ee8dc85e8bc877",
+      "md5": "2db323814cb3840db076dc736ad53652"
+    },
+    {
+      "path": "assets/03-iphone-favourites.png",
+      "bytes": 257714,
+      "sha256": "9fe8975cf75a3a1f5ac9e4151ba2fff0e01673b2a2a599d612042aec99e1a4ba",
+      "md5": "7e40c59eba93220d384ef5505f272cee"
+    },
+    {
+      "path": "assets/01-ipad-milano-map.png",
+      "bytes": 1452572,
+      "sha256": "28b43e70e5e2595af951bc3e22dae1184ee66c61d69b78aabe729064637bd4af",
+      "md5": "72912390e6a6535097bb192934b848b3"
+    },
+    {
+      "path": "assets/02-ipad-venue.png",
+      "bytes": 1571665,
+      "sha256": "13f5262d0daeba7d1f816818d08ec254349dd320c5c83026e32ae147c043512a",
+      "md5": "c839e1dd2e52ef9c6a9ffb690b18db70"
+    },
+    {
+      "path": "assets/03-ipad-favourites.png",
+      "bytes": 223977,
+      "sha256": "f956efabefc9b53382d3042142ffe654550ec924368c3af617d2f5690a890fb8",
+      "md5": "b61cd2c0153404d40b2cd117b33e4ceb"
+    },
+    {
+      "path": "backup/phone/01-iphone-milano-map.png",
+      "bytes": 456636,
+      "sha256": "cfde3c20e57cccb4d71c04f1290ded62f57e3d138eb1a26f468418e7d3d0fd0a",
+      "md5": "24391557654ec22ed3b3dc22114a5706"
+    },
+    {
+      "path": "backup/phone/02-iphone-favourites-comparison.png",
+      "bytes": 210415,
+      "sha256": "db467cf6c516c77d2cb9e2676d87b820db15e61d88a53176f4863d7c38786035",
+      "md5": "4be50264880b432c8751260b91a4d1b7"
+    },
+    {
+      "path": "backup/phone/03-iphone-drink-recommendations.png",
+      "bytes": 226076,
+      "sha256": "fa212ad0842f3676dec6bf846ec6e00549c6f2fa2da6b74eddb4420dfd0b6b19",
+      "md5": "b5e1d25c64cd0b9100d5ae213e19ff3d"
+    },
+    {
+      "path": "backup/ipad/01-ipad-milano-map.png",
+      "bytes": 1142588,
+      "sha256": "55b9bd3340b20a8741bcb661c6ac3a4d09a7e8041efed78cba9b4e0abd9e9e52",
+      "md5": "6a9cab62985854d7e2ac7fbc4b5d17d0"
+    },
+    {
+      "path": "backup/ipad/02-ipad-favourites-comparison.png",
+      "bytes": 188469,
+      "sha256": "aa86bbc17de863fa899209de4c0224ccd5eed1b9950280e842284edeb565e645",
+      "md5": "3baca608c8b766438d3b1498b55ec0af"
+    },
+    {
+      "path": "backup/ipad/03-ipad-drink-recommendations.png",
+      "bytes": 251365,
+      "sha256": "025c72704f3a4551c5710b25a5d97d958db0a93e03078f755096a42615314044",
+      "md5": "660fb55f34640ceb1c1649c01ff39f8c"
+    }
+  ]
+}

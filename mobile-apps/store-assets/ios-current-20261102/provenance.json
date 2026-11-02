@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "8a408fe677d8e7962601c26eaec9bbfb009980b0",
+  "sourceBuildNumber": 62,
+  "captureType": "Original unsigned Debug simulator PNGs from passing live browsing tests",
+  "representation": "Same native source as TestFlight build 62; not the signed IPA or physical-device evidence.",
+  "physicalDevice": false,
+  "imageEditing": false,
+  "publicContributionsDuringCapture": false,
+  "privateVideoIncluded": false,
+  "sources": [
+    {
+      "family": "phone",
+      "device": "iPhone 17 simulator",
+      "runtime": "iOS 27.0",
+      "workflowRun": 41370003275,
+      "artifactId": 13109636836,
+      "artifactZipBytes": 14203233,
+      "artifactZipSHA256": "810585e370bac92b8b83936e28bf6ff2cd53b73f34a86c06939b41eb1f0e1ed7",
+      "selectionProvenanceSHA256": "ab2dc69d5b73a68cd782f398dacd9aeee5ab454e82db68b1e3b3b6bb43a8ed29",
+      "images": [
+        {
+          "purpose": "map",
+          "assetPath": "assets/01-iphone-milano-map.png",
+          "originalAttachment": "06919607-6345-4568-8D4D-63408C7A42CA.png",
+          "attachmentName": "DoveBevo-live-Milano-map_0_C43FA629-D078-4B0D-AC3B-550C14607554.png",
+          "test": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+          "width": 1206,
+          "height": 2622,
+          "bytes": 519306,
+          "sha256": "9c9572ad8349ac00071e40060eb25adc121c73d3c8629f34c15307d3c14bec16",
+          "md5": "1553c8fb53da5add8da105e6e3cded6a",
+          "edited": false
+        },
+        {
+          "purpose": "venue",
+          "assetPath": "assets/02-iphone-venue.png",
+          "originalAttachment": "6C488C06-2379-42F9-BB58-E8B32839E05B.png",
+          "attachmentName": "DoveBevo-live-venue-detail-read-only_0_98DBC02A-D0DE-4277-B135-BD53AB68F8D3.png",
+          "test": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+          "width": 1206,
+          "height": 2622,
+          "bytes": 253874,
+          "sha256": "a7c4203446899740d381b0e12ce6e48280a0a73ef6589dffa3ee8dc85e8bc877",
+          "md5": "2db323814cb3840db076dc736ad53652",
+          "edited": false
+        },
+        {
+          "purpose": "favourites",
+          "assetPath": "assets/03-iphone-favourites.png",
+          "originalAttachment": "E7C41700-D2D1-4DE1-B76E-720BF6B2F92B.png",
+          "attachmentName": "DoveBevo-live-native-saved-venue_0_85200E5B-D198-4522-827C-15458CF028AD.png",
+          "test": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+          "width": 1206,
+          "height": 2622,
+          "bytes": 257714,
+          "sha256": "9fe8975cf75a3a1f5ac9e4151ba2fff0e01673b2a2a599d612042aec99e1a4ba",
+          "md5": "7e40c59eba93220d384ef5505f272cee",
+          "edited": false
+        }
+      ]
+    },
+    {
+      "family": "ipad",
+      "device": "iPad Air 13-inch (M4) simulator",
+      "runtime": "iOS 27.0",
+      "workflowRun": 41374921206,
+      "artifactId": 13111411554,
+      "artifactZipBytes": 19164453,
+      "artifactZipSHA256": "98f5789d677de79d382933b23e465c43c8752ad7cb0ee1879a6153d0c9a43497",
+      "selectionProvenanceSHA256": "17abf46c68ebc2a88c41894592aa727bd2e65736d137ccc8775b67a879c4cd87",
+      "images": [
+        {
+          "purpose": "map",
+          "assetPath": "assets/01-ipad-milano-map.png",
+          "originalAttachment": "181B3E2D-C8D4-49EB-8E82-CDCC3046210C.png",
+          "attachmentName": "DoveBevo-live-Milano-map_0_BC1784B5-7184-4072-988B-B432A4A96BB1.png",
+          "test": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+          "width": 2048,
+          "height": 2732,
+          "bytes": 1452572,
+          "sha256": "28b43e70e5e2595af951bc3e22dae1184ee66c61d69b78aabe729064637bd4af",
+          "md5": "72912390e6a6535097bb192934b848b3",
+          "edited": false
+        },
+        {
+          "purpose": "venue",
+          "assetPath": "assets/02-ipad-venue.png",
+          "originalAttachment": "41D0AF59-152A-4FE9-ACFC-46C3B7F29D97.png",
+          "attachmentName": "DoveBevo-live-venue-detail-read-only_0_460175CC-684F-47FC-A721-0A92EB0544FA.png",
+          "test": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+          "width": 2048,
+          "height": 2732,
+          "bytes": 1571665,
+          "sha256": "13f5262d0daeba7d1f816818d08ec254349dd320c5c83026e32ae147c043512a",
+          "md5": "c839e1dd2e52ef9c6a9ffb690b18db70",
+          "edited": false
+        },
+        {
+          "purpose": "favourites",
+          "assetPath": "assets/03-ipad-favourites.png",
+          "originalAttachment": "768B0726-BBBB-4D09-ABDC-325B843383AD.png",
+          "attachmentName": "DoveBevo-live-native-saved-venue_0_30F21DA7-0ABA-4BAE-A57C-617DDC61F4B4.png",
+          "test": "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()",
+          "width": 2048,
+          "height": 2732,
+          "bytes": 223977,
+          "sha256": "f956efabefc9b53382d3042142ffe654550ec924368c3af617d2f5690a890fb8",
+          "md5": "b61cd2c0153404d40b2cd117b33e4ceb",
+          "edited": false
+        }
+      ]
+    }
+  ],
+  "priorServerInventory": {
+    "checkedAt": "2026-11-02T03:04:31.113Z",
+    "sha256": "f86f9199ed965d44ce7b85db659336e61611892f5466b1f91b4566e8ec6c0db1",
+    "backups": [
+      {
+        "id": "06e1e535-963c-42e4-9e8b-99664014e820",
+        "setId": "eb509607-4f07-442f-bb14-3c7b7d49fdf5",
+        "originalRepoPath": "mobile-apps/store-assets/ios-navigation-20261029/01-iphone-milano-map.png",
+        "serverFileName": "01-iphone-milano-map.png",
+        "serverState": "COMPLETE",
+        "width": 1206,
+        "height": 2622,
+        "bytes": 456636,
+        "sha256": "cfde3c20e57cccb4d71c04f1290ded62f57e3d138eb1a26f468418e7d3d0fd0a",
+        "serverMD5": "24391557654ec22ed3b3dc22114a5706",
+        "backupPath": "backup/phone/01-iphone-milano-map.png"
+      },
+      {
+        "id": "8bd0bd4c-de2d-46db-99c1-a22b8adede61",
+        "setId": "eb509607-4f07-442f-bb14-3c7b7d49fdf5",
+        "originalRepoPath": "mobile-apps/store-assets/ios-navigation-20261029/02-iphone-favourites-comparison.png",
+        "serverFileName": "02-iphone-favourites-comparison.png",
+        "serverState": "COMPLETE",
+        "width": 1206,
+        "height": 2622,
+        "bytes": 210415,
+        "sha256": "db467cf6c516c77d2cb9e2676d87b820db15e61d88a53176f4863d7c38786035",
+        "serverMD5": "4be50264880b432c8751260b91a4d1b7",
+        "backupPath": "backup/phone/02-iphone-favourites-comparison.png"
+      },
+      {
+        "id": "4489fe8f-7aef-43f8-9d6f-2ddfcf3fda8f",
+        "setId": "eb509607-4f07-442f-bb14-3c7b7d49fdf5",
+        "originalRepoPath": "mobile-apps/store-assets/ios-navigation-20261029/03-iphone-drink-recommendations.png",
+        "serverFileName": "03-iphone-drink-recommendations.png",
+        "serverState": "COMPLETE",
+        "width": 1206,
+        "height": 2622,
+        "bytes": 226076,
+        "sha256": "fa212ad0842f3676dec6bf846ec6e00549c6f2fa2da6b74eddb4420dfd0b6b19",
+        "serverMD5": "b5e1d25c64cd0b9100d5ae213e19ff3d",
+        "backupPath": "backup/phone/03-iphone-drink-recommendations.png"
+      },
+      {
+        "id": "7130c64f-1f98-4969-8d07-a4db77101595",
+        "setId": "0cf30963-b6ba-47d1-9bd7-a75f055abeef",
+        "originalRepoPath": "mobile-apps/store-assets/ios-ipad-navigation-20261029/01-ipad-milano-map.png",
+        "serverFileName": "01-ipad-milano-map.png",
+        "serverState": "COMPLETE",
+        "width": 2048,
+        "height": 2732,
+        "bytes": 1142588,
+        "sha256": "55b9bd3340b20a8741bcb661c6ac3a4d09a7e8041efed78cba9b4e0abd9e9e52",
+        "serverMD5": "6a9cab62985854d7e2ac7fbc4b5d17d0",
+        "backupPath": "backup/ipad/01-ipad-milano-map.png"
+      },
+      {
+        "id": "59cacf4d-8874-4668-ab59-f216de67b9b8",
+        "setId": "0cf30963-b6ba-47d1-9bd7-a75f055abeef",
+        "originalRepoPath": "mobile-apps/store-assets/ios-ipad-navigation-20261029/02-ipad-favourites-comparison.png",
+        "serverFileName": "02-ipad-favourites-comparison.png",
+        "serverState": "COMPLETE",
+        "width": 2048,
+        "height": 2732,
+        "bytes": 188469,
+        "sha256": "aa86bbc17de863fa899209de4c0224ccd5eed1b9950280e842284edeb565e645",
+        "serverMD5": "3baca608c8b766438d3b1498b55ec0af",
+        "backupPath": "backup/ipad/02-ipad-favourites-comparison.png"
+      },
+      {
+        "id": "94177b86-0fcc-441c-b5ab-99eea7ebd2aa",
+        "setId": "0cf30963-b6ba-47d1-9bd7-a75f055abeef",
+        "originalRepoPath": "mobile-apps/store-assets/ios-ipad-navigation-20261029/03-ipad-drink-recommendations.png",
+        "serverFileName": "03-ipad-drink-recommendations.png",
+        "serverState": "COMPLETE",
+        "width": 2048,
+        "height": 2732,
+        "bytes": 251365,
+        "sha256": "025c72704f3a4551c5710b25a5d97d958db0a93e03078f755096a42615314044",
+        "serverMD5": "660fb55f34640ceb1c1649c01ff39f8c",
+        "backupPath": "backup/ipad/03-ipad-drink-recommendations.png"
+      }
+    ]
+  }
+}

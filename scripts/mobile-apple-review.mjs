@@ -173,5 +173,10 @@ async function main(args) {
   } finally { await output.close(); }
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main(process.argv.slice(2)).catch(() => { console.error("Apple review preparation blocked or audit failed; no metadata was changed"); process.exitCode = 1; });
+  main(process.argv.slice(2)).catch(() => {
+    console.error(process.argv.includes("--apply")
+      ? "Apple review apply failed; outcome may be unknown. Inspect the receipt and read back Apple review details before retrying"
+      : "Apple review read-only audit failed; no metadata mutation was requested");
+    process.exitCode = 1;
+  });
 }

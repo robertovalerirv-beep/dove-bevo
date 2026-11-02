@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { APP_ID, VERSION_ID, ORIGIN, NOTES_URL, NOTES_SHA, validateNotes, validateEvidence, auditReview, applyReview, sha256 } from "../mobile-apple-review.mjs";
 
@@ -136,4 +138,42 @@ test("workflow is fixed repository/exact audit tag, contains no apply command or
   assert.ok(!/^\s*environment:/m.test(workflow));
   assert.ok(!/^    env:/m.test(workflow));
   assert.ok(workflow.includes('OUTPUT_PATH: ${{ runner.temp }}/apple-review-audit.json'));
+});
+test("real CLI warns of unknown outcome after PATCH and receipt write/fsync failure, without retry", () => {
+  for (const failAt of ["write", "sync"]) for (const patchOutcome of ["success", "lost-response"]) {
+    // Preload only in this child: synthetic credentials, responses and evidence; no network or disk writes.
+    const preload = `
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      const originalRead = fs.promises.readFile;
+      fs.promises.readFile = async (path, ...rest) => path === 'synthetic-evidence.json'
+        ? Buffer.from(${JSON.stringify(JSON.stringify(proof()))}) : originalRead(path, ...rest);
+      fs.promises.open = async () => ({
+        writeFile: async () => { if (${JSON.stringify(failAt)} === 'write') throw new Error('PRIVATE_WRITE'); },
+        sync: async () => { if (${JSON.stringify(failAt)} === 'sync') throw new Error('PRIVATE_SYNC'); },
+        close: async () => {}
+      });
+      syncBuiltinESMExports();
+      const responses = ${JSON.stringify(responses())};
+      let calls = 0;
+      globalThis.fetch = async (url, options) => {
+        if (options.method === 'PATCH') {
+          console.log('TEST_PATCH_CALLED');
+          if (${JSON.stringify(patchOutcome)} === 'lost-response') throw new Error('PRIVATE_LOST');
+        }
+        return new Response(JSON.stringify(responses[calls++]), { headers: { 'content-type': 'application/json' } });
+      };
+    `;
+    const child = spawnSync(process.execPath, [
+      "--import", "data:text/javascript," + encodeURIComponent(preload),
+      fileURLToPath(new URL("../mobile-apple-review.mjs", import.meta.url)),
+      "synthetic-receipt.json", "--apply", "--evidence", "synthetic-evidence.json", "--notes-sha", NOTES_SHA,
+    ], { encoding: "utf8", env: { SystemRoot: process.env.SystemRoot, ...env }, timeout: 10000 });
+    assert.ifError(child.error);
+    assert.equal(child.status, 1, child.stderr);
+    assert.equal(child.stdout.match(/TEST_PATCH_CALLED/g)?.length, 1, child.stderr);
+    assert.match(child.stderr, /outcome may be unknown/);
+    assert.match(child.stderr, /read back Apple review details before retrying/);
+    assert.doesNotMatch(child.stderr, /no metadata was changed|PRIVATE/);
+  }
 });

@@ -111,6 +111,38 @@ public final class PublicBrowseRuntimeTest {
         }
     }
 
+    @Test(timeout = 90000) public void nativeTransportReadsActualEuropeanPricesWithoutBrowserCredentials() throws Exception {
+        FavoritePricesClient.Call call = new FavoritePricesClient.Call(System.nanoTime() + TimeUnit.SECONDS.toNanos(60));
+        try {
+            EuropePricesClient client = new EuropePricesClient(new FavoritePricesClient.HttpsTransport(),
+                    () -> java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString());
+            EuropePrices.Catalog catalog = client.catalog(call);
+            int rows = 0;
+            for (String key : new String[]{"n6044678286", "n329135152"}) {
+                EuropePrices.Venue venue = catalog.venues.get(key);
+                assertNotNull("Actual imported venue must remain in the live catalogue", venue);
+                EuropePrices.Cell snapshot = client.venue(key, venue.cell, catalog, call);
+                assertFalse("Actual imported prices must be available through the production native transport", snapshot.prices.isEmpty());
+                int menus = 0;
+                for (EuropePrices.Price price : snapshot.prices) {
+                    assertEquals(key, price.venue);
+                    assertEquals(venue.currency, price.currency);
+                    assertEquals(key.equals("n6044678286") ? "GBP" : "EUR", price.currency);
+                    if (price.sourceKind.equals("online_menu")) {
+                        assertNull("A source check cannot become a customer observation", price.observedOn);
+                        assertNotNull(price.sourceCheckedOn);
+                        menus++;
+                    }
+                }
+                assertTrue("At least one genuine imported menu row is required", menus > 0);
+                rows += snapshot.prices.size();
+            }
+            Bundle result = new Bundle();
+            result.putString("native_public_prices", "PASS actual GBP and EUR venue prices; catalog=" + catalog.version + "; rows=" + rows);
+            instrumentation.sendStatus(0, result);
+        } finally { call.cancel(); }
+    }
+
     @Test(timeout = 180000) public void productionMobileSearchSelectsMilanoAndReadiesItsMap() throws Exception {
         awaitState("mobile-document", 45, s -> s.optBoolean("marker") && s.optBoolean("search"));
         assertEquals("Only open normal search", "true", evaluate(OPEN_SEARCH));

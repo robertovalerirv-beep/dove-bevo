@@ -11,7 +11,7 @@ The bounded vertical slice is:
 3. Select that city through its normal UI click. Wait up to 60 seconds for the real map's ready state, a nonempty rendered MapLibre canvas, closed search, zoom at least 13 and a finite map center inside the bounded Milano area.
 4. Finish the Activity and restore only the original local rules-version key. No page reload/retry, venue selection, contribution handler, save, vote, report, proposal, sponsorship/ad action, sharing or external navigation is triggered.
 
-Success sends a small `public_browse` instrumentation status with document origin/path/title (bounded), marker/search/challenge booleans and map readiness/center/zoom. This establishes the rendered app document and actual city/map interaction. It does **not** establish every tile loaded, a venue's price, backend mutation safety, complete app coverage, or a physical-device/store-release result.
+Success sends a small `public_browse` instrumentation status with document origin/path/title (bounded), marker/search/challenge booleans and map readiness/center/zoom. A separate opt-in case calls the unchanged native HTTPS transport and typed catalogue/venue parser for two actually imported UK/France venues, requiring live GBP/EUR prices and truthful online-menu dates without browser credentials. It emits `native_public_prices=PASS` only after those actual reads succeed. Neither case establishes every tile loaded, backend mutation safety, complete app coverage, or a physical-device/store-release result.
 
 ## Protection and failure behavior
 

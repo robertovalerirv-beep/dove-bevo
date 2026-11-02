@@ -130,25 +130,6 @@
       "source_format": "html_text_v1",
       "currency": "EUR",
       "conditions": "none",
-      "drink": "beer_draft",
-      "cents": 650,
-      "menu_item": "Hofbrau Original - Hofbrau Munchen",
-      "serving_note": "50 cl draft beer",
-      "source_url": "https://www.romabeercompany.it/birra_rbc/",
-      "source_sha256": "0cdc8cd999a4ebda22f96903c1aa9f301556adb4a291b09bbd87acf7ddc4a1eb"
-    },
-    {
-      "venue_key": "n5730113518",
-      "name": "Roma Beer Company - Ponte Milvio",
-      "cell": "sr2ye",
-      "city": 72959652,
-      "lat": 41.93733,
-      "lon": 12.46672,
-      "hh": 0,
-      "identity_note": "Roma Beer Company - Ponte Milvio owner menu address Piazzale di Ponte Milvio 40-42 matches exact existing OSM node n5730113518 and published static coordinates. These are normal menu drink amounts, not an all-in bill or customer-paid observation. No mandatory cover/service/minimum text was found on the current linked drink and dinner pages.",
-      "source_format": "html_text_v1",
-      "currency": "EUR",
-      "conditions": "none",
       "drink": "spritz",
       "cents": 800,
       "menu_item": "Aperol Spritz",
@@ -231,25 +212,6 @@
       "serving_note": "Non-alcoholic cocktail; volume not stated",
       "source_url": "https://www.romabeercompany.it/birre_rbc_cocktail/",
       "source_sha256": "87493cded2a1d62a5e9cdac0a4c22a958c01537b981706170a0f9622272c3836"
-    },
-    {
-      "venue_key": "n5730113518",
-      "name": "Roma Beer Company - Ponte Milvio",
-      "cell": "sr2ye",
-      "city": 72959652,
-      "lat": 41.93733,
-      "lon": 12.46672,
-      "hh": 0,
-      "identity_note": "Roma Beer Company - Ponte Milvio owner menu address Piazzale di Ponte Milvio 40-42 matches exact existing OSM node n5730113518 and published static coordinates. These are normal menu drink amounts, not an all-in bill or customer-paid observation. No mandatory cover/service/minimum text was found on the current linked drink and dinner pages.",
-      "source_format": "html_text_v1",
-      "currency": "EUR",
-      "conditions": "none",
-      "drink": "wine_glass",
-      "cents": 500,
-      "menu_item": "Col Del Sole Prosecco Superiore di Valdobbiadene Millesimato Extra Dry DOCG",
-      "serving_note": "One glass",
-      "source_url": "https://www.romabeercompany.it/mescitabollicine/",
-      "source_sha256": "4e70fb46530fea0c00986b5f6ce18893e4b0ca2d27f8f9424b532838c690647f"
     }
   ]
 }

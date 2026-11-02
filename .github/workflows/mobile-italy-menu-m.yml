@@ -7,8 +7,8 @@ on:
       - ".github/workflows/mobile-italy-menu-m.yml"
   push:
     tags:
-      - "mobile-italy-menu-m-audit/20261102-v2"
-      - "mobile-italy-menu-m-seed/20261102-v2"
+      - "mobile-italy-menu-m-audit/20261102-v3"
+      - "mobile-italy-menu-m-seed/20261102-v3"
 permissions:
   contents: read
 concurrency:
@@ -16,8 +16,8 @@ concurrency:
   cancel-in-progress: false
 env:
   MANIFEST: mobile-apps/data/italy-menu-seed-20261102-m.json
-  MANIFEST_SHA256: 2ef7584a20bfd0d422739bd33c63413fa600a4e61af00f0ca9f7b4781f33b449
-  APPROVED_SOURCE_INDICES: "0,1,2,3,4,5"
+  MANIFEST_SHA256: 81298b774c2a83e32fda544d731d71a7abc8f0644cc453f18102253c829f9d95
+  APPROVED_SOURCE_INDICES: "0,1,2,3"
   COHORT_SHA256: 2e194dc66ccf25e511ac4b1a25a0d75774cecf6967f19a3fb124927da15126a7
   TRACER_SHA256: b23ec078472eafc8f0e0c5bf70b840a69e137a5cba06dd328d52478c46dddbd5
   IMPORTER_SHA256: a6ee8ea2f8277584beb83f22baae7787448b83db417fa80716b61e8f431fad78
@@ -52,8 +52,8 @@ jobs:
     if: >-
       github.repository == 'robertovalerirv-beep/dove-bevo' &&
       github.event_name == 'push' && github.ref_type == 'tag' &&
-      (github.ref == 'refs/tags/mobile-italy-menu-m-audit/20261102-v2' ||
-      github.ref == 'refs/tags/mobile-italy-menu-m-seed/20261102-v2')
+      (github.ref == 'refs/tags/mobile-italy-menu-m-audit/20261102-v3' ||
+      github.ref == 'refs/tags/mobile-italy-menu-m-seed/20261102-v3')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -77,8 +77,8 @@ jobs:
         run: |
           set -euo pipefail
           case "$GITHUB_REF" in
-            refs/tags/mobile-italy-menu-m-audit/20261102-v2) mode_args=() ;;
-            refs/tags/mobile-italy-menu-m-seed/20261102-v2)
+            refs/tags/mobile-italy-menu-m-audit/20261102-v3) mode_args=() ;;
+            refs/tags/mobile-italy-menu-m-seed/20261102-v3)
               test -n "$APPROVED_SOURCE_INDICES"
               mode_args=(--apply --approved-sha256 "$MANIFEST_SHA256" --approved-groups "$APPROVED_SOURCE_INDICES") ;;
             *) exit 2 ;;
@@ -86,7 +86,7 @@ jobs:
           output_dir="$RUNNER_TEMP/italy-menu-m/run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           python3 -I -S -B mobile-apps/tools/menu-seed/run_source_cohort.py --manifest "$MANIFEST" --output-dir "$output_dir" "${mode_args[@]}"
       - name: Verify public prices for completed selected source groups
-        if: always() && github.ref == 'refs/tags/mobile-italy-menu-m-seed/20261102-v2'
+        if: always() && github.ref == 'refs/tags/mobile-italy-menu-m-seed/20261102-v3'
         shell: bash
         run: |
           python3 -B - <<'PY'

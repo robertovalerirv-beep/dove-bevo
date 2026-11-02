@@ -35,7 +35,7 @@ public class MobileEntryTest {
         assertEquals(document, MobileEntry.documentURL(canonical));
         assertEquals(document, MobileEntry.documentURL(document));
         assertEquals(canonical, SavedVenueUrl.canonicalize(document));
-        assertEquals(canonical, BrowserPolicy.shareUrl(document));
+        assertEquals(document, BrowserPolicy.shareUrl(document));
         assertEquals(BrowserPolicy.HOME, BrowserPolicy.shareUrl("https://www.dovebevo.com/mobile/"));
         assertTrue(MobileEntry.isDocument(document));
         assertFalse(MobileEntry.isDocument(canonical));

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Real app-document URLs are distinct from public bookmark/share URLs.
+/// Private bookmark IDs stay canonical; sharing uses a real app document for app-only venues.
 enum MobileEntry {
     static let homeURL = URL(string: "https://www.dovebevo.com/mobile/")!
     static let markerScript = "document.documentElement.getAttribute('data-dovebevo-mobile-shell') === '1'"
@@ -58,5 +58,17 @@ enum MobileEntry {
               let cell = source.queryItems?.first(where: { $0.name == "c" })?.value else { return nil }
         // Encode slashes identically to the production JS URLSearchParams contract.
         return URL(string: "\(homeURL.absoluteString)?path=%2Fbar%2F\(canonical.lastPathComponent)&c=\(cell)")
+    }
+
+    static func shareURL(_ url: URL) -> URL {
+        guard URLPolicy.isWebsite(url) else { return URLPolicy.homeURL }
+        if isDocument(url) {
+            return SavedVenuePolicy.canonicalURL(url).flatMap(venueDocument) ?? URLPolicy.homeURL
+        }
+        if let venue = SavedVenuePolicy.canonicalURL(url) { return venue }
+        guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              parts.percentEncodedQuery == nil, parts.percentEncodedFragment == nil,
+              parts.percentEncodedPath.range(of: #"\A/(?:privacy|regole|copertura|roma|milano|torino|napoli)?/?\z"#, options: .regularExpression) != nil else { return URLPolicy.homeURL }
+        return URL(string: "https://www.dovebevo.com\(parts.percentEncodedPath)") ?? URLPolicy.homeURL
     }
 }

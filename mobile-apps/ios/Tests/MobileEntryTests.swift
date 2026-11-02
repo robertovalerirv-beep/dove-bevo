@@ -13,6 +13,11 @@ final class MobileEntryTests: XCTestCase {
         XCTAssertNil(MobileEntry.publicVenue(canonical))
         XCTAssertNil(MobileEntry.venueDocument(URL(string: "https://evil.test/bar/n123?c=u0nd9")!))
         XCTAssertEqual(MobileEntry.documentURL(URLPolicy.homeURL), MobileEntry.homeURL)
+        XCTAssertEqual(MobileEntry.shareURL(document), document, "Recipients need a real app document for foreign catalogue venues")
+        XCTAssertEqual(MobileEntry.shareURL(canonical), canonical)
+        XCTAssertEqual(MobileEntry.shareURL(MobileEntry.homeURL), URLPolicy.homeURL)
+        XCTAssertEqual(MobileEntry.shareURL(URL(string: document.absoluteString + "&token=private")!), URLPolicy.homeURL)
+        XCTAssertEqual(MobileEntry.shareURL(URL(string: "https://evil.test/bar/n123?c=u0nd9")!), URLPolicy.homeURL)
     }
 
     func testAmbiguousAndExternalDocumentIdentityIsRejected() {

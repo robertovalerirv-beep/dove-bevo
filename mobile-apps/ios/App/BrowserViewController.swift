@@ -611,7 +611,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     @objc private func sharePage() {
         guard canSharePage else { return }
-        let publicURL = SavedVenuePolicy.canonicalURL(currentWebsiteURL) ?? (MobileEntry.isDocument(currentWebsiteURL) ? URLPolicy.homeURL : currentWebsiteURL)
+        let publicURL = MobileEntry.shareURL(currentWebsiteURL)
         let sheet = UIActivityViewController(activityItems: [publicURL], applicationActivities: nil)
         sheet.popoverPresentationController?.barButtonItem = moreButton
         present(sheet, animated: true)

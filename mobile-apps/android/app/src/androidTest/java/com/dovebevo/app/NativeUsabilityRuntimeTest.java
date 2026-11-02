@@ -218,7 +218,7 @@ public final class NativeUsabilityRuntimeTest {
         assertTrue(store.load().isEmpty());
     }
 
-    @Test public void mobileDocumentSharesItsCanonicalPublicVenueWithoutOpeningAChooser() throws Exception {
+    @Test public void mobileDocumentSharesItsRealAppVenueWithoutOpeningAChooser() throws Exception {
         navigate(ONE);
         AtomicReference<Intent> captured = new AtomicReference<>();
         Instrumentation.ActivityMonitor monitor = new Instrumentation.ActivityMonitor() {
@@ -241,7 +241,7 @@ public final class NativeUsabilityRuntimeTest {
             assertNotNull(send);
             assertEquals(Intent.ACTION_SEND, send.getAction());
             assertEquals("text/plain", send.getType());
-            assertEquals(ONE, send.getStringExtra(Intent.EXTRA_TEXT));
+            assertEquals(APP_ONE, send.getStringExtra(Intent.EXTRA_TEXT));
             onMain(() -> {
                 assertEquals(APP_ONE, web.getUrl());
                 assertFalse((Boolean) get("failed"));
@@ -863,7 +863,10 @@ public final class NativeUsabilityRuntimeTest {
     /** Legacy presentation regression: bypass production entry translation only for owned, network-blocked HTML. */
     private void navigateLegacy(String url) throws Exception {
         int minimumToken = documentResponses.get() + 1;
-        onMain(() -> web.loadUrl(url));
+        onMain(() -> {
+            invoke("setLoading", new Class<?>[]{boolean.class}, true);
+            web.loadUrl(url);
+        });
         await(() -> url.equals(web.getUrl()) && !(Boolean) get("loading") && (Boolean) get("hasUsablePage"));
         assertOwnedDocument(minimumToken);
     }

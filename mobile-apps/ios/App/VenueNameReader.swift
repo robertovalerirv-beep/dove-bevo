@@ -10,7 +10,7 @@ enum VenueNameReader {
         const url = new URL(href);
         const mobile = /^\/mobile\/(?:index\.html)?$/.test(url.pathname);
         if (mobile && (document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1" ||
-            url.searchParams.size !== 2 || url.searchParams.getAll("path").length !== 1 ||
+            [...url.searchParams].length !== 2 || url.searchParams.getAll("path").length !== 1 ||
             url.searchParams.getAll("c").length !== 1 || !/^[0-9b-hjkmnp-z]{5}$/.test(url.searchParams.get("c") || ""))) return null;
         const key = /^\/bar\/([nwru][1-9][0-9]{0,14})$/.exec(mobile ? url.searchParams.get("path") || "" : url.pathname)?.[1];
         if (url.protocol !== "https:" || !["www.dovebevo.com", "dovebevo.com"].includes(url.hostname) ||

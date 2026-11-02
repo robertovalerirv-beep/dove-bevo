@@ -71,6 +71,8 @@ public final class BrowserPolicy {
     }
 
     public static String shareUrl(String raw) {
+        String documentVenue = MobileEntry.publicVenue(raw);
+        if (documentVenue != null) return MobileEntry.venueDocument(documentVenue);
         String venue = SavedVenueUrl.canonicalize(raw);
         if (venue != null) return venue;
         if (target(raw) != Target.INTERNAL) return HOME;

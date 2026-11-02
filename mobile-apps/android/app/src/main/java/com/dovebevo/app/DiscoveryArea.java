@@ -13,7 +13,7 @@ import java.util.Set;
 final class DiscoveryArea {
     final double lat,lon,zoom;
     DiscoveryArea(double lat,double lon,double zoom)throws IOException {
-        if(!Double.isFinite(lat)||!Double.isFinite(lon)||!Double.isFinite(zoom)||lat<35.2||lat>47.2||lon<6.5||lon>18.6||zoom<13||zoom>24)throw NativeJson.invalid();
+        if(!Double.isFinite(lat)||!Double.isFinite(lon)||!Double.isFinite(zoom)||!europe(lat,lon)||zoom<13||zoom>24)throw NativeJson.invalid();
         this.lat=lat;this.lon=lon;this.zoom=zoom;
     }
     static final String SCRIPT="""
@@ -54,10 +54,13 @@ final class DiscoveryArea {
         String own=geohash(lat,lon);double[] box=bounds(own);double dy=box[1]-box[0],dx=box[3]-box[2];
         double cy=(box[0]+box[1])/2,cx=(box[2]+box[3])/2;Set<String> cells=new LinkedHashSet<>();cells.add(own);
         for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
-            double la=cy+y*dy,lo=cx+x*dx;if(la>=35.2&&la<=47.2&&lo>=6.5&&lo<=18.6)cells.add(geohash(la,lo));
+            double la=cy+y*dy,lo=cx+x*dx;if(europe(la,lo))cells.add(geohash(la,lo));
         }
         return Collections.unmodifiableList(new ArrayList<>(cells));
     }
+    private static boolean europe(double lat,double lon){return lat>=27.5&&lat<=61&&lon>=-18.5&&lon<=19;}
+    boolean legacyArea(){return lat>=35.2&&lat<=47.2&&lon>=6.5&&lon<=18.6;}
+    static boolean legacyCell(String cell){double[] box=bounds(cell);return box[1]>=35.2&&box[0]<=47.2&&box[3]>=6.5&&box[2]<=18.6;}
     static String geohash(double lat,double lon) {
         double south=-90,north=90,west=-180,east=180;StringBuilder result=new StringBuilder();int value=0;
         for(int bit=0;bit<25;bit++) {

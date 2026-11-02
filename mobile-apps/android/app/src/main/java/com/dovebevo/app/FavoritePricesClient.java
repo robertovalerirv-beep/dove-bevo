@@ -20,9 +20,29 @@ final class FavoritePricesClient {
         synchronized void detach(){connection=null;}
         synchronized void cancel(){cancelled=true;if(connection!=null)connection.disconnect();}
     }
-    private final Transport transport;private final Supplier<String> today;
+    private final Transport transport;private final Supplier<String> today;private final EuropePricesClient europe;
     FavoritePricesClient(){this(new HttpsTransport(),FavoriteDay::today);}
-    FavoritePricesClient(Transport transport,Supplier<String> today){this.transport=transport;this.today=today;}
+    FavoritePricesClient(Transport transport,Supplier<String> today){this.transport=transport;this.today=today;europe=new EuropePricesClient(transport,today);}
+    EuropePrices.Catalog catalog(Call call)throws IOException{return europe.catalog(call);}
+    FavoriteComparison.Cell cell(String cell,String version,boolean needsStatic,EuropePrices.Catalog catalog,Call call)throws IOException{
+        EuropePrices.cell(cell);
+        if(catalog!=null&&!DiscoveryArea.legacyCell(cell))return FavoriteComparison.withEurope(null,mobileCell(cell,catalog,call));
+        FavoriteComparison.Cell legacy=cell(cell,version,needsStatic,call);
+        if(catalog!=null&&catalog.containsCell(cell))return FavoriteComparison.withEurope(legacy,europe.cell(cell,catalog,call));
+        return legacy;
+    }
+    DiscoveryData.Cell discoveryCell(String cell,String version,EuropePrices.Catalog catalog,boolean foreignArea,Call call)throws IOException{
+        EuropePrices.cell(cell);
+        if(foreignArea&&catalog==null)throw NativeJson.invalid();
+        if(catalog!=null&&!DiscoveryArea.legacyCell(cell)){
+            EuropePrices.Cell value=mobileCell(cell,catalog,call);
+            return DiscoveryData.withEurope(null,value);
+        }
+        DiscoveryData.Cell legacy=discoveryCell(cell,version,call);
+        if(catalog!=null&&catalog.containsCell(cell))return DiscoveryData.withEurope(legacy,europe.cell(cell,catalog,call));
+        return legacy;
+    }
+    private EuropePrices.Cell mobileCell(String cell,EuropePrices.Catalog catalog,Call call)throws IOException{return catalog.containsCell(cell)?europe.cell(cell,catalog,call):new EuropePrices.Cell(catalog.version,java.util.Collections.emptyMap(),java.util.Collections.emptySet(),java.util.Collections.emptySet(),java.util.Collections.emptySet(),java.util.Collections.emptyList());}
     String version(Call call)throws IOException{return FavoriteComparison.version(get(ORIGIN+"/api/health",FavoriteComparison.HEALTH_BYTES,call));}
     FavoriteComparison.Cell cell(String cell,String version,boolean needsStatic,Call call)throws IOException{
         if(cell==null||!cell.matches("[0-9b-hjkmnp-z]{5}"))throw NativeJson.invalid();
@@ -42,7 +62,7 @@ final class FavoritePricesClient {
         call.check();return DiscoveryData.parse(file,prices,cell,today.get());
     }
     private byte[] get(String url,int maximum,Call call)throws IOException{call.check();if(!allowed(url))throw NativeJson.invalid();byte[] bytes=transport.get(url,maximum,call);call.check();if(bytes==null||bytes.length>maximum)throw NativeJson.invalid();return bytes;}
-    static boolean allowed(String url){return url!=null&&(url.equals(ORIGIN+"/api/health")||url.matches("https://www\\.dovebevo\\.com/api/prices/[0-9b-hjkmnp-z]{5}")||url.matches("https://www\\.dovebevo\\.com/data/[0-9]{8}/v/[0-9b-hjkmnp-z]{5}\\.json"));}
+    static boolean allowed(String url){return EuropePricesClient.allowed(url)||url!=null&&(url.equals(ORIGIN+"/api/health")||url.matches("https://www\\.dovebevo\\.com/api/prices/[0-9b-hjkmnp-z]{5}")||url.matches("https://www\\.dovebevo\\.com/data/[0-9]{8}/v/[0-9b-hjkmnp-z]{5}\\.json"));}
     interface Connections{HttpsURLConnection open(String url)throws IOException;}
     static final class HttpsTransport implements Transport{
         private final Connections connections;

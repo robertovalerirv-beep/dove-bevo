@@ -24,12 +24,24 @@ final class FavoriteComparison {
     }
     static final class Cell{
         final Map<String,String> names;final Map<String,Price> prices;
-        final boolean staticVerified;
-        Cell(Map<String,String> names,Map<String,Price> prices,boolean staticVerified){this.names=Collections.unmodifiableMap(names);this.prices=Collections.unmodifiableMap(prices);this.staticVerified=staticVerified;}
+        final boolean staticVerified;final EuropePrices.Cell europe;
+        Cell(Map<String,String> names,Map<String,Price> prices,boolean staticVerified){this(names,prices,staticVerified,null);}
+        Cell(Map<String,String> names,Map<String,Price> prices,boolean staticVerified,EuropePrices.Cell europe){this.names=Collections.unmodifiableMap(names);this.prices=Collections.unmodifiableMap(prices);this.staticVerified=staticVerified;this.europe=europe;}
     }
     static final class Row{
-        final SavedVenueStore.Venue saved;final String name;final Price price;final State state;
-        Row(SavedVenueStore.Venue saved,String name,Price price,State state){this.saved=saved;this.name=name;this.price=price;this.state=state;}
+        final SavedVenueStore.Venue saved;final String name;final Price price;final State state;final EuropePrices.Price mobilePrice;
+        Row(SavedVenueStore.Venue saved,String name,Price price,State state){this(saved,name,price,null,state);}
+        Row(SavedVenueStore.Venue saved,String name,Price price,EuropePrices.Price mobilePrice,State state){this.saved=saved;this.name=name;this.price=price;this.mobilePrice=mobilePrice;this.state=state;}
+        boolean available(){return price!=null||mobilePrice!=null;}
+        String group(){return NativePricePresentation.group(price,mobilePrice);}
+        int amount(){return mobilePrice==null?price.cents:mobilePrice.amountMinor;}
+    }
+    static Cell withEurope(Cell legacy,EuropePrices.Cell europe){
+        Map<String,String> names=new LinkedHashMap<>();Map<String,Price> prices=new HashMap<>();
+        if(legacy!=null){names.putAll(legacy.names);prices.putAll(legacy.prices);}
+        for(EuropePrices.Venue v:europe.venues.values())names.put(v.key,v.name);
+        for(String hidden:europe.hidden){names.remove(hidden);prices.keySet().removeIf(k->k.startsWith(hidden+"/"));}
+        return new Cell(names,prices,legacy==null||legacy.staticVerified,europe);
     }
     static String key(String url)throws IOException{String canonical=SavedVenueUrl.canonicalize(url);if(canonical==null||!canonical.equals(url))throw NativeJson.invalid();return canonical.substring(canonical.indexOf("/bar/")+5,canonical.indexOf('?'));}
     static String cell(String url)throws IOException{key(url);return url.substring(url.indexOf("?c=")+3);}
@@ -76,9 +88,15 @@ final class FavoriteComparison {
     static List<Row> rows(List<SavedVenueStore.Venue> saved,Map<String,Cell> cells,RecommendationDrink drink,int band)throws IOException{
         if(saved.size()>SavedVenueStore.MAX_VENUES||drink==null||(band!=0&&band!=1))throw NativeJson.invalid();
         List<Row> rows=new ArrayList<>();
-        for(SavedVenueStore.Venue venue:saved){Cell data=cells.get(cell(venue.url));String name=data==null?null:data.names.get(key(venue.url));Price price=name==null?null:data.prices.get(pair(key(venue.url),drink,band));rows.add(new Row(venue,name==null?venue.label:name,price,name==null?State.UNAVAILABLE:price==null?State.MISSING:State.AVAILABLE));}
+        for(SavedVenueStore.Venue venue:saved){Cell data=cells.get(cell(venue.url));String key=key(venue.url),name=data==null?null:data.names.get(key);
+            if(data!=null&&data.europe!=null&&data.europe.owns(key)){
+                List<EuropePrices.Price> variants=data.europe.selected(key,drink,band);
+                if(name!=null&&!variants.isEmpty()){for(EuropePrices.Price price:variants)rows.add(new Row(venue,name,null,price,State.AVAILABLE));continue;}
+                rows.add(new Row(venue,name==null?venue.label:name,null,name==null?State.UNAVAILABLE:State.MISSING));continue;
+            }
+            Price price=name==null?null:data.prices.get(pair(key,drink,band));rows.add(new Row(venue,name==null?venue.label:name,price,name==null?State.UNAVAILABLE:price==null?State.MISSING:State.AVAILABLE));}
         Collator names=Collator.getInstance(Locale.ITALIAN);
-        Collections.sort(rows,(a,b)->{if((a.price!=null)!=(b.price!=null))return a.price!=null?-1:1;if(a.price!=null){int price=Integer.compare(a.price.cents,b.price.cents);if(price!=0)return price;}int name=names.compare(a.name,b.name);return name!=0?name:a.saved.url.compareTo(b.saved.url);});return rows;
+        Collections.sort(rows,(a,b)->{if(a.available()!=b.available())return a.available()?-1:1;if(a.available()){int group=a.group().compareTo(b.group());if(group!=0)return group;int price=Integer.compare(a.amount(),b.amount());if(price!=0)return price;}int name=names.compare(a.name,b.name);return name!=0?name:a.saved.url.compareTo(b.saved.url);});return rows;
     }
     private static String pair(String key,RecommendationDrink drink,int band){return key+"/"+drink.code+"/"+band;}
     private static void location(List<?> row,int start,String cell)throws IOException{

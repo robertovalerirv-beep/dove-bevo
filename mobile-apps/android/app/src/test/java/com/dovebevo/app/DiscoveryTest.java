@@ -27,7 +27,7 @@ public final class DiscoveryTest {
         DiscoveryArea area=new DiscoveryArea(45.4642,9.19,14);assertEquals("u0nd9",DiscoveryArea.geohash(area.lat,area.lon));
         assertEquals(9,area.cells().size());assertEquals(9,new HashSet<>(area.cells()).size());assertEquals("u0nd9",area.cells().get(0));
         assertEquals(0,area.metres(area.lat,area.lon),0.01);assertTrue(area.metres(45.4643,9.1901)>10&&area.metres(45.4643,9.1901)<20);
-        assertThrows(IOException.class,()->new DiscoveryArea(52,13,14));assertThrows(IOException.class,()->new DiscoveryArea(45,9,12));
+        assertEquals(9,new DiscoveryArea(52,13,14).cells().size());assertThrows(IOException.class,()->new DiscoveryArea(45,9,12));
         assertEquals(area.cells(),new DiscoveryArea(area.lat,area.lon,13).cells());
         assertEquals("Zooming alone does not shrink the fixed request area",area.cells(),new DiscoveryArea(area.lat,area.lon,20).cells());
     }

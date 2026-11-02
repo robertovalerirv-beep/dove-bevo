@@ -45,11 +45,11 @@ public final class FavoritesRuntimeTest {
         if(directory!=null){File[] files=directory.listFiles();if(files!=null)for(File item:files)assertTrue(item.delete());assertTrue(directory.delete());}
     }
     @Test public void realNamePriceSortingSelectorsOpenAndRemoveDoNotRewriteSavedLabels()throws Exception{
-        byte[] before=file.read();show();awaitLoaded();assertEquals(3,requests.get());
+        byte[] before=file.read();show();awaitLoaded();assertEquals(4,requests.get());
         onMain(()->{assertEquals(TWO,row(0).getTag());assertTrue(text(row(0)).contains("Altro locale"));assertTrue(text(row(0)).contains("6,00"));assertTrue(text(row(0)).contains("oltre 90"));assertTrue(text(row(1)).contains("28/10/2026"));((Spinner)activity.findViewById(R.id.favorites_band)).setSelection(1);});
         onMain(()->{assertEquals(ONE,row(0).getTag());assertTrue(text(row(0)).contains("5,00"));assertTrue(text(row(1)).contains("Nessun prezzo"));((Spinner)activity.findViewById(R.id.favorites_drink)).setSelection(RecommendationDrink.SPRITZ.ordinal());});
         onMain(()->{assertTrue(text(row(0)).contains("Nessun prezzo"));row(0).findViewById(R.id.favorite_open).performClick();});
-        assertNotNull(opened.get());assertEquals(3,requests.get());assertArrayEquals(before,file.read());
+        assertNotNull(opened.get());assertEquals(4,requests.get());assertArrayEquals(before,file.read());
         onMain(()->rows().findViewWithTag(ONE).findViewById(R.id.favorite_remove).performClick());awaitLoaded();assertEquals(1,store.load().size());assertEquals("Nome salvato due",store.load().get(0).label);
     }
     @Test public void removalAndBackgroundCannotBeUndoneByOlderPendingReads()throws Exception{
@@ -64,7 +64,7 @@ public final class FavoritesRuntimeTest {
         onMain(()->{
             View card=row(1);
             assertTrue(text(card).contains("Locale reale"));assertTrue(text(card).contains("8,00"));
-            assertTrue(text(card).contains("Birra media"));assertTrue(text(card).contains("Normale"));
+            assertTrue(text(card).contains("Birra alla spina"));assertTrue(text(card).contains("Normale"));
             assertTrue(text(card).contains("28/10/2026"));assertTrue(text(card).contains("2 conferme"));
             assertFalse("No uncomputed value judgement is invented",text(card).contains("Affare"));
             assertTrue(card.getBackground() instanceof android.graphics.drawable.GradientDrawable);

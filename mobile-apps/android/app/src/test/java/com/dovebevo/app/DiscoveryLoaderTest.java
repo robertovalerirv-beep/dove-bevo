@@ -19,7 +19,7 @@ public final class DiscoveryLoaderTest {
             return DiscoveryTest.bytes(url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}");
         },()->"2026-11-01");
         DiscoveryLoader loader=new DiscoveryLoader(client,Runnable::run);CountDownLatch done=new CountDownLatch(1);AtomicReference<DiscoveryLoader.Result> result=new AtomicReference<>();
-        try{loader.load(new DiscoveryArea(45.4642,9.19,14),r->{result.set(r);done.countDown();});assertTrue(done.await(3,TimeUnit.SECONDS));assertEquals(19,urls.size());assertEquals(9,result.get().cells.size());assertFalse(result.get().partial);assertEquals(3,DiscoveryData.rows(result.get().cells,new DiscoveryArea(45.4642,9.19,14),RecommendationDrink.SPRITZ,0).size());}
+        try{loader.load(new DiscoveryArea(45.4642,9.19,14),r->{result.set(r);done.countDown();});assertTrue(done.await(3,TimeUnit.SECONDS));assertEquals(20,urls.size());assertEquals(9,result.get().cells.size());assertFalse(result.get().partial);assertEquals(3,DiscoveryData.rows(result.get().cells,new DiscoveryArea(45.4642,9.19,14),RecommendationDrink.SPRITZ,0).size());}
         finally{loader.close();}
     }
     @Test public void globalDeadlineBoundsConcurrencyAndReturnsExplicitPartialResult()throws Exception {

@@ -38,10 +38,11 @@ final class FavoritesLoader {
             submit(()->{
                 String version=null;FavoritePricesClient.Call call=call();
                 try{version=client.version(call);}catch(IOException unavailable){/* Valid approved user venues remain independently readable. */}
-                String current=version;
+                EuropePrices.Catalog catalog=null;try{catalog=client.catalog(call());}catch(IOException|RuntimeException unavailable){/* Legacy verified metadata remains independent. */}
+                String current=version;EuropePrices.Catalog mobile=catalog;
                 for(Map.Entry<String,Boolean> entry:cells.entrySet())submit(()->{
                     FavoriteComparison.Cell value=null;FavoritePricesClient.Call request=call();
-                    try{value=client.cell(entry.getKey(),current,entry.getValue(),request);}catch(IOException|RuntimeException unavailable){ }
+                    try{value=client.cell(entry.getKey(),current,entry.getValue(),mobile,request);}catch(IOException|RuntimeException unavailable){ }
                     boolean done;
                     synchronized(this){if(finished||cancelled)return;if(value!=null)values.put(entry.getKey(),value);done=--remaining==0;}
                     if(done)finish(false);

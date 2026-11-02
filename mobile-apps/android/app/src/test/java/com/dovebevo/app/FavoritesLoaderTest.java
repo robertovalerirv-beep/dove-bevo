@@ -17,9 +17,9 @@ public final class FavoritesLoaderTest {
     @Test public void equalCellsReadOnceAndChangingDrinkUsesAlreadyParsedSnapshot() throws Exception {
         List<String> urls=new CopyOnWriteArrayList<>();FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{urls.add(url);return FavoriteComparisonTest.bytes(url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261027\"}":url.endsWith(".json")?FavoriteComparisonTest.STATIC:FavoriteComparisonTest.PRICES);},()->"2026-10-29");
         FavoritesLoader loader=new FavoritesLoader(client,Runnable::run);CountDownLatch done=new CountDownLatch(1);AtomicReference<Map<String,FavoriteComparison.Cell>> result=new AtomicReference<>();
-        try{loader.load(FavoriteComparisonTest.saved(),value->{result.set(value);done.countDown();});assertTrue(done.await(3,TimeUnit.SECONDS));assertEquals(3,urls.size());
+        try{loader.load(FavoriteComparisonTest.saved(),value->{result.set(value);done.countDown();});assertTrue(done.await(3,TimeUnit.SECONDS));assertEquals(4,urls.size());
             assertEquals(800,FavoriteComparison.rows(FavoriteComparisonTest.saved(),result.get(),RecommendationDrink.BEER_DRAFT,0).get(1).price.cents);
-            FavoriteComparison.rows(FavoriteComparisonTest.saved(),result.get(),RecommendationDrink.SPRITZ,1);assertEquals(3,urls.size());
+            FavoriteComparison.rows(FavoriteComparisonTest.saved(),result.get(),RecommendationDrink.SPRITZ,1);assertEquals(4,urls.size());
         }finally{loader.close();}
     }
     @Test public void globalDeadlineStopsQueuedAndActiveWorkWithAtMostThreeInFlight() throws Exception {

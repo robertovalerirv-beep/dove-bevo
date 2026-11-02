@@ -13,8 +13,6 @@ import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.text.NumberFormat;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -37,7 +35,7 @@ final class DiscoveryScreen {
         LinearLayout filters=new ComparisonFilters(activity);NativeAppearance.card(filters);body.addView(filters,new LinearLayout.LayoutParams(-1,-2));
         LinearLayout drinkFilter=new LinearLayout(activity),bandFilter=new LinearLayout(activity);drinkFilter.setOrientation(LinearLayout.VERTICAL);bandFilter.setOrientation(LinearLayout.VERTICAL);filters.addView(drinkFilter);filters.addView(bandFilter);
         TextView drinkLabel=text(activity.getString(R.string.favorites_drink),14);NativeAppearance.title(drinkLabel);drinkLabel.setLabelFor(R.id.discovery_drink);drinkFilter.addView(drinkLabel);
-        drinks=new Spinner(activity);drinks.setId(R.id.discovery_drink);drinks.setContentDescription(activity.getString(R.string.favorites_drink));String[] labels=new String[RecommendationDrink.values().length];for(int i=0;i<labels.length;i++)labels[i]=RecommendationDrink.values()[i].label;
+        drinks=new Spinner(activity);drinks.setId(R.id.discovery_drink);drinks.setContentDescription(activity.getString(R.string.favorites_drink));String[] labels=new String[RecommendationDrink.values().length];for(int i=0;i<labels.length;i++)labels[i]=NativePricePresentation.category(RecommendationDrink.values()[i]);
         ArrayAdapter<String> drinkOptions=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,labels);drinkOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);drinks.setAdapter(drinkOptions);drinks.setSelection(drink.ordinal());drinks.setMinimumHeight(dp(56));drinkFilter.addView(drinks,new LinearLayout.LayoutParams(-1,-2));
         TextView bandLabel=text(activity.getString(R.string.favorites_band),14);NativeAppearance.title(bandLabel);bandLabel.setLabelFor(R.id.discovery_band);bandFilter.addView(bandLabel);
         bands=new Spinner(activity);bands.setId(R.id.discovery_band);bands.setContentDescription(activity.getString(R.string.favorites_band));ArrayAdapter<String> bandOptions=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,new String[]{activity.getString(R.string.favorites_normal),activity.getString(R.string.favorites_happy_hour)});bandOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);bands.setAdapter(bandOptions);bands.setMinimumHeight(dp(56));bandFilter.addView(bands,new LinearLayout.LayoutParams(-1,-2));
@@ -74,17 +72,19 @@ final class DiscoveryScreen {
                 activity.getString(values.isEmpty()?R.string.discovery_empty:R.string.discovery_loaded,Math.min(values.size(),DiscoveryData.MAX_ROWS)),
                 snapshot.partial?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_partial)):"",
                 values.size()>DiscoveryData.MAX_ROWS?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_limit)):""));
-        NumberFormat euros=NumberFormat.getCurrencyInstance(Locale.ITALY);int count=0;
+        int count=0;
         for(DiscoveryData.Row row:values){if(count++==DiscoveryData.MAX_ROWS)break;
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.card(card);
             LinearLayout headline=new LinearLayout(activity);boolean large=activity.getResources().getConfiguration().fontScale>=1.3f;headline.setOrientation(large?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
             TextView name=text(row.venue.name,19);heading(name);NativeAppearance.title(name);headline.addView(name,large?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-2,1));
-            TextView price=text(euros.format(BigDecimal.valueOf(row.price.cents,2)),24);NativeAppearance.price(price);LinearLayout.LayoutParams priceSize=new LinearLayout.LayoutParams(-2,-2);priceSize.leftMargin=large?0:dp(12);headline.addView(price,priceSize);card.addView(headline,new LinearLayout.LayoutParams(-1,-2));
+            TextView price=text(NativePricePresentation.amount(row.price,row.mobilePrice),24);NativeAppearance.price(price);LinearLayout.LayoutParams priceSize=new LinearLayout.LayoutParams(-2,-2);priceSize.leftMargin=large?0:dp(12);headline.addView(price,priceSize);card.addView(headline,new LinearLayout.LayoutParams(-1,-2));
             if(!row.venue.address.isEmpty()||!row.venue.city.isEmpty()){TextView address=text(row.venue.address+(row.venue.address.isEmpty()||row.venue.city.isEmpty()?"":" · ")+row.venue.city,14);NativeAppearance.muted(address);card.addView(address);}
             String distance=row.metres<1000?String.format(Locale.ITALY,"%.0f m",row.metres):String.format(Locale.ITALY,"%.1f km",row.metres/1000);
-            TextView category=text(drink.label+" · "+activity.getString(band==0?R.string.favorites_normal:R.string.favorites_happy_hour)+"\n"+activity.getString(R.string.discovery_distance,distance),14);NativeAppearance.muted(category);card.addView(category);
-            String date=row.price.day.substring(8)+"/"+row.price.day.substring(5,7)+"/"+row.price.day.substring(0,4);String confirmations=activity.getResources().getQuantityString(R.plurals.favorites_confirmations,row.price.confirmations==1?1:2,row.price.confirmations);
-            TextView provenance=text(activity.getString(R.string.favorites_observed,date)+" · "+confirmations,14);NativeAppearance.muted(provenance);card.addView(provenance);if(row.price.old)card.addView(text(activity.getString(R.string.favorites_old),14));
+            TextView category=text(NativePricePresentation.category(drink)+" · "+activity.getString(band==0?R.string.favorites_normal:R.string.favorites_happy_hour)+"\n"+activity.getString(R.string.discovery_distance,distance),14);NativeAppearance.muted(category);card.addView(category);
+            card.addView(text(NativePricePresentation.groupLabel(row.price,row.mobilePrice),14));
+            if(row.mobilePrice!=null){TextView provenance=text(NativePricePresentation.context(row.mobilePrice),14);NativeAppearance.muted(provenance);card.addView(provenance);if(row.mobilePrice.old)card.addView(text(row.mobilePrice.sourceKind.equals("online_menu")?NativePricePresentation.menuWarning():activity.getString(R.string.favorites_old),14));}
+            else{String date=row.price.day.substring(8)+"/"+row.price.day.substring(5,7)+"/"+row.price.day.substring(0,4);String confirmations=activity.getResources().getQuantityString(R.plurals.favorites_confirmations,row.price.confirmations==1?1:2,row.price.confirmations);
+            TextView provenance=text(activity.getString(R.string.favorites_observed,date)+" · "+confirmations,14);NativeAppearance.muted(provenance);card.addView(provenance);if(row.price.old)card.addView(text(activity.getString(R.string.favorites_old),14));}
             Button open=new Button(activity);open.setId(R.id.discovery_open);open.setText(R.string.open_saved_venue);open.setContentDescription(activity.getString(R.string.favorites_open_named,row.venue.name));NativeAppearance.button(open,true);open.setOnClickListener(v->{if(usable()&&!busy&&snapshot!=null)navigate.accept(row.venue.url());});LinearLayout.LayoutParams actionSize=new LinearLayout.LayoutParams(-1,-2);actionSize.topMargin=dp(12);card.addView(open,actionSize);
             LinearLayout.LayoutParams cardSize=new LinearLayout.LayoutParams(-1,-2);cardSize.bottomMargin=dp(12);rows.addView(card,cardSize);
         }

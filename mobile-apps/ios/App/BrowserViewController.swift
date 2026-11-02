@@ -664,6 +664,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func showLocationHelp() {
+        invalidateShareCapture()
         let alert = UIAlertController(
             title: "Posizione vicino a te",
             message: "Tocca «Vicino a me» nella mappa e scegli se consentire la posizione. Se hai negato il permesso, puoi cambiarlo nelle Impostazioni di iOS. Puoi sempre cercare una città senza condividere la posizione.",
@@ -693,6 +694,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func showAlert(title: String, message: String) {
         guard presentedViewController == nil else { return }
+        invalidateShareCapture()
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Chiudi", style: .default))
         present(alert, animated: true)

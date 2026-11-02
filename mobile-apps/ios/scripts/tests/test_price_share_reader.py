@@ -78,6 +78,21 @@ class PriceShareReaderTests(unittest.TestCase):
                      {"modal":False}, {"dialogCount":2}, {"iframe":True}, {"provenance":"a" * 1025}]
         self.assertEqual(self.run_reader(scenarios), [None] * len(scenarios))
 
+    def test_new_native_alerts_retire_pending_share_and_information_keeps_navigation_fence(self):
+        browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
+        for name in ["showLocationHelp()", "showAlert(title: String, message: String)"]:
+            entry = browser.split("private func " + name, 1)[1].split("\n    private func", 1)[0]
+            self.assertIn("invalidateShareCapture()", entry, name)
+            self.assertLess(entry.index("invalidateShareCapture()"), entry.index("present(alert"))
+        disappearing = browser.split("override func viewWillDisappear", 1)[1].split("override func viewDidAppear", 1)[0]
+        self.assertIn("invalidateBookmarkCapture()", disappearing)
+        invalidate = browser.split("private func invalidateBookmarkCapture()", 1)[1].split("private func showBookmarkError", 1)[0]
+        self.assertIn("invalidateShareCapture()", invalidate)
+        available = browser.split("private var canSharePage:", 1)[1].split("func refreshNavigationControls", 1)[0]
+        self.assertIn("navigationController?.topViewController === self", available)
+        information = browser.split("private func showInformation()", 1)[1].split("private func showPrivacy()", 1)[0]
+        self.assertIn("pushViewController(information", information)
+
     def test_approved_jpegs_are_byte_exact_and_every_category_has_real_photo(self):
         root = IOS / "App/Assets.xcassets"
         evidence = json.loads((IOS / "Design/reference-artwork-provenance.json").read_text(encoding="utf-8"))

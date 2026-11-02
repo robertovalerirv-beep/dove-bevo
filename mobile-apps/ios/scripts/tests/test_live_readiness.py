@@ -41,6 +41,9 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertIn(chr(92) * 2 + "z", query)
         self.assertNotIn("CONTAINS", query)
         self.assertIn('citySearchButton(in: website, city: "Milano")', self.source)
+        self.assertIn('"(?:" + NSRegularExpression.escapedPattern(for: $0) + " · )?"', query)
+        self.assertIn('citySearchPredicate(city: "Milano").evaluate(with: ["label": "Cerca città o bar"])', self.source)
+        self.assertIn('XCTAssertFalse(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Torino · Cerca città o bar"]))', self.source)
         self.assertIn("hasVisiblePositiveCoverage()", self.source)
         self.assertIn('website.buttons.matching(citySearchPredicate()).count, 1', self.source)
 

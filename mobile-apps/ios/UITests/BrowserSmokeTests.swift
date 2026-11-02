@@ -29,6 +29,7 @@ final class BrowserSmokeTests: XCTestCase {
             XCTAssertFalse(citySearchPredicate().evaluate(with: ["label": label]))
         }
         XCTAssertTrue(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Milano · Cerca città o bar"]))
+        XCTAssertTrue(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Cerca città o bar"]))
         XCTAssertFalse(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Torino · Cerca città o bar"]))
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
         for identifier in ["browser.back", "browser.home", "browser.more", "browser.recommendations", "browser.saveVenue"] {
@@ -699,7 +700,9 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func citySearchPredicate(city: String? = nil) -> NSPredicate {
-        let prefix = city.map { NSRegularExpression.escapedPattern(for: $0) + " · " }
+        // The pre-deployment native gate runs against the current public web
+        // bundle too. Its exact legacy label is valid alongside the new city label.
+        let prefix = city.map { "(?:" + NSRegularExpression.escapedPattern(for: $0) + " · )?" }
             ?? #"(?:[^\r\n\p{Cc}\u2028\u2029]{1,120} · )?"#
         return NSPredicate(format: "label MATCHES %@", "\\A" + prefix + "Cerca città o bar\\z")
     }

@@ -15,9 +15,9 @@ export const GROUPS = Object.freeze([
   Object.freeze({ name: "Roberto feedback", is_internal_group: false }),
 ]);
 const LIMIT = 256 * 1024;
-// Five six-GET inspections, three POSTs, three immediate read-backs, plus one
-// complete six-GET read-only reconciliation: at most 42 requests, no retries.
-const MAX_REQUESTS = 42;
+// Five seven-GET inspections, three POSTs, three immediate read-backs, plus one
+// complete seven-GET read-only reconciliation: at most 48 requests, no retries.
+const MAX_REQUESTS = 48;
 const id = (value) => typeof value === "string" && /^[A-Za-z0-9-]{1,100}$/.test(value);
 const fail = () => {
   throw new Error("Beta distribution scope or response invalid");
@@ -268,12 +268,14 @@ async function inspect(client, plan, diagnostics) {
   )
     fail();
   stage("BETA_DETAIL");
-  const beta = included(
-    body,
-    "buildBetaDetails",
-    relationship(build, "buildBetaDetail", "buildBetaDetails").id,
-  );
-  relationship(beta, "build", "builds", build.id);
+  const betaId = relationship(build, "buildBetaDetail", "buildBetaDetails").id;
+  const beta = included(body, "buildBetaDetails", betaId);
+  if (beta.relationships?.build?.data !== undefined)
+    relationship(beta, "build", "builds", build.id);
+  stage("BETA_PARENT_FETCH");
+  const betaParent = await client(`/v1/buildBetaDetails/${betaId}/relationships/build`);
+  resource(betaParent.data, "builds", build.id);
+  stage("BETA_DETAIL");
   if (
     !internalStates.has(beta.attributes?.internalBuildState) ||
     !externalStates.has(beta.attributes?.externalBuildState)

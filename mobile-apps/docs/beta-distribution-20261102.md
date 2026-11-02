@@ -16,7 +16,7 @@ separate states. None establishes a public App Store launch or a real-phone test
 ## Read-only first
 
 The initial workflow accepts only
-`mobile-beta-distribution-audit/20261102-v3` in
+`mobile-beta-distribution-audit/20261102-v4` in
 `robertovalerirv-beep/dove-bevo`. It has `contents: read`, pinned actions, no apply
 step and no manual input. Its audit command is:
 
@@ -45,6 +45,12 @@ independently reads the pre-release version's app-ID relationship, and requires
 the exact parent app. An omitted nested relationship is accepted only with that
 independent proof; an explicit contradictory nested relationship still fails.
 The included version and platform checks remain mandatory.
+The v3 audit passed that boundary and isolated a `BETA_DETAIL` failure with HTTP
+200. The v4 operator independently verifies the beta detail's exact parent build
+through its app-independent ID relationship endpoint. Any explicit nested
+contradiction still fails, and internal/external state enums remain strict. Other
+required relationships are top-level relationships requested through `include`
+or direct relationship responses, not nested included-resource assumptions.
 
 The audit requires exactly one build numbered `62` for version `1.0.0`, platform
 `IOS`, and verifies its parent app and bundle. It requires both exact group names,
@@ -120,10 +126,10 @@ changes to `confirmed_by_read_back` only after successful provider response and
 read-back. The transport is fixed to Apple's HTTPS origin, rejects redirects,
 limits each request to 20 seconds and response JSON to 256 KiB, and bounds total
 requests. There are no automatic POST retries.
-The bound is 42 requests: five six-GET inspections, three possible POSTs, three
-immediate read-backs, and one six-GET reconciliation after failure. A successful
-full three-write operation takes 36 requests; a final failure plus reconciliation
-takes at most 42. Both paths have owned transport fixtures.
+The bound is 48 requests: five seven-GET inspections, three possible POSTs, three
+immediate read-backs, and one seven-GET reconciliation after failure. A successful
+full three-write operation takes 41 requests; a final failure plus reconciliation
+takes at most 48. Both paths have owned transport fixtures.
 
 If a request times out, the response is lost, or read-back fails, all further
 mutations stop. The tool attempts one read-only reconciliation and retains the
@@ -159,6 +165,9 @@ Apple's primary API contracts, checked 2 November 2026:
 - [Get a pre-release version's app ID](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-prereleaseversions-_id_-relationships-app):
   an identifier-only GET verifies the pre-release version's parent app even when
   the compound build document omits nested linkage.
+- [Get a beta detail's build ID](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-buildbetadetails-_id_-relationships-build):
+  an identifier-only GET independently verifies the exact build parent of the
+  included beta detail.
 - [Add builds to a beta group](https://developer.apple.com/documentation/appstoreconnectapi/post-v1-betagroups-_id_-relationships-builds):
   exact relationship POST, successful response `204`.
 - [List beta app review submissions](https://developer.apple.com/documentation/appstoreconnectapi/get-v1-betaappreviewsubmissions):

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "checked_on": "2026-11-02",
   "catalogue_version": "20261101",
-  "scope": "existing public unpriced nodes in four Italian city catalogues",
+  "scope": "historical read-only discovery of existing public unpriced nodes in four Italian city catalogues before the K import",
   "inventory_complete": false,
   "requested_nodes": 1718,
   "source_candidates": 368,
@@ -7041,5 +7041,6 @@
       "state": "candidate",
       "reason": "unverified_primary_links"
     }
-  ]
+  ],
+  "snapshot_note": "Candidate websites were captured before eight K prices were inserted; later imports or customer updates can change current price state. Re-read live current prices and source before any further import."
 }

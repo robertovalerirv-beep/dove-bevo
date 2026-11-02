@@ -1,6 +1,6 @@
 # Further existing Italian venue menu prices
 
-Eight source-pinned facts at two existing venues, obtained from the full-city missing-price inventory: seven at FuoriLuogo Torino and one at Scott Duff Milano. This prepared cohort has not been imported. It uses no Google review threshold and does not add venues or overwrite customer prices.
+Eight source-pinned facts at two existing venues, obtained from the full-city missing-price inventory: seven at FuoriLuogo Torino and one at Scott Duff Milano. The protected audit and seed inserted eight prices after this cohort was prepared. It uses no Google review threshold and does not add venues or overwrite customer prices.
 
 FuoriLuogo current owner-linked menu replaces an obsolete 404 menu path. Cocktail amounts precede their names in the HTML ordering: Aperol/Campari Spritz EUR4.50, Negroni EUR7, Sbagliato EUR6, Gin Tonic and Gin Lemon EUR6 each. Tuborg medium draught is EUR5.50, with exact volume unstated; smaller and bottled beer are excluded. Shirley Temple is EUR5. Wine has no explicit glass marker and water no price, so neither is inferred. Buffet and timed promotions are excluded. No mandatory fee wording was found in the full current menu; order at cashier.
 

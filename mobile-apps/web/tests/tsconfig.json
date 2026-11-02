@@ -1,0 +1,9 @@
+{
+  "extends": "../../../tsconfig.app.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "paths": { "@site/*": ["../../../src/*"] },
+    "tsBuildInfoFile": "../.build/search-tests/fixture.tsbuildinfo"
+  },
+  "include": ["search.fixture.tsx"]
+}

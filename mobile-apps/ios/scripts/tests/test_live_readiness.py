@@ -38,10 +38,19 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertLess(live.index("searchField.tap()"), live.index("waitForOrdinaryKeyboard()"))
         self.assertLess(live.index("waitForOrdinaryKeyboard()"), live.index('searchField.typeText("Milano")'))
         self.assertIn('XCTAssertEqual(searchField.value as? String, "Milano"', live)
-        keyboard = self.source.split("private func waitForOrdinaryKeyboard()", 1)[1].split("\n    private func", 1)[0]
+        ready = self.source.split("private func waitForOrdinaryKeyboard()", 1)[1].split("\n    private func", 1)[0]
+        self.assertIn("keyboards.allElementsBoundByIndex.contains", ready)
+        self.assertIn("self.isOrdinaryKeyboard($0)", ready)
+        keyboard = self.source.split("private func isOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
         self.assertIn("frame.width >= 250, frame.height >= 150", keyboard)
         self.assertIn("key.isHittable", keyboard)
         self.assertIn("appFrame.contains(key.frame)", keyboard)
+        simultaneous = live.split("let searchVisible =", 1)[1].split("city.tap()", 1)[0]
+        for required in ["keyboards.allElementsBoundByIndex.contains", "self.isOrdinaryKeyboard(keyboard)",
+                         "self.visibleAboveKeyboard(searchField, keyboard: keyboard)",
+                         "self.visibleAboveKeyboard(city, keyboard: keyboard)"]:
+            self.assertIn(required, simultaneous)
+        self.assertNotIn("keyboards.firstMatch", simultaneous)
 
     def test_coverage_uses_the_actual_anchored_pattern_and_valid_positive_ratio(self):
         declaration = re.search(r'static let liveCoveragePattern\s*=\s*#"([^"]+)"#', self.source)

@@ -147,6 +147,18 @@ final class BrowserSmokeTests: XCTestCase {
             NSPredicate(format: "label BEGINSWITH[c] %@ AND label CONTAINS[c] %@", "Milano", "Città")
         ).firstMatch
         XCTAssertTrue(city.waitForExistence(timeout: 30), "Live city data did not return Milano")
+        let searchVisible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            (searchField.value as? String) == "Milano" && searchField.isHittable && city.isHittable &&
+                self.app.keyboards.allElementsBoundByIndex.contains { keyboard in
+                    self.isOrdinaryKeyboard(keyboard) &&
+                        self.visibleAboveKeyboard(searchField, keyboard: keyboard) &&
+                        self.visibleAboveKeyboard(city, keyboard: keyboard)
+                }
+        }, object: nil)
+        let visibilityResult = XCTWaiter.wait(for: [searchVisible], timeout: 10)
+        attachState(named: "DoveBevo-live-search-input-and-first-city-above-keyboard")
+        XCTAssertEqual(visibilityResult, .completed,
+                       "The original input and first Milano result must both remain visible above the ordinary keyboard before tapping")
         city.tap()
 
         XCTAssertTrue(searchButton.waitForExistence(timeout: 15), "City search did not return to the map")
@@ -391,20 +403,22 @@ final class BrowserSmokeTests: XCTestCase {
 
     private func waitForOrdinaryKeyboard() {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            self.app.keyboards.allElementsBoundByIndex.contains { keyboard in
-                guard keyboard.exists else { return false }
-                let frame = keyboard.frame
-                let appFrame = self.app.frame
-                guard frame.width >= 250, frame.height >= 150, appFrame.intersects(frame) else { return false }
-                // A tiny UIKeyboardLayoutStar Preview is not a usable keyboard.
-                return keyboard.keys.matching(NSPredicate(format: "label IN %@", ["m", "M"] as NSArray)).allElementsBoundByIndex.contains { key in
-                    key.exists && key.isHittable && key.frame.width >= 20 && key.frame.height >= 20 && appFrame.contains(key.frame)
-                }
-            }
+            self.app.keyboards.allElementsBoundByIndex.contains { self.isOrdinaryKeyboard($0) }
         }, object: nil)
         let result = XCTWaiter.wait(for: [ready], timeout: 15)
         if result != .completed { attachState(named: "DoveBevo-original-field-keyboard-not-ready") }
         XCTAssertEqual(result, .completed, "The existing field must have an ordinary visible keyboard before typing")
+    }
+
+    private func isOrdinaryKeyboard(_ keyboard: XCUIElement) -> Bool {
+        guard keyboard.exists else { return false }
+        let frame = keyboard.frame
+        let appFrame = app.frame
+        guard frame.width >= 250, frame.height >= 150, appFrame.intersects(frame) else { return false }
+        // A tiny UIKeyboardLayoutStar Preview is not a usable keyboard.
+        return keyboard.keys.matching(NSPredicate(format: "label IN %@", ["m", "M"] as NSArray)).allElementsBoundByIndex.contains { key in
+            key.exists && key.isHittable && key.frame.width >= 20 && key.frame.height >= 20 && appFrame.contains(key.frame)
+        }
     }
 
     private func verifyLiveVenueAndPriceFormReadOnly(venueName: String) {

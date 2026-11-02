@@ -5,6 +5,10 @@ on:
       - "mobile-apps/tools/menu-seed/live_import.py"
       - "mobile-apps/tools/menu-seed/test_no_google.py"
       - ".github/workflows/mobile-italy-menu-source.yml"
+      - "mobile-apps/tools/menu-seed/inventory_city_prices.py"
+      - "mobile-apps/tools/menu-seed/test_city_inventory.py"
+      - "mobile-apps/tools/menu-seed/discover_menu_links.py"
+      - "mobile-apps/tools/menu-seed/test_menu_discovery.py"
 permissions:
   contents: read
 concurrency:
@@ -22,3 +26,5 @@ jobs:
         run: |
           python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_live_import.py' -v
           python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_no_google.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_city_inventory.py' -v
+          python3 -B -m unittest discover -s mobile-apps/tools/menu-seed -p 'test_menu_discovery.py' -v

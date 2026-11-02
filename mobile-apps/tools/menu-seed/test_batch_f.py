@@ -1,0 +1,64 @@
+import hashlib
+from pathlib import Path
+import unittest
+import live_import as core
+MANIFEST = Path(__file__).resolve().parents[2] / "data/italy-menu-seed-20261102-f.json"
+class BatchFTests(unittest.TestCase):
+    def test_exact_reviewed_batch_preserves_major_city_scope(self):
+        raw=MANIFEST.read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), "2867191f50d8752b68fce907d09a474bbfd8f3da4ce87f76ffbf50c73e3558b1")
+        doc=core.validate(raw)
+        self.assertEqual(doc["schema_version"], 4)
+        self.assertEqual(len(doc["records"]), 50)
+        self.assertEqual(len({r["venue_key"] for r in doc["records"]}), 19)
+        cities={r["city"] for r in doc["records"]}
+        self.assertEqual(len(cities), 12)
+        self.assertTrue({62505581,61753360,428339558,667350399,69300007,64778090}.issubset(cities))
+    def test_no_google_evidence_or_customer_payment_claim_is_present(self):
+        doc=core.validate(MANIFEST.read_bytes())
+        for record in doc["records"]:
+            self.assertFalse({"google_reviews","google_url","paid_on","observed_on"} & set(record))
+            self.assertEqual((record["currency"],record["hh"],record["conditions"]), ("EUR",0,"none"))
+
+    def test_cover_charge_hold_and_currency_inference_are_preserved(self):
+        doc=core.validate(MANIFEST.read_bytes())
+        self.assertNotIn("w223832309",{r["venue_key"] for r in doc["records"]})
+        inferred=[r for r in doc["records"] if r["venue_key"] in {"n12957673484","n2953813432","n7104749309"}]
+        self.assertEqual(len(inferred),7)
+        self.assertTrue(all("EUR inferred" in r["identity_note"] for r in inferred))
+        image=next(r for r in doc["records"] if r["venue_key"]=="n9130024158")
+        self.assertEqual(image["source_format"],"raw")
+        self.assertNotIn("?",image["source_url"])
+        self.assertEqual(image["source_sha256"],"d2802969f96527d0da201a90d4e246f6966e5b08c52daca189ba9013f4e43f8a")
+
+class ReceiptBindingTests(unittest.TestCase):
+    def make_receipt(self):
+        import json
+        raw=MANIFEST.read_bytes()
+        doc=core.validate(raw)
+        receipt={"complete":True,"mode":"apply","manifest_sha256":hashlib.sha256(raw).hexdigest(),"batch_id":doc["batch_id"],"errors":[],"records":[{"venue_key":r["venue_key"],"drink":r["drink"],"hh":r["hh"],"outcome":"skipped_existing_or_guarded"} for r in doc["records"]]}
+        return doc,raw,receipt
+    def test_exact_completed_apply_is_required(self):
+        import verify_batch_d as verifier
+        doc,raw,receipt=self.make_receipt()
+        self.assertEqual(verifier.validate_receipt(doc,raw,receipt), [])
+        for field,value in (("mode","dry_run"),("complete",False),("manifest_sha256","0"*64),("batch_id","other"),("errors",["partial"])):
+            with self.subTest(field=field):
+                changed=dict(receipt);changed[field]=value
+                with self.assertRaises(ValueError): verifier.validate_receipt(doc,raw,changed)
+    def test_incomplete_duplicate_or_foreign_receipt_keys_are_rejected(self):
+        import copy
+        import verify_batch_d as verifier
+        doc,raw,receipt=self.make_receipt()
+        for mode in ("missing","duplicate","foreign"):
+            changed=copy.deepcopy(receipt)
+            if mode=="missing":changed["records"].pop()
+            elif mode=="duplicate":changed["records"][1]=changed["records"][0]
+            else:changed["records"][0]["venue_key"]="n999999999"
+            with self.subTest(mode=mode),self.assertRaises(ValueError):verifier.validate_receipt(doc,raw,changed)
+    def test_indeterminate_or_unattempted_outcomes_cannot_count_as_success(self):
+        import verify_batch_d as verifier
+        doc,raw,receipt=self.make_receipt()
+        for outcome in ("eligible_at_read","indeterminate","not_attempted"):
+            receipt["records"][0]["outcome"]=outcome
+            with self.subTest(outcome=outcome),self.assertRaises(ValueError):verifier.validate_receipt(doc,raw,receipt)

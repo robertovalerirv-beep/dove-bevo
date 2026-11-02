@@ -75,13 +75,76 @@ def owned_instrumentation(output):
 
 def run_owned_instrumentation():
     classes = ",".join("com.dovebevo.app." + name for name in OWNED_CLASSES)
-    output = adb("shell", "am", "instrument", "-w", "-r", "-e", "class", classes,
-                 "com.dovebevo.app.test/com.dovebevo.app.NativeFixtureRunner", timeout=240).stdout
-    result = owned_instrumentation(output)
-    (EVIDENCE / "owned-instrumentation.json").write_text(json.dumps(result, indent=2) + "\n")
-    # Discard process-wide fixture interceptors before unmodified production launch.
-    adb("shell", "am", "force-stop", "com.dovebevo.app")
-    return result
+    try:
+        completed = adb("shell", "am", "instrument", "-w", "-r", "-e", "class", classes,
+                        "com.dovebevo.app.test/com.dovebevo.app.NativeFixtureRunner", timeout=240)
+    except (subprocess.SubprocessError, OSError, RuntimeError) as error:
+        owned_output_diagnostics(getattr(error, "stdout", b""), getattr(error, "stderr", b""),
+                                 getattr(error, "returncode", None))
+        owned_failure_logcat()
+        raise
+    recorded = owned_output_diagnostics(completed.stdout, completed.stderr, completed.returncode)
+    try:
+        result = owned_instrumentation(completed.stdout)  # Parse original bytes, never sanitized/truncated text.
+        if not recorded: raise RuntimeError("Owned instrumentation diagnostics could not be retained")
+        (EVIDENCE / "owned-instrumentation.json").write_text(json.dumps(result, indent=2) + "\n")
+        # Discard process-wide fixture interceptors before unmodified production launch.
+        adb("shell", "am", "force-stop", "com.dovebevo.app")
+        return result
+    except Exception:
+        owned_failure_logcat()
+        raise
+
+
+def diagnostic_stream(raw):
+    raw = raw or b""
+    if not isinstance(raw, bytes): raw = str(raw).encode("utf-8", "replace")
+    # Redact before selecting windows: a tail must not expose the middle of a
+    # PEM block or a long credential line whose label fell outside that window.
+    text = re.sub(r"-----BEGIN [^\n]*KEY-----[\s\S]*?(?:-----END [^\n]*KEY-----|$)",
+                  "[private key block omitted]", raw.decode("utf-8", "replace"))
+    clean = "\n".join("[sensitive diagnostic line omitted]" if re.search(
+        r"password|passphrase|api.?key|access_token|refresh_token|client_secret", line, re.I)
+        else safe_text(line) for line in text.splitlines()).encode("utf-8")
+    return {"bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest(),
+            "sanitized_bytes": len(clean), "head": safe_text(clean[:DIAGNOSTIC_LIMIT]),
+            "tail": safe_text(clean[-DIAGNOSTIC_LIMIT:]),
+            "truncated_bytes": max(0, len(clean) - 2 * DIAGNOSTIC_LIMIT)}
+
+
+def persist_owned_diagnostics():
+    try:
+        # Existing workflow already retains this bounded, redacted artifact on failure.
+        (EVIDENCE / "emulator-startup.json").write_text(json.dumps(STARTUP, indent=2) + "\n")
+        return True
+    except OSError as error:
+        DIAGNOSTIC_ERRORS.append(safe_text(error))
+        return False
+
+
+def owned_output_diagnostics(stdout, stderr, returncode):
+    STARTUP["owned_instrumentation"] = {"returncode": returncode,
+        "stdout": diagnostic_stream(stdout), "stderr": diagnostic_stream(stderr)}
+    return persist_owned_diagnostics()
+
+
+def owned_failure_logcat():
+    try:
+        if ADB_OWNER is None or ADB_OWNER.poll() is not None:
+            log = {"status": "unavailable", "reason": "owned_adb_not_running"}
+        else:
+            captured = adb("logcat", "-d", "-t", "300", "-v", "brief", "AndroidRuntime:E",
+                           "TestRunner:V", "chromium:E", "libc:F", "DEBUG:F", "System.err:W", "*:S",
+                           timeout=15, check=False)
+            log = {"status": "captured" if captured.returncode == 0 else "failed",
+                   "returncode": captured.returncode, "stdout": diagnostic_stream(captured.stdout),
+                   "stderr": diagnostic_stream(captured.stderr)}
+    except (subprocess.SubprocessError, OSError, RuntimeError) as error:
+        log = {"status": "failed", "error": safe_text(error),
+               "stdout": diagnostic_stream(getattr(error, "stdout", b"")),
+               "stderr": diagnostic_stream(getattr(error, "stderr", b""))}
+    STARTUP.setdefault("owned_instrumentation", {})["failure_logcat"] = log
+    persist_owned_diagnostics()  # Best effort on an already failed run; never mask its original exception.
 
 
 def cloudflare_challenge(ui):

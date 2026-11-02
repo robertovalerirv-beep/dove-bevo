@@ -426,6 +426,105 @@ class AndroidSmokeTests(unittest.TestCase):
         self.assertNotIn('PublicBrowseRuntimeTest', args[7])
         self.assertEqual(adb.call_args_list[1].args, ('shell', 'am', 'force-stop', 'com.dovebevo.app'))
 
+    def test_owned_output_is_bounded_redacted_and_saved_before_success_parser(self):
+        original = self.owned_output()
+        stderr = b'useful warning\nAuthorization: Bearer FABRICATED_SECRET\n' + b'e' * 50000
+        actual_parser = m.owned_instrumentation
+        def parse(raw):
+            retained = json.loads((m.EVIDENCE / 'emulator-startup.json').read_text())['owned_instrumentation']
+            self.assertEqual(retained['stdout']['bytes'], len(original))
+            self.assertNotIn('FABRICATED_SECRET', json.dumps(retained))
+            self.assertLessEqual(len(retained['stderr']['head'].encode()), m.DIAGNOSTIC_LIMIT)
+            self.assertLessEqual(len(retained['stderr']['tail'].encode()), m.DIAGNOSTIC_LIMIT)
+            self.assertEqual(retained['stderr']['truncated_bytes'], max(0, retained['stderr']['sanitized_bytes'] - 2 * m.DIAGNOSTIC_LIMIT))
+            self.assertIn('OK (35 tests)', retained['stdout']['tail'])
+            self.assertIs(raw, original)
+            return actual_parser(raw)
+        with mock.patch.object(m, 'owned_instrumentation', side_effect=parse), \
+             mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, original, stderr)) as adb:
+            self.assertEqual(m.run_owned_instrumentation()['tests'], 35)
+        self.assertEqual(adb.call_count, 2)
+        self.assertFalse(any(call.args[0] == 'logcat' for call in adb.call_args_list))
+        self.assertNotIn('failure_logcat', m.STARTUP['owned_instrumentation'])
+
+    def test_stream_tail_keeps_final_failure_without_cutting_into_sensitive_blocks(self):
+        stream = (b'first diagnostic\n' + b'ordinary status\n' * 3000
+                  + b'-----BEGIN PRIVATE KEY-----\n' + b'FABRICATED_KEY_BODY\n' * 2000
+                  + b'-----END PRIVATE KEY-----\n'
+                  + b'access_token=' + b'FABRICATED_TOKEN' * 2000
+                  + b'\nFINAL FAILURE: useful real end-of-stream detail\n')
+        retained = m.diagnostic_stream(stream)
+        self.assertEqual(retained['bytes'], len(stream))
+        self.assertEqual(retained['sha256'], m.hashlib.sha256(stream).hexdigest())
+        self.assertIn('first diagnostic', retained['head'])
+        self.assertIn('FINAL FAILURE', retained['tail'])
+        self.assertNotIn('FABRICATED_KEY_BODY', json.dumps(retained))
+        self.assertNotIn('FABRICATED_TOKEN', json.dumps(retained))
+        self.assertGreater(retained['truncated_bytes'], 0)
+        for window in ('head', 'tail'):
+            self.assertLessEqual(len(retained[window].encode()), m.DIAGNOSTIC_LIMIT)
+
+    def test_owned_parse_failure_retains_output_and_only_then_filtered_logcat(self):
+        m.ADB_OWNER = Proc(code=None)
+        responses = [subprocess.CompletedProcess([], 0, b'INSTRUMENTATION_ABORTED: runner crashed', b'runner stderr'),
+                     subprocess.CompletedProcess([], 0, b'AndroidRuntime: useful fixture stack\nAuthorization: FABRICATED_SECRET', b'')]
+        with mock.patch.object(m, 'adb', side_effect=responses) as adb:
+            with self.assertRaisesRegex(RuntimeError, 'missing explicit 35-case PASS'):
+                m.run_owned_instrumentation()
+        log_args = adb.call_args_list[1]
+        self.assertEqual(log_args.args, ('logcat', '-d', '-t', '300', '-v', 'brief', 'AndroidRuntime:E',
+                                        'TestRunner:V', 'chromium:E', 'libc:F', 'DEBUG:F', 'System.err:W', '*:S'))
+        self.assertEqual(log_args.kwargs, {'timeout': 15, 'check': False})
+        retained = json.loads((m.EVIDENCE / 'emulator-startup.json').read_text())['owned_instrumentation']
+        self.assertIn('runner crashed', retained['stdout']['head'])
+        self.assertIn('useful fixture stack', retained['failure_logcat']['stdout']['head'])
+        self.assertNotIn('FABRICATED_SECRET', json.dumps(retained))
+        self.assertFalse((m.EVIDENCE / 'owned-instrumentation.json').exists())
+        self.assertFalse(m.OWNED_PASS)
+
+    def test_owned_command_timeout_keeps_partial_streams_and_original_exception(self):
+        m.ADB_OWNER = Proc(code=None)
+        error = subprocess.TimeoutExpired('owned fixture', 240, output=b'partial test output', stderr=b'partial stderr')
+        with mock.patch.object(m, 'adb', side_effect=[error, subprocess.CompletedProcess([], 0, b'crash detail', b'')]):
+            with self.assertRaises(subprocess.TimeoutExpired) as caught: m.run_owned_instrumentation()
+        self.assertIs(caught.exception, error)
+        retained = json.loads((m.EVIDENCE / 'emulator-startup.json').read_text())['owned_instrumentation']
+        self.assertEqual(retained['stdout']['head'], 'partial test output')
+        self.assertEqual(retained['stderr']['head'], 'partial stderr')
+        self.assertEqual(retained['failure_logcat']['status'], 'captured')
+
+    def test_diagnostic_io_failure_never_masks_parser_error_or_manufactures_pass(self):
+        for otherwise_passed in (False, True):
+            original = RuntimeError('original owned parser failure')
+            m.ADB_OWNER = Proc(code=None)
+            with mock.patch.object(pathlib.Path, 'write_text', side_effect=OSError('diagnostic disk failure')), \
+                 mock.patch.object(m, 'owned_instrumentation', side_effect=None if otherwise_passed else original,
+                                   return_value={'result': 'passed', 'tests': 35}), \
+                 mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, b'fixture', b'')) as adb:
+                with self.assertRaises(RuntimeError) as caught: m.run_owned_instrumentation()
+            if otherwise_passed:
+                self.assertIn('diagnostics could not be retained', str(caught.exception))
+            else:
+                self.assertIs(caught.exception, original)
+            self.assertTrue(m.DIAGNOSTIC_ERRORS)
+            self.assertFalse(m.OWNED_PASS)
+            self.assertFalse(any(call.args[:3] == ('shell', 'am', 'force-stop') for call in adb.call_args_list))
+
+    def test_failed_logcat_does_not_replace_owned_error_and_dead_adb_is_not_used(self):
+        m.ADB_OWNER = Proc(code=None)
+        original = subprocess.CalledProcessError(1, 'owned fixture', output=b'failed test')
+        log_error = subprocess.TimeoutExpired('filtered logcat', 15, output=b'partial fatal stack')
+        with mock.patch.object(m, 'adb', side_effect=[original, log_error]):
+            with self.assertRaises(subprocess.CalledProcessError) as caught: m.run_owned_instrumentation()
+        self.assertIs(caught.exception, original)
+        retained = m.STARTUP['owned_instrumentation']['failure_logcat']
+        self.assertEqual(retained['status'], 'failed')
+        self.assertEqual(retained['stdout']['head'], 'partial fatal stack')
+        m.ADB_OWNER = Proc(code=1)
+        with mock.patch.object(m, 'adb') as adb: m.owned_failure_logcat()
+        adb.assert_not_called()
+        self.assertEqual(m.STARTUP['owned_instrumentation']['failure_logcat']['status'], 'unavailable')
+
     def test_only_exact_challenge_inside_app_webview_is_recognized(self):
         good = self.challenge_xml()
         self.assertTrue(m.cloudflare_challenge(m.ET.fromstring(good)))

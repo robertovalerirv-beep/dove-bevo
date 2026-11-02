@@ -131,10 +131,8 @@ function fixture(overrides = {}) {
         return json({ data: { type: "builds", id: state.betaBuildLink ?? state.buildId } });
       if (call.path === "/v1/betaGroups") {
         assert.equal(call.query.get("filter[app]"), APP_ID);
-        assert.ok(
-          call.query.has("filter[id]") ||
-            call.query.get("filter[name]") === "Dove Bevo owner testing,Roberto feedback",
-        );
+        assert.equal(call.query.has("filter[name]"), false);
+        assert.equal(call.query.get("limit"), "100");
         return json({
           data: state.groups.map((g) =>
             resource(
@@ -280,6 +278,74 @@ test("failure diagnostics expose only a fixed stage, numeric status and bounded 
     assert.ok(!JSON.stringify(receipt).includes("private-wrong-app"));
     assert.ok(f.calls.every((call) => call.method === "GET"));
   }
+});
+
+test("group failure diagnostics retain only bounded counts, booleans and fixed enums", async () => {
+  const groups = fixture().state.groups.map((g) => ({ ...g }));
+  groups[0].publicLink = null;
+  const f = fixture({ groups });
+  const receipt = await f.audit();
+  assert.equal(receipt.complete, false); // Diagnostic collection never relaxes the guard.
+  assert.equal(receipt.failure.stage, "GROUP_IDENTITY");
+  assert.equal(receipt.failure.http_status, 200);
+  assert.deepEqual(receipt.failure.group_shape, {
+    data_count: 2,
+    has_next: false,
+    paging_total_matches: null,
+    included_app_matches: 1,
+    known_groups: [
+      {
+        matches: 1,
+        resource_identity_valid: true,
+        is_internal_group: true,
+        parent: "MATCH",
+        public_link: "NULL",
+      },
+      {
+        matches: 1,
+        resource_identity_valid: true,
+        is_internal_group: false,
+        parent: "MATCH",
+        public_link: "DISABLED",
+      },
+    ],
+  });
+  assert.ok(!JSON.stringify(receipt.failure).includes("@"));
+  for (const privateValue of [
+    "owner-group",
+    "roberto-group",
+    "Dove Bevo owner testing",
+    "Roberto feedback",
+  ])
+    assert.ok(!JSON.stringify(receipt.failure.group_shape).includes(privateValue));
+  assert.deepEqual(receipt.failure.app_groups, [
+    {
+      id: "owner-group",
+      name: "Dove Bevo owner testing",
+      is_internal_group: true,
+      public_link: "NULL",
+    },
+    {
+      id: "roberto-group",
+      name: "Roberto feedback",
+      is_internal_group: false,
+      public_link: "DISABLED",
+    },
+  ]);
+  assert.ok(!JSON.stringify(receipt.failure).includes("PRIVATE"));
+});
+
+test("audit records renamed same-app groups privately but produces no plan for historical-name mismatch", async () => {
+  const groups = fixture().state.groups.map((group) => ({ ...group }));
+  groups[0].name = "Dove bevo owner testing";
+  const f = fixture({ groups });
+  const receipt = await f.audit();
+  assert.equal(receipt.complete, false);
+  assert.equal(receipt.plan, undefined);
+  assert.equal(receipt.failure.app_groups[0].name, "Dove bevo owner testing");
+  assert.equal(receipt.failure.group_shape.known_groups[0].matches, 0);
+  assert.ok(!JSON.stringify(receipt).includes("tester@example.test"));
+  assert.ok(f.calls.every((call) => call.method === "GET"));
 });
 
 test("invalid local plan/hash is rejected before accessing credentials or transport", async () => {
@@ -761,11 +827,11 @@ test("initial workflow is one exact read-only tag with no apply or public-releas
     new URL("../../.github/workflows/mobile-beta-distribution.yml", import.meta.url),
     "utf8",
   );
-  assert.match(workflow, /mobile-beta-distribution-audit\/20261102-v4/);
+  assert.match(workflow, /mobile-beta-distribution-audit\/20261102-v5/);
   assert.match(workflow, /github\.repository == 'robertovalerirv-beep\/dove-bevo'/);
   assert.match(
     workflow,
-    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261102-v4'/,
+    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261102-v5'/,
   );
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /contents: read/);

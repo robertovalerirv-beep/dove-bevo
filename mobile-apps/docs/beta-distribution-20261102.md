@@ -16,7 +16,7 @@ separate states. None establishes a public App Store launch or a real-phone test
 ## Read-only first
 
 The initial workflow accepts only
-`mobile-beta-distribution-audit/20261102-v4` in
+`mobile-beta-distribution-audit/20261102-v5` in
 `robertovalerirv-beep/dove-bevo`. It has `contents: read`, pinned actions, no apply
 step and no manual input. Its audit command is:
 
@@ -51,6 +51,18 @@ through its app-independent ID relationship endpoint. Any explicit nested
 contradiction still fails, and internal/external state enums remain strict. Other
 required relationships are top-level relationships requested through `include`
 or direct relationship responses, not nested included-resource assumptions.
+The v4 audit reached `GROUP_IDENTITY` with HTTP 200. The v5 audit additionally
+retains bounded group-shape diagnostics: counts, expected-name match counts,
+internal flags, expected-app ID-match enums and public-link state enums. The two
+known group entries use the table order above; no raw group name, ID, provider
+text or contact survives that structural diagnostic. A separate private-artifact
+field lists actual IDs, names, internal flags and public-link state enums only
+after every listed group's parent app is validated. The audit lists at most 100
+groups of this fixed app, rejects pagination, and keeps exact target-name/type
+uniqueness checks; an unexpected name produces no plan. Apply still filters by
+the two plan-pinned IDs. No tester, email/contact endpoint, broader account group
+list or raw provider error is requested or retained. Group metadata is never
+printed in logs. Identity and public-link guards remain unchanged.
 
 The audit requires exactly one build numbered `62` for version `1.0.0`, platform
 `IOS`, and verifies its parent app and bundle. It requires both exact group names,

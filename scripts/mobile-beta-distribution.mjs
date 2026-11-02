@@ -106,6 +106,54 @@ function included(body, type, expectedId) {
   if (found.length !== 1) fail();
   return resource(found[0], type, expectedId);
 }
+function groupShape(body) {
+  const rows = Array.isArray(body.data) ? body.data : [];
+  return {
+    data_count: Array.isArray(body.data) ? Math.min(rows.length, 1001) : null,
+    has_next: Boolean(body.links?.next),
+    paging_total_matches:
+      body.meta?.paging?.total === undefined ? null : body.meta.paging.total === rows.length,
+    included_app_matches: Math.min(
+      (Array.isArray(body.included) ? body.included : []).filter(
+        (row) =>
+          row?.type === "apps" &&
+          row.id === APP_ID &&
+          row.attributes?.bundleId === "com.dovebevo.app",
+      ).length,
+      3,
+    ),
+    known_groups: GROUPS.map((expected) => {
+      const matches = rows.filter((row) => row?.attributes?.name === expected.name);
+      const group = matches.length === 1 ? matches[0] : undefined;
+      const parent = group?.relationships?.app?.data;
+      const publicLink = group?.attributes?.publicLinkEnabled;
+      return {
+        matches: Math.min(matches.length, 3),
+        resource_identity_valid: Boolean(group && group.type === "betaGroups" && id(group.id)),
+        is_internal_group:
+          typeof group?.attributes?.isInternalGroup === "boolean"
+            ? group.attributes.isInternalGroup
+            : null,
+        parent:
+          parent === undefined
+            ? "MISSING"
+            : parent?.type === "apps" && parent.id === APP_ID
+              ? "MATCH"
+              : "MISMATCH",
+        public_link:
+          publicLink === undefined
+            ? "MISSING"
+            : publicLink === null
+              ? "NULL"
+              : publicLink === false
+                ? "DISABLED"
+                : publicLink === true
+                  ? "ENABLED"
+                  : "INVALID",
+      };
+    }),
+  };
+}
 function query(path, values) {
   const target = new URL(ORIGIN + path);
   for (const [key, value] of Object.entries(values)) target.searchParams.set(key, value);
@@ -285,9 +333,7 @@ async function inspect(client, plan, diagnostics) {
   const groupBody = await client(
     query("/v1/betaGroups", {
       "filter[app]": APP_ID,
-      ...(plan
-        ? { "filter[id]": plan.groups.map((g) => g.id).join(",") }
-        : { "filter[name]": GROUPS.map((g) => g.name).join(",") }),
+      ...(plan ? { "filter[id]": plan.groups.map((g) => g.id).join(",") } : {}),
       include: "app",
       "fields[betaGroups]": "name,isInternalGroup,publicLinkEnabled,app",
       "fields[apps]": "bundleId",
@@ -295,12 +341,38 @@ async function inspect(client, plan, diagnostics) {
     }),
   );
   stage("GROUP_IDENTITY");
-  const rawGroups = list(groupBody, "betaGroups", 2);
+  if (diagnostics) diagnostics.group_shape = groupShape(groupBody);
+  const rawGroups = list(groupBody, "betaGroups", 100);
   if (
-    rawGroups.length !== 2 ||
+    rawGroups.length < 2 ||
     included(groupBody, "apps", APP_ID).attributes?.bundleId !== "com.dovebevo.app"
   )
     fail();
+  for (const group of rawGroups) relationship(group, "app", "apps", APP_ID);
+  if (diagnostics)
+    diagnostics.app_groups = rawGroups.map((group) => ({
+      id: group.id,
+      name:
+        typeof group.attributes?.name === "string" &&
+        group.attributes.name.length <= 120 &&
+        !/[\u0000-\u001f\u007f-\u009f\ud800-\udfff]/.test(group.attributes.name)
+          ? group.attributes.name
+          : null,
+      is_internal_group:
+        typeof group.attributes?.isInternalGroup === "boolean"
+          ? group.attributes.isInternalGroup
+          : null,
+      public_link:
+        group.attributes?.publicLinkEnabled === undefined
+          ? "MISSING"
+          : group.attributes.publicLinkEnabled === null
+            ? "NULL"
+            : group.attributes.publicLinkEnabled === false
+              ? "DISABLED"
+              : group.attributes.publicLinkEnabled === true
+                ? "ENABLED"
+                : "INVALID",
+    }));
   const groups = [];
   for (const expected of GROUPS) {
     stage("GROUP_IDENTITY");

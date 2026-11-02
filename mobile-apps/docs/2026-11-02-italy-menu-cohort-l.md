@@ -9,3 +9,7 @@ The owner-linked menu and its six categories were checked for cover, service, mi
 Manifest SHA256: 0a5d9a8767253595eaefc579b189427ddee83c6df3ca8ab3a3694c8a1ea57a04
 
 A protected audit tag must first prove exact source digests, exact production binding, unchanged before/after cells, all seven eligible outcomes and no errors. Only then may source groups be approved for an apply tag. Publication requires the apply receipt, independent public read and all required repository checks. No Google review threshold is used.
+
+## Protected read-only audit and approval
+
+Run 41538935310 at source head ded71e17658ec0994593b7b8f2a63002c3c31869 completed SUCCESS. Artifact 13185253005 has verified ZIP SHA256 70976e888636edf8e2f5b9356e766f89329e51819037b9c9a15d72847a412d0e. Both exact source groups (five and two records) matched the immutable parent manifest and current pinned source pages. All seven records were eligible with current, history, report and hidden counts zero; before and after snapshots were identical and empty. Production binding was verified. The read-only run had no errors, writes or cache invalidation. An independent reviewer parsed the original receipt and confirmed this evidence. Only groups 0 and 1 are approved for the guarded apply using the unchanged importer and manifest. A successful exact receipt plus fresh public read is still required before claiming live prices.

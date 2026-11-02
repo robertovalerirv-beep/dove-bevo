@@ -13,7 +13,7 @@ export const NOTES_URL = new URL(
   "../mobile-apps/store-assets/app-review-notes-20261102.txt",
   import.meta.url,
 );
-export const NOTES_SHA = "541ed3fc478075ea0ed11f520d96046132f56392a9cae95d08595b77317ccfd6";
+export const NOTES_SHA = "5632cd392dcc18e507ebbb85947e16544d80752b183287fa13d625e6734ace3f";
 const LIMIT = 262144;
 const states = new Set(["AWAITING_UPLOAD", "UPLOAD_COMPLETE", "COMPLETE", "FAILED"]);
 const id = (value) => typeof value === "string" && /^[A-Za-z0-9-]{1,100}$/.test(value);

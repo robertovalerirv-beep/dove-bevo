@@ -108,7 +108,7 @@ function query(path, values) {
   for (const [key, value] of Object.entries(values)) target.searchParams.set(key, value);
   return target.pathname + target.search;
 }
-function clientFor(env, transport) {
+function clientFor(env, transport, diagnostics) {
   let calls = 0;
   return async (path, payload, expected = 200) => {
     const target = new URL(ORIGIN + path);
@@ -128,6 +128,10 @@ function clientFor(env, transport) {
       )
     )
       fail();
+    if (diagnostics) {
+      diagnostics.request_index = calls;
+      diagnostics.http_status = null;
+    }
     const response = await transport(target.href, {
       method: payload ? "POST" : "GET",
       redirect: "error",
@@ -139,6 +143,13 @@ function clientFor(env, transport) {
       },
       ...(payload ? { body: JSON.stringify(payload) } : {}),
     });
+    if (
+      diagnostics &&
+      Number.isInteger(response.status) &&
+      response.status >= 100 &&
+      response.status <= 599
+    )
+      diagnostics.http_status = response.status;
     if (
       response.status !== expected ||
       !response.ok ||
@@ -210,7 +221,11 @@ async function submissions(client, buildId) {
     return { id: row.id, state: row.attributes.betaReviewState };
   });
 }
-async function inspect(client, plan) {
+async function inspect(client, plan, diagnostics) {
+  const stage = (name) => {
+    if (diagnostics) diagnostics.stage = name;
+  };
+  stage("BUILD_FETCH");
   const body = await client(
     plan
       ? query(`/v1/builds/${plan.build_id}`, buildFields)
@@ -225,13 +240,16 @@ async function inspect(client, plan) {
   );
   const rows = plan ? [body.data] : list(body, "builds", 1);
   if (rows.length !== 1) fail();
+  stage("BUILD_IDENTITY");
   const build = resource(rows[0], "builds", plan?.build_id);
   relationship(build, "app", "apps", APP_ID);
   if (included(body, "apps", APP_ID).attributes?.bundleId !== "com.dovebevo.app") fail();
+  stage("VERSION_IDENTITY");
   const versionId = relationship(build, "preReleaseVersion", "preReleaseVersions").id;
   const version = included(body, "preReleaseVersions", versionId);
   relationship(version, "app", "apps", APP_ID);
   if (version.attributes?.version !== VERSION || version.attributes?.platform !== "IOS") fail();
+  stage("BUILD_STATE");
   const a = build.attributes;
   if (
     a?.version !== BUILD_NUMBER ||
@@ -241,6 +259,7 @@ async function inspect(client, plan) {
     !Number.isFinite(Date.parse(a.expirationDate))
   )
     fail();
+  stage("BETA_DETAIL");
   const beta = included(
     body,
     "buildBetaDetails",
@@ -252,6 +271,7 @@ async function inspect(client, plan) {
     !externalStates.has(beta.attributes?.externalBuildState)
   )
     fail();
+  stage("GROUPS_FETCH");
   const groupBody = await client(
     query("/v1/betaGroups", {
       "filter[app]": APP_ID,
@@ -264,6 +284,7 @@ async function inspect(client, plan) {
       limit: "100",
     }),
   );
+  stage("GROUP_IDENTITY");
   const rawGroups = list(groupBody, "betaGroups", 2);
   if (
     rawGroups.length !== 2 ||
@@ -272,6 +293,7 @@ async function inspect(client, plan) {
     fail();
   const groups = [];
   for (const expected of GROUPS) {
+    stage("GROUP_IDENTITY");
     const matches = rawGroups.filter((g) => g.attributes?.name === expected.name);
     if (matches.length !== 1) fail();
     const group = matches[0];
@@ -283,6 +305,7 @@ async function inspect(client, plan) {
       fail();
     const publicLink = group.attributes.publicLinkEnabled;
     if (publicLink !== undefined && typeof publicLink !== "boolean") fail();
+    stage("GROUP_MEMBERSHIP");
     groups.push({
       id: group.id,
       ...expected,
@@ -290,6 +313,8 @@ async function inspect(client, plan) {
       linked: await membership(client, group.id, build.id),
     });
   }
+  stage("REVIEW_SUBMISSIONS");
+  const reviewSubmissions = await submissions(client, build.id);
   return {
     build_id: build.id,
     processing_state: a.processingState,
@@ -298,7 +323,7 @@ async function inspect(client, plan) {
     internal_state: beta.attributes.internalBuildState,
     external_state: beta.attributes.externalBuildState,
     groups,
-    submissions: await submissions(client, build.id),
+    submissions: reviewSubmissions,
   };
 }
 function eligible(snapshot, now) {
@@ -387,8 +412,9 @@ export async function auditBetaDistribution(
   { transport = globalThis.fetch, now = () => new Date() } = {},
 ) {
   const receipt = base("audit", now);
+  const diagnostics = { stage: "BUILD_FETCH", request_index: 0, http_status: null };
   try {
-    receipt.before = await inspect(clientFor(env, transport));
+    receipt.before = await inspect(clientFor(env, transport, diagnostics), undefined, diagnostics);
     receipt.ready = eligible(receipt.before, now());
     if (receipt.ready) {
       receipt.plan = proposal(receipt.before);
@@ -397,6 +423,7 @@ export async function auditBetaDistribution(
     receipt.complete = true;
   } catch {
     receipt.error = "BETA_AUDIT_UNAVAILABLE_OR_INVALID";
+    receipt.failure = diagnostics;
   }
   return receipt;
 }

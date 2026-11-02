@@ -16,7 +16,7 @@ separate states. None establishes a public App Store launch or a real-phone test
 ## Read-only first
 
 The initial workflow accepts only
-`mobile-beta-distribution-audit/20261102-v1` in
+`mobile-beta-distribution-audit/20261102-v2` in
 `robertovalerirv-beep/dove-bevo`. It has `contents: read`, pinned actions, no apply
 step and no manual input. Its audit command is:
 
@@ -35,6 +35,11 @@ build-membership and beta-review-submission fields. It never requests testers,
 email addresses, contacts, existing review notes or public release settings. Its
 receipt retains only the validated IDs, two known group names and distribution
 state; provider error bodies and authentication headers are discarded.
+When an audit fails, it additionally returns a fixed failure-stage name, bounded
+request index and numeric HTTP status (or null). It never serializes a provider
+message, URL, response body, contact or credential for diagnostics. The immutable
+v1 audit stopped with a generic error on both attempts; v2 adds this diagnostic
+boundary without changing distribution or identity checks.
 
 The audit requires exactly one build numbered `62` for version `1.0.0`, platform
 `IOS`, and verifies its parent app and bundle. It requires both exact group names,

@@ -3,7 +3,7 @@ name: Audit exact Dove Bevo TestFlight distribution
 on:
   push:
     tags:
-      - "mobile-beta-distribution-audit/20261102-v1"
+      - "mobile-beta-distribution-audit/20261102-v2"
 
 permissions:
   contents: read
@@ -13,7 +13,7 @@ jobs:
     if: >-
       github.repository == 'robertovalerirv-beep/dove-bevo' &&
       github.event_name == 'push' &&
-      github.ref == 'refs/tags/mobile-beta-distribution-audit/20261102-v1'
+      github.ref == 'refs/tags/mobile-beta-distribution-audit/20261102-v2'
     runs-on: ubuntu-24.04
     timeout-minutes: 4
     steps:

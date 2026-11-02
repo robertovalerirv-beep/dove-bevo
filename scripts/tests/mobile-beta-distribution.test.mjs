@@ -247,6 +247,37 @@ test("no uploaded exact build yields no plan or mutation", async () => {
   assert.ok(f.calls.every((c) => c.method === "GET"));
 });
 
+test("failure diagnostics expose only a fixed stage, numeric status and bounded request index", async () => {
+  for (const [overrides, expected] of [
+    [{ app: "private-wrong-app" }, { stage: "BUILD_IDENTITY", request_index: 1, http_status: 200 }],
+    [
+      { versionApp: "private-wrong-app" },
+      { stage: "VERSION_IDENTITY", request_index: 1, http_status: 200 },
+    ],
+    [
+      { intercept: () => new globalThis.Response("PRIVATE_PROVIDER_TEXT", { status: 400 }) },
+      { stage: "BUILD_FETCH", request_index: 1, http_status: 400 },
+    ],
+    [
+      {
+        intercept: () => {
+          throw new Error("PRIVATE_NETWORK_TEXT");
+        },
+      },
+      { stage: "BUILD_FETCH", request_index: 1, http_status: null },
+    ],
+  ]) {
+    const f = fixture(overrides);
+    const receipt = await f.audit();
+    assert.equal(receipt.complete, false);
+    assert.deepEqual(receipt.failure, expected);
+    assert.equal(receipt.plan, undefined);
+    assert.ok(!JSON.stringify(receipt).includes("PRIVATE"));
+    assert.ok(!JSON.stringify(receipt).includes("private-wrong-app"));
+    assert.ok(f.calls.every((call) => call.method === "GET"));
+  }
+});
+
 test("invalid local plan/hash is rejected before accessing credentials or transport", async () => {
   const f = fixture();
   const plan = (await f.audit()).plan;
@@ -657,11 +688,11 @@ test("initial workflow is one exact read-only tag with no apply or public-releas
     new URL("../../.github/workflows/mobile-beta-distribution.yml", import.meta.url),
     "utf8",
   );
-  assert.match(workflow, /mobile-beta-distribution-audit\/20261102-v1/);
+  assert.match(workflow, /mobile-beta-distribution-audit\/20261102-v2/);
   assert.match(workflow, /github\.repository == 'robertovalerirv-beep\/dove-bevo'/);
   assert.match(
     workflow,
-    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261102-v1'/,
+    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261102-v2'/,
   );
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /contents: read/);

@@ -15,8 +15,9 @@ struct DiscoveryCategorySummary: Equatable {
     let headline: String
     let detail: String
 
-    init(rows: [DiscoveryPresentedRow], loading: Bool) {
+    init(rows: [DiscoveryPresentedRow], loading: Bool, available: Bool = true) {
         if loading { headline = "Caricamento…"; detail = "Prezzi nella zona"; return }
+        if !available { headline = "Prezzi non caricati"; detail = "Apri la mappa o ricarica"; return }
         guard let first = rows.first else { headline = "Nessun prezzo"; detail = "Prova nella mappa"; return }
         let count = rows.count == 1 ? "1 prezzo" : "\(rows.count) prezzi"
         if Set(rows.map { $0.price.group }).count == 1,
@@ -127,7 +128,7 @@ struct DiscoveryCategorySummary: Equatable {
         location.text = [row.location, "\(distance) dal centro mappa"].filter { !$0.isEmpty }.joined(separator: " · ")
         evidence.text = "\(category.name) · \(band.name)\n\(row.price.details(today: today))"
         accessibilityLabel = row.name
-        accessibilityValue = "\(number) nel formato \(row.price.groupLabel). \(category.name) · \(band.name)\n\(row.price.amount)\n\(location.text ?? "")\n\(row.price.details(today: today))"
+        accessibilityValue = "\(number) nel formato \(row.price.groupLabel). \(category.name) · \(band.name)\n\(row.price.amount)\n\(location.text ?? "")\n\(row.price.details(today: today)). Immagine illustrativa del drink."
         accessibilityHint = "Apre questo locale nella mappa"
         // Narrow or large-type layouts put the exact amount above the evidence,
         // rather than compressing the venue name into an unreadable column.

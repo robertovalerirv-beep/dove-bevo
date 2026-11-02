@@ -1,0 +1,13 @@
+# Native reference fidelity — 2 November 2026
+
+Scopri uses nine real drink filters as photographic category cards, a normal / happy-hour selector, and compact venue rows. A category quotes a “Da” price only if every displayed price belongs to the same actual currency and serving group. Other categories show a count, not a cross-currency minimum. The row rank resets for each currency/serving group. Provenance, original currency, serving, menu conditions and age information remain in each actual row.
+
+All drink photographs are generic category illustrations, not venue photographs. Eight approved generated drink photographs cover the nine categories; gin lemon uses the generic lemon-garnished gin scene. CommunityCheers is separate decorative community art. The original PNGs and optimized JPEGs are retained under the selected project assets folder; the adjacent provenance JSON records their hashes. Asset catalog JPEG bytes are copied unchanged from those reviewed versions. BrandMark copies the existing app icon unchanged.
+
+The existing bottom Home / Mappa / Preferiti / Salva / Consigliati controls remain. Condividi and Ricarica remain in the browser overflow. Informazioni opens a native list of real existing capabilities and the community artwork; it does not invent account history or contribution counts.
+
+Price-image sharing reads the single visible version-1 marker from the actual currently open mobile venue modal in WebKit’s isolated world. It checks the route, selected key, visible heading, exact venue name, category, original currency, amount, happy-hour band, source evidence and confirmation count. The poster wraps the exact source text, including online-menu conditions, and labels the generic drink illustration. An invalid/missing marker or five-second read timeout keeps ordinary canonical link sharing. A changed document, hidden destination or retired lifecycle cancels the presentation entirely. No script writes, bridge, network transport, contribution, snapshot persistence or public upload is added.
+
+Windows checks cover the existing source/harness suite and shipped reader script where available. The new Swift unit, UIKit, local poster and simulated WebKit cases require the parent’s fresh hosted Mac gate; local source review is not a compiled/runtime claim.
+
+The image share sheet excludes the built-in Save to Camera Roll action because the app does not request photo-library access; system share extensions and Save to Files remain available. Apple describes that activity as assigning an image or video to the camera roll: https://developer.apple.com/documentation/uikit/uiactivity/activitytype-swift.struct/savetocameraroll . No photo-library purpose key or new permission is added.

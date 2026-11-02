@@ -22,6 +22,7 @@ final class DiscoveryCardsTests: XCTestCase {
         XCTAssertTrue(same.detail.contains("GBP")); XCTAssertTrue(same.detail.contains("500 ml"))
         XCTAssertEqual(DiscoveryCategorySummary(rows: beer, loading: true).headline, "Caricamento…")
         XCTAssertEqual(DiscoveryCategorySummary(rows: [], loading: false).headline, "Nessun prezzo")
+        XCTAssertEqual(DiscoveryCategorySummary(rows: [], loading: false, available: false).headline, "Prezzi non caricati")
     }
 
     @MainActor func testPhotographicFiltersKeepAllNineRealCategoriesAndSelectedIdentity() throws {

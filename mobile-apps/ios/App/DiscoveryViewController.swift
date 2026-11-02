@@ -177,7 +177,8 @@ final class DiscoveryViewController: UITableViewController {
         for (index, button) in drinkButtons.enumerated() {
             let category = DrinkCategory.all[index], selected = category == drink
             let categoryRows = snapshot?.displayRows(drink: category.code, band: band) ?? []
-            button.update(summary: DiscoveryCategorySummary(rows: categoryRows, loading: busy), selected: selected)
+            let available = snapshot.map { $0.unavailableCells.count != $0.area.cells.count } ?? false
+            button.update(summary: DiscoveryCategorySummary(rows: categoryRows, loading: busy, available: available), selected: selected)
         }
         refreshButton.isEnabled = canRead && area != nil && !busy
         if area == nil {

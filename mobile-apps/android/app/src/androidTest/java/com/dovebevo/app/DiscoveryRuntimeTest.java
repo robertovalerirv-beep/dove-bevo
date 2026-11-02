@@ -60,6 +60,14 @@ public final class DiscoveryRuntimeTest {
         onMain(()->{assertEquals("negroni",screen.selectedDrink());assertEquals(1,screen.selectedBand());assertEquals(0,rows().getChildCount());assertFalse(text(rows()).contains("0,00"));});
         assertEquals(before,requests.get());
     }
+    @Test public void narrow320HeaderStacksAndKeepsAllControlsInsideItsMeasuredWidth() {
+        android.content.res.Resources resources=activity.getResources();android.content.res.Configuration saved=new android.content.res.Configuration(resources.getConfiguration());
+        try{
+            onMain(()->{android.content.res.Configuration narrow=new android.content.res.Configuration(saved);narrow.screenWidthDp=320;resources.updateConfiguration(narrow,resources.getDisplayMetrics());});
+            show(true,null);
+            onMain(()->{float density=resources.getDisplayMetrics().density;View root=screen.view();root.measure(View.MeasureSpec.makeMeasureSpec(Math.round(320*density),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(600*density),View.MeasureSpec.EXACTLY));root.layout(0,0,Math.round(320*density),Math.round(600*density));LinearLayout header=root.findViewWithTag("discovery.header");assertEquals(LinearLayout.VERTICAL,header.getOrientation());LinearLayout controls=(LinearLayout)header.getChildAt(1);for(int index=0;index<controls.getChildCount();index++){View control=controls.getChildAt(index);assertTrue(control.getLeft()>=0);assertTrue(control.getRight()<=controls.getWidth());assertTrue(control.getWidth()>=Math.round(44*density));assertTrue(control.getHeight()>=Math.round(44*density));}});
+        }finally{onMain(()->resources.updateConfiguration(saved,resources.getDisplayMetrics()));}
+    }
     private void show(boolean unavailable,DiscoveryArea area){onMain(()->{
         FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable)throw new IOException("Owned offline response");String body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");
         screen=new DiscoveryScreen(activity,opened::set,()->{},active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));activity.setContentView(screen.view());screen.show(area);

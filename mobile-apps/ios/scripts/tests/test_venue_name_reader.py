@@ -138,8 +138,18 @@ class VenueNameReaderTests(unittest.TestCase):
                 for bad in [base + "&c=u0nd8", base + "&token=private", base + "#private"]:
                     self.assertIsNone(self.read([{"olderWebKit": True, "href": bad}], script)[0].get("value"))
                 self.assertIsNone(self.read([{"olderWebKit": True, "href": base, "marker": False}], script)[0].get("value"))
+                for hh in ["0", "1"]:
+                    focused = base + "&drink=beer_draft&hh=" + hh
+                    self.assertIsNotNone(self.read([{"olderWebKit": True, "href": focused}], script)[0].get("value"))
+                for bad in ["&drink=beer_draft", "&hh=1", "&drink=unknown&hh=0", "&drink=spritz&hh=2",
+                            "&drink=spritz&hh=0&hh=1", "&drink=spritz&drink=water&hh=0",
+                            "&%64rink=spritz&hh=0", "&drink=spritz&hh=0&token=private", "&drink=spritz&hh=0#private"]:
+                    self.assertIsNone(self.read([{"olderWebKit": True, "href": base + bad}], script)[0].get("value"))
                 # Demonstrate the compatibility counterexample using the actual reader.
-                broken = script.replace("[...url.searchParams].length", "url.searchParams.size").replace("[...route.searchParams].length", "route.searchParams.size")
+                broken = (script.replace("pairs.length", "url.searchParams.size")
+                          .replace("[...url.searchParams].length", "url.searchParams.size")
+                          .replace("[...route.searchParams].length", "route.searchParams.size"))
+                self.assertTrue(broken != script, "Compatibility mutation must actually change both real readers")
                 self.assertIsNone(self.read([{"olderWebKit": True, "href": base}], broken)[0].get("value"))
 
     def test_precommit_old_heading_cannot_be_saved_for_the_new_url(self):

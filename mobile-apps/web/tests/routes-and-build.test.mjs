@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { URL, URLSearchParams } from "node:url";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
-import { mobilePath, mobileURL, mobileDefaultDrink } from "../routes.ts";
+import { mobilePath, mobileURL, mobileDefaultDrink, mobileFocus } from "../routes.ts";
 import { transformApp, transformMap, mobileMapStyle } from "../build-contract.mjs";
 import { mobilePinLabel } from "../map-pins.ts";
 import { renderSw } from "../../../scripts/sw.ts";
@@ -44,6 +44,41 @@ test("malformed duplicate and external venue routes fail closed", () => {
     assert.equal(mobilePath({ pathname: "/mobile/", search }), "/");
   }
   assert.equal(mobilePath({ pathname: "/", search: "?path=/bar/n123&c=u0nd9" }), "/");
+});
+
+test("saved drink routes preserve category and normal or happy-hour focus", () => {
+  for (const hh of [0, 1]) {
+    const document = mobileURL(`/bar/n123?c=u0nd9&drink=beer_draft&hh=${hh}`, origin);
+    assert.equal(document, `/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=beer_draft&hh=${hh}`);
+    const location = new URL(document, origin);
+    assert.equal(mobilePath(location), "/bar/n123");
+    assert.deepEqual(mobileFocus(location), { drink: "beer_draft", hh });
+    assert.equal(mobileDefaultDrink("spritz", location), "beer_draft");
+  }
+  assert.equal(mobileFocus(new URL("/mobile/?path=/bar/n123&c=u0nd9", origin)), null);
+});
+
+test("saved drink focus is an exact bounded pair on a valid venue document", () => {
+  for (const tail of [
+    "&drink=beer_draft",
+    "&hh=1",
+    "&drink=unknown&hh=0",
+    "&drink=spritz&hh=2",
+    "&drink=spritz&hh=true",
+    "&drink=spritz&hh=0&hh=1",
+    "&drink=spritz&drink=water&hh=0",
+    "&drink=spritz&hh=0&token=private",
+    "&%64rink=spritz&hh=0",
+    "&drink=spritz&hh=0&",
+    "&drink=spritz&hh=0#bad",
+  ]) {
+    const value = new URL(`/mobile/?path=/bar/n123&c=u0nd9${tail}`, origin);
+    assert.equal(mobilePath(value), "/", tail);
+    assert.equal(mobileFocus(value), null, tail);
+  }
+  assert.equal(mobileFocus(new URL("/mobile/?drink=spritz&hh=0", origin)), null);
+  for (const tail of ["&drink=unknown&hh=0", "&drink=spritz", "&hh=1", "&drink=spritz&hh=2"])
+    assert.throws(() => mobileURL(`/bar/n123?c=u0nd9${tail}`, origin), TypeError);
 });
 
 test("Safari 16.4 routes retain identity and map position without URLSearchParams.size", () => {

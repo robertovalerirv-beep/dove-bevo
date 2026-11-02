@@ -32,7 +32,8 @@ DIAGNOSTIC_LIMIT = 16_384
 SERIAL = "emulator-5554"
 LAUNCH_STAGES = ("initial", "after_decline", "resume", "after_restart")
 OWNED_CLASSES = {"NativeUsabilityRuntimeTest": 21, "RecommendationsRuntimeTest": 6,
-                 "FavoritesRuntimeTest": 5, "DiscoveryRuntimeTest": 4, "EuropePricesRuntimeTest": 1, "PriceShareRuntimeTest": 8}
+                 "FavoritesRuntimeTest": 5, "DiscoveryRuntimeTest": 4, "EuropePricesRuntimeTest": 1, "PriceShareRuntimeTest": 8,
+                 "DrinkFavoritesRuntimeTest": 5}
 PUBLIC_STAGES = ("home", "search", "map", "resume", "restart")
 PUBLIC_STAGE = None
 OWNED_PASS = False
@@ -46,8 +47,8 @@ class PublicProbeBlocked(RuntimeError):
 
 def owned_instrumentation(output):
     text = output.decode("utf-8", "strict")
-    if len(output) > 2_000_000 or not re.search(r"^OK \(45 tests\)\s*$", text, re.M) or not re.search(r"^INSTRUMENTATION_CODE: -1\s*$", text, re.M):
-        raise RuntimeError("Owned instrumentation missing explicit 45-case PASS")
+    if len(output) > 2_000_000 or not re.search(r"^OK \(50 tests\)\s*$", text, re.M) or not re.search(r"^INSTRUMENTATION_CODE: -1\s*$", text, re.M):
+        raise RuntimeError("Owned instrumentation missing explicit 50-case PASS")
     if re.search(r"FAILURES|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|shortMsg=", text):
         raise RuntimeError("Owned instrumentation failed")
     cases, started, fields = [], set(), {}
@@ -58,7 +59,7 @@ def owned_instrumentation(output):
         elif line.startswith("INSTRUMENTATION_STATUS_CODE: "):
             code = int(line.split(": ", 1)[1])
             identity = (fields.get("class"), fields.get("test"))
-            if (code not in (0, 1) or fields.get("numtests") != "45" or not identity[1]
+            if (code not in (0, 1) or fields.get("numtests") != "50" or not identity[1]
                     or identity[0] not in {"com.dovebevo.app." + name for name in OWNED_CLASSES}):
                 raise RuntimeError("Owned instrumentation failure, skip or invalid case")
             if code == 1:
@@ -68,9 +69,9 @@ def owned_instrumentation(output):
                 if identity not in started or identity in cases: raise RuntimeError("Missing or duplicate owned test result")
                 cases.append(identity)
             fields = {}
-    if len(cases) != 45 or set(cases) != started or Counter(c.rsplit(".", 1)[1] for c, _ in cases) != Counter(OWNED_CLASSES):
+    if len(cases) != 50 or set(cases) != started or Counter(c.rsplit(".", 1)[1] for c, _ in cases) != Counter(OWNED_CLASSES):
         raise RuntimeError("Owned instrumentation incomplete case set")
-    return {"result": "passed", "tests": 45, "cases": [list(case) for case in cases]}
+    return {"result": "passed", "tests": 50, "cases": [list(case) for case in cases]}
 
 
 def run_owned_instrumentation():
@@ -170,9 +171,9 @@ def valid_pr_block_receipt():
     proof = result.get("public_probe", {})
     cases = owned.get("cases", [])
     return (result.get("result") == "blocked" and result.get("blocker") == "cloudflare_challenge"
-            and result.get("owned") == owned and owned.get("result") == "passed" and owned.get("tests") == 45
-            and len(cases) == 45 and all(isinstance(c, list) and len(c) == 2 and all(isinstance(v, str) for v in c) for c in cases)
-            and len(set(map(tuple, cases))) == 45
+            and result.get("owned") == owned and owned.get("result") == "passed" and owned.get("tests") == 50
+            and len(cases) == 50 and all(isinstance(c, list) and len(c) == 2 and all(isinstance(v, str) for v in c) for c in cases)
+            and len(set(map(tuple, cases))) == 50
             and Counter(c[0] for c in cases) == Counter({"com.dovebevo.app." + name: count for name, count in OWNED_CLASSES.items()})
             and result.get("cleanup") == {"result": "passed", "errors": []}
             and not result.get("diagnostic_write_error") and proof.get("stage") in PUBLIC_STAGES

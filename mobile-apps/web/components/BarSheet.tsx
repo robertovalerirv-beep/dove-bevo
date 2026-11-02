@@ -12,6 +12,7 @@ import { HoursList, VerifiedBadge } from "@site/app/components/Verified";
 import { drinkImage } from "@mobile/drink-images";
 import { sharePresentation } from "../share-presentation";
 import { DrinkHero } from "./DrinkHero";
+import { mobileFocus, mobilePath } from "../routes";
 import "./sheets.css";
 
 export interface BarActions {
@@ -272,16 +273,23 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
       </Sheet>
     );
   }
-  const isFocus = (p: PriceRow) => focus.includes(p[1]);
+  const requested =
+    mobilePath(location) === `/bar/${venueKey}` &&
+    new URLSearchParams(location.search).get("c") === cell
+      ? mobileFocus(location)
+      : null;
+  const isFocus = (p: PriceRow) =>
+    requested ? p[1] === requested.drink && p[2] === requested.hh : focus.includes(p[1]);
   const active = [...(prices?.p.filter((p) => p[6] === 0) ?? [])].sort(
     (a, b) => Number(isFocus(b)) - Number(isFocus(a)),
   );
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
+  const requestedUnavailable = requested && !active.some(isFocus);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
   return (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
-        <DrinkHero drink={active[0]?.[1] ?? focus[0] ?? "spritz"} />
+        <DrinkHero drink={requested?.drink ?? active[0]?.[1] ?? focus[0] ?? "spritz"} />
         <div class="scontrino__paper">
           <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
           <h2 class="scontrino__name" tabIndex={-1}>
@@ -302,6 +310,14 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             </p>
           )}
           {prices && active.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
+          {prices && requestedUnavailable && (
+            <p class="hint" role="status" data-testid="saved-drink-unavailable">
+              {currentLang() === "en"
+                ? "Saved drink price unavailable"
+                : "Prezzo del drink preferito non disponibile"}
+              {`: ${it.drinks[requested.drink] ?? requested.drink} · ${requested.hh ? "Happy hour" : currentLang() === "en" ? "Normal" : "Normale"}.`}
+            </p>
+          )}
           <ul class="prices">
             {shown.flatMap((row, index) => [
               index === 1 && (
@@ -316,7 +332,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 actions={actions}
                 inReview={false}
                 tier={tier(row)}
-                featured={index === 0}
+                featured={index === 0 && !requestedUnavailable}
               />,
             ])}
           </ul>

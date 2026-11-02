@@ -39,6 +39,11 @@ export function transformApp(source) {
   );
   result = once(
     result,
+    "const onPop = () => {\n      setRoute(parseRoute());",
+    "const onPop = () => {\n      const restoredDrink = mobileFocus(location);\n      if (restoredDrink) setDrinks([restoredDrink.drink]);\n      setRoute(parseRoute());",
+  );
+  result = once(
+    result,
     '<p class="map__status" data-testid="map-status" role="status">',
     '<p class="map__status" data-testid="map-status" role="status" data-mobile-selection={showMeter ? drinks.map((code) => it.drinks[code] ?? code).join(" · ") : undefined}>',
   );
@@ -71,7 +76,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileDefaultDrink } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\n' +
+    'import { mobilePath, mobileURL, mobileDefaultDrink, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\n' +
     result
   );
 }

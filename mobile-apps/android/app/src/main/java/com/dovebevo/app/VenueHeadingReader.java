@@ -11,8 +11,13 @@ final class VenueHeadingReader {
               if (route.protocol !== 'https:' || !['www.dovebevo.com', 'dovebevo.com'].includes(route.hostname) ||
                   route.username || route.password || (route.port && route.port !== '443') || route.hash) return null;
               const mobile = /^\\/mobile\\/(?:index\\.html)?$/.test(route.pathname);
-              if (mobile && (document.documentElement.getAttribute('data-dovebevo-mobile-shell') !== '1' ||
-                  [...route.searchParams].length !== 2 || route.searchParams.getAll('path').length !== 1 ||
+              if (mobile && (!route.search.slice(1).split('&').every(part=>/^(?:path=[^&=]+|c=[0-9b-hjkmnp-z]{5}|drink=(?:beer_draft|spritz|negroni|sbagliato|gin_tonic|gin_lemon|wine_glass|alcohol_free|water)|hh=[01])$/.test(part)) ||
+                  document.documentElement.getAttribute('data-dovebevo-mobile-shell') !== '1' ||
+                  ![2,4].includes([...route.searchParams].length) ||
+                  [...route.searchParams.keys()].some(k=>!['path','c','drink','hh'].includes(k)) ||
+                  (route.searchParams.has('drink') || route.searchParams.has('hh') ?
+                    route.searchParams.getAll('drink').length!==1 || route.searchParams.getAll('hh').length!==1 ||
+                    !['beer_draft','spritz','negroni','sbagliato','gin_tonic','gin_lemon','wine_glass','alcohol_free','water'].includes(route.searchParams.get('drink')) || !/^[01]$/.test(route.searchParams.get('hh')||'') : [...route.searchParams].length!==2) || route.searchParams.getAll('path').length !== 1 ||
                   route.searchParams.getAll('c').length !== 1 || !/^[0-9b-hjkmnp-z]{5}$/.test(route.searchParams.get('c') || ''))) return null;
               const match = /^\\/bar\\/([nwru][1-9][0-9]{0,14})$/.exec(mobile ? route.searchParams.get('path') || '' : route.pathname);
               const maps = document.querySelectorAll('section.map[data-selected]');

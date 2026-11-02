@@ -33,6 +33,12 @@ public final class SavedVenueStore {
         private Venue(String url, String label) { this.url = url; this.label = label; }
     }
 
+    static Venue reference(String rawUrl, String name) {
+        String url = SavedVenueUrl.canonicalize(rawUrl);
+        String label = name == null ? null : normalizedLabel(name);
+        return url == null || label == null || label.isEmpty() ? null : new Venue(url, label);
+    }
+
     private final Storage storage;
 
     public SavedVenueStore(Storage storage) { this.storage = storage; }

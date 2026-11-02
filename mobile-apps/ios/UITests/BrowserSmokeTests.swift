@@ -1,4 +1,5 @@
 import XCTest
+import CoreGraphics
 
 final class BrowserSmokeTests: XCTestCase {
     private var app: XCUIApplication!
@@ -147,15 +148,52 @@ final class BrowserSmokeTests: XCTestCase {
             NSPredicate(format: "label BEGINSWITH[c] %@ AND label CONTAINS[c] %@", "Milano", "Città")
         ).firstMatch
         XCTAssertTrue(city.waitForExistence(timeout: 30), "Live city data did not return Milano")
+        var lastSearchSample = "No complete search visibility sample"
         let searchVisible = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            (searchField.value as? String) == "Milano" && searchField.isHittable && city.isHittable &&
-                self.app.keyboards.allElementsBoundByIndex.contains { keyboard in
-                    self.isOrdinaryKeyboard(keyboard) &&
-                        self.visibleAboveKeyboard(searchField, keyboard: keyboard) &&
-                        self.visibleAboveKeyboard(city, keyboard: keyboard)
+            let started = Date()
+            let fieldExists = searchField.exists
+            let cityExists = city.exists
+            guard fieldExists && cityExists else {
+                lastSearchSample = "fieldExists=\(fieldExists), cityExists=\(cityExists)"
+                return false
+            }
+            // Application.frame caused repeated AX lookups while the keyboard
+            // was open. Sample the actual app window and each rectangle once.
+            let windowFrame = self.app.windows.firstMatch.frame
+            let websiteFrame = website.frame
+            let fieldFrame = searchField.frame
+            let cityFrame = city.frame
+            let queryMatches = (searchField.value as? String) == "Milano"
+            let fieldHittable = searchField.isHittable
+            let cityHittable = city.isHittable
+            var keyboardFrame = CGRect.null
+            for keyboard in self.app.keyboards.allElementsBoundByIndex {
+                guard keyboard.exists else { continue }
+                let candidateFrame = keyboard.frame
+                if self.isOrdinaryKeyboard(keyboard, frame: candidateFrame, windowFrame: windowFrame) {
+                    keyboardFrame = candidateFrame
+                    break
                 }
+            }
+            let fieldVisible = Self.frameVisibleAboveKeyboard(fieldFrame, websiteFrame: websiteFrame,
+                                                              windowFrame: windowFrame, keyboardFrame: keyboardFrame)
+            let cityVisible = Self.frameVisibleAboveKeyboard(cityFrame, websiteFrame: websiteFrame,
+                                                             windowFrame: windowFrame, keyboardFrame: keyboardFrame)
+            lastSearchSample = """
+            seconds=\(Date().timeIntervalSince(started))
+            fieldExists=\(fieldExists), cityExists=\(cityExists), queryMatches=\(queryMatches)
+            fieldHittable=\(fieldHittable), cityHittable=\(cityHittable)
+            ordinaryKeyboard=\(!keyboardFrame.isNull), fieldVisible=\(fieldVisible), cityVisible=\(cityVisible)
+            window=\(windowFrame), website=\(websiteFrame)
+            field=\(fieldFrame), city=\(cityFrame), keyboard=\(keyboardFrame)
+            """
+            return queryMatches && fieldHittable && cityHittable && fieldVisible && cityVisible
         }, object: nil)
-        let visibilityResult = XCTWaiter.wait(for: [searchVisible], timeout: 10)
+        let visibilityResult = XCTWaiter.wait(for: [searchVisible], timeout: 45)
+        let sampleAttachment = XCTAttachment(string: lastSearchSample)
+        sampleAttachment.name = "DoveBevo-search-visibility-sample"
+        sampleAttachment.lifetime = .keepAlways
+        add(sampleAttachment)
         attachState(named: "DoveBevo-live-search-input-and-first-city-above-keyboard")
         XCTAssertEqual(visibilityResult, .completed,
                        "The original input and first Milano result must both remain visible above the ordinary keyboard before tapping")
@@ -403,21 +441,25 @@ final class BrowserSmokeTests: XCTestCase {
 
     private func waitForOrdinaryKeyboard() {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            self.app.keyboards.allElementsBoundByIndex.contains { self.isOrdinaryKeyboard($0) }
+            let windowFrame = self.app.windows.firstMatch.frame
+            return self.app.keyboards.allElementsBoundByIndex.contains { keyboard in
+                guard keyboard.exists else { return false }
+                return self.isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)
+            }
         }, object: nil)
         let result = XCTWaiter.wait(for: [ready], timeout: 15)
         if result != .completed { attachState(named: "DoveBevo-original-field-keyboard-not-ready") }
         XCTAssertEqual(result, .completed, "The existing field must have an ordinary visible keyboard before typing")
     }
 
-    private func isOrdinaryKeyboard(_ keyboard: XCUIElement) -> Bool {
+    private func isOrdinaryKeyboard(_ keyboard: XCUIElement, frame: CGRect, windowFrame: CGRect) -> Bool {
         guard keyboard.exists else { return false }
-        let frame = keyboard.frame
-        let appFrame = app.frame
-        guard frame.width >= 250, frame.height >= 150, appFrame.intersects(frame) else { return false }
+        guard frame.width >= 250, frame.height >= 150, windowFrame.intersects(frame) else { return false }
         // A tiny UIKeyboardLayoutStar Preview is not a usable keyboard.
         return keyboard.keys.matching(NSPredicate(format: "label IN %@", ["m", "M"] as NSArray)).allElementsBoundByIndex.contains { key in
-            key.exists && key.isHittable && key.frame.width >= 20 && key.frame.height >= 20 && appFrame.contains(key.frame)
+            guard key.exists && key.isHittable else { return false }
+            let keyFrame = key.frame
+            return keyFrame.width >= 20 && keyFrame.height >= 20 && windowFrame.contains(keyFrame)
         }
     }
 
@@ -510,11 +552,16 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func ordinaryDecimalKeyboard() -> XCUIElement? {
-        app.keyboards.allElementsBoundByIndex.first { keyboard in
-            guard keyboard.exists, keyboard.frame.width >= 250, keyboard.frame.height >= 150,
-                  app.frame.intersects(keyboard.frame) else { return false }
+        let windowFrame = app.windows.firstMatch.frame
+        return app.keyboards.allElementsBoundByIndex.first { keyboard in
+            guard keyboard.exists else { return false }
+            let keyboardFrame = keyboard.frame
+            guard keyboardFrame.width >= 250, keyboardFrame.height >= 150,
+                  windowFrame.intersects(keyboardFrame) else { return false }
             return keyboard.keys.matching(NSPredicate(format: "label IN %@", ["1", "2"] as NSArray)).allElementsBoundByIndex.contains { key in
-                key.exists && key.isHittable && key.frame.width >= 20 && key.frame.height >= 20 && app.frame.contains(key.frame)
+                guard key.exists && key.isHittable else { return false }
+                let keyFrame = key.frame
+                return keyFrame.width >= 20 && keyFrame.height >= 20 && windowFrame.contains(keyFrame)
             }
         }
     }
@@ -523,9 +570,19 @@ final class BrowserSmokeTests: XCTestCase {
         guard element.exists else { return false }
         let frame = element.frame
         let websiteFrame = app.webViews["browser.website"].frame
-        return !frame.isNull && !frame.isInfinite && frame.width >= 44 && frame.height >= 44 &&
-            [frame.minX, frame.minY, frame.maxX, frame.maxY].allSatisfy { $0.isFinite } &&
-            app.frame.contains(frame) && websiteFrame.contains(frame) && frame.maxY <= keyboard.frame.minY
+        let windowFrame = app.windows.firstMatch.frame
+        return Self.frameVisibleAboveKeyboard(frame, websiteFrame: websiteFrame,
+                                               windowFrame: windowFrame, keyboardFrame: keyboard.frame)
+    }
+
+    private static func frameVisibleAboveKeyboard(_ frame: CGRect, websiteFrame: CGRect,
+                                                  windowFrame: CGRect, keyboardFrame: CGRect) -> Bool {
+        let rectangles = [frame, websiteFrame, windowFrame, keyboardFrame]
+        return rectangles.allSatisfy { rectangle in
+            !rectangle.isNull && !rectangle.isInfinite && rectangle.width > 0 && rectangle.height > 0 &&
+                [rectangle.minX, rectangle.minY, rectangle.maxX, rectangle.maxY].allSatisfy { $0.isFinite }
+        } && frame.width >= 44 && frame.height >= 44 &&
+            windowFrame.contains(frame) && websiteFrame.contains(frame) && frame.maxY <= keyboardFrame.minY
     }
 
     private func verifyLiveRecommendationsReadOnly(venueName: String) {

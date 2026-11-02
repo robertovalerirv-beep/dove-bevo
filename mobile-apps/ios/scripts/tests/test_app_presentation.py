@@ -21,7 +21,11 @@ class AppPresentationGuards(unittest.TestCase):
             self.assertNotIn(forbidden, flow)
         keyboard = source.split("private func ordinaryDecimalKeyboard", 1)[1].split("private func visibleAboveKeyboard", 1)[0]
         self.assertIn('label IN %@", ["1", "2"]', keyboard)
-        self.assertIn("keyboard.frame.width >= 250, keyboard.frame.height >= 150", keyboard)
+        self.assertIn("keyboardFrame.width >= 250, keyboardFrame.height >= 150", keyboard)
+        self.assertIn("let windowFrame = app.windows.firstMatch.frame", keyboard)
+        self.assertIn("windowFrame.intersects(keyboardFrame)", keyboard)
+        self.assertIn("windowFrame.contains(keyFrame)", keyboard)
+        self.assertNotIn("app.frame", keyboard)
         self.assertIn("key.isHittable", keyboard)
         self.assertIn("if ordinaryDecimalKeyboard() == nil { price.tap() }", flow)
         self.assertIn("frame.height < normalViewport.height", flow)

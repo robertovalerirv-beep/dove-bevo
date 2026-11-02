@@ -47,7 +47,7 @@ export function PriceForm({
     unit,
     ...(unit !== "drink" && volumeNumber !== undefined ? { ml: volumeNumber } : {}),
   };
-  const art = drinkImage(drink);
+  const art = drinkImage(drink, "product");
   function save() {
     const amount = parseAmount(text);
     if (amount === null) {
@@ -95,8 +95,11 @@ export function PriceForm({
           {venue.name} · {venue.city}
         </p>
         {art && (
-          <div class="mobile-price-form__art">
+          <div
+            class={`mobile-price-form__art${drink === "spritz" ? " mobile-price-form__art--product" : ""}`}
+          >
             <img src={art} width="1024" height="1536" alt="" />
+            <span>{t("Immagine illustrativa", "Illustrative drink image")}</span>
           </div>
         )}
         <label class="europe-field-label">

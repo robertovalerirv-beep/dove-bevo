@@ -27,10 +27,25 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertNotIn("BEGINSWITH", query)
 
     def test_live_city_and_euro_matchers_keep_utf8_literals(self):
-        for required in ['website.buttons["Cerca citt\u00e0 o bar"]', '"Citt\u00e0"', '"\u20ac"']:
+        for required in ['Cerca citt\u00e0 o bar', '"Citt\u00e0"', '"\u20ac"']:
             self.assertIn(required, self.source)
         for damaged in ["\u00c3\u00a0", "\u00e2\u201a\u00ac", "\ufffd"]:
             self.assertNotIn(damaged, self.source)
+
+    def test_city_search_uses_anchored_label_and_exact_selected_city_without_loosening_map_readiness(self):
+        query = self.source.split("private func citySearchPredicate(", 1)[1].split("private func interactiveMap()", 1)[0]
+        for required in ["NSRegularExpression.escapedPattern(for: $0)", 'label MATCHES %@',
+                         "{1,120}", "citySearchPredicate(city: city)", "website.buttons.matching"]:
+            self.assertIn(required, query)
+        self.assertIn(chr(92) * 2 + "A", query)
+        self.assertIn(chr(92) * 2 + "z", query)
+        self.assertNotIn("CONTAINS", query)
+        self.assertIn('citySearchButton(in: website, city: "Milano")', self.source)
+        self.assertIn('"(?:" + NSRegularExpression.escapedPattern(for: $0) + " · )?"', query)
+        self.assertIn('citySearchPredicate(city: "Milano").evaluate(with: ["label": "Cerca città o bar"])', self.source)
+        self.assertIn('XCTAssertFalse(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Torino · Cerca città o bar"]))', self.source)
+        self.assertIn("hasVisiblePositiveCoverage()", self.source)
+        self.assertIn('website.buttons.matching(citySearchPredicate()).count, 1', self.source)
 
     def test_original_field_receives_one_real_focus_tap_and_keyboard_readiness_before_typing(self):
         live = self.source.split("func testLiveWebsiteCitySearchAndMap()", 1)[1].split("\n    private func", 1)[0]
@@ -38,7 +53,7 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertLess(live.index("searchField.tap()"), live.index("waitForOrdinaryKeyboard()"))
         self.assertLess(live.index("waitForOrdinaryKeyboard()"), live.index('searchField.typeText("Milano")'))
         self.assertIn('XCTAssertEqual(searchField.value as? String, "Milano"', live)
-        ready = self.source.split("private func waitForOrdinaryKeyboard()", 1)[1].split("\n    private func", 1)[0]
+        ready = self.source.split("private func waitForOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
         self.assertIn("keyboards.allElementsBoundByIndex.contains", ready)
         self.assertIn("self.isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)", ready)
         self.assertLess(ready.index("guard keyboard.exists"), ready.index("frame: keyboard.frame"))
@@ -54,6 +69,21 @@ class LiveReadinessTests(unittest.TestCase):
             self.assertIn(required, simultaneous)
         self.assertNotIn("keyboards.firstMatch", simultaneous)
         self.assertLess(simultaneous.index("guard keyboard.exists"), simultaneous.index("let candidateFrame = keyboard.frame"))
+
+    def test_observed_keyboard_tutorial_requires_real_keys_after_its_scoped_action(self):
+        helper = self.source.split("private func dismissKeyboardIntroductionIfPresent(", 1)[1].split("\n    private func", 1)[0]
+        for required in ['"Speed up your typing"', 'app.buttons["Continue"]',
+                         'guard introduction.waitForExistence(timeout: 2)',
+                         'appFrame.contains(buttonFrame)', 'withOffset(offset).tap()',
+                         'waitForOrdinaryKeyboard(timeout: 10)',
+                         'searchField.isHittable', 'assertNoNativeRecovery()']:
+            self.assertIn(required, helper)
+        self.assertNotIn('"exists == false"', helper)
+        self.assertLess(helper.index('withOffset(offset).tap()'), helper.index('waitForOrdinaryKeyboard(timeout: 10)'))
+        self.assertLess(helper.index('waitForOrdinaryKeyboard(timeout: 10)'), helper.index('DoveBevo-keyboard-introduction-after-continue'))
+        ready = self.source.split("private func waitForOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
+        self.assertIn('timeout: TimeInterval = 15', ready)
+        self.assertIn('XCTWaiter.wait(for: [ready], timeout: timeout)', ready)
 
     def test_keyboard_visibility_samples_actual_window_once_without_relaxing_geometry(self):
         sample = self.source.split("let searchVisible =", 1)[1].split("city.tap()", 1)[0]

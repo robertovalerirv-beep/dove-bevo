@@ -4,6 +4,64 @@ import XCTest
 @testable import DoveBevo
 
 final class DiscoveryControllerTests: XCTestCase {
+    @MainActor func testReferenceDiscoveryPrivateFixtureRendersCompactPhotoCardsAndRealRows() throws {
+        let (controller, mounted) = try referenceFixture(category: .large)
+        defer { mounted.close() }
+        let cards = descendants(controller.view).compactMap { $0 as? DiscoveryCategoryButton }
+        XCTAssertEqual(cards.count, 9)
+        for card in cards {
+            XCTAssertGreaterThanOrEqual(card.bounds.height, 100)
+            XCTAssertLessThanOrEqual(card.bounds.height, 145, "Regular photo filters must remain compact")
+        }
+        let first = try XCTUnwrap(controller.tableView.cellForRow(at: IndexPath(row: 0, section: 0)))
+        XCTAssertTrue(first.window === mounted.window)
+        XCTAssertGreaterThanOrEqual(first.bounds.height, 48)
+        XCTAssertLessThanOrEqual(first.bounds.height, 115, "Full-width evidence must not turn simple rows into large cards")
+        XCTAssertTrue(first.accessibilityValue?.contains("5,50 €") == true)
+        mounted.attach(to: self, name: "Scopri-populated")
+    }
+
+    @MainActor func testReferenceDiscoveryPrivateFixtureMountsActualXXXLFontsWithoutClippedEvidence() throws {
+        let (controller, mounted) = try referenceFixture(category: .accessibilityExtraExtraExtraLarge)
+        defer { mounted.close() }
+        let index = IndexPath(row: 0, section: 0)
+        controller.tableView.scrollToRow(at: index, at: .top, animated: false)
+        mounted.layout()
+        let cell = try XCTUnwrap(controller.tableView.cellForRow(at: index))
+        XCTAssertTrue(cell.window === mounted.window)
+        let labels = descendants(cell).compactMap { $0 as? UILabel }.filter { !($0.text ?? "").isEmpty }
+        let name = try XCTUnwrap(labels.first { $0.text == "Locale fixture A" })
+        XCTAssertGreaterThan(name.font.pointSize, 30, "A trait parameter alone does not prove actual Dynamic Type fonts")
+        for label in labels {
+            XCTAssertFalse(label.isHidden)
+            XCTAssertGreaterThan(label.bounds.width, 0)
+            let needed = label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)).height
+            XCTAssertLessThanOrEqual(needed, label.bounds.height + 1, label.text ?? "")
+        }
+        XCTAssertTrue(cell.accessibilityValue?.contains("Formato non dichiarato") == true)
+        mounted.attach(to: self, name: "Scopri-populated-XXXL-scrolled-to-row")
+    }
+
+    @MainActor private func referenceFixture(category: UIContentSizeCategory) throws -> (DiscoveryViewController, OwnedReferenceWindow) {
+        let client = DelayedDiscoveryService()
+        let controller = DiscoveryViewController(client: client, activityCheck: { true }, onOpen: { _ in }, onMap: {})
+        let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
+        controller.setArea(area)
+        let mounted = try OwnedReferenceWindow(root: UINavigationController(rootViewController: controller), category: category)
+        let requested = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in client.calls.count == 1 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [requested], timeout: 5), .completed)
+        guard client.calls.count == 1 else { mounted.close(); throw ComparisonReadError.unavailable }
+        let venues = [550, 650, 700].enumerated().map { index, cents in
+            DiscoveryVenue(key: "n\(901 + index)", name: "Locale fixture \(["A", "B", "C"][index])", cell: "u0nd9",
+                latitude: 45.4642, longitude: 9.19, address: "Via fixture \(index + 1)", city: "Milano",
+                prices: [FavouritePrice(drink: "spritz", band: .normal, cents: cents, observedOn: "2026-11-01", confirmations: 0, quarantined: false)])
+        }
+        client.complete(0, DiscoverySnapshot(area: area, venues: venues, unavailableCells: []))
+        mounted.layout(); controller.tableView.layoutIfNeeded()
+        XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 3)
+        return (controller, mounted)
+    }
+
     @MainActor
     func testNativeRowsShowRealDataFiltersAndCanonicalOpenWithoutSavingAnything() throws {
         let client = DelayedDiscoveryService()
@@ -25,12 +83,13 @@ final class DiscoveryControllerTests: XCTestCase {
         XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 1)
         let index = IndexPath(row: 0, section: 0)
         let cell = controller.tableView(controller.tableView, cellForRowAt: index)
-        let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
-        XCTAssertEqual(content.text, "Real current name")
-        let text = try XCTUnwrap(content.secondaryAttributedText).string
-        for expected in ["Spritz · Normale", "5,50 €", "Via pubblica · Milano", "0 m dal centro mappa", "2026-10-28", "0 conferme"] {
+        let labels = descendants(cell).compactMap { ($0 as? UILabel)?.text }
+        XCTAssertTrue(labels.contains("Real current name"))
+        let text = labels.joined(separator: "\n")
+        for expected in ["5,50 €", "Via pubblica · Milano", "0 m dal centro mappa", "2026-10-28", "0 conferme", "Formato non dichiarato"] {
             XCTAssertTrue(text.contains(expected), expected)
         }
+        XCTAssertTrue(cell.accessibilityValue?.contains("Spritz · Normale") == true, "The selected global drink and band remain explicit to VoiceOver")
         XCTAssertEqual(cell.backgroundConfiguration?.backgroundColor, NativeAppearance.surface)
         XCTAssertFalse(text.contains("Affare"), "A disposable feed must not invent a price tier")
         controller.tableView(controller.tableView, didSelectRowAt: index)

@@ -1,0 +1,58 @@
+{
+  "kind": "AI-generated generic category and community illustrations; never venue photographs",
+  "source": "Owner-provided reference-20261102 editorial image set, standard JPEG85 encoding without retouching",
+  "runtime_use": "Bundled offline; no remote image requests. Gin Lemon shares the lemon-garnish Gin Tonic illustration.",
+  "files": [
+    {
+      "file": "alcohol-free-scene.jpg",
+      "bytes": 211820,
+      "sha256": "bda7576678bb6be757b5532cc95a17309d17b7c445c87d1978fda9320e650d46"
+    },
+    {
+      "file": "beer-scene.jpg",
+      "bytes": 215401,
+      "sha256": "15aaf68b0cc24efa558fe63344a8c73d5f221d25980b30b99832294d0d893488"
+    },
+    {
+      "file": "community-cheers.jpg",
+      "bytes": 133910,
+      "sha256": "23419a492cec20e7f30005a3abc9b0ef005d70dacfbb82c2ca59d6edfe8b195b"
+    },
+    {
+      "file": "gin-tonic-scene.jpg",
+      "bytes": 204115,
+      "sha256": "b2d82c51b57a056ea9c0fe5caf105805ec61119b2641afba59cf04c1008eb703"
+    },
+    {
+      "file": "negroni-scene.jpg",
+      "bytes": 215878,
+      "sha256": "4f3e6255ac27f247c5648ce59160879d6176201c666372759dcd6538db467400"
+    },
+    {
+      "file": "sbagliato-scene.jpg",
+      "bytes": 213363,
+      "sha256": "9928a27cf5f9e27c8ba028578d4317065e6876789d9cc1963a609fdec28efa64"
+    },
+    {
+      "file": "spritz-scene.jpg",
+      "bytes": 200771,
+      "sha256": "00e739c998d7b2e9c0b14bd75ae9c609919945c98ae6cd054ef55881b9fac398"
+    },
+    {
+      "file": "water-scene.jpg",
+      "bytes": 259034,
+      "sha256": "6d6180a5b8a292a9ed2bd59d53c8032fb1b521cf1e7b9afc8e909e27ebc067d5"
+    },
+    {
+      "file": "wine-scene.jpg",
+      "bytes": 191069,
+      "sha256": "3e9691bbbab6e300d74afdf6747e6f8fd4be85f271bf2bea921762db11c081c8"
+    }
+  ],
+  "brand_mark": {
+    "file": "brand-mark.png",
+    "bytes": 49325,
+    "sha256": "207de06f188d2f29c09bf7fde414207a10baebc0c585de08bb77cb29c6389e9d",
+    "source": "Existing Dove Bevo BrandMark asset; copied byte-for-byte from iOS asset catalogue"
+  }
+}

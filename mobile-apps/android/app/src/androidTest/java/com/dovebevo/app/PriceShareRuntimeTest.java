@@ -1,0 +1,126 @@
+package com.dovebevo.app;
+
+import static org.junit.Assert.*;
+import android.app.Instrumentation;
+import android.app.AlertDialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import androidx.core.content.FileProvider;
+import androidx.test.platform.app.InstrumentationRegistry;
+import java.io.File;
+import java.io.InputStream;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.junit.Before;
+import org.junit.After;
+import org.junit.Test;
+
+/** Owned, network-blocked DOM and private-cache fixtures. Never opens a chooser or writes public data. */
+public class PriceShareRuntimeTest {
+    private static final String URL="https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9";
+    private final Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
+    private MainActivity activity;private WebView web;private SharedPreferences rules;private String previous;private boolean hadPrevious;
+    private static final String HTML="""
+      <!doctype html><html data-dovebevo-mobile-shell="1"><meta name="viewport" content="width=device-width, initial-scale=1"><body>
+      <section class="map" data-selected="n123"></section>
+      <dialog class="sheet sheet--bare" aria-label="Locale reale" style="position:fixed;top:20px;left:10px;margin:0;width:280px"><div class="sheet__body"><article class="scontrino"><div class="scontrino__paper"><h2 class="scontrino__name">Locale reale</h2>
+      <section data-dovebevo-share="1" data-version="1" data-venue="n123" data-venue-name="Locale reale" data-drink="spritz" data-drink-name="Spritz" data-hh="0" data-amount-minor="1300" data-currency="GBP" data-serving="drink" data-provenance="Dal menu online · verificato il 02/11/2026 · Aperol Spritz" data-confirmations="0" data-tier="neutro" data-location="London">£13.00</section></div></article></div></dialog><script>document.querySelector('dialog').showModal()</script></body></html>
+      """;
+    @Before public void setUp(){rules=instrumentation.getTargetContext().getSharedPreferences("dovebevo_rules",0);hadPrevious=rules.contains("accepted_rules_version");previous=rules.getString("accepted_rules_version",null);assertTrue(rules.edit().remove("accepted_rules_version").commit());activity=(MainActivity)instrumentation.startActivitySync(new Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK));}
+    @After public void tearDown(){onMain(()->{setField("website",null);if(web!=null)web.destroy();activity.finish();});SharedPreferences.Editor edit=rules.edit();if(hadPrevious)edit.putString("accepted_rules_version",previous);else edit.remove("accepted_rules_version");assertTrue(edit.commit());}
+    @Test public void actualVisibleDomBindsVenueAndHiddenOrWrongHeadingFallsBack()throws Exception {
+        load();String raw=evaluate(PriceShareSnapshot.SCRIPT);PriceShareSnapshot snapshot=PriceShareSnapshot.decode(raw,URL,URL,1,1);assertNotNull(raw,snapshot);assertEquals("£13.00",snapshot.amountLabel());
+        evaluate("document.querySelector('h2').textContent='Other venue'");assertEquals("null",evaluate(PriceShareSnapshot.SCRIPT));
+        evaluate("document.querySelector('h2').textContent='Locale reale';document.querySelector('[data-dovebevo-share]').hidden=true");assertEquals("null",evaluate(PriceShareSnapshot.SCRIPT));
+    }
+    @Test public void nonmodalOrCoveredVenueSheetCannotSupplyShareData()throws Exception {
+        load();assertNotNull(PriceShareSnapshot.decode(evaluate(PriceShareSnapshot.SCRIPT),URL,URL,1,1));
+        evaluate("document.querySelector('dialog').close();document.querySelector('dialog').setAttribute('open','')");assertEquals("null",evaluate(PriceShareSnapshot.SCRIPT));
+        evaluate("document.querySelector('dialog').removeAttribute('open');document.querySelector('dialog').showModal()");assertNotNull(PriceShareSnapshot.decode(evaluate(PriceShareSnapshot.SCRIPT),URL,URL,1,1));
+        evaluate("const other=document.createElement('dialog');other.textContent='Another modal';document.body.append(other);other.showModal()");assertEquals("null",evaluate(PriceShareSnapshot.SCRIPT));
+    }
+    @Test public void posterUsesAllBundledPhotosAndPrivateProviderHasNarrowScope()throws Exception {
+        load();PriceShareSnapshot snapshot=PriceShareSnapshot.decode(evaluate(PriceShareSnapshot.SCRIPT),URL,URL,1,1);assertNotNull(snapshot);
+        onMain(()->{for(RecommendationDrink drink:RecommendationDrink.values())try(InputStream input=activity.getAssets().open("reference-drinks/"+DrinkArtwork.filename(drink))){Bitmap photo=BitmapFactory.decodeStream(input);assertNotNull(photo);assertEquals(1536,photo.getWidth());assertEquals(1024,photo.getHeight());}catch(java.io.IOException error){throw new AssertionError(error);}
+            Bitmap poster=PriceShareUi.poster(activity,snapshot);assertEquals(900,poster.getWidth());assertTrue(poster.getHeight()>1000);
+            File privateFile=new File(new File(activity.getCacheDir(),"price-share"),"owned-fixture.png");Uri uri=FileProvider.getUriForFile(activity,activity.getPackageName()+".price-share",privateFile);assertEquals("content",uri.getScheme());
+            Intent intent=PriceShareUi.intent(snapshot,uri);assertEquals("image/png",intent.getType());assertTrue((intent.getFlags()&Intent.FLAG_GRANT_READ_URI_PERMISSION)!=0);assertEquals(uri,intent.getClipData().getItemAt(0).getUri());assertTrue(intent.getStringExtra(Intent.EXTRA_TEXT).contains("https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9"));
+            try{FileProvider.getUriForFile(activity,activity.getPackageName()+".price-share",new File(activity.getFilesDir(),"private-bookmarks.json"));fail("Provider exposed unrelated private storage");}catch(IllegalArgumentException expected){assertNotNull(expected);}
+        });
+    }
+    @Test public void stalePreviewCannotCreateAnImageOrStartSharing()throws Exception {
+        load();PriceShareSnapshot snapshot=PriceShareSnapshot.decode(evaluate(PriceShareSnapshot.SCRIPT),URL,URL,1,1);AtomicBoolean current=new AtomicBoolean(true);
+        onMain(()->{File directory=new File(activity.getCacheDir(),"price-share");String[] before=directory.list();int count=before==null?0:before.length;android.app.Dialog dialog=PriceShareUi.show(activity,snapshot,current::get);assertNotNull(dialog);current.set(false);dialog.findViewById(R.id.price_share_send).performClick();String[] after=directory.list();assertEquals(count,after==null?0:after.length);assertFalse(dialog.isShowing());});
+    }
+    @Test public void overflowInformationOpensRealLocalActionsAndCommunityArt() {
+        AtomicReference<android.app.Dialog> shown=new AtomicReference<>();
+        onMain(()->{try{
+            java.lang.reflect.Method method=MainActivity.class.getDeclaredMethod("createBrowserMenu",android.view.View.class);method.setAccessible(true);
+            android.widget.PopupMenu menu=(android.widget.PopupMenu)method.invoke(activity,new android.view.View(activity));
+            assertNotNull(menu.getMenu().findItem(R.id.share));assertNotNull(menu.getMenu().findItem(R.id.refresh));assertTrue(menu.getMenu().performIdentifierAction(R.id.information,0));
+            java.lang.reflect.Field field=MainActivity.class.getDeclaredField("informationDialog");field.setAccessible(true);android.app.Dialog dialog=(android.app.Dialog)field.get(activity);assertNotNull(dialog);assertTrue(dialog.isShowing());
+            String contents=allText(dialog.getWindow().getDecorView()).replaceAll("\\s+"," ");assertTrue(contents.contains("Cambia città / zona"));assertTrue(contents.contains("Linee guida della community"));assertTrue(contents.contains("Privacy"));assertTrue(contents.contains("Contatti"));assertTrue(contents.contains("Stessi posti. Più trasparenza."));shown.set(dialog);
+        }catch(ReflectiveOperationException error){throw new AssertionError(error);}});
+        ReferenceCapture.save("information-owned-fixture.png");onMain(()->{assertTrue(shown.get().getWindow().getDecorView().getHeight()>=activity.getWindow().getDecorView().getHeight()*0.9);try{
+            android.view.View how=findAction(shown.get().getWindow().getDecorView(),"Come funziona");assertNotNull(how);how.performClick();
+            java.lang.reflect.Field field=MainActivity.class.getDeclaredField("informationDialog");field.setAccessible(true);AlertDialog details=(AlertDialog)field.get(activity);assertNotSame(shown.get(),details);assertTrue(details.isShowing());instrumentation.callActivityOnPause(activity);assertFalse(details.isShowing());instrumentation.callActivityOnResume(activity);
+        }catch(ReflectiveOperationException error){throw new AssertionError(error);}});
+    }
+    @Test public void actualPosterPreviewAndSystemIntentRetainPoundsAndMobileVenueLink()throws Exception {
+        load();evaluate("const price=document.querySelector('[data-dovebevo-share]');price.dataset.drink='beer_draft';price.dataset.drinkName='Birra alla spina';price.dataset.hh='1';price.dataset.serving='500 ml';price.dataset.amountMinor='650';price.dataset.provenance='Dal menu online · verificato il 02/11/2026 · Birra alla spina 500 ml';price.textContent='£6.50'");PriceShareSnapshot snapshot=PriceShareSnapshot.decode(evaluate(PriceShareSnapshot.SCRIPT),URL,URL,1,1);assertNotNull(snapshot);AtomicReference<android.app.Dialog> shown=new AtomicReference<>();AtomicReference<Intent> chooser=new AtomicReference<>();
+        Instrumentation.ActivityMonitor monitor=new Instrumentation.ActivityMonitor(){@Override public Instrumentation.ActivityResult onStartActivity(Intent intent){if(!Intent.ACTION_CHOOSER.equals(intent.getAction()))return null;chooser.set(new Intent(intent));return new Instrumentation.ActivityResult(android.app.Activity.RESULT_CANCELED,null);}};
+        instrumentation.addMonitor(monitor);
+        try{
+            onMain(()->{shown.set(PriceShareUi.show(activity,snapshot,()->true));assertTrue(shown.get().isShowing());android.view.View poster=shown.get().getWindow().getDecorView().findViewWithTag("price_share_poster");assertNotNull(poster);String spoken=poster.getContentDescription().toString();assertTrue(spoken.contains("500 ml"));assertTrue(spoken.contains("Happy hour"));assertTrue(spoken.contains("0 conferme"));assertEquals("Condividi immagine",((android.widget.Button)shown.get().findViewById(R.id.price_share_send)).getText().toString());});
+            ReferenceCapture.save("share-owned-fixture.png");onMain(()->{assertTrue(shown.get().getWindow().getDecorView().getHeight()>=activity.getWindow().getDecorView().getHeight()*0.9);});onMain(()->((android.widget.Button)shown.get().findViewById(R.id.price_share_send)).performClick());assertNotNull("Actual chooser intent intercepted without launching another app",chooser.get());
+            @SuppressWarnings("deprecation") Intent send=chooser.get().getParcelableExtra(Intent.EXTRA_INTENT);assertNotNull(send);assertEquals("image/png",send.getType());assertTrue(send.getStringExtra(Intent.EXTRA_TEXT).contains(URL));assertFalse(send.getStringExtra(Intent.EXTRA_TEXT).contains("https://www.dovebevo.com/bar/"));
+            @SuppressWarnings("deprecation") Uri uri=send.getParcelableExtra(Intent.EXTRA_STREAM);assertNotNull(uri);try(InputStream input=activity.getContentResolver().openInputStream(uri)){assertNotNull(input);Bitmap image=BitmapFactory.decodeStream(input);assertNotNull(image);assertEquals(900,image.getWidth());}
+            File created=new File(new File(activity.getCacheDir(),"price-share"),uri.getLastPathSegment());assertTrue(created.getName().matches("price-[a-f0-9-]{36}\\.png"));assertTrue(created.delete());
+        }finally{instrumentation.removeMonitor(monitor);onMain(()->{if(shown.get()!=null)shown.get().dismiss();});}
+    }
+    @Test public void nativePanelsRetireHeldShareCallbacksAndTheirFiveSecondFallback()throws Exception {
+        load();String valid=evaluate(PriceShareSnapshot.SCRIPT);HoldingWebView held=(HoldingWebView)web;java.util.concurrent.atomic.AtomicInteger choosers=new java.util.concurrent.atomic.AtomicInteger();
+        Instrumentation.ActivityMonitor monitor=new Instrumentation.ActivityMonitor(){@Override public Instrumentation.ActivityResult onStartActivity(Intent intent){if(!Intent.ACTION_CHOOSER.equals(intent.getAction()))return null;choosers.incrementAndGet();return new Instrumentation.ActivityResult(android.app.Activity.RESULT_CANCELED,null);}};
+        instrumentation.addMonitor(monitor);
+        try{
+        onMain(()->{
+            assertNotNull("The actual owned document must first pass the fixed reader",PriceShareSnapshot.decode(valid,URL,URL,1,1));
+            // This WebView uses an owned navigation delegate, so bind the corresponding completed-document state explicitly.
+            setField("website",web);setField("hasUsablePage",true);setField("failed",false);setField("loading",false);setField("awaitingDocumentStart",false);setField("documentHasHttpError",false);setField("stoppedUrl",null);setField("testLabPolicy",TestLabPolicy.detect(()->null));held.holdShare=true;
+            assertTrue("Owned Activity must actually be resumed",(Boolean)getField("foreground"));assertNotNull("Ready owned venue: url="+web.getUrl()+", destroyed="+getField("destroyed")+", favorites="+getField("favoritesVisible")+", discovery="+getField("discoveryVisible"),invoke("eligibleSavedVenue"));
+        });
+            for(String method:new String[]{"showInformation","showPrivacy","showLocationHelp"})onMain(()->{
+                invoke("share");assertNotNull("Actual share read must be held before "+method,held.pending.get());long generation=(Long)getField("shareCapture");
+                if(method.equals("showInformation")){try{java.lang.reflect.Method factory=MainActivity.class.getDeclaredMethod("createBrowserMenu",android.view.View.class);factory.setAccessible(true);android.widget.PopupMenu menu=(android.widget.PopupMenu)factory.invoke(activity,new android.view.View(activity));assertTrue(menu.getMenu().performIdentifierAction(R.id.information,0));}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+                else invoke(method);
+                assertTrue("Native panel retires pending share",(Long)getField("shareCapture")>generation);held.pending.getAndSet(null).onReceiveValue(valid);assertNull(getField("shareDialog"));
+                String field=method.equals("showInformation")?"informationDialog":method.equals("showPrivacy")?"privacyDialog":"locationHelpDialog";android.app.Dialog panel=(android.app.Dialog)getField(field);assertNotNull(panel);assertTrue(panel.isShowing());panel.dismiss();
+            });
+            Thread.sleep(5300);instrumentation.waitForIdleSync();onMain(()->assertNull(getField("shareDialog")));assertEquals("Retired timeouts cannot open a chooser after the newer panel closes",0,choosers.get());
+        }finally{instrumentation.removeMonitor(monitor);onMain(()->{invoke("retireSharePresentation");setField("website",null);setField("hasUsablePage",false);held.holdShare=false;});}
+    }
+    @Test public void fullScreenPanelsApplySystemBarsAndHardwareCutoutInsets() {
+        org.junit.Assume.assumeTrue(android.os.Build.VERSION.SDK_INT>=30);
+        onMain(()->{NativePanel panel=new NativePanel(activity,"Altro",false);panel.show();android.view.WindowInsets insets=new android.view.WindowInsets.Builder().setInsets(android.view.WindowInsets.Type.systemBars(),android.graphics.Insets.of(0,24,0,28)).setInsets(android.view.WindowInsets.Type.displayCutout(),android.graphics.Insets.of(36,0,12,0)).build();panel.body.dispatchApplyWindowInsets(insets);assertEquals(36,panel.body.getPaddingLeft());assertEquals(24,panel.body.getPaddingTop());assertEquals(12,panel.body.getPaddingRight());assertEquals(28,panel.body.getPaddingBottom());panel.dismiss();});
+    }
+    private Object getField(String name){try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField(name);field.setAccessible(true);return field.get(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+    private void setField(String name,Object value){try{java.lang.reflect.Field field=MainActivity.class.getDeclaredField(name);field.setAccessible(true);field.set(activity,value);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+    private Object invoke(String name){try{java.lang.reflect.Method method=MainActivity.class.getDeclaredMethod(name);method.setAccessible(true);return method.invoke(activity);}catch(ReflectiveOperationException error){throw new AssertionError(error);}}
+    private static final class HoldingWebView extends WebView {
+        boolean holdShare;final AtomicReference<android.webkit.ValueCallback<String>> pending=new AtomicReference<>();
+        HoldingWebView(android.content.Context context){super(context);}
+        @Override public void evaluateJavascript(String script,android.webkit.ValueCallback<String> callback){if(holdShare&&script.equals(PriceShareSnapshot.SCRIPT)){pending.set(callback);return;}super.evaluateJavascript(script,callback);}
+    }
+    private android.view.View findAction(android.view.View view,String label){if(label.contentEquals(view.getContentDescription()==null?"":view.getContentDescription()))return view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.view.View found=findAction(group.getChildAt(i),label);if(found!=null)return found;}}return null;}
+    private String allText(android.view.View view){StringBuilder text=new StringBuilder();if(view instanceof android.widget.TextView)text.append(((android.widget.TextView)view).getText());if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++)text.append(' ').append(allText(group.getChildAt(i)));}return text.toString();}
+    private void load()throws Exception{CountDownLatch loaded=new CountDownLatch(1);onMain(()->{web=new HoldingWebView(activity);web.getSettings().setJavaScriptEnabled(true);web.getSettings().setBlockNetworkLoads(true);web.setWebViewClient(new WebViewClient(){@Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view,android.webkit.WebResourceRequest request){String body=URL.equals(request.getUrl().toString())?HTML:"";return new android.webkit.WebResourceResponse("text/html","UTF-8",new java.io.ByteArrayInputStream(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}@Override public void onPageFinished(WebView view,String url){if(URL.equals(url))loaded.countDown();}});activity.setContentView(web);web.loadUrl(URL);});assertTrue("Owned DOM load deadline",loaded.await(5,TimeUnit.SECONDS));}
+    private String evaluate(String script)throws Exception{CountDownLatch done=new CountDownLatch(1);AtomicReference<String> result=new AtomicReference<>();onMain(()->web.evaluateJavascript(script,value->{result.set(value);done.countDown();}));assertTrue("Owned DOM callback deadline",done.await(5,TimeUnit.SECONDS));return result.get();}
+    private void onMain(Runnable action){instrumentation.runOnMainSync(action);instrumentation.waitForIdleSync();}
+}

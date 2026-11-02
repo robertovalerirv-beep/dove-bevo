@@ -1,0 +1,92 @@
+[
+  {
+    "name": "alcohol-free-scene",
+    "source_png_sha256": "e34cf00940efff9e024a4c8784ffdd4d32a4992a37cffdcf83cfed566caa5f2c",
+    "jpeg_sha256": "bda7576678bb6be757b5532cc95a17309d17b7c445c87d1978fda9320e650d46",
+    "width": 1536,
+    "height": 1024,
+    "jpeg_bytes": 211820,
+    "provenance": "Original generated generic illustrative asset; no venue identity",
+    "encoding": "JPEG quality 85; original dimensions; no crop or retouch"
+  },
+  {
+    "name": "beer-scene",
+    "source_png_sha256": "78c8651306b7edc09d43e8817a1fa6049468dabdd26bca957cafa96fd483c27b",
+    "jpeg_sha256": "15aaf68b0cc24efa558fe63344a8c73d5f221d25980b30b99832294d0d893488",
+    "width": 1536,
+    "height": 1024,
+    "jpeg_bytes": 215401,
+    "provenance": "Original generated generic illustrative asset; no venue identity",
+    "encoding": "JPEG quality 85; original dimensions; no crop or retouch"
+  },
+  {
+    "name": "community-cheers",
+    "source_png_sha256": "2c7e91058afe7effe713acb74f24c1fa45746e9966c1845a7026ce35ed5cde02",
+    "jpeg_sha256": "23419a492cec20e7f30005a3abc9b0ef005d70dacfbb82c2ca59d6edfe8b195b",
+    "width": 1536,
+    "height": 1024,
+    "jpeg_bytes": 133910,
+    "provenance": "Original generated generic illustrative asset; no venue identity",
+    "encoding": "JPEG quality 85; original dimensions; no crop or retouch"
+  },
+  {
+    "name": "gin-tonic-scene",
+    "source_png_sha256": "fe738afbf526e41ce796c74230b7d81d7952759b444e5d84c0cc55762d31c65b",
+    "jpeg_sha256": "b2d82c51b57a056ea9c0fe5caf105805ec61119b2641afba59cf04c1008eb703",
+    "width": 1536,
+    "height": 1024,
+    "jpeg_bytes": 204115,
+    "provenance": "Original generated generic illustrative asset; no venue identity",
+    "encoding": "JPEG quality 85; original dimensions; no crop or retouch"
+  },
+  {
+    "name": "negroni-scene",
+    "source_png_sha256": "d51e569242cd18919ec3d08c77da2706d826e23e5c62fc8cf8529697fcd214db",
+    "jpeg_sha256": "4f3e6255ac27f247c5648ce59160879d6176201c666372759dcd6538db467400",
+    "width": 1536,
+    "height": 1024,
+    "jpeg_bytes": 215878,
+    "provenance": "Original generated generic illustrative asset; no venue identity",
+    "encoding": "JPEG quality 85; original dimensions; no crop or retouch"
+  },
+  {
+    "name": "sbagliato-scene",
+    "source_png_sha256": "62a886d024d67daa7acc9604a4e5a77380d38294e4df927c977fce133d600674",
+    "jpeg_sha256": "9928a27cf5f9e27c8ba028578d4317065e6876789d9cc1963a609fdec28efa64",
+    "width": 1536,
+    "height": 1024,
+    "jpeg_bytes": 213363,
+    "provenance": "Original generated generic illustrative asset; no venue identity",
+    "encoding": "JPEG quality 85; original dimensions; no crop or retouch"
+  },
+  {
+    "name": "spritz-scene",
+    "source_png_sha256": "bd976900c570f67b949d47f63ca92fff3943476d69432f59d00f4fa08fea48f2",
+    "jpeg_sha256": "00e739c998d7b2e9c0b14bd75ae9c609919945c98ae6cd054ef55881b9fac398",
+    "width": 1536,
+    "height": 1024,
+    "jpeg_bytes": 200771,
+    "provenance": "Original generated generic illustrative asset; no venue identity",
+    "encoding": "JPEG quality 85; original dimensions; no crop or retouch"
+  },
+  {
+    "name": "water-scene",
+    "source_png_sha256": "50f0e6cc93010ae9c3f441914e45f0c0ff4f7948ca2cba4caca9d64f3c2b1616",
+    "jpeg_sha256": "6d6180a5b8a292a9ed2bd59d53c8032fb1b521cf1e7b9afc8e909e27ebc067d5",
+    "width": 1536,
+    "height": 1024,
+    "jpeg_bytes": 259034,
+    "provenance": "Original generated generic illustrative asset; no venue identity",
+    "encoding": "JPEG quality 85; original dimensions; no crop or retouch"
+  },
+  {
+    "name": "wine-scene",
+    "source_png_sha256": "8ce0d29192f1b66b8cf23e3fffde72b5164ed3688c15857851d5f635af3028c6",
+    "jpeg_sha256": "3e9691bbbab6e300d74afdf6747e6f8fd4be85f271bf2bea921762db11c081c8",
+    "width": 1536,
+    "height": 1024,
+    "jpeg_bytes": 191069,
+    "provenance": "Original generated generic illustrative asset; no venue identity",
+    "encoding": "JPEG quality 85; original dimensions; no crop or retouch"
+  }
+]

@@ -175,7 +175,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
   const seen = seenPrices(venues, venue.cell, drink);
   const range = cellRange(venues, venue.cell, drink);
   const bare = (cents: number) => formatPrice(cents).replace(" €", "");
-  const artwork = drinkImage(drink);
+  const artwork = drinkImage(drink, "product");
   return (
     <Sheet
       title={currentLang() === "en" ? "Add a price" : "Aggiungi un prezzo"}
@@ -198,8 +198,13 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
       >
         <p class="mobile-price-flow__venue">{venue.name}</p>
         {artwork && (
-          <div class="mobile-price-form__art">
+          <div
+            class={`mobile-price-form__art${drink === "spritz" ? " mobile-price-form__art--product" : ""}`}
+          >
             <img src={artwork} width="1024" height="1536" alt="" decoding="async" />
+            <span>
+              {currentLang() === "en" ? "Illustrative drink image" : "Immagine illustrativa"}
+            </span>
           </div>
         )}
         <h3 class="context-tag">

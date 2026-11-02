@@ -96,6 +96,8 @@ public final class MainActivity extends ComponentActivity {
     private ConnectivityManager connectivity;
     private ConnectivityManager.NetworkCallback networkCallback;
     private AlertDialog privacyDialog;
+    private android.app.Dialog shareDialog, informationDialog;
+    private long shareCapture;
     private TestLabPolicy testLabPolicy;
     private String mobileThemeScript;
 
@@ -636,7 +638,29 @@ public final class MainActivity extends ComponentActivity {
         try { startActivity(intent); }
         catch (ActivityNotFoundException | SecurityException error) { toast(R.string.external_unavailable); }
     }
+    private boolean canSharePrice(WebView source,String captured,long epoch,long request) {
+        return foreground&&!destroyed&&(informationDialog==null||!informationDialog.isShowing())&&(privacyDialog==null||!privacyDialog.isShowing())&&(locationHelpDialog==null||!locationHelpDialog.isShowing())&&testLabPolicy.allowsExternalActions()&&source==website&&!nativeDestinationVisible()&&epoch==venueCaptureEpoch&&request==shareCapture
+            &&!failed&&!loading&&!awaitingDocumentStart&&hasUsablePage&&!documentHasHttpError&&captured.equals(source.getUrl());
+    }
+    private void retireSharePresentation() {
+        shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}
+    }
     private void share() {
+        if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
+        if(website==null||!foreground||destroyed||nativeDestinationVisible())return;
+        WebView source=website;String captured=source.getUrl();long epoch=venueCaptureEpoch,request=++shareCapture;
+        if(eligibleSavedVenue()==null||!MobileEntry.isDocument(captured)){shareUrl();return;}
+        final boolean[] finished={false};
+        source.postDelayed(()->{if(!finished[0]&&canSharePrice(source,captured,epoch,request)){finished[0]=true;shareUrl();}},5000);
+        try{source.evaluateJavascript(PriceShareSnapshot.SCRIPT,result->{
+            if(finished[0]||!canSharePrice(source,captured,epoch,request))return;finished[0]=true;
+            PriceShareSnapshot snapshot=PriceShareSnapshot.decode(result,captured,source.getUrl(),epoch,venueCaptureEpoch);
+            if(snapshot==null){shareUrl();return;}
+            if(shareDialog!=null)shareDialog.dismiss();
+            shareDialog=PriceShareUi.show(this,snapshot,()->canSharePrice(source,captured,epoch,request));
+        });}catch(RuntimeException unavailable){if(!finished[0]&&canSharePrice(source,captured,epoch,request)){finished[0]=true;shareUrl();}}
+    }
+    private void shareUrl() {
         if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
         String url = BrowserPolicy.shareUrl(website == null ? null : website.getUrl());
         Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url)
@@ -647,7 +671,7 @@ public final class MainActivity extends ComponentActivity {
     private void toast(int message) { Toast.makeText(this, message, Toast.LENGTH_SHORT).show(); }
     private void showMenu(View anchor) {
         if(!foreground||destroyed)return;
-        createBrowserMenu(anchor).show();
+        retireSharePresentation();createBrowserMenu(anchor).show();
     }
     private PopupMenu createBrowserMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
@@ -657,6 +681,7 @@ public final class MainActivity extends ComponentActivity {
         menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, loading?R.string.stop_loading:R.string.refresh).setEnabled(mapActive);
         menu.getMenu().add(Menu.NONE, R.id.forward, Menu.NONE, R.string.forward)
                 .setEnabled(mapActive && website.canGoForward());
+        menu.getMenu().add(Menu.NONE, R.id.information, Menu.NONE, "Informazioni");
         menu.getMenu().add(Menu.NONE, R.id.location_help, Menu.NONE, R.string.location_help);
         menu.getMenu().add(Menu.NONE, R.id.privacy, Menu.NONE, R.string.privacy);
         menu.getMenu().add(Menu.NONE, R.id.support, Menu.NONE, R.string.support);
@@ -673,6 +698,7 @@ public final class MainActivity extends ComponentActivity {
             if (item.getItemId() == R.id.forward) {
                 if(!nativeDestinationVisible()&&website!=null)goForward();return true;
             }
+            if (item.getItemId() == R.id.information) { showInformation(); return true; }
             if (item.getItemId() == R.id.location_help) { showLocationHelp(); return true; }
             if (item.getItemId() == R.id.privacy) { showPrivacy(); return true; }
             if (item.getItemId() == R.id.support) { openExternal("mailto:dovebevo@gmail.com"); return true; }
@@ -681,8 +707,35 @@ public final class MainActivity extends ComponentActivity {
         return menu;
     }
 
+    private void showInformation() {
+        if(!foreground||destroyed)return;retireSharePresentation();if(informationDialog!=null)informationDialog.dismiss();
+        NativePanel panel=new NativePanel(this,"Altro",false);informationDialog=panel;
+        ScrollView scroll=new ScrollView(this);LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(20),dp(4),dp(20),dp(20));scroll.addView(body);panel.body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        informationRow(body,"Cambia città / zona",R.drawable.native_map,this::showMap);
+        informationRow(body,"Come funziona",android.R.drawable.ic_menu_help,()->{informationDialog=new AlertDialog.Builder(this).setTitle("Come funziona").setMessage("Cerca una città sulla Mappa, scegli un drink e confronta i prezzi. Home apre Scopri per la zona della Mappa. Preferiti resta sul tuo dispositivo. Le fonti del menu e le segnalazioni sono indicate nei dettagli disponibili.").setPositiveButton(R.string.close,null).create();informationDialog.show();});
+        informationRow(body,"Linee guida della community",android.R.drawable.ic_menu_agenda,this::showBundledRules);
+        informationRow(body,getString(R.string.privacy),android.R.drawable.ic_menu_info_details,this::showPrivacy);
+        informationRow(body,"Contatti",android.R.drawable.ic_dialog_email,()->openExternal("mailto:dovebevo@gmail.com"));
+        String version;try{android.content.pm.PackageInfo installed=getPackageManager().getPackageInfo(getPackageName(),0);long code=Build.VERSION.SDK_INT>=28?installed.getLongVersionCode():installed.versionCode;version=installed.versionName+" ("+code+")";}catch(android.content.pm.PackageManager.NameNotFoundException missing){version="non disponibile";}
+        LinearLayout versionRow=new LinearLayout(this);versionRow.setGravity(Gravity.CENTER_VERTICAL);versionRow.setMinimumHeight(dp(52));TextView versionLabel=new TextView(this);versionLabel.setText("Versione app");versionLabel.setTextSize(16);versionLabel.setTextColor(getColor(R.color.shell_text));versionRow.addView(versionLabel,new LinearLayout.LayoutParams(0,-2,1));TextView installed=new TextView(this);installed.setText(version);installed.setTextSize(14);installed.setTextColor(getColor(R.color.muted_text));versionRow.addView(installed);body.addView(versionRow);
+        LinearLayout community=new LinearLayout(this);community.setGravity(Gravity.CENTER_VERTICAL);community.setPadding(dp(8),dp(8),dp(12),dp(8));community.setBackground(NativeAppearance.shape(this,R.color.shell_background,12,false));
+        try(java.io.InputStream input=getAssets().open("reference-drinks/community-cheers.jpg")){android.widget.ImageView art=new android.widget.ImageView(this);art.setImageBitmap(android.graphics.BitmapFactory.decodeStream(input));art.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);art.setContentDescription("Illustrazione della community Dove Bevo");community.addView(art,new LinearLayout.LayoutParams(dp(128),dp(104)));}catch(IOException missing){/* Optional community illustration. */}
+        TextView motto=new TextView(this);motto.setText("Stessi posti.\nPiù trasparenza.");motto.setTextSize(18);NativeAppearance.title(motto);community.addView(motto,new LinearLayout.LayoutParams(0,-2,1));LinearLayout.LayoutParams card=new LinearLayout.LayoutParams(-1,-2);card.topMargin=dp(12);body.addView(community,card);panel.show();
+    }
+    private void informationRow(LinearLayout body,String title,int icon,Runnable action) {
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setMinimumHeight(dp(52));row.setPadding(0,dp(8),0,dp(8));row.setFocusable(true);row.setContentDescription(title);row.setAccessibilityDelegate(new View.AccessibilityDelegate(){@Override public void onInitializeAccessibilityNodeInfo(View host,android.view.accessibility.AccessibilityNodeInfo info){super.onInitializeAccessibilityNodeInfo(host,info);info.setClassName(Button.class.getName());}});row.setOnClickListener(v->{if(foreground&&!destroyed){informationDialog.dismiss();action.run();}});
+        android.widget.ImageView image=new android.widget.ImageView(this);image.setImageResource(icon);image.setColorFilter(getColor(R.color.shell_text));image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);LinearLayout.LayoutParams iconSize=new LinearLayout.LayoutParams(dp(22),dp(22));iconSize.rightMargin=dp(14);row.addView(image,iconSize);
+        TextView label=new TextView(this);label.setText(title);label.setTextSize(16);label.setTextColor(getColor(R.color.shell_text));label.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(label,new LinearLayout.LayoutParams(0,-2,1));TextView arrow=new TextView(this);arrow.setText("›");arrow.setTextSize(22);arrow.setTextColor(getColor(R.color.muted_text));arrow.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(arrow);body.addView(row,new LinearLayout.LayoutParams(-1,-2));View separator=new View(this);separator.setBackgroundColor(getColor(R.color.surface_line));body.addView(separator,new LinearLayout.LayoutParams(-1,dp(1)));
+    }
+    private void showBundledRules() {
+        retireSharePresentation();
+        String rules;try(java.io.InputStream input=getAssets().open("terms.md")){rules=PrivacyDocument.read(input);}catch(IOException unavailable){rules=getString(R.string.rules_unavailable);}
+        TextView text=new TextView(this);text.setText(rules);text.setTextSize(16);text.setPadding(dp(20),dp(12),dp(20),dp(20));text.setTextIsSelectable(true);ScrollView scroll=new ScrollView(this);scroll.addView(text);
+        informationDialog=new AlertDialog.Builder(this).setTitle("Linee guida della community").setView(scroll).setPositiveButton(R.string.close,null).create();informationDialog.show();
+    }
     private void showLocationHelp() {
         if (destroyed) return;
+        retireSharePresentation();
         cancelLocation();
         locationHelpDialog = new AlertDialog.Builder(this).setTitle(R.string.location_help_title)
                 .setMessage(R.string.location_help_body).setNegativeButton(R.string.close, null)
@@ -698,6 +751,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void showPrivacy() {
         if (destroyed) return;
+        retireSharePresentation();
         if (privacyDialog != null) privacyDialog.dismiss();
         String policy;
         try (InputStream asset = getAssets().open("privacy.md")) {
@@ -977,6 +1031,7 @@ public final class MainActivity extends ComponentActivity {
         resolveLocationResult();
     }
     @Override protected void onPause() {
+        shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}if(informationDialog!=null){informationDialog.dismiss();informationDialog=null;}
         discoveryCapture++;
         venueCaptureEpoch++;
         foreground = false;
@@ -1014,6 +1069,7 @@ public final class MainActivity extends ComponentActivity {
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
+        shareCapture++;if(shareDialog!=null)shareDialog.dismiss();if(informationDialog!=null)informationDialog.dismiss();
         discoveryCapture++;
         venueCaptureEpoch++;
         destroyed = true;

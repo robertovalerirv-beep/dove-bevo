@@ -89,7 +89,7 @@
     <string name="discovery_choose_area">Scegli zona sulla Mappa</string>
     <string name="discovery_unready">Apri una città e avvicina la Mappa, poi torna su Home per confrontare i prezzi della zona.</string>
     <string name="discovery_unavailable">Prezzi della zona non verificabili. Controlla la connessione e aggiorna.</string>
-    <string name="discovery_loaded">%1$d prezzi per questo drink, dal più basso.</string>
+    <string name="discovery_loaded">%1$d prezzi per questo drink, per valuta e formato.</string>
     <string name="discovery_empty">Nessun prezzo segnalato per questo drink e questa fascia nella zona letta. Prova un altro drink o un’altra zona.</string>
     <string name="discovery_partial">Alcuni dati della zona non sono disponibili. La lista è parziale.</string>
     <string name="discovery_distance">%1$s dal centro della Mappa</string>

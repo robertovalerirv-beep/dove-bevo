@@ -18,7 +18,7 @@ final class DiscoveryViewController: UITableViewController {
     private var drink = DrinkCategory.all.first { $0.code == "spritz" } ?? DrinkCategory.all[0]
     private var band = ComparisonBand.normal
     private var renderedCategory: UIContentSizeCategory?
-    private var drinkButtons: [UIButton] = []
+    private var drinkButtons: [DiscoveryCategoryButton] = []
     private let bands = ComparisonBandSelector()
     private let statusLabel = UILabel()
     private lazy var refreshButton = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
@@ -46,20 +46,20 @@ final class DiscoveryViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         NativeAppearance.configure(navigationController)
-        navigationItem.largeTitleDisplayMode = .always
-        navigationController?.navigationBar.prefersLargeTitles = true
+        navigationItem.largeTitleDisplayMode = .never
+        navigationController?.navigationBar.prefersLargeTitles = false
         NativeAppearance.configure(tableView)
         tableView.accessibilityIdentifier = "discovery.list"
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "discoveryVenue")
+        tableView.register(DiscoveryVenueCell.self, forCellReuseIdentifier: "discoveryVenue")
         tableView.rowHeight = UITableView.automaticDimension
-        tableView.estimatedRowHeight = 144
+        tableView.estimatedRowHeight = 112
         let map = UIBarButtonItem(title: "Mappa", style: .plain, target: self, action: #selector(showMap))
         map.accessibilityIdentifier = "discovery.map"
         refreshButton.accessibilityIdentifier = "discovery.refresh"
         navigationItem.rightBarButtonItems = [map, refreshButton]
-        let heading = label("Scegli cosa bere", style: .title2)
+        let heading = label("Per te", style: .headline)
         heading.accessibilityTraits = .header
-        let introduction = label("Confronta i prezzi vicino al centro dell'ultima zona aperta nella mappa.", style: .subheadline)
+        let introduction = label("I prezzi nella zona della mappa", style: .footnote)
         introduction.textColor = NativeAppearance.muted
         let scroll = UIScrollView()
         scroll.showsHorizontalScrollIndicator = false
@@ -68,7 +68,7 @@ final class DiscoveryViewController: UITableViewController {
         choices.axis = .horizontal; choices.spacing = 8; choices.translatesAutoresizingMaskIntoConstraints = false
         scroll.addSubview(choices)
         for (index, category) in DrinkCategory.all.enumerated() {
-            let button = UIButton(type: .system)
+            let button = DiscoveryCategoryButton(category: category)
             button.tag = index
             button.accessibilityIdentifier = "discovery.drink.\(category.code)"
             button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
@@ -92,11 +92,11 @@ final class DiscoveryViewController: UITableViewController {
         statusLabel.adjustsFontForContentSizeCategory = true
         let header = UIView()
         let stack = UIStackView(arrangedSubviews: [heading, introduction, scroll, bands, statusLabel])
-        stack.axis = .vertical; stack.spacing = 12; stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.axis = .vertical; stack.spacing = 8; stack.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: header.topAnchor, constant: 16),
-            stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -16),
+            stack.topAnchor.constraint(equalTo: header.topAnchor, constant: 8),
+            stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -8),
             stack.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20)
         ])
@@ -176,12 +176,9 @@ final class DiscoveryViewController: UITableViewController {
         rows = Array(allRows.prefix(200))
         for (index, button) in drinkButtons.enumerated() {
             let category = DrinkCategory.all[index], selected = category == drink
-            var style = NativeAppearance.button(primary: selected, traits: traitCollection)
-            if !selected { style.baseBackgroundColor = NativeAppearance.surface; style.background.strokeColor = NativeAppearance.line; style.background.strokeWidth = 1 }
-            style.title = category.name; style.titleLineBreakMode = .byWordWrapping
-            button.configuration = style; button.titleLabel?.numberOfLines = 0
-            button.titleLabel?.adjustsFontForContentSizeCategory = true
-            button.isSelected = selected; button.accessibilityTraits = selected ? [.button, .selected] : [.button]
+            let categoryRows = snapshot?.displayRows(drink: category.code, band: band) ?? []
+            let available = snapshot.map { $0.unavailableCells.count != $0.area.cells.count } ?? false
+            button.update(summary: DiscoveryCategorySummary(rows: categoryRows, loading: busy, available: available), selected: selected)
         }
         refreshButton.isEnabled = canRead && area != nil && !busy
         if area == nil {
@@ -234,41 +231,23 @@ final class DiscoveryViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "Per valuta e formato · dal prezzo più basso" }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "I più convenienti qui · per valuta e formato" }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         "Valute e formati diversi non sono confrontabili; i prezzi italiani precedenti non dichiarano il formato. Prezzi nella zona del centro mappa, non una classifica personale. Le distanze sono dal centro della mappa. Mappa e prezzi richiedono internet."
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "discoveryVenue", for: indexPath)
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "discoveryVenue", for: indexPath) as? DiscoveryVenueCell else {
+            return UITableViewCell()
+        }
         let row = rows[indexPath.row]
-        let amount = row.price.amount
         let metres = snapshot?.area.distance(latitude: row.latitude, longitude: row.longitude) ?? 0
         let distance = metres < 1000 ? "\(Int(metres.rounded())) m" : String(format: "%.1f km", metres / 1000)
-        let location = row.location
-        let evidence = row.price.details(today: ComparisonJSON.today())
-        let details = "\(drink.name) · \(band.name)\n\(amount)\n\(location.isEmpty ? "" : location + "\n")\(distance) dal centro mappa\n\(evidence)"
-        let visual = NSMutableAttributedString(string: "\(drink.name) · \(band.name)\n", attributes: [
-            .font: UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
-        ])
-        visual.append(NSAttributedString(string: "\(amount)\n", attributes: [
-            .font: UIFontMetrics(forTextStyle: .title2).scaledFont(for: UIFont.systemFont(ofSize: 22, weight: .bold), compatibleWith: traitCollection), .foregroundColor: NativeAppearance.ink
-        ]))
-        visual.append(NSAttributedString(string: "\(location.isEmpty ? "" : location + "\n")\(distance) dal centro mappa\n\(evidence)", attributes: [
-            .font: UIFont.preferredFont(forTextStyle: .footnote, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
-        ]))
-        var content = cell.defaultContentConfiguration()
-        content.text = row.name; content.secondaryAttributedText = visual
-        content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-        content.textProperties.color = NativeAppearance.ink; content.textProperties.numberOfLines = 0
-        content.secondaryTextProperties.numberOfLines = 0; content.textToSecondaryTextVerticalPadding = 8
-        content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 12)
-        cell.contentConfiguration = content; cell.backgroundConfiguration = NativeAppearance.card()
-        cell.accessoryType = .disclosureIndicator; cell.tintColor = NativeAppearance.muted
+        let rank = rows.prefix(indexPath.row + 1).filter { $0.price.group == row.price.group }.count
+        cell.configure(row: row, category: drink, band: band, rank: rank, distance: distance,
+                       today: ComparisonJSON.today(), traits: traitCollection)
         cell.accessibilityIdentifier = "discovery.venue.\(row.key)"
         if case .europe = row.price { cell.accessibilityIdentifier = "discovery.venue.\(row.key).\(row.price.group)" }
-        cell.accessibilityLabel = row.name; cell.accessibilityValue = details
-        cell.accessibilityHint = "Apre questo locale nella mappa"
         return cell
     }
 

@@ -30,6 +30,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private let websiteLoader: ((WKWebView, URLRequest) -> WKNavigation?)?
     private var bookmarkTimeout: DispatchWorkItem?
     private var mapAreaTimeout: DispatchWorkItem?
+    private var shareTimeout: DispatchWorkItem?
+    private let shareCapture = PriceShareCapture()
     private var mapAreaGeneration = UUID()
     private var bookmarkLifecycleActive = true
     var onShowFavourites: (() -> Void)?
@@ -71,6 +73,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     deinit {
         bookmarkTimeout?.cancel()
         mapAreaTimeout?.cancel()
+        shareTimeout?.cancel()
         NotificationCenter.default.removeObserver(self)
         monitor.cancel()
         observations.forEach { $0.invalidate() }
@@ -573,6 +576,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func invalidateBookmarkCapture() {
+        invalidateShareCapture()
         invalidateMapAreaCapture()
         bookmarkTimeout?.cancel()
         bookmarkTimeout = nil
@@ -610,9 +614,40 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     @objc private func sharePage() {
-        guard canSharePage else { return }
-        let publicURL = MobileEntry.shareURL(currentWebsiteURL)
-        let sheet = UIActivityViewController(activityItems: [publicURL], applicationActivities: nil)
+        guard canSharePage, isBookmarkInteractionActive, presentedViewController == nil else { return }
+        let documentURL = currentWebsiteURL
+        let publicURL = MobileEntry.shareURL(documentURL)
+        invalidateShareCapture()
+        guard usableVenueURL != nil, MobileEntry.isDocument(documentURL) else { presentSharedURL(publicURL); return }
+        let context = shareCapture.begin(documentURL: documentURL)
+        let timeout = DispatchWorkItem { [weak self] in
+            guard let self, self.shareCapture.finish(context, currentURL: self.webView.url,
+                active: self.canSharePage && self.isBookmarkInteractionActive) else { return }
+            self.shareTimeout = nil
+            self.presentSharedURL(publicURL)
+        }
+        shareTimeout = timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: timeout)
+        webView.evaluateJavaScript(PriceShareReader.script, in: nil, in: .defaultClient) { [weak self] result in
+            guard let self, self.shareCapture.finish(context, currentURL: self.webView.url,
+                active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL != nil) else { return }
+            self.shareTimeout?.cancel(); self.shareTimeout = nil
+            guard case .success(let value) = result,
+                  let snapshot = PriceShareSnapshot.parse(value, currentURL: documentURL) else {
+                self.presentSharedURL(publicURL); return
+            }
+            let preview = PriceShareViewController(snapshot: snapshot, publicURL: publicURL)
+            self.present(UINavigationController(rootViewController: preview), animated: true)
+        }
+    }
+
+    private func invalidateShareCapture() {
+        shareTimeout?.cancel(); shareTimeout = nil; shareCapture.invalidate()
+    }
+
+    private func presentSharedURL(_ url: URL) {
+        guard canSharePage, isBookmarkInteractionActive, presentedViewController == nil else { return }
+        let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         sheet.popoverPresentationController?.barButtonItem = moreButton
         present(sheet, animated: true)
     }
@@ -629,6 +664,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func showLocationHelp() {
+        invalidateShareCapture()
         let alert = UIAlertController(
             title: "Posizione vicino a te",
             message: "Tocca «Vicino a me» nella mappa e scegli se consentire la posizione. Se hai negato il permesso, puoi cambiarlo nelle Impostazioni di iOS. Puoi sempre cercare una città senza condividere la posizione.",
@@ -643,10 +679,12 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func showInformation() {
-        showAlert(
-            title: "Dove bevo",
-            message: "La mappa dei bar e dei prezzi di www.dovebevo.com. L'app usa il sito aggiornato e conserva la sessione su questo dispositivo. I collegamenti esterni si aprono nel browser o nell'app adatta. Serve una connessione per caricare la mappa e i prezzi. Per l'informativa completa e i contatti, apri Privacy dal menu Altre opzioni. Assistenza: \(PrivacyPolicy.supportEmail)."
-        )
+        navigationItem.backButtonTitle = "Torna alla mappa"
+        let information = AppInformationViewController(onMap: { [weak self] in
+            guard let self else { return }
+            self.navigationController?.popToViewController(self, animated: true)
+        }, onBrowser: { [weak self] in self?.openCurrentPageInBrowser() })
+        navigationController?.pushViewController(information, animated: true)
     }
 
     private func showPrivacy() {
@@ -656,6 +694,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func showAlert(title: String, message: String) {
         guard presentedViewController == nil else { return }
+        invalidateShareCapture()
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Chiudi", style: .default))
         present(alert, animated: true)

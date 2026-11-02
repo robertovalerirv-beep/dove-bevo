@@ -388,8 +388,8 @@ class AndroidSmokeTests(unittest.TestCase):
                 for code in (1, 0):
                     lines.extend([f'INSTRUMENTATION_STATUS: class=com.dovebevo.app.{name}',
                                   f'INSTRUMENTATION_STATUS: test=case{number}',
-                                  'INSTRUMENTATION_STATUS: numtests=35', f'INSTRUMENTATION_STATUS_CODE: {code}'])
-        return ('\n'.join(lines) + '\nOK (35 tests)\nINSTRUMENTATION_CODE: -1\n').encode()
+                                  'INSTRUMENTATION_STATUS: numtests=45', f'INSTRUMENTATION_STATUS_CODE: {code}'])
+        return ('\n'.join(lines) + '\nOK (45 tests)\nINSTRUMENTATION_CODE: -1\n').encode()
 
     def challenge_xml(self):
         return b'<hierarchy><node class="android.webkit.WebView" package="com.dovebevo.app"><node text="www.dovebevo.com"/><node text="Performing security verification"/><node class="android.widget.CheckBox" text="Verify you are human"/><node text="Cloudflare"/></node></hierarchy>'
@@ -408,8 +408,8 @@ class AndroidSmokeTests(unittest.TestCase):
 
     def test_owned_instrumentation_requires_every_explicit_unskipped_case(self):
         good = self.owned_output()
-        self.assertEqual(m.owned_instrumentation(good)['tests'], 35)
-        for bad in [b'', good.replace(b'OK (35 tests)', b''), good.replace(b'INSTRUMENTATION_CODE: -1', b''),
+        self.assertEqual(m.owned_instrumentation(good)['tests'], 45)
+        for bad in [b'', good.replace(b'OK (45 tests)', b''), good.replace(b'INSTRUMENTATION_CODE: -1', b''),
                     good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -2', 1),
                     good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -3', 1),
                     good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -4', 1),
@@ -422,7 +422,7 @@ class AndroidSmokeTests(unittest.TestCase):
         with mock.patch.object(m.subprocess, 'run',
                                return_value=subprocess.CompletedProcess([], 0, self.owned_output(), b'')) as run:
             result = m.run_owned_instrumentation()
-        self.assertEqual(result['tests'], 35)
+        self.assertEqual(result['tests'], 45)
         self.assertEqual(run.call_count, 2, 'One instrument invocation and final force-stop; no retries')
         instrument, stop = run.call_args_list
         self.assertEqual(instrument.args[0][7:14], ('shell', 'am', 'instrument', '-w', '-r', '-e', 'class'))
@@ -451,12 +451,12 @@ class AndroidSmokeTests(unittest.TestCase):
             self.assertLessEqual(len(retained['stderr']['head'].encode()), m.DIAGNOSTIC_LIMIT)
             self.assertLessEqual(len(retained['stderr']['tail'].encode()), m.DIAGNOSTIC_LIMIT)
             self.assertEqual(retained['stderr']['truncated_bytes'], max(0, retained['stderr']['sanitized_bytes'] - 2 * m.DIAGNOSTIC_LIMIT))
-            self.assertIn('OK (35 tests)', retained['stdout']['tail'])
+            self.assertIn('OK (45 tests)', retained['stdout']['tail'])
             self.assertIs(raw, original)
             return actual_parser(raw)
         with mock.patch.object(m, 'owned_instrumentation', side_effect=parse), \
              mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, original, stderr)) as adb:
-            self.assertEqual(m.run_owned_instrumentation()['tests'], 35)
+            self.assertEqual(m.run_owned_instrumentation()['tests'], 45)
         self.assertEqual(adb.call_count, 2)
         self.assertFalse(any(call.args[0] == 'logcat' for call in adb.call_args_list))
         self.assertNotIn('failure_logcat', m.STARTUP['owned_instrumentation'])
@@ -483,7 +483,7 @@ class AndroidSmokeTests(unittest.TestCase):
         responses = [subprocess.CompletedProcess([], 0, b'INSTRUMENTATION_ABORTED: runner crashed', b'runner stderr'),
                      subprocess.CompletedProcess([], 0, b'AndroidRuntime: useful fixture stack\nAuthorization: FABRICATED_SECRET', b'')]
         with mock.patch.object(m, 'adb', side_effect=responses) as adb:
-            with self.assertRaisesRegex(RuntimeError, 'missing explicit 35-case PASS'):
+            with self.assertRaisesRegex(RuntimeError, 'missing explicit 45-case PASS'):
                 m.run_owned_instrumentation()
         log_args = adb.call_args_list[1]
         self.assertEqual(log_args.args, ('logcat', '-d', '-t', '300', '-v', 'brief', 'AndroidRuntime:E',
@@ -513,7 +513,7 @@ class AndroidSmokeTests(unittest.TestCase):
             m.ADB_OWNER = Proc(code=None)
             with mock.patch.object(pathlib.Path, 'write_text', side_effect=OSError('diagnostic disk failure')), \
                  mock.patch.object(m, 'owned_instrumentation', side_effect=None if otherwise_passed else original,
-                                   return_value={'result': 'passed', 'tests': 35}), \
+                                   return_value={'result': 'passed', 'tests': 45}), \
                  mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, b'fixture', b'')) as adb:
                 with self.assertRaises(RuntimeError) as caught: m.run_owned_instrumentation()
             if otherwise_passed:

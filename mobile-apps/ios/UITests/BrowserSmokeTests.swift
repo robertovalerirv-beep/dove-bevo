@@ -22,6 +22,15 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     func testNativeNavigationAndInformationAreAccessible() {
+        for label in ["Cerca città o bar", "Milano · Cerca città o bar", "Paris · Cerca città o bar"] {
+            XCTAssertTrue(citySearchPredicate().evaluate(with: ["label": label]))
+        }
+        for label in ["Cerca città", "Milano · Cerca città o bar extra", "\n · Cerca città o bar"] {
+            XCTAssertFalse(citySearchPredicate().evaluate(with: ["label": label]))
+        }
+        XCTAssertTrue(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Milano · Cerca città o bar"]))
+        XCTAssertTrue(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Cerca città o bar"]))
+        XCTAssertFalse(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Torino · Cerca città o bar"]))
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
         for identifier in ["browser.back", "browser.home", "browser.more", "browser.recommendations", "browser.saveVenue"] {
             XCTAssertTrue(app.buttons[identifier].exists, identifier)
@@ -54,8 +63,7 @@ final class BrowserSmokeTests: XCTestCase {
         }
         XCTAssertFalse(app.buttons["Home"].isSelected, "The retained map is the current destination")
         app.buttons["Informazioni"].tap()
-        XCTAssertTrue(app.alerts["Dove bevo"].waitForExistence(timeout: 5))
-        app.alerts.buttons["Chiudi"].tap()
+        returnFromNativeInformation()
     }
 
     func testBundledPrivacyContactAndNativeBack() {
@@ -103,7 +111,7 @@ final class BrowserSmokeTests: XCTestCase {
     func testLiveWebsiteCitySearchAndMap() {
         let website = app.webViews.firstMatch
         XCTAssertTrue(website.waitForExistence(timeout: 20), "WKWebView did not appear")
-        let searchButton = website.buttons["Cerca città o bar"]
+        let searchButton = citySearchButton(in: website)
         XCTAssertTrue(searchButton.waitForExistence(timeout: 90), "Live website did not become ready; inspect screenshot and network/challenge state")
         let loading = app.descendants(matching: .any)["browser.loading"]
         let error = app.descendants(matching: .any)["browser.error"]
@@ -119,6 +127,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertEqual(readinessResult, .completed, "Native loading and the website search action did not become ready together")
         XCTAssertTrue(website.buttons["Vicino a me"].exists)
         XCTAssertTrue(ready.evaluate(with: nil), "Page readiness changed before the single search tap")
+        XCTAssertEqual(website.buttons.matching(citySearchPredicate()).count, 1, "Exactly one real city-search action must be ready")
         assertShareAndReloadAvailable()
         assertNoSharePresentation()
         XCTAssertTrue(searchButton.isHittable, "Menu dismissal must leave the real city-search action reachable")
@@ -199,7 +208,7 @@ final class BrowserSmokeTests: XCTestCase {
                        "The original input and first Milano result must both remain visible above the ordinary keyboard before tapping")
         city.tap()
 
-        XCTAssertTrue(searchButton.waitForExistence(timeout: 15), "City search did not return to the map")
+        XCTAssertTrue(citySearchButton(in: website, city: "Milano").waitForExistence(timeout: 15), "City search did not return to the Milano map")
         XCTAssertTrue(interactiveMap().waitForExistence(timeout: 45), "Interactive live map did not initialize")
         let mapReady = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"),
@@ -217,7 +226,7 @@ final class BrowserSmokeTests: XCTestCase {
         openPrivacyAndReturn()
         XCTAssertTrue(interactiveMap().exists, "Returning from native privacy must retain the website map")
         XCTAssertTrue(hasVisiblePositiveCoverage(), "Returning from native privacy must retain live price coverage")
-        XCTAssertTrue(app.webViews["browser.website"].buttons["Cerca città o bar"].exists)
+        XCTAssertTrue(citySearchButton(in: app.webViews["browser.website"], city: "Milano").exists)
         XCTAssertFalse(app.webViews["browser.website"].buttons["Esplora la mappa"].exists)
         XCTAssertFalse(app.webViews["browser.website"].staticTexts["La mappa non si carica: controlla la connessione e ricarica la pagina."].exists)
         assertNoNativeRecovery()
@@ -379,7 +388,7 @@ final class BrowserSmokeTests: XCTestCase {
         let closeBar = website.buttons["Chiudi"]
         XCTAssertTrue(closeBar.waitForExistence(timeout: 10))
         closeBar.tap()
-        XCTAssertTrue(website.buttons["Cerca città o bar"].waitForExistence(timeout: 15))
+        XCTAssertTrue(citySearchButton(in: website, city: "Milano").waitForExistence(timeout: 15))
         XCTAssertTrue(interactiveMap().waitForExistence(timeout: 45))
         let mapReady = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"), object: website.buttons["Esplora la mappa"]
@@ -439,7 +448,7 @@ final class BrowserSmokeTests: XCTestCase {
         waitForNativePageReady()
     }
 
-    private func waitForOrdinaryKeyboard() {
+    private func waitForOrdinaryKeyboard(timeout: TimeInterval = 15) {
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
             let windowFrame = self.app.windows.firstMatch.frame
             return self.app.keyboards.allElementsBoundByIndex.contains { keyboard in
@@ -447,7 +456,7 @@ final class BrowserSmokeTests: XCTestCase {
                 return self.isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)
             }
         }, object: nil)
-        let result = XCTWaiter.wait(for: [ready], timeout: 15)
+        let result = XCTWaiter.wait(for: [ready], timeout: timeout)
         if result != .completed { attachState(named: "DoveBevo-original-field-keyboard-not-ready") }
         XCTAssertEqual(result, .completed, "The existing field must have an ordinary visible keyboard before typing")
     }
@@ -655,14 +664,12 @@ final class BrowserSmokeTests: XCTestCase {
 
     private func dismissMoreMenu() {
         // Select a real, harmless native menu action rather than a coordinate
-        // behind the context menu. Closing its alert preserves this browser.
+        // behind the context menu. Returning from Altro preserves this browser.
         let information = app.buttons["Informazioni"]
         XCTAssertTrue(information.waitForExistence(timeout: 5))
         XCTAssertTrue(information.isHittable)
         information.tap()
-        let alert = app.alerts["Dove bevo"]
-        XCTAssertTrue(alert.waitForExistence(timeout: 5))
-        alert.buttons["Chiudi"].tap()
+        returnFromNativeInformation()
         let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: app.buttons["Condividi"])
         XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 5), .completed)
         assertNoSharePresentation()
@@ -670,11 +677,38 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Dove bevo"].exists)
     }
 
+    private func returnFromNativeInformation() {
+        let information = app.navigationBars["Altro"]
+        XCTAssertTrue(information.waitForExistence(timeout: 5))
+        let list = app.tables["information.list"]
+        XCTAssertTrue(list.exists, "Informazioni must open the real native menu")
+        for identifier in ["information.how", "information.rules", "information.privacy", "information.contact"] {
+            XCTAssertTrue(list.cells[identifier].exists, identifier)
+        }
+        let back = information.buttons["Torna alla mappa"]
+        XCTAssertTrue(back.exists && back.isHittable)
+        back.tap()
+        XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.tables["information.list"].exists)
+    }
+
     private func assertNoSharePresentation() {
         XCTAssertFalse(app.otherElements["ShareSheet.RemoteContainerView"].exists, "Menu dismissal must never activate Share")
         XCTAssertFalse(app.otherElements["ActivityListView"].exists)
         XCTAssertFalse(app.otherElements["UIActivityContentView"].exists)
         XCTAssertFalse(app.sheets.firstMatch.exists)
+    }
+
+    private func citySearchPredicate(city: String? = nil) -> NSPredicate {
+        // The pre-deployment native gate runs against the current public web
+        // bundle too. Its exact legacy label is valid alongside the new city label.
+        let prefix = city.map { "(?:" + NSRegularExpression.escapedPattern(for: $0) + " · )?" }
+            ?? #"(?:[^\r\n\p{Cc}\u2028\u2029]{1,120} · )?"#
+        return NSPredicate(format: "label MATCHES %@", "\\A" + prefix + "Cerca città o bar\\z")
+    }
+
+    private func citySearchButton(in website: XCUIElement, city: String? = nil) -> XCUIElement {
+        website.buttons.matching(citySearchPredicate(city: city)).firstMatch
     }
 
     private func interactiveMap() -> XCUIElement {
@@ -785,10 +819,13 @@ final class BrowserSmokeTests: XCTestCase {
         // or re-resolving this transient keyboard element as its process changes.
         let offset = CGVector(dx: buttonFrame.midX - appFrame.minX, dy: buttonFrame.midY - appFrame.minY)
         app.coordinate(withNormalizedOffset: .zero).withOffset(offset).tap()
-        attachScreen(named: "DoveBevo-keyboard-introduction-after-continue")
-        let dismissed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: introduction)
-        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 10), .completed, "The observed keyboard tutorial did not dismiss")
+        // The actual failed-run screenshot showed ordinary keys after this tap,
+        // although the tutorial-disappearance predicate timed out. Require the
+        // usable visible keyboard instead of inferring readiness from absence.
+        waitForOrdinaryKeyboard(timeout: 10)
+        attachState(named: "DoveBevo-keyboard-introduction-after-continue")
         XCTAssertTrue(searchField.exists, "The original city search sheet was lost while dismissing the tutorial")
+        XCTAssertTrue(searchField.isHittable, "The original city search field must remain reachable with the ordinary keyboard")
         assertNoNativeRecovery()
     }
 

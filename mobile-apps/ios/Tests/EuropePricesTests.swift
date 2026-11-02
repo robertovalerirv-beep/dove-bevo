@@ -226,10 +226,14 @@ final class EuropePricesTests: XCTestCase {
         discovery.selectDrink("wine_glass")
         XCTAssertEqual(discovery.tableView(discovery.tableView, numberOfRowsInSection: 0), 2)
         let wine = discovery.tableView(discovery.tableView, cellForRowAt: IndexPath(row: 0, section: 0))
-        let wineContent = try XCTUnwrap(wine.contentConfiguration as? UIListContentConfiguration)
-        XCTAssertTrue(try XCTUnwrap(wineContent.secondaryAttributedText).string.contains("175 ml"))
-        XCTAssertTrue(try XCTUnwrap(wineContent.secondaryAttributedText).string.contains("9,00 £"))
+        let wineText = visibleLabels(wine).joined(separator: "\n")
+        XCTAssertTrue(wineText.contains("175 ml"))
+        XCTAssertTrue(wineText.contains("9,00 £"))
         discovery.beginAppearanceTransition(false, animated: false); discovery.endAppearanceTransition()
+    }
+    @MainActor private func visibleLabels(_ view: UIView) -> [String] {
+        let own = (view as? UILabel)?.text.map { [$0] } ?? []
+        return own + view.subviews.flatMap { visibleLabels($0) }
     }
 }
 

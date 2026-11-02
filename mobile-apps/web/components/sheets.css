@@ -410,6 +410,117 @@
   font-size: 13px;
 }
 
+/* Photo-led venue hierarchy, shared by both real data adapters. */
+.mobile-venue__hero {
+  position: relative;
+  margin: -8px -16px 0;
+  overflow: hidden;
+  height: 134px;
+  background: #f2f3f3;
+}
+.mobile-venue__hero img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 47%;
+}
+.mobile-venue__hero figcaption {
+  position: absolute;
+  right: 10px;
+  bottom: 9px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: #fff;
+  color: #5d6670;
+  font-size: 10px;
+  line-height: 1.3;
+}
+.scontrino.mobile-venue .mobile-venue__hero + .scontrino__paper {
+  position: relative;
+  z-index: 1;
+  margin: -12px -4px 0;
+  padding: 14px 4px 10px;
+  border-radius: 16px 16px 0 0;
+}
+.scontrino.mobile-venue .scontrino__name {
+  font-size: 23px;
+  letter-spacing: -0.5px;
+}
+.scontrino.mobile-venue .bar__addr {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.scontrino.mobile-venue .scontrino__paper > .section-title {
+  margin: 10px 0 7px;
+}
+.scontrino.mobile-venue .mobile-price {
+  position: relative;
+  min-height: 56px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  padding: 8px 0;
+}
+.scontrino.mobile-venue .price__icon img {
+  display: block;
+  width: 32px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.scontrino.mobile-venue .mobile-price:not(.mobile-price--featured) .price__icon {
+  grid-row: 1 / 3;
+}
+.scontrino.mobile-venue .mobile-price:not(.mobile-price--featured) .price__meta {
+  /* Source links stay above the name/price row's action target. */
+  position: relative;
+  z-index: 1;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.scontrino.mobile-venue .mobile-price:not(.mobile-price--featured) .mobile-price__toggle {
+  position: absolute;
+  inset: 0 0 auto;
+  width: 100%;
+  height: 56px;
+  min-height: 56px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0;
+  cursor: pointer;
+}
+.scontrino.mobile-venue .mobile-price__toggle:focus-visible {
+  outline: 2px solid #101820;
+  outline-offset: 1px;
+}
+.scontrino.mobile-venue .mobile-price:not(.mobile-price--featured) .price__name {
+  font-size: 14px;
+}
+.scontrino.mobile-venue .mobile-price--featured {
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  padding: 10px;
+}
+.scontrino.mobile-venue .mobile-price--featured .price__icon img {
+  width: 48px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 9px;
+}
+.scontrino.mobile-venue .mobile-price--featured .price__value {
+  font-size: 26px;
+}
+.scontrino.mobile-venue .mobile-price-section {
+  margin: 12px 0 0;
+  font-size: 15px;
+}
+@media (max-height: 620px) {
+  .mobile-venue__hero {
+    height: 88px;
+  }
+}
+
 .mobile-price-flow .field {
   border: 1px solid #d2d8dd;
   border-radius: 12px;
@@ -473,12 +584,28 @@
   margin-bottom: 10px;
   border-radius: 12px;
   background: #fafafa;
+  position: relative;
+  overflow: hidden;
 }
 .mobile-price-form__art img {
   display: block;
   width: 100%;
-  height: 146px;
+  height: 132px;
+  object-fit: cover;
+}
+.mobile-price-form__art--product img {
   object-fit: contain;
+}
+.mobile-price-form__art > span {
+  position: absolute;
+  right: 7px;
+  bottom: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #fff;
+  color: #5d6670;
+  font-size: 10px;
+  line-height: 1.3;
 }
 .mobile-price-form .context-tag {
   display: flex;
@@ -498,6 +625,7 @@
   margin: 10px 0 8px;
   color: #101820;
   font-size: 15px;
+  line-height: 1.4;
   font-weight: 600;
   letter-spacing: normal;
 }
@@ -545,6 +673,9 @@
 .mobile-price-form .error {
   margin: 8px 0;
   font-size: 14px;
+}
+.mobile-price-form .error:empty {
+  display: none;
 }
 .mobile-price-form .seen__label {
   margin: 16px 0 8px;
@@ -617,6 +748,12 @@
   background: #e4e8eb;
   color: #66717c;
   opacity: 1;
+}
+
+@media (max-height: 620px) {
+  .mobile-price-form__art img {
+    height: 88px;
+  }
 }
 
 @media (max-width: 359px) {

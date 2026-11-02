@@ -135,8 +135,22 @@ test("venue cards preserve escaped identity, current data and expandable real ac
     const primary = f.page.locator(".mobile-price--featured");
     assert.match(await primary.innerText(), /Spritz[\s\S]*6,00 €[\s\S]*2 conferme/);
     assert.equal(await primary.locator(".mobile-price__tier").count(), 0);
+    assert.equal(await f.page.locator('[data-dovebevo-share="1"]').count(), 1);
+    const share = await primary.evaluate((element) => ({ ...element.dataset }));
+    assert.equal(share.version, "1");
+    assert.equal(share.venue, "n123");
+    assert.equal(share.venueName, "Locale di prova <strong>");
+    assert.equal(share.drink, "spritz");
+    assert.equal(share.amountMinor, "600");
+    assert.equal(share.currency, "EUR");
+    assert.equal(share.serving, "");
+    assert.equal(share.hh, "0");
+    assert.equal(share.tier, "neutro");
+    assert.equal(share.confirmations, "2");
+    assert.match(share.provenance, /^Data del prezzo:/);
     await primary.getByRole("button", { name: "Confermo", exact: true }).dblclick();
     await primary.getByRole("button", { name: "Confermato", exact: true }).waitFor();
+    assert.equal(await primary.getAttribute("data-confirmations"), "3");
     assert.equal(
       await f.page.evaluate(
         () => window.sheetFixture.calls.filter((call) => call.kind === "confirm").length,

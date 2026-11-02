@@ -33,12 +33,12 @@ public final class DiscoveryRuntimeTest {
     }
     @After public void tearDown(){onMain(()->{if(screen!=null)screen.close();activity.finish();});SharedPreferences.Editor edit=rules.edit();if(hadPrevious)edit.putString("accepted_rules_version",previous);else edit.remove("accepted_rules_version");assertTrue(edit.commit());}
     @Test public void actualPricesSortAndFiltersKeepDateContextWithoutAnyBookmarkFile()throws Exception {
-        show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();assertEquals(20,requests.get());
-        onMain(()->{assertEquals(2,rows().getChildCount());assertTrue(text(rows().getChildAt(0)).contains("Locale due"));assertTrue(text(rows().getChildAt(0)).contains("6,00"));assertTrue(text(rows().getChildAt(0)).contains("oltre 90"));assertTrue(text(rows().getChildAt(0)).contains("dal centro della Mappa"));assertTrue(text(rows().getChildAt(1)).contains("2 conferme"));assertFalse(text(rows()).contains("Affare"));
+        show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();assertEquals(20,requests.get());ReferenceCapture.save("discovery-owned-fixture.png");
+        onMain(()->{assertEquals(2,rows().getChildCount());View panel=rows().getChildAt(0).findViewWithTag("discovery.details");assertEquals(View.GONE,panel.getVisibility());rows().getChildAt(0).findViewById(R.id.discovery_details).performClick();assertEquals(View.VISIBLE,panel.getVisibility());assertTrue(text(rows().getChildAt(0)).contains("Locale due"));assertTrue(text(rows().getChildAt(0)).contains("6,00"));assertTrue(text(rows().getChildAt(0)).contains("oltre 90"));assertTrue(text(rows().getChildAt(0)).contains("dal centro della Mappa"));assertTrue(text(rows().getChildAt(1)).contains("2 conferme"));assertFalse(text(rows()).contains("Affare"));
             ((Spinner)activity.findViewById(R.id.discovery_band)).setSelection(1);});
         onMain(()->{assertEquals(1,rows().getChildCount());assertTrue(text(rows().getChildAt(0)).contains("5,00"));assertTrue(text(rows().getChildAt(0)).contains("27/10/2026"));rows().getChildAt(0).findViewById(R.id.discovery_open).performClick();});
         assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",opened.get());assertEquals(20,requests.get());
-        onMain(()->{((Spinner)activity.findViewById(R.id.discovery_drink)).setSelection(RecommendationDrink.NEGRONI.ordinal());});
+        onMain(()->{activity.findViewById(R.id.discovery_screen).findViewWithTag("discovery.category.negroni").performClick();});
         onMain(()->{assertEquals(0,rows().getChildCount());assertTrue(status().contains("Nessun prezzo"));assertFalse(status().contains("0,00"));});
     }
     @Test public void unreadyAndUnavailableAreExplicitAndBackgroundCannotRefresh()throws Exception {
@@ -47,11 +47,36 @@ public final class DiscoveryRuntimeTest {
         onMain(()->{assertTrue(status().contains("non verificabili"));assertEquals(0,rows().getChildCount());active.set(false);screen.pause();screen.refresh();});
         int count=requests.get();onMain(()->screen.refresh());assertEquals(count,requests.get());
     }
+    @Test public void nineIllustratedCategoriesUseActualCountsAndKeepBandWithoutNewRequests()throws Exception {
+        show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();int before=requests.get();
+        onMain(()->{assertNull(activity.findViewById(R.id.discovery_drink));assertTrue(rows().getChildAt(0).getHeight()>0);assertTrue(rows().getChildAt(0).getHeight()<=Math.round(120*activity.getResources().getDisplayMetrics().density));});
+        onMain(()->{
+            LinearLayout tiles=activity.findViewById(R.id.discovery_screen).findViewWithTag("discovery_categories");
+            assertEquals(9,tiles.getChildCount());assertTrue(text(tiles.getChildAt(RecommendationDrink.SPRITZ.ordinal())).contains("2 prezzi"));
+            assertTrue(tiles.getChildAt(RecommendationDrink.SPRITZ.ordinal()).isSelected());
+            ((Spinner)activity.findViewById(R.id.discovery_band)).setSelection(1);
+            tiles.getChildAt(RecommendationDrink.NEGRONI.ordinal()).performClick();
+        });
+        onMain(()->{assertEquals("negroni",screen.selectedDrink());assertEquals(1,screen.selectedBand());assertEquals(0,rows().getChildCount());assertFalse(text(rows()).contains("0,00"));});
+        assertEquals(before,requests.get());
+    }
+    @Test public void bandLabelsNeverEllipsizeOrOverflowAt320393And411Dp() {
+        android.content.res.Resources resources=activity.getResources();android.content.res.Configuration saved=new android.content.res.Configuration(resources.getConfiguration());
+        try{
+            show(true,null);
+            for(int width:new int[]{320,393,411})for(int selected:new int[]{0,1})onMain(()->{
+                android.content.res.Configuration configuration=new android.content.res.Configuration(saved);configuration.screenWidthDp=width;resources.updateConfiguration(configuration,resources.getDisplayMetrics());
+                Spinner band=activity.findViewById(R.id.discovery_band);band.setSelection(selected,false);float density=resources.getDisplayMetrics().density;View root=screen.view();root.measure(View.MeasureSpec.makeMeasureSpec(Math.round(width*density),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(600*density),View.MeasureSpec.EXACTLY));root.layout(0,0,Math.round(width*density),Math.round(600*density));
+                LinearLayout header=root.findViewWithTag("discovery.header");if(width==320)assertEquals(LinearLayout.VERTICAL,header.getOrientation());LinearLayout controls=(LinearLayout)header.getChildAt(1);for(int index=0;index<controls.getChildCount();index++){View control=controls.getChildAt(index);assertTrue(control.getLeft()>=0);assertTrue(control.getRight()<=controls.getWidth());assertTrue(control.getWidth()>=Math.round(44*density));assertTrue(control.getHeight()>=Math.round(44*density));}
+                TextView label=(TextView)band.getSelectedView();assertNotNull(label);assertEquals(activity.getString(selected==0?R.string.favorites_normal:R.string.favorites_happy_hour),label.getText().toString());android.text.Layout layout=label.getLayout();assertNotNull(layout);assertTrue(layout.getLineCount()>0);for(int line=0;line<layout.getLineCount();line++){assertEquals("Band label ellipsis at "+width+"dp",0,layout.getEllipsisCount(line));assertTrue("Band label overflow at "+width+"dp",layout.getLineWidth(line)<=label.getWidth()-label.getPaddingLeft()-label.getPaddingRight()+1);}
+            });
+        }finally{onMain(()->resources.updateConfiguration(saved,resources.getDisplayMetrics()));}
+    }
     private void show(boolean unavailable,DiscoveryArea area){onMain(()->{
         FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable)throw new IOException("Owned offline response");String body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");
         screen=new DiscoveryScreen(activity,opened::set,()->{},active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));activity.setContentView(screen.view());screen.show(area);
     });}
-    private void awaitLoaded()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(!status().contains("Caricamento")));if(loaded.get())return;Thread.sleep(10);}fail("Owned discovery did not complete");}
+    private void awaitLoaded()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(!status().contains("Caricamento")&&(rows().getChildCount()==0||rows().getChildAt(0).getHeight()>0)));if(loaded.get())return;Thread.sleep(10);}fail("Owned discovery did not complete");}
     private LinearLayout rows(){return activity.findViewById(R.id.discovery_rows);}private String status(){return((TextView)activity.findViewById(R.id.discovery_status)).getText().toString();}
     private String text(View view){StringBuilder s=new StringBuilder();if(view instanceof TextView)s.append(((TextView)view).getText());if(view instanceof android.view.ViewGroup){android.view.ViewGroup g=(android.view.ViewGroup)view;for(int i=0;i<g.getChildCount();i++)s.append(' ').append(text(g.getChildAt(i)));}return s.toString();}
     private void onMain(Runnable action){instrumentation.runOnMainSync(action);instrumentation.waitForIdleSync();}

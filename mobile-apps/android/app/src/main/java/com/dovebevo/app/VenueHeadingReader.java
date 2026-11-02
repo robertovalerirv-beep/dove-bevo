@@ -8,6 +8,8 @@ final class VenueHeadingReader {
             (() => {
               if (document.visibilityState !== 'visible') return null;
               const route = new URL(location.href);
+              if (route.protocol !== 'https:' || !['www.dovebevo.com', 'dovebevo.com'].includes(route.hostname) ||
+                  route.username || route.password || (route.port && route.port !== '443') || route.hash) return null;
               const mobile = /^\\/mobile\\/(?:index\\.html)?$/.test(route.pathname);
               if (mobile && (document.documentElement.getAttribute('data-dovebevo-mobile-shell') !== '1' ||
                   [...route.searchParams].length !== 2 || route.searchParams.getAll('path').length !== 1 ||

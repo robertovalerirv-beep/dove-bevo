@@ -739,7 +739,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             return
         }
         // 4xx pages (including a normal Cloudflare verification) stay in WebKit.
-        if let response = navigationResponse.response as? HTTPURLResponse {
+        if let response = navigationResponse.response as? HTTPURLResponse,
+           navigationState.shouldPresentResponseError(for: url, currentTarget: lastWebsiteURL) {
             documentHasClientError = (400..<500).contains(response.statusCode)
         }
         decisionHandler(.allow)

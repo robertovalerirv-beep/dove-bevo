@@ -30,9 +30,9 @@ const results = input.cases.map((scenario) => {
     const rect = (y, width, height) => Object.freeze({
         x: 0, y, width, height, left: 0, right: width, top: y, bottom: y + height
     });
-    const body = Object.freeze({ parentElement: null });
+    const body = Object.freeze({ parentElement: null, getAttribute: () => null });
     const heading = Object.freeze({
-        textContent: s.name, isConnected: s.connected, parentElement: body,
+        textContent: s.name, isConnected: s.connected, parentElement: body, getAttribute: () => null,
         closest: () => s.hiddenHeading || s.inert ? body : null,
         getBoundingClientRect: () => rect(s.headingY, s.width, s.height),
         getClientRects: () => Array(s.clientRects).fill(1)
@@ -58,13 +58,27 @@ const results = input.cases.map((scenario) => {
         if (attribute !== 'data-selected') throw new Error('unexpected map attribute');
         return s.selectedKey;
     }});
-    const document = Object.freeze({ querySelectorAll: (selector) => {
+    const document = Object.freeze({ visibilityState: 'visible',
+        documentElement: Object.freeze({ getAttribute: () => s.marker === false ? null : '1' }),
+        querySelectorAll: (selector) => {
         if (selector === 'section.map[data-selected]') return Array(s.mapCount).fill(map);
         if (selector === 'dialog.sheet[open]') return Array(s.sheetCount).fill(dialog);
         throw new Error('unexpected document selector');
     }});
+    // Safari 16 supports iteration, but has no URLSearchParams.size getter.
+    class OlderWebKitURL extends URL {
+        get searchParams() {
+            return new Proxy(super.searchParams, { get(target, key) {
+                if (key === 'size') return undefined;
+                const value = Reflect.get(target, key, target);
+                return typeof value === 'function' ? value.bind(target) : value;
+            }});
+        }
+    }
     const context = {
-        URL, location: Object.freeze({ href: s.href }), document,
+        URL: s.olderWebKit ? OlderWebKitURL : URL,
+        location: Object.freeze({ href: s.href }), document,
+        innerWidth: 390, innerHeight: 844,
         window: Object.freeze({ innerWidth: 390, innerHeight: 844 }),
         getComputedStyle: (element) => Object.freeze({
             display: element === heading ? s.display : 'block',
@@ -91,9 +105,9 @@ class VenueNameReaderTests(unittest.TestCase):
             raise AssertionError("The bookmark reader must be a fixed raw JavaScript constant")
         cls.script = textwrap.dedent(match.group(1))
 
-    def read(self, cases):
+    def read(self, cases, script=None):
         result = subprocess.run(
-            [self.node, "-e", HARNESS], input=json.dumps({"script": self.script, "cases": cases}),
+            [self.node, "-e", HARNESS], input=json.dumps({"script": script or self.script, "cases": cases}),
             text=True, encoding="utf-8", capture_output=True, check=True, timeout=15,
         )
         return json.loads(result.stdout)
@@ -109,6 +123,24 @@ class VenueNameReaderTests(unittest.TestCase):
         })
         self.assertEqual(actual[1]["value"]["name"], "A")
         self.assertEqual(actual[2]["value"]["name"], "Caffè Centrale")
+
+    def test_actual_both_platform_readers_work_without_url_search_params_size(self):
+        java = SOURCE.parents[2] / "android/app/src/main/java/com/dovebevo/app/VenueHeadingReader.java"
+        source = java.read_text(encoding="utf-8")
+        block = re.search(r'SCRIPT = """(.*?)""";', source, re.DOTALL)
+        self.assertIsNotNone(block)
+        android = textwrap.dedent(block.group(1)).replace("\\\\", "\\")
+        base = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9"
+        for script in [self.script, android]:
+            with self.subTest(platform="android" if script == android else "ios"):
+                actual = self.read([{"olderWebKit": True, "href": base}], script)[0]
+                self.assertIsNotNone(actual.get("value"), actual)
+                for bad in [base + "&c=u0nd8", base + "&token=private", base + "#private"]:
+                    self.assertIsNone(self.read([{"olderWebKit": True, "href": bad}], script)[0].get("value"))
+                self.assertIsNone(self.read([{"olderWebKit": True, "href": base, "marker": False}], script)[0].get("value"))
+                # Demonstrate the compatibility counterexample using the actual reader.
+                broken = script.replace("[...url.searchParams].length", "url.searchParams.size").replace("[...route.searchParams].length", "route.searchParams.size")
+                self.assertIsNone(self.read([{"olderWebKit": True, "href": base}], broken)[0].get("value"))
 
     def test_precommit_old_heading_cannot_be_saved_for_the_new_url(self):
         self.assert_rejected([

@@ -89,6 +89,8 @@ html[data-dovebevo-mobile-shell="1"] .mobile-drink-strip {
   scrollbar-width: none;
 }
 html[data-dovebevo-mobile-shell="1"] .drink-option {
+  /* Keep absolutely positioned accessible inputs inside the scrolling strip. */
+  position: relative;
   flex: none;
   min-height: 48px;
   min-width: 48px;

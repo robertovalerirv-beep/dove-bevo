@@ -195,9 +195,16 @@ public final class PublicBrowseRuntimeTest {
         // A second explicit opt-in is required. Normal public browsing never captures pixels.
         Assume.assumeTrue("Store capture requires -e storeCapture true in addition to publicBrowse",
                 "true".equals(InstrumentationRegistry.getArguments().getString("storeCapture")));
+        String requestedBuild = InstrumentationRegistry.getArguments().getString("expectedBuildNumber");
+        assertNotNull("Store capture requires explicit expectedBuildNumber", requestedBuild);
+        assertTrue("expectedBuildNumber must be a positive decimal Android version code",
+                requestedBuild.matches("[1-9][0-9]{0,9}"));
+        long expectedBuild = Long.parseLong(requestedBuild);
+        assertTrue("expectedBuildNumber must not exceed Android's version-code bound",
+                expectedBuild <= 2100000000L);
         PackageInfo app = instrumentation.getTargetContext().getPackageManager()
                 .getPackageInfo(instrumentation.getTargetContext().getPackageName(), 0);
-        assertEquals("Capture only the intended build number", 62L, app.getLongVersionCode());
+        assertEquals("Capture only the explicitly intended build number", expectedBuild, app.getLongVersionCode());
         assertEquals("1.0.0", app.versionName);
         captureDirectory = new File(instrumentation.getTargetContext().getFilesDir(),
                 "store-captures-20261102/" + UUID.randomUUID());

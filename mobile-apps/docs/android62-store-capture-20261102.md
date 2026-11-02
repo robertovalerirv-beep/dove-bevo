@@ -4,7 +4,7 @@ Status: the map and venue images are diagnostic evidence, **not store-ready scre
 
 ## Scope and provenance
 
-The opt-in `PublicBrowseRuntimeTest.storeCaptureShowsActualMilanoMapDiscoveryAndVenue` runs through normal MainActivity and the public HTTPS app. It requires both `publicBrowse=true` and `storeCapture=true`, build code 62 and version 1.0.0. NativeFixtureRunner creates its ordinary fresh isolated WebView profile. The existing local rules key is restored in teardown. It never posts prices, confirmations, votes or reports; it does not intercept responses, change user agents, bypass a challenge, or alter production settings.
+The opt-in `PublicBrowseRuntimeTest.storeCaptureShowsActualMilanoMapDiscoveryAndVenue` runs through normal MainActivity and the public HTTPS app. It requires both `publicBrowse=true` and `storeCapture=true`, an explicit `expectedBuildNumber` matching the actual installed app, and version 1.0.0. The expected build must be a canonical positive decimal no greater than Android's 2100000000 bound; missing, malformed, out-of-range or mismatched build numbers fail before capture. The baseline evidence below uses build 62; a production fix needs a fresh build number and separate evidence directory. NativeFixtureRunner creates its ordinary fresh isolated WebView profile. The existing local rules key is restored in teardown. It never posts prices, confirmations, votes or reports; it does not intercept responses, change user agents, bypass a challenge, or alter production settings.
 
 The test uses ordinary Instrumentation touch/key events for city search, then the genuine native Home/Scopri controls and an actually returned venue. It saves the original UiAutomation frame as lossless PNG, without cropping, resizing, painting, or other image editing. Each fresh app-internal capture directory contains SHA-256, image size, UTC timestamp and bounded public/native geometry in `provenance.json`. Images are transferred as bytes from the owned app's files; no manual ADB screenshot or Activity launch is used.
 
@@ -28,10 +28,10 @@ No forced scroll, zoom, screenshot cleanup, or test-only production-setting adju
 
 ## Re-run
 
-Use the existing trusted SDK/JDK and Gradle cache. Build with `DOVEBEVO_BUILD_NUMBER=62`, then verify the owned AVD name and install the app/debug test APKs. The only UI entry is:
+Use the existing trusted SDK/JDK and Gradle cache. For the preserved baseline, build with `DOVEBEVO_BUILD_NUMBER=62` and pass `expectedBuildNumber=62`; a reviewed fixed candidate uses its own matching build number and a new evidence directory. Then verify the owned AVD name and install the app/debug test APKs. The only UI entry is:
 
 ```text
-adb -s emulator-5580 shell am instrument -w -r -e class com.dovebevo.app.PublicBrowseRuntimeTest#storeCaptureShowsActualMilanoMapDiscoveryAndVenue -e publicBrowse true -e storeCapture true com.dovebevo.app.test/com.dovebevo.app.NativeFixtureRunner
+adb -s emulator-5580 shell am instrument -w -r -e class com.dovebevo.app.PublicBrowseRuntimeTest#storeCaptureShowsActualMilanoMapDiscoveryAndVenue -e publicBrowse true -e storeCapture true -e expectedBuildNumber 62 com.dovebevo.app.test/com.dovebevo.app.NativeFixtureRunner
 ```
 
 Inspect instrumentation `OK`/`FAILURES` output: adb's shell exit status alone does not establish a passing test. Keep unsuccessful originals and logs. Recheck source/build parity before using future images; do not label captures from a patched source as build-62 evidence.

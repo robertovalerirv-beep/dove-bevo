@@ -32,12 +32,12 @@ public final class DrinkFavoritesRuntimeTest {
     private final Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
     private MainActivity activity;private HeldWeb web;private SavedDrinkUi chooser;private SavedDrinkScreen screen;private FavoritesScreen favorites;
     private SharedPreferences rules;private boolean hadRule;private String oldRule;private File directory;
-    private SavedDrinkStore drinks;private SavedVenueStore venues;private SavedVenueFile oldFile;
+    private SavedDrinkStore drinks;private SavedVenueStore venues;private SavedVenueFile oldFile;private boolean failDrinkWrites;
     @Before public void setUp()throws Exception {
         rules=instrumentation.getTargetContext().getSharedPreferences("dovebevo_rules",0);hadRule=rules.contains("accepted_rules_version");oldRule=rules.getString("accepted_rules_version",null);assertTrue(rules.edit().remove("accepted_rules_version").commit());
         activity=(MainActivity)instrumentation.startActivitySync(new Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK));
         directory=new File(activity.getFilesDir(),"owned-drinks-"+UUID.randomUUID());assertTrue(directory.mkdir());
-        oldFile=new SavedVenueFile(directory);venues=new SavedVenueStore(oldFile);drinks=new SavedDrinkStore(new SavedVenueFile(directory,"saved-drinks-v1"));
+        oldFile=new SavedVenueFile(directory);venues=new SavedVenueStore(oldFile);SavedVenueFile drinkFile=new SavedVenueFile(directory,"saved-drinks-v1");drinks=new SavedDrinkStore(new SavedVenueStore.Storage(){public byte[] read()throws IOException{return drinkFile.read();}public void write(byte[] bytes)throws IOException{if(failDrinkWrites)throw new IOException("Owned atomic write failure");drinkFile.write(bytes);}});
     }
     @After public void tearDown(){
         onMain(()->{if(chooser!=null)chooser.dismiss();if(favorites!=null)favorites.close();else if(screen!=null)screen.close();field("website",null);if(web!=null)web.destroy();activity.finish();});
@@ -79,7 +79,9 @@ public final class DrinkFavoritesRuntimeTest {
     @Test public void hiddenReadIsUnavailableAndRemovalDoesNotTouchVenueFavourite()throws Exception {
         drinks.save(URL,"Saved offline name",RecommendationDrink.SPRITZ,1);venues.save(URL,"Old venue favourite");byte[] before=oldFile.read();
         showScreen(new AtomicReference<>(),true);awaitRows("Prezzo non disponibile");
-        onMain(()->{try{java.lang.reflect.Field f=SavedDrinkScreen.class.getDeclaredField("cells");f.setAccessible(true);assertTrue("Hidden fixture must be a successfully parsed current cell",((java.util.Map<?,?>)f.get(screen)).containsKey("u0nd9"));}catch(ReflectiveOperationException error){throw new AssertionError(error);}assertFalse(allText(screen.view()).contains("7,00"));screen.view().findViewWithTag("drink_favourite_remove").performClick();});
+        onMain(()->{try{java.lang.reflect.Field f=SavedDrinkScreen.class.getDeclaredField("cells");f.setAccessible(true);assertTrue("Hidden fixture must be a successfully parsed current cell",((java.util.Map<?,?>)f.get(screen)).containsKey("u0nd9"));}catch(ReflectiveOperationException error){throw new AssertionError(error);}assertFalse(allText(screen.view()).contains("7,00"));failDrinkWrites=true;screen.refresh();screen.view().findViewWithTag("drink_favourite_remove").performClick();assertTrue(screen.view().findViewWithTag("drink_favourites_refresh").isEnabled());assertFalse(allText(screen.view()).contains("Aggiornamento prezzi…"));assertTrue(allText(screen.view()).contains("Nessun dato modificato"));});
+        assertEquals(1,drinks.load().size());assertArrayEquals(before,oldFile.read());
+        onMain(()->{failDrinkWrites=false;screen.view().findViewWithTag("drink_favourite_remove").performClick();});
         assertTrue(drinks.load().isEmpty());assertArrayEquals(before,oldFile.read());
     }
     private void showScreen(AtomicReference<String> opened,boolean hidden){

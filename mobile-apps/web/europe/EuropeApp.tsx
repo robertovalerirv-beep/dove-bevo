@@ -477,6 +477,12 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
   const matchingVenues = catalog.venues
     .filter((v) => `${v.name} ${v.city}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     .slice(0, 30);
+  const requested =
+    venue &&
+    mobilePath(location) === `/bar/${venue.key}` &&
+    new URLSearchParams(location.search).get("c") === venue.cell
+      ? mobileFocus(location)
+      : null;
   const venueRows = venue
     ? rows
         .filter((r) => r.venue === venue.key)
@@ -485,16 +491,11 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
             Number(b.drink === drink) - Number(a.drink === drink) ||
             Number(b.drink === drink && b.hh === band) -
               Number(a.drink === drink && a.hh === band) ||
+            (requested ? Number(b.status === "active") - Number(a.status === "active") : 0) ||
             a.drink.localeCompare(b.drink) ||
             a.hh - b.hh,
         )
     : [];
-  const requested =
-    venue &&
-    mobilePath(location) === `/bar/${venue.key}` &&
-    new URLSearchParams(location.search).get("c") === venue.cell
-      ? mobileFocus(location)
-      : null;
   const requestedUnavailable =
     snapshot &&
     requested &&

@@ -284,10 +284,17 @@ async function openLondon(f, venue = true) {
 test("saved European beer HH focus selects the actual band and retains serving provenance", async () => {
   const f = await fixture({
     snapshot(value, cell) {
-      if (cell === "gcpvj")
+      if (cell === "gcpvj") {
+        value.rows.unshift(
+          price(catalog.venues[0], "beer_draft", 100, { unit: "ml", ml: 568 }, false, {
+            hh: 1,
+            status: "quarantined",
+          }),
+        );
         value.rows.push(
           price(catalog.venues[0], "beer_draft", 450, { unit: "ml", ml: 400 }, false, { hh: 1 }),
         );
+      }
     },
   });
   try {

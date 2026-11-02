@@ -164,7 +164,7 @@ def validate(raw):
         if not isinstance(r["drink"], str) or r["drink"] not in LIMITS or type(r["cents"]) is not int or not LIMITS[r["drink"]][0] <= r["cents"] <= LIMITS[r["drink"]][1] or type(r["hh"]) is not int or r["hh"] not in (0, 1): raise Error("invalid drink price")
         if doc["schema_version"] == 4:
             if r["currency"] != "EUR" or r["hh"] != 0 or r["conditions"] != "none": raise Error("unsupported conditional price")
-            if not text(r["menu_item"], 240) or not text(r["serving_note"], 160): raise Error("missing menu context")
+            if not text(r["menu_item"], 240) or not r["menu_item"].strip() or not text(r["serving_note"], 160) or not r["serving_note"].strip(): raise Error("missing menu context")
         else:
             if type(r["google_reviews"]) is not int or not 100 < r["google_reviews"] <= 100000000: raise Error("invalid review count")
             google_evidence_url(r["google_url"])

@@ -17,10 +17,11 @@ unconditional normal price, the literal menu item and an honest serving note.
 Unknown volume is recorded as not stated; it is not inferred.
 
 The current legacy table stores one scalar per venue/category/band. Therefore
-this first format rejects conditional prices, happy-hour rows, conflicting
-generic-category prices, unsupported categories and unrepresentable serving
-variants. It never chooses a cheap premium variant, clamps a real price,
-invents a payment date or replaces a customer contribution.
+this first format rejects conditional prices, happy-hour rows, unsupported
+categories and duplicate tuples. Curators must exclude conflicting generic
+prices and unrepresentable serving variants; text metadata alone cannot prove
+those semantics. Never choose a cheap premium variant, clamp a real price,
+invent a payment date or replace a customer contribution.
 
 Menu item and serving notes are audit-ledger evidence, not new legacy-table
 columns or a claim that the old UI displays menu provenance. Existing schema

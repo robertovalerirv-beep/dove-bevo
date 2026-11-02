@@ -48,7 +48,7 @@ class NoGoogleTests(unittest.TestCase):
         for field, value in (("google_reviews", 0), ("google_reviews", 101),
                              ("google_url", "https://www.google.com/maps/place/example"),
                              ("currency", "GBP"), ("hh", 1), ("conditions", "EUR 2 service"),
-                             ("menu_item", ""), ("serving_note", ""), ("source_format", "browser")):
+                             ("menu_item", ""), ("menu_item", "   "), ("serving_note", ""), ("serving_note", "   "), ("source_format", "browser")):
             with self.subTest(field=field, value=value):
                 self.record.clear(); self.record.update(original); self.record[field] = value
                 with self.assertRaises(m.Error): self.run_import()

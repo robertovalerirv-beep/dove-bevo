@@ -5,16 +5,34 @@ import static org.junit.Assert.*;
 import android.app.Instrumentation;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.graphics.Bitmap;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
+import android.view.InputDevice;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.webkit.WebView;
+import android.widget.LinearLayout;
+import android.widget.Spinner;
+import android.widget.TextView;
 import androidx.test.platform.app.InstrumentationRegistry;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Instant;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.json.JSONObject;
+import org.json.JSONArray;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -28,6 +46,8 @@ public final class PublicBrowseRuntimeTest {
     private SharedPreferences rules;
     private boolean hadRulesVersion;
     private String priorRulesVersion;
+    private File captureDirectory;
+    private final JSONArray capturedImages = new JSONArray();
 
     // Read only fixed, bounded public document state. Never retain body text, query tokens or storage.
     private static final String STATE = """
@@ -39,6 +59,8 @@ public final class PublicBrowseRuntimeTest {
             /just a moment|checking your browser|verify you are human|enable javascript and cookies to continue|verifica di essere umano/i.test(title + ' ' + (document.body?.innerText || '').slice(0, 2048));
           const options = [...document.querySelectorAll('[role="listbox"] [role="option"]')];
           const milano = options.filter(o => /-p[0-9]+$/.test(o.id) && o.querySelector('.row__name')?.textContent.trim() === 'Milano');
+          const v = window.visualViewport, r = canvas?.getBoundingClientRect();
+          const sheet = document.querySelector('dialog[open]')?.getBoundingClientRect();
           return {origin: location.origin, path: location.pathname.slice(0,100), title, challenge,
             marker: document.documentElement.getAttribute('data-dovebevo-mobile-shell') === '1',
             search: !!document.querySelector('header.top button.search-field'),
@@ -46,6 +68,18 @@ public final class PublicBrowseRuntimeTest {
             milanoOptions: milano.length, ready: map?.getAttribute('data-ready') === 'true',
             center: (map?.getAttribute('data-center') || '').slice(0,60),
             zoom: Number(map?.getAttribute('data-zoom') || 0),
+            venueHeading: (document.querySelector('h2.scontrino__name')?.textContent || '').trim().slice(0,120),
+            viewport: {innerWidth,innerHeight,dpr:devicePixelRatio,scrollX,scrollY,
+              clientWidth:document.documentElement.clientWidth,clientHeight:document.documentElement.clientHeight,
+              bodyWidth:document.body?.getBoundingClientRect().width,bodyHeight:document.body?.getBoundingClientRect().height,
+              documentWidth:document.documentElement.scrollWidth,documentHeight:document.documentElement.scrollHeight,
+              meta:(document.querySelector('meta[name="viewport"]')?.content || '').slice(0,200),
+              visual:v?{width:v.width,height:v.height,scale:v.scale,left:v.offsetLeft,top:v.offsetTop}:null,
+              canvas:r?{left:r.left,top:r.top,width:r.width,height:r.height}:null,
+              sheet:sheet?{left:sheet.left,top:sheet.top,width:sheet.width,height:sheet.height}:null,
+              overflow:[...document.querySelectorAll('body *')].map(e=>{const r=e.getBoundingClientRect();
+                return {tag:e.tagName,cls:(typeof e.className==='string'?e.className:'').slice(0,80),
+                  x:r.x,y:r.y,w:r.width,h:r.height};}).filter(r=>r.w>0&&r.h>0&&(r.x<0||r.x+r.w>document.documentElement.clientWidth+2)).slice(0,20)},
             canvas: !!canvas && canvas.width > 0 && canvas.height > 0 && canvas.clientWidth > 0 && canvas.clientHeight > 0};
         })()
         """;
@@ -154,6 +188,223 @@ public final class PublicBrowseRuntimeTest {
         // Small public state only, suitable for instrumentation output; no screenshots or raw HTML.
         Bundle result = new Bundle();
         result.putString("public_browse", "PASS marker + actual Milano city option + map readiness; " + finalState);
+        instrumentation.sendStatus(0, result);
+    }
+
+    @Test(timeout = 240000) public void storeCaptureShowsActualMilanoMapDiscoveryAndVenue() throws Exception {
+        // A second explicit opt-in is required. Normal public browsing never captures pixels.
+        Assume.assumeTrue("Store capture requires -e storeCapture true in addition to publicBrowse",
+                "true".equals(InstrumentationRegistry.getArguments().getString("storeCapture")));
+        PackageInfo app = instrumentation.getTargetContext().getPackageManager()
+                .getPackageInfo(instrumentation.getTargetContext().getPackageName(), 0);
+        assertEquals("Capture only the intended build number", 62L, app.getLongVersionCode());
+        assertEquals("1.0.0", app.versionName);
+        captureDirectory = new File(instrumentation.getTargetContext().getFilesDir(),
+                "store-captures-20261102/" + UUID.randomUUID());
+        assertTrue("Create a fresh owned app capture directory", captureDirectory.mkdirs());
+        awaitVisibleBrowser();
+        awaitState("initial-mobile-document", 45,
+                s -> s.optBoolean("marker") && s.optBoolean("search"));
+        Thread.sleep(800);
+        Bundle initialProbe = new Bundle(); initialProbe.putString("store_initial_state", new JSONObject(evaluate(STATE)).toString());
+        instrumentation.sendStatus(0, initialProbe);
+        capture("diagnostic-initial-page", new JSONObject(evaluate(STATE)), app);
+        tapDocumentControl("document.querySelector('header.top button.search-field')");
+        awaitState("search-input", 10, s -> s.optBoolean("input"));
+        tapDocumentControl("document.querySelector('input[role=\"combobox\"][aria-autocomplete=\"list\"]')");
+        instrumentation.sendStringSync("Milano");
+        awaitState("milano-city-option", 30, s -> s.optInt("milanoOptions") == 1);
+        dismissVisibleKeyboard();
+        awaitState("search-after-keyboard", 5, s -> s.optBoolean("input") && s.optInt("milanoOptions") == 1);
+        tapDocumentControl("[...document.querySelectorAll('[role=\"listbox\"] [role=\"option\"]')].find(o => /-p[0-9]+$/.test(o.id) && o.querySelector('.row__name')?.textContent.trim() === 'Milano')");
+        awaitState("milano-map", 60, PublicBrowseRuntimeTest::milanoMapReady);
+        Thread.sleep(1500); // Let the genuine map's paint/transition settle after its readiness signal.
+        JSONObject mapState = new JSONObject(evaluate(STATE));
+        assertVisibleMapGeometry(mapState);
+        capture("milano-map", mapState, app);
+
+        onMain(() -> {
+            View home = activity.findViewById(R.id.home);
+            assertTrue(home.isShown() && home.isEnabled());
+            home.performClick();
+        });
+        awaitDiscovery(false);
+        onMain(() -> ((Spinner) activity.findViewById(R.id.discovery_drink))
+                .setSelection(RecommendationDrink.BEER_DRAFT.ordinal()));
+        JSONObject discovery = awaitDiscovery(true);
+        Thread.sleep(400);
+        capture("milano-native-scopri-beer", discovery, app);
+
+        onMain(() -> {
+            LinearLayout rows = activity.findViewById(R.id.discovery_rows);
+            assertTrue("Open only an actually returned production venue", rows.getChildCount() > 0);
+            View open = rows.getChildAt(0).findViewById(R.id.discovery_open);
+            assertTrue(open.isShown() && open.isEnabled());
+            open.performClick();
+        });
+        awaitState("actual-venue", 45,
+                s -> s.optBoolean("marker") && !s.optString("venueHeading").isEmpty());
+        Thread.sleep(500);
+        JSONObject venueState = new JSONObject(evaluate(STATE));
+        assertVisibleVenueGeometry(venueState);
+        capture("milano-actual-venue", venueState, app);
+    }
+
+    private static void assertVisibleMapGeometry(JSONObject state) throws Exception {
+        JSONObject viewport = state.getJSONObject("viewport"), visual = viewport.getJSONObject("visual");
+        JSONObject canvas = viewport.getJSONObject("canvas");
+        double left = visual.getDouble("left"), top = visual.getDouble("top");
+        double width = visual.getDouble("width"), height = visual.getDouble("height");
+        double visibleWidth = Math.max(0, Math.min(left + width, canvas.getDouble("left") + canvas.getDouble("width"))
+                - Math.max(left, canvas.getDouble("left")));
+        double visibleHeight = Math.max(0, Math.min(top + height, canvas.getDouble("top") + canvas.getDouble("height"))
+                - Math.max(top, canvas.getDouble("top")));
+        assertTrue("The actual map must be visible, not merely ready behind a panned viewport: " + viewport,
+                visibleWidth >= canvas.getDouble("width") * 0.95 && visibleHeight >= canvas.getDouble("height") * 0.95);
+    }
+
+    private static void assertVisibleVenueGeometry(JSONObject state) throws Exception {
+        JSONObject viewport = state.getJSONObject("viewport"), visual = viewport.getJSONObject("visual");
+        JSONObject sheet = viewport.getJSONObject("sheet");
+        assertTrue("The venue sheet must fit the actual visible phone width: " + viewport,
+                sheet.getDouble("left") >= visual.getDouble("left") - 2
+                && sheet.getDouble("left") + sheet.getDouble("width") <= visual.getDouble("left") + visual.getDouble("width") + 2);
+    }
+
+    private JSONObject awaitDiscovery(boolean requireRows) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(65);
+        AtomicReference<JSONObject> measured = new AtomicReference<>();
+        while (System.nanoTime() < deadline) {
+            onMain(() -> {
+                View screen = activity.findViewById(R.id.discovery_screen);
+                TextView status = activity.findViewById(R.id.discovery_status);
+                LinearLayout rows = activity.findViewById(R.id.discovery_rows);
+                Spinner drink = activity.findViewById(R.id.discovery_drink);
+                View refresh = activity.findViewById(R.id.discovery_refresh);
+                JSONObject value = new JSONObject();
+                try {
+                    value.put("screen", "native-scopri");
+                    value.put("visible", screen != null && screen.isShown());
+                    value.put("status", status == null ? "" : status.getText().toString());
+                    value.put("rows", rows == null ? 0 : rows.getChildCount());
+                    value.put("drink", drink == null ? -1 : drink.getSelectedItemPosition());
+                    value.put("settled", refresh != null && refresh.isEnabled());
+                } catch (org.json.JSONException invalid) { throw new AssertionError(invalid); }
+                measured.set(value);
+            });
+            JSONObject value = measured.get();
+            if (value.optBoolean("visible") && value.optBoolean("settled")
+                    && (!requireRows || (value.optInt("rows") > 0
+                    && value.optInt("drink") == RecommendationDrink.BEER_DRAFT.ordinal()))) return value;
+            Thread.sleep(200);
+        }
+        fail("Actual native Scopri data not ready; no fixture or synthetic fallback: " + measured.get());
+        return measured.get();
+    }
+
+    private void awaitVisibleBrowser() throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(45);
+        AtomicReference<Boolean> ready = new AtomicReference<>(false);
+        while (System.nanoTime() < deadline) {
+            onMain(() -> ready.set(web.isShown() && web.hasWindowFocus() && web.getWidth() > 0 && web.getHeight() > 0));
+            if (ready.get()) return;
+            Thread.sleep(100);
+        }
+        fail("Do not touch an invisible or unfocused loading browser");
+    }
+
+    private void tapDocumentControl(String fixedExpression) throws Exception {
+        JSONObject point = new JSONObject(evaluate("(() => { const e=" + fixedExpression
+                + "; if (!e || e.disabled) return {}; const r=e.getBoundingClientRect(),v=visualViewport;"
+                + "return {x:r.left+r.width/2-(v?.offsetLeft||0),y:r.top+r.height/2-(v?.offsetTop||0),width:r.width,height:r.height}; })()"));
+        AtomicReference<float[]> measured = new AtomicReference<>();
+        AtomicReference<Integer> imeBottom = new AtomicReference<>(0);
+        onMain(() -> {
+            int[] origin = new int[2]; web.getLocationOnScreen(origin);
+            measured.set(new float[]{origin[0], origin[1], web.getScale(), web.getWidth(), web.getHeight()});
+            if (Build.VERSION.SDK_INT >= 30 && activity.getWindow().getDecorView().getRootWindowInsets() != null) {
+                WindowInsets insets = activity.getWindow().getDecorView().getRootWindowInsets();
+                if (insets.isVisible(WindowInsets.Type.ime())) imeBottom.set(insets.getInsets(WindowInsets.Type.ime()).bottom);
+            }
+        });
+        assertTrue("Actual visible control must have geometry", point.optDouble("width") > 0 && point.optDouble("height") > 0);
+        float[] frame = measured.get();
+        float x = (float) point.getDouble("x") * frame[2], y = (float) point.getDouble("y") * frame[2];
+        assertTrue("Do not click an off-screen control", x >= 0 && x < frame[3] && y >= 0 && y < frame[4]);
+        Bundle probe = new Bundle();
+        probe.putString("store_pointer_geometry", point + " origin=" + frame[0] + "," + frame[1]
+                + " scale=" + frame[2] + " native=" + frame[3] + "x" + frame[4] + " imeBottom=" + imeBottom.get());
+        instrumentation.sendStatus(0, probe);
+        assertTrue("Do not inject into the keyboard window", imeBottom.get() == 0
+                || frame[1] + y < activity.getResources().getDisplayMetrics().heightPixels - imeBottom.get());
+        long time = SystemClock.uptimeMillis();
+        MotionEvent down = MotionEvent.obtain(time, time, MotionEvent.ACTION_DOWN, frame[0]+x, frame[1]+y, 0);
+        down.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        try { instrumentation.sendPointerSync(down); } finally { down.recycle(); }
+        Thread.sleep(50);
+        MotionEvent up = MotionEvent.obtain(time, SystemClock.uptimeMillis(), MotionEvent.ACTION_UP, frame[0]+x, frame[1]+y, 0);
+        up.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        try { instrumentation.sendPointerSync(up); } finally { up.recycle(); }
+    }
+
+    private void dismissVisibleKeyboard() throws Exception {
+        AtomicReference<Boolean> visible = new AtomicReference<>(false);
+        onMain(() -> {
+            WindowInsets insets = activity.getWindow().getDecorView().getRootWindowInsets();
+            visible.set(Build.VERSION.SDK_INT >= 30 && insets != null && insets.isVisible(WindowInsets.Type.ime()));
+        });
+        if (!visible.get()) return;
+        instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_BACK);
+        Thread.sleep(500);
+    }
+
+    private void capture(String name, JSONObject publicState, PackageInfo app) throws Exception {
+        assertNotNull("Capture directory exists only after explicit opt-in", captureDirectory);
+        instrumentation.waitForIdleSync();
+        Bitmap image = instrumentation.getUiAutomation().takeScreenshot();
+        assertNotNull("UiAutomation must return the original owned-emulator frame", image);
+        File target = new File(captureDirectory, name + ".png");
+        assertTrue("Never overwrite an original capture", target.createNewFile());
+        int width = image.getWidth(), height = image.getHeight();
+        try (FileOutputStream stream = new FileOutputStream(target)) {
+            assertTrue(image.compress(Bitmap.CompressFormat.PNG, 100, stream));
+            stream.getFD().sync();
+        } finally { image.recycle(); }
+        StringBuilder hash = new StringBuilder();
+        for (byte value : MessageDigest.getInstance("SHA-256").digest(java.nio.file.Files.readAllBytes(target.toPath())))
+            hash.append(String.format(java.util.Locale.ROOT, "%02x", value & 255));
+        capturedImages.put(new JSONObject().put("file", target.getName()).put("width", width)
+                .put("height", height).put("sha256", hash.toString()).put("captured_at", Instant.now().toString())
+                .put("public_state", publicState));
+        JSONObject provenance = new JSONObject().put("schema_version", 1).put("package", app.packageName)
+                .put("version_name", app.versionName).put("version_code", app.getLongVersionCode())
+                .put("sdk_int", Build.VERSION.SDK_INT).put("device_model", Build.MODEL)
+                .put("method", "Instrumentation UiAutomation.takeScreenshot; original lossless PNG; no edits")
+                .put("production_https", "https://www.dovebevo.com").put("public_contributions", 0)
+                .put("images", capturedImages);
+        AtomicReference<JSONObject> frame = new AtomicReference<>();
+        onMain(() -> {
+            try {
+                frame.set(new JSONObject().put("width", web.getWidth()).put("height", web.getHeight())
+                        .put("scroll_x", web.getScrollX()).put("scroll_y", web.getScrollY())
+                        .put("scale", web.getScale()).put("wide_viewport", web.getSettings().getUseWideViewPort())
+                        .put("overview", web.getSettings().getLoadWithOverviewMode())
+                        .put("text_zoom", web.getSettings().getTextZoom()));
+                if (Build.VERSION.SDK_INT >= 30 && activity.getWindow().getDecorView().getRootWindowInsets() != null) {
+                    WindowInsets insets = activity.getWindow().getDecorView().getRootWindowInsets();
+                    android.graphics.Insets ime = insets.getInsets(WindowInsets.Type.ime());
+                    frame.get().put("ime_visible", insets.isVisible(WindowInsets.Type.ime())).put("ime_bottom", ime.bottom);
+                }
+            } catch (org.json.JSONException invalid) { throw new AssertionError(invalid); }
+        });
+        capturedImages.getJSONObject(capturedImages.length() - 1).put("native_web_frame", frame.get());
+        try (FileOutputStream stream = new FileOutputStream(new File(captureDirectory, "provenance.json"))) {
+            stream.write((provenance.toString(2) + "\n").getBytes(StandardCharsets.UTF_8));
+            stream.getFD().sync();
+        }
+        Bundle result = new Bundle();
+        result.putString("store_capture_directory", captureDirectory.getAbsolutePath());
+        result.putString("store_capture_image", target.getName() + " sha256=" + hash);
         instrumentation.sendStatus(0, result);
     }
 

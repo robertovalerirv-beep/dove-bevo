@@ -4,6 +4,23 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-11-02 · MF-02 a `passes: true` (ramo `docs/mf-02-passes`)
+
+**Richiesta di Roberto:** registrare la verifica a mano di MF-02 e chiudere la voce in una PR unica.
+
+**Fatto:** in `docs/feature_list.json` cambia solo `passes` di MF-02, da `false` a `true`. Nessuna modifica a SPEC, codice o test.
+
+**Prove**
+- Parte automatica della verifica (indirizzi scaricati, `Cache-Control` lungo `immutable`, nessuna richiesta nuova al tocco, CSP senza violazioni): `tests/e2e/map-warmup.spec.ts`, già in CI verde su `main`. Dopo la PR #101 l'e2e su Chromium e WebKit è verde.
+- Parte a mano (che il tocco non riscarichi nulla, con cache vera e rete lenta, su telefono): **Roberto conferma in chat il 02/11/2026 che è ok.** Non ha detto quale telefono né con quale rete: non lo scrivo.
+- `node scripts/check-feature-list.mjs`: ok, cambia solo `passes` (129 su 134).
+
+**Attenzione:** questa voce corregge quanto scritto il 28/10 («resta `false`: su iPhone il download in anticipo non migliora il primo tocco», ADR 0040). Se la prova di Roberto non riguarda un iPhone, quel limite su Safari non è smentito: il ripiego dopo 3 s della PR #101 ora fa partire il download anche dove manca l'LCP, ma l'effetto su Safari resta da misurare. Se Roberto indica il contrario, si rimette a `false`.
+
+**Restano `false`:** M6-01…M6-05 (a carico di Roberto: segreti dell'ambiente vivo, rollback, v0.1.0, smoke test sul dominio vivo).
+
+---
+
 ## 2026-11-01 · SPEC 1.16 e correzioni dalla revisione della 1.15 (ramo `fix/review-1-15`)
 
 **Richiesta di Roberto:** una PR unica con tutto ciò che i tre revisori aggiornati hanno trovato sul commit `1272b30` (SPEC 1.15). SPEC 1.16 decisa da Roberto il 01/11/2026 in chat («tutto dentro»).

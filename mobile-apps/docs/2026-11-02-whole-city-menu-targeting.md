@@ -11,3 +11,9 @@ The JSON contains each retained venue's exact key, name, cell, city, coordinates
 `remaining_menu_eligible` is always null: unpriced records do not establish an available current official menu, safe fee conditions or guarded import eligibility. Existing `discover_menu_links.py`, importer guards, public data and backend contracts are unchanged.
 
 Offline tests: `python -B -m unittest discover -s mobile-apps/tools/menu-seed -p test_city_inventory.py -v`. Tests inject fake GET results and never contact the network.
+
+## Live Windows verification
+
+The first direct health request returned HTTP 403 with the default Python user agent. The same strict public request with the descriptive DoveBevoMenuAudit/1 header returned HTTP 200 JSON. The helper now identifies these bounded public reads; its URL, proxy, redirect, MIME and response-size restrictions are unchanged. A live inventory also exposed cp1252 stdout failure on a real Unicode venue name. CLI JSON now escapes Unicode losslessly, with a regression that round-trips Unicode through a Windows legacy output encoding. All 15 inventory and 11 discovery tests pass.
+
+The repeat read on 2 November 2026 retained data version 20261101 before and after, and matched each full published static count: Milano 682, Roma 547, Torino 359 and Napoli 215 (1,803 total). Observed priced venues / category rows were respectively 29/71, 4/14, 9/36 and 5/14. Known public unpriced venues were 653, 543, 350 and 210. These are menu-research targets, not verified import eligibility or a complete price-history count. Conservative complete remains false: 8, 22, 21 and 25 surrounding-cell requests respectively failed, even though catalogue counts reconcile. No failed cell was treated as empty or absence evidence. The summary is retained in mobile-apps/data/italy-city-inventory-20261102.json; the command can produce full exact venue targets locally.

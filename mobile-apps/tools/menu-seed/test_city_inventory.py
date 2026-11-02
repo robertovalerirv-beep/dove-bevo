@@ -1,6 +1,7 @@
 """No-network tests for the bounded public city inventory."""
 import copy
 from email.message import Message
+import io
 import json
 import threading
 import time
@@ -194,6 +195,16 @@ class InventoryTests(unittest.TestCase):
 
 
 class TransportTests(unittest.TestCase):
+    def test_cli_json_survives_a_windows_legacy_stdout_encoding(self):
+        payload = {"complete": False, "cities": [{"name": "Bār 🍸"}]}
+        raw = io.BytesIO()
+        output = io.TextIOWrapper(raw, encoding="cp1252")
+        with patch.object(core, "inventory", return_value=payload), \
+                patch("sys.argv", ["inventory_city_prices.py"]), patch("sys.stdout", output):
+            self.assertEqual(core.main(), 1)
+        output.flush()
+        self.assertEqual(json.loads(raw.getvalue().decode("ascii")), payload)
+
     def test_allowlist_and_redirect_refusal(self):
         self.assertTrue(core.allowed_url(core.ORIGIN + "/api/health"))
         self.assertIsNone(core.NoRedirect().redirect_request(None, None, None, None, None, None))
@@ -242,6 +253,7 @@ class TransportTests(unittest.TestCase):
         with patch.object(core, "build_opener", return_value=opener):
             self.assertEqual(core.public_json(response.url), {"data_version": "20261101"})
             self.assertEqual(opener.request.get_method(), "GET")
+            self.assertEqual(opener.request.get_header("User-agent"), "DoveBevoMenuAudit/1")
             self.assertEqual(opener.timeout, core.TIMEOUT)
             self.assertEqual(response.requested_limit, core.LIMIT + 1)
             self.assertNotIn("Authorization", opener.request.headers)

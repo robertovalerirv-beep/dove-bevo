@@ -115,7 +115,8 @@ def public_json(url):
         raise Invalid("request_not_allowed")
     # Disable environment proxies; no ambient proxy credentials or cookie handlers.
     opener = build_opener(ProxyHandler({}), NoRedirect())
-    request = Request(url, headers={"Accept": "application/json"}, method="GET")
+    request = Request(url, headers={"Accept": "application/json",
+                                    "User-Agent": "DoveBevoMenuAudit/1"}, method="GET")
     with opener.open(request, timeout=TIMEOUT) as response:
         if response.status != 200 or response.geturl() != url:
             raise Invalid("unexpected_http_response")
@@ -319,7 +320,7 @@ def main():
         result = inventory(args.city or DEFAULT_CITIES)
     except Invalid as error:
         result = {"complete": False, "errors": [{"error": str(error)}]}
-    print(json.dumps(result, ensure_ascii=False, allow_nan=False, sort_keys=True))
+    print(json.dumps(result, ensure_ascii=True, allow_nan=False, sort_keys=True))
     return 0 if result["complete"] else 1
 
 

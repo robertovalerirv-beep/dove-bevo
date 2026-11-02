@@ -50,7 +50,11 @@ final class PriceShareSnapshot {
           const u = new URL(location.href);
           if (u.protocol !== 'https:' || !['www.dovebevo.com','dovebevo.com'].includes(u.hostname) ||
               u.username || u.password || (u.port && u.port !== '443') || u.hash ||
-              !/^\\/mobile\\/(?:index\\.html)?$/.test(u.pathname) || [...u.searchParams].length !== 2 ||
+              !/^\\/mobile\\/(?:index\\.html)?$/.test(u.pathname) || ![2,4].includes([...u.searchParams].length) ||
+              [...u.searchParams.keys()].some(k=>!['path','c','drink','hh'].includes(k)) ||
+              (u.searchParams.has('drink') || u.searchParams.has('hh') ?
+                u.searchParams.getAll('drink').length!==1 || u.searchParams.getAll('hh').length!==1 ||
+                !['beer_draft','spritz','negroni','sbagliato','gin_tonic','gin_lemon','wine_glass','alcohol_free','water'].includes(u.searchParams.get('drink')) || !/^[01]$/.test(u.searchParams.get('hh')||'') : [...u.searchParams].length!==2) ||
               u.searchParams.getAll('path').length !== 1 || u.searchParams.getAll('c').length !== 1 ||
               !/^[0-9b-hjkmnp-z]{5}$/.test(u.searchParams.get('c') || '')) return null;
           const match = /^\\/bar\\/([nwru][1-9][0-9]{0,14})$/.exec(u.searchParams.get('path') || '');

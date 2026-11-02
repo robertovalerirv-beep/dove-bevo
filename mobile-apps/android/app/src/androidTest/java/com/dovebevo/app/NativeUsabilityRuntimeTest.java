@@ -151,6 +151,10 @@ public final class NativeUsabilityRuntimeTest {
                         callback -> invoke("readSavedVenue", new Class<?>[]{Consumer.class}, callback),
                         url -> invoke("navigate", new Class<?>[]{String.class}, url));
                 set("savedVenues", savedUi);
+                set("savedDrinks", new SavedDrinkUi(activity,new SavedDrinkStore(new SavedVenueFile(fixtureDirectory,"saved-drinks-v1")),
+                        () -> (String) invoke("eligibleSavedVenue"),
+                        callback -> invoke("readFeaturedDrink",new Class<?>[]{Consumer.class},callback),
+                        () -> savedUi.saveCurrent(), () -> (Long)get("venueCaptureEpoch")));
                 invoke("updateToolbar");
             } catch (Exception error) { throw new AssertionError(error); }
         });
@@ -179,10 +183,17 @@ public final class NativeUsabilityRuntimeTest {
         }
     }
 
-    @Test public void oneActionBookmarkUsesActualHeadingWithoutAFormAndPersistsOpensAndRemoves() throws Exception {
+    @Test public void explicitSaveChooserKeepsVenueBookmarkWithoutAFormAndPersistsOpensAndRemoves() throws Exception {
         navigate(ONE);
         WebView original = web;
         onMain(() -> activity.findViewById(R.id.save_venue).performClick());
+        onMain(() -> {
+            try {
+                Field field=SavedDrinkUi.class.getDeclaredField("dialog");field.setAccessible(true);
+                AlertDialog choice=(AlertDialog)field.get(get("savedDrinks"));assertTrue(choice.isShowing());
+                choice.getWindow().getDecorView().findViewWithTag("save_choice_venue").performClick();
+            } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+        });
         await(() -> "Locale di prova".equals(savedLabel()));
         onMain(() -> {
             assertNull(currentDialog());

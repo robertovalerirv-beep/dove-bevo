@@ -1,0 +1,50 @@
+{
+  "schema": "dovebevo-testlab-runtime-evidence/v1",
+  "checkedAtUtc": "2026-10-28T12:56:29.528669+00:00",
+  "sourceCommitAtTestBuild": "8e1c4288f91f81a4a3aa0f2b9a8857b6c641045c",
+  "productionFenceCommit": "31bc063",
+  "testHarnessCommit": "fafaddb",
+  "deviceKind": "owned local headless emulator",
+  "apiLevel": 36,
+  "webViewProvider": "com.google.android.webview",
+  "physicalDeviceVerified": false,
+  "buildType": "debug with instrumentation; not a store release",
+  "buildNumber": 20,
+  "appApkSHA256": "16a8e379082297a2ba069be8be061d65dffa207c60f5efa37041a7d44b26e7ae",
+  "testApkSHA256": "4a8967139e118ef3f1c9b562a6de47ce50696696fb3fc1662fa9551482a7fc3b",
+  "instrumentationTests": 2,
+  "passed": 2,
+  "durationSeconds": 1.131,
+  "fixtureOrigin": "https://dovebevo-runtime.invalid",
+  "readOnly": {
+    "pageGetStatus": 200,
+    "workerGetStatus": 200,
+    "pagePostStatus": 403,
+    "workerPostStatus": 403,
+    "pagePostCallbacks": 1,
+    "workerPostCallbacks": 1,
+    "pageLocalPosts": 0,
+    "workerLocalPosts": 0,
+    "workerUnregistered": true
+  },
+  "normalControl": {
+    "pageGetStatus": 200,
+    "workerGetStatus": 200,
+    "pagePostStatus": 200,
+    "workerPostStatus": 200,
+    "pagePostCallbacks": 1,
+    "workerPostCallbacks": 1,
+    "pageLocalPosts": 1,
+    "workerLocalPosts": 1,
+    "workerUnregistered": true
+  },
+  "nativeBannerVerifiedWithDocumentedFlag": true,
+  "temporaryFlagRestoredToMissing": true,
+  "publicContributionsMade": false,
+  "limits": [
+    "Tests cover actual shared WebView and service-worker clients for fixture GET and POST on this runtime",
+    "No general network firewall or universal review environment guarantee",
+    "Popup and external action wiring independently source reviewed; not part of instrumentation cases",
+    "Signed production bundle verification and store review remain separate"
+  ]
+}

@@ -1,0 +1,9 @@
+evidence/
+__pycache__/
+.DS_Store
+*.p8
+*.p12
+*.pfx
+*.keystore
+*.jks
+.env

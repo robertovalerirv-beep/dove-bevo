@@ -1,0 +1,49 @@
+{
+  "capturedAtDate": "2026-10-28",
+  "appId": "com.dovebevo.app",
+  "versionName": "1.0.0",
+  "versionCode": 14,
+  "sourceCommit": "bbc6aa21709904ea001160a36a2f8b0792ab5cbc",
+  "artifactRunId": 40664068073,
+  "apkSha256": "7e1324f830b9861a03d6d5888155fbee983194738e519c5f59dff2d5db8fab6b",
+  "device": "Owned Android 16 API 36 emulator",
+  "captureMethod": "Android SDK screencap after foreground and keyboard checks",
+  "content": "Existing live public website and venues; no test contributions created",
+  "reconstructionOrResizing": false,
+  "physicalDeviceVerification": false,
+  "publicReleaseEstablished": false,
+  "files": [
+    {
+      "file": "01-home.png",
+      "sha256": "f644a34a6f7381caf04e9e06a0a4c9de1337c36e2fff7ad27f2c47df11c087fb",
+      "width": 1080,
+      "height": 1920,
+      "encoding": "Original Android SDK PNG with fully opaque alpha",
+      "pixelChanges": "none"
+    },
+    {
+      "file": "02-milano-search.png",
+      "sha256": "fb7737c9a0954ac923879f0435d75882beee519f4bac5c3071935671debf4d1b",
+      "width": 1080,
+      "height": 1920,
+      "encoding": "Original Android SDK PNG with fully opaque alpha",
+      "pixelChanges": "none"
+    },
+    {
+      "file": "03-milano-map.png",
+      "sha256": "24798a54c86225ff7ae8dbfcfc5050a7804ad50a63ca4609f51695b20b12a617",
+      "width": 1080,
+      "height": 1920,
+      "encoding": "Original Android SDK PNG with fully opaque alpha",
+      "pixelChanges": "none"
+    },
+    {
+      "file": "04-existing-venue.png",
+      "sha256": "f29564742db9886f64c7d43009ee2353f0cfdaba02005ab5e31a362e1d1760d9",
+      "width": 1080,
+      "height": 1920,
+      "encoding": "Original Android SDK PNG with fully opaque alpha",
+      "pixelChanges": "none"
+    }
+  ]
+}

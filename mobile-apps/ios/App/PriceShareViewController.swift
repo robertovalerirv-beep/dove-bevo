@@ -14,7 +14,7 @@ import UIKit
         }
         let titleStyle = attributes(52, weight: .bold), venueStyle = attributes(38, weight: .semibold)
         let detailStyle = attributes(27, color: NativeAppearance.muted)
-        let location = [value.location, value.serving, value.happyHour ? "Happy hour" : ""].filter { !$0.isEmpty }.joined(separator: " · ")
+        let location = [value.location, value.servingLabel, value.bandLabel].filter { !$0.isEmpty }.joined(separator: " · ")
         let provenanceHeight = height(value.provenance, detailStyle)
         let locationHeight = location.isEmpty ? 0 : height(location, detailStyle) + 12
         let bodyHeight = height(value.drinkName, titleStyle) + height(value.venueName, venueStyle) + provenanceHeight + locationHeight
@@ -50,10 +50,8 @@ import UIKit
             draw(value.venueName, style: venueStyle)
             if !location.isEmpty { draw(location, style: detailStyle) }
             draw(value.provenance, style: detailStyle)
-            let count = value.confirmations == 1 ? "1 conferma" : "\(value.confirmations) conferme"
-            draw(count, style: detailStyle)
-            let labels = ["affare": "Affare", "giusto": "Giusto", "salato": "Salato"]
-            if let tier = labels[value.tier] {
+            draw(value.confirmationLabel, style: detailStyle)
+            if let tier = value.tierLabel {
                 let color: UIColor = value.tier == "affare" ? UIColor(red: 0.14, green: 0.43, blue: 0.21, alpha: 1)
                     : value.tier == "salato" ? UIColor(red: 0.65, green: 0.17, blue: 0.22, alpha: 1) : NativeAppearance.ink
                 draw(tier, style: attributes(30, weight: .semibold, color: color))
@@ -85,7 +83,7 @@ final class PriceShareViewController: UIViewController {
         let preview = UIImageView(image: image); preview.contentMode = .scaleAspectFit
         preview.isAccessibilityElement = true
         preview.accessibilityIdentifier = "share.poster"
-        preview.accessibilityLabel = "\(snapshot.drinkName), \(snapshot.amount), \(snapshot.venueName). \(snapshot.serving). \(snapshot.provenance). \(snapshot.confirmations) conferme. Immagine illustrativa del drink."
+        preview.accessibilityLabel = snapshot.accessibilityDescription
         let scroll = UIScrollView(); scroll.translatesAutoresizingMaskIntoConstraints = false
         preview.translatesAutoresizingMaskIntoConstraints = false; scroll.addSubview(preview); view.addSubview(scroll)
         shareButton.configuration = NativeAppearance.button(primary: true)

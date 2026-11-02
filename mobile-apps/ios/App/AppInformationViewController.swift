@@ -70,7 +70,9 @@ final class AppInformationViewController: UITableViewController {
         content.textProperties.font = .preferredFont(forTextStyle: .body)
         content.textProperties.numberOfLines = 0; content.imageProperties.tintColor = NativeAppearance.ink
         if item.2 == "version" {
-            content.secondaryText = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+            let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+            let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+            content.secondaryText = "\(version) (\(build))"
         }
         content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 12)
         cell.contentConfiguration = content; cell.backgroundConfiguration = NativeAppearance.card()

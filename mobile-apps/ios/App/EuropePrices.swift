@@ -184,9 +184,8 @@ enum EuropeJSON {
             let servingValid = (code == "beer_draft" || code == "water") ? unit == "ml" : (code == "wine_glass" ? unit == "glass" : unit == "drink" && volume == nil)
             guard (rawServing["ml"] == nil || volume != nil), (unit != "ml" || volume != nil),
                   servingValid else { throw ComparisonReadError.invalidData }
-            let bounds: ClosedRange<Int> = currency == "EUR" ? drink.allowedCents : (code == "water" ? 1...1500 : (code == "beer_draft" || code == "alcohol_free" ? 100...3000 : 100...5000))
             let observed = day(row["observed_on"], today: today), confirmed = day(row["confirmed_on"], today: today)
-            guard bounds.contains(amount), (row["observed_on"] is NSNull || observed != nil),
+            guard let bounds = drink.allowedCents(currency: currency), bounds.contains(amount), (row["observed_on"] is NSNull || observed != nil),
                   (row["confirmed_on"] is NSNull || confirmed != nil),
                   let confirmations = ComparisonJSON.integer(row["confirmations"]),
                   let status = row["status"] as? String, ["active","quarantined"].contains(status),

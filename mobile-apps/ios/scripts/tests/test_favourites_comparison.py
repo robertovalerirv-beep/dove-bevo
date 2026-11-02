@@ -130,8 +130,12 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn('app.buttons["tab.map"].isSelected', save)
         dismiss = ui.split("private func dismissMoreMenu()", 1)[1].split("private func interactiveMap()", 1)[0]
         self.assertIn('app.buttons["Informazioni"]', dismiss)
-        self.assertIn('app.alerts["Dove bevo"]', dismiss)
-        self.assertIn('alert.buttons["Chiudi"].tap()', dismiss)
+        self.assertIn("returnFromNativeInformation()", dismiss)
+        information = ui.split("private func returnFromNativeInformation()", 1)[1].split("private func assertNoSharePresentation()", 1)[0]
+        self.assertIn('app.navigationBars["Altro"]', information)
+        self.assertIn('app.tables["information.list"]', information)
+        self.assertIn('buttons["Torna alla mappa"]', information)
+        self.assertNotIn('app.alerts["Dove bevo"]', dismiss)
         self.assertNotIn(".coordinate(", dismiss)
         self.assertIn('app.buttons["tab.map"].isSelected', dismiss)
         self.assertIn('app.otherElements["ShareSheet.RemoteContainerView"].exists', dismiss)

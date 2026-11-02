@@ -17,7 +17,7 @@ const vm = require('node:vm');
 const {URL} = require('node:url');
 const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const results = input.cases.map((scenario) => {
-  const s = Object.assign({href:'https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9',name:'Actual venue',selected:'n123',marker:true,priceCount:1,hidden:false,priceY:100,modal:true,priceKey:'n123',priceName:'Actual venue',version:'1',provenance:'Da menu online · Fonte verificata il 2026-11-02'},scenario);
+  const s = Object.assign({href:'https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9',name:'Actual venue',selected:'n123',marker:true,priceCount:1,hidden:false,priceY:100,modal:true,dialogCount:1,priceKey:'n123',priceName:'Actual venue',version:'1',provenance:'Da menu online · Fonte verificata il 2026-11-02'},scenario);
   const rect=(y)=>({x:0,y,left:0,top:y,right:300,bottom:y+100,width:300,height:100});
   const body={parentElement:null,getAttribute:()=>null,closest:()=>null};
   const heading={parentElement:body,isConnected:true,textContent:s.name,closest:()=>null,getBoundingClientRect:()=>rect(20),getClientRects:()=>[1]};
@@ -33,6 +33,7 @@ const results = input.cases.map((scenario) => {
   const document={documentElement:{getAttribute:()=>s.marker?'1':null},querySelectorAll:(selector)=>{
     if(selector==='section.map[data-selected]')return[map];
     if(selector==='dialog.sheet[open]')return[dialog];
+    if(selector==='dialog[open]')return Array(s.dialogCount).fill(dialog);
     throw new Error('unexpected document selector');
   },querySelector:(selector)=>{
     if(selector==='dialog.sheet.sheet--bare[open]')return dialog;
@@ -74,7 +75,7 @@ class PriceShareReaderTests(unittest.TestCase):
                      {"href":"https://www.dovebevo.com/bar/n123?c=u0nd9"},
                      {"marker":False}, {"selected":"n124"}, {"priceKey":"n124"}, {"priceName":"Wrong venue"},
                      {"hidden":True}, {"priceCount":0}, {"priceCount":2}, {"priceY":800},
-                     {"modal":False}, {"iframe":True}, {"provenance":"a" * 1025}]
+                     {"modal":False}, {"dialogCount":2}, {"iframe":True}, {"provenance":"a" * 1025}]
         self.assertEqual(self.run_reader(scenarios), [None] * len(scenarios))
 
     def test_approved_jpegs_are_byte_exact_and_every_category_has_real_photo(self):

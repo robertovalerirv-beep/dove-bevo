@@ -22,6 +22,41 @@ final class PriceShareTests: XCTestCase {
         var legacy = fields(); legacy["currency"] = "EUR"; legacy["serving"] = ""; legacy["location"] = ""
         let euro = try XCTUnwrap(PriceShareSnapshot.parse(legacy, currentURL: document))
         XCTAssertEqual(euro.amount, "6,50 €"); XCTAssertEqual(euro.serving, "")
+        XCTAssertTrue(euro.servingLabel.contains("Formato non dichiarato"))
+        XCTAssertTrue(euro.accessibilityDescription.contains("Happy hour"))
+        XCTAssertTrue(euro.accessibilityDescription.contains("Affare"))
+        legacy["hh"] = "0"
+        let normal = try XCTUnwrap(PriceShareSnapshot.parse(legacy, currentURL: document))
+        XCTAssertTrue(normal.accessibilityDescription.contains("Prezzo normale"))
+        XCTAssertTrue(normal.accessibilityDescription.contains("0 conferme"))
+        XCTAssertTrue(value.accessibilityDescription.contains("London"))
+    }
+
+    func testEveryCategoryUsesExistingCurrencyBoundsAndRejectsValuesOutsideThem() {
+        let categories: [(String, Int, Int, Int, Int)] = [
+            ("beer_draft", 250, 1200, 100, 3000), ("spritz", 250, 1500, 100, 5000),
+            ("negroni", 400, 2000, 100, 5000), ("sbagliato", 400, 2000, 100, 5000),
+            ("gin_tonic", 400, 2000, 100, 5000), ("gin_lemon", 400, 2000, 100, 5000),
+            ("wine_glass", 200, 1500, 100, 5000), ("alcohol_free", 200, 1200, 100, 3000),
+            ("water", 50, 600, 1, 1500)
+        ]
+        for (drink, euroMin, euroMax, poundMin, poundMax) in categories {
+            for (currency, low, high) in [("EUR", euroMin, euroMax), ("GBP", poundMin, poundMax)] {
+                var data = fields(); data["drink"] = drink; data["currency"] = currency
+                for cents in [low, high] {
+                    data["amountMinor"] = String(cents)
+                    XCTAssertNotNil(PriceShareSnapshot.parse(data, currentURL: document), "\(drink) \(currency) \(cents)")
+                }
+                for cents in [low - 1, high + 1] {
+                    data["amountMinor"] = String(cents)
+                    XCTAssertNil(PriceShareSnapshot.parse(data, currentURL: document), "\(drink) \(currency) \(cents)")
+                }
+            }
+        }
+        var oneCent = fields(); oneCent["currency"] = "EUR"; oneCent["amountMinor"] = "1"
+        XCTAssertNil(PriceShareSnapshot.parse(oneCent, currentURL: document))
+        var thousandPounds = fields(); thousandPounds["amountMinor"] = "100000"
+        XCTAssertNil(PriceShareSnapshot.parse(thousandPounds, currentURL: document))
     }
 
     func testWrongIdentityMalformedCurrencyCountsTextAndVersionHaveNoPoster() {
@@ -76,6 +111,19 @@ final class PriceShareTests: XCTestCase {
         XCTAssertEqual(activity.excludedActivityTypes, [.saveToCameraRoll], "This sharing feature does not add photo-library access")
     }
 
+    @MainActor func testReferenceSharePrivateFixtureCapturesActualPosterPreview() throws {
+        let snapshot = try XCTUnwrap(PriceShareSnapshot.parse(fields(), currentURL: document))
+        let controller = PriceShareViewController(snapshot: snapshot, publicURL: MobileEntry.shareURL(document))
+        let mounted = try OwnedReferenceWindow(root: UINavigationController(rootViewController: controller))
+        defer { mounted.close() }
+        let image = try XCTUnwrap(descendants(controller.view).first { $0.accessibilityIdentifier == "share.poster" })
+        XCTAssertTrue(image.window === mounted.window)
+        for expected in ["6,50 £", "Drink singolo", "Happy hour", "0 conferme", "London", "Affare", snapshot.provenance] {
+            XCTAssertTrue(image.accessibilityLabel?.contains(expected) == true, expected)
+        }
+        mounted.attach(to: self, name: "Share-poster-GBP-HH")
+    }
+
     @MainActor func testActualIsolatedWebKitReaderRequiresCurrentVisibleVenueAndSinglePriceMarker() throws {
         let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 700), configuration: WKWebViewConfiguration())
         let loaded = expectation(description: "Owned share fixture")
@@ -100,6 +148,8 @@ final class PriceShareTests: XCTestCase {
         XCTAssertTrue(try evaluate(web, "(\(PriceShareReader.script))===null") as? Bool == true)
         _ = try evaluate(web, "document.querySelector('#price').setAttribute('data-venue','n123');document.querySelector('#price').after(document.querySelector('#price').cloneNode(true));true")
         XCTAssertTrue(try evaluate(web, "(\(PriceShareReader.script))===null") as? Bool == true)
+        _ = try evaluate(web, "document.querySelectorAll('#price')[1].remove();const unrelated=document.createElement('dialog');unrelated.textContent='Owned unrelated modal';document.body.append(unrelated);unrelated.showModal();true")
+        XCTAssertTrue(try evaluate(web, "(\(PriceShareReader.script))===null") as? Bool == true, "The underlying venue is implicitly inert behind any other modal")
     }
 
     @MainActor private func evaluate(_ web: WKWebView, _ script: String) throws -> Any {

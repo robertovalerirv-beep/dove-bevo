@@ -7,6 +7,14 @@ enum ComparisonBand: Int, CaseIterable {
 }
 
 extension DrinkCategory {
+    func allowedCents(currency: String) -> ClosedRange<Int>? {
+        if currency == "EUR" { return allowedCents }
+        guard currency == "GBP" else { return nil }
+        if code == "water" { return 1...1500 }
+        if code == "beer_draft" || code == "alcohol_free" { return 100...3000 }
+        return 100...5000
+    }
+
     var allowedCents: ClosedRange<Int> {
         switch code {
         case "beer_draft": return 250...1200

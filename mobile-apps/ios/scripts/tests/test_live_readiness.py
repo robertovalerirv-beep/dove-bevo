@@ -27,10 +27,22 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertNotIn("BEGINSWITH", query)
 
     def test_live_city_and_euro_matchers_keep_utf8_literals(self):
-        for required in ['website.buttons["Cerca citt\u00e0 o bar"]', '"Citt\u00e0"', '"\u20ac"']:
+        for required in ['Cerca citt\u00e0 o bar', '"Citt\u00e0"', '"\u20ac"']:
             self.assertIn(required, self.source)
         for damaged in ["\u00c3\u00a0", "\u00e2\u201a\u00ac", "\ufffd"]:
             self.assertNotIn(damaged, self.source)
+
+    def test_city_search_uses_anchored_label_and_exact_selected_city_without_loosening_map_readiness(self):
+        query = self.source.split("private func citySearchPredicate(", 1)[1].split("private func interactiveMap()", 1)[0]
+        for required in ["NSRegularExpression.escapedPattern(for: $0)", 'label MATCHES %@',
+                         "{1,120}", "citySearchPredicate(city: city)", "website.buttons.matching"]:
+            self.assertIn(required, query)
+        self.assertIn(chr(92) * 2 + "A", query)
+        self.assertIn(chr(92) * 2 + "z", query)
+        self.assertNotIn("CONTAINS", query)
+        self.assertIn('citySearchButton(in: website, city: "Milano")', self.source)
+        self.assertIn("hasVisiblePositiveCoverage()", self.source)
+        self.assertIn('website.buttons.matching(citySearchPredicate()).count, 1', self.source)
 
     def test_original_field_receives_one_real_focus_tap_and_keyboard_readiness_before_typing(self):
         live = self.source.split("func testLiveWebsiteCitySearchAndMap()", 1)[1].split("\n    private func", 1)[0]

@@ -17,6 +17,15 @@ struct PriceShareSnapshot: Equatable {
     let location: String
 
     var amount: String { String(format: "%d,%02d %@", amountMinor / 100, amountMinor % 100, currency == "GBP" ? "£" : "€") }
+    var servingLabel: String { serving.isEmpty ? "Formato non dichiarato (dati precedenti)" : serving }
+    var bandLabel: String { happyHour ? "Happy hour" : "Prezzo normale" }
+    var confirmationLabel: String { confirmations == 1 ? "1 conferma" : "\(confirmations) conferme" }
+    var tierLabel: String? { ["affare": "Affare", "giusto": "Giusto", "salato": "Salato"][tier] }
+    var accessibilityDescription: String {
+        [drinkName, amount, venueName, servingLabel, bandLabel, location, provenance,
+         confirmationLabel, tierLabel ?? "", "Immagine illustrativa del drink, non foto del locale"]
+            .filter { !$0.isEmpty }.joined(separator: ". ")
+    }
 
     static func parse(_ value: Any?, currentURL: URL) -> PriceShareSnapshot? {
         guard MobileEntry.isDocument(currentURL), let canonical = SavedVenuePolicy.canonicalURL(currentURL),
@@ -24,11 +33,12 @@ struct PriceShareSnapshot: Equatable {
               fields["href"] as? String == currentURL.absoluteString, fields["version"] as? String == "1",
               let key = fields["venue"] as? String, key == canonical.lastPathComponent,
               let name = text(fields["venueName"], maximum: 120),
-              let drink = fields["drink"] as? String, DrinkCategory.all.contains(where: { $0.code == drink }),
+              let drink = fields["drink"] as? String, let category = DrinkCategory.all.first(where: { $0.code == drink }),
               let drinkName = text(fields["drinkName"], maximum: 80),
               let hh = fields["hh"] as? String, ["0", "1"].contains(hh),
               let amount = integer(fields["amountMinor"], minimum: 1, maximum: 100_000),
               let currency = fields["currency"] as? String, ["EUR", "GBP"].contains(currency),
+              let bounds = category.allowedCents(currency: currency), bounds.contains(amount),
               let serving = text(fields["serving"], maximum: 160, allowEmpty: true),
               let provenance = text(fields["provenance"], maximum: 1024),
               let confirmations = integer(fields["confirmations"], minimum: 0, maximum: 1_000_000),
@@ -59,7 +69,7 @@ enum PriceShareReader {
     static let script = #"""
     (() => {
         "use strict";
-        if (window.top !== window) return null;
+        if (window.top !== window || document.querySelectorAll("dialog[open]").length !== 1) return null;
         const context = (\#(VenueNameReader.script));
         if (!context || !/^\/mobile\/(?:index\.html)?$/.test(new URL(context.href).pathname) ||
             document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1") return null;

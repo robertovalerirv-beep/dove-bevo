@@ -6,19 +6,34 @@ MANIFEST = Path(__file__).resolve().parents[2] / "data/italy-menu-seed-20261102-
 class BatchMTests(unittest.TestCase):
     def test_exact_reviewed_batch_preserves_major_city_scope(self):
         raw=MANIFEST.read_bytes()
-        self.assertEqual(hashlib.sha256(raw).hexdigest(), "74c49cf6a88e2edaebddc16e0e857fd5764e86d64902dd9ee147121b9b9077d4")
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), "2ef7584a20bfd0d422739bd33c63413fa600a4e61af00f0ca9f7b4781f33b449")
         doc=core.validate(raw)
         self.assertEqual(doc["schema_version"], 4)
-        self.assertEqual(len(doc["records"]), 6)
-        self.assertEqual(len({r["venue_key"] for r in doc["records"]}), 3)
+        self.assertEqual(len(doc["records"]), 13)
+        self.assertEqual(len({r["venue_key"] for r in doc["records"]}), 4)
         cities={r["city"] for r in doc["records"]}
-        self.assertEqual(len(cities), 3)
-        self.assertTrue(cities == {63621589, 61753360, 66586322})
+        self.assertEqual(len(cities), 4)
+        self.assertTrue(cities == {63621589, 61753360, 66586322, 72959652})
     def test_no_google_evidence_or_customer_payment_claim_is_present(self):
         doc=core.validate(MANIFEST.read_bytes())
         for record in doc["records"]:
             self.assertFalse({"google_reviews","google_url","paid_on","observed_on"} & set(record))
             self.assertEqual((record["currency"],record["hh"],record["conditions"]), ("EUR",0,"none"))
+
+    def test_exact_published_static_identity_tuples(self):
+        doc=core.validate(MANIFEST.read_bytes())
+        expected={
+            "n5257878293": ("Birrificio La Piazza", "u0j2q", 63621589, 45.08192, 7.65963),
+            "n2361866569": ("Kikuya", "srb0b", 61753360, 43.76857, 11.26012),
+            "n911863120": ("Bar degli Aperitivi", "spyke", 66586322, 44.40287, 8.94321),
+            "n5730113518": ("Roma Beer Company - Ponte Milvio", "sr2ye", 72959652, 41.93733, 12.46672),
+        }
+        observed={}
+        for row in doc["records"]:
+            tuple_value=(row["name"],row["cell"],row["city"],row["lat"],row["lon"])
+            self.assertEqual(tuple_value, expected[row["venue_key"]])
+            observed[row["venue_key"]]=tuple_value
+        self.assertEqual(observed,expected)
 
 class ReceiptBindingTests(unittest.TestCase):
     def make_receipt(self):

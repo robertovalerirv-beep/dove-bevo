@@ -16,3 +16,9 @@ The canonical UTF-8/LF `plan.json` targets only Dove Bevo app 6827324444, versio
 All paths are relative to this directory. Copies and checksums were verified, every PNG chunk's CRC and IHDR were checked, and the plan bytes were independently compared with Node `JSON.stringify(plan, null, 2) + "\n"`. There are no symlinks or path escapes. `checks.json` records those local checks; it is not an upload receipt or provider approval.
 
 This source package changes no app code, store metadata or provider state. Upload and final store acceptance remain separate verified operations.
+
+## Provider follow-through
+
+On 2 November 2026, the coordinator uploaded these six exact files through App Store Connect's current App Previews and Screenshots controls. Processing finished for all six before the previous placements were removed. The originals remain recoverable in Apple's Asset Library. A fresh page reload confirmed three current iPhone placements and three current iPad placements, in map, venue, favourites order. Build 62 remains selected; this is screenshot preparation, not public app approval or submission.
+
+The legacy screenshot-set inventory and `plan.json` above are historical provenance, not a resumable description of the current Asset Library placements. Do not reapply that plan. A legacy API attempt stopped after creating one unused reservation, before uploading bytes or removing originals; that exact unused reservation was separately verified and removed, then read back as absent. Current placements were verified again afterward. No private physical-device recording is part of this package; Apple's requested review recording remains separate.

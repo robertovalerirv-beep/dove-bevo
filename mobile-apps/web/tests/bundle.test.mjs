@@ -455,7 +455,10 @@ test("orange mobile controls retain readable selected, unselected and focused dr
     await f.page.goto("https://mobile.fixture.test/mobile/");
     const strip = f.page.locator(".mobile-drink-strip");
     await strip.waitFor();
-    assert.equal(await f.page.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"), "true");
+    assert.equal(
+      await f.page.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
     await strip.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     for (const name of ["Spritz", "Birra media"]) {
       const option = strip

@@ -354,9 +354,7 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
   return request;
 }
 /** The unfiltered view counts real entries; a menu count is never a drink price. */
-export function mobileAllCount(
-  venue: Venue,
-): { count: number; kind: "menu" | "reported" } | null {
+export function mobileAllCount(venue: Venue): { count: number; kind: "menu" | "reported" } | null {
   const menuCount = (venue as WithMenu).mobileMenuCount ?? 0;
   if (menuCount > 0) return { count: menuCount, kind: "menu" };
   const reportedCount = venue.prices.filter((row) => row[6] === 0).length;

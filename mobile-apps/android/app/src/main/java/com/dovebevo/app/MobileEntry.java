@@ -28,7 +28,7 @@ final class MobileEntry {
             if (query.size() != 2) return null;
             String path = URLDecoder.decode(query.get("path"), StandardCharsets.UTF_8.name());
             String cell = query.get("c");
-            if (!path.matches("/bar/[nwru][1-9][0-9]{0,14}") || !cell.matches("[0-9b-hjkmnp-z]{5}")) return null;
+            if (!path.matches("/bar/(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})") || !cell.matches("[0-9b-hjkmnp-z]{5}")) return null;
             return "https://www.dovebevo.com" + path + "?c=" + cell;
         } catch (Exception invalid) { return null; }
     }

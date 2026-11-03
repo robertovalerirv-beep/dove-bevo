@@ -23,7 +23,7 @@ enum MobileEntry {
               items.count == 2, Set(items.map(\.name)) == ["path", "c"],
               let path = items.first(where: { $0.name == "path" })?.value,
               let cell = items.first(where: { $0.name == "c" })?.value,
-              path.range(of: #"\A/bar/[nwru][1-9][0-9]{0,14}\z"#, options: .regularExpression) != nil,
+              path.range(of: #"\A/bar/(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})\z"#, options: .regularExpression) != nil,
               cell.range(of: #"\A[0-9b-hjkmnp-z]{5}\z"#, options: .regularExpression) != nil else { return nil }
         return URL(string: "https://www.dovebevo.com\(path)?c=\(cell)")
     }

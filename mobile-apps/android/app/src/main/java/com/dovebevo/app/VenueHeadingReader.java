@@ -14,7 +14,7 @@ final class VenueHeadingReader {
               if (mobile && (document.documentElement.getAttribute('data-dovebevo-mobile-shell') !== '1' ||
                   [...route.searchParams].length !== 2 || route.searchParams.getAll('path').length !== 1 ||
                   route.searchParams.getAll('c').length !== 1 || !/^[0-9b-hjkmnp-z]{5}$/.test(route.searchParams.get('c') || ''))) return null;
-              const match = /^\\/bar\\/([nwru][1-9][0-9]{0,14})$/.exec(mobile ? route.searchParams.get('path') || '' : route.pathname);
+              const match = /^\\/bar\\/((?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24}))$/.exec(mobile ? route.searchParams.get('path') || '' : route.pathname);
               const maps = document.querySelectorAll('section.map[data-selected]');
               if (!match || maps.length !== 1 || maps[0].getAttribute('data-selected') !== match[1]) return null;
               const dialogs = document.querySelectorAll('dialog.sheet[open]');

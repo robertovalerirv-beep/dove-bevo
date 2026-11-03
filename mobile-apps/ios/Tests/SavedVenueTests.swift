@@ -14,6 +14,23 @@ final class SavedVenueTests: XCTestCase {
                        "https://www.dovebevo.com/bar/u7?c=u0nd9")
     }
 
+    func testCatalogueVenueLinksRequireExactLowercaseHexAndCanonicalOrigin() throws {
+        let key = "m000000000000000000000007"
+        let canonical = "https://www.dovebevo.com/bar/\(key)?c=u0nd9"
+        XCTAssertEqual(SavedVenuePolicy.canonicalURL(URL(string: canonical))?.absoluteString, canonical)
+        XCTAssertEqual(SavedVenuePolicy.canonicalURL(URL(string: "https://DOVEBEVO.COM:443/bar/\(key)?c=u0nd9"))?.absoluteString, canonical)
+        XCTAssertEqual(try SavedVenuePolicy.venue(url: XCTUnwrap(URL(string: canonical)), label: "  Bar verificato  ").label, "Bar verificato")
+        for invalid in [
+            "https://www.dovebevo.com/bar/m00000000000000000000000A?c=u0nd9",
+            "https://www.dovebevo.com/bar/m00000000000000000000000?c=u0nd9",
+            "https://www.dovebevo.com/bar/m0000000000000000000000001?c=u0nd9",
+            "https://www.dovebevo.com/bar/m00000000000000000000000g?c=u0nd9",
+            "https://www.dovebevo.com/bar/%6d000000000000000000000001?c=u0nd9",
+            "https://www.dovebevo.com/bar/\(key)?c=u0nd9&token=private",
+            "https://evil.example/bar/\(key)?c=u0nd9"
+        ] { XCTAssertNil(SavedVenuePolicy.canonicalURL(URL(string: invalid)), invalid) }
+    }
+
     func testNonVenueAndAmbiguousLinksCannotBeSaved() {
         for input in [
             "https://www.dovebevo.com/", "https://www.dovebevo.com/?at=45.46,9.19",

@@ -135,7 +135,10 @@ def public_fetch(transport,address,maximum,content_kind=None,resolver=None):
                 raise Error("source resolves to non-public address")
         except (OSError,ValueError,IndexError,TypeError) as exc:
             raise Error("source DNS validation failed") from exc
-    raw=transport.fetch(address,maximum)  # v1 Transport uses a no-redirect opener.
+    try:
+        raw=transport.fetch(address,maximum)  # v1 Transport uses a no-redirect opener.
+    except legacy.Error as exc:
+        raise Error(str(exc)) from None
     if type(raw) is not bytes or not 1<=len(raw)<=maximum:
         raise Error("invalid public response size")
     header=raw[:8192].lower().lstrip()
@@ -573,7 +576,15 @@ def source_identity(row,transport,cache,offers):
     key=(row["source_url"],row["source_format"])
     if key not in cache:
         content_kind={"html_text_v1":"html","pdf_text_v1":"pdf","json_menu_v1":"json"}[row["source_format"]]
-        source_raw=public_fetch(transport,row["source_url"],MAX_SOURCE,content_kind)
+        # Re-resolve the public address on one bounded retry of a transport timeout.
+        # Redirects, HTTP errors, and changed content are never retried or accepted.
+        for attempt in range(2):
+            try:
+                source_raw=public_fetch(transport,row["source_url"],MAX_SOURCE,content_kind)
+                break
+            except Error as exc:
+                if str(exc)!="public source timeout" or attempt:
+                    raise
         cache[key]=(source_digests(source_raw,row["source_format"]),source_raw)
     hashes,source_raw=cache[key]
     if hashes!=(row["source_sha256"],row["source_text_sha256"]):

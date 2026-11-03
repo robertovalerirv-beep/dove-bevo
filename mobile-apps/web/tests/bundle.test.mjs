@@ -112,8 +112,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
       };
       const offer = {
         id: "offer-1",
-        name: "Spritz speciale",
-        category: "spritz",
+        name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
+        category: options.uncategorized ? null : "spritz",
         serving: { label: "Calice", ml: null },
         amount_minor: 750,
         currency: "EUR",
@@ -134,7 +134,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         identity_url: "https://official.fixture.test/",
         identity_kind: "owner_verified",
         matching_offer_count: categories.length ? 1 : 1,
-        sample_offers: categories.includes("spritz") ? [offer] : [],
+        sample_offers:
+          !options.uncategorized && categories.includes("spritz") ? [offer] : [],
         fee_coverage: { status: "unknown", source: null },
       };
       return route.fulfill({
@@ -146,7 +147,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
           category: null,
           categories: categories.length ? categories : null,
           venues:
-            cell === "u0nd9" && (!categories.length || categories.includes("spritz"))
+            cell === "u0nd9" &&
+            (!categories.length || (!options.uncategorized && categories.includes("spritz")))
               ? [venue]
               : [],
           next_after: null,
@@ -182,8 +184,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
           offers: [
             {
               id: "offer-1",
-              name: "Spritz speciale",
-              category: "spritz",
+              name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
+              category: options.uncategorized ? null : "spritz",
               serving: { label: "Calice", ml: null },
               amount_minor: 750,
               currency: "EUR",

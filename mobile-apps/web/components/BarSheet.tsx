@@ -1,4 +1,10 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "preact/hooks";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "preact/hooks";
 import type { PriceRow, VenuePrices } from "@site/shared/api-types";
 import { currentLang, it } from "@site/app/i18n/lang";
 import { loadCell, loadVenuePrices, type Venue } from "@site/app/lib/data";
@@ -12,9 +18,20 @@ import { HoursList, VerifiedBadge } from "@site/app/components/Verified";
 import { drinkImage } from "@mobile/drink-images";
 import { sharePresentation } from "../share-presentation";
 import { DrinkHero } from "./DrinkHero";
-import { loadMenuPage, menuMoney, mobileMenuVenue, type MenuPage, type MenuFee } from "../menu-v2";
+import {
+  loadMenuPage,
+  menuMoney,
+  mobileMenuVenue,
+  type MenuPage,
+  type MenuFee,
+} from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
-import { menuOfferMatchesFocus, mobileFocus, mobileOfferFocus, mobilePath } from "../routes";
+import {
+  menuOfferMatchesFocus,
+  mobileFocus,
+  mobileOfferFocus,
+  mobilePath,
+} from "../routes";
 import "./sheets.css";
 
 export interface BarActions {
@@ -49,7 +66,9 @@ const rowId = (row: PriceRow) => `${row[1]}|${String(row[2])}`;
 const CONFIRMED_KEY = "dovebevo-confirmed";
 function confirmedHere(): Set<string> {
   try {
-    return new Set(JSON.parse(sessionStorage.getItem(CONFIRMED_KEY) ?? "[]") as string[]);
+    return new Set(
+      JSON.parse(sessionStorage.getItem(CONFIRMED_KEY) ?? "[]") as string[],
+    );
   } catch {
     return new Set();
   }
@@ -82,19 +101,29 @@ function PriceItem({
   const [, drink, hh, cents, day, confirmations] = row;
   const id = `${row[0]}|${rowId(row)}|${String(cents)}`;
   const [count, setCount] = useState(confirmations);
-  const [state, setState] = useState<"idle" | "busy" | "done" | "already" | "failed">(() => {
+  const [state, setState] = useState<
+    "idle" | "busy" | "done" | "already" | "failed"
+  >(() => {
     const seen = confirmedHere();
-    return seen.has(`${id}|1`) ? "done" : seen.has(`${id}|0`) ? "already" : "idle";
+    return seen.has(`${id}|1`)
+      ? "done"
+      : seen.has(`${id}|0`)
+        ? "already"
+        : "idle";
   });
-  const name = [it.drinks[drink] ?? drink, hh ? it.bar.happyHour : ""].filter(Boolean).join(" ");
+  const name = [it.drinks[drink] ?? drink, hh ? it.bar.happyHour : ""]
+    .filter(Boolean)
+    .join(" ");
   const [expanded, setExpanded] = useState(false);
   const actionsId = useId();
   const toggle = useRef<HTMLButtonElement>(null);
   const controls = useRef<HTMLSpanElement>(null);
   const focusedToggle =
-    typeof document !== "undefined" && toggle.current === document.activeElement;
+    typeof document !== "undefined" &&
+    toggle.current === document.activeElement;
   const focusedControls =
-    typeof document !== "undefined" && controls.current?.contains(document.activeElement);
+    typeof document !== "undefined" &&
+    controls.current?.contains(document.activeElement);
   useLayoutEffect(() => {
     if (featured && focusedToggle)
       controls.current
@@ -142,7 +171,14 @@ function PriceItem({
     >
       <span class="price__icon">
         {artwork ? (
-          <img src={artwork} width="1536" height="1024" alt="" decoding="async" loading="lazy" />
+          <img
+            src={artwork}
+            width="1536"
+            height="1024"
+            alt=""
+            decoding="async"
+            loading="lazy"
+          />
         ) : (
           <Icon name={drinkIcon(drink)} />
         )}
@@ -161,10 +197,14 @@ function PriceItem({
       </span>
       <span class="price__meta" aria-live="polite">
         {formatDate(day)} · {it.bar.confirmations(count)}
-        {isStale(day, todayRome()) && <span class="price__stale"> · {it.bar.toConfirm}</span>}
+        {isStale(day, todayRome()) && (
+          <span class="price__stale"> · {it.bar.toConfirm}</span>
+        )}
       </span>
       {featured && tier !== "neutro" && (
-        <span class={`mobile-price__tier mobile-price__tier--${tier}`}>{it.map.tiers[tier]}</span>
+        <span class={`mobile-price__tier mobile-price__tier--${tier}`}>
+          {it.map.tiers[tier]}
+        </span>
       )}
       <button
         ref={toggle}
@@ -186,12 +226,19 @@ function PriceItem({
             : "Azioni sul prezzo"}
         <span class="sr-only"> · {name}</span>
       </button>
-      <span ref={controls} id={actionsId} class="price__actions" hidden={!showActions}>
+      <span
+        ref={controls}
+        id={actionsId}
+        class="price__actions"
+        hidden={!showActions}
+      >
         <button
           type="button"
           class="btn btn--secondary"
           // aria-disabled keeps the focus on the button (WCAG 2.4.3); clicks are ignored above.
-          aria-disabled={state === "idle" || state === "failed" ? undefined : "true"}
+          aria-disabled={
+            state === "idle" || state === "failed" ? undefined : "true"
+          }
           onClick={() => void confirm()}
         >
           {state === "done"
@@ -253,7 +300,15 @@ function menuFeeAmount(fee: MenuFee): string {
   return `${amount} ${basis}`;
 }
 
-export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
+export function BarSheet({
+  venueKey,
+  cell,
+  actions,
+  focus,
+  tier,
+  onVenue,
+  onClose,
+}: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
@@ -300,7 +355,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     void loadCell(cell)
       .then((legacy) => {
         if (!active || venueKey.startsWith("m")) return;
-        const found = legacy.find((row) => row.key === venueKey && !row.pending) ?? null;
+        const found =
+          legacy.find((row) => row.key === venueKey && !row.pending) ?? null;
         setVenue(found);
         if (found) onVenue(found);
       })
@@ -354,7 +410,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     controller.signal.addEventListener("abort", cancelPage, { once: true });
     const timeout = setTimeout(cancelPage, 6000);
     try {
-      const page = await loadMenuPage(venueKey, cell, after, pageController.signal);
+      const page = await loadMenuPage(
+        venueKey,
+        cell,
+        after,
+        pageController.signal,
+      );
       if (!page) throw new Error("Menu vanished");
       if (controller.signal.aborted) return;
       const existing = new Set(menu.offers.map((offer) => offer.id));
@@ -385,7 +446,14 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     )
       return;
     void loadMoreMenu();
-  }, [menu, menuMoreBusy, menuFailed, savedFocus?.drink, savedFocus?.hh, savedOfferFocus]);
+  }, [
+    menu,
+    menuMoreBusy,
+    menuFailed,
+    savedFocus?.drink,
+    savedFocus?.hh,
+    savedOfferFocus,
+  ]);
 
   if (venue === undefined) {
     return (
@@ -425,7 +493,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     savedFocus !== null && p[1] === savedFocus.drink && p[2] === savedFocus.hh;
   const active = [...(prices?.p.filter((p) => p[6] === 0) ?? [])].sort(
     (a, b) =>
-      Number(matchesSaved(b)) - Number(matchesSaved(a)) || Number(isFocus(b)) - Number(isFocus(a)),
+      Number(matchesSaved(b)) - Number(matchesSaved(a)) ||
+      Number(isFocus(b)) - Number(isFocus(a)),
   );
   const savedFound = active.some(matchesSaved);
   const menuFound = menu?.offers.some(matchesMenu) ?? false;
@@ -438,10 +507,17 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     !menu?.next_after &&
     (venueKey.startsWith("m") || prices !== null);
   const savedOfferMissing =
-    savedOfferFocus !== null && !menuLoading && !menuFailed && !menuFound && !menu?.next_after;
+    savedOfferFocus !== null &&
+    !menuLoading &&
+    !menuFailed &&
+    !menuFound &&
+    !menu?.next_after;
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
-  const venueKind = venueKey.startsWith("m") && venue.kind === 0 ? "Locale" : it.kinds[venue.kind];
+  const venueKind =
+    venueKey.startsWith("m") && venue.kind === 0
+      ? "Locale"
+      : it.kinds[venue.kind];
   const heroOffer = menu?.offers.find(matchesMenu);
   const heroDrink =
     savedOfferFocus !== null
@@ -451,7 +527,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           ? savedFocus.drink
           : null
         : (active.find(isFocus)?.[1] ??
-          menu?.offers.find((offer) => offer.category && focus.includes(offer.category))?.category ??
+          menu?.offers.find(
+            (offer) => offer.category && focus.includes(offer.category),
+          )?.category ??
           active[0]?.[1] ??
           menu?.offers.find((offer) => offer.category)?.category ??
           null);
@@ -460,7 +538,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
       <div class="scontrino mobile-venue">
         <DrinkHero drink={heroDrink} />
         <div class="scontrino__paper">
-          <p class="bar__kind">{[venueKind, venue.city].filter(Boolean).join(" · ")}</p>
+          <p class="bar__kind">
+            {[venueKind, venue.city].filter(Boolean).join(" · ")}
+          </p>
           <h2 class="scontrino__name" tabIndex={-1}>
             {venue.name}
           </h2>
@@ -483,20 +563,24 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           )}
           {savedMissing && (
             <p class="hint" role="status" data-testid="saved-drink-unavailable">
-              Il prezzo salvato per questo drink e orario non è più disponibile. Gli altri prezzi
-              del locale sono qui sotto.
+              Il prezzo salvato per questo drink e orario non è più disponibile.
+              Gli altri prezzi del locale sono qui sotto.
             </p>
           )}
           {savedOfferMissing && (
             <p class="hint" role="status" data-testid="saved-offer-unavailable">
-              Questo drink salvato non è più disponibile nel menu verificato. Gli altri prezzi del
-              locale sono qui sotto.
+              Questo drink salvato non è più disponibile nel menu verificato.
+              Gli altri prezzi del locale sono qui sotto.
             </p>
           )}
           <ul class="prices">
             {shown.flatMap((row, index) => [
               index === 1 && (
-                <li key="other-prices" class="mobile-price-section" role="presentation">
+                <li
+                  key="other-prices"
+                  class="mobile-price-section"
+                  role="presentation"
+                >
                   {currentLang() === "en" ? "Other prices" : "Altri prezzi"}
                 </li>
               ),
@@ -541,8 +625,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 <span>{menu.stored_offer_count} prezzi</span>
               </div>
               <p class="mobile-menu-v2__disclaimer">
-                Prezzi del drink indicati nel menu, non il totale pagato. Le condizioni e i
-                supplementi sono separati.
+                Prezzi del drink indicati nel menu, non il totale pagato. Le
+                condizioni e i supplementi sono separati.
               </p>
               <CustomerPricesV2
                 key={`${venueKey}:${cell}`}
@@ -568,13 +652,18 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                       <li key={fee.id}>
                         <span>{fee.label}</span>
                         <strong>{menuFeeAmount(fee)}</strong>
-                        {fee.applicability === "conditional" && fee.condition && (
-                          <small>Solo se: {fee.condition}</small>
-                        )}
+                        {fee.applicability === "conditional" &&
+                          fee.condition && (
+                            <small>Solo se: {fee.condition}</small>
+                          )}
                         {fee.applicability === "unknown" && (
                           <small>Applicazione da verificare</small>
                         )}
-                        <a href={fee.source.url} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={fee.source.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           Fonte verificata il {fee.source.checked_on}
                         </a>
                       </li>
@@ -585,10 +674,15 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   <p>Eventuali costi aggiuntivi non sono stati verificati.</p>
                 )}
                 {menu.fee_coverage.status === "documented_partial" && (
-                  <p>Questi supplementi sono documentati; potrebbero essercene altri.</p>
+                  <p>
+                    Questi supplementi sono documentati; potrebbero essercene
+                    altri.
+                  </p>
                 )}
                 {menu.fee_coverage.status === "explicit_no_fee" && (
-                  <p>Il menu consultato dichiara che non ci sono supplementi.</p>
+                  <p>
+                    Il menu consultato dichiara che non ci sono supplementi.
+                  </p>
                 )}
               </div>
             </section>
@@ -641,9 +735,13 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             <h3 class="section-title">{it.bar.inReview}</h3>
             <p class="hint">{it.bar.inReviewHelp}</p>
             {savedOfferMissing && (
-              <p class="hint" role="status" data-testid="saved-offer-unavailable">
-                Questo drink salvato non è più disponibile nel menu verificato. Gli altri prezzi del
-                locale sono qui sotto.
+              <p
+                class="hint"
+                role="status"
+                data-testid="saved-offer-unavailable"
+              >
+                Questo drink salvato non è più disponibile nel menu verificato.
+                Gli altri prezzi del locale sono qui sotto.
               </p>
             )}
             <ul class="prices">

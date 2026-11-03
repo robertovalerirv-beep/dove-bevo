@@ -17,7 +17,9 @@ before(async () => {
   const outputRoot = path.join(here, "dist");
   mkdirSync(outputRoot, { recursive: true });
   const outDir = mkdtempSync(path.join(outputRoot, "run-"));
-  assert.ok(path.resolve(outDir).startsWith(path.resolve(outputRoot) + path.sep));
+  assert.ok(
+    path.resolve(outDir).startsWith(path.resolve(outputRoot) + path.sep),
+  );
   await build({
     configFile: false,
     root,
@@ -41,15 +43,26 @@ before(async () => {
     build: {
       outDir,
       emptyOutDir: false,
-      lib: { entry: path.join(here, "fixture.tsx"), formats: ["es"], fileName: "fixture" },
+      lib: {
+        entry: path.join(here, "fixture.tsx"),
+        formats: ["es"],
+        fileName: "fixture",
+      },
       cssCodeSplit: false,
       rolldownOptions: { output: { assetFileNames: "[name][extname]" } },
     },
   });
-  files = new Map(readdirSync(outDir).map((name) => [name, readFileSync(path.join(outDir, name))]));
+  files = new Map(
+    readdirSync(outDir).map((name) => [
+      name,
+      readFileSync(path.join(outDir, name)),
+    ]),
+  );
   browser = await chromium.launch({
     headless: true,
-    ...(process.env.DOVEBEVO_BROWSER ? { executablePath: process.env.DOVEBEVO_BROWSER } : {}),
+    ...(process.env.DOVEBEVO_BROWSER
+      ? { executablePath: process.env.DOVEBEVO_BROWSER }
+      : {}),
   });
 });
 after(async () => {
@@ -63,13 +76,18 @@ const priceRows = [
 ];
 async function fixture(options = {}) {
   let menuFailures = options.menuFailOnce ? 1 : 0;
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+  });
   const page = await context.newPage();
   const writes = [];
   await page.route("**/*", (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
-    if (pathname === "/api/mobile/v2/customer-prices" && request.method() === "POST") {
+    if (
+      pathname === "/api/mobile/v2/customer-prices" &&
+      request.method() === "POST"
+    ) {
       const submitted = request.postDataJSON();
       writes.push(submitted);
       return route.fulfill({
@@ -112,7 +130,17 @@ async function fixture(options = {}) {
       return route.fulfill({
         json: {
           c: [[1, "Milano"]],
-          v: [["n123", "Locale di prova <strong>", 1, 45.4642, 9.19, "Via di prova 1", 0]],
+          v: [
+            [
+              "n123",
+              "Locale di prova <strong>",
+              1,
+              45.4642,
+              9.19,
+              "Via di prova 1",
+              0,
+            ],
+          ],
         },
       });
     if (pathname === "/api/prices/u0nd9")
@@ -126,14 +154,18 @@ async function fixture(options = {}) {
         },
       });
     if (pathname.startsWith("/api/mobile/v2/customer-prices/venues/")) {
-      const key = pathname.slice("/api/mobile/v2/customer-prices/venues/".length);
+      const key = pathname.slice(
+        "/api/mobile/v2/customer-prices/venues/".length,
+      );
       return route.fulfill({
         json: {
           schema_version: 1,
           venue: {
             key,
             cell: "u0nd9",
-            name: key.startsWith("m") ? "Locale nuovo" : "Locale di prova <strong>",
+            name: key.startsWith("m")
+              ? "Locale nuovo"
+              : "Locale di prova <strong>",
             country: "IT",
           },
           price_scope: "customer_reported_drink_item",
@@ -164,7 +196,8 @@ async function fixture(options = {}) {
         return new Promise(() => {
           // Deliberately keep this intercepted request unresolved.
         });
-      if (options.menuAbsent) return route.fulfill({ status: 404, body: "Not found" });
+      if (options.menuAbsent)
+        return route.fulfill({ status: 404, body: "Not found" });
       if (menuFailures > 0) {
         menuFailures--;
         return route.fulfill({ status: 503, body: "Try again" });
@@ -177,10 +210,16 @@ async function fixture(options = {}) {
         text_sha256: "a".repeat(64),
         checked_on: "2026-11-02",
       };
-      const offer = (id, name, amount, context = { kind: "regular", condition: null }) => ({
+      const offer = (
         id,
         name,
-        category: options.menuCategory === undefined ? "spritz" : options.menuCategory,
+        amount,
+        context = { kind: "regular", condition: null },
+      ) => ({
+        id,
+        name,
+        category:
+          options.menuCategory === undefined ? "spritz" : options.menuCategory,
         serving: { label: "Calice", ml: null },
         amount_minor: amount,
         currency: "EUR",
@@ -209,11 +248,24 @@ async function fixture(options = {}) {
           offers: after
             ? [offer("third", "Analcolico", 450)]
             : [
-                offer("first", options.menuCategory === null ? "Cocktail della casa" : "Spritz <script>", 750),
-                offer("second", options.menuCategory === null ? "Cocktail serale" : "Spritz serale", 550, {
-                  kind: "conditional",
-                  condition: "dopo le 18",
-                }),
+                offer(
+                  "first",
+                  options.menuCategory === null
+                    ? "Cocktail della casa"
+                    : "Spritz <script>",
+                  750,
+                ),
+                offer(
+                  "second",
+                  options.menuCategory === null
+                    ? "Cocktail serale"
+                    : "Spritz serale",
+                  550,
+                  {
+                    kind: "conditional",
+                    condition: "dopo le 18",
+                  },
+                ),
               ],
           next_after: after ? null : "second",
           fees: [
@@ -254,9 +306,15 @@ test("venue cards preserve escaped identity, current data and expandable real ac
       "Locale di prova <strong>",
     );
     assert.equal(await f.page.locator("h2.scontrino__name strong").count(), 0);
-    assert.equal(await f.page.locator(".bar__addr").textContent(), "Via di prova 1");
+    assert.equal(
+      await f.page.locator(".bar__addr").textContent(),
+      "Via di prova 1",
+    );
     const primary = f.page.locator(".mobile-price--featured");
-    assert.match(await primary.innerText(), /Spritz[\s\S]*6,00 €[\s\S]*2 conferme/);
+    assert.match(
+      await primary.innerText(),
+      /Spritz[\s\S]*6,00 €[\s\S]*2 conferme/,
+    );
     assert.equal(await primary.locator(".mobile-price__tier").count(), 0);
     assert.equal(await f.page.locator('[data-dovebevo-share="1"]').count(), 1);
     const share = await primary.evaluate((element) => ({ ...element.dataset }));
@@ -271,41 +329,66 @@ test("venue cards preserve escaped identity, current data and expandable real ac
     assert.equal(share.tier, "neutro");
     assert.equal(share.confirmations, "2");
     assert.match(share.provenance, /^Data del prezzo:/);
-    await primary.getByRole("button", { name: "Confermo", exact: true }).dblclick();
-    await primary.getByRole("button", { name: "Confermato", exact: true }).waitFor();
+    await primary
+      .getByRole("button", { name: "Confermo", exact: true })
+      .dblclick();
+    await primary
+      .getByRole("button", { name: "Confermato", exact: true })
+      .waitFor();
     assert.equal(await primary.getAttribute("data-confirmations"), "3");
     assert.equal(
       await f.page.evaluate(
-        () => window.sheetFixture.calls.filter((call) => call.kind === "confirm").length,
+        () =>
+          window.sheetFixture.calls.filter((call) => call.kind === "confirm")
+            .length,
       ),
       1,
     );
-    const secondary = f.page.locator("li.mobile-price").filter({ hasText: "Gin tonic" });
+    const secondary = f.page
+      .locator("li.mobile-price")
+      .filter({ hasText: "Gin tonic" });
     assert.equal(await secondary.locator(".price__meta").isVisible(), true);
-    assert.match(await secondary.locator(".price__meta").innerText(), /Da confermare/);
+    assert.match(
+      await secondary.locator(".price__meta").innerText(),
+      /Da confermare/,
+    );
     assert.equal(
-      await secondary.getByRole("button", { name: "È cambiato", exact: true }).count(),
+      await secondary
+        .getByRole("button", { name: "È cambiato", exact: true })
+        .count(),
       0,
     );
     await secondary.getByRole("button", { name: /Azioni sul prezzo/ }).click();
-    await secondary.getByRole("button", { name: "È cambiato", exact: true }).click();
+    await secondary
+      .getByRole("button", { name: "È cambiato", exact: true })
+      .click();
     assert.equal(
       await f.page.evaluate(() =>
         window.sheetFixture.calls.some(
-          (call) => call.kind === "changed" && call.venue === "n123" && call.drink === "gin_tonic",
+          (call) =>
+            call.kind === "changed" &&
+            call.venue === "n123" &&
+            call.drink === "gin_tonic",
         ),
       ),
       true,
     );
-    await f.page.getByRole("button", { name: "Aggiungi un prezzo qui", exact: true }).click();
+    await f.page
+      .getByRole("button", { name: "Aggiungi un prezzo qui", exact: true })
+      .click();
     assert.equal(
       await f.page.evaluate(() =>
-        window.sheetFixture.calls.some((call) => call.kind === "add" && call.venue === "n123"),
+        window.sheetFixture.calls.some(
+          (call) => call.kind === "add" && call.venue === "n123",
+        ),
       ),
       true,
     );
     await f.page
-      .getByRole("button", { name: "Segnala un problema con il bar", exact: true })
+      .getByRole("button", {
+        name: "Segnala un problema con il bar",
+        exact: true,
+      })
       .click();
     assert.equal(
       await f.page.evaluate(() =>
@@ -337,30 +420,45 @@ test("price form keeps bounds, prefill errors, exact cents and happy-hour callba
         error: "Owned server error",
       }),
     );
-    assert.equal(await f.page.locator(".sheet__title").textContent(), "Aggiungi un prezzo");
+    assert.equal(
+      await f.page.locator(".sheet__title").textContent(),
+      "Aggiungi un prezzo",
+    );
     assert.equal(
       await f.page.locator(".mobile-price-flow__venue").textContent(),
       "Locale di prova <strong>",
     );
     assert.equal(
-      await f.page.getByRole("button", { name: "Salva", exact: true }).isDisabled(),
+      await f.page
+        .getByRole("button", { name: "Salva", exact: true })
+        .isDisabled(),
       true,
     );
-    assert.match(await f.page.getByRole("alert").innerText(), /Owned server error/);
+    assert.match(
+      await f.page.getByRole("alert").innerText(),
+      /Owned server error/,
+    );
     await f.page.getByRole("textbox", { name: "Prezzo in euro" }).fill("0,01");
     await f.page.getByRole("button", { name: "Salva", exact: true }).click();
     assert.equal(
       await f.page.evaluate(
-        () => window.sheetFixture.calls.filter((call) => call.kind === "save").length,
+        () =>
+          window.sheetFixture.calls.filter((call) => call.kind === "save")
+            .length,
       ),
       0,
     );
-    assert.match(await f.page.getByRole("alert").innerText(), /prezzo insolito/);
+    assert.match(
+      await f.page.getByRole("alert").innerText(),
+      /prezzo insolito/,
+    );
     await f.page.getByRole("textbox", { name: "Prezzo in euro" }).fill("5,50");
     await f.page.getByRole("switch", { name: "Happy hour" }).click();
     await f.page.getByRole("button", { name: "Salva", exact: true }).click();
     assert.deepEqual(
-      await f.page.evaluate(() => window.sheetFixture.calls.filter((call) => call.kind === "save")),
+      await f.page.evaluate(() =>
+        window.sheetFixture.calls.filter((call) => call.kind === "save"),
+      ),
       [{ kind: "save", venue: "n123", drink: "spritz", hh: 1, cents: 550 }],
     );
     assert.deepEqual(f.writes, []);
@@ -373,15 +471,22 @@ test("changing the selected drink preserves confirmation state and visible keybo
   const f = await fixture();
   try {
     await f.page.evaluate(() => window.sheetFixture.bar());
-    const spritz = f.page.locator("li.mobile-price").filter({ hasText: "Spritz" });
+    const spritz = f.page
+      .locator("li.mobile-price")
+      .filter({ hasText: "Spritz" });
     await spritz.getByRole("button", { name: "Confermo", exact: true }).click();
-    const confirmed = spritz.getByRole("button", { name: "Confermato", exact: true });
+    const confirmed = spritz.getByRole("button", {
+      name: "Confermato",
+      exact: true,
+    });
     await confirmed.waitFor();
     await confirmed.focus();
     await f.page.evaluate(() => window.sheetFixture.bar(["gin_tonic"]));
     const toggle = spritz.locator(".mobile-price__toggle");
     assert.equal(
-      await toggle.evaluate((element) => element === element.ownerDocument.activeElement),
+      await toggle.evaluate(
+        (element) => element === element.ownerDocument.activeElement,
+      ),
       true,
     );
     await toggle.click();
@@ -395,16 +500,27 @@ test("changing the selected drink preserves confirmation state and visible keybo
         .evaluate((element) => element === element.ownerDocument.activeElement),
       true,
     );
-    const review = f.page.locator("li.mobile-price").filter({ hasText: "Birra media" });
+    const review = f.page
+      .locator("li.mobile-price")
+      .filter({ hasText: "Birra media" });
     await review.getByRole("button", { name: /Azioni sul prezzo/ }).click();
-    assert.equal(await review.getByRole("button", { name: "È cambiato", exact: true }).count(), 0);
     assert.equal(
-      await review.getByRole("button", { name: "Confermo", exact: true }).isVisible(),
+      await review
+        .getByRole("button", { name: "È cambiato", exact: true })
+        .count(),
+      0,
+    );
+    assert.equal(
+      await review
+        .getByRole("button", { name: "Confermo", exact: true })
+        .isVisible(),
       true,
     );
     assert.equal(
       await f.page.evaluate(
-        () => window.sheetFixture.calls.filter((call) => call.kind === "confirm").length,
+        () =>
+          window.sheetFixture.calls.filter((call) => call.kind === "confirm")
+            .length,
       ),
       1,
     );
@@ -435,11 +551,17 @@ test("small screens retain scroll access and 48 pixel price actions", async () =
       assert.ok(box && box.height >= 48);
     }
     await f.page
-      .getByRole("button", { name: "Segnala un problema con il bar", exact: true })
+      .getByRole("button", {
+        name: "Segnala un problema con il bar",
+        exact: true,
+      })
       .scrollIntoViewIfNeeded();
     assert.equal(
       await f.page
-        .getByRole("button", { name: "Segnala un problema con il bar", exact: true })
+        .getByRole("button", {
+          name: "Segnala un problema con il bar",
+          exact: true,
+        })
         .isVisible(),
       true,
     );
@@ -456,20 +578,31 @@ test("quick seen price and venue-drink-price navigation retain real callbacks", 
     await f.page.getByRole("switch", { name: "Happy hour" }).click();
     await f.page.getByRole("button", { name: /6,00 €/ }).click();
     assert.deepEqual(
-      await f.page.evaluate(() => window.sheetFixture.calls.filter((call) => call.kind === "save")),
+      await f.page.evaluate(() =>
+        window.sheetFixture.calls.filter((call) => call.kind === "save"),
+      ),
       [{ kind: "save", venue: "n123", drink: "spritz", hh: 1, cents: 600 }],
     );
     await f.page.evaluate(() => window.sheetFixture.price(null));
-    await f.page.getByRole("button", { name: /Locale di prova <strong>/ }).click();
+    await f.page
+      .getByRole("button", { name: /Locale di prova <strong>/ })
+      .click();
     await f.page.getByRole("button", { name: "Spritz", exact: true }).click();
-    assert.equal(await f.page.locator(".mobile-price-form .context-tag").innerText(), "Spritz");
+    assert.equal(
+      await f.page.locator(".mobile-price-form .context-tag").innerText(),
+      "Spritz",
+    );
     await f.page.getByRole("button", { name: "Indietro", exact: true }).click();
     assert.equal(
-      await f.page.getByRole("button", { name: "Birra media", exact: true }).isVisible(),
+      await f.page
+        .getByRole("button", { name: "Birra media", exact: true })
+        .isVisible(),
       true,
     );
     await f.page.getByRole("button", { name: "Indietro", exact: true }).click();
-    await f.page.getByRole("button", { name: "Non trovi il bar?", exact: true }).click();
+    await f.page
+      .getByRole("button", { name: "Non trovi il bar?", exact: true })
+      .click();
     assert.equal(
       await f.page.evaluate(() =>
         window.sheetFixture.calls.some((call) => call.kind === "propose"),
@@ -493,15 +626,22 @@ test("mobile venue privacy uses the approved app policy and preserves translated
         await window.sheetFixture.setLang(value);
         window.sheetFixture.bar();
       }, language);
-      const links = f.page.getByRole("navigation", { name: label, exact: true });
+      const links = f.page.getByRole("navigation", {
+        name: label,
+        exact: true,
+      });
       await links.waitFor();
       assert.equal(await links.getByRole("link").count(), 2);
       assert.equal(
-        await links.getByRole("link", { name: "Privacy", exact: true }).getAttribute("href"),
+        await links
+          .getByRole("link", { name: "Privacy", exact: true })
+          .getAttribute("href"),
         "https://github.com/robertovalerirv-beep/dove-bevo/blob/main/mobile-apps/privacy.md",
       );
       assert.equal(
-        await links.getByRole("link", { name: rules, exact: true }).getAttribute("href"),
+        await links
+          .getByRole("link", { name: rules, exact: true })
+          .getAttribute("href"),
         "/regole",
       );
     }
@@ -531,7 +671,9 @@ async function assertActionRow(actions, count = 3) {
     JSON.stringify(boxes),
   );
   assert.ok(
-    boxes.every((b) => b.width >= 48 && b.height >= 48 && b.scroll <= b.client + 1),
+    boxes.every(
+      (b) => b.width >= 48 && b.height >= 48 && b.scroll <= b.client + 1,
+    ),
     JSON.stringify(boxes),
   );
 }
@@ -542,12 +684,18 @@ test("three price actions retain a phone row across languages and confirmation s
   try {
     await f.page.evaluate(() => window.sheetFixture.bar());
     await f.page.locator("h2.scontrino__name").waitFor();
-    const actions = f.page.locator(".mobile-price--featured .price__actions .btn");
+    const actions = f.page.locator(
+      ".mobile-price--featured .price__actions .btn",
+    );
     for (const width of [393, 320]) {
       await f.page.setViewportSize({ width, height: 700 });
       await assertActionRow(actions);
       await f.page.screenshot({
-        path: path.join(here, "../../test-results", `price-actions-${width}-fixture.png`),
+        path: path.join(
+          here,
+          "../../test-results",
+          `price-actions-${width}-fixture.png`,
+        ),
       });
     }
     await f.page.evaluate(() => window.sheetFixture.setConfirmation("hold"));
@@ -560,7 +708,9 @@ test("three price actions retain a phone row across languages and confirmation s
     );
     await assertActionRow(actions);
     await f.page.evaluate(() => window.sheetFixture.finishConfirmation());
-    await f.page.getByRole("button", { name: "Confermato", exact: true }).waitFor();
+    await f.page
+      .getByRole("button", { name: "Confermato", exact: true })
+      .waitFor();
     await assertActionRow(actions);
     assert.equal(await actions.first().getAttribute("aria-disabled"), "true");
     await f.page.evaluate(() => {
@@ -575,15 +725,27 @@ test("three price actions retain a phone row across languages and confirmation s
       await window.sheetFixture.setLang("en");
       window.sheetFixture.bar(["gin_tonic"]);
     });
-    await f.page.getByRole("button", { name: "Report an error", exact: true }).first().waitFor();
+    await f.page
+      .getByRole("button", { name: "Report an error", exact: true })
+      .first()
+      .waitFor();
     for (const width of [393, 320]) {
       await f.page.setViewportSize({ width, height: 700 });
       await assertActionRow(actions);
     }
-    const review = f.page.locator("li.mobile-price").filter({ hasText: "Medium beer" });
-    await review.getByRole("button", { name: "Price actions", exact: false }).click();
+    const review = f.page
+      .locator("li.mobile-price")
+      .filter({ hasText: "Medium beer" });
+    await review
+      .getByRole("button", { name: "Price actions", exact: false })
+      .click();
     await assertActionRow(review.locator(".price__actions .btn"), 2);
-    assert.equal(await review.getByRole("button", { name: "It changed", exact: true }).count(), 0);
+    assert.equal(
+      await review
+        .getByRole("button", { name: "It changed", exact: true })
+        .count(),
+      0,
+    );
     await f.page.evaluate(() => {
       document.documentElement.style.fontSize = "32px";
     });
@@ -602,19 +764,33 @@ test("three price actions retain a phone row across languages and confirmation s
     );
     assert.ok(
       large.every(
-        (b) => b.font >= 26 && b.width >= 48 && b.height >= 48 && b.scroll <= b.client + 1,
+        (b) =>
+          b.font >= 26 &&
+          b.width >= 48 &&
+          b.height >= 48 &&
+          b.scroll <= b.client + 1,
       ),
       JSON.stringify(large),
     );
-    assert.ok(large[2].y > large[0].y, "Large text reflows instead of shrinking to force one row");
+    assert.ok(
+      large[2].y > large[0].y,
+      "Large text reflows instead of shrinking to force one row",
+    );
     const body = await f.page
       .locator(".sheet__body")
-      .evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth }));
+      .evaluate((element) => ({
+        width: element.clientWidth,
+        scroll: element.scrollWidth,
+      }));
     assert.ok(body.scroll <= body.width + 1, JSON.stringify(body));
     await actions.last().scrollIntoViewIfNeeded();
     assert.ok(await actions.last().isVisible());
     await f.page.screenshot({
-      path: path.join(here, "../../test-results", "price-actions-large-text-fixture.png"),
+      path: path.join(
+        here,
+        "../../test-results",
+        "price-actions-large-text-fixture.png",
+      ),
     });
     assert.deepEqual(f.writes, []);
   } finally {
@@ -628,9 +804,17 @@ test("saved legacy drink opens the exact price and band without creating a contr
   });
   try {
     await f.page.evaluate(() => window.sheetFixture.bar());
-    await f.page.getByRole("heading", { name: "Locale di prova <strong>" }).waitFor();
-    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /8,00 €/);
-    assert.equal(await f.page.getByTestId("saved-drink-unavailable").count(), 0);
+    await f.page
+      .getByRole("heading", { name: "Locale di prova <strong>" })
+      .waitFor();
+    assert.match(
+      await f.page.locator(".mobile-price--featured").innerText(),
+      /8,00 €/,
+    );
+    assert.equal(
+      await f.page.getByTestId("saved-drink-unavailable").count(),
+      0,
+    );
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
@@ -658,11 +842,17 @@ test("saved owner menu drink matches regular context but never conditional or an
     url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&drink=spritz&hh=0`,
   });
   try {
-    await regular.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await regular.page.evaluate(
+      (venueKey) => window.sheetFixture.bar([], venueKey),
+      key,
+    );
     const saved = regular.page.getByTestId("saved-menu-offer");
     await saved.waitFor();
     assert.match(await saved.innerText(), /Spritz <script>[\s\S]*7,50\s*€/);
-    assert.equal(await regular.page.getByTestId("saved-drink-unavailable").count(), 0);
+    assert.equal(
+      await regular.page.getByTestId("saved-drink-unavailable").count(),
+      0,
+    );
     assert.deepEqual(regular.writes, []);
   } finally {
     await regular.close();
@@ -671,7 +861,10 @@ test("saved owner menu drink matches regular context but never conditional or an
     url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&drink=spritz&hh=1`,
   });
   try {
-    await happy.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await happy.page.evaluate(
+      (venueKey) => window.sheetFixture.bar([], venueKey),
+      key,
+    );
     await happy.page.getByTestId("saved-drink-unavailable").waitFor();
     assert.equal(await happy.page.getByTestId("saved-menu-offer").count(), 0);
     assert.deepEqual(happy.writes, []);
@@ -686,13 +879,25 @@ test("exact named favorite reloads its menu page and native save link uses only 
     url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&offer=third`,
   });
   try {
-    await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await f.page.evaluate(
+      (venueKey) => window.sheetFixture.bar([], venueKey),
+      key,
+    );
     const saved = f.page.getByTestId("saved-exact-offer");
     await saved.waitFor();
-    assert.match(await saved.innerText(), /Analcolico[\s\S]*Questo drink è nei tuoi preferiti/);
-    assert.equal(await f.page.getByTestId("saved-offer-unavailable").count(), 0);
+    assert.match(
+      await saved.innerText(),
+      /Analcolico[\s\S]*Questo drink è nei tuoi preferiti/,
+    );
+    assert.equal(
+      await f.page.getByTestId("saved-offer-unavailable").count(),
+      0,
+    );
     assert.equal(await f.page.getByTestId("saved-menu-offer").count(), 0);
-    assert.equal(await f.page.getByRole("link", { name: "Salva questo drink" }).count(), 0);
+    assert.equal(
+      await f.page.getByRole("link", { name: "Salva questo drink" }).count(),
+      0,
+    );
     await f.page.evaluate(() => {
       window.DoveBevoNativeOfferSave = true;
       window.dispatchEvent(new window.Event("dovebevo-native-ready"));
@@ -701,7 +906,9 @@ test("exact named favorite reloads its menu page and native save link uses only 
     await links.first().waitFor();
     assert.equal(await links.count(), 3);
     assert.equal(
-      await saved.getByRole("link", { name: "Salva questo drink" }).getAttribute("href"),
+      await saved
+        .getByRole("link", { name: "Salva questo drink" })
+        .getAttribute("href"),
       `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=third`,
     );
     assert.deepEqual(f.writes, []);
@@ -716,7 +923,10 @@ test("retired exact named favorite shows unavailable without featuring another o
     url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&offer=retired`,
   });
   try {
-    await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await f.page.evaluate(
+      (venueKey) => window.sheetFixture.bar([], venueKey),
+      key,
+    );
     await f.page.getByTestId("saved-offer-unavailable").waitFor();
     assert.equal(await f.page.getByTestId("saved-exact-offer").count(), 0);
     assert.deepEqual(f.writes, []);
@@ -733,7 +943,10 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
     await menu.getByText("Spritz <script>").waitFor();
     assert.equal(await menu.locator("script").count(), 0);
     assert.match(await menu.innerText(), /7,50\s€[\s\S]*Solo con: dopo le 18/);
-    assert.match(await menu.innerText(), /Coperto[\s\S]*1,00\s€ a persona[\s\S]*solo al tavolo/);
+    assert.match(
+      await menu.innerText(),
+      /Coperto[\s\S]*1,00\s€ a persona[\s\S]*solo al tavolo/,
+    );
     assert.match(
       await menu.innerText(),
       /prezzi del drink indicati nel menu, non il totale pagato/i,
@@ -743,7 +956,10 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
     await menu.getByRole("button", { name: "Vedi altri drink" }).click();
     await menu.getByText("Analcolico").waitFor();
     assert.equal(await menu.locator(".mobile-menu-v2__offer").count(), 3);
-    assert.equal(await menu.getByRole("button", { name: "Vedi altri drink" }).count(), 0);
+    assert.equal(
+      await menu.getByRole("button", { name: "Vedi altri drink" }).count(),
+      0,
+    );
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
@@ -753,16 +969,29 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
 test("uncategorized sourced drinks use neutral venue art and menu prices do not look like deals", async () => {
   const f = await fixture({ menuCategory: null });
   try {
-    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.evaluate(() =>
+      window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"),
+    );
     await f.page.getByText("Cocktail della casa").waitFor();
     const hero = f.page.locator(".mobile-venue__hero--neutral");
     await hero.waitFor();
-    assert.equal(await hero.locator('img[src="/brand/simbolo.svg"]').count(), 1);
-    assert.equal(await f.page.locator(".mobile-venue__hero figcaption").count(), 0);
-    const first = f.page.locator(".mobile-menu-v2__offer").first();
-    assert.match(await first.innerText(), /Cocktail della casa[\s\S]*Prezzo da menu[\s\S]*7,50\s*€/);
     assert.equal(
-      await first.locator(".mobile-menu-v2__amount").evaluate((element) => getComputedStyle(element).color),
+      await hero.locator('img[src="/brand/simbolo.svg"]').count(),
+      1,
+    );
+    assert.equal(
+      await f.page.locator(".mobile-venue__hero figcaption").count(),
+      0,
+    );
+    const first = f.page.locator(".mobile-menu-v2__offer").first();
+    assert.match(
+      await first.innerText(),
+      /Cocktail della casa[\s\S]*Prezzo da menu[\s\S]*7,50\s*€/,
+    );
+    assert.equal(
+      await first
+        .locator(".mobile-menu-v2__amount")
+        .evaluate((element) => getComputedStyle(element).color),
       "rgb(16, 24, 32)",
     );
     assert.deepEqual(f.writes, []);
@@ -773,14 +1002,23 @@ test("uncategorized sourced drinks use neutral venue art and menu prices do not 
 test("owner-verified venue separates cited menu and customer price, and submits an update to the fixture only", async () => {
   const f = await fixture();
   try {
-    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.evaluate(() =>
+      window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"),
+    );
     await f.page.getByRole("heading", { name: "Locale nuovo" }).waitFor();
-    assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
+    assert.equal(
+      await f.page
+        .getByRole("button", { name: "Aggiungi un prezzo qui" })
+        .count(),
+      0,
+    );
     const owner = f.page.locator(".mobile-menu-v2__offer").first();
     await owner.getByText("Prezzo segnalato da un cliente").waitFor();
     assert.match(await owner.innerText(), /7,50\s€[\s\S]*6,50\s€/);
     assert.match(await owner.innerText(), /Menu verificato il 2026-11-02/);
-    await owner.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
+    await owner
+      .getByRole("button", { name: "Prezzo diverso? Aggiorna" })
+      .click();
     await owner.getByLabel("Importo pagato (EUR)").fill("8,20");
     await owner.getByRole("button", { name: "Condividi prezzo" }).click();
     await f.page.getByText("Prezzo salvato e visibile a tutti.").waitFor();
@@ -796,8 +1034,13 @@ test("owner-verified venue separates cited menu and customer price, and submits 
         expected_revision: "22222222-2222-4222-8222-222222222222",
       },
     ]);
-    const support = f.page.getByRole("link", { name: "Segnala un problema con il locale" });
-    assert.match(await support.getAttribute("href"), /^mailto:dovebevo@gmail\.com\?/);
+    const support = f.page.getByRole("link", {
+      name: "Segnala un problema con il locale",
+    });
+    assert.match(
+      await support.getAttribute("href"),
+      /^mailto:dovebevo@gmail\.com\?/,
+    );
   } finally {
     await f.close();
   }
@@ -806,16 +1049,24 @@ test("owner-verified venue separates cited menu and customer price, and submits 
 test("a new named drink enters moderation without changing the cited menu", async () => {
   const f = await fixture();
   try {
-    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
-    await f.page.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
-    await f.page.getByRole("button", { name: "Aggiungi un drink mancante" }).click();
+    await f.page.evaluate(() =>
+      window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"),
+    );
+    await f.page
+      .getByRole("button", { name: "Aggiungi un drink mancante" })
+      .waitFor();
+    await f.page
+      .getByRole("button", { name: "Aggiungi un drink mancante" })
+      .click();
     const form = f.page.locator(".mobile-customer-v2__form");
     await form.getByLabel("Nome del drink").fill("Negroni della casa");
     await form.getByLabel("Tipo di drink").selectOption("negroni");
     await form.getByLabel("Porzione (facoltativa)").fill("bicchiere");
     await form.getByLabel("Importo pagato (EUR)").fill("9,00");
     await form.getByRole("button", { name: "Condividi prezzo" }).click();
-    await f.page.getByText("Drink inviato: sarà visibile dopo la verifica.").waitFor();
+    await f.page
+      .getByText("Drink inviato: sarà visibile dopo la verifica.")
+      .waitFor();
     assert.deepEqual(f.writes, [
       {
         kind: "new_drink",
@@ -831,7 +1082,10 @@ test("a new named drink enters moderation without changing the cited menu", asyn
         expected_revision: null,
       },
     ]);
-    assert.match(await f.page.locator(".mobile-menu-v2__offer").first().innerText(), /7,50\s€/);
+    assert.match(
+      await f.page.locator(".mobile-menu-v2__offer").first().innerText(),
+      /7,50\s€/,
+    );
   } finally {
     await f.close();
   }
@@ -842,9 +1096,14 @@ test("legacy add-price search excludes m venues while existing n venues remain s
     await f.page.evaluate(() => window.sheetFixture.price(null, false));
     const search = f.page.locator('input[type="search"]');
     await search.fill("Locale solo app");
-    assert.equal(await f.page.getByRole("button", { name: /Locale solo app/ }).count(), 0);
+    assert.equal(
+      await f.page.getByRole("button", { name: /Locale solo app/ }).count(),
+      0,
+    );
     await search.fill("Locale di prova");
-    await f.page.getByRole("button", { name: /Locale di prova <strong>/ }).waitFor();
+    await f.page
+      .getByRole("button", { name: /Locale di prova <strong>/ })
+      .waitFor();
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
@@ -855,15 +1114,27 @@ test("legacy venue opens while v2 menu hangs, but an m venue times out to retry"
   try {
     const start = Date.now();
     await f.page.evaluate(() => window.sheetFixture.bar());
-    await f.page.getByRole("heading", { name: "Locale di prova <strong>" }).waitFor({
-      timeout: 1500,
-    });
-    assert.ok(Date.now() - start < 1500, "Legacy sheet must not wait for the v2 request");
-    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
-    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
-    await f.page.getByRole("heading", { name: "Menu temporaneamente non disponibile" }).waitFor({
-      timeout: 8000,
-    });
+    await f.page
+      .getByRole("heading", { name: "Locale di prova <strong>" })
+      .waitFor({
+        timeout: 1500,
+      });
+    assert.ok(
+      Date.now() - start < 1500,
+      "Legacy sheet must not wait for the v2 request",
+    );
+    assert.match(
+      await f.page.locator(".mobile-price--featured").innerText(),
+      /6,00 €/,
+    );
+    await f.page.evaluate(() =>
+      window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"),
+    );
+    await f.page
+      .getByRole("heading", { name: "Menu temporaneamente non disponibile" })
+      .waitFor({
+        timeout: 8000,
+      });
     await f.page.getByRole("button", { name: "Riprova" }).waitFor();
     assert.deepEqual(f.writes, []);
   } finally {
@@ -875,7 +1146,10 @@ test("menu loading failure can retry while legacy customer prices remain", async
   try {
     await f.page.evaluate(() => window.sheetFixture.bar());
     await f.page.getByRole("button", { name: "Riprova menu" }).waitFor();
-    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
+    assert.match(
+      await f.page.locator(".mobile-price--featured").innerText(),
+      /6,00 €/,
+    );
     await f.page.getByRole("button", { name: "Riprova menu" }).click();
     await f.page.getByText("Spritz <script>").waitFor();
     assert.deepEqual(f.writes, []);

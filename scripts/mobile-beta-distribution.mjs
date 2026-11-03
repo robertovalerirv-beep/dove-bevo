@@ -8,6 +8,7 @@ import { tokenFor } from "./mobile-store-status.mjs";
 
 export const APP_ID = "6827324444";
 export const BUILD_NUMBER = "62";
+export const FEEDBACK_BUILD_NUMBER = "271";
 export const VERSION = "1.0.0";
 export const ORIGIN = "https://api.appstoreconnect.apple.com";
 export const GROUPS = Object.freeze([
@@ -21,6 +22,10 @@ const MAX_REQUESTS = 48;
 const id = (value) => typeof value === "string" && /^[A-Za-z0-9-]{1,100}$/.test(value);
 const fail = () => {
   throw new Error("Beta distribution scope or response invalid");
+};
+const targetBuild = (number) => {
+  if (number !== BUILD_NUMBER && number !== FEEDBACK_BUILD_NUMBER) fail();
+  return number;
 };
 export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 export const planBytes = (plan) => Buffer.from(JSON.stringify(plan, null, 2) + "\n");
@@ -254,7 +259,7 @@ async function membership(client, groupId, buildId) {
   );
   return rows.some((row) => row.id === buildId);
 }
-async function submissions(client, buildId) {
+async function submissions(client, buildId, buildNumber) {
   const body = await client(
     query("/v1/betaAppReviewSubmissions", {
       "filter[build]": buildId,
@@ -267,12 +272,12 @@ async function submissions(client, buildId) {
   const rows = list(body, "betaAppReviewSubmissions", 1);
   return rows.map((row) => {
     relationship(row, "build", "builds", buildId);
-    if (included(body, "builds", buildId).attributes?.version !== BUILD_NUMBER) fail();
+    if (included(body, "builds", buildId).attributes?.version !== buildNumber) fail();
     if (!reviewStates.has(row.attributes?.betaReviewState)) fail();
     return { id: row.id, state: row.attributes.betaReviewState };
   });
 }
-async function inspect(client, plan, diagnostics) {
+async function inspect(client, plan, diagnostics, buildNumber) {
   const stage = (name) => {
     if (diagnostics) diagnostics.stage = name;
   };
@@ -283,7 +288,7 @@ async function inspect(client, plan, diagnostics) {
       : query("/v1/builds", {
           ...buildFields,
           "filter[app]": APP_ID,
-          "filter[version]": BUILD_NUMBER,
+          "filter[version]": buildNumber,
           "filter[preReleaseVersion.version]": VERSION,
           "filter[preReleaseVersion.platform]": "IOS",
           limit: "2",
@@ -308,7 +313,7 @@ async function inspect(client, plan, diagnostics) {
   stage("BUILD_STATE");
   const a = build.attributes;
   if (
-    a?.version !== BUILD_NUMBER ||
+    a?.version !== buildNumber ||
     !["PROCESSING", "FAILED", "INVALID", "VALID"].includes(a.processingState) ||
     typeof a.expired !== "boolean" ||
     typeof a.expirationDate !== "string" ||
@@ -401,7 +406,7 @@ async function inspect(client, plan, diagnostics) {
     });
   }
   stage("REVIEW_SUBMISSIONS");
-  const reviewSubmissions = await submissions(client, build.id);
+  const reviewSubmissions = await submissions(client, build.id, buildNumber);
   return {
     build_id: build.id,
     processing_state: a.processingState,
@@ -424,12 +429,12 @@ function eligible(snapshot, now) {
     !snapshot.submissions.some((s) => s.state === "REJECTED")
   );
 }
-function proposal(snapshot) {
+function proposal(snapshot, buildNumber) {
   return {
     schema_version: 1,
     app_id: APP_ID,
     build_id: snapshot.build_id,
-    build_number: BUILD_NUMBER,
+    build_number: buildNumber,
     version: VERSION,
     groups: snapshot.groups.map(({ id, name, is_internal_group }) => ({
       id,
@@ -439,7 +444,8 @@ function proposal(snapshot) {
     submit_beta_review_if_needed: true,
   };
 }
-export function validatePlan(bytes, approvedSha) {
+export function validatePlan(bytes, approvedSha, buildNumber = BUILD_NUMBER) {
+  targetBuild(buildNumber);
   if (
     !(bytes instanceof Uint8Array) ||
     bytes.byteLength > 8192 ||
@@ -460,7 +466,7 @@ export function validatePlan(bytes, approvedSha) {
     ]) ||
     plan.schema_version !== 1 ||
     plan.app_id !== APP_ID ||
-    plan.build_number !== BUILD_NUMBER ||
+    plan.build_number !== buildNumber ||
     plan.version !== VERSION ||
     !id(plan.build_id) ||
     plan.submit_beta_review_if_needed !== true ||
@@ -481,11 +487,11 @@ export function validatePlan(bytes, approvedSha) {
   if (!Buffer.from(bytes).equals(planBytes(plan))) fail();
   return plan;
 }
-function base(mode, now) {
+function base(mode, now, buildNumber) {
   return {
     schema_version: 1,
     app_id: APP_ID,
-    build_number: BUILD_NUMBER,
+    build_number: buildNumber,
     version: VERSION,
     mode,
     checked_at: now().toISOString(),
@@ -496,15 +502,16 @@ function base(mode, now) {
 
 export async function auditBetaDistribution(
   env,
-  { transport = globalThis.fetch, now = () => new Date() } = {},
+  { transport = globalThis.fetch, now = () => new Date(), buildNumber = BUILD_NUMBER } = {},
 ) {
-  const receipt = base("audit", now);
+  targetBuild(buildNumber);
+  const receipt = base("audit", now, buildNumber);
   const diagnostics = { stage: "BUILD_FETCH", request_index: 0, http_status: null };
   try {
-    receipt.before = await inspect(clientFor(env, transport, diagnostics), undefined, diagnostics);
+    receipt.before = await inspect(clientFor(env, transport, diagnostics), undefined, diagnostics, buildNumber);
     receipt.ready = eligible(receipt.before, now());
     if (receipt.ready) {
-      receipt.plan = proposal(receipt.before);
+      receipt.plan = proposal(receipt.before, buildNumber);
       receipt.plan_sha256 = sha256(planBytes(receipt.plan));
     }
     receipt.complete = true;
@@ -517,15 +524,15 @@ export async function auditBetaDistribution(
 
 export async function applyBetaDistribution(
   env,
-  { bytes, approvedSha, checkpoint, transport = globalThis.fetch, now = () => new Date() } = {},
+  { bytes, approvedSha, checkpoint, transport = globalThis.fetch, now = () => new Date(), buildNumber = BUILD_NUMBER } = {},
 ) {
   // These local guards precede credential access and every API call.
-  const plan = validatePlan(bytes, approvedSha);
+  const plan = validatePlan(bytes, approvedSha, buildNumber);
   if (typeof checkpoint !== "function") fail();
-  const receipt = { ...base("apply", now), plan_sha256: approvedSha, build_id: plan.build_id };
+  const receipt = { ...base("apply", now, buildNumber), plan_sha256: approvedSha, build_id: plan.build_id };
   const client = clientFor(env, transport);
   async function fresh() {
-    const current = await inspect(client, plan);
+    const current = await inspect(client, plan, undefined, buildNumber);
     if (!eligible(current, now())) fail();
     return current;
   }
@@ -590,12 +597,12 @@ export async function applyBetaDistribution(
         async (body) => {
           const submitted = resource(body?.data, "betaAppReviewSubmissions");
           receipt.beta_review_submission_id = submitted.id;
-          const rows = await submissions(client, plan.build_id);
+          const rows = await submissions(client, plan.build_id, buildNumber);
           if (!rows.some((s) => s.id === submitted.id && acceptedReview.has(s.state))) fail();
         },
       );
     }
-    receipt.after = await inspect(client, plan);
+    receipt.after = await inspect(client, plan, undefined, buildNumber);
     if (
       !eligible(receipt.after, now()) ||
       !receipt.after.groups.every((g) => g.linked) ||
@@ -611,7 +618,7 @@ export async function applyBetaDistribution(
     receipt.error = "BETA_APPLY_FAILED_READ_BACK_BEFORE_ANY_RETRY";
     // One read-only reconciliation attempt; never repeat a POST or continue mutating.
     try {
-      receipt.after = await inspect(client, plan);
+      receipt.after = await inspect(client, plan, undefined, buildNumber);
     } catch {
       receipt.read_back = "UNAVAILABLE";
     }
@@ -621,6 +628,10 @@ export async function applyBetaDistribution(
 }
 
 async function main(args) {
+  const feedbackBuild = args.length >= 3 &&
+    args.at(-2) === "--build-number" && args.at(-1) === FEEDBACK_BUILD_NUMBER;
+  const buildNumber = feedbackBuild ? FEEDBACK_BUILD_NUMBER : BUILD_NUMBER;
+  if (feedbackBuild) args = args.slice(0, -2);
   if (!args[0] || args[0].startsWith("-") || ![1, 3, 6].includes(args.length)) fail();
   const applying =
     args.length === 6 &&
@@ -630,7 +641,7 @@ async function main(args) {
   if ((args.length === 6 && !applying) || (args.length === 3 && args[1] !== "--plan-output"))
     fail();
   const bytes = applying ? await readFile(args[3]) : undefined;
-  if (applying) validatePlan(bytes, args[5]);
+  if (applying) validatePlan(bytes, args[5], buildNumber);
   const output = await open(args[0], "wx", 0o600);
   const checkpoint = async (receipt) => {
     const content = Buffer.from(JSON.stringify(receipt, null, 2) + "\n");
@@ -645,8 +656,8 @@ async function main(args) {
   };
   try {
     const receipt = applying
-      ? await applyBetaDistribution(process.env, { bytes, approvedSha: args[5], checkpoint })
-      : await auditBetaDistribution(process.env);
+      ? await applyBetaDistribution(process.env, { bytes, approvedSha: args[5], checkpoint, buildNumber })
+      : await auditBetaDistribution(process.env, { buildNumber });
     await checkpoint(receipt);
     if (!applying && args.length === 3 && receipt.plan) {
       const plan = await open(args[2], "wx", 0o600);
@@ -663,7 +674,7 @@ async function main(args) {
         mode: receipt.mode,
         ready: receipt.ready ?? null,
         app_id: APP_ID,
-        build_number: BUILD_NUMBER,
+        build_number: buildNumber,
       }) + "\n",
     );
     if (!receipt.complete || (!applying && !receipt.ready)) process.exitCode = 1;

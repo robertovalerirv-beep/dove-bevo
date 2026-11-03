@@ -18,7 +18,7 @@ final class WelcomeViewController: UIViewController {
         super.viewDidLoad()
         title = "Benvenuto"
         navigationItem.backButtonTitle = "Torna all'inizio"
-        view.backgroundColor = NativeAppearance.surface
+        view.backgroundColor = NativeAppearance.canvas
         view.tintColor = NativeAppearance.ink
         NativeAppearance.configure(navigationController)
         let scroll = UIScrollView()

@@ -6,9 +6,11 @@ Run from this repository's root. Give each run a new output directory immediatel
 
 ```powershell
 python mobile-apps/tools/menu-seed/crawl_owner_menu_candidates.py `
-  --max-venues 30 --max-requests 100 --max-seconds 180 `
+  --offset 0 --max-venues 30 --max-requests 100 --max-seconds 180 `
   --output 'C:\Users\stefa\OneDrive\Dove Bevo\.task-tmp\menu-candidates-review-001'
 ```
+
+Use `next_offset` from the report for the next run, with a **new output directory**. For example, the next 30 start at `--offset 30` if the first report says `next_offset: 30`. Stop when `remaining_candidates` is zero. Each city prioritizes direct menu tags and then sorts by existing venue key; pages visit Milano, Roma, Torino and Napoli round-robin. A given queue produces disjoint, stable pages. Compare `queue_sha256` across runs. If that hash changes, the source queue has changed and offsets from the older queue must not be combined with the new one. An offset equal to the queue length produces an empty exhaustion report; an offset past the end is rejected.
 
 The default is 12 venues, 36 attempts and 240 seconds; hard CLI maxima are 30 venues, 120 attempts and 600 seconds. Each response is capped at 1 MiB HTML, 4 MiB PDF, or 100 KiB robots.txt. The process follows at most two redirects within the same owner host (allowing the `www` variant), at most two discovered menu links per venue, and waits at least one second between attempts to a host or longer if robots.txt requests it. It reads robots.txt and obeys disallow rules; a robots error other than 404 or a crawl delay above three seconds holds that host. HTTP URLs from the dated OSM queue are upgraded to HTTPS. DNS answers must all be public, and the connection pins the checked address while verifying the TLS hostname. It never follows social, menu-platform, or other cross-host links.
 

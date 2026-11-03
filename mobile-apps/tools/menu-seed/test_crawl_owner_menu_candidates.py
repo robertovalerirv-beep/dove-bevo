@@ -96,6 +96,57 @@ class CandidateCrawlerTests(unittest.TestCase):
         self.assertEqual(c.select([row("n1", "Milano"), row("n2", "Roma"),
                                    row("n3", "Milano")], 3)[0]["key"], "n1")
 
+    def test_offset_pages_cover_real_queue_once_without_mutation(self):
+        path = Path(__file__).resolve().parents[2] / "data" / "italy-full-city-menu-source-queue-20261102.json"
+        source = path.read_bytes()
+        _, rows = c.queue_rows(source)
+        self.assertGreaterEqual(len(rows), 31)
+        original_rows = json.loads(source)["candidates"]
+
+        def all_keys(items):
+            return [entry["key"] for offset in range(0, len(items), 30)
+                    for entry in c.select(items, 30, offset)]
+
+        first = all_keys(rows)
+        self.assertEqual(len(first), len(rows))
+        self.assertEqual(len(set(first)), len(rows))
+        self.assertEqual(set(first), {entry["key"] for entry in rows})
+        self.assertEqual(first, all_keys(list(reversed(rows))))
+        self.assertEqual(c.select(rows, 30, len(rows)), [])
+        self.assertEqual(rows, original_rows)
+        self.assertEqual(path.read_bytes(), source)
+
+    def test_offset_report_and_exhaustion_preserve_source_digest(self):
+        source = queue(row("n1", "Milano"), row("n2", "Roma"),
+                       row("n3", "Torino"), row("n4", "Napoli"))
+        now = [0.0]
+        calls = []
+
+        def fetch(url):
+            calls.append(url)
+            if url.endswith("robots.txt"):
+                raise c.Held("http_404")
+            return c.Page(url, "html", b"<h1>Bar Uno</h1>")
+
+        def sleep(seconds):
+            now[0] += seconds
+
+        pages = [c.crawl(source, maximum=2, offset=offset, max_requests=6, max_seconds=30,
+                         fetch=fetch, clock=lambda: now[0], sleep=sleep)[0]
+                 for offset in (0, 2, 4)]
+        self.assertEqual([p["selected_venues"] for p in pages], [2, 2, 0])
+        self.assertEqual([p["next_offset"] for p in pages], [2, 4, 4])
+        self.assertEqual([p["remaining_candidates"] for p in pages], [2, 0, 0])
+        self.assertEqual([p["selected_offset"] for p in pages], [0, 2, 4])
+        self.assertEqual({p["queue_sha256"] for p in pages}, {c.sha(source)})
+        self.assertEqual([r["venue_key"] for p in pages for r in p["records"]],
+                         ["n1", "n2", "n3", "n4"])
+        self.assertEqual(pages[2]["request_attempts"], 0)
+        self.assertEqual(len(calls), 6)
+        self.assertTrue(all(p["public_imports"] == 0 and p["publication_blocked"] for p in pages))
+        with self.assertRaisesRegex(c.Held, "offset_past_queue_end"):
+            c.crawl(source, maximum=2, offset=5, fetch=fetch)
+
     def test_live_flow_is_read_only_bounded_and_honors_robots(self):
         calls = []
         clock_value = [0.0]

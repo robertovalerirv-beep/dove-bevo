@@ -353,27 +353,30 @@ def queue_rows(raw: bytes) -> tuple[dict, list[dict]]:
     return doc, rows
 
 
-def select(rows: list[dict], maximum: int) -> list[dict]:
+def select(rows: list[dict], maximum: int, offset: int = 0) -> list[dict]:
+    """Return a stable round-robin page without changing the source queue."""
     buckets = {city: [] for city in CITY_ORDER}
     for row in rows:
         buckets[row["city"]].append(row)
     for bucket in buckets.values():
         bucket.sort(key=lambda row: ("website:menu" not in row["url_tags"], row["key"]))
     result = []
-    while len(result) < maximum and any(buckets.values()):
+    while len(result) < offset + maximum and any(buckets.values()):
         for city in CITY_ORDER:
-            if buckets[city] and len(result) < maximum:
+            if buckets[city] and len(result) < offset + maximum:
                 result.append(buckets[city].pop(0))
-    return result
+    return result[offset:]
 
 
-def crawl(raw_queue: bytes, *, maximum: int = 12, max_requests: int = 36, max_seconds: int = 240,
+def crawl(raw_queue: bytes, *, maximum: int = 12, offset: int = 0, max_requests: int = 36, max_seconds: int = 240,
           fetch=fetch_page, convert_pdf=pdf_text, pdf_converter: str | None = None,
           clock=time.monotonic, sleep=time.sleep, today=date.today) -> tuple[dict, dict[str, bytes]]:
-    if not 1 <= maximum <= 30 or not 1 <= max_requests <= 120 or not 10 <= max_seconds <= 600:
+    if not 1 <= maximum <= 30 or not 0 <= offset <= 5000 or not 1 <= max_requests <= 120 or not 10 <= max_seconds <= 600:
         raise Held("invalid_limits")
     queue, rows = queue_rows(raw_queue)
-    chosen = select(rows, maximum)
+    if offset > len(rows):
+        raise Held("offset_past_queue_end")
+    chosen = select(rows, maximum, offset)
     deadline = clock() + max_seconds
     attempts = 0
     source_bytes: dict[str, bytes] = {}
@@ -500,7 +503,10 @@ def crawl(raw_queue: bytes, *, maximum: int = 12, max_requests: int = 36, max_se
             result["reason"] = str(error)
     report = {"schema_version": 1, "purpose": "review_only_existing_italian_venues", "checked_on": today().isoformat(),
               "queue_sha256": sha(raw_queue), "queue_inventory_complete": queue.get("inventory_complete") is True,
-              "selected_venues": len(chosen), "request_attempts": attempts, "max_requests": max_requests,
+              "queue_candidates": len(rows), "selected_offset": offset,
+              "selected_venues": len(chosen), "next_offset": offset + len(chosen),
+              "remaining_candidates": len(rows) - offset - len(chosen),
+              "request_attempts": attempts, "max_requests": max_requests,
               "max_seconds": max_seconds, "candidate_venues": sum(row["status"] == "candidate" for row in records),
               "raw_price_candidates": sum(len(source.get("price_candidates", [])) for row in records for source in row["sources"]),
               "drink_price_candidates": sum(price["kind_guess"] == "drink" for row in records for source in row["sources"]
@@ -543,6 +549,7 @@ def main(argv=None):
     parser.add_argument("--queue", default="mobile-apps/data/italy-full-city-menu-source-queue-20261102.json")
     parser.add_argument("--output", required=True)
     parser.add_argument("--max-venues", type=int, default=12)
+    parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--max-requests", type=int, default=36)
     parser.add_argument("--max-seconds", type=int, default=240)
     parser.add_argument("--pdftotext", default=shutil.which("pdftotext"))
@@ -551,11 +558,12 @@ def main(argv=None):
         path = Path(args.queue)
         if path.stat().st_size > QUEUE_LIMIT:
             raise Held("queue_limit")
-        report, sources = crawl(path.read_bytes(), maximum=args.max_venues,
+        report, sources = crawl(path.read_bytes(), maximum=args.max_venues, offset=args.offset,
                                 max_requests=args.max_requests, max_seconds=args.max_seconds,
                                 pdf_converter=args.pdftotext)
         write_report(Path(args.output), project_root(), report, sources)
-        print(json.dumps({"selected_venues": report["selected_venues"], "request_attempts": report["request_attempts"],
+        print(json.dumps({"selected_venues": report["selected_venues"], "next_offset": report["next_offset"],
+                          "remaining_candidates": report["remaining_candidates"], "request_attempts": report["request_attempts"],
                           "candidate_venues": report["candidate_venues"], "publication_blocked": True}))
         return 0
     except (Held, OSError, ValueError) as error:

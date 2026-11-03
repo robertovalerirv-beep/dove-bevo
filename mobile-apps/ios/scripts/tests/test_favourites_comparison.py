@@ -98,12 +98,8 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertNotIn("saveMenuEnabled", browser)
         self.assertNotIn("toolbar.items", browser)
         save = browser.split("@objc func saveCurrentVenue()", 1)[1].split("@objc func showRecommendations()", 1)[0]
-        venue_choice = save.split("case .venue:", 1)[1].split("case .drink:", 1)[0]
-        drink_choice = save.split("case .drink:", 1)[1].split("outcome =", 1)[0]
-        self.assertIn("try self.savedVenues.save(url: context.venue.url, label: context.venue.label)", venue_choice)
-        self.assertNotIn("savedDrinks", venue_choice)
-        self.assertIn("try self.savedDrinks.save(SavedDrink.validated", drink_choice)
-        self.assertNotIn("self.savedVenues.save", drink_choice)
+        self.assertIn("try self.savedDrinks.save(SavedDrink.validated", save)
+        self.assertNotIn("self.savedVenues.save", save)
         self.assertIn("self.favouriteSave.consume(context, currentURL: self.webView?.url, active: self.isBookmarkInteractionActive)", save)
         self.assertNotIn("showSavedVenues()", save)
         self.assertIn('"Preferito salvato"', save)
@@ -130,7 +126,9 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn('let forward = app.buttons["Avanti"]', ui)
         history_flow = ui.split("private func verifyLiveVenueHistoryReadOnly", 1)[1].split("private func waitForOrdinaryKeyboard", 1)[0]
         self.assertLess(history_flow.index('app.buttons["browser.more"].tap()'), history_flow.index('let forward = app.buttons["Avanti"]'))
-        save = ui.split("private func saveCurrentVenueInOneTap()", 1)[1].split("private func assertShareAndReloadAvailable()", 1)[0]
+        save = ui.split("private func saveCurrentDrinkAtVenue()", 1)[1].split("private func assertShareAndReloadAvailable()", 1)[0]
+        self.assertIn('app.tables["favorites.saveChooser"]', save)
+        self.assertIn('chooser.cells["favorites.saveDrink.beer_draft"].tap()', save)
         self.assertIn('app.alerts["Preferito salvato"]', save)
         self.assertIn('app.navigationBars["Dove bevo"].exists', save)
         self.assertIn('app.buttons["tab.map"].isSelected', save)

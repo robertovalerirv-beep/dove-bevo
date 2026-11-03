@@ -17,6 +17,13 @@ final class RecommendationsViewController: UITableViewController {
     private let statusLabel = UILabel()
     private var categories = DrinkCategory.all
     private var renderedCategory: UIContentSizeCategory?
+    private lazy var refreshButton = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
+    // The parent ellipsis floats over this corner; keep Retry to its left.
+    private lazy var moreOverlaySpace: UIBarButtonItem = {
+        let spacer = UIView(frame: CGRect(x: 0, y: 0, width: 56, height: 48))
+        spacer.isUserInteractionEnabled = false
+        return UIBarButtonItem(customView: spacer)
+    }()
 
     init(venue: SavedVenue, client: RecommendationServing = RecommendationClient(), activityCheck: (() -> Bool)? = nil) {
         self.venue = venue
@@ -50,8 +57,8 @@ final class RecommendationsViewController: UITableViewController {
         tableView.register(RecommendationCell.self, forCellReuseIdentifier: "recommendation")
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 96
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
-        navigationItem.rightBarButtonItem?.accessibilityIdentifier = "recommendations.retry"
+        refreshButton.accessibilityIdentifier = "recommendations.retry"
+        navigationItem.rightBarButtonItems = [moreOverlaySpace, refreshButton]
         let name = UILabel()
         name.text = venue.label
         name.font = .preferredFont(forTextStyle: .title2)
@@ -239,8 +246,8 @@ final class RecommendationsViewController: UITableViewController {
 
     private func render() {
         guard isViewLoaded else { return }
-        navigationItem.rightBarButtonItem?.isEnabled = !busy && canInteract
-        navigationItem.rightBarButtonItem?.title = snapshot == nil && !busy ? "Riprova" : "Ricarica"
+        refreshButton.isEnabled = !busy && canInteract
+        refreshButton.title = snapshot == nil && !busy ? "Riprova" : "Ricarica"
         statusLabel.text = status
         statusLabel.accessibilityIdentifier = snapshot == nil ? (busy ? "recommendations.loading" : "recommendations.unavailable") : "recommendations.loaded"
         tableView.reloadData()

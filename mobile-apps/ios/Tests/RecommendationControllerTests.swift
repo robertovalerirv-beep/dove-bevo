@@ -50,12 +50,17 @@ final class RecommendationControllerTests: XCTestCase {
     func testUnavailableDoesNotBecomeZeroAndOnlyConfirmedDataEnablesButtons() throws {
         defer { retainedCells.removeAll() }
         let (controller, client) = makeController()
+        let actions = try XCTUnwrap(controller.navigationItem.rightBarButtonItems)
+        XCTAssertEqual(try XCTUnwrap(actions.first?.customView).bounds.width, 56,
+                       "The public recommendation Retry stays left of the overlaid ellipsis")
+        XCTAssertEqual(actions.last?.accessibilityIdentifier, "recommendations.retry")
         XCTAssertEqual(client.calls.count, 1)
         XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 9)
         let before = try button(controller, row: 0)
         XCTAssertFalse(before.isEnabled)
         XCTAssertTrue(before.accessibilityLabel!.contains("Conteggio non disponibile"))
         try client.complete(0, .failure(.network))
+        XCTAssertEqual(actions.last?.title, "Riprova")
         XCTAssertFalse(try button(controller, row: 0).isEnabled)
         XCTAssertTrue(try button(controller, row: 0).accessibilityLabel!.contains("Conteggio non disponibile"))
         controller.refresh()

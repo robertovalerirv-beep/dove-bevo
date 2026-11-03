@@ -96,6 +96,8 @@ class AppPresentationGuards(unittest.TestCase):
         self.assertIn("cell.accessibilityValue =", favourites)
         self.assertNotIn("store.save(", favourites)
         votes = (IOS / "App/RecommendationsViewController.swift").read_text(encoding="utf-8")
+        self.assertIn("navigationItem.rightBarButtonItems = [moreOverlaySpace, refreshButton]", votes)
+        self.assertIn("refreshButton.title = snapshot == nil && !busy ?", votes)
         self.assertIn('?? "Conteggio non disponibile"', votes)
         self.assertIn("NativeAppearance.button(selected: value?.recommended == true", votes)
         self.assertIn("if button.isEnabled { onToggle?() }", votes)

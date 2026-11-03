@@ -909,8 +909,11 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     const spritzResponse = f.page.waitForResponse(
       (response) => {
         const url = new URL(response.url());
-        return /^\/api\/mobile\/v2\/menu\/cells\//.test(url.pathname) &&
-          url.searchParams.get("categories") === "spritz" && response.status() === 200;
+        return (
+          /^\/api\/mobile\/v2\/menu\/cells\//.test(url.pathname) &&
+          url.searchParams.get("categories") === "spritz" &&
+          response.status() === 200
+        );
       },
       { timeout: 30000 },
     );

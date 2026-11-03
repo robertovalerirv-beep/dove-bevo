@@ -8,6 +8,8 @@ import {
   mobileURL,
   mobileInitialDrinks,
   mobileFocus,
+  mobileOfferFocus,
+  mobileOfferSaveURL,
   menuOfferMatchesFocus,
 } from "../routes.ts";
 import { transformApp, transformMap, mobileMapStyle } from "../build-contract.mjs";
@@ -62,6 +64,43 @@ test("saved drink links keep the exact drink and happy-hour band", () => {
       ),
       false,
     );
+});
+
+test("exact named offer links preserve identity; save commands never become display routes", () => {
+  for (const key of ["n123", "maaaaaaaaaaaaaaaaaaaaaaaa"]) {
+    const link = mobileURL(`/bar/${key}?c=u0nd9&offer=source:123`, origin);
+    assert.equal(link, `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&offer=source%3A123`);
+    const parsed = new URL(link, origin);
+    assert.equal(mobilePath(parsed), `/bar/${key}`);
+    assert.equal(mobileOfferFocus(parsed), "source:123");
+    assert.equal(mobileFocus(parsed), null);
+    const save = mobileOfferSaveURL(key, "u0nd9", "source:123");
+    assert.equal(save, `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=source%3A123`);
+    assert.equal(mobilePath(new URL(save, origin)), "/");
+    assert.throws(() => mobileURL(`/bar/${key}?c=u0nd9&save_offer=source:123`, origin), TypeError);
+  }
+});
+
+test("exact named offer focus rejects mixed, duplicate, malformed or private parameters", () => {
+  for (const search of [
+    "?path=/bar/n123&c=u0nd9&offer=",
+    "?path=/bar/n123&c=u0nd9&offer=first&offer=second",
+    "?path=/bar/n123&c=u0nd9&offer=%E2%9D%A4",
+    "?path=/bar/n123&c=u0nd9&offer=first&drink=spritz&hh=0",
+    "?path=/bar/n123&c=u0nd9&offer=first&token=private",
+    "?path=/bar/n123&c=u0nd9&save_offer=first",
+  ]) {
+    assert.equal(mobilePath({ pathname: "/mobile/", search }), "/", search);
+    assert.equal(mobileOfferFocus({ pathname: "/mobile/", search }), null, search);
+  }
+  for (const path of [
+    "/bar/n123?c=u0nd9&offer=",
+    "/bar/n123?c=u0nd9&offer=first&offer=second",
+    "/bar/n123?c=u0nd9&offer=first&drink=spritz&hh=0",
+    "/bar/n123?c=u0nd9&offer=first&token=private",
+  ])
+    assert.throws(() => mobileURL(path, origin), TypeError, path);
+  assert.throws(() => mobileOfferSaveURL("n123", "u0nd9", "bad/id"), TypeError);
 });
 
 test("partial or duplicate saved drink links fail closed", () => {

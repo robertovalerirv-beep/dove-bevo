@@ -680,6 +680,51 @@ test("saved owner menu drink matches regular context but never conditional or an
   }
 });
 
+test("exact named favorite reloads its menu page and native save link uses only the live offer id", async () => {
+  const key = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  const f = await fixture({
+    url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&offer=third`,
+  });
+  try {
+    await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    const saved = f.page.getByTestId("saved-exact-offer");
+    await saved.waitFor();
+    assert.match(await saved.innerText(), /Analcolico[\s\S]*Questo drink è nei tuoi preferiti/);
+    assert.equal(await f.page.getByTestId("saved-offer-unavailable").count(), 0);
+    assert.equal(await f.page.getByTestId("saved-menu-offer").count(), 0);
+    assert.equal(await f.page.getByRole("link", { name: "Salva questo drink" }).count(), 0);
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeOfferSave = true;
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
+    });
+    const links = f.page.getByRole("link", { name: "Salva questo drink" });
+    await links.first().waitFor();
+    assert.equal(await links.count(), 3);
+    assert.equal(
+      await saved.getByRole("link", { name: "Salva questo drink" }).getAttribute("href"),
+      `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=third`,
+    );
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("retired exact named favorite shows unavailable without featuring another offer", async () => {
+  const key = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  const f = await fixture({
+    url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&offer=retired`,
+  });
+  try {
+    await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await f.page.getByTestId("saved-offer-unavailable").waitFor();
+    assert.equal(await f.page.getByTestId("saved-exact-offer").count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("source-backed drink menu keeps original item, condition, fee and page boundary visible", async () => {
   const f = await fixture();
   try {

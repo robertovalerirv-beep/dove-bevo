@@ -865,6 +865,12 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+.mobile-menu-v2__save {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: 44px;
+  text-decoration: none;
+}
 .mobile-menu-v2__more {
   display: block;
   width: 100%;

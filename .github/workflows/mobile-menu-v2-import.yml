@@ -61,12 +61,11 @@ jobs:
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
           if [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-audit/([0-9a-f]{64})$ ]]; then
             mode=audit
-            manifest_sha="${{ github.ref_name }}"
-            manifest_sha="$(printf '%s' "$manifest_sha" | cut -d/ -f2)"
+            manifest_sha="${BASH_REMATCH[1]}"
           elif [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-seed/([0-9a-f]{64})-([1-9][0-9]*)$ ]]; then
             mode=seed
-            manifest_sha="$(printf '%s' "$GITHUB_REF_NAME" | cut -d/ -f2 | cut -d- -f1)"
-            audit_run="$(printf '%s' "$GITHUB_REF_NAME" | cut -d- -f2)"
+            manifest_sha="${BASH_REMATCH[1]}"
+            audit_run="${BASH_REMATCH[2]}"
             printf '%s\n' "$audit_run" > "$RUNNER_TEMP/audit-run-id"
           else
             exit 2
@@ -82,10 +81,11 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          MANIFEST_SHA: ${{ steps.pin.outputs.manifest_sha }}
         run: |
           set -euo pipefail
           audit_run="$(cat "$RUNNER_TEMP/audit-run-id")"
-          audit_tag="mobile-menu-v2-audit/${{ steps.pin.outputs.manifest_sha }}"
+          audit_tag="mobile-menu-v2-audit/$MANIFEST_SHA"
           audit_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$audit_tag" --jq '.object.sha')"
           test "$audit_ref" = "$GITHUB_SHA"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$audit_run" |
@@ -101,18 +101,21 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          IMPORT_MODE: ${{ steps.pin.outputs.mode }}
+          MANIFEST_PATH: ${{ steps.pin.outputs.manifest }}
+          MANIFEST_SHA: ${{ steps.pin.outputs.manifest_sha }}
         run: |
           set -euo pipefail
           receipt="$RUNNER_TEMP/mobile-menu-v2-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.json"
-          if test "${{ steps.pin.outputs.mode }}" = seed; then
+          if test "$IMPORT_MODE" = seed; then
             python3 -I -S -B mobile-apps/tools/mobile-menu-v2-import/import_v2.py \
-              --manifest "${{ steps.pin.outputs.manifest }}" --receipt "$receipt" \
-              --apply --approved-sha256 "${{ steps.pin.outputs.manifest_sha }}"
+              --manifest "$MANIFEST_PATH" --receipt "$receipt" \
+              --apply --approved-sha256 "$MANIFEST_SHA"
           else
             python3 -I -S -B mobile-apps/tools/mobile-menu-v2-import/import_v2.py \
-              --manifest "${{ steps.pin.outputs.manifest }}" --receipt "$receipt"
+              --manifest "$MANIFEST_PATH" --receipt "$receipt"
           fi
-          python3 - "$receipt" "${{ steps.pin.outputs.mode }}" "${{ steps.pin.outputs.manifest_sha }}" <<'PY'
+          python3 - "$receipt" "$IMPORT_MODE" "$MANIFEST_SHA" <<'PY'
           import json,sys
           receipt=json.load(open(sys.argv[1],encoding="utf-8"))
           assert receipt["complete"] and receipt["mode"] == ("apply" if sys.argv[2]=="seed" else "dry_run")

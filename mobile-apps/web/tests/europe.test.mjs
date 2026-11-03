@@ -773,6 +773,8 @@ test("legacy Italian search opens real app catalogue coordinates without synthet
     await f.page.locator(".europe-app .europe-search").waitFor();
     const nativeSearch = f.page.locator('.europe-app button[data-dovebevo-search="1"]');
     assert.equal(await nativeSearch.count(), 1, "Cerca also opens the European city picker");
+    assert.equal(await nativeSearch.isVisible(), true, "ordinary browser keeps its city search");
+    assert.equal(await f.page.locator(".europe-city-current").isVisible(), false);
     await nativeSearch.click();
     await f.page
       .getByRole("dialog")

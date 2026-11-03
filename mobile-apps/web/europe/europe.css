@@ -44,6 +44,16 @@
   width: 23px;
   height: 23px;
 }
+.europe-city-current {
+  display: none;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .europe-currency {
   display: inline-block;
   margin: 0;

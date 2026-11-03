@@ -66,8 +66,11 @@ html[data-dovebevo-app-theme="1"] .top {
 html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .top__row > .search-field {
   display: none !important;
 }
-html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .europe-search-row {
+html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .europe-search {
   display: none !important;
+}
+html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .europe-city-current {
+  display: block;
 }
 html[data-dovebevo-app-theme="1"] .btn,
 html[data-dovebevo-app-theme="1"] .chip,

@@ -123,8 +123,9 @@ test("native European document installs only the app shell style and hides its d
   const style = page.nodes.values().next().value.textContent;
   assert.match(
     style,
-    /\[data-dovebevo-app-theme="1"\]\[data-dovebevo-mobile-shell="1"\] \.europe-search-row/,
+    /\[data-dovebevo-app-theme="1"\]\[data-dovebevo-mobile-shell="1"\] \.europe-search/,
   );
+  assert.match(style, /\[data-dovebevo-mobile-shell="1"\] \.europe-city-current/);
   assert.equal(page.rootAttributes.get("data-dovebevo-app-theme"), "1");
 });
 

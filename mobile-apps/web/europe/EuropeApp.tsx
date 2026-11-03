@@ -525,6 +525,9 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
             {city.name}
             <Icon name="search" />
           </button>
+          <span class="europe-city-current" aria-label={`${t("Città", "City")}: ${city.name}`}>
+            {city.name}
+          </span>
           <span class="europe-currency">
             {city.currency} ({city.currency === "GBP" ? "£" : "€"})
           </span>

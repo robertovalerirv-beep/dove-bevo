@@ -251,7 +251,7 @@ final class SavedVenuesViewController: UITableViewController {
         let categories = DrinkCategory.all.map { category in
             UIAction(title: category.name, state: (unifiedDrinks ? savedDrinkFilter?.code : drink.code) == category.code ? .on : .off) { [weak self] _ in self?.selectDrink(category.code) }
         }
-        drinkButton.menu = UIMenu(children: unifiedDrinks ? [allAction] + categories : categories)
+        drinkButton.menu = UIMenu(children: unifiedDrinks ? categories + [allAction] : categories)
         let failed = showingDrinks ? drinksFailed || offersFailed : storeFailed
         let empty = showingDrinks ? drinks.isEmpty && savedOffers.isEmpty && (!unifiedDrinks || venues.isEmpty) : venues.isEmpty
         editButtonItem.isEnabled = !empty && !failed

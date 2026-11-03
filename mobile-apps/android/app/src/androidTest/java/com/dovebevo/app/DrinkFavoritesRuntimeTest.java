@@ -57,7 +57,11 @@ public final class DrinkFavoritesRuntimeTest {
         drinks.save(URL,"Saved name",RecommendationDrink.SPRITZ,1);drinks.save(URL,"Saved name",RecommendationDrink.BEER_DRAFT,0);
         AtomicReference<String> opened=new AtomicReference<>();showScreen(opened,false);awaitRows("7,00");
         onMain(()->{assertEquals(View.GONE,favorites.view().findViewWithTag("favourites_local_tab").getParent() instanceof View ? ((View)favorites.view().findViewWithTag("favourites_local_tab").getParent()).getVisibility():View.VISIBLE);assertEquals(2,countTag(screen.view(),"drink_favourite_open"));
-            Spinner filter=(Spinner)screen.view().findViewWithTag("drink_favourites_filter");filter.setSelection(RecommendationDrink.SPRITZ.ordinal()+1);});
+            Spinner filter=(Spinner)screen.view().findViewWithTag("drink_favourites_filter");
+            assertEquals(RecommendationDrink.values().length,filter.getSelectedItemPosition());
+            assertEquals("Tutti i drink",filter.getItemAtPosition(RecommendationDrink.values().length).toString());
+            assertEquals(NativePricePresentation.category(RecommendationDrink.BEER_DRAFT),filter.getItemAtPosition(0).toString());
+            filter.setSelection(RecommendationDrink.SPRITZ.ordinal());});
         onMain(()->{assertEquals(1,countTag(screen.view(),"drink_favourite_open"));screen.view().findViewWithTag("drink_favourite_open").performClick();});
         assertEquals(URL+"&drink=spritz&hh=1",opened.get());
     }

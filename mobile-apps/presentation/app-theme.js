@@ -61,6 +61,11 @@ html[data-dovebevo-app-theme="1"] .top {
   background: var(--bg);
   padding: 10px 16px 12px;
 }
+/* Native Cerca owns city search. Retain the real button in the document for
+ * the native action to click, while removing the duplicate top lens. */
+html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .top__row > .search-field {
+  display: none !important;
+}
 html[data-dovebevo-app-theme="1"] .btn,
 html[data-dovebevo-app-theme="1"] .chip,
 html[data-dovebevo-app-theme="1"] .drink {

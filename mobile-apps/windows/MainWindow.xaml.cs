@@ -115,18 +115,22 @@ public partial class MainWindow : Window
 
     private void OpenExternal(string address)
     {
-        if (!Uri.TryCreate(address, UriKind.Absolute, out var uri)
-            || uri.Scheme != Uri.UriSchemeHttps || uri.UserInfo.Length != 0)
+        var email = NavigationPolicy.TrySupportEmail(address, out var emailUri);
+        if (!email && (!Uri.TryCreate(address, UriKind.Absolute, out var uri)
+            || uri.Scheme != Uri.UriSchemeHttps || uri.UserInfo.Length != 0))
         {
             StatusText.Text = "Collegamento non aperto.";
             return;
         }
-        if (MessageBox.Show(this, $"Aprire {uri.DnsSafeHost} nel browser?",
+        var target = email ? emailUri! : new Uri(address);
+        var prompt = email ? "Aprire l'app email per scrivere a Dove Bevo?"
+            : $"Aprire {target.DnsSafeHost} nel browser?";
+        if (MessageBox.Show(this, prompt,
                 "Collegamento esterno", MessageBoxButton.YesNo, MessageBoxImage.Question)
             != MessageBoxResult.Yes) return;
         try
         {
-            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo(target.AbsoluteUri) { UseShellExecute = true });
         }
         catch (Exception)
         {
@@ -172,9 +176,11 @@ public partial class MainWindow : Window
         if (!ready) { Navigate(NavigationPolicy.Home); return; }
         try
         {
-            await Website.CoreWebView2.ExecuteScriptAsync(
-                "document.querySelector('[data-dovebevo-search=\"1\"]')?.click()");
-            StatusText.Text = "Cerca una città o un locale.";
+            var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "SearchClick.js"));
+            var opened = await Website.CoreWebView2.ExecuteScriptAsync(script);
+            StatusText.Text = opened == "true"
+                ? "Cerca una città o un locale."
+                : "Torna alla mappa e riprova Cerca.";
         }
         catch (Exception)
         {

@@ -43,6 +43,19 @@ Require(!NavigationPolicy.TryRecommendationEndpoint(
     "https://www.dovebevo.com/bar/m" + new string('a', 24) + "?c=u0nd9",
     "m" + new string('a', 24), out _), "unsupported catalogue vote accepted");
 
+var emailLinks = new[]
+{
+    ("mailto:dovebevo@gmail.com", true),
+    ("mailto:dovebevo@gmail.com?subject=Segnalazione%20locale%20m123&body=Milano%20bar", true),
+    ("mailto:other@example.com", false),
+    ("mailto:dovebevo@gmail.com?subject=Hello&cc=other@example.com", false),
+    ("mailto:dovebevo@gmail.com?subject=Hello%0D%0ABcc&body=Bar", false),
+    ("mailto:dovebevo@gmail.com?subject=Hello&body=Bar#fragment", false),
+};
+foreach (var (address, expected) in emailLinks)
+    Require(NavigationPolicy.TrySupportEmail(address, out _) == expected,
+        "support email policy mismatch");
+
 var codes = new[] { "beer_draft", "spritz", "negroni", "sbagliato", "gin_tonic",
     "gin_lemon", "wine_glass", "alcohol_free", "water" };
 var rows = codes.Select((drink, index) =>
@@ -57,7 +70,7 @@ ExpectInvalid(() => RecommendationClient.Parse(
     Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { venue_key = "n123", drinks = duplicate })), "n123"));
 ExpectInvalid(() => RecommendationClient.Parse(payload, "n124"));
 
-Console.WriteLine("Windows policy: 18 origin/venue/endpoint cases and 3 vote-schema cases passed.");
+Console.WriteLine("Windows policy: 18 origin/venue/endpoint, 6 email, and 3 vote-schema cases passed.");
 
 static void Require(bool condition, string message)
 {

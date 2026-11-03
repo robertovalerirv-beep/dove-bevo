@@ -13,6 +13,7 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
     <Content Include="Assets\Logo.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="VenueCapture.js" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="SearchClick.js" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -68,6 +68,29 @@ internal static partial class NavigationPolicy
         return true;
     }
 
+    internal static bool TrySupportEmail(string? address, out Uri? target)
+    {
+        target = null;
+        if (address is not { Length: > 0 and <= 1024 }
+            || !address.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)) return false;
+        var queryStart = address.IndexOf('?');
+        var recipient = queryStart < 0 ? address[7..] : address[7..queryStart];
+        if (!recipient.Equals("dovebevo@gmail.com", StringComparison.OrdinalIgnoreCase)) return false;
+        if (queryStart >= 0)
+        {
+            var query = ParseQuery(address[queryStart..]);
+            if (query is null || query.Count != 2
+                || !query.TryGetValue("subject", out var subject)
+                || !query.TryGetValue("body", out var body)
+                || subject.Length is < 1 or > 120 || body.Length is < 1 or > 500
+                || subject.Any(char.IsControl) || body.Any(char.IsControl)) return false;
+        }
+        if (!Uri.TryCreate(address, UriKind.Absolute, out var parsed)
+            || parsed.Scheme != "mailto" || parsed.Fragment.Length != 0) return false;
+        target = parsed;
+        return true;
+    }
+
     private static Dictionary<string, string>? ParseQuery(string raw)
     {
         if (!raw.StartsWith('?')) return null;

@@ -36,7 +36,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Windows publish failed.' }
 Get-ChildItem -LiteralPath $publish -Force | Copy-Item -Destination $stage -Recurse
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'DoveBevo.Windows.exe')) -or
     -not (Test-Path -LiteralPath (Join-Path $stage 'Assets\Logo.png')) -or
-    -not (Test-Path -LiteralPath (Join-Path $stage 'VenueCapture.js'))) {
+    -not (Test-Path -LiteralPath (Join-Path $stage 'VenueCapture.js')) -or
+    -not (Test-Path -LiteralPath (Join-Path $stage 'SearchClick.js'))) {
     throw 'Published app is incomplete.'
 }
 

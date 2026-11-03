@@ -4,6 +4,7 @@ This is the Windows desktop client for Roberto's existing Dove Bevo service. It 
 WebView2 at `https://www.dovebevo.com/` with the normal website session. The
 Windows shell adds browser navigation, search access, foreground location
 consent, an external-link handoff, sharing by copying the current link,
+support email handoff to the default mail app,
 Scopri access to the app-only Europe map, shared drink recommendations for
 supported Italian venues, and private favourite drinks saved with the venue's
 existing name. A favourite
@@ -29,8 +30,9 @@ and Microsoft Edge WebView2 Runtime for running the app.
 ```powershell
 dotnet run --project mobile-apps/windows/tests/PolicySmoke/PolicySmoke.csproj -c Release
 node --check mobile-apps/windows/VenueCapture.js
+node --test mobile-apps/windows/tests/search-click.test.mjs
 dotnet build mobile-apps/windows/DoveBevo.Windows.csproj -c Release
-& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.0.5'
+& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.0.6'
 ```
 
 The example uses the reserved Partner Center product **9P6XDNNQJ74N**, with
@@ -53,5 +55,5 @@ the app-only catalogue and its city/drink filters inside WebView2; the phone's
 separate native ranking screen is not yet replicated. Shared recommendations
 work for the existing Italian venue route supported by that API; other
 catalogue venues show an unavailable state. The identity-aligned package still
-needs a Store submission, certification and installed-client testing before a
+needs a genuine Desktop screenshot, Store submission, certification and installed-client testing before a
 public release can be claimed.

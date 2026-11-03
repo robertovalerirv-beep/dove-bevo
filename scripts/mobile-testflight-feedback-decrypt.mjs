@@ -2,8 +2,8 @@
 // must come from the owner's protected host store, never source or OneDrive.
 import { Buffer } from "node:buffer";
 import { createDecipheriv, createPrivateKey, privateDecrypt } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const MAX_ENVELOPE_BYTES = 60 * 1024 * 1024;
@@ -55,22 +55,59 @@ export function decryptFeedback(envelopeText, privateKeyPem) {
   return payload;
 }
 
-export async function saveFeedback(payload, outputDirectory) {
-  const base = resolve(".task-tmp");
+async function rejectGitCheckout(target) {
+  let cursor = target;
+  for (;;) {
+    try {
+      await lstat(join(cursor, ".git"));
+      throw new Error("Feedback output inside Git checkout");
+    } catch (error) {
+      if (error?.message === "Feedback output inside Git checkout") throw error;
+      if (error?.code !== "ENOENT") throw error;
+    }
+    const parent = dirname(cursor);
+    if (parent === cursor) return;
+    cursor = parent;
+  }
+}
+
+export async function saveFeedback(
+  payload,
+  outputDirectory,
+  userProfile = process.env.USERPROFILE,
+) {
+  if (
+    !isAbsolute(outputDirectory ?? "") ||
+    !isAbsolute(userProfile ?? "") ||
+    !payload?.result ||
+    !Array.isArray(payload.images) ||
+    payload.images.length > 40
+  )
+    throw new Error("Invalid feedback output");
+  const base = resolve(userProfile, "OneDrive", "Dove Bevo", ".task-tmp");
   const target = resolve(outputDirectory);
   const inside = relative(base, target);
   if (!inside || inside.startsWith("..") || isAbsolute(inside))
-    throw new Error("Feedback output must be project-local");
+    throw new Error("Feedback output must be outside Git checkout");
+  await rejectGitCheckout(target);
+  const names = new Set();
+  const preparedImages = payload.images.map((image) => {
+    if (!image || !/^feedback-\d{3}-[1-5]\.(png|jpg|heic|heif)$/.test(image.filename))
+      throw new Error("Unexpected feedback image name");
+    if (names.has(image.filename)) throw new Error("Repeated feedback image name");
+    names.add(image.filename);
+    return { filename: image.filename, bytes: decoded(image.base64, MAX_IMAGE_BYTES) };
+  });
+  const projectRoot = dirname(base);
+  if (!(await lstat(projectRoot)).isDirectory()) throw new Error("Missing selected project");
+  await mkdir(base, { recursive: true, mode: 0o700 });
   await mkdir(target, { recursive: false, mode: 0o700 });
   await writeFile(join(target, "feedback.json"), JSON.stringify(payload.result, null, 2) + "\n", {
     flag: "wx",
     mode: 0o600,
   });
-  for (const image of payload.images) {
-    if (!image || !/^feedback-\d{3}-[1-5]\.(png|jpg|heic|heif)$/.test(image.filename))
-      throw new Error("Unexpected feedback image name");
-    const bytes = decoded(image.base64, MAX_IMAGE_BYTES);
-    await writeFile(join(target, image.filename), bytes, { flag: "wx", mode: 0o600 });
+  for (const image of preparedImages) {
+    await writeFile(join(target, image.filename), image.bytes, { flag: "wx", mode: 0o600 });
   }
   return { feedback_count: payload.result.feedback_count, image_count: payload.images.length };
 }

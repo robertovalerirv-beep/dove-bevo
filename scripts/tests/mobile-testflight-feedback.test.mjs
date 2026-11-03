@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
-import { mkdir, readFile, rm } from "node:fs/promises";
+import { access, mkdir, readFile, rm } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { test } from "node:test";
 import { auditFeedback } from "../mobile-testflight-feedback.mjs";
-import { decryptFeedback } from "../mobile-testflight-feedback-decrypt.mjs";
+import { decryptFeedback, saveFeedback } from "../mobile-testflight-feedback-decrypt.mjs";
 
 const APP =
   "https://api.appstoreconnect.apple.com/v1/apps/6827324444/betaFeedbackScreenshotSubmissions";
@@ -130,4 +130,32 @@ test("rejects foreign pagination and image hosts before contacting them", async 
     );
     assert.equal(calls, 1);
   });
+});
+
+test("refuses plaintext inside a Git worktree and validates images before writing", async () => {
+  const projectLike = resolve("OneDrive", "Dove Bevo", ".task-tmp", "feedback-output");
+  const payload = {
+    result: { schema_version: 1, feedback: [] },
+    images: [],
+  };
+  await assert.rejects(saveFeedback(payload, projectLike, process.cwd()), /inside Git checkout/);
+  await assert.rejects(access(projectLike));
+
+  const outsideCheckoutProfile = resolve("..");
+  const invalidImageTarget = join(
+    outsideCheckoutProfile,
+    "OneDrive",
+    "Dove Bevo",
+    ".task-tmp",
+    "invalid-image-output",
+  );
+  await assert.rejects(
+    saveFeedback(
+      { ...payload, images: [{ filename: "../escape.png", base64: "AA==" }] },
+      invalidImageTarget,
+      outsideCheckoutProfile,
+    ),
+    /Unexpected feedback image name/,
+  );
+  await assert.rejects(access(invalidImageTarget));
 });

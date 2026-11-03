@@ -23,6 +23,20 @@ final class DiscoveryCardsTests: XCTestCase {
         XCTAssertEqual(DiscoveryCategorySummary(rows: beer, loading: true).headline, "Caricamento…")
         XCTAssertEqual(DiscoveryCategorySummary(rows: [], loading: false).headline, "Nessun prezzo")
         XCTAssertEqual(DiscoveryCategorySummary(rows: [], loading: false, available: false).headline, "Prezzi non caricati")
+        let partial = DiscoveryCategorySummary(rows: [], loading: false, partial: true)
+        XCTAssertEqual(partial.headline, "Nessun prezzo nei dati caricati")
+        XCTAssertTrue(partial.detail.contains("Zona parziale"))
+    }
+
+    func testLowestOldPriceShowsItsSourceDateAndAgeOnTheCard() throws {
+        let price = FavouritePrice(drink: "spritz", band: .normal, cents: 600,
+                                   observedOn: "2026-06-01", confirmations: 0, quarantined: false)
+        let row = DiscoveryPresentedRow(key: "n123", name: "Owned fixture", url: try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")),
+                                        latitude: 45.46, longitude: 9.19, location: "Milano", price: .legacy(price))
+        let summary = DiscoveryCategorySummary(rows: [row], loading: false, today: "2026-11-03")
+        XCTAssertEqual(summary.headline, "Da 6,00 €")
+        XCTAssertTrue(summary.detail.contains("Segnalato il 2026-06-01"))
+        XCTAssertTrue(summary.detail.contains("Da ricontrollare"))
     }
 
     @MainActor func testDrinkDropdownKeepsAllNineRealCategoriesAndSelectedIdentity() throws {

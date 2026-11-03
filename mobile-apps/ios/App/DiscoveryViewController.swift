@@ -201,7 +201,8 @@ final class DiscoveryViewController: UITableViewController {
         for category in DrinkCategory.all {
             guard let button = categoryButtons[category.code] else { continue }
             let categoryRows = snapshot?.displayRows(drink: category.code, band: band) ?? []
-            button.update(summary: DiscoveryCategorySummary(rows: categoryRows, loading: busy, available: available),
+            button.update(summary: DiscoveryCategorySummary(rows: categoryRows, loading: busy, available: available,
+                                                            partial: !(snapshot?.unavailableCells.isEmpty ?? true)),
                           selected: category == drink)
             tallestCard = max(tallestCard, button.systemLayoutSizeFitting(
                 CGSize(width: 132, height: UIView.layoutFittingCompressedSize.height),

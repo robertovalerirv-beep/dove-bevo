@@ -123,15 +123,26 @@ final class DiscoveryScreen {
                 try{offers=DiscoveryData.rows(snapshot.cells,area,category,band);}
                 catch(IOException unavailable){offers=null;}
                 if(offers==null){headline="Prezzi non caricati";detail="Ricarica";}
-                else if(offers.isEmpty()){headline="Nessun prezzo";detail="Prova un altro drink";}
+                else if(offers.isEmpty()){
+                    headline=snapshot.partial?"Nessun prezzo nei dati caricati":"Nessun prezzo";
+                    detail=snapshot.partial?"Zona parziale · Ricarica":"Prova un altro drink";
+                }
                 else{
                     String firstGroup=offers.get(0).group();boolean comparable=true;
                     for(DiscoveryData.Row offer:offers)if(!firstGroup.equals(offer.group())){comparable=false;break;}
                     if(comparable){
                         DiscoveryData.Row lowest=offers.get(0);
                         headline="Da "+NativePricePresentation.amount(lowest.price,lowest.mobilePrice);
-                        detail=NativePricePresentation.groupLabel(lowest.price,lowest.mobilePrice);
-                    }else{headline=offers.size()+" prezzi";detail="Valute o formati diversi";}
+                        String source;boolean old;
+                        if(lowest.mobilePrice==null){source="Segnalato il "+lowest.price.day;old=lowest.price.old;}
+                        else{
+                            EuropePrices.Price value=lowest.mobilePrice;
+                            source=value.sourceKind.equals("online_menu")?"Menu verificato il "+value.sourceCheckedOn:"Segnalato il "+value.observedOn;
+                            old=value.old;
+                        }
+                        detail=NativePricePresentation.groupLabel(lowest.price,lowest.mobilePrice)+" · "+source
+                                +(old?" · Da ricontrollare":"")+(snapshot.partial?" · Zona parziale":"");
+                    }else{headline=offers.size()+" prezzi";detail="Valute o formati diversi"+(snapshot.partial?" · Zona parziale":"");}
                 }
             }
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);

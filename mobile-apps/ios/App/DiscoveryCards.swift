@@ -16,17 +16,38 @@ struct DiscoveryCategorySummary: Equatable {
     let detail: String
     let countText: String?
 
-    init(rows: [DiscoveryPresentedRow], loading: Bool, available: Bool = true) {
+    init(rows: [DiscoveryPresentedRow], loading: Bool, available: Bool = true,
+         partial: Bool = false, today: String = ComparisonJSON.today()) {
         if loading { headline = "Caricamento…"; detail = "Prezzi nella zona"; countText = nil; return }
         if !available { headline = "Prezzi non caricati"; detail = "Apri la mappa o ricarica"; countText = nil; return }
-        guard let first = rows.first else { headline = "Nessun prezzo"; detail = "Prova nella mappa"; countText = nil; return }
+        guard let first = rows.first else {
+            headline = partial ? "Nessun prezzo nei dati caricati" : "Nessun prezzo"
+            detail = partial ? "Zona parziale · Ricarica" : "Prova nella mappa"
+            countText = nil
+            return
+        }
         let count = rows.count == 1 ? "1 prezzo" : "\(rows.count) prezzi"
         countText = count
         if Set(rows.map { $0.price.group }).count == 1,
            let lowest = rows.min(by: { $0.price.amountMinor < $1.price.amountMinor }) {
-            headline = "Da \(lowest.price.amount)"; detail = first.price.groupLabel
+            let source: String
+            let old: Bool
+            switch lowest.price {
+            case .legacy(let price):
+                source = "Segnalato il \(price.observedOn)"
+                old = price.isOld(today: today)
+            case .europe(let price):
+                source = price.sourceCheckedOn.map { "Menu verificato il \($0)" }
+                    ?? "Segnalato il \(price.observedOn ?? "data non disponibile")"
+                old = (price.observedOn ?? price.sourceCheckedOn).flatMap(ComparisonJSON.day).map { day in
+                    (ComparisonJSON.day(today)?.timeIntervalSince(day) ?? .infinity) > 90 * 86400
+                } ?? true
+            }
+            headline = "Da \(lowest.price.amount)"
+            detail = "\(first.price.groupLabel) · \(source)" + (old ? " · Da ricontrollare" : "")
+                + (partial ? " · Zona parziale" : "")
         } else {
-            headline = count; detail = "Valute o formati diversi"
+            headline = count; detail = "Valute o formati diversi" + (partial ? " · Zona parziale" : "")
         }
     }
 }

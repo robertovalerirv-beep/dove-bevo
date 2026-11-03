@@ -31,8 +31,8 @@ DIAGNOSTIC_ERRORS = []
 DIAGNOSTIC_LIMIT = 16_384
 SERIAL = "emulator-5554"
 LAUNCH_STAGES = ("initial", "after_decline", "resume", "after_restart")
-OWNED_CLASSES = {"NativeUsabilityRuntimeTest": 23, "RecommendationsRuntimeTest": 6,
-                 "FavoritesRuntimeTest": 5, "DiscoveryRuntimeTest": 4, "EuropePricesRuntimeTest": 1,
+OWNED_CLASSES = {"NativeUsabilityRuntimeTest": 24, "RecommendationsRuntimeTest": 6,
+                 "FavoritesRuntimeTest": 5, "DiscoveryRuntimeTest": 5, "EuropePricesRuntimeTest": 1,
                  "PriceShareRuntimeTest": 8, "DrinkFavoritesRuntimeTest": 4}
 OWNED_TEST_COUNT = sum(OWNED_CLASSES.values())
 OWNED_TEST_SOURCE = Path(__file__).resolve().parents[1] / "android/app/src/androidTest/java/com/dovebevo/app"

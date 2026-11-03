@@ -382,7 +382,7 @@ class AndroidSmokeTests(unittest.TestCase):
             self.assertIn(text, source)
 
     def test_registered_source_inventory_is_exact_and_checked_before_emulator_start(self):
-        self.assertEqual(m.OWNED_TEST_COUNT, 51)
+        self.assertEqual(m.OWNED_TEST_COUNT, 53)
         m.verify_owned_test_sources()
         directory = self.base / 'registered-tests'
         directory.mkdir()
@@ -441,7 +441,7 @@ class AndroidSmokeTests(unittest.TestCase):
         old_45 = {**old_47, 'NativeUsabilityRuntimeTest': 21}
         for bad in [b'', self.owned_output(old_45), self.owned_output(old_47),
                     good.replace(f'OK ({m.OWNED_TEST_COUNT} tests)'.encode(), b''),
-                    good.replace(b'INSTRUMENTATION_STATUS: numtests=51', b'INSTRUMENTATION_STATUS: numtests=46', 1),
+                    good.replace(f'INSTRUMENTATION_STATUS: numtests={m.OWNED_TEST_COUNT}'.encode(), b'INSTRUMENTATION_STATUS: numtests=1', 1),
                     good.replace(b'INSTRUMENTATION_CODE: -1', b''),
                     good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -2', 1),
                     good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -3', 1),

@@ -41,11 +41,7 @@ before(async () => {
     build: {
       outDir,
       emptyOutDir: false,
-      lib: {
-        entry: path.join(here, "fixture.tsx"),
-        formats: ["es"],
-        fileName: "fixture",
-      },
+      lib: { entry: path.join(here, "fixture.tsx"), formats: ["es"], fileName: "fixture" },
       cssCodeSplit: false,
       rolldownOptions: { output: { assetFileNames: "[name][extname]" } },
     },
@@ -67,9 +63,7 @@ const priceRows = [
 ];
 async function fixture(options = {}) {
   let menuFailures = options.menuFailOnce ? 1 : 0;
-  const context = await browser.newContext({
-    viewport: { width: 390, height: 844 },
-  });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   const writes = [];
   await page.route("**/*", (route) => {
@@ -320,10 +314,7 @@ test("venue cards preserve escaped identity, current data and expandable real ac
       true,
     );
     await f.page
-      .getByRole("button", {
-        name: "Segnala un problema con il bar",
-        exact: true,
-      })
+      .getByRole("button", { name: "Segnala un problema con il bar", exact: true })
       .click();
     assert.equal(
       await f.page.evaluate(() =>
@@ -393,10 +384,7 @@ test("changing the selected drink preserves confirmation state and visible keybo
     await f.page.evaluate(() => window.sheetFixture.bar());
     const spritz = f.page.locator("li.mobile-price").filter({ hasText: "Spritz" });
     await spritz.getByRole("button", { name: "Confermo", exact: true }).click();
-    const confirmed = spritz.getByRole("button", {
-      name: "Confermato",
-      exact: true,
-    });
+    const confirmed = spritz.getByRole("button", { name: "Confermato", exact: true });
     await confirmed.waitFor();
     await confirmed.focus();
     await f.page.evaluate(() => window.sheetFixture.bar(["gin_tonic"]));
@@ -456,17 +444,11 @@ test("small screens retain scroll access and 48 pixel price actions", async () =
       assert.ok(box && box.height >= 48);
     }
     await f.page
-      .getByRole("button", {
-        name: "Segnala un problema con il bar",
-        exact: true,
-      })
+      .getByRole("button", { name: "Segnala un problema con il bar", exact: true })
       .scrollIntoViewIfNeeded();
     assert.equal(
       await f.page
-        .getByRole("button", {
-          name: "Segnala un problema con il bar",
-          exact: true,
-        })
+        .getByRole("button", { name: "Segnala un problema con il bar", exact: true })
         .isVisible(),
       true,
     );
@@ -520,10 +502,7 @@ test("mobile venue privacy uses the approved app policy and preserves translated
         await window.sheetFixture.setLang(value);
         window.sheetFixture.bar();
       }, language);
-      const links = f.page.getByRole("navigation", {
-        name: label,
-        exact: true,
-      });
+      const links = f.page.getByRole("navigation", { name: label, exact: true });
       await links.waitFor();
       assert.equal(await links.getByRole("link").count(), 2);
       assert.equal(
@@ -637,10 +616,9 @@ test("three price actions retain a phone row across languages and confirmation s
       JSON.stringify(large),
     );
     assert.ok(large[2].y > large[0].y, "Large text reflows instead of shrinking to force one row");
-    const body = await f.page.locator(".sheet__body").evaluate((element) => ({
-      width: element.clientWidth,
-      scroll: element.scrollWidth,
-    }));
+    const body = await f.page
+      .locator(".sheet__body")
+      .evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth }));
     assert.ok(body.scroll <= body.width + 1, JSON.stringify(body));
     await actions.last().scrollIntoViewIfNeeded();
     assert.ok(await actions.last().isVisible());
@@ -832,9 +810,7 @@ test("owner-verified venue separates cited menu and customer price, and submits 
         expected_revision: "22222222-2222-4222-8222-222222222222",
       },
     ]);
-    const support = f.page.getByRole("link", {
-      name: "Segnala un problema con il locale",
-    });
+    const support = f.page.getByRole("link", { name: "Segnala un problema con il locale" });
     assert.match(await support.getAttribute("href"), /^mailto:dovebevo@gmail\.com\?/);
   } finally {
     await f.close();

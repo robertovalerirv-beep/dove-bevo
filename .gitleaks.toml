@@ -16,3 +16,14 @@ paths = [
   '''^mobile-apps/data/mobile-menu-v2-seeds/820ad99547035db65d951401cc4a87d6db319488febaeb3df0e54f51571dd4a8\.json$'''
 ]
 regexes = ['''^m4900240db731f0b53e2b7bf6$''']
+
+# Exact public identifier exception for La Zanzara owner venue manifest.
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "La Zanzara public owner venue identifier"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/e6275baccc29ad8ef4ca7a3c7aa20d8717e2eb3549c22105ab0ce9975e69fc49\.json$''']
+regexes = ['''^mbbd4a28a10bfcb50c6d9daef$''']

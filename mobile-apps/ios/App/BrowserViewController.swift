@@ -23,6 +23,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var recoveredRenderer = false
     private var navigationState = BrowserNavigationState()
     private let savedVenues: SavedVenueStore
+    private let savedDrinks: SavedDrinkStore
+    private let favouriteSave = FavouriteSaveCapture()
+    private var favouriteSaveTimeout: DispatchWorkItem?
     private var pageLoading = false
     private var browserVisible = false
     private let bookmarkCapture: VenueBookmarkCapture
@@ -48,9 +51,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }()
 
     init(savedVenues: SavedVenueStore = SavedVenueStore(), bookmarkCapture: VenueBookmarkCapture = VenueBookmarkCapture(),
+         savedDrinks: SavedDrinkStore = SavedDrinkStore(),
          recommendationClient: RecommendationServing = RecommendationClient(),
          websiteLoader: ((WKWebView, URLRequest) -> WKNavigation?)? = nil) {
         self.savedVenues = savedVenues
+        self.savedDrinks = savedDrinks
         self.bookmarkCapture = bookmarkCapture
         self.recommendationClient = recommendationClient
         self.websiteLoader = websiteLoader
@@ -71,6 +76,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     deinit {
+        favouriteSaveTimeout?.cancel()
         bookmarkTimeout?.cancel()
         mapAreaTimeout?.cancel()
         shareTimeout?.cancel()
@@ -137,7 +143,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private var canSaveCurrentVenue: Bool {
-        !bookmarkCapture.isPending && usableVenueURL != nil
+        !bookmarkCapture.isPending && !favouriteSave.isPending && usableVenueURL != nil
     }
 
     private var usableVenueURL: URL? {
@@ -517,18 +523,45 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     @objc func saveCurrentVenue() {
+        guard presentedViewController == nil else { return }
         readCurrentVenue(failureTitle: "Preferito non salvato") { [weak self] venue in
-            guard let self else { return }
-            do {
-                try self.savedVenues.save(url: venue.url, label: venue.label)
-                self.showAlert(title: "Preferito salvato", message: "Il locale è nei tuoi Preferiti, con il suo nome. Puoi riaprirlo dalla barra in basso.")
-                UIAccessibility.post(notification: .announcement, argument: "Locale aggiunto ai preferiti")
-            } catch SavedVenueStore.StoreError.capacityReached {
-                self.showBookmarkError("Hai già 50 preferiti. Rimuovine uno dalla lista e riprova.")
-            } catch {
-                self.showBookmarkError("Non riesco a salvare questo locale. I preferiti precedenti sono stati mantenuti. Riprova.")
+            guard let self, self.usableVenueURL == venue.url, self.presentedViewController == nil else { return }
+            let context = self.favouriteSave.begin(document: self.currentWebsiteURL, venue: venue)
+            self.updateMoreMenu()
+            let chooser = FavouriteSaveChooser(venue: venue)
+            chooser.onCancel = { [weak self] in self?.invalidateFavouriteSave() }
+            chooser.onChoose = { [weak self, weak chooser] drink, band in
+                guard let self, let chooser, self.navigationController?.topViewController === self,
+                      (self.presentedViewController as? UINavigationController)?.topViewController === chooser,
+                      self.favouriteSave.consume(context, currentURL: self.webView?.url, active: self.isBookmarkInteractionActive) else { return }
+                do {
+                    try self.savedDrinks.save(SavedDrink.validated(url: venue.url, label: venue.label, drink: drink, band: band))
+                    let name = DrinkCategory.all.first { $0.code == drink }?.name ?? drink
+                    let outcome = "\(name) · \(band.name) · \(venue.label) salvato nei Preferiti."
+                    chooser.dismiss(animated: true) { [weak self] in
+                        self?.showVenueReadError(title: "Preferito salvato", message: outcome)
+                        UIAccessibility.post(notification: .announcement, argument: outcome)
+                    }
+                } catch {
+                    chooser.dismiss(animated: true) { [weak self] in
+                        self?.showBookmarkError("Non riesco a salvare. Potresti aver raggiunto il limite di 50 drink. I preferiti precedenti sono stati mantenuti.")
+                    }
+                }
+                self.updateMoreMenu()
             }
+            let navigation = UINavigationController(rootViewController: chooser)
+            navigation.modalPresentationStyle = .pageSheet
+            navigation.sheetPresentationController?.detents = [.medium(), .large()]
+            self.present(navigation, animated: true)
         }
+    }
+
+    private func invalidateFavouriteSave() {
+        let hadIntent = favouriteSave.isPending
+        favouriteSaveTimeout?.cancel(); favouriteSaveTimeout = nil; favouriteSave.invalidate()
+        if hadIntent, let chooser = presentedViewController as? UINavigationController,
+           chooser.topViewController is FavouriteSaveChooser { chooser.dismiss(animated: false) }
+        updateMoreMenu()
     }
 
     @objc func showRecommendations() {
@@ -576,6 +609,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func invalidateBookmarkCapture() {
+        invalidateFavouriteSave()
         invalidateShareCapture()
         invalidateMapAreaCapture()
         bookmarkTimeout?.cancel()
@@ -599,21 +633,23 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         invalidateBookmarkCapture()
         if let onShowFavourites { onShowFavourites(); return }
         navigationItem.backButtonTitle = "Torna alla mappa"
-        let list = SavedVenuesViewController(store: savedVenues) { [weak self] url in
+        let list = SavedVenuesViewController(store: savedVenues, drinkStore: savedDrinks) { [weak self] url in
             guard let self, let canonical = SavedVenuePolicy.canonicalURL(url) else { return }
             self.navigationController?.popToViewController(self, animated: false)
-            self.loadWebsite(canonical)
+            self.loadWebsite(MobileEntry.venueDocument(url) ?? canonical)
         }
         navigationController?.pushViewController(list, animated: true)
     }
 
     func openSavedVenue(_ url: URL) {
         guard let canonical = SavedVenuePolicy.canonicalURL(url) else { return }
-        if isViewLoaded { loadWebsite(canonical) }
-        else { lastWebsiteURL = canonical; loadViewIfNeeded() }
+        let target = MobileEntry.venueDocument(url) ?? canonical
+        if isViewLoaded { loadWebsite(target) }
+        else { lastWebsiteURL = target; loadViewIfNeeded() }
     }
 
     @objc private func sharePage() {
+        invalidateFavouriteSave()
         guard canSharePage, isBookmarkInteractionActive, presentedViewController == nil else { return }
         let documentURL = currentWebsiteURL
         let publicURL = MobileEntry.shareURL(documentURL)
@@ -664,6 +700,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func showLocationHelp() {
+        invalidateFavouriteSave()
         invalidateShareCapture()
         let alert = UIAlertController(
             title: "Posizione vicino a te",
@@ -679,6 +716,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func showInformation() {
+        invalidateFavouriteSave()
         navigationItem.backButtonTitle = "Torna alla mappa"
         let information = AppInformationViewController(onMap: { [weak self] in
             guard let self else { return }
@@ -688,11 +726,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func showPrivacy() {
+        invalidateFavouriteSave()
         navigationItem.backButtonTitle = "Torna alla mappa"
         navigationController?.pushViewController(PrivacyViewController(), animated: true)
     }
 
     private func showAlert(title: String, message: String) {
+        invalidateFavouriteSave()
         guard presentedViewController == nil else { return }
         invalidateShareCapture()
         let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)

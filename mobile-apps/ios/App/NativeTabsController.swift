@@ -4,6 +4,7 @@ import UIKit
 /// Actions never select an empty controller or replace the browser's history.
 final class NativeTabsController: UIViewController, UINavigationControllerDelegate {
     private let store: SavedVenueStore
+    private let drinkStore: SavedDrinkStore
     private let comparisonClient: FavouriteComparisonServing
     private let recommendationClient: RecommendationServing
     private let discoveryClient: DiscoveryServing
@@ -23,7 +24,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     }
 
     private(set) lazy var browser: BrowserViewController = {
-        let controller = self.providedBrowser ?? BrowserViewController(savedVenues: self.store, recommendationClient: self.recommendationClient)
+        let controller = self.providedBrowser ?? BrowserViewController(savedVenues: self.store, savedDrinks: self.drinkStore, recommendationClient: self.recommendationClient)
         controller.onShowFavourites = { [weak self] in self?.selectedIndex = 1 }
         controller.isMapDestinationSelected = { [weak self] in self?.selectedIndex == 0 }
         controller.onVenueActionsChanged = { [weak self] enabled in
@@ -34,7 +35,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     }()
     private(set) lazy var mapNavigation = UINavigationController(rootViewController: browser)
     private(set) lazy var favourites: SavedVenuesViewController = {
-        let controller = SavedVenuesViewController(store: self.store, client: self.comparisonClient) { [weak self] url in
+        let controller = SavedVenuesViewController(store: self.store, drinkStore: self.drinkStore, client: self.comparisonClient) { [weak self] url in
             guard let self else { return }
             self.browser.retireVenueActions()
             self.mapNavigation.popToRootViewController(animated: false)
@@ -59,9 +60,10 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private(set) lazy var discoveryNavigation = UINavigationController(rootViewController: discovery)
 
     init(store: SavedVenueStore = SavedVenueStore(), comparisonClient: FavouriteComparisonServing = FavouriteComparisonClient(),
+         drinkStore: SavedDrinkStore = SavedDrinkStore(),
          recommendationClient: RecommendationServing = RecommendationClient(), browser: BrowserViewController? = nil,
          discoveryClient: DiscoveryServing = DiscoveryClient()) {
-        self.store = store; self.comparisonClient = comparisonClient; self.recommendationClient = recommendationClient
+        self.store = store; self.drinkStore = drinkStore; self.comparisonClient = comparisonClient; self.recommendationClient = recommendationClient
         self.providedBrowser = browser
         self.discoveryClient = discoveryClient
         super.init(nibName: nil, bundle: nil)

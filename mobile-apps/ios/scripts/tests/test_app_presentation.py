@@ -10,7 +10,7 @@ class AppPresentationGuards(unittest.TestCase):
         source = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
         self.assertIn("verifyLiveVenueAndPriceFormReadOnly(venueName: publicName)", source)
         flow = source.split("private func verifyLiveVenueAndPriceFormReadOnly", 1)[1].split("private func ordinaryDecimalKeyboard", 1)[0]
-        for required in ['website.buttons["Aggiungi un prezzo qui"]', 'app.buttons["Birra media"]',
+        for required in ['website.buttons["Aggiungi un prezzo qui"]', 'website.buttons["Birra media"]',
                          'app.textFields["Prezzo in euro"]', 'website.buttons["Salva"]', "XCTAssertFalse(submit.isEnabled",
                          "visibleAboveKeyboard(price", "visibleAboveKeyboard(submit", "ordinaryDecimalKeyboard()",
                          'DoveBevo-live-venue-detail-read-only', 'DoveBevo-live-price-form-empty-read-only',

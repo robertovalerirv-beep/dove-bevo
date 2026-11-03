@@ -298,11 +298,17 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(drinkSelector.exists)
         XCTAssertEqual(drinkSelector.value as? String, "Birra media")
         drinkSelector.tap()
-        XCTAssertTrue(app.buttons["Spritz"].waitForExistence(timeout: 5))
-        app.buttons["Spritz"].tap()
+        // Scope the system menu: the native Discover card is also a Spritz button.
+        let spritzOption = app.collectionViews.buttons["Spritz"]
+        XCTAssertTrue(spritzOption.waitForExistence(timeout: 5))
+        XCTAssertTrue(spritzOption.isHittable)
+        spritzOption.tap()
         XCTAssertEqual(drinkSelector.value as? String, "Spritz")
         drinkSelector.tap()
-        app.buttons["Birra media"].tap()
+        let beerOption = app.collectionViews.buttons["Birra media"]
+        XCTAssertTrue(beerOption.waitForExistence(timeout: 5))
+        XCTAssertTrue(beerOption.isHittable)
+        beerOption.tap()
         XCTAssertEqual(drinkSelector.value as? String, "Birra media")
         let venue = table.cells.firstMatch
         XCTAssertTrue(venue.identifier.hasPrefix("discovery.venue."))
@@ -456,16 +462,17 @@ final class BrowserSmokeTests: XCTestCase {
         let selector = app.buttons["favorites.drink"]
         XCTAssertTrue(selector.exists)
         selector.tap()
+        let menuButtons = app.collectionViews.buttons
         let drinkActions = ["Birra media", "Spritz", "Negroni", "Sbagliato", "Gin tonic", "Gin lemon", "Calice di vino", "Analcolico", "Acqua", "Tutti i drink"]
         for name in drinkActions {
-            XCTAssertTrue(app.buttons[name].exists, name)
+            XCTAssertTrue(menuButtons[name].exists, name)
         }
-        let visibleDrinkActions = app.buttons.allElementsBoundByIndex.map(\.label).filter { drinkActions.contains($0) }
+        let visibleDrinkActions = menuButtons.allElementsBoundByIndex.map(\.label).filter { drinkActions.contains($0) }
         XCTAssertEqual(visibleDrinkActions, drinkActions, "The accessible menu must offer all nine drink categories before Tutti i drink")
-        app.buttons["Spritz"].tap()
+        menuButtons["Spritz"].tap()
         XCTAssertTrue(selector.label.contains("Spritz"))
         XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 0)
-        selector.tap(); app.buttons["Birra media"].tap()
+        selector.tap(); app.collectionViews.buttons["Birra media"].tap()
         XCTAssertTrue(selector.label.contains("Birra media"))
         XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 1)
         XCTAssertFalse(app.segmentedControls["favorites.kind"].exists)
@@ -548,7 +555,7 @@ final class BrowserSmokeTests: XCTestCase {
         // The venue is already selected. Choosing a fixed catalogue category
         // only opens its empty form; never tap a one-touch public price chip.
         XCTAssertTrue(app.staticTexts["Che cosa hai preso?"].waitForExistence(timeout: 10))
-        let category = app.buttons["Birra media"]
+        let category = website.buttons["Birra media"]
         XCTAssertTrue(category.isHittable)
         category.tap()
         let price = app.textFields["Prezzo in euro"]

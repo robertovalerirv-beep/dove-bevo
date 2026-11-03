@@ -569,7 +569,8 @@ def main():
         wait_for("owned private ADB listener", adb_ready, 15)
         emulator = subprocess.Popen([str(SDK / "emulator/emulator"), "-avd", "dove-live", "-port", "5554",
                                      "-no-window", "-no-audio", "-no-boot-anim", "-no-snapshot",
-                                     "-gpu", "swiftshader_indirect", "-memory", "2048"],
+                                     "-gpu", "swiftshader_indirect", "-memory", "2048",
+                                     "-partition-size", "3072"],
                                     env=ENV, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                                     stderr=subprocess.PIPE, start_new_session=True)
         captures.append(BoundedLog(emulator, "emulator"))

@@ -147,6 +147,8 @@ test("compile-time seams preserve original source and reject upstream drift", ()
   assert.match(transformApp(app), /mobilePath\(location\)/);
   assert.match(transformApp(app), /loadMobileCell\(cell, drinks\)/);
   assert.match(transformApp(app), /mobileMenuPin\(v, drinks\)/);
+  assert.match(transformApp(app), /MobileMapActions onAddPrice/);
+  assert.match(transformApp(app), /MapContributeActions/);
   assert.match(transformApp(app), /dovebevo:menu-cell-ready/);
   assert.match(transformApp(app), /venues=\{legacyPriceVenues\(everyVenue\)\}/);
   assert.match(transformApp(app), /prefill\?\.venue\.key\.startsWith\("m"\)/);

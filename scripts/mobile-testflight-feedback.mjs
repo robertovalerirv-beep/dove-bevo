@@ -273,7 +273,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       publicKey,
       (currentStage, httpStatus) => {
         stage = currentStage;
-        status = Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599 ? httpStatus : 0;
+        status =
+          Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599 ? httpStatus : 0;
       },
     );
     process.stdout.write(
@@ -298,7 +299,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       ["Feedback response too large", "size_limit"],
     ]);
     const reason = known.get(error?.message) ?? "other";
-    process.stderr.write(`Read-only TestFlight feedback audit unavailable: stage=${stage} status=${status} reason=${reason}\n`);
+    process.stderr.write(
+      `Read-only TestFlight feedback audit unavailable: stage=${stage} status=${status} reason=${reason}\n`,
+    );
     process.exitCode = 2;
   }
 }

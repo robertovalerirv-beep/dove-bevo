@@ -137,23 +137,30 @@ test("reports only bounded stage and HTTP status when Apple's list request fails
     const states = [];
     await assert.rejects(
       auditFeedback(
-        {}, file,
+        {},
+        file,
         async () => new globalThis.Response("private response must not be logged", { status: 403 }),
-        () => "ephemeral-token", undefined,
+        () => "ephemeral-token",
+        undefined,
         (stage, status) => states.push({ stage, status }),
       ),
       /Feedback read unavailable/,
     );
     assert.deepEqual(states.at(-1), { stage: "list_response", status: 403 });
-    assert.ok(states.every(({ stage, status }) => /^[a-z_]+$/.test(stage) && Number.isInteger(status)));
+    assert.ok(
+      states.every(({ stage, status }) => /^[a-z_]+$/.test(stage) && Number.isInteger(status)),
+    );
     await assert.rejects(access(file));
   });
   await withOutput(async (file) => {
     const states = [];
     await assert.rejects(
       auditFeedback(
-        {}, file, async () => json({ data: [{ unexpected: true }] }),
-        () => "ephemeral-token", undefined,
+        {},
+        file,
+        async () => json({ data: [{ unexpected: true }] }),
+        () => "ephemeral-token",
+        undefined,
         (stage, status) => states.push({ stage, status }),
       ),
       /Unexpected feedback record/,

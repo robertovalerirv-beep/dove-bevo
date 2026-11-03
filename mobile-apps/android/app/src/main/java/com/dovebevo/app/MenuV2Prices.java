@@ -29,13 +29,18 @@ final class MenuV2Prices {
     MenuV2Prices(FavoritePricesClient.Transport transport){this.transport=transport;}
     MenuV2Prices(){this(new FavoritePricesClient.HttpsTransport());}
     static final class Price {
-        final String id,venueName,name,category,currency,servingLabel,day,feeNotice;
+        final String id,venueName,name,category,currency,servingLabel,day,feeNotice,linkedOfferId,condition;
         final int band,amountMinor,exponent;final Integer servingML;final boolean customer;
         Price(String id,String venueName,String name,String category,int band,int amountMinor,String currency,int exponent,
               String servingLabel,Integer servingML,boolean customer,String day,String feeNotice){
+            this(id,venueName,name,category,band,amountMinor,currency,exponent,servingLabel,servingML,customer,day,feeNotice,null,null);
+        }
+        Price(String id,String venueName,String name,String category,int band,int amountMinor,String currency,int exponent,
+              String servingLabel,Integer servingML,boolean customer,String day,String feeNotice,String linkedOfferId,String condition){
             this.id=id;this.venueName=venueName;this.name=name;this.category=category;this.band=band;
             this.amountMinor=amountMinor;this.currency=currency;this.exponent=exponent;
             this.servingLabel=servingLabel;this.servingML=servingML;this.customer=customer;this.day=day;this.feeNotice=feeNotice;
+            this.linkedOfferId=linkedOfferId;this.condition=condition;
         }
         String group(){return currency+"|"+exponent+"|"+(servingLabel==null?"":servingLabel.toLowerCase(Locale.ROOT))+"|"+(servingML==null?0:servingML);}
         String amount(){int factor=new int[]{1,10,100,1000}[exponent];String minor=Integer.toString(amountMinor%factor);
@@ -45,8 +50,15 @@ final class MenuV2Prices {
         String evidence(){return (customer?"Segnalato da un cliente il ":"Da menu online · Fonte verificata il ")+day+" · Prezzo del drink. "+feeNotice;}
     }
     static final class Venue {
-        final String key,cell,name,feeNotice;final List<Price> prices;
-        Venue(String key,String cell,String name,String feeNotice,List<Price> prices){this.key=key;this.cell=cell;this.name=name;this.feeNotice=feeNotice;this.prices=Collections.unmodifiableList(new ArrayList<>(prices));}
+        final String key,cell,name,feeNotice;final List<Price> prices,linkedReports;
+        Venue(String key,String cell,String name,String feeNotice,List<Price> prices){
+            this(key,cell,name,feeNotice,prices,Collections.emptyList());
+        }
+        Venue(String key,String cell,String name,String feeNotice,List<Price> prices,List<Price> linkedReports){
+            this.key=key;this.cell=cell;this.name=name;this.feeNotice=feeNotice;
+            this.prices=Collections.unmodifiableList(new ArrayList<>(prices));
+            this.linkedReports=Collections.unmodifiableList(new ArrayList<>(linkedReports));
+        }
         List<Price> selected(RecommendationDrink drink,int band){List<Price> result=new ArrayList<>();for(Price price:prices)
             if(price.category.equals(drink.code)&&price.band==band)result.add(price);return result;}
     }
@@ -78,7 +90,7 @@ final class MenuV2Prices {
         }
         if(name==null)throw NativeJson.invalid();
         Map<String,Price> byId=new HashMap<>();for(Price price:offers)byId.put(price.id,price);
-        List<Price> all=new ArrayList<>(offers);after=null;Set<String> reportIds=new HashSet<>();List<Customer> reports=new ArrayList<>();
+        List<Price> all=new ArrayList<>(offers),linked=new ArrayList<>();after=null;Set<String> reportIds=new HashSet<>();List<Customer> reports=new ArrayList<>();
         try{
             for(int page=0;page<10;page++){
                 CustomerPage value=customerPage(get(endpoint(false,key,cell,after),call),key,cell);
@@ -92,13 +104,17 @@ final class MenuV2Prices {
             }
             for(Customer customer:reports){
                 Price source=byId.get(customer.offerId);
-                if(source!=null&&source.band>=0&&source.category.equals(customer.category)&&source.currency.equals(customer.currency)
+                if(source==null)continue;
+                Price report=new Price(customer.id,name,customer.name,customer.category,source.band,customer.amount,customer.currency,
+                        customer.exponent,customer.servingLabel,customer.ml,true,customer.day,
+                        "Spese del locale secondo il menu: "+feeNotice,customer.offerId,null);
+                linked.add(report);
+                if(source.band>=0&&source.category.equals(customer.category)&&source.currency.equals(customer.currency)
                         &&source.exponent==customer.exponent&&same(source.servingLabel,customer.servingLabel)&&same(source.servingML,customer.ml))
-                    all.add(new Price(customer.id,name,customer.name,source.category,source.band,customer.amount,customer.currency,
-                            customer.exponent,customer.servingLabel,customer.ml,true,customer.day,feeNotice));
+                    all.add(report);
             }
         }catch(IOException unavailable){/* Owner-menu evidence remains independently valid when customer read fails. */}
-        return new Venue(key,cell,name,feeNotice,all);
+        return new Venue(key,cell,name,feeNotice,all,linked);
     }
     private byte[] get(String url,FavoritePricesClient.Call call)throws IOException{call.check();if(!allowed(url))throw NativeJson.invalid();
         byte[] bytes=transport.get(url,BYTES,call);call.check();if(bytes==null||bytes.length>BYTES)throw NativeJson.invalid();return bytes;}
@@ -118,8 +134,10 @@ final class MenuV2Prices {
             if(!category.isEmpty()&&RecommendationDrink.from(category)==null)throw NativeJson.invalid();
             Money money=money(offer);Serving serving=serving(offer.get("serving"));Map<?,?> context=obj(offer.get("context"));
             String kind=text(context.get("kind"),32,null);int band=kind.equals("regular")?0:kind.equals("happy_hour")?1:kind.equals("conditional")?-1:-2;if(band==-2)throw NativeJson.invalid();
+            String condition=context.get("condition")==null?null:text(context.get("condition"),500,null);
             String day=sourceDay(offer.get("source"));
-            prices.add(new Price(id,name,item,category,band,money.amount,money.currency,money.exponent,serving.label,serving.ml,false,day,fees));
+            prices.add(new Price(id,name,item,category,band,money.amount,money.currency,money.exponent,serving.label,serving.ml,false,day,fees,
+                    null,band<0?condition:null));
         }
         if(next!=null&&(prices.isEmpty()||!next.equals(prices.get(prices.size()-1).id)))throw NativeJson.invalid();
         return new MenuPage(name,next,fees,count,prices);

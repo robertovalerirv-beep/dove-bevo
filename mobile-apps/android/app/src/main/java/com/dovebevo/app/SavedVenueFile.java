@@ -20,7 +20,7 @@ final class SavedVenueFile implements SavedVenueStore.Storage {
     }
 
     SavedVenueFile(File directory, String name) {
-        if (!name.equals("saved-venues-v1") && !name.equals("saved-drinks-v1")) throw new IllegalArgumentException("Unknown private store");
+        if (!name.equals("saved-venues-v1") && !name.equals("saved-drinks-v1") && !name.equals("saved-owner-offers-v1")) throw new IllegalArgumentException("Unknown private store");
         file = new File(directory, name + ".bin");
         temporary = new File(directory, name + ".tmp");
     }

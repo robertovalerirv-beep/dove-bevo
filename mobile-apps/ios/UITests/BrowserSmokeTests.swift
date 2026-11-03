@@ -306,8 +306,11 @@ final class BrowserSmokeTests: XCTestCase {
         listButton.tap()
         let listTitle = website.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Bar nella zona")).firstMatch
         XCTAssertTrue(listTitle.waitForExistence(timeout: 10))
-        let pricedLinks = website.links.matching(NSPredicate(format: "label CONTAINS %@", "€"))
-        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20))
+        attachState(named: "DoveBevo-live-default-tutti-list")
+        let menuLinks = website.links.matching(NSPredicate(format: "label MATCHES %@", ".*[1-9][0-9]* (voce|voci) menu.*"))
+        XCTAssertTrue(menuLinks.firstMatch.waitForExistence(timeout: 20), "Tutti must expose an actual verified owner-menu count")
+        let pricedLinks = website.links.matching(NSPredicate(format: "label MATCHES %@", ".*[1-9][0-9]* (prezzo segnalato|prezzi segnalati).*"))
+        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20), "Tutti must expose an actual positive reported-price count")
         var visibleVenue: XCUIElement?
         for _ in 0..<12 {
             if let venue = pricedLinks.allElementsBoundByIndex.first(where: { $0.exists && $0.isHittable }) {
@@ -319,10 +322,10 @@ final class BrowserSmokeTests: XCTestCase {
         }
         guard let visibleVenue else {
             attachState(named: "DoveBevo-live-priced-venue-not-hittable")
-            XCTFail("No existing priced venue became reachable in Elenco")
+            XCTFail("No existing reported-price venue became reachable in Elenco")
             return
         }
-        // ListSheet puts the existing public venue name before price/address.
+        // ListSheet puts the existing public venue name before count/address.
         // Derive the expected name independently from this real accessible link.
         let publicNameText = visibleVenue.staticTexts.firstMatch
         XCTAssertTrue(publicNameText.exists)

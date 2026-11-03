@@ -20,7 +20,7 @@ enum MobileEntry {
               let rawCell = rawQuery.split(separator: "&").first(where: { $0.hasPrefix("c=") })?.dropFirst(2),
               String(rawCell).range(of: #"\A[0-9b-hjkmnp-z]{5}\z"#, options: .regularExpression) != nil,
               let items = components.queryItems,
-              [2, 4].contains(items.count),
+              [2, 3, 4].contains(items.count),
               let path = items.first(where: { $0.name == "path" })?.value,
               let cell = items.first(where: { $0.name == "c" })?.value,
               path.range(of: #"\A/bar/(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})\z"#, options: .regularExpression) != nil,
@@ -33,6 +33,9 @@ enum MobileEntry {
         let keys = pairs.map { String($0.prefix { $0 != "=" }) }
         guard Set(keys).count == pairs.count else { return false }
         if keys.count == 2 { return Set(keys) == ["path", "c"] }
+        if keys.count == 3 {
+            return raw.range(of: #"\Apath=%2Fbar%2F(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})&c=[0-9b-hjkmnp-z]{5}&offer=[A-Za-z0-9._:-]{1,128}\z"#, options: .regularExpression) != nil
+        }
         guard keys.count == 4, Set(keys) == ["path", "c", "drink", "hh"],
               let drink = pairs.first(where: { $0.hasPrefix("drink=") })?.dropFirst(6),
               DrinkCategory.all.contains(where: { $0.code == String(drink) }),
@@ -77,7 +80,19 @@ enum MobileEntry {
            let hh = items.first(where: { $0.name == "hh" })?.value {
             return URL(string: "\(base)&drink=\(drink)&hh=\(hh)")
         }
+        if let original = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           let raw = original.percentEncodedQuery, isEntryPath(original.percentEncodedPath), validVenueQuery(raw),
+           let items = original.queryItems, items.count == 3,
+           let offer = items.first(where: { $0.name == "offer" })?.value {
+            return URL(string: "\(base)&offer=\(offer)")
+        }
         return URL(string: base)
+    }
+
+    static func offerDocument(_ venue: URL, offerID: String) -> URL? {
+        guard offerID.range(of: #"\A[A-Za-z0-9._:-]{1,128}\z"#, options: .regularExpression) != nil,
+              let canonical = SavedVenuePolicy.canonicalURL(venue), let base = venueDocument(canonical) else { return nil }
+        return URL(string: "\(base.absoluteString)&offer=\(offerID)")
     }
 
     static func drinkDocument(_ venue: URL, drink: String, band: ComparisonBand) -> URL? {

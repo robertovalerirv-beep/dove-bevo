@@ -22,20 +22,23 @@ import java.util.function.Supplier;
 
 /** Read-only live comparison of independent local drink choices. */
 final class SavedDrinkScreen {
-    private final Activity activity;private final SavedDrinkStore store;private final FavoritesLoader loader;private final MenuV2Loader menuLoader;
+    private final Activity activity;private final SavedDrinkStore store;private final SavedMenuOfferStore offerStore;private final FavoritesLoader loader;private final MenuV2Loader menuLoader;
     private final Consumer<String> navigate;private final Supplier<Boolean> foreground;private final SavedVenueStore legacyStore;
     private final LinearLayout view,rows;private final TextView status;private final Button refresh;private final Spinner categoryFilter;
-    private List<SavedDrinkStore.Entry> saved=Collections.emptyList();private List<SavedVenueStore.Venue> legacy=Collections.emptyList();private Map<String,FavoriteComparison.Cell> cells=Collections.emptyMap();private Map<String,MenuV2Prices.Venue> menus=Collections.emptyMap();
+    private List<SavedMenuOfferStore.Entry> offers=Collections.emptyList();private List<SavedDrinkStore.Entry> saved=Collections.emptyList();private List<SavedVenueStore.Venue> legacy=Collections.emptyList();private Map<String,FavoriteComparison.Cell> cells=Collections.emptyMap();private Map<String,MenuV2Prices.Venue> menus=Collections.emptyMap();
     private boolean visible,closed,busy,menuBusy,legacyFailed;private long generation;private FavoritesLoader.Batch request;private MenuV2Loader.Batch menuRequest;private AlertDialog migrationDialog;
 
     SavedDrinkScreen(Activity activity,SavedDrinkStore store,FavoritesLoader loader,Consumer<String> navigate,Supplier<Boolean> foreground) {
         this(activity,store,loader,navigate,foreground,null);
     }
     SavedDrinkScreen(Activity activity,SavedDrinkStore store,FavoritesLoader loader,Consumer<String> navigate,Supplier<Boolean> foreground,SavedVenueStore legacyStore) {
-        this(activity,store,loader,navigate,foreground,legacyStore,null);
+        this(activity,store,loader,navigate,foreground,legacyStore,null,null);
     }
     SavedDrinkScreen(Activity activity,SavedDrinkStore store,FavoritesLoader loader,Consumer<String> navigate,Supplier<Boolean> foreground,SavedVenueStore legacyStore,MenuV2Loader menuLoader) {
-        this.activity=activity;this.store=store;this.loader=loader;this.menuLoader=menuLoader;this.navigate=navigate;this.foreground=foreground;this.legacyStore=legacyStore;
+        this(activity,store,loader,navigate,foreground,legacyStore,menuLoader,null);
+    }
+    SavedDrinkScreen(Activity activity,SavedDrinkStore store,FavoritesLoader loader,Consumer<String> navigate,Supplier<Boolean> foreground,SavedVenueStore legacyStore,MenuV2Loader menuLoader,SavedMenuOfferStore offerStore) {
+        this.activity=activity;this.store=store;this.offerStore=offerStore;this.loader=loader;this.menuLoader=menuLoader;this.navigate=navigate;this.foreground=foreground;this.legacyStore=legacyStore;
         view=new LinearLayout(activity);view.setOrientation(LinearLayout.VERTICAL);view.setTag("drink_favourites_pane");
         view.addView(text("Drink salvati su questo dispositivo. Confronta i prezzi per drink; valuta e formato restano separati.",15));
         categoryFilter=new Spinner(activity);categoryFilter.setTag("drink_favourites_filter");categoryFilter.setContentDescription("Filtra i drink preferiti");
@@ -58,12 +61,16 @@ final class SavedDrinkScreen {
     void refresh(){
         if(!usable())return;retire();long token=generation;cells=Collections.emptyMap();menus=Collections.emptyMap();
         if(legacyStore!=null){try{legacy=legacyStore.load();legacyFailed=false;}catch(IOException unavailable){legacy=Collections.emptyList();legacyFailed=true;}}
-        try{saved=store.load();}catch(IOException unavailable){saved=Collections.emptyList();status.setText("Impossibile leggere i drink salvati. Nessun dato modificato.");render();return;}
-        if(saved.isEmpty()){status.setText(legacy.isEmpty()?"Non hai ancora salvato drink. Apri un locale sulla mappa e tocca Salva.":"Hai locali salvati in precedenza: scegli un drink qui sotto per conservarli.");render();return;}
-        List<SavedVenueStore.Venue> venues=new ArrayList<>();for(SavedDrinkStore.Entry item:saved)venues.add(item.venue);
-        busy=true;status.setText("Aggiornamento prezzi…");render();
-        try{request=loader.load(venues,value->{if(token!=generation||!usable())return;request=null;busy=false;cells=value;status.setText("Prezzi disponibili aggiornati");render();});}
-        catch(IOException unavailable){busy=false;status.setText("Prezzi non disponibili. I drink salvati restano sul dispositivo.");render();}
+        try{saved=store.load();offers=offerStore==null?Collections.emptyList():offerStore.load();}
+        catch(IOException unavailable){saved=Collections.emptyList();offers=Collections.emptyList();status.setText("Impossibile leggere i drink salvati. Nessun dato modificato.");render();return;}
+        if(saved.isEmpty()&&offers.isEmpty()){status.setText(legacy.isEmpty()?"Non hai ancora salvato drink. Apri un locale sulla mappa e tocca Salva.":"Hai locali salvati in precedenza: scegli un drink qui sotto per conservarli.");render();return;}
+        List<SavedVenueStore.Venue> legacyVenues=new ArrayList<>();for(SavedDrinkStore.Entry item:saved)legacyVenues.add(item.venue);
+        List<SavedVenueStore.Venue> venues=new ArrayList<>(legacyVenues);for(SavedMenuOfferStore.Entry item:offers)venues.add(item.venue);
+        if(!legacyVenues.isEmpty()){
+            busy=true;status.setText("Aggiornamento prezzi...");render();
+            try{request=loader.load(legacyVenues,value->{if(token!=generation||!usable())return;request=null;busy=false;cells=value;status.setText("Prezzi disponibili aggiornati");render();});}
+            catch(IOException unavailable){busy=false;status.setText("Prezzi non disponibili. I drink salvati restano sul dispositivo.");render();}
+        }
         if(menuLoader!=null){
             menuBusy=true;render();
             try{menuRequest=menuLoader.load(venues,value->{if(token!=generation||!usable())return;menuRequest=null;menuBusy=false;menus=value;render();});}
@@ -82,7 +89,7 @@ final class SavedDrinkScreen {
                 .thenComparing(SavedDrinkComparison.Row::group)
                 .thenComparingInt(SavedDrinkComparison.Row::amount)
                 .thenComparing(SavedDrinkComparison.Row::venueName));
-        if(values.isEmpty()&&!saved.isEmpty())rows.addView(text("Nessun drink salvato per questa scelta.",15));
+        if(values.isEmpty()&&!saved.isEmpty()&&offers.isEmpty())rows.addView(text("Nessun drink salvato per questa scelta.",15));
         for(SavedDrinkComparison.Row value:values){
             SavedDrinkStore.Entry item=value.saved;FavoriteComparison.Row price=value.price;MenuV2Prices.Price named=value.menuPrice;String venueName=value.venueName();
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag("drink_favourite_"+item.key());NativeAppearance.card(card);
@@ -108,6 +115,48 @@ final class SavedDrinkScreen {
             String context=NativePricePresentation.category(item.drink)+" · "+venueName+" · "+(item.band==1?"Happy hour":"Prezzo normale");open.setContentDescription("Apri "+context);remove.setContentDescription("Rimuovi dai preferiti "+context+", tutti i formati");
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
         }
+        int visibleOffers=0;
+        for(SavedMenuOfferStore.Entry item:offers){
+            if(filter>0&&(item.category==null||!item.category.equals(RecommendationDrink.values()[filter-1].code)))continue;
+            visibleOffers++;
+            MenuV2Prices.Venue menu=menus.get(item.venue.url);MenuV2Prices.Price current=null;
+            if(menu!=null)for(MenuV2Prices.Price price:menu.prices)if(!price.customer&&item.id.equals(price.id)){current=price;break;}
+            LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);NativeAppearance.card(card);card.setTag("menu_offer_favourite_"+item.key());
+            TextView title=text(item.name+" - "+(menu==null?item.venue.label:menu.name),18);NativeAppearance.title(title);card.addView(title);
+            if(current!=null){
+                card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
+                card.addView(text(current.evidence(),15));
+                if(current.band<0)card.addView(text("Prezzo soggetto a condizioni: "+(current.condition==null?"verifica il menu del locale":current.condition)+".",15));
+                if(current.servingLabel==null&&current.servingML==null)
+                    card.addView(text("Formato non dichiarato: prezzi con formati diversi non sono confrontabili.",15));
+                int linkedCount=0;
+                for(MenuV2Prices.Price report:menu.linkedReports)if(item.id.equals(report.linkedOfferId)){
+                    linkedCount++;
+                    if(linkedCount<=3){
+                        card.addView(text("Segnalazione cliente distinta: "+report.amount()+" - "+report.serving(),15));
+                        card.addView(text(report.evidence(),14));
+                        if(!report.currency.equals(current.currency)||report.exponent!=current.exponent
+                                ||!report.category.equals(current.category)||!java.util.Objects.equals(report.servingLabel,current.servingLabel)
+                                ||!java.util.Objects.equals(report.servingML,current.servingML))
+                            card.addView(text("Formato, categoria o valuta diversi dal menu: non confrontabile.",14));
+                    }
+                }
+                if(linkedCount>3)card.addView(text("Altre "+(linkedCount-3)+" segnalazioni cliente nel locale.",14));
+            }else{
+                String serving=(item.serving==null?"Formato non dichiarato":item.serving)+(item.ml==null?"":" - "+item.ml+" ml");
+                card.addView(text(serving,15));
+                card.addView(text(menuBusy?"Caricamento del prezzo online...":"Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi.",15));
+            }
+            Button open=button("Apri "+item.name,()->{if(usable()&&containsOffer(item.key()))navigate.accept(item.focusedUrl());});
+            open.setTag("menu_offer_favourite_open");NativeAppearance.button(open,true);card.addView(open);
+            Button remove=button("Rimuovi questo drink",()->{if(!usable()||!containsOffer(item.key())||offerStore==null)return;
+                retire();SavedMenuOfferStore.Result result=offerStore.remove(item);
+                if(result==SavedMenuOfferStore.Result.REMOVED||result==SavedMenuOfferStore.Result.NOT_FOUND)refresh();
+                else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});
+            remove.setTag("menu_offer_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+item.name+" - "+item.venue.label);card.addView(remove);
+            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
+        }
+        if(values.isEmpty()&&visibleOffers==0&&(!saved.isEmpty()||!offers.isEmpty()))rows.addView(text("Nessun drink salvato per questa scelta.",15));
         if(legacyFailed)rows.addView(text("Vecchi locali non disponibili. Riprova piu tardi; nessun dato e stato modificato.",15));
         if(legacyStore!=null&&!legacy.isEmpty()){
             TextView heading=text("Locali salvati prima - scegli un drink",19);NativeAppearance.title(heading);if(Build.VERSION.SDK_INT>=28)heading.setAccessibilityHeading(true);rows.addView(heading);
@@ -144,6 +193,7 @@ final class SavedDrinkScreen {
         }));dialog.show();
     }
     private boolean contains(String key){for(SavedDrinkStore.Entry item:saved)if(item.key().equals(key))return true;return false;}
+    private boolean containsOffer(String key){for(SavedMenuOfferStore.Entry item:offers)if(item.key().equals(key))return true;return false;}
     private TextView text(String value,int size){TextView t=new TextView(activity);t.setText(value);t.setTextSize(size);t.setTextColor(activity.getColor(R.color.shell_text));t.setPadding(0,dp(4),0,dp(4));return t;}
     private Button button(String label,Runnable action){Button b=new Button(activity);b.setText(label);b.setContentDescription(label);NativeAppearance.button(b,false);b.setOnClickListener(v->action.run());return b;}
     private int dp(int value){return Math.round(value*activity.getResources().getDisplayMetrics().density);}

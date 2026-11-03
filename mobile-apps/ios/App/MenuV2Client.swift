@@ -33,7 +33,7 @@ private final class MenuV2Load: RecommendationRequest {
         queued = saved.filter { seen.insert($0.url).inserted }
     }
     func start() {
-        guard saved.count <= 50, saved.allSatisfy({ ComparisonJSON.cell(from: $0) != nil }) else { finish(); return }
+        guard saved.count <= 100, saved.allSatisfy({ ComparisonJSON.cell(from: $0) != nil }) else { finish(); return }
         let deadline = DispatchWorkItem { [weak self] in self?.finish() }
         self.deadline = deadline
         DispatchQueue.main.asyncAfter(deadline: .now() + 60, execute: deadline)
@@ -91,19 +91,25 @@ private final class MenuV2Load: RecommendationRequest {
                 self.readCustomers(venue, name: name, fees: fees, offers: offers, after: next, pages: pages + 1, accumulated: all)
             } else {
                 let byID = Dictionary(uniqueKeysWithValues: offers.map { ($0.id, $0) })
-                let reports: [MenuV2Price] = all.compactMap { item in
-                    guard let id = item.offerID, let source = byID[id], source.band != nil,
-                          source.category == item.category, source.currency == item.currency,
-                          source.exponent == item.exponent, source.servingLabel == item.servingLabel,
-                          source.servingML == item.servingML else { return nil }
-                    return MenuV2Price(id: item.id, venueName: name, itemName: item.name,
-                                       category: source.category, band: source.band,
-                                       amountMinor: item.amountMinor, currency: item.currency, exponent: item.exponent,
-                                       servingLabel: item.servingLabel, servingML: item.servingML,
-                                       origin: .customer(item.observedOn), feeNotice: fees)
+                let linked: [MenuV2Price] = all.compactMap { item in
+                    guard let id = item.offerID, let source = byID[id] else { return nil }
+                    var report = MenuV2Price(id: item.id, venueName: name, itemName: item.name,
+                                             category: item.category ?? "", band: source.band,
+                                             amountMinor: item.amountMinor, currency: item.currency, exponent: item.exponent,
+                                             servingLabel: item.servingLabel, servingML: item.servingML,
+                                             origin: .customer(item.observedOn), feeNotice: "Spese del locale secondo il menu: \(fees)")
+                    report.linkedOfferID = id
+                    return report
+                }
+                let comparable = linked.filter { report in
+                    guard let id = report.linkedOfferID, let source = byID[id] else { return false }
+                    return source.band != nil && source.category == report.category
+                        && source.currency == report.currency && source.exponent == report.exponent
+                        && source.servingLabel == report.servingLabel && source.servingML == report.servingML
                 }
                 self.completed(venue, result: MenuV2Venue(key: venue.url.lastPathComponent, cell: cell,
-                                                          name: name, offers: offers + reports, feeNotice: fees))
+                                                          name: name, offers: offers + comparable, feeNotice: fees,
+                                                          linkedReports: linked))
             }
         }
     }

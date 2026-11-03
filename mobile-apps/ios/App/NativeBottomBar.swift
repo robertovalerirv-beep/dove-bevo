@@ -58,7 +58,7 @@ final class NativeBottomBar: UIView {
         accessibilityContainerType = .semanticGroup
         shouldGroupAccessibilityChildren = true
         isAccessibilityElement = false
-        backgroundColor = NativeAppearance.surface
+        backgroundColor = NativeAppearance.chrome
         let separator = UIView()
         separator.backgroundColor = NativeAppearance.line
         separator.translatesAutoresizingMaskIntoConstraints = false
@@ -154,8 +154,9 @@ final class NativeBottomBar: UIView {
             let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .home && destination == 2)
             let enabled = action != .save && action != .recommendations || venueActionsEnabled
             var configuration = UIButton.Configuration.plain()
-            configuration.baseBackgroundColor = NativeAppearance.surface
-            configuration.background.backgroundColor = NativeAppearance.surface
+            let fill = selected ? NativeAppearance.accent : NativeAppearance.chrome
+            configuration.baseBackgroundColor = fill
+            configuration.background.backgroundColor = fill
             configuration.title = action.title
             configuration.titleAlignment = .center
             configuration.titleLineBreakMode = .byWordWrapping
@@ -170,7 +171,7 @@ final class NativeBottomBar: UIView {
             configuration.imagePlacement = .top
             configuration.imagePadding = 4
             configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 4, bottom: 6, trailing: 4)
-            configuration.baseForegroundColor = enabled ? (selected ? NativeAppearance.accentText : NativeAppearance.muted) : NativeAppearance.disabled
+            configuration.baseForegroundColor = enabled ? (selected ? NativeAppearance.onAccent : NativeAppearance.muted) : NativeAppearance.disabled
             configuration.background.cornerRadius = NativeAppearance.radius
             configuration.cornerStyle = .fixed
             button.configuration = configuration

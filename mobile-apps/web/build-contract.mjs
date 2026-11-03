@@ -74,6 +74,11 @@ export function transformApp(source) {
     '  function openAdd(prefill: Prefill | null) {\n    if (prefill?.venue.key.startsWith("m")) {\n      navigate(`/bar/${prefill.venue.key}?c=${prefill.venue.cell}`);\n      return;\n    }',
   );
   result = once(result, "venues={everyVenue}", "venues={legacyPriceVenues(everyVenue)}");
+  result = once(
+    result,
+    'document.querySelector<HTMLElement>(".bottom__primary")?.focus();',
+    'document.querySelector<HTMLElement>(".mobile-map-actions__toggle")?.focus();',
+  );
   result = once(result, "() => coverage(inView, drinks)", "() => mobileCoverage(inView, drinks)");
   result = once(result, "VENUE_KEY_PATTERN.test(match[1])", "mobileVenueKeyPattern.test(match[1])");
   result = once(

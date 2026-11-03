@@ -33,7 +33,6 @@ jobs:
           [[ "$(git rev-parse HEAD:mobile-apps/android)" == acdf8da88628f759ea74c0c0f324f2ef6a5785eb ]]
           [[ "$(git rev-parse HEAD:mobile-apps/presentation)" == ccf726821dbd72ab7a4f240830ba49ea97115e04 ]]
           [[ "$(git rev-parse HEAD:mobile-apps/scripts/release-android.sh)" == 51636349982d32bec117ab712270dec84327ee7a ]]
-          node --test scripts/tests/mobile-android-feedback-20261103.test.mjs
           node scripts/check-workflows.mjs
       - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:

@@ -3,7 +3,13 @@ import { readFileSync } from "node:fs";
 import { URL, URLSearchParams } from "node:url";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
-import { mobilePath, mobileURL, mobileDefaultDrink, mobileFocus, menuOfferMatchesFocus } from "../routes.ts";
+import {
+  mobilePath,
+  mobileURL,
+  mobileDefaultDrink,
+  mobileFocus,
+  menuOfferMatchesFocus,
+} from "../routes.ts";
 import { transformApp, transformMap, mobileMapStyle } from "../build-contract.mjs";
 import { mobilePinLabel } from "../map-pins.ts";
 import { renderSw } from "../../../scripts/sw.ts";
@@ -71,7 +77,11 @@ test("partial or duplicate saved drink links fail closed", () => {
     assert.equal(mobileFocus({ pathname: "/mobile/", search }), null, search);
   }
   assert.equal(
-    mobilePath({ pathname: "/mobile/", search: "?path=/bar/n123&c=u0nd9&drink=spritz&hh=0", hash: "#bad" }),
+    mobilePath({
+      pathname: "/mobile/",
+      search: "?path=/bar/n123&c=u0nd9&drink=spritz&hh=0",
+      hash: "#bad",
+    }),
     "/",
   );
   assert.throws(() => mobileURL("/bar/n123?c=u0nd9&drink=spritz", origin), TypeError);

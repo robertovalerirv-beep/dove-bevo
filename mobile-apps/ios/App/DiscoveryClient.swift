@@ -7,20 +7,25 @@ protocol DiscoveryServing {
 final class DiscoveryClient: DiscoveryServing {
     private let transport: ComparisonReadTransport
     private let includeEurope: Bool
+    private let includeMenuV2: Bool
     private let today: () -> String
     private let schedule: (TimeInterval, @escaping () -> Void) -> RecommendationRequest
 
-    init(transport: ComparisonReadTransport = ComparisonHTTPTransport(), includeEurope: Bool = true, today: @escaping () -> String = { ComparisonJSON.today() },
+    init(transport: ComparisonReadTransport = ComparisonHTTPTransport(), includeEurope: Bool = true,
+         includeMenuV2: Bool = true, today: @escaping () -> String = { ComparisonJSON.today() },
          schedule: @escaping (TimeInterval, @escaping () -> Void) -> RecommendationRequest = { delay, action in
              let item = DispatchWorkItem(block: action)
              DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
              return ComparisonCancellation { item.cancel() }
          }) {
-        self.transport = transport; self.includeEurope = includeEurope; self.today = today; self.schedule = schedule
+        self.transport = transport; self.includeEurope = includeEurope
+        self.includeMenuV2 = includeEurope && includeMenuV2
+        self.today = today; self.schedule = schedule
     }
 
     func load(_ area: DiscoveryArea, completion: @escaping (DiscoverySnapshot) -> Void) -> RecommendationRequest {
-        let operation = DiscoveryLoad(area: area, transport: transport, includeEurope: includeEurope, today: today, completion: completion)
+        let operation = DiscoveryLoad(area: area, transport: transport, includeEurope: includeEurope,
+                                      includeMenuV2: includeMenuV2, today: today, completion: completion)
         operation.start(schedule: schedule)
         return operation
     }
@@ -30,8 +35,12 @@ private final class DiscoveryLoad: RecommendationRequest {
     private let area: DiscoveryArea
     private let transport: ComparisonReadTransport
     private let includeEurope: Bool
+    private let includeMenuV2: Bool
     private var catalog: EuropeCatalog?
     private var europe = EuropeSnapshot()
+    private var menu: [String: MenuV2CellVenue] = [:]
+    private var menuOrigins: [String: String] = [:]
+    private var menuUnavailableCells = Set<String>()
     private let today: () -> String
     private var completion: ((DiscoverySnapshot) -> Void)?
     private var deadline: RecommendationRequest?
@@ -46,9 +55,11 @@ private final class DiscoveryLoad: RecommendationRequest {
     private var conflictingCells = Set<String>()
     private var unavailable: Set<String>
 
-    init(area: DiscoveryArea, transport: ComparisonReadTransport, includeEurope: Bool, today: @escaping () -> String,
+    init(area: DiscoveryArea, transport: ComparisonReadTransport, includeEurope: Bool,
+         includeMenuV2: Bool, today: @escaping () -> String,
          completion: @escaping (DiscoverySnapshot) -> Void) {
-        self.area = area; self.transport = transport; self.includeEurope = includeEurope; self.today = today; self.completion = completion
+        self.area = area; self.transport = transport; self.includeEurope = includeEurope
+        self.includeMenuV2 = includeMenuV2; self.today = today; self.completion = completion
         unavailable = Set(area.cells)
     }
 
@@ -105,14 +116,68 @@ private final class DiscoveryLoad: RecommendationRequest {
                 if let mobile = try? EuropeJSON.resolve(result.get(), catalog: catalog, cell: cell, today: self.today()) {
                     self.europe.venues.merge(mobile.venues.filter { !self.conflictingKeys.contains($0.key) }) { _, latest in latest }
                     let legacy = parsed.map { DiscoveryJSON.Cell(venues: $0.venues.filter { !mobile.hidden.contains($0.key) && (!governed.contains($0.key) || mobile.legacy.contains($0.key)) }, incomplete: $0.incomplete) }
-                    self.completed(cell, parsed: legacy, mobileAvailable: !EuropeJSON.italianCell(cell))
+                    self.fetchMenuV2(cell, parsed: legacy, mobileAvailable: !EuropeJSON.italianCell(cell))
                 } else {
                     self.europe.unavailableCells.insert(cell)
                     let legacy = parsed.map { DiscoveryJSON.Cell(venues: $0.venues.filter { !governed.contains($0.key) }, incomplete: true) }
-                    self.completed(cell, parsed: legacy, mobileAvailable: false)
+                    self.fetchMenuV2(cell, parsed: legacy, mobileAvailable: false)
                 }
             }
-        } else { completed(cell, parsed: parsed, mobileAvailable: catalog != nil && !EuropeJSON.italianCell(cell)) }
+        } else { fetchMenuV2(cell, parsed: parsed, mobileAvailable: catalog != nil && !EuropeJSON.italianCell(cell)) }
+    }
+
+    private func fetchMenuV2(_ cell: String, parsed: DiscoveryJSON.Cell?, mobileAvailable: Bool) {
+        guard includeMenuV2, EuropeJSON.italianCell(cell) else {
+            completed(cell, parsed: parsed, mobileAvailable: mobileAvailable); return
+        }
+        readMenuPage(cell, after: nil, pagesLeft: 10, collected: [:], partial: false,
+                     parsed: parsed, mobileAvailable: mobileAvailable)
+    }
+
+    private func readMenuPage(_ cell: String, after: String?, pagesLeft: Int,
+                              collected: [String: MenuV2CellVenue], partial: Bool,
+                              parsed: DiscoveryJSON.Cell?, mobileAvailable: Bool) {
+        let categories = DrinkCategory.all.map(\.code)
+        fetch(.menuV2Cell(cell: cell, categories: categories, after: after)) { [weak self] result in
+            guard let self else { return }
+            guard let page = try? MenuV2JSON.cellPage(result.get(), cell: cell,
+                                                      categories: categories, after: after) else {
+                self.finishMenu(cell, collected: collected, partial: true,
+                                parsed: parsed, mobileAvailable: mobileAvailable); return
+            }
+            var next = collected
+            for venue in page.venues {
+                guard next[venue.key] == nil else {
+                    self.finishMenu(cell, collected: next, partial: true,
+                                    parsed: parsed, mobileAvailable: mobileAvailable); return
+                }
+                next[venue.key] = venue
+            }
+            if let cursor = page.next, pagesLeft > 1 {
+                self.readMenuPage(cell, after: cursor, pagesLeft: pagesLeft - 1,
+                                  collected: next, partial: partial || page.incomplete,
+                                  parsed: parsed, mobileAvailable: mobileAvailable)
+            } else {
+                self.finishMenu(cell, collected: next,
+                                partial: partial || page.incomplete || page.next != nil,
+                                parsed: parsed, mobileAvailable: mobileAvailable)
+            }
+        }
+    }
+
+    private func finishMenu(_ cell: String, collected: [String: MenuV2CellVenue], partial: Bool,
+                            parsed: DiscoveryJSON.Cell?, mobileAvailable: Bool) {
+        if partial { menuUnavailableCells.insert(cell) }
+        for venue in collected.values {
+            if let previous = menuOrigins[venue.key], previous != cell {
+                menu.removeValue(forKey: venue.key)
+                menuUnavailableCells.formUnion([previous, cell])
+            } else if !conflictingKeys.contains(venue.key) {
+                menuOrigins[venue.key] = cell
+                menu[venue.key] = venue
+            }
+        }
+        completed(cell, parsed: parsed, mobileAvailable: mobileAvailable)
     }
 
     private func completed(_ cell: String, parsed: DiscoveryJSON.Cell?, mobileAvailable: Bool) {
@@ -122,6 +187,7 @@ private final class DiscoveryLoad: RecommendationRequest {
                     conflictingKeys.insert(venue.key)
                     conflictingCells.formUnion([known.cell, cell]); unavailable.formUnion([known.cell, cell])
                     results.removeValue(forKey: venue.key); europe.venues.removeValue(forKey: venue.key)
+                    menu.removeValue(forKey: venue.key)
                     continue
                 }
                 var cells = self.origins[venue.key, default: []]
@@ -131,7 +197,7 @@ private final class DiscoveryLoad: RecommendationRequest {
                     self.conflictingKeys.insert(venue.key)
                     self.conflictingCells.formUnion(cells)
                     self.unavailable.formUnion(cells)
-                    self.results.removeValue(forKey: venue.key)
+                    self.results.removeValue(forKey: venue.key); self.menu.removeValue(forKey: venue.key)
                 } else if !self.conflictingKeys.contains(venue.key) {
                     self.results[venue.key] = venue
                 }
@@ -160,7 +226,9 @@ private final class DiscoveryLoad: RecommendationRequest {
 
     private func finish() {
         guard let callback = completion else { return }
-        let value = DiscoverySnapshot(area: area, venues: Array(results.values), unavailableCells: unavailable, europe: includeEurope ? europe : nil)
+        let value = DiscoverySnapshot(area: area, venues: Array(results.values), unavailableCells: unavailable,
+                                      europe: includeEurope ? europe : nil,
+                                      menu: menu, menuUnavailableCells: menuUnavailableCells)
         cancel(); callback(value)
     }
 }

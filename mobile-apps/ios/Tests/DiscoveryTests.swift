@@ -74,6 +74,67 @@ final class DiscoveryTests: XCTestCase {
         XCTAssertTrue(normal.isOld(today: "2026-10-29"))
     }
 
+    func testDefaultDiscoveryMergesOwnerMenuSamplesWithReportedPricesWithoutInventingCoverage() throws {
+        let transport = DelayedComparisonTransport()
+        let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
+        let client = DiscoveryClient(transport: transport, today: { "2026-11-03" })
+        var output: DiscoverySnapshot?
+        let operation = client.load(area) { output = $0 }; defer { operation.cancel() }
+        try transport.complete(0, .success(ComparisonFixtures.json([
+            "schema_version": 1, "version": "fixture-v1", "venues": []])))
+        try transport.complete(1, .success(ComparisonFixtures.health))
+        var index = 2
+        while index < transport.calls.count {
+            XCTAssertLessThanOrEqual(transport.outstanding, 3)
+            switch try transport.call(index).endpoint {
+            case .venues(_, let cell):
+                try transport.complete(index, .success(cell == "u0nd9" ? ComparisonFixtures.staticCell() : ComparisonFixtures.json(["c": [], "v": []])))
+            case .prices(let cell):
+                try transport.complete(index, .success(ComparisonFixtures.prices(cell == "u0nd9" ?
+                    [["n123", "spritz", 0, 600, "2026-11-01", 0, 0]] : [])))
+            case .menuV2Cell(let cell, let categories, let after):
+                XCTAssertNil(after)
+                XCTAssertEqual(categories, DrinkCategory.all.map(\.code))
+                try transport.complete(index, .success(menuCellFixture(cell: cell, categories: categories,
+                    includeOffer: cell == "u0nd9")))
+            case .health, .mobileCatalog, .mobilePrices, .menuV2, .customerV2:
+                XCTFail("Unexpected public read in bounded Italian discovery")
+            }
+            index += 1
+        }
+        let value = try XCTUnwrap(output)
+        XCTAssertEqual(value.menu["n123"]?.samples.first?.amount, "5,50 €")
+        XCTAssertTrue(value.menuUnavailableCells.isEmpty)
+        XCTAssertTrue(value.unavailableCells.isEmpty)
+        let rows = value.displayRows(drink: "spritz", band: .normal)
+        XCTAssertEqual(rows.count, 2, "The actual owner sample and customer report remain distinct")
+        XCTAssertTrue(rows.contains { $0.price.amount == "5,50 €" && $0.price.details(today: "2026-11-03").contains("menu online") })
+        XCTAssertTrue(rows.contains { $0.price.amount == "6,00 €" && $0.price.details(today: "2026-11-03").contains("Segnalato") })
+        XCTAssertTrue(value.displayRows(drink: "beer_draft", band: .normal).isEmpty)
+    }
+
+    private func menuCellFixture(cell: String, categories: [String], includeOffer: Bool) throws -> Data {
+        let venue: [String: Any] = [
+            "key": "n123", "cell": cell, "name": "Nome attuale", "kind": 1,
+            "lat": 45.4642, "lon": 9.19, "address": "Via reale 1", "city": "Milano", "country": "IT",
+            "identity_url": "https://www.openstreetmap.org/node/123", "identity_kind": "osm",
+            "matching_offer_count": 1, "sample_offers": [[
+                "id": "spritz-1", "name": "Spritz della casa", "category": "spritz",
+                "serving": ["label": "Calice", "ml": 200], "amount_minor": 550,
+                "currency": "EUR", "currency_exponent": 2,
+                "context": ["kind": "regular", "condition": NSNull()],
+                "source": ["id": "source-1", "url": "https://bar.example/menu",
+                           "text_sha256": String(repeating: "a", count: 64), "checked_on": "2026-11-03"]
+            ]], "fee_coverage": ["status": "unknown", "source": NSNull()]
+        ]
+        return try ComparisonFixtures.json([
+            "schema_version": 2, "coverage": ["complete": false, "basis": "verified_source_items_only"],
+            "price_scope": "menu_item_only", "cell": cell, "category": NSNull(),
+            "categories": categories, "venues": includeOffer ? [venue] : [],
+            "next_after": NSNull(), "unresolved_venues": 0
+        ])
+    }
+
     @MainActor
     func testMapAreaDecoderRejectsChangedRouteExtraFieldsUntrustedOriginsAndBooleans() throws {
         let url = URLPolicy.homeURL
@@ -110,7 +171,7 @@ final class DiscoveryTests: XCTestCase {
             case .prices(let cell):
                 try transport.complete(index, .success(ComparisonFixtures.prices(cell == "u0nd9" ? [["n123", "spritz", 0, 600, "2026-10-28", 0, 0]] : [])))
             case .health: XCTFail("Health must be read only once")
-            case .mobileCatalog, .mobilePrices, .menuV2, .customerV2: XCTFail("This explicit legacy-only fixture must not request the Europe adapter")
+            case .mobileCatalog, .mobilePrices, .menuV2, .customerV2, .menuV2Cell: XCTFail("This explicit legacy-only fixture must not request the Europe adapter")
             }
             index += 1
         }
@@ -166,7 +227,7 @@ final class DiscoveryTests: XCTestCase {
                         (cell == area.cells[0] ? [["n456", "spritz", 0, 900, "2026-10-28", 0, 0]] : [])
                     try transport.complete(index, .success(ComparisonFixtures.prices(rows)))
                 case .health: XCTFail("Only the first request may be health")
-                case .mobileCatalog, .mobilePrices, .menuV2, .customerV2: XCTFail("Explicit legacy-only fixture")
+                case .mobileCatalog, .mobilePrices, .menuV2, .customerV2, .menuV2Cell: XCTFail("Explicit legacy-only fixture")
                 }
             }
             XCTAssertEqual(output?.venues.map(\.key), ["n456"])

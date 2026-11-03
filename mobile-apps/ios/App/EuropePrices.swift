@@ -68,13 +68,23 @@ struct EuropeSnapshot {
 }
 
 enum NativeComparablePrice {
-    case legacy(FavouritePrice), europe(EuropePrice)
-    var amountMinor: Int { switch self { case .legacy(let p): return p.cents; case .europe(let p): return p.amountMinor } }
-    var group: String { switch self { case .legacy: return "EUR|legacy-unknown"; case .europe(let p): return p.group } }
-    var groupLabel: String { switch self { case .legacy: return "EUR · Formato non dichiarato"; case .europe(let p): return p.groupLabel } }
-    var amount: String { switch self { case .legacy(let p): return String(format: "%d,%02d €", p.cents / 100, p.cents % 100); case .europe(let p): return p.amount } }
+    case legacy(FavouritePrice), europe(EuropePrice), menuV2(MenuV2Price)
+    var amountMinor: Int { switch self { case .legacy(let p): return p.cents; case .europe(let p): return p.amountMinor; case .menuV2(let p): return p.amountMinor } }
+    var group: String { switch self { case .legacy: return "EUR|legacy-unknown"; case .europe(let p): return p.group; case .menuV2(let p): return "menu|\(p.group)" } }
+    var groupLabel: String { switch self { case .legacy: return "EUR · Formato non dichiarato"; case .europe(let p): return p.groupLabel; case .menuV2(let p): return "\(p.currency) · \(p.serving) · Da menu online" } }
+    var amount: String { switch self { case .legacy(let p): return String(format: "%d,%02d €", p.cents / 100, p.cents % 100); case .europe(let p): return p.amount; case .menuV2(let p): return p.amount } }
     func details(today: String) -> String {
         switch self {
+        case .menuV2(let price):
+            let day: String, host: String
+            if case .ownerMenu(let url, let checked) = price.origin {
+                day = checked; host = url.host ?? ""
+            } else { day = ""; host = "" }
+            let old = ComparisonJSON.day(day).map { date in
+                (ComparisonJSON.day(today)?.timeIntervalSince(date) ?? .infinity) > 90 * 86400
+            } ?? true
+            return "\(price.itemName) · \(price.evidence) · Fonte: \(host)" +
+                (old ? " · Menu da riverificare: oltre 90 giorni" : "")
         case .europe(let price): return price.details(today: today)
         case .legacy(let price):
             let count = price.confirmations == 1 ? "1 conferma" : "\(price.confirmations) conferme"

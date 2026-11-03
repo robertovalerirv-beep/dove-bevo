@@ -203,13 +203,14 @@ final class DiscoveryViewController: UITableViewController {
         rows = Array(allRows.prefix(200))
         let available = area != nil && snapshot != nil && !(
             snapshot?.unavailableCells.count == snapshot?.area.cells.count &&
-            snapshot?.venues.isEmpty == true && snapshot?.europe?.venues.isEmpty != false)
+            snapshot?.venues.isEmpty == true && snapshot?.europe?.venues.isEmpty != false &&
+            snapshot?.menu.isEmpty == true)
         var tallestCard: CGFloat = 0
         for category in DrinkCategory.all {
             guard let button = categoryButtons[category.code] else { continue }
             let categoryRows = snapshot?.displayRows(drink: category.code, band: band) ?? []
             button.update(summary: DiscoveryCategorySummary(rows: categoryRows, loading: busy, available: available,
-                                                            partial: !(snapshot?.unavailableCells.isEmpty ?? true)),
+                                                            partial: !(snapshot?.partialCells.isEmpty ?? true)),
                           selected: category == drink)
             tallestCard = max(tallestCard, button.systemLayoutSizeFitting(
                 CGSize(width: 132, height: UIView.layoutFittingCompressedSize.height),
@@ -233,14 +234,15 @@ final class DiscoveryViewController: UITableViewController {
             statusLabel.accessibilityIdentifier = "discovery.loading"
         } else if let snapshot {
             let suffix = allRows.count > 200 ? " Mostrati i primi 200 prezzi." : ""
-            if snapshot.unavailableCells.count == snapshot.area.cells.count && snapshot.venues.isEmpty && snapshot.europe?.venues.isEmpty != false {
+            if snapshot.unavailableCells.count == snapshot.area.cells.count && snapshot.venues.isEmpty &&
+                snapshot.europe?.venues.isEmpty != false && snapshot.menu.isEmpty {
                 statusLabel.text = "Prezzi della zona non disponibili. Controlla la connessione, poi apri Altre opzioni e scegli Ricarica."
                 statusLabel.accessibilityIdentifier = "discovery.unavailable"
-            } else if !snapshot.unavailableCells.isEmpty {
+            } else if !snapshot.partialCells.isEmpty {
                 statusLabel.text = "\(allRows.count) prezzi per \(drink.name). Alcune parti della zona non sono disponibili: scegli Ricarica in Altre opzioni.\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.partial"
             } else if allRows.isEmpty {
-                statusLabel.text = "Nessun prezzo segnalato per \(drink.name) · \(band.name) in questa zona. Prova un altro drink o una zona diversa nella mappa."
+                statusLabel.text = "Nessun prezzo disponibile per \(drink.name) · \(band.name) nei dati caricati di questa zona. Prova un altro drink o una zona diversa nella mappa."
                 statusLabel.accessibilityIdentifier = "discovery.empty"
             } else {
                 statusLabel.text = "\(allRows.count) prezzi per \(drink.name) · \(band.name).\(suffix)"
@@ -278,7 +280,7 @@ final class DiscoveryViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "I più convenienti qui · per valuta e formato" }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        "Valute e formati diversi non sono confrontabili; i prezzi italiani precedenti non dichiarano il formato. Prezzi nella zona del centro mappa, non una classifica personale. Le distanze sono dal centro della mappa. Mappa e prezzi richiedono internet."
+        "I prezzi da menu qui sono un campione per drink: apri il locale per vedere il listino disponibile. Valute e formati diversi non sono confrontabili; i prezzi italiani precedenti non dichiarano il formato. Prezzi nella zona del centro mappa, non una classifica personale. Le distanze sono dal centro della mappa. Mappa e prezzi richiedono internet."
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -292,7 +294,10 @@ final class DiscoveryViewController: UITableViewController {
         cell.configure(row: row, category: drink, band: band, rank: rank, distance: distance,
                        today: ComparisonJSON.today(), traits: traitCollection)
         cell.accessibilityIdentifier = "discovery.venue.\(row.key)"
-        if case .europe = row.price { cell.accessibilityIdentifier = "discovery.venue.\(row.key).\(row.price.group)" }
+        switch row.price {
+        case .legacy: break
+        case .europe, .menuV2: cell.accessibilityIdentifier = "discovery.venue.\(row.key).\(row.price.group)"
+        }
         return cell
     }
 

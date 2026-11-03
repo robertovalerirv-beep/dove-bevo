@@ -3,14 +3,25 @@ import Foundation
 enum ComparisonEndpoint: Equatable {
     case health, venues(version: String, cell: String), prices(cell: String), mobileCatalog, mobilePrices(cell: String)
     case menuV2(key: String, cell: String, after: String?), customerV2(key: String, cell: String, after: String?)
+    case menuV2Cell(cell: String, categories: [String], after: String?)
 
     var maximumBytes: Int {
         switch self { case .health: return 8192; case .venues, .mobileCatalog, .mobilePrices: return 2 * 1024 * 1024; case .prices: return 512 * 1024
-        case .menuV2, .customerV2: return 1_048_576 }
+        case .menuV2, .customerV2, .menuV2Cell: return 1_048_576 }
     }
 
     func url() throws -> URL {
         switch self {
+        case .menuV2Cell(let cell, let categories, let after):
+            let allowed = Set(DrinkCategory.all.map(\.code))
+            guard ComparisonJSON.matches(cell, "^[0-9b-hjkmnp-z]{5}$"),
+                  !categories.isEmpty, categories.count <= 9, Set(categories).count == categories.count,
+                  categories.allSatisfy({ allowed.contains($0) }),
+                  after == nil || ComparisonJSON.matches(after!, "^(?:[nwr][1-9][0-9]{0,14}|m[0-9a-f]{24})$") else {
+                throw ComparisonReadError.invalidData
+            }
+            let suffix = after.map { "&after=\($0)" } ?? ""
+            return URL(string: "https://www.dovebevo.com/api/mobile/v2/menu/cells/\(cell)?categories=\(categories.joined(separator: ","))\(suffix)")!
         case .menuV2(let key, let cell, let after), .customerV2(let key, let cell, let after):
             let cursorPattern: String
             switch self {

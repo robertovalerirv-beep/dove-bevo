@@ -42,6 +42,55 @@ export function transformApp(source) {
     '<p class="map__status" data-testid="map-status" role="status">',
     '<p class="map__status" data-testid="map-status" role="status" data-mobile-selection={showMeter ? drinks.map((code) => it.drinks[code] ?? code).join(" · ") : undefined}>',
   );
+  result = once(
+    result,
+    "Promise.all(cells.map(loadCell))",
+    "Promise.all(cells.map((cell) => loadMobileCell(cell, drinks)))",
+  );
+  result = once(result, "}, [view, attempt]);", "}, [view, attempt, drinks]);");
+  result = once(
+    result,
+    '  // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.',
+    `  useEffect(() => {
+    const refresh = (event: Event) => {
+        const cell = (event as CustomEvent<{ cell?: string }>).detail?.cell;
+        if (cell && view && visibleCells(view)?.includes(cell))
+          setAttempt((value) => value + 1);
+      };
+      window.addEventListener("dovebevo:menu-cell-ready", refresh);
+      return () => { window.removeEventListener("dovebevo:menu-cell-ready", refresh); };
+    }, [view]);
+
+  // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.`,
+  );
+  result = once(
+    result,
+    "  function openAdd(prefill: Prefill | null) {",
+    '  function openAdd(prefill: Prefill | null) {\n    if (prefill?.venue.key.startsWith("m")) {\n      navigate(`/bar/${prefill.venue.key}?c=${prefill.venue.cell}`);\n      return;\n    }',
+  );
+  result = once(result, "venues={everyVenue}", "venues={legacyPriceVenues(everyVenue)}");
+  result = once(result, "() => coverage(inView, drinks)", "() => mobileCoverage(inView, drinks)");
+  result = once(result, "VENUE_KEY_PATTERN.test(match[1])", "mobileVenueKeyPattern.test(match[1])");
+  result = once(
+    result,
+    "invalidateCell(venue.cell);",
+    "invalidateCell(venue.cell); invalidateMobileCell(venue.cell);",
+  );
+  result = once(
+    result,
+    "invalidateCell(cell);",
+    "invalidateCell(cell); invalidateMobileCell(cell);",
+  );
+  result = once(
+    result,
+    '        const price = bestPrice(v, drinks);\n        const label = price\n          ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`\n          : "";',
+    '        const price = bestPrice(v, drinks);\n        const menuPin = price ? null : mobileMenuPin(v, drinks);\n        const label = price\n          ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`\n          : menuPin ?? "";',
+  );
+  result = once(
+    result,
+    "          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}",
+    '          {inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n            <p class="mobile-menu-map-note">M+ = prezzo del drink da menu; coperto e supplementi esclusi</p>\n          )}\n          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}',
+  );
   const tree = ts.createSourceFile(
     "app.tsx",
     result,
@@ -71,7 +120,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileDefaultDrink } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\n' +
+    'import { mobilePath, mobileURL, mobileDefaultDrink, mobileVenueKeyPattern } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }

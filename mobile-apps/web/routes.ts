@@ -1,7 +1,9 @@
 /** App-only URLs keep every document navigation on a real HTTPS asset. */
-import { CELL_PATTERN, VENUE_KEY_PATTERN } from "../../src/shared/venue.ts";
+import { CELL_PATTERN } from "../../src/shared/venue.ts";
 import { CATALOG } from "../../src/shared/catalog.ts";
-const isBar = (path: string) => path.startsWith("/bar/") && VENUE_KEY_PATTERN.test(path.slice(5));
+export const mobileVenueKeyPattern = /^(?:[nwru][1-9]\d{0,14}|m[0-9a-f]{24})$/;
+const isBar = (path: string) =>
+  path.startsWith("/bar/") && mobileVenueKeyPattern.test(path.slice(5));
 const ENTRY = "/mobile/";
 
 export function mobilePath(value: Pick<Location, "pathname" | "search">): string {

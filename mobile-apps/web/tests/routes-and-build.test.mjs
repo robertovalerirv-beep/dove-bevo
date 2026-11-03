@@ -21,6 +21,15 @@ test("map and venue routes survive reload as real mobile assets", () => {
   assert.equal(mobileDefaultDrink("beer_draft"), "spritz");
 });
 
+test("mobile owner-verified venue links retain exact m identity", () => {
+  const key = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  const url = mobileURL(`/bar/${key}?c=u0nd9`, origin);
+  assert.equal(url, `/mobile/?path=%2Fbar%2F${key}&c=u0nd9`);
+  assert.equal(mobilePath(new URL(url, origin)), `/bar/${key}`);
+  for (const bad of ["m" + "A".repeat(24), "m" + "a".repeat(23), "m" + "a".repeat(25)])
+    assert.throws(() => mobileURL(`/bar/${bad}?c=u0nd9`, origin), TypeError);
+});
+
 test("malformed duplicate and external venue routes fail closed", () => {
   for (const path of [
     "https://evil.test/bar/n123?c=u0nd9",
@@ -71,6 +80,13 @@ test("compile-time seams preserve original source and reject upstream drift", ()
     map = read("app/lib/maplibre-map.ts");
   assert.match(transformApp(app), /history\.pushState\(\{ inApp: true \}, "", mobileURL\(path\)\)/);
   assert.match(transformApp(app), /mobilePath\(location\)/);
+  assert.match(transformApp(app), /loadMobileCell\(cell, drinks\)/);
+  assert.match(transformApp(app), /mobileMenuPin\(v, drinks\)/);
+  assert.match(transformApp(app), /dovebevo:menu-cell-ready/);
+  assert.match(transformApp(app), /venues=\{legacyPriceVenues\(everyVenue\)\}/);
+  assert.match(transformApp(app), /prefill\?\.venue\.key\.startsWith\("m"\)/);
+  assert.match(transformApp(app), /mobileVenueKeyPattern\.test\(match\[1\]\)/);
+  assert.doesNotMatch(app, /loadMobileCell|mobileMenuPin/);
   assert.match(transformMap(map, '"/assets/mobile/test.json"'), /"icon-anchor": "bottom"/);
   assert.match(transformMap(map, '"/assets/mobile/test.json"'), /\[0, -25\]/);
   assert.throws(() => transformApp(app + "\n"), /Review updated website/);
@@ -96,6 +112,7 @@ test("happy-hour and longer amounts retain separate readable price and HH cues",
   assert.deepEqual(mobilePinLabel("6,00 € Happy hour"), { amount: "6,00", detail: "HH" });
   assert.deepEqual(mobilePinLabel("6,00 € HH"), { amount: "6,00", detail: "HH" });
   assert.deepEqual(mobilePinLabel("125,00 €"), { amount: "125,00", detail: "" });
+  assert.deepEqual(mobilePinLabel("7,50 € MENU"), { amount: "7,50", detail: "M+" });
   assert.deepEqual(mobilePinLabel("£7.50"), { amount: "7.50", detail: "£" });
   assert.deepEqual(mobilePinLabel("7,50 £ HH"), { amount: "7,50", detail: "£ HH" });
 });

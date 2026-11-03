@@ -33,7 +33,7 @@ const rows = [
   ["n123", "beer_draft", 0, 500, "2026-11-01", 0, 0],
   ["n456", "spritz", 1, 600, "2026-11-01", 0, 0],
 ];
-async function fixture(viewport = { width: 390, height: 844 }) {
+async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
   const context = await browser.newContext({
     viewport,
     serviceWorkers: "block",
@@ -99,6 +99,107 @@ async function fixture(viewport = { width: 390, height: 844 }) {
             }
           : { c: [], v: [] },
       });
+    if (options.menu && /^\/api\/mobile\/v2\/menu\/cells\//.test(url.pathname)) {
+      const cell = url.pathname.split("/").at(-1);
+      const categories = (url.searchParams.get("categories") ?? "").split(",").filter(Boolean);
+      options.cellRequests?.push({ cell, categories: [...categories] });
+      if (options.menuUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
+      const source = {
+        id: "source-1",
+        url: "https://official.fixture.test/menu",
+        text_sha256: "a".repeat(64),
+        checked_on: "2026-11-02",
+      };
+      const offer = {
+        id: "offer-1",
+        name: "Spritz speciale",
+        category: "spritz",
+        serving: { label: "Calice", ml: null },
+        amount_minor: 750,
+        currency: "EUR",
+        currency_exponent: 2,
+        context: { kind: "regular", condition: null },
+        source,
+      };
+      const venue = {
+        key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+        cell: "u0nd9",
+        name: "Locale da menu",
+        kind: 0,
+        lat: 45.4695,
+        lon: 9.188,
+        address: "Via nuova 1",
+        city: "Milano",
+        country: "IT",
+        identity_url: "https://official.fixture.test/",
+        identity_kind: "owner_verified",
+        matching_offer_count: categories.length ? 1 : 1,
+        sample_offers: categories.includes("spritz") ? [offer] : [],
+        fee_coverage: { status: "unknown", source: null },
+      };
+      return route.fulfill({
+        json: {
+          schema_version: 2,
+          coverage: { complete: false, basis: "verified_source_items_only" },
+          price_scope: "menu_item_only",
+          cell,
+          category: null,
+          categories: categories.length ? categories : null,
+          venues:
+            cell === "u0nd9" && (!categories.length || categories.includes("spritz"))
+              ? [venue]
+              : [],
+          next_after: null,
+          unresolved_venues: 0,
+        },
+      });
+    }
+    if (options.menu && url.pathname === "/api/mobile/v2/menu/venues/maaaaaaaaaaaaaaaaaaaaaaaa") {
+      if (options.detailUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
+      const source = {
+        id: "source-1",
+        url: "https://official.fixture.test/menu",
+        text_sha256: "a".repeat(64),
+        checked_on: "2026-11-02",
+      };
+      return route.fulfill({
+        json: {
+          schema_version: 2,
+          coverage: { complete: false, basis: "verified_source_items_only" },
+          price_scope: "menu_item_only",
+          venue: {
+            key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+            cell: "u0nd9",
+            name: "Locale da menu",
+            kind: 0,
+            lat: 45.4695,
+            lon: 9.188,
+            address: "Via nuova 1",
+            city: "Milano",
+            country: "IT",
+          },
+          stored_offer_count: 1,
+          offers: [
+            {
+              id: "offer-1",
+              name: "Spritz speciale",
+              category: "spritz",
+              serving: { label: "Calice", ml: null },
+              amount_minor: 750,
+              currency: "EUR",
+              currency_exponent: 2,
+              context: { kind: "regular", condition: null },
+              source,
+            },
+          ],
+          next_after: null,
+          fees: [],
+          fee_coverage: { status: "unknown", source: null },
+        },
+      });
+    }
+    if (/^\/api\/mobile\/v2\/menu\//.test(url.pathname))
+      return route.fulfill({ status: 404, body: "Not found" });
     if (/^\/api\/prices\//.test(url.pathname))
       return route.fulfill({
         json: { p: url.pathname.endsWith("u0nd9") ? rows : [], u: [], pend: [], h: [], g: [] },
@@ -372,6 +473,107 @@ test("orange mobile controls retain readable selected, unselected and focused dr
     assert.ok(contrastRatio(primary.text, primary.background) >= 4.5);
     await f.page.screenshot({ path: path.join(output, "orange-map-controls-fixture.png") });
     assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("approved owner menu venue appears as a menu price pin and opens read-only detail", async () => {
+  const f = await fixture({ width: 390, height: 844 }, { menu: true });
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.locator(".mobile-menu-map-note").waitFor();
+    await f.page.waitForFunction(
+      () =>
+        document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+      { timeout: 30000 },
+    );
+    assert.match(await f.page.locator(".mobile-menu-map-note").innerText(), /supplementi esclusi/);
+    await f.page.goto(
+      "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fmaaaaaaaaaaaaaaaaaaaaaaaa&c=u0nd9",
+    );
+    await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
+    assert.match(await f.page.locator(".bar__kind").innerText(), /Locale · Milano/);
+    assert.match(
+      await f.page.getByRole("region", { name: "Prezzi dal menu online" }).innerText(),
+      /Spritz speciale[\s\S]*7,50\s€[\s\S]*costi aggiuntivi non sono stati verificati/,
+    );
+    assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("v2 outage preserves legacy map and retries the original filter after recovery", async () => {
+  const options = { menu: true, menuUnavailable: true, cellRequests: [] };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    );
+    assert.equal(await f.page.locator(".map__retry").count(), 0);
+    assert.equal(await f.page.locator(".mobile-menu-map-note").count(), 0);
+    const initialSpritzRequests = options.cellRequests.filter(
+      (request) => request.cell === "u0nd9" && request.categories.join(",") === "spritz",
+    ).length;
+    assert.ok(initialSpritzRequests >= 1);
+    options.menuUnavailable = false;
+    const acqua = f.page.locator(".mobile-drink-strip").getByRole("checkbox", {
+      name: "Acqua",
+      exact: true,
+    });
+    await acqua.check({ force: true });
+    await f.page.locator(".mobile-menu-map-note").waitFor();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+    const recoveredIdentityRequests = options.cellRequests.filter(
+      (request) => request.cell === "u0nd9" && request.categories.length === 0,
+    ).length;
+    const originalFilterResponse = f.page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === "/api/mobile/v2/menu/cells/u0nd9" &&
+        url.searchParams.get("categories") === "spritz" &&
+        response.status() === 200
+      );
+    });
+    await acqua.uncheck({ force: true });
+    await originalFilterResponse;
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+    const localRequests = options.cellRequests.filter((request) => request.cell === "u0nd9");
+    assert.equal(
+      localRequests.filter((request) => request.categories.length === 0).length,
+      recoveredIdentityRequests,
+    );
+    assert.ok(
+      localRequests.filter((request) => request.categories.join(",") === "spritz").length >
+        initialSpritzRequests,
+    );
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("m-key detail outage offers retry instead of saying the venue does not exist", async () => {
+  const options = { menu: true, detailUnavailable: true };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto(
+      "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fmaaaaaaaaaaaaaaaaaaaaaaaa&c=u0nd9",
+    );
+    await f.page.getByRole("button", { name: "Riprova", exact: true }).waitFor();
+    assert.equal(await f.page.getByText("Locale non trovato").count(), 0);
+    options.detailUnavailable = false;
+    await f.page.getByRole("button", { name: "Riprova", exact: true }).click();
+    await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
     assert.deepEqual(f.errors, []);
   } finally {
     await f.close();

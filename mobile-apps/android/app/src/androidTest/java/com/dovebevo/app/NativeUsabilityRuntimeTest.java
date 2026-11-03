@@ -193,11 +193,11 @@ public final class NativeUsabilityRuntimeTest {
             activity.findViewById(R.id.save_venue).performClick();
         });
         await(() -> savedDrinkDialog(ownedUi) != null);
+        assertTrue(ownedDrinks.load().isEmpty());
         onMain(() -> {
             AlertDialog dialog = savedDrinkDialog(ownedUi);
             assertNotNull(dialog);
-            assertTrue(((TextView) ((LinearLayout) dialog.findViewById(android.R.id.content)).getChildAt(0)).getText().toString().contains("Locale di prova"));
-            assertTrue(ownedDrinks.load().isEmpty());
+            assertTrue(dialogText(dialog.getWindow().getDecorView()).contains("Locale di prova"));
             Spinner choice = (Spinner) dialog.getWindow().getDecorView().findViewWithTag("save_choice_drink");
             assertNotNull(choice);
             choice.setSelection(RecommendationDrink.SPRITZ.ordinal() + 1);
@@ -1022,6 +1022,15 @@ public final class NativeUsabilityRuntimeTest {
 
     private void record(String event) { if (events.size() < 100) events.add(event); }
 
+    private String dialogText(View view) {
+        StringBuilder value = new StringBuilder();
+        if (view instanceof TextView) value.append(((TextView) view).getText());
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) value.append(' ').append(dialogText(group.getChildAt(i)));
+        }
+        return value.toString();
+    }
     private AlertDialog savedDrinkDialog(SavedDrinkUi ui) {
         try { Field field = SavedDrinkUi.class.getDeclaredField("dialog"); field.setAccessible(true); return (AlertDialog) field.get(ui); }
         catch (ReflectiveOperationException error) { throw new AssertionError(error); }

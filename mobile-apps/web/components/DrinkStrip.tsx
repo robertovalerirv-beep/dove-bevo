@@ -59,11 +59,21 @@ export function DrinkMenu({ selected, onChange }: Props) {
       >
         <span class="mobile-drink-menu__copy">
           <span class="mobile-drink-menu__title">{it.map.pickDrinks}</span>
-          <span class="mobile-drink-menu__summary" data-testid="drink-summary">{summary}</span>
+          <span class="mobile-drink-menu__summary" data-testid="drink-summary">
+            {summary}
+          </span>
         </span>
-        <span class="mobile-drink-menu__chevron" aria-hidden="true">⌄</span>
+        <span class="mobile-drink-menu__chevron" aria-hidden="true">
+          ⌄
+        </span>
       </button>
-      <div id={id} class="mobile-drink-strip" role="group" aria-label={it.map.drinks} hidden={!open}>
+      <div
+        id={id}
+        class="mobile-drink-strip"
+        role="group"
+        aria-label={it.map.drinks}
+        hidden={!open}
+      >
         <button
           type="button"
           class="mobile-drink-all"

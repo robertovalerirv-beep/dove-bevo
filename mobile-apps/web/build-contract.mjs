@@ -45,7 +45,11 @@ export function transformApp(source) {
     "  const [mapAttempt, setMapAttempt] = useState(0);\n  const ensureMap = () => {\n    if (mapFailed) {\n      setMapFailed(false);\n      setReady(false);\n      setMapAttempt((value) => value + 1);\n    }\n    setMapWanted(true);\n  };",
   );
   result = once(result, "  }, [mapWanted]);", "  }, [mapWanted, mapAttempt]);");
-  result = once(result, "const picture = !mapWanted && !ready;", "const picture = (!mapWanted || mapFailed) && !ready;");
+  result = once(
+    result,
+    "const picture = !mapWanted && !ready;",
+    "const picture = (!mapWanted || mapFailed) && !ready;",
+  );
   result = once(result, "{it.map.start}", '{mapFailed ? "Riprova mappa" : it.map.start}');
   result = once(
     result,

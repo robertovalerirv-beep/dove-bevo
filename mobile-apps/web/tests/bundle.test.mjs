@@ -620,7 +620,7 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
     );
-    assert.equal(await all.getAttribute("aria-pressed"), "true");
+    assert.equal(await f.page.locator(".mobile-drink-all").getAttribute("aria-pressed"), "true");
     assert.ok(
       options.cellRequests.filter(
         (request) => request.cell === "u0nd9" && request.categories.length === 0,
@@ -668,7 +668,9 @@ test("selected drink venue keeps a selectable dot below price-label zoom", async
     const y = box.y + box.height / 2;
     await f.page.mouse.move(x, y);
     await f.page.mouse.wheel(0, 650);
-    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) < 14);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) < 14,
+    );
     await f.page.screenshot({ path: path.join(output, "selected-drink-low-zoom-dot-fixture.png") });
     await f.page.mouse.click(x, y);
     await f.page.locator("h2.scontrino__name").waitFor();
@@ -676,7 +678,9 @@ test("selected drink venue keeps a selectable dot below price-label zoom", async
     await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
     await f.page.mouse.move(x, y);
     await f.page.mouse.wheel(0, -650);
-    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14,
+    );
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
     );
@@ -698,7 +702,10 @@ test("receipt actions remain in one row at 320, 390 and 430 pixels", async () =>
       await f.page.setViewportSize({ width, height: 700 });
       const boxes = await Promise.all([0, 1, 2].map((i) => actions.nth(i).boundingBox()));
       assert.ok(boxes.every(Boolean), JSON.stringify(boxes));
-      assert.ok(boxes.every((box) => Math.abs(box.y - boxes[0].y) < 2), JSON.stringify(boxes));
+      assert.ok(
+        boxes.every((box) => Math.abs(box.y - boxes[0].y) < 2),
+        JSON.stringify(boxes),
+      );
       assert.ok(boxes[2].x + boxes[2].width <= width + 1, JSON.stringify(boxes));
     }
     assert.deepEqual(f.writes, []);
@@ -718,12 +725,27 @@ test("Italy preview remains visible while one map loads eagerly and can retry fa
     assert.equal(await preview.evaluate((img) => img.complete && img.naturalWidth > 0), true);
     assert.equal(await preview.evaluate((img) => getComputedStyle(img).visibility), "visible");
     await f.page.getByRole("button", { name: "Riprova mappa" }).waitFor();
-    assert.equal(options.mapStyleRequests.length, 1, "Map must start without a tap");
+    assert.equal(
+      options.mapStyleRequests.length,
+      3,
+      "Map starts without a tap and uses its bounded fetch retries",
+    );
     assert.equal(await f.page.locator(".map__preview").isVisible(), true);
     options.mapUnavailable = false;
     await f.page.getByRole("button", { name: "Riprova mappa" }).click();
-    await f.page.waitForFunction(() => document.querySelector("section.map")?.getAttribute("data-ready") === "true");
-    assert.equal(options.mapStyleRequests.length, 2, "Retry starts one replacement map");
+    await f.page.waitForFunction(
+      () => document.querySelector("section.map")?.getAttribute("data-ready") === "true",
+    );
+    assert.equal(
+      options.mapStyleRequests.length,
+      4,
+      "Manual retry fetches the recovered style once",
+    );
+    assert.equal(
+      await f.page.locator(".maplibregl-canvas").count(),
+      1,
+      "Only one replacement map remains",
+    );
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

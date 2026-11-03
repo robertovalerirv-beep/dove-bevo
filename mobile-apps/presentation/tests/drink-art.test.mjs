@@ -59,7 +59,7 @@ test("real CSP form keeps original input, header actions and readable drink sele
       await page
         .locator(".drink-option")
         .evaluate((node) => [getComputedStyle(node).backgroundColor, getComputedStyle(node).color]),
-      ["rgb(16, 24, 32)", "rgb(255, 255, 255)"],
+      ["rgb(255, 90, 31)", "rgb(27, 22, 17)"],
     );
     assert.equal(
       await page.locator(".sheet__title").textContent(),

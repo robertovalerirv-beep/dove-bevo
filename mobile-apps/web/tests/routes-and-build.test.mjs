@@ -207,8 +207,14 @@ test("compile-time seams preserve original source and reject upstream drift", ()
   assert.match(transformApp(app), /if \(restoredDrink\) setDrinks\(\[restoredDrink\.drink\]\)/);
   assert.doesNotMatch(app, /loadMobileCell|mobileMenuPin/);
   assert.match(transformMap(map, '"/assets/mobile/test.json"'), /"icon-anchor": "bottom"/);
-  assert.match(transformMap(map, '"/assets/mobile/test.json"'), /id: "priced-dot"[\s\S]*?source: "prices"/);
-  assert.match(transformMap(map, '"/assets/mobile/test.json"'), /id: "venue-price"[\s\S]*?minzoom: 14/);
+  assert.match(
+    transformMap(map, '"/assets/mobile/test.json"'),
+    /id: "priced-dot"[\s\S]*?source: "prices"/,
+  );
+  assert.match(
+    transformMap(map, '"/assets/mobile/test.json"'),
+    /id: "venue-price"[\s\S]*?minzoom: 14/,
+  );
   assert.match(transformApp(app), /useState\(true\)/);
   assert.match(transformApp(app), /mapAttempt/);
   assert.match(transformMap(map, '"/assets/mobile/test.json"'), /\[0, -25\]/);

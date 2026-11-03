@@ -121,7 +121,9 @@ html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__chevron {
   line-height: 1;
   transform: rotate(0);
 }
-html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__button[aria-expanded="true"] .mobile-drink-menu__chevron {
+html[data-dovebevo-mobile-shell="1"]
+  .mobile-drink-menu__button[aria-expanded="true"]
+  .mobile-drink-menu__chevron {
   transform: rotate(180deg);
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-strip {
@@ -141,7 +143,9 @@ html[data-dovebevo-mobile-shell="1"] .mobile-drink-strip {
   background: var(--surface);
   box-shadow: 0 8px 20px rgb(27 22 17 / 16%);
 }
-html[data-dovebevo-mobile-shell="1"] .mobile-drink-strip[hidden] { display: none; }
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-strip[hidden] {
+  display: none;
+}
 html[data-dovebevo-mobile-shell="1"] .drink-option,
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-all {
   position: relative;

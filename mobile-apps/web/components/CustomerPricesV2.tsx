@@ -444,10 +444,14 @@ export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: Drink
               class={`mobile-menu-v2__offer${focus && menuOfferMatchesFocus(offer, focus) ? " mobile-menu-v2__offer--focused" : ""}`}
               data-testid={focus && menuOfferMatchesFocus(offer, focus) ? "saved-menu-offer" : undefined}
             >
-              <span class="mobile-menu-v2__name">{offer.name}</span>
-              {focus && menuOfferMatchesFocus(offer, focus) && (
-                <small class="mobile-menu-v2__saved">Drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}</small>
-              )}
+              <span class="mobile-menu-v2__name">
+                {offer.name}
+                {focus && menuOfferMatchesFocus(offer, focus) && (
+                  <small class="mobile-menu-v2__saved">
+                    Drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
+                  </small>
+                )}
+              </span>
               <strong class="mobile-menu-v2__amount">
                 {menuMoney(offer.amount_minor, offer.currency, offer.currency_exponent)}
               </strong>

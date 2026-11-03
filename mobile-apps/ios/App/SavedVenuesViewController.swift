@@ -212,7 +212,7 @@ final class SavedVenuesViewController: UITableViewController {
         }
         drinkButton.menu = UIMenu(children: unifiedDrinks ? [allAction] + categories : categories)
         let failed = showingDrinks ? drinksFailed : storeFailed
-        let empty = showingDrinks ? drinks.isEmpty : venues.isEmpty
+        let empty = showingDrinks ? drinks.isEmpty && (!unifiedDrinks || venues.isEmpty) : venues.isEmpty
         editButtonItem.isEnabled = !empty && !failed
         refreshButton.isEnabled = canRead && !busy
         refreshButton.title = failed ? "Riprova" : "Ricarica"
@@ -224,6 +224,9 @@ final class SavedVenuesViewController: UITableViewController {
         } else if empty {
             statusLabel.text = showingDrinks ? "Non hai ancora drink salvati. Apri un locale sulla mappa e scegli un drink con Salva nei preferiti." : "Non hai ancora preferiti. Apri un locale nella mappa e tocca Salva nei preferiti."
             statusLabel.accessibilityIdentifier = "favorites.empty"
+        } else if unifiedDrinks && drinks.isEmpty && !venues.isEmpty {
+            statusLabel.text = "Hai locali salvati in precedenza. Scegline uno qui sotto e seleziona un drink per conservarlo nei Preferiti."
+            statusLabel.accessibilityIdentifier = "favorites.migration"
         } else if busy {
             statusLabel.text = "Caricamento dei prezzi segnalati…"
             statusLabel.accessibilityIdentifier = "favorites.loading"
@@ -258,6 +261,35 @@ final class SavedVenuesViewController: UITableViewController {
         setEditing(false, animated: false); retire(); reloadVenues(); refresh()
     }
 
+    private func migrateLegacyVenue(_ venue: SavedVenue) {
+        guard unifiedDrinks, visible, lifecycleActive, presentedViewController == nil else { return }
+        let chooser = FavouriteSaveChooser(venue: venue)
+        chooser.onChoose = { [weak self, weak chooser] drink, band in
+            guard let self, let chooser, self.visible, self.lifecycleActive,
+                  self.venues.contains(where: { $0.url == venue.url }) else { return }
+            do {
+                let saved = try SavedDrink.validated(url: venue.url, label: venue.label, drink: drink, band: band)
+                try self.drinkStore.save(saved)
+                do { try self.store.remove(url: venue.url) }
+                catch {
+                    chooser.dismiss(animated: true) { [weak self] in
+                        self?.reloadVenues(); self?.refresh()
+                        let alert = UIAlertController(title: "Drink salvato", message: "Il vecchio locale e ancora presente: non sono riuscito a rimuoverlo. Puoi riprovare.", preferredStyle: .alert)
+                        alert.addAction(UIAlertAction(title: "Chiudi", style: .cancel)); self?.present(alert, animated: true)
+                    }
+                    return
+                }
+                chooser.dismiss(animated: true) { [weak self] in self?.reloadVenues(); self?.refresh() }
+            } catch {
+                let alert = UIAlertController(title: "Drink non salvato", message: "Il vecchio locale e rimasto nei Preferiti. Riprova.", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "Chiudi", style: .cancel)); chooser.present(alert, animated: true)
+            }
+        }
+        let navigation = UINavigationController(rootViewController: chooser)
+        navigation.modalPresentationStyle = .pageSheet
+        present(navigation, animated: true)
+    }
+
     @objc private func bandChanged() {
         band = bandControl.selectedBand; render()
     }
@@ -273,7 +305,14 @@ final class SavedVenuesViewController: UITableViewController {
         lifecycleActive = true; refresh()
     }
 
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { showingDrinks ? drinkRows.count : rows.count }
+    override func numberOfSections(in tableView: UITableView) -> Int { unifiedDrinks && !venues.isEmpty ? 2 : 1 }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        if unifiedDrinks && section == 1 { return venues.count }
+        return showingDrinks ? drinkRows.count : rows.count
+    }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        unifiedDrinks && section == 1 ? "Locali salvati prima - scegli un drink" : nil
+    }
     override func setEditing(_ editing: Bool, animated: Bool) {
         super.setEditing(editing, animated: animated)
         editButtonItem.title = editing ? "Fine" : "Rimuovi"
@@ -282,6 +321,18 @@ final class SavedVenuesViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "venue", for: indexPath)
+        if unifiedDrinks && indexPath.section == 1 {
+            let venue = venues[indexPath.row]
+            var content = cell.defaultContentConfiguration()
+            content.text = venue.label
+            content.secondaryText = "Scegli un drink per conservarlo nei Preferiti"
+            cell.contentConfiguration = content
+            cell.backgroundConfiguration = NativeAppearance.card()
+            cell.accessoryType = .disclosureIndicator
+            cell.accessibilityIdentifier = "favorites.migrate.\(venue.url.lastPathComponent)"
+            cell.accessibilityHint = "Apre la scelta del drink"
+            return cell
+        }
         let savedDrink = showingDrinks ? drinkRows[indexPath.row].saved : nil
         let row = showingDrinks ? drinkRows[indexPath.row].comparison : rows[indexPath.row]
         let category = savedDrink?.category ?? drink
@@ -328,12 +379,17 @@ final class SavedVenuesViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
+        if unifiedDrinks && section == 1 { return "I locali salvati prima restano intatti finche non scegli un drink e il nuovo preferito viene salvato." }
         if showingDrinks { return "Ogni drink conserva la sua fascia Normale o Happy hour. Tutti i formati e le valute disponibili sono mostrati separatamente. I prezzi si ricaricano da internet e non sono salvati nel preferito. Rimuovere un drink non rimuove il locale o altri drink. Preferiti privati in questa app." }
         return "Prezzi ordinati per valuta e formato; valute o volumi diversi non sono confrontabili. I prezzi italiani precedenti non dichiarano il formato. I preferiti sono privati e salvati in questa app. L'elenco è disponibile offline; mappa e prezzi richiedono internet. Rimuovi una voce con Rimuovi o scorrendo la riga."
     }
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
+        if unifiedDrinks && indexPath.section == 1 {
+            guard venues.indices.contains(indexPath.row) else { return }
+            migrateLegacyVenue(venues[indexPath.row]); return
+        }
         if showingDrinks {
             guard drinkRows.indices.contains(indexPath.row) else { return }
             let value = drinkRows[indexPath.row].saved
@@ -347,6 +403,18 @@ final class SavedVenuesViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, titleForDeleteConfirmationButtonForRowAt indexPath: IndexPath) -> String? { "Rimuovi" }
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         guard editingStyle == .delete else { return }
+        if unifiedDrinks && indexPath.section == 1 {
+            guard venues.indices.contains(indexPath.row) else { return }
+            do {
+                let url = venues[indexPath.row].url
+                try store.remove(url: url)
+                venues.removeAll { $0.url == url }; render()
+            } catch {
+                let alert = UIAlertController(title: "Locale non rimosso", message: "Il preferito precedente e stato mantenuto. Riprova.", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: "Chiudi", style: .cancel)); present(alert, animated: true)
+            }
+            return
+        }
         if showingDrinks {
             guard drinkRows.indices.contains(indexPath.row) else { return }
             do {

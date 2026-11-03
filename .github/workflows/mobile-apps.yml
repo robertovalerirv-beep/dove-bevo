@@ -349,6 +349,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Use the iPhone software keyboard during live UI tests
+        run: |
+          set -euo pipefail
+          # A connected Mac keyboard suppresses the simulated iPhone keyboard
+          # even when WebKit reports the search field as focused. Configure the
+          # disposable runner before CoreSimulator boots the test device.
+          defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
+          [[ "$(defaults read com.apple.iphonesimulator ConnectHardwareKeyboard)" == 0 ]]
       - name: Retain installed Apple upload tool capabilities
         run: |
           mkdir -p mobile-apps/ios/.build/SimulatorDiagnostics

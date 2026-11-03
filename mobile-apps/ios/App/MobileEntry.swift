@@ -16,16 +16,28 @@ enum MobileEntry {
               ["www.dovebevo.com", "dovebevo.com"].contains(authority),
               components.percentEncodedFragment == nil,
               isEntryPath(components.percentEncodedPath), let rawQuery = components.percentEncodedQuery,
-              Set(rawQuery.split(separator: "&").map { String($0.prefix { $0 != "=" }) }) == ["path", "c"],
+              validVenueQuery(rawQuery),
               let rawCell = rawQuery.split(separator: "&").first(where: { $0.hasPrefix("c=") })?.dropFirst(2),
               String(rawCell).range(of: #"\A[0-9b-hjkmnp-z]{5}\z"#, options: .regularExpression) != nil,
               let items = components.queryItems,
-              items.count == 2, Set(items.map(\.name)) == ["path", "c"],
+              [2, 4].contains(items.count),
               let path = items.first(where: { $0.name == "path" })?.value,
               let cell = items.first(where: { $0.name == "c" })?.value,
               path.range(of: #"\A/bar/(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})\z"#, options: .regularExpression) != nil,
               cell.range(of: #"\A[0-9b-hjkmnp-z]{5}\z"#, options: .regularExpression) != nil else { return nil }
         return URL(string: "https://www.dovebevo.com\(path)?c=\(cell)")
+    }
+
+    private static func validVenueQuery(_ raw: String) -> Bool {
+        let pairs = raw.split(separator: "&", omittingEmptySubsequences: false)
+        let keys = pairs.map { String($0.prefix { $0 != "=" }) }
+        guard Set(keys).count == pairs.count else { return false }
+        if keys.count == 2 { return Set(keys) == ["path", "c"] }
+        guard keys.count == 4, Set(keys) == ["path", "c", "drink", "hh"],
+              let drink = pairs.first(where: { $0.hasPrefix("drink=") })?.dropFirst(6),
+              DrinkCategory.all.contains(where: { $0.code == String(drink) }),
+              let hh = pairs.first(where: { $0.hasPrefix("hh=") })?.dropFirst(3), ["0", "1"].contains(String(hh)) else { return false }
+        return true
     }
 
     static func isEntryPath(_ path: String) -> Bool {
@@ -57,7 +69,28 @@ enum MobileEntry {
               let source = URLComponents(url: canonical, resolvingAgainstBaseURL: false),
               let cell = source.queryItems?.first(where: { $0.name == "c" })?.value else { return nil }
         // Encode slashes identically to the production JS URLSearchParams contract.
-        return URL(string: "\(homeURL.absoluteString)?path=%2Fbar%2F\(canonical.lastPathComponent)&c=\(cell)")
+        let base = "\(homeURL.absoluteString)?path=%2Fbar%2F\(canonical.lastPathComponent)&c=\(cell)"
+        if let original = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           let raw = original.percentEncodedQuery, isEntryPath(original.percentEncodedPath), validVenueQuery(raw),
+           let items = original.queryItems, items.count == 4,
+           let drink = items.first(where: { $0.name == "drink" })?.value,
+           let hh = items.first(where: { $0.name == "hh" })?.value {
+            return URL(string: "\(base)&drink=\(drink)&hh=\(hh)")
+        }
+        return URL(string: base)
+    }
+
+    static func drinkDocument(_ venue: URL, drink: String, band: ComparisonBand) -> URL? {
+        guard DrinkCategory.all.contains(where: { $0.code == drink }),
+              let canonical = SavedVenuePolicy.canonicalURL(venue), let base = venueDocument(canonical) else { return nil }
+        return URL(string: "\(base.absoluteString)&drink=\(drink)&hh=\(band.rawValue)")
+    }
+
+    static func drinkFocus(_ url: URL) -> (drink: String, band: ComparisonBand)? {
+        guard publicVenue(url) != nil, let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              items.count == 4, let drink = items.first(where: { $0.name == "drink" })?.value,
+              let hh = items.first(where: { $0.name == "hh" })?.value, let number = Int(hh), let band = ComparisonBand(rawValue: number) else { return nil }
+        return (drink, band)
     }
 
     static func shareURL(_ url: URL) -> URL {

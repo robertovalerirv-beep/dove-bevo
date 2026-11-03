@@ -24,7 +24,7 @@ import java.util.function.Supplier;
 final class SavedDrinkScreen {
     private final Activity activity;private final SavedDrinkStore store;private final SavedMenuOfferStore offerStore;private final FavoritesLoader loader;private final MenuV2Loader menuLoader;
     private final Consumer<String> navigate;private final Supplier<Boolean> foreground;private final SavedVenueStore legacyStore;
-    private final LinearLayout view,rows;private final TextView status;private final Button refresh;private final Spinner categoryFilter;
+    private final LinearLayout view,rows;private final TextView status;private final Spinner categoryFilter;
     private List<SavedMenuOfferStore.Entry> offers=Collections.emptyList();private List<SavedDrinkStore.Entry> saved=Collections.emptyList();private List<SavedVenueStore.Venue> legacy=Collections.emptyList();private Map<String,FavoriteComparison.Cell> cells=Collections.emptyMap();private Map<String,MenuV2Prices.Venue> menus=Collections.emptyMap();
     private boolean visible,closed,busy,menuBusy,legacyFailed;private long generation;private FavoritesLoader.Batch request;private MenuV2Loader.Batch menuRequest;private AlertDialog migrationDialog;
 
@@ -48,7 +48,6 @@ final class SavedDrinkScreen {
         ArrayAdapter<String> options=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,choices);options.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);categoryFilter.setAdapter(options);categoryFilter.setSelection(RecommendationDrink.values().length);view.addView(categoryFilter);
         categoryFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> parent,View v,int position,long id){render();}public void onNothingSelected(AdapterView<?> parent){}});
         status=text("",15);status.setTag("drink_favourites_status");status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);view.addView(status);
-        refresh=button("Aggiorna prezzi",()->refresh());refresh.setTag("drink_favourites_refresh");view.addView(refresh);
         rows=new LinearLayout(activity);rows.setOrientation(LinearLayout.VERTICAL);rows.setTag("drink_favourites_rows");view.addView(rows);
     }
     View view(){return view;}
@@ -58,6 +57,7 @@ final class SavedDrinkScreen {
     void resume(){if(visible&&!closed)refresh();}
     void close(){closed=true;hide();loader.close();if(menuLoader!=null)menuLoader.close();}
     private boolean usable(){return visible&&!closed&&foreground.get()&&!activity.isFinishing()&&!activity.isDestroyed();}
+    boolean canRefresh(){return usable()&&!busy&&!menuBusy;}
     private void retire(){generation++;if(request!=null)request.cancel();if(menuRequest!=null)menuRequest.cancel();request=null;menuRequest=null;busy=false;menuBusy=false;}
     void refresh(){
         if(!usable())return;retire();long token=generation;cells=Collections.emptyMap();menus=Collections.emptyMap();
@@ -79,8 +79,8 @@ final class SavedDrinkScreen {
         }
     }
     private void render(){
-        if(rows==null||refresh==null)return;
-        refresh.setEnabled(usable()&&!busy&&!menuBusy);rows.removeAllViews();
+        if(rows==null)return;
+        rows.removeAllViews();
         List<SavedDrinkComparison.Row> values;
         try{values=SavedDrinkComparison.rows(saved,cells,menus);}catch(IOException invalid){status.setText("Prezzi non disponibili");return;}
         int filter=categoryFilter.getSelectedItemPosition();

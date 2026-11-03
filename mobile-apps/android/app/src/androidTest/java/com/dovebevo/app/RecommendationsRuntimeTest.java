@@ -11,6 +11,7 @@ import android.system.OsConstants;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.File;
@@ -57,7 +58,12 @@ public final class RecommendationsRuntimeTest {
         assertTrue(edit.commit());
     }
     @Test public void actualNativeRowsToggleUndoSerializeAndReconcileUnknown() throws Exception {
-        onMain(() -> assertEquals(0, rows().getChildCount()));
+        onMain(() -> {
+            assertEquals(0, rows().getChildCount());
+            assertNull("Reload is not a body button", dialog().findViewById(R.id.recommendation_refresh));
+            assertEquals(activity.getString(R.string.more_options), more().getContentDescription());
+            assertFalse("The first GET disables reload", overflow().getMenu().findItem(R.id.recommendation_refresh).isEnabled());
+        });
         runNext();
         onMain(() -> {
             assertEquals(9, rows().getChildCount()); assertTrue(row("water").getText().toString().contains("Ancora nessun consiglio"));
@@ -71,7 +77,9 @@ public final class RecommendationsRuntimeTest {
         onMain(() -> {
             assertFalse(row("water").isEnabled());
             assertTrue(status().getText().toString().contains("non verificato"));
-            dialog().findViewById(R.id.recommendation_refresh).performClick();
+            PopupMenu menu = overflow();
+            assertTrue(menu.getMenu().findItem(R.id.recommendation_refresh).isEnabled());
+            assertTrue(menu.getMenu().performIdentifierAction(R.id.recommendation_refresh, 0));
         });
         runNext();
         onMain(() -> { assertFalse(row("water").isSelected()); assertTrue(row("water").isEnabled()); });
@@ -82,7 +90,7 @@ public final class RecommendationsRuntimeTest {
         onMain(() -> { row("water").performClick(); ui.pause(); ui.resume(); });
         assertEquals(2, worker.tasks.size());
         runNext(); // cancelled write: an old callback cannot clear the newer GET's pending state
-        onMain(() -> assertFalse(dialog().findViewById(R.id.recommendation_refresh).isEnabled()));
+        onMain(() -> assertFalse(overflow().getMenu().findItem(R.id.recommendation_refresh).isEnabled()));
         runNext();
         onMain(() -> {
             assertTrue(row("water").isEnabled()); eligible = "https://www.dovebevo.com/bar/w9?c=sr2y7"; ui.contextChanged(); assertNull(dialog());
@@ -110,7 +118,9 @@ public final class RecommendationsRuntimeTest {
         runNext();
         onMain(() -> {
             assertFalse(row("water").isEnabled()); row("water").performClick(); assertEquals(0, worker.tasks.size());
-            dialog().findViewById(R.id.recommendation_refresh).performClick(); ui.dismiss();
+            PopupMenu menu = overflow();
+            assertTrue("Read-only mode still allows a public GET", menu.getMenu().findItem(R.id.recommendation_refresh).isEnabled());
+            assertTrue(menu.getMenu().performIdentifierAction(R.id.recommendation_refresh, 0)); ui.dismiss();
         });
         runNext(); onMain(() -> assertNull(dialog())); assertEquals(0, sink.posts);
     }
@@ -181,6 +191,8 @@ public final class RecommendationsRuntimeTest {
     }
     private LinearLayout rows() { return dialog().findViewById(R.id.recommendation_rows); }
     private TextView status() { return dialog().findViewById(R.id.recommendation_status); }
+    private Button more() { return dialog().getWindow().getDecorView().findViewWithTag("recommendations.more"); }
+    private PopupMenu overflow() { return ui.createOverflow(more()); }
     private Button row(String code) { return rows().findViewWithTag(code); }
     private static final class Queue extends AbstractExecutorService {
         final List<Runnable> tasks = new ArrayList<>();

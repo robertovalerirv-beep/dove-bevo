@@ -253,6 +253,14 @@ html[data-dovebevo-app-theme="1"] .hint { line-height: 1.45; }
 html[data-dovebevo-app-theme="1"] .price__stale { color: var(--spritz-text); }
 /* Keep the real site dropdown usable, with the same orange selected state. */
 html[data-dovebevo-app-theme="1"] .top { padding: 7px 12px 8px; }
+/* The installed apps place their native overflow over the first content row.
+ * Keep city, currency and drink controls clear without adding a blank rail. */
+html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .top {
+  padding-right: 68px;
+}
+html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .europe-search-row {
+  padding-right: 68px;
+}
 html[data-dovebevo-app-theme="1"] .drink-menu { margin-top: 6px; }
 html[data-dovebevo-app-theme="1"] .drink-menu__button {
   display: flex; min-height: 54px; background: var(--surface);

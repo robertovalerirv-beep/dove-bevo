@@ -4,9 +4,12 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.Gravity;
+import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.io.IOException;
@@ -32,7 +35,6 @@ final class RecommendationsUi {
     private RecommendationsClient.Cancellation cancellation;
     private TextView status;
     private LinearLayout rows;
-    private Button refresh;
     private boolean paused, closed;
     private int message;
     RecommendationsUi(Activity activity, Api api, TestLabPolicy policy, Supplier<String> eligible) {
@@ -51,21 +53,28 @@ final class RecommendationsUi {
         body.setBackgroundColor(activity.getColor(R.color.shell_background));
         int padding = Math.round(16 * activity.getResources().getDisplayMetrics().density);
         body.setPadding(padding, padding, padding, padding);
+        LinearLayout titleRow = new LinearLayout(activity); titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        titleRow.setBackgroundColor(activity.getColor(R.color.shell_background));
+        titleRow.setPadding(padding, NativeAppearance.dp(activity,8), padding, 0);
+        TextView title = new TextView(activity); title.setText(R.string.recommendation_title); title.setTextSize(22);
+        NativeAppearance.title(title); titleRow.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+        Button more = new Button(activity); more.setTag("recommendations.more"); more.setText("⋯");
+        more.setContentDescription(activity.getString(R.string.more_options)); more.setTextSize(24);
+        NativeAppearance.button(more, false);
+        titleRow.addView(more, new LinearLayout.LayoutParams(NativeAppearance.dp(activity,48), NativeAppearance.dp(activity,48)));
+        more.setOnClickListener(view -> createOverflow(more).show());
         TextView heading = new TextView(activity); heading.setText(selected.name); heading.setTextSize(24); NativeAppearance.title(heading); body.addView(heading);
         TextView explanation = new TextView(activity); explanation.setText(R.string.recommendation_explanation); explanation.setTextSize(15); NativeAppearance.muted(explanation);
         explanation.setPadding(0, NativeAppearance.dp(activity,8), 0, NativeAppearance.dp(activity,12)); body.addView(explanation);
         status = new TextView(activity); status.setId(R.id.recommendation_status);
         status.setTextSize(14); NativeAppearance.muted(status);status.setPadding(0,0,0,NativeAppearance.dp(activity,12));
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE); body.addView(status);
-        refresh = new Button(activity); refresh.setId(R.id.recommendation_refresh); refresh.setText(R.string.recommendation_refresh);
-        NativeAppearance.button(refresh,false);
-        refresh.setOnClickListener(view -> request(session.refresh())); body.addView(refresh);
         rows = new LinearLayout(activity); rows.setId(R.id.recommendation_rows); rows.setOrientation(LinearLayout.VERTICAL);
         rows.setPadding(0,NativeAppearance.dp(activity,4),0,0);
         body.addView(rows, new LinearLayout.LayoutParams(-1, -2));
         // The entire content scrolls, so large system text cannot squeeze the drink rows out below a fixed header.
         ScrollView scroll = new ScrollView(activity); scroll.addView(body);
-        AlertDialog current = new AlertDialog.Builder(activity).setTitle(R.string.recommendation_title).setView(scroll)
+        AlertDialog current = new AlertDialog.Builder(activity).setCustomTitle(titleRow).setView(scroll)
                 .setNegativeButton(R.string.close, (value, which) -> {}).create();
         dialog = current;
         current.setOnDismissListener(value -> { if (dialog == current) retire(); });
@@ -100,10 +109,22 @@ final class RecommendationsUi {
     private boolean contextValid() {
         return !closed && !paused && dialog != null && dialog.isShowing() && venue != null && venue.url.equals(eligible.get());
     }
+    PopupMenu createOverflow(View anchor) {
+        PopupMenu menu = new PopupMenu(activity, anchor);
+        boolean ready = contextValid() && session != null && !session.isPending();
+        boolean retry = session != null && session.snapshot() == null && !session.isPending();
+        menu.getMenu().add(Menu.NONE, R.id.recommendation_refresh, Menu.NONE, retry ? "Riprova" : activity.getString(R.string.refresh))
+                .setEnabled(ready);
+        menu.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() != R.id.recommendation_refresh) return false;
+            if (contextValid() && session != null && !session.isPending()) request(session.refresh());
+            return true;
+        });
+        return menu;
+    }
     private void render() {
         if (dialog == null || session == null) return;
         status.setText(policy.isReadOnly() ? activity.getString(R.string.recommendation_read_only) + "\n" + activity.getString(message) : activity.getString(message));
-        refresh.setEnabled(!paused && !session.isPending());
         rows.removeAllViews();
         DrinkRecommendations snapshot = session.snapshot();
         if (snapshot == null) return;

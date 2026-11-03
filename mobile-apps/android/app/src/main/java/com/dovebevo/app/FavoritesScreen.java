@@ -22,7 +22,7 @@ import java.util.function.Supplier;
 /** Full native favourites. Network names/prices are memory-only and never rewrite the bookmark file. */
 final class FavoritesScreen {
     private final Activity activity;private final SavedVenueStore store;private final Consumer<String> navigate;private final Supplier<Boolean> foreground;private final FavoritesLoader loader;
-    private final ScrollView view;private final LinearLayout rows;private final TextView status;private final Button refresh;private final Spinner drinks,bands;
+    private final ScrollView view;private final LinearLayout rows;private final TextView status;private final Spinner drinks,bands;
     private List<SavedVenueStore.Venue> saved=Collections.emptyList();private Map<String,FavoriteComparison.Cell> cells=Collections.emptyMap();
     private RecommendationDrink drink=RecommendationDrink.BEER_DRAFT;private int band;private long generation;private boolean visible,busy,closed;private FavoritesLoader.Batch request;
     private final LinearLayout localContent;private final SavedDrinkScreen drinkPane;private final Button localTab,drinkTab;private final boolean unifiedDrinks;private boolean drinksVisible;
@@ -44,7 +44,7 @@ final class FavoritesScreen {
     private FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,FavoritesLoader loader,SavedDrinkStore drinkStore,FavoritesLoader drinkLoader,MenuV2Loader menuLoader,SavedMenuOfferStore offerStore,boolean unifiedDrinks){
         this.activity=activity;this.store=store;this.navigate=navigate;this.foreground=foreground;this.loader=loader;this.unifiedDrinks=unifiedDrinks;
         view=new ScrollView(activity);view.setId(R.id.favorites_screen);view.setBackgroundColor(activity.getColor(R.color.shell_background));LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);int pad=dp(16);body.setPadding(pad,pad,pad,pad);view.addView(body);
-        TextView title=text(activity.getString(R.string.saved_venues),26);heading(title);NativeAppearance.title(title);body.addView(title);
+        TextView title=text(activity.getString(R.string.saved_venues),26);heading(title);NativeAppearance.title(title);title.setMinHeight(dp(48));title.setPadding(0,0,dp(56),0);body.addView(title);
         TextView explanation=text(activity.getString(R.string.favorites_explanation),15);NativeAppearance.muted(explanation);explanation.setPadding(0,dp(4),0,dp(12));body.addView(explanation);
         LinearLayout tabs=new LinearLayout(activity);body.addView(tabs);if(unifiedDrinks)tabs.setVisibility(View.GONE);
         localTab=new Button(activity);localTab.setText("Locali");localTab.setTag("favourites_local_tab");NativeAppearance.button(localTab,true);tabs.addView(localTab,new LinearLayout.LayoutParams(0,-2,1));
@@ -68,7 +68,6 @@ final class FavoritesScreen {
         drinks.setOnItemSelectedListener(selection(()->{drink=RecommendationDrink.values()[drinks.getSelectedItemPosition()];render();}));
         bands.setOnItemSelectedListener(selection(()->{band=bands.getSelectedItemPosition();render();}));
         status=text("",15);NativeAppearance.muted(status);status.setPadding(0,dp(12),0,dp(8));status.setId(R.id.favorites_status);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(status);
-        refresh=new Button(activity);refresh.setId(R.id.favorites_refresh);refresh.setText(R.string.favorites_refresh);NativeAppearance.button(refresh,false);refresh.setOnClickListener(v->refresh());LinearLayout.LayoutParams refreshSize=new LinearLayout.LayoutParams(-1,-2);refreshSize.bottomMargin=dp(16);body.addView(refresh,refreshSize);
         rows=new LinearLayout(activity);rows.setId(R.id.favorites_rows);rows.setOrientation(LinearLayout.VERTICAL);body.addView(rows);
     }
     View view(){return view;}
@@ -86,6 +85,7 @@ final class FavoritesScreen {
     String selectedDrink(){return drink.code;}int selectedBand(){return band;}
     void restoreSelection(String code,int band){RecommendationDrink selection=RecommendationDrink.from(code);if(selection!=null){drink=selection;drinks.setSelection(selection.ordinal());}if(band==0||band==1){this.band=band;bands.setSelection(band);}}
     private boolean usable(){return visible&&!closed&&foreground.get()&&!activity.isFinishing()&&!activity.isDestroyed();}
+    boolean canRefresh(){return drinksVisible?drinkPane.canRefresh():usable()&&!busy;}
     private void retire(){generation++;if(request!=null)request.cancel();request=null;busy=false;}
     void refresh(){
         if(drinksVisible){drinkPane.refresh();return;}
@@ -97,7 +97,7 @@ final class FavoritesScreen {
         catch(IOException unavailable){busy=false;status.setText(R.string.favorites_unavailable);render();}
     }
     private void render(){
-        if(rows==null||refresh==null)return;refresh.setEnabled(usable()&&!busy);rows.removeAllViews();
+        if(rows==null)return;rows.removeAllViews();
         List<FavoriteComparison.Row> values;
         try{values=FavoriteComparison.rows(saved,cells,drink,band);}catch(IOException invalid){status.setText(R.string.favorites_unavailable);return;}
         for(FavoriteComparison.Row row:values){

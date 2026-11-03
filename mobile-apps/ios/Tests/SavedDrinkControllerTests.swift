@@ -90,9 +90,7 @@ final class SavedDrinkControllerTests: XCTestCase {
                 XCTAssertTrue(try drinkStore.load().isEmpty)
                 XCTAssertEqual(try venueStore.load().count, 1)
                 guard waitUntil("Visible favourites must finish their actual appearance before legacy selection", {
-                    controller.navigationItem.rightBarButtonItems?.contains(where: {
-                        $0.accessibilityIdentifier == "favorites.refresh" && $0.isEnabled
-                    }) == true
+                    controller.canReloadFromMore
                 }) else { return }
                 controller.tableView(controller.tableView, didSelectRowAt: index)
                 waitUntil("Explicit old place drink chooser") { (controller.presentedViewController as? UINavigationController)?.topViewController is FavouriteSaveChooser }

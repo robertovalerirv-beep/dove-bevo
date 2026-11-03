@@ -127,7 +127,22 @@ test("native European document installs only the app shell style and hides its d
     /\[data-dovebevo-app-theme="1"\]\[data-dovebevo-mobile-shell="1"\] \.europe-search/,
   );
   assert.match(style, /\[data-dovebevo-mobile-shell="1"\] \.europe-city-current/);
+  assert.match(
+    style,
+    /\[data-dovebevo-app-theme="1"\]\[data-dovebevo-mobile-shell="1"\] \.europe-search-row \{\s*padding-right: 68px/,
+  );
   assert.equal(page.rootAttributes.get("data-dovebevo-app-theme"), "1");
+});
+
+test("native legacy map reserves room for the compact overflow without changing browser CSS", () => {
+  const page = fixture({ url: "https://www.dovebevo.com/mobile/" });
+  assert.equal(page.run(), true);
+  const style = page.nodes.values().next().value.textContent;
+  assert.match(
+    style,
+    /\[data-dovebevo-app-theme="1"\]\[data-dovebevo-mobile-shell="1"\] \.top \{\s*padding-right: 68px/,
+  );
+  assert.doesNotMatch(style, /html \.top \{\s*padding-right: 68px/);
 });
 
 for (const url of [

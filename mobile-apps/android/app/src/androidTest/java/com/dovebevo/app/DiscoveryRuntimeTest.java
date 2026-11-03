@@ -43,7 +43,7 @@ public final class DiscoveryRuntimeTest {
         onMain(()->{assertEquals(0,rows().getChildCount());assertTrue(status().contains("Nessun prezzo"));assertFalse(status().contains("0,00"));});
     }
     @Test public void unreadyAndUnavailableAreExplicitAndBackgroundCannotRefresh()throws Exception {
-        show(true,null);onMain(()->{assertTrue(status().contains("Apri una città"));assertFalse(activity.findViewById(R.id.discovery_refresh).isEnabled());});assertEquals(0,requests.get());
+        show(true,null);onMain(()->{assertTrue(status().contains("Apri una città"));assertFalse(screen.canRefresh());assertNull(activity.findViewById(R.id.discovery_refresh));assertNull(activity.findViewById(R.id.discovery_choose_area));});assertEquals(0,requests.get());
         onMain(()->{try{screen.show(new DiscoveryArea(45.4642,9.19,14));}catch(IOException impossible){throw new AssertionError(impossible);}});awaitLoaded();
         onMain(()->{assertTrue(status().contains("non verificabili"));assertEquals(0,rows().getChildCount());active.set(false);screen.pause();screen.refresh();});
         int count=requests.get();onMain(()->screen.refresh());assertEquals(count,requests.get());
@@ -83,14 +83,32 @@ public final class DiscoveryRuntimeTest {
             for(int width:new int[]{320,393,411})for(int selected:new int[]{0,1})onMain(()->{
                 android.content.res.Configuration configuration=new android.content.res.Configuration(saved);configuration.screenWidthDp=width;resources.updateConfiguration(configuration,resources.getDisplayMetrics());
                 Spinner band=activity.findViewById(R.id.discovery_band);band.setSelection(selected,false);float density=resources.getDisplayMetrics().density;View root=screen.view();root.measure(View.MeasureSpec.makeMeasureSpec(Math.round(width*density),View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(600*density),View.MeasureSpec.EXACTLY));root.layout(0,0,Math.round(width*density),Math.round(600*density));
-                LinearLayout header=root.findViewWithTag("discovery.header");if(width==320)assertEquals(LinearLayout.VERTICAL,header.getOrientation());LinearLayout controls=(LinearLayout)header.getChildAt(1);for(int index=0;index<controls.getChildCount();index++){View control=controls.getChildAt(index);assertTrue(control.getLeft()>=0);assertTrue(control.getRight()<=controls.getWidth());assertTrue(control.getWidth()>=Math.round(44*density));assertTrue(control.getHeight()>=Math.round(44*density));}
+                LinearLayout header=root.findViewWithTag("discovery.header");assertEquals(LinearLayout.VERTICAL,header.getOrientation());View control=header.getChildAt(1);assertSame(band,control);assertTrue(control.getLeft()>=0);assertTrue(control.getRight()<=header.getWidth());assertTrue(control.getWidth()>=Math.round(44*density));assertTrue(control.getHeight()>=Math.round(44*density));
                 TextView label=(TextView)band.getSelectedView();assertNotNull(label);assertEquals(activity.getString(selected==0?R.string.favorites_normal:R.string.favorites_happy_hour),label.getText().toString());android.text.Layout layout=label.getLayout();assertNotNull(layout);assertTrue(layout.getLineCount()>0);for(int line=0;line<layout.getLineCount();line++){assertEquals("Band label ellipsis at "+width+"dp",0,layout.getEllipsisCount(line));assertTrue("Band label overflow at "+width+"dp",layout.getLineWidth(line)<=label.getWidth()-label.getPaddingLeft()-label.getPaddingRight()+1);}
             });
         }finally{onMain(()->resources.updateConfiguration(saved,resources.getDisplayMetrics()));}
     }
+    @Test public void compactOverflowKeepsFullWidthBandAndNoDuplicateMapAction() {
+        show(true,null);
+        for(int width:new int[]{348,430,768})onMain(()->{
+            float density=activity.getResources().getDisplayMetrics().density;
+            int pixels=Math.round(width*density);View root=screen.view();
+            root.measure(View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(Math.round(700*density),View.MeasureSpec.EXACTLY));
+            root.layout(0,0,pixels,Math.round(700*density));
+            LinearLayout header=root.findViewWithTag("discovery.header");
+            View title=header.getChildAt(0),band=header.getChildAt(1);
+            assertEquals(LinearLayout.VERTICAL,header.getOrientation());
+            assertTrue("First row reserves the 56dp native overflow",title.getPaddingRight()>=Math.round(56*density));
+            assertTrue("Drink band starts below the 48dp native overflow",band.getTop()>=Math.round(48*density));
+            assertEquals("Drink band fills the header",header.getWidth(),band.getWidth());
+            assertNull("Mappa is only in bottom navigation",activity.findViewById(R.id.discovery_choose_area));
+            assertNull("Ricarica is only in overflow",activity.findViewById(R.id.discovery_refresh));
+        });
+    }
     private void show(boolean unavailable,DiscoveryArea area){onMain(()->{
         FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable||partialOne&&url.contains("/api/prices/")&&!url.contains("u0nd9"))throw new IOException("Owned offline response");String body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");
-        screen=new DiscoveryScreen(activity,opened::set,()->{},active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));assertEquals("beer_draft",screen.selectedDrink());screen.restoreSelection("spritz",0);activity.setContentView(screen.view());screen.show(area);
+        screen=new DiscoveryScreen(activity,opened::set,active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));assertEquals("beer_draft",screen.selectedDrink());screen.restoreSelection("spritz",0);activity.setContentView(screen.view());screen.show(area);
     });}
     private void awaitLoaded()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(!status().contains("Caricamento")&&(rows().getChildCount()==0||rows().getChildAt(0).getHeight()>0)));if(loaded.get())return;Thread.sleep(10);}fail("Owned discovery did not complete");}
     private LinearLayout rows(){return activity.findViewById(R.id.discovery_rows);}private String status(){return((TextView)activity.findViewById(R.id.discovery_status)).getText().toString();}

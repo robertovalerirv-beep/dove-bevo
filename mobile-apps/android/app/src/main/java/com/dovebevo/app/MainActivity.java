@@ -55,6 +55,7 @@ public final class MainActivity extends ComponentActivity {
     private WebView website;
     private WebView popup;
     private FrameLayout content;
+    private LinearLayout topActions;
     private LinearLayout errorPanel;
     private TextView offline;
     private ProgressBar progress;
@@ -110,6 +111,7 @@ public final class MainActivity extends ComponentActivity {
     private long shareCapture;
     private TestLabPolicy testLabPolicy;
     private String mobileThemeScript;
+    private long presentationRequest;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -221,7 +223,6 @@ public final class MainActivity extends ComponentActivity {
         offline.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         offline.setVisibility(View.GONE);
         shell.addView(offline, new LinearLayout.LayoutParams(-1, -2));
-        shell.addView(createTopActions(), new LinearLayout.LayoutParams(-1, dp(52)));
         content = new FrameLayout(this);
         shell.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
         shell.addView(createBottomNavigation(),new LinearLayout.LayoutParams(-1,-2));
@@ -251,8 +252,10 @@ public final class MainActivity extends ComponentActivity {
         savedDrinks=new SavedDrinkUi(this,drinkStore,this::eligibleSavedVenue,this::readSavedVenue,()->venueCaptureEpoch);
         favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore,offerStore);
         content.addView(favorites.view(),new FrameLayout.LayoutParams(-1,-1));favorites.view().setVisibility(View.GONE);
-        discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},this::showMap,()->foreground&&!destroyed);
+        discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},()->foreground&&!destroyed);
         content.addView(discovery.view(),new FrameLayout.LayoutParams(-1,-1));discovery.view().setVisibility(View.GONE);
+        topActions = createTopActions();
+        content.addView(topActions, new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.END));
         if(state!=null){favorites.restoreSelection(state.getString("favorite_drink"),state.getInt("favorite_band",0));favorites.restorePane(state.getBoolean("favorite_drinks_visible",false));}
         if(state!=null)discovery.restoreSelection(state.getString("discovery_drink"),state.getInt("discovery_band",0));
         recommendations = new RecommendationsUi(this,
@@ -271,11 +274,11 @@ public final class MainActivity extends ComponentActivity {
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private LinearLayout createTopActions() {
-        // Only the overflow stays above the map. Reserving its own slim row
-        // keeps it clear of city, currency and drink controls in the WebView.
+        // The overflow shares the map's first row instead of reserving an
+        // otherwise empty native toolbar above the WebView.
         LinearLayout topActions = new LinearLayout(this);
         topActions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        topActions.setPadding(dp(8), 0, dp(8), 0);
+        topActions.setPadding(0, 0, dp(8), 0);
         Button more = button(R.id.more, R.string.more_symbol, () -> {});
         more.setContentDescription(getString(R.string.more_options));
         more.setTextSize(26);
@@ -283,6 +286,14 @@ public final class MainActivity extends ComponentActivity {
         more.setOnClickListener(this::showMenu);
         topActions.addView(more, new LinearLayout.LayoutParams(dp(48), dp(48)));
         return topActions;
+    }
+    private void setWebMenuClearance(boolean needed) {
+        if (website == null || !(website.getLayoutParams() instanceof FrameLayout.LayoutParams)) return;
+        FrameLayout.LayoutParams layout = (FrameLayout.LayoutParams) website.getLayoutParams();
+        int top = needed ? dp(48) : 0;
+        if (layout.topMargin == top) return;
+        layout.topMargin = top;
+        website.setLayoutParams(layout);
     }
     private LinearLayout createBottomNavigation() {
         BottomNavigationBar bottom = new BottomNavigationBar(this, this::goHome, this::openMapSearch,
@@ -476,6 +487,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void updateToolbar() {
         if (backButton == null) return;
+        if (topActions != null) topActions.bringToFront();
         backButton.setEnabled(foreground && !destroyed && (nativeDestinationVisible() || website != null && website.canGoBack()));
         forwardButton.setEnabled(foreground && !destroyed && !nativeDestinationVisible() && website != null && website.canGoForward());
         if (recommendationButton != null) {
@@ -763,9 +775,12 @@ public final class MainActivity extends ComponentActivity {
     private PopupMenu createBrowserMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
         boolean mapActive=foreground&&!destroyed&&!nativeDestinationVisible()&&website!=null;
+        boolean nativeRefresh=discoveryVisible&&discovery!=null&&discovery.canRefresh()
+                ||favoritesVisible&&favorites!=null&&favorites.canRefresh();
         menu.getMenu().add(Menu.NONE, R.id.share, Menu.NONE, R.string.share)
                 .setEnabled(mapActive&&hasUsablePage&&!failed&&!loading&&!awaitingDocumentStart);
-        menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, loading?R.string.stop_loading:R.string.refresh).setEnabled(mapActive);
+        menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, mapActive&&loading?R.string.stop_loading:R.string.refresh)
+                .setEnabled(mapActive||nativeRefresh);
         menu.getMenu().add(Menu.NONE, R.id.back, Menu.NONE, R.string.back)
                 .setEnabled(foreground && (nativeDestinationVisible() || website != null && website.canGoBack()));
         menu.getMenu().add(Menu.NONE, R.id.forward, Menu.NONE, R.string.forward)
@@ -782,7 +797,10 @@ public final class MainActivity extends ComponentActivity {
                 return true;
             }
             if (item.getItemId() == R.id.refresh) {
-                if(!nativeDestinationVisible()&&website!=null)refresh();return true;
+                if(discoveryVisible&&discovery!=null&&discovery.canRefresh())discovery.refresh();
+                else if(favoritesVisible&&favorites!=null&&favorites.canRefresh())favorites.refresh();
+                else if(!nativeDestinationVisible()&&website!=null)refresh();
+                return true;
             }
             if (item.getItemId() == R.id.back) { goBack(); return true; }
             if (item.getItemId() == R.id.forward) {
@@ -898,10 +916,51 @@ public final class MainActivity extends ComponentActivity {
             if (mobileThemeScript == null) {
                 mobileThemeScript = MobilePresentation.load(this);
             }
-            view.evaluateJavascript(mobileThemeScript, null);
+            long generation = documentCheckGeneration;
+            long request = ++presentationRequest;
+            long deadline = android.os.SystemClock.uptimeMillis() + 8000;
+            retryMobilePresentation(view, finishedUrl, generation, request, 16, deadline);
         } catch (IOException unavailable) {
             // A missing or invalid bundled skin preserves the original website and its normal security policy.
+            setWebMenuClearance(true);
         }
+    }
+
+    private boolean currentPresentation(WebView view, String url, long generation, long request) {
+        return !destroyed && !failed && foreground && view == website
+                && generation == documentCheckGeneration && request == presentationRequest
+                && MobilePresentation.allows(url, view.getUrl());
+    }
+
+    private void retryMobilePresentation(WebView view, String url, long generation, long request,
+                                         int attemptsLeft, long deadline) {
+        if (!currentPresentation(view, url, generation, request)) return;
+        view.evaluateJavascript(mobileThemeScript, result -> {
+            if (!currentPresentation(view, url, generation, request)) return;
+            if (!MobileEntry.isDocument(url) || !"true".equals(result)) {
+                setWebMenuClearance(true);
+                schedulePresentationRetry(view, url, generation, request, attemptsLeft, deadline);
+                return;
+            }
+            view.evaluateJavascript("document.documentElement.getAttribute('data-dovebevo-app-theme')==='1' && document.documentElement.getAttribute('data-dovebevo-mobile-shell')==='1'", marker -> {
+                if (!currentPresentation(view, url, generation, request)) return;
+                if ("true".equals(marker)) setWebMenuClearance(false);
+                else {
+                    setWebMenuClearance(true);
+                    schedulePresentationRetry(view, url, generation, request, attemptsLeft, deadline);
+                }
+            });
+        });
+    }
+
+    private void schedulePresentationRetry(WebView view, String url, long generation, long request,
+                                           int attemptsLeft, long deadline) {
+        // The verified visitor shell can mount after onPageFinished. Keep the
+        // original search clear of native More until that same document mounts.
+        if (!MobileEntry.isDocument(url) || attemptsLeft <= 1
+                || android.os.SystemClock.uptimeMillis() >= deadline) return;
+        view.postDelayed(() -> retryMobilePresentation(view, url, generation, request,
+                attemptsLeft - 1, deadline), 350);
     }
 
     private final class WebsiteClient extends TestLabClient {
@@ -915,6 +974,7 @@ public final class MainActivity extends ComponentActivity {
         }
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
             if (view != website || destroyed) return;
+            presentationRequest++;
             searchOpening=false;searchCallbackGeneration++;
             if (!MobileEntry.isDocument(url)) searchPending = false;
             documentCheckGeneration++;
@@ -931,6 +991,7 @@ public final class MainActivity extends ComponentActivity {
             lastTrustedUrl = url;
             preparedNavigationUrl = null;
             awaitingDocumentStart = false;
+            setWebMenuClearance(!MobileEntry.isDocument(url));
             setLoading(!failed);
         }
         @Override public void onPageFinished(WebView view, String url) {
@@ -1127,6 +1188,7 @@ public final class MainActivity extends ComponentActivity {
         super.onResume();
         foreground = true;
         if (website != null) website.onResume();
+        if (website != null && hasUsablePage) installMobilePresentation(website, website.getUrl());
         if (recommendations != null) recommendations.resume();
         if(favorites!=null)favorites.resume();
         if(discovery!=null)discovery.resume();
@@ -1135,6 +1197,7 @@ public final class MainActivity extends ComponentActivity {
         resolveLocationResult();
     }
     @Override protected void onPause() {
+        presentationRequest++;
         searchPending=false;searchOpening=false;searchCallbackGeneration++;
         shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}if(informationDialog!=null){informationDialog.dismiss();informationDialog=null;}
         discoveryCapture++;
@@ -1175,6 +1238,7 @@ public final class MainActivity extends ComponentActivity {
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
+        presentationRequest++;
         shareCapture++;if(shareDialog!=null)shareDialog.dismiss();if(informationDialog!=null)informationDialog.dismiss();
         discoveryCapture++;
         venueCaptureEpoch++;

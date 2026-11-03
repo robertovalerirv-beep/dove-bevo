@@ -77,7 +77,12 @@ final class BottomNavigationControllerTests: XCTestCase {
             let mapContent = tabs.mapNavigation.view.convert(tabs.mapNavigation.view.bounds, to: tabs.view)
             XCTAssertGreaterThanOrEqual(topMore.width, 48)
             XCTAssertGreaterThanOrEqual(topMore.height, 48)
-            XCTAssertLessThanOrEqual(topMore.maxY, mapContent.minY + 0.5, "The top menu must not cover city, currency or drink controls")
+            XCTAssertEqual(mapContent.minY, tabs.view.safeAreaLayoutGuide.layoutFrame.minY, accuracy: 0.5,
+                           "The map starts at the safe area without a blank native overflow rail")
+            XCTAssertEqual(topMore.minY, mapContent.minY, accuracy: 0.5)
+            XCTAssertLessThanOrEqual(topMore.maxY, mapContent.minY + 48.5,
+                                     "The overflow stays within the header space reserved by the native theme")
+            XCTAssertLessThanOrEqual(topMore.maxX, tabs.view.safeAreaLayoutGuide.layoutFrame.maxX + 0.5)
             XCTAssertEqual(bar.frame.maxY, tabs.view.safeAreaLayoutGuide.layoutFrame.maxY, accuracy: 0.5)
             XCTAssertGreaterThanOrEqual(bar.frame.height, 48)
             XCTAssertLessThanOrEqual(tabs.mapNavigation.view.frame.maxY, bar.frame.minY + 0.5)
@@ -198,13 +203,27 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertEqual(tabs.selectedIndex, 2, "Home opens the retained native Discover feed")
         XCTAssertTrue(bar.button(for: .home).isSelected)
         tabs.selectedIndex = 1
+        // UIKit may defer loading hidden navigation roots until they are shown.
+        // Inspect each screen after its view has been constructed.
+        tabs.favourites.loadViewIfNeeded()
+        tabs.discovery.loadViewIfNeeded()
+        XCTAssertEqual(try XCTUnwrap(tabs.favourites.navigationItem.rightBarButtonItems?.first?.customView).bounds.width, 56,
+                       "Favourite actions leave room for the overlaid ellipsis")
+        XCTAssertEqual(try XCTUnwrap(tabs.discovery.navigationItem.rightBarButtonItems?.first?.customView).bounds.width, 56,
+                       "Discover actions leave room for the overlaid ellipsis")
+        XCTAssertEqual(tabs.discovery.navigationItem.rightBarButtonItems?.count, 1,
+                       "Mappa and reload belong in the bottom bar and ellipsis, not the Discover title bar")
         let more = try XCTUnwrap(tabs.topMoreButton.menu)
         let titles = more.children.map(\.title)
+        XCTAssertTrue(titles.contains("Ricarica"))
         XCTAssertTrue(titles.contains("Privacy"))
         XCTAssertTrue(titles.contains("Informazioni"))
-        for hiddenBrowserAction in ["Condividi", "Ricarica", "Avanti", "Preferiti"] {
+        for hiddenBrowserAction in ["Condividi", "Avanti", "Preferiti", "Mappa"] {
             XCTAssertFalse(titles.contains(hiddenBrowserAction), "Hidden browser action appeared on Preferiti: \(hiddenBrowserAction)")
         }
+        tabs.selectedIndex = 2
+        XCTAssertTrue(try XCTUnwrap(tabs.topMoreButton.menu).children.contains { $0.title == "Ricarica" })
+        tabs.selectedIndex = 1
         tabs.showPrivacyFromMore()
         XCTAssertTrue(tabs.favouritesNavigation.topViewController is PrivacyViewController)
         XCTAssertEqual(tabs.selectedIndex, 1, "Privacy must stay on the visible Preferiti stack")
@@ -212,6 +231,22 @@ final class BottomNavigationControllerTests: XCTestCase {
         tabs.showInformationFromMore()
         XCTAssertTrue(tabs.favouritesNavigation.topViewController is AppInformationViewController)
         XCTAssertEqual(tabs.selectedIndex, 1, "Back from Informazioni returns to Preferiti")
+        tabs.selectedIndex = 0
+        let venue = SavedVenue(url: URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!, label: "Locale pubblico")
+        let recommendations = RecommendationsViewController(venue: venue, activityCheck: { false })
+        tabs.mapNavigation.pushViewController(recommendations, animated: false)
+        recommendations.loadViewIfNeeded()
+        // The production bottom action refreshes chrome after the push. This
+        // direct unit-test push needs the same public destination refresh.
+        tabs.selectedIndex = 0
+        let recommendationTitles = try XCTUnwrap(tabs.topMoreButton.menu).children.map(\.title)
+        XCTAssertTrue(recommendationTitles.contains("Ricarica") || recommendationTitles.contains("Riprova"),
+                      "Drink consigliati reload belongs in the top ellipsis")
+        let recommendationReloads = tabs.topMoreButton.menu?.children.compactMap { $0 as? UIAction }
+            .filter { $0.identifier.rawValue == "native.reload" }
+        XCTAssertEqual(recommendationReloads?.count, 1)
+        XCTAssertEqual(recommendations.navigationItem.rightBarButtonItems?.count, 1,
+                       "Drink consigliati must not duplicate Reload in its title bar")
     }
 
     @MainActor

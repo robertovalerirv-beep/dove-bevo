@@ -50,6 +50,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             self.browser.openSavedVenue(url)
         }
         controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 1 }
+        controller.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
         return controller
     }()
     private(set) lazy var favouritesNavigation = UINavigationController(rootViewController: favourites)
@@ -62,6 +63,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             self.browser.openSavedVenue(url)
         }, onMap: { [weak self] in self?.selectedIndex = 0 })
         controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 2 }
+        controller.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
         return controller
     }()
     private(set) lazy var discoveryNavigation = UINavigationController(rootViewController: discovery)
@@ -86,7 +88,9 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         super.viewDidLoad()
         view.backgroundColor = NativeAppearance.canvas
         view.tintColor = NativeAppearance.ink
-        topChrome.backgroundColor = NativeAppearance.canvas
+        // The overflow floats over the reserved right edge of the visitor
+        // header. A full-width native rail would waste a row of map space.
+        topChrome.backgroundColor = .clear
         bottomBackground.backgroundColor = NativeAppearance.chrome
         NativeAppearance.configure(mapNavigation)
         NativeAppearance.configure(favouritesNavigation)
@@ -111,15 +115,14 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         refreshMoreMenu()
         NSLayoutConstraint.activate([
             topChrome.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            topChrome.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            topChrome.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            topChrome.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8),
+            topChrome.widthAnchor.constraint(equalToConstant: 48),
             topChrome.heightAnchor.constraint(equalToConstant: 48),
             topMoreButton.topAnchor.constraint(equalTo: topChrome.topAnchor),
             topMoreButton.bottomAnchor.constraint(equalTo: topChrome.bottomAnchor),
-            topMoreButton.trailingAnchor.constraint(equalTo: topChrome.trailingAnchor, constant: -8),
-            topMoreButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 48),
-            topMoreButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 48),
-            content.topAnchor.constraint(equalTo: topChrome.bottomAnchor),
+            topMoreButton.leadingAnchor.constraint(equalTo: topChrome.leadingAnchor),
+            topMoreButton.trailingAnchor.constraint(equalTo: topChrome.trailingAnchor),
+            content.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             content.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             content.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
@@ -236,15 +239,46 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             topMoreButton.menu = browser.moreMenu()
             return
         }
-        topMoreButton.accessibilityHint = "Privacy e informazioni"
-        topMoreButton.menu = UIMenu(children: [
+        var actions: [UIMenuElement] = []
+        var reloadTitle: String?
+        if destinationIndex == 1 && favouritesNavigation.topViewController === favourites {
+            let title = favourites.reloadMenuTitle
+            reloadTitle = title
+            let reload = UIAction(title: title, image: UIImage(systemName: "arrow.clockwise"),
+                                  identifier: UIAction.Identifier("native.reload")) { [weak self] _ in
+                self?.favourites.reloadFromMore()
+            }
+            if !favourites.canReloadFromMore { reload.attributes = [.disabled] }
+            actions.append(reload)
+        } else if destinationIndex == 2 && discoveryNavigation.topViewController === discovery {
+            reloadTitle = "Ricarica"
+            let reload = UIAction(title: "Ricarica", image: UIImage(systemName: "arrow.clockwise"),
+                                  identifier: UIAction.Identifier("native.reload")) { [weak self] _ in
+                self?.discovery.reloadFromMore()
+            }
+            if !discovery.canReloadFromMore { reload.attributes = [.disabled] }
+            actions.append(reload)
+        } else if destinationIndex == 0,
+                  let recommendations = mapNavigation.topViewController as? RecommendationsViewController {
+            let title = recommendations.reloadMenuTitle
+            reloadTitle = title
+            let reload = UIAction(title: title, image: UIImage(systemName: "arrow.clockwise"),
+                                  identifier: UIAction.Identifier("native.reload")) { [weak self] _ in
+                (self?.mapNavigation.topViewController as? RecommendationsViewController)?.reloadFromMore()
+            }
+            if !recommendations.canReloadFromMore { reload.attributes = [.disabled] }
+            actions.append(reload)
+        }
+        topMoreButton.accessibilityHint = reloadTitle.map { "\($0), privacy e informazioni" } ?? "Privacy e informazioni"
+        actions += [
             UIAction(title: "Privacy", image: UIImage(systemName: "hand.raised"), identifier: UIAction.Identifier("native.privacy")) { [weak self] _ in
                 self?.showPrivacyFromMore()
             },
             UIAction(title: "Informazioni", image: UIImage(systemName: "info.circle"), identifier: UIAction.Identifier("native.information")) { [weak self] _ in
                 self?.showInformationFromMore()
             }
-        ])
+        ]
+        topMoreButton.menu = UIMenu(children: actions)
     }
 
     func showPrivacyFromMore() {
@@ -289,6 +323,9 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     func navigationController(_ navigationController: UINavigationController, willShow viewController: UIViewController, animated: Bool) {
         if navigationController === mapNavigation {
             navigationController.setNavigationBarHidden(viewController === browser, animated: animated)
+            if let recommendations = viewController as? RecommendationsViewController {
+                recommendations.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
+            }
         }
     }
 

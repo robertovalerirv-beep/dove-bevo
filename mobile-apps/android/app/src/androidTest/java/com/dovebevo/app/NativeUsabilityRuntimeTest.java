@@ -140,8 +140,6 @@ public final class NativeUsabilityRuntimeTest {
                         R.id.forward, R.string.forward, (Runnable) () -> invoke("goForward")));
                 ProgressBar progress = new ProgressBar(activity);
                 set("progress", progress); layout.addView(progress);
-                layout.addView((View) invoke("createTopActions"),
-                        new LinearLayout.LayoutParams(-1, Math.round(52*activity.getResources().getDisplayMetrics().density)));
                 FrameLayout content = new FrameLayout(activity);
                 set("content", content);
                 layout.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -153,6 +151,11 @@ public final class NativeUsabilityRuntimeTest {
                 retry.setOnClickListener(view -> invoke("navigate", new Class<?>[]{String.class}, get("lastTrustedUrl")));
                 error.addView(retry); error.setVisibility(View.GONE); set("errorPanel", error);
                 content.addView(error, new FrameLayout.LayoutParams(-1, -1));
+                LinearLayout topActions = (LinearLayout) invoke("createTopActions");
+                set("topActions", topActions);
+                content.addView(topActions, new FrameLayout.LayoutParams(-2,
+                        Math.round(48*activity.getResources().getDisplayMetrics().density),
+                        android.view.Gravity.TOP | android.view.Gravity.END));
                 layout.addView((View) invoke("createBottomNavigation"));
                 activity.setContentView(layout);
                 installFixtureWebView();
@@ -380,13 +383,16 @@ public final class NativeUsabilityRuntimeTest {
             assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
             assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
             assertFalse(browserMenu().getMenu().findItem(R.id.share).isEnabled());
-            assertFalse(browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
+            assertNull("Preferiti has no duplicate body reload",activity.findViewById(R.id.favorites_refresh));
+            assertNull("Drink prices reload through the same menu",activity.findViewById(android.R.id.content).findViewWithTag("drink_favourites_refresh"));
+            assertTrue("Preferiti refresh is in the top overflow",browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
+            assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.refresh,0));
             activity.findViewById(R.id.map_destination).performClick();
             assertSame(original, get("website")); assertEquals(index, web.copyBackForwardList().getCurrentIndex());
             assertEquals(APP_ONE, web.getUrl()); assertFalse((Boolean)get("favoritesVisible"));
             DiscoveryScreen home=new DiscoveryScreen(activity,
                     url->{invoke("showMap");invoke("navigate",new Class<?>[]{String.class},url);},
-                    ()->invoke("showMap"),()->(Boolean)get("foreground"),
+                    ()->(Boolean)get("foreground"),
                     new DiscoveryLoader(new FavoritePricesClient((url,max,call)->{throw new IOException("Unready owned map must not fetch");},()->"2026-11-01"),task->activity.runOnUiThread(task)));
             set("discovery",home);((FrameLayout)get("content")).addView(home.view());home.view().setVisibility(View.GONE);
             activity.findViewById(R.id.favorites_destination).performClick();
@@ -420,6 +426,15 @@ public final class NativeUsabilityRuntimeTest {
         onMain(()->{
             assertTrue(activity.findViewById(R.id.home).isSelected());
             assertTrue(((TextView)activity.findViewById(R.id.discovery_status)).getText().toString().contains("Apri una città"));
+            assertNull("Scopri has no duplicate top map action",activity.findViewById(R.id.discovery_choose_area));
+            assertNull("Scopri reload stays in overflow",activity.findViewById(R.id.discovery_refresh));
+            assertFalse("No captured area cannot be refreshed",browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
+            try { ((DiscoveryScreen)get("discovery")).show(new DiscoveryArea(45.4642,9.19,14)); }
+            catch(IOException invalid){throw new AssertionError(invalid);}
+        });
+        await(()->browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
+        onMain(()->{
+            assertTrue("A captured area can reload from the top overflow",browserMenu().getMenu().performIdentifierAction(R.id.refresh,0));
             activity.findViewById(R.id.map_destination).performClick();assertFalse((Boolean)get("discoveryVisible"));assertEquals(APP_ONE,web.getUrl());assertSame(original,get("website"));
         });
         assertOwnedDocument(1);
@@ -622,6 +637,49 @@ public final class NativeUsabilityRuntimeTest {
         await(()->{web.evaluateJavascript("document.body.dataset.searchOpen === '1'",result->opened.set("true".equals(result)));return opened.get();});
     }
 
+    @Test public void lateMobileMountEventuallyHidesWebLensWithoutAnEmptyTopRail() throws Exception {
+        presentationMode=7;
+        navigate(BrowserPolicy.HOME);
+        float density=activity.getResources().getDisplayMetrics().density;
+        await(()->((FrameLayout.LayoutParams)web.getLayoutParams()).topMargin==Math.round(48*density));
+        AtomicReference<String> before=new AtomicReference<>();
+        await(()->{web.evaluateJavascript("document.querySelectorAll('#dovebevo-native-theme-v1').length",before::set);
+            return "0".equals(before.get());});
+        fixtureJavascript("const root=document.getElementById('app');"
+                +"root.innerHTML='<div class=\"app\"><header class=\"top\"><div class=\"top__row\">"
+                +"<button class=\"search-field\" data-dovebevo-search=\"1\">Cerca città o bar</button>"
+                +"</div></header><main class=\"main\"><section class=\"map\"></section></main></div>';"
+                +"document.querySelector('[data-dovebevo-search]').addEventListener('click',"
+                +"()=>document.body.dataset.searchOpen='1');");
+        AtomicReference<String> after=new AtomicReference<>();
+        await(()->{web.evaluateJavascript("[document.documentElement.getAttribute('data-dovebevo-app-theme'),"
+                +"document.querySelectorAll('#dovebevo-native-theme-v1').length,"
+                +"getComputedStyle(document.querySelector('.top__row > .search-field')).display]",after::set);
+            return "[\"1\",1,\"none\"]".equals(after.get())
+                    && ((FrameLayout.LayoutParams)web.getLayoutParams()).topMargin==0;});
+        onMain(()->activity.findViewById(R.id.search_destination).performClick());
+        AtomicBoolean opened=new AtomicBoolean();
+        await(()->{web.evaluateJavascript("document.body.dataset.searchOpen === '1'",result->opened.set("true".equals(result)));return opened.get();});
+    }
+
+    @Test public void missingNativeThemeKeepsOriginalSearchClearOfTopOverflow() throws Exception {
+        presentationMode=6;
+        navigate(BrowserPolicy.HOME);
+        float density=activity.getResources().getDisplayMetrics().density;
+        await(()->((FrameLayout.LayoutParams)web.getLayoutParams()).topMargin==Math.round(48*density));
+        onMain(()->{
+            int[] menu=new int[2],page=new int[2];
+            activity.findViewById(R.id.more).getLocationOnScreen(menu);
+            web.getLocationOnScreen(page);
+            assertTrue("Fallback website search starts below the native menu",
+                    menu[1]+activity.findViewById(R.id.more).getHeight()<=page[1]);
+            assertNotNull(browserMenu().getMenu().findItem(R.id.refresh));
+        });
+        presentationMode=5;
+        navigate(BrowserPolicy.HOME);
+        await(()->((FrameLayout.LayoutParams)web.getLayoutParams()).topMargin==0);
+    }
+
     @Test public void topOverflowRemainsReachableWithoutBrowserTitleAtNarrowWidth() {
         onMain(()->{
             if(Build.VERSION.SDK_INT>=26) assertTrue("Light system navigation must request dark controls",
@@ -648,8 +706,13 @@ public final class NativeUsabilityRuntimeTest {
             assertEquals(activity.getString(R.string.more_options),topMore.getContentDescription());
             int[] menuPosition=new int[2], mapPosition=new int[2];
             topMore.getLocationOnScreen(menuPosition);web.getLocationOnScreen(mapPosition);
-            assertTrue("The top menu must not cover city or currency controls in the map",
-                    menuPosition[1]+topMore.getHeight()<=mapPosition[1]);
+            assertTrue("The native menu sits inside the first map row",menuPosition[1]>=mapPosition[1]);
+            assertTrue("The native menu does not create a blank rail above the map",
+                    menuPosition[1]+topMore.getHeight()<=mapPosition[1]+Math.round(48*density));
+            assertTrue("The native menu stays within the map width",
+                    menuPosition[0]>=mapPosition[0]&&menuPosition[0]+topMore.getWidth()<=mapPosition[0]+web.getWidth());
+            FrameLayout content=(FrameLayout)get("content");
+            assertSame(content,((View)get("topActions")).getParent());
         });
     }
 
@@ -1061,14 +1124,17 @@ public final class NativeUsabilityRuntimeTest {
                         .replace("OWNED_MOBILE_ATTRIBUTE", markerMode == 1 ? "data-dovebevo-mobile-shell=\"1\""
                                 : markerMode == 2 ? "data-dovebevo-mobile-shell=\"false\"" : "")
                         .replace("OWNED_VENUE_KEY", key == null ? "" : key).getBytes(StandardCharsets.UTF_8);
-                if(presentationMode==5) {
+                if(presentationMode==5 || presentationMode==6 || presentationMode==7) {
                     String html="<!doctype html><html data-dovebevo-mobile-shell=\"1\"><head><meta charset=\"utf-8\">"
                             +"<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
                             +"<meta name=\"owned-response\" content=\""+responseToken+"\">"
-                            +"<script nonce=\"fixtureThemeNonce20261029\">document.addEventListener('DOMContentLoaded',()=>document.querySelector('[data-dovebevo-search]').addEventListener('click',()=>document.body.dataset.searchOpen='1'));</script>"
-                            +"</head><body><div id=\"app\"><div class=\"app\"><header class=\"top\"><div class=\"top__row\">"
+                            +(presentationMode==7?"<script nonce=\"fixtureThemeNonce20261029\"></script>"
+                                    :"<script"+(presentationMode==6?"":" nonce=\"fixtureThemeNonce20261029\"")+">document.addEventListener('DOMContentLoaded',()=>document.querySelector('[data-dovebevo-search]').addEventListener('click',()=>document.body.dataset.searchOpen='1'));</script>")
+                            +"</head><body><div id=\"app\">"
+                            +(presentationMode==7?"":"<div class=\"app\"><header class=\"top\"><div class=\"top__row\">"
                             +"<button class=\"search-field\" data-dovebevo-search=\"1\">Cerca città o bar</button></div></header>"
-                            +"<main class=\"main\"><section class=\"map\"></section></main></div></div></body></html>";
+                            +"<main class=\"main\"><section class=\"map\"></section></main></div>")
+                            +"</div></body></html>";
                     bytes=html.getBytes(StandardCharsets.UTF_8);
                 } else if(presentationMode!=0) {
                     String nonce=presentationMode==2?"":" nonce=\"fixtureThemeNonce20261029\"";

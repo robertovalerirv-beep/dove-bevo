@@ -38,7 +38,16 @@ final class SavedVenuesViewController: UITableViewController {
     private let drinkButton = UIButton(type: .system)
     private let bandControl = ComparisonBandSelector()
     private let statusLabel = UILabel()
-    private lazy var refreshButton = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
+    var onReloadMenuChanged: (() -> Void)?
+    var reloadMenuTitle: String { (showingDrinks ? drinksFailed || offersFailed : storeFailed) ? "Riprova" : "Ricarica" }
+    var canReloadFromMore: Bool { canRead && !busy && !menuBusy }
+    func reloadFromMore() { guard canReloadFromMore else { return }; refresh() }
+    // The parent ellipsis overlays this corner, so UIKit actions stay to its left.
+    private lazy var moreOverlaySpace: UIBarButtonItem = {
+        let spacer = UIView(frame: CGRect(x: 0, y: 0, width: 56, height: 48))
+        spacer.isUserInteractionEnabled = false
+        return UIBarButtonItem(customView: spacer)
+    }()
 
     init(store: SavedVenueStore, drinkStore: SavedDrinkStore? = nil, offerStore: SavedMenuOfferStore = SavedMenuOfferStore(),
          client: FavouriteComparisonServing = FavouriteComparisonClient(), menuClient: MenuV2Serving? = nil, activityCheck: (() -> Bool)? = nil, onOpen: @escaping (URL) -> Void) {
@@ -255,12 +264,9 @@ final class SavedVenuesViewController: UITableViewController {
         let failed = showingDrinks ? drinksFailed || offersFailed : storeFailed
         let empty = showingDrinks ? drinks.isEmpty && savedOffers.isEmpty && (!unifiedDrinks || venues.isEmpty) : venues.isEmpty
         editButtonItem.isEnabled = !empty && !failed
-        refreshButton.isEnabled = canRead && !busy && !menuBusy
-        refreshButton.title = failed ? "Riprova" : "Ricarica"
-        refreshButton.accessibilityIdentifier = failed ? "savedVenues.retry" : "favorites.refresh"
-        navigationItem.rightBarButtonItems = failed ? [refreshButton] : [editButtonItem, refreshButton]
+        navigationItem.rightBarButtonItems = failed ? [moreOverlaySpace] : [moreOverlaySpace, editButtonItem]
         if failed {
-            statusLabel.text = "Non riesco a leggere i preferiti. I dati non sono stati modificati. Riprova."
+            statusLabel.text = "Non riesco a leggere i preferiti. I dati non sono stati modificati. Apri Altre opzioni e scegli Riprova."
             statusLabel.accessibilityIdentifier = "favorites.unavailable"
         } else if empty {
             statusLabel.text = showingDrinks ? "Non hai ancora drink salvati. Apri un locale sulla mappa e scegli un drink con Salva nei preferiti." : "Non hai ancora preferiti. Apri un locale nella mappa e tocca Salva nei preferiti."
@@ -276,16 +282,17 @@ final class SavedVenuesViewController: UITableViewController {
                 .union(snapshot?.europe?.venues.values.map(\.url) ?? [])
                 .union(menuSnapshot?.venues.keys.map { $0 } ?? [])
             let missing = drinks.contains { !available.contains($0.venue.url) } || savedOffers.contains { !available.contains($0.venue.url) }
-            statusLabel.text = missing ? "Alcuni locali non sono disponibili. Tocca Ricarica per riprovare." : "Dati disponibili caricati. Ogni prezzo mostra data e fonte."
+            statusLabel.text = missing ? "Alcuni locali non sono disponibili. Scegli Ricarica in Altre opzioni per riprovare." : "Dati disponibili caricati. Ogni prezzo mostra data e fonte."
             statusLabel.accessibilityIdentifier = missing ? "favorites.partial" : "favorites.loaded"
         } else if let snapshot {
-            statusLabel.text = snapshot.unavailable.isEmpty ? "Prezzi segnalati aggiornati. Ogni prezzo mostra la sua data." : "Alcuni locali non sono disponibili. Tocca Ricarica per riprovare."
+            statusLabel.text = snapshot.unavailable.isEmpty ? "Prezzi segnalati aggiornati. Ogni prezzo mostra la sua data." : "Alcuni locali non sono disponibili. Scegli Ricarica in Altre opzioni per riprovare."
             statusLabel.accessibilityIdentifier = snapshot.unavailable.isEmpty ? "favorites.loaded" : "favorites.partial"
         } else {
-            statusLabel.text = "I nomi salvati sono disponibili offline. Ricarica per confrontare i prezzi."
+            statusLabel.text = "I nomi salvati sono disponibili offline. Scegli Ricarica in Altre opzioni per confrontare i prezzi."
             statusLabel.accessibilityIdentifier = "favorites.unavailable"
         }
         tableView.reloadData(); view.setNeedsLayout()
+        onReloadMenuChanged?()
     }
 
     func selectDrink(_ code: String) {

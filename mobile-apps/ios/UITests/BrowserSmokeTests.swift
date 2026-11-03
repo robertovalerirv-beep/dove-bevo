@@ -50,8 +50,11 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertEqual(topMore.label, "Altre opzioni")
         XCTAssertGreaterThanOrEqual(topMore.frame.width, 48)
         XCTAssertGreaterThanOrEqual(topMore.frame.height, 48)
-        XCTAssertLessThanOrEqual(topMore.frame.maxY, app.webViews["browser.website"].frame.minY + 0.5,
-                                 "The top three-dot menu must not cover the map city or currency")
+        let webTop = app.webViews["browser.website"].frame.minY
+        XCTAssertEqual(topMore.frame.minY, webTop, accuracy: 1,
+                       "The map begins under the overlaid menu without a blank native top rail")
+        XCTAssertLessThanOrEqual(topMore.frame.maxY, webTop + 48.5,
+                                 "The top three-dot menu stays within the reserved visitor header")
         XCTAssertFalse(bottomBar.frame.contains(topMore.frame), "Overflow stays at the top, outside bottom navigation")
         XCTAssertTrue(bottomBar.buttons["tab.map"].isSelected)
         XCTAssertFalse(bottomBar.buttons["tab.favorites"].isSelected)
@@ -274,6 +277,7 @@ final class BrowserSmokeTests: XCTestCase {
         verifyLiveSavedVenueRoundTrip()
         verifyLiveDiscoveryReadOnly()
         attachScreen(named: "DoveBevo-live-Milano-map")
+        verifyLiveOwnerMenuVenueReadOnly()
     }
 
     private func verifyLiveDiscoveryReadOnly() {
@@ -327,6 +331,49 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(hasVisiblePositiveCoverage())
     }
 
+    private func verifyLiveOwnerMenuVenueReadOnly() {
+        let website = app.webViews["browser.website"]
+        XCTAssertTrue(app.buttons["tab.map"].isSelected)
+        app.buttons["tab.search"].tap()
+        let searchField = app.textFields["Cerca una città o un bar"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 15))
+        dismissKeyboardIntroductionIfPresent(searchField: searchField)
+        if !ordinaryKeyboardVisible() {
+            searchField.tap()
+            dismissKeyboardIntroductionIfPresent(searchField: searchField)
+        }
+        waitForOrdinaryKeyboard()
+        searchField.typeText("Carico")
+        dismissKeyboardIntroductionIfPresent(searchField: searchField)
+        // Carico is an existing OSM venue in Milano. Its owner menu is kept
+        // separately from customer observations; search navigates through the
+        // same venue route a customer uses, without submitting any content.
+        let venueResult = website.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH[c] %@ AND label CONTAINS[c] %@", "Carico", "Bar · Milano")
+        ).firstMatch
+        XCTAssertTrue(venueResult.waitForExistence(timeout: 30), "The real static venue search must find Carico")
+        XCTAssertTrue(venueResult.isHittable, "The owner-menu venue result must be reachable above the keyboard")
+        venueResult.tap()
+        let searchClosed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: searchField)
+        XCTAssertEqual(XCTWaiter.wait(for: [searchClosed], timeout: 15), .completed)
+        XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 30), "Carico must open as a real venue")
+        XCTAssertTrue(website.staticTexts["Carico"].waitForExistence(timeout: 15))
+        let menuHeading = website.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "Dal menu del locale")
+        ).firstMatch
+        XCTAssertTrue(menuHeading.waitForExistence(timeout: 30), "The selected owner-menu venue must display its actual verified menu")
+        let menuCount = website.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "[1-9][0-9]* prezzi")).firstMatch
+        XCTAssertTrue(menuCount.exists, "The owner-menu section must report a positive stored offer count")
+        XCTAssertTrue(website.staticTexts.matching(NSPredicate(format: "label == %@", "Prezzo da menu")).firstMatch.exists,
+                      "At least one source-backed drink price must be rendered in the venue")
+        XCTAssertTrue(website.links.matching(NSPredicate(format: "label BEGINSWITH %@", "Menu verificato il")).firstMatch.exists,
+                      "A displayed owner price must retain a source link and checked date")
+        attachScreen(named: "DoveBevo-live-Carico-owner-menu")
+        website.buttons["Chiudi"].tap()
+        XCTAssertTrue(interactiveMap().waitForExistence(timeout: 15))
+        assertOnlyNativeSearch(in: website)
+    }
+
     private func verifyLiveSavedVenueRoundTrip() {
         let website = app.webViews["browser.website"]
         // A fresh owned installation lets this test remove only its own entry.
@@ -351,11 +398,12 @@ final class BrowserSmokeTests: XCTestCase {
         listButton.tap()
         let listTitle = website.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Bar nella zona")).firstMatch
         XCTAssertTrue(listTitle.waitForExistence(timeout: 10))
-        attachState(named: "DoveBevo-live-default-tutti-list")
-        let menuLinks = website.links.matching(NSPredicate(format: "label MATCHES %@", ".*[1-9][0-9]* (voce|voci) menu.*"))
-        XCTAssertTrue(menuLinks.firstMatch.waitForExistence(timeout: 20), "Tutti must expose an actual verified owner-menu count")
-        let pricedLinks = website.links.matching(NSPredicate(format: "label MATCHES %@", ".*[1-9][0-9]* (prezzo segnalato|prezzi segnalati).*"))
-        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20), "Tutti must expose an actual positive reported-price count")
+        attachState(named: "DoveBevo-live-Birra-media-list")
+        // The live list exposes the selected drink's amount beside each priced
+        // venue. Its old reported-price count wording is no longer in this UI.
+        // Owner-menu provenance is checked separately on a known venue.
+        let pricedLinks = website.links.matching(NSPredicate(format: "label MATCHES %@", ".*[1-9][0-9]*,[0-9]{2} €.*"))
+        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20), "The selected beer list must expose an actual positive price")
         var visibleVenue: XCUIElement?
         for _ in 0..<12 {
             if let venue = pricedLinks.allElementsBoundByIndex.first(where: { $0.exists && $0.isHittable }) {
@@ -476,7 +524,8 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(selector.label.contains("Birra media"))
         XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 1)
         XCTAssertFalse(app.segmentedControls["favorites.kind"].exists)
-        XCTAssertTrue(app.buttons["favorites.refresh"].exists)
+        XCTAssertFalse(app.buttons["favorites.refresh"].exists)
+        XCTAssertTrue(app.buttons["browser.more"].exists, "Favourites reload is reached through the top ellipsis")
     }
 
     private func verifyLiveVenueHistoryReadOnly(venueName: String) {
@@ -505,12 +554,30 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func waitForOrdinaryKeyboard(timeout: TimeInterval = 15) {
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            self.ordinaryKeyboardVisible()
-        }, object: nil)
-        let result = XCTWaiter.wait(for: [ready], timeout: timeout)
-        if result != .completed { attachState(named: "DoveBevo-original-field-keyboard-not-ready") }
-        XCTAssertEqual(result, .completed, "The existing field must have an ordinary visible keyboard before typing")
+        let deadline = Date().addingTimeInterval(timeout)
+        var introductionTaps = 0
+        repeat {
+            // iOS can introduce Slide to Type after focus, even when an earlier
+            // probe found no tutorial. Dismiss only Apple's observed prompt.
+            let introduction = app.staticTexts.matching(
+                NSPredicate(format: "label BEGINSWITH %@", "Speed up your typing")
+            ).firstMatch
+            if introduction.exists {
+                if introductionTaps < 2 {
+                    introductionTaps += 1
+                    dismissKeyboardIntroductionIfPresent(searchField: app.textFields["Cerca una città o un bar"])
+                }
+            } else if ordinaryKeyboardVisible() {
+                return
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        attachState(named: "DoveBevo-original-field-keyboard-not-ready")
+        let introduction = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Speed up your typing")
+        ).firstMatch
+        XCTAssertFalse(introduction.exists, "The system keyboard introduction still obscures the city search")
+        XCTAssertTrue(ordinaryKeyboardVisible(), "The existing field must have an ordinary visible keyboard before typing")
     }
 
     private func ordinaryKeyboardVisible() -> Bool {
@@ -896,13 +963,10 @@ final class BrowserSmokeTests: XCTestCase {
         // or re-resolving this transient keyboard element as its process changes.
         let offset = CGVector(dx: buttonFrame.midX - appFrame.minX, dy: buttonFrame.midY - appFrame.minY)
         app.coordinate(withNormalizedOffset: .zero).withOffset(offset).tap()
-        // The actual failed-run screenshot showed ordinary keys after this tap,
-        // although the tutorial-disappearance predicate timed out. Require the
-        // usable visible keyboard instead of inferring readiness from absence.
-        waitForOrdinaryKeyboard(timeout: 10)
-        attachState(named: "DoveBevo-keyboard-introduction-after-continue")
+        // The caller waits for the real keyboard; Apple's tutorial can be
+        // replaced asynchronously after Continue is tapped.
+        attachScreen(named: "DoveBevo-keyboard-introduction-after-continue")
         XCTAssertTrue(searchField.exists, "The original city search sheet was lost while dismissing the tutorial")
-        XCTAssertTrue(searchField.isHittable, "The original city search field must remain reachable with the ordinary keyboard")
         assertNoNativeRecovery()
     }
 

@@ -23,13 +23,13 @@ import java.util.function.Supplier;
 
 /** Native nearby price discovery, independent of the website's controls and private bookmarks. */
 final class DiscoveryScreen {
-    private final Activity activity;private final Consumer<String> navigate;private final Runnable chooseArea;private final Supplier<Boolean> foreground;private final DiscoveryLoader loader;
-    private final ScrollView view;private final LinearLayout rows,categoryCards;private final TextView status;private final Button refresh;private final Spinner bands,drinks;
+    private final Activity activity;private final Consumer<String> navigate;private final Supplier<Boolean> foreground;private final DiscoveryLoader loader;
+    private final ScrollView view;private final LinearLayout rows,categoryCards;private final TextView status;private final Spinner bands,drinks;
     private RecommendationDrink drink=RecommendationDrink.BEER_DRAFT;private int band;private DiscoveryArea area;private DiscoveryLoader.Result snapshot;
     private boolean visible,closed,busy;private long generation;private DiscoveryLoader.Batch request;
-    DiscoveryScreen(Activity activity,Consumer<String> navigate,Runnable chooseArea,Supplier<Boolean> foreground){this(activity,navigate,chooseArea,foreground,new DiscoveryLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)));}
-    DiscoveryScreen(Activity activity,Consumer<String> navigate,Runnable chooseArea,Supplier<Boolean> foreground,DiscoveryLoader loader){
-        this.activity=activity;this.navigate=navigate;this.chooseArea=chooseArea;this.foreground=foreground;this.loader=loader;
+    DiscoveryScreen(Activity activity,Consumer<String> navigate,Supplier<Boolean> foreground){this(activity,navigate,foreground,new DiscoveryLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)));}
+    DiscoveryScreen(Activity activity,Consumer<String> navigate,Supplier<Boolean> foreground,DiscoveryLoader loader){
+        this.activity=activity;this.navigate=navigate;this.foreground=foreground;this.loader=loader;
         view=new ScrollView(activity);view.setId(R.id.discovery_screen);view.setBackgroundColor(activity.getColor(R.color.shell_background));
         LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(16),dp(12),dp(16),dp(24));view.addView(body);
         TextView title=text(activity.getString(R.string.discovery_title),26);NativeAppearance.title(title);heading(title);title.setContentDescription(activity.getString(R.string.discovery_title)+". "+activity.getString(R.string.discovery_explanation));
@@ -38,9 +38,7 @@ final class DiscoveryScreen {
             @Override public View getView(int position,View converted,android.view.ViewGroup parent){TextView label=(TextView)super.getView(position,converted,parent);label.setTextSize(14);label.setPadding(dp(4),0,dp(4),0);label.setSingleLine(true);label.setEllipsize(null);label.setGravity(Gravity.CENTER_VERTICAL);return label;}
         };
         bandOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);bands.setAdapter(bandOptions);bands.setMinimumHeight(dp(48));bands.setOnItemSelectedListener(selection(()->{band=bands.getSelectedItemPosition();render();}));
-        refresh=new Button(activity);refresh.setId(R.id.discovery_refresh);refresh.setText("↻");refresh.setContentDescription(activity.getString(R.string.favorites_refresh));NativeAppearance.button(refresh,true);refresh.setOnClickListener(v->refresh());
-        Button map=new Button(activity);map.setId(R.id.discovery_choose_area);map.setText("Zona");map.setContentDescription(activity.getString(R.string.discovery_choose_area));NativeAppearance.button(map,false);map.setOnClickListener(v->{if(usable())chooseArea.run();});
-        body.addView(new DiscoveryHeader(activity,title,bands,refresh,map),new LinearLayout.LayoutParams(-1,-2));
+        body.addView(new DiscoveryHeader(activity,title,bands),new LinearLayout.LayoutParams(-1,-2));
         status=text("",12);status.setId(R.id.discovery_status);NativeAppearance.muted(status);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);status.setPadding(0,0,0,dp(4));
         TextView featureTitle=text("Esplora i drink",20);NativeAppearance.title(featureTitle);heading(featureTitle);featureTitle.setPadding(0,dp(4),0,dp(4));body.addView(featureTitle);
         HorizontalScrollView carousel=new HorizontalScrollView(activity);carousel.setTag("discovery.categoryCarousel");carousel.setHorizontalScrollBarEnabled(false);
@@ -68,10 +66,11 @@ final class DiscoveryScreen {
         try{request=loader.load(area,result->{if(token!=generation||!usable())return;request=null;busy=false;snapshot=result;render();});}
         catch(IOException|RuntimeException unavailable){busy=false;snapshot=new DiscoveryLoader.Result(Collections.emptyMap(),area.cells().size());render();}
     }
+    boolean canRefresh(){return usable()&&!busy&&area!=null;}
     String selectedDrink(){return drink.code;}int selectedBand(){return band;}
     void restoreSelection(String code,int selectedBand){RecommendationDrink value=RecommendationDrink.from(code);if(value!=null){drink=value;drinks.setSelection(drink.ordinal(),false);}if(selectedBand==0||selectedBand==1){band=selectedBand;bands.setSelection(band);}render();}
     private void render(){
-        if(rows==null||refresh==null||status==null)return;rows.removeAllViews();refresh.setEnabled(usable()&&!busy&&area!=null);renderCategoryCards();
+        if(rows==null||status==null)return;rows.removeAllViews();renderCategoryCards();
         if(area==null){status.setText(R.string.discovery_unready);return;}if(busy){status.setText(R.string.favorites_loading);return;}
         if(snapshot==null){status.setText(R.string.favorites_paused);return;}
         if(snapshot.cells.isEmpty()){status.setText(R.string.discovery_unavailable);return;}

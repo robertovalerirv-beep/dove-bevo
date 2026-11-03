@@ -452,7 +452,10 @@ mobileMenuV2CustomerAdmin.get("/pending", async (c) => {
     rows.map(async (row) => {
       const identity = row.cell + ":" + row.venue_key;
       if (!row.venue_name && !staticPlaces.has(identity))
-        staticPlaces.set(identity, currentStaticMenuVenue(c.env, row.venue_key, row.cell));
+        staticPlaces.set(
+          identity,
+          currentStaticMenuVenue(c.env, row.venue_key, row.cell).catch(() => null),
+        );
       const staticPlace = row.venue_name ? null : await staticPlaces.get(identity);
       return {
         ...publicEntry(row),

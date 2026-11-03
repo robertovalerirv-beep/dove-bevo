@@ -2,7 +2,10 @@ import copy
 import datetime as dt
 import hashlib
 import json
+import os
 from pathlib import Path
+import subprocess
+import tempfile
 import sqlite3
 import unittest
 
@@ -105,6 +108,99 @@ class ImportTests(unittest.TestCase):
         repeated=core.execute(payload,transport,True,approved)
         self.assertTrue(repeated["complete"],repeated["errors"])
         self.assertEqual([r["outcome"] for r in repeated["rows"]],["existing_identical"]*2)
+
+    def test_newer_live_catalogue_uses_current_static_without_old_url(self):
+        doc=manifest();payload=raw(doc);transport=Fake()
+        old=core.SITE+"/data/20261101/v/srb0b.json"
+        current=core.SITE+"/data/20261103/v/srb0b.json"
+        transport.public[current]=transport.public.pop(old)
+        transport.public[core.SITE+"/api/health"]=json.dumps(
+            {"status":"ok","data_version":"20261103"}).encode()
+        audit=core.execute(payload,transport)
+        self.assertTrue(audit["complete"],audit["errors"])
+        self.assertEqual(audit["public_data_version"],"20261103")
+        applied=core.execute(payload,transport,True,hashlib.sha256(payload).hexdigest())
+        self.assertTrue(applied["complete"],applied["errors"])
+        self.assertFalse(applied["legacy_prices_modified"])
+
+    def test_newer_live_catalogue_changed_missing_or_ambiguous_holds(self):
+        old=core.SITE+"/data/20261101/v/srb0b.json"
+        current=core.SITE+"/data/20261103/v/srb0b.json"
+        original=json.loads(Fake().public[old])
+        for case in ("missing","renamed","moved","address","city","duplicated"):
+            with self.subTest(case=case):
+                doc=manifest();transport=Fake()
+                payload=raw(doc)
+                del transport.public[old]
+                changed=copy.deepcopy(original)
+                if case=="missing": changed["v"]=[]
+                elif case=="renamed": changed["v"][0][1]="Other Bar"
+                elif case=="moved": changed["v"][0][3]=43.76858
+                elif case=="address": changed["v"][0][5]="Via dei Benci 45 R"
+                elif case=="city": changed["c"][0][1]="Pisa"
+                elif case=="duplicated": changed["v"].append(copy.deepcopy(changed["v"][0]))
+                transport.public[current]=json.dumps(changed).encode()
+                transport.public[core.SITE+"/api/health"]=json.dumps(
+                    {"status":"ok","data_version":"20261103"}).encode()
+                result=core.execute(payload,transport,True,hashlib.sha256(payload).hexdigest())
+                self.assertFalse(result["complete"])
+                self.assertEqual(result["rows"],[])
+                self.assertEqual(transport.db.execute(
+                    "SELECT COUNT(*) FROM mobile_menu_v2_offers").fetchone()[0],0)
+
+    def test_older_or_unparseable_catalogue_version_holds(self):
+        for value in ("20261031","invalid",None,20261103):
+            with self.subTest(value=value):
+                transport=Fake();transport.public[core.SITE+"/api/health"]=json.dumps(
+                    {"status":"ok","data_version":value}).encode()
+                result=core.execute(raw(manifest()),transport)
+                self.assertFalse(result["complete"])
+                self.assertEqual(result["rows"],[])
+
+    def test_external_identity_requires_new_review_after_version_drift(self):
+        doc=manifest();venue=doc["venues"][0]
+        venue.update({"venue_key":"n1234567890","cell":core.legacy.geo(51.5,-0.1),
+                      "name":"London Test Bar","kind":1,"lat":51.5,"lon":-0.1,
+                      "address":None,"city":"London","country":"GB",
+                      "identity_kind":"osm_external",
+                      "identity_url":"https://www.openstreetmap.org/node/1234567890",
+                      "static_city_id":None})
+        for kind in ("sources","offers"):
+            doc[kind][0]["venue_key"]=venue["venue_key"]
+            doc[kind][0]["cell"]=venue["cell"]
+        payload=raw(doc);transport=Fake()
+        transport.public[core.SITE+"/api/health"]=json.dumps(
+            {"status":"ok","data_version":"20261103"}).encode()
+        result=core.execute(payload,transport)
+        self.assertFalse(result["complete"])
+        self.assertEqual(result["errors"][0]["code"],"external venue needs current-version review")
+
+    def test_protected_audit_and_seed_tag_revisions(self):
+        workflow=(ROOT/".github"/"workflows"/"mobile-menu-v2-import.yml").read_text(encoding="utf-8")
+        start=workflow.index('          audit_revision=""')
+        end=workflow.index('          manifest="mobile-apps/data/mobile-menu-v2-seeds/',start)
+        parse=workflow[start:end]
+        digest="a"*64
+        cases={
+            f"mobile-menu-v2-audit/{digest}":("audit",digest,"",""),
+            f"mobile-menu-v2-audit/{digest}-r2":("audit",digest,"2",""),
+            f"mobile-menu-v2-seed/{digest}-123":("seed",digest,"","123"),
+            f"mobile-menu-v2-seed/{digest}-r2-123":("seed",digest,"2","123"),
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            script="set -euo pipefail\n"+parse+"printf '%s|%s|%s|%s\n' \"$mode\" \"$manifest_sha\" \"$audit_revision\" \"${audit_run:-}\"\n"
+            for tag,expected in cases.items():
+                with self.subTest(tag=tag):
+                    env=dict(os.environ,GITHUB_REF_NAME=tag,RUNNER_TEMP=temp)
+                    run=subprocess.run(["bash","-c",script],env=env,text=True,capture_output=True,check=False)
+                    self.assertEqual(run.returncode,0,run.stderr)
+                    self.assertEqual(tuple(run.stdout.strip().split("|")),expected)
+            for tag in (f"mobile-menu-v2-audit/{digest}-r0",f"mobile-menu-v2-seed/{digest}-r2-0",
+                        f"mobile-menu-v2-seed/{digest}-r02-123",f"mobile-menu-v2-audit/{digest}x"):
+                with self.subTest(tag=tag):
+                    env=dict(os.environ,GITHUB_REF_NAME=tag,RUNNER_TEMP=temp)
+                    run=subprocess.run(["bash","-c",script],env=env,text=True,capture_output=True,check=False)
+                    self.assertNotEqual(run.returncode,0)
 
     def test_moderation_and_source_hash_fail_closed(self):
         doc=manifest();payload=raw(doc);transport=Fake()
@@ -242,11 +338,24 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(unready["errors"][0]["code"],"OSM node hash basis migration absent")
         ready=core.execute(payload,fake,False)
         self.assertTrue(ready["complete"],ready["errors"])
+        old_cell=core.SITE+"/data/20261101/v/"+cell+".json"
+        new_cell=core.SITE+"/data/20261103/v/"+cell+".json"
+        fake.public[new_cell]=fake.public.pop(old_cell)
+        fake.public[core.SITE+"/api/health"]=json.dumps(
+            {"status":"ok","data_version":"20261103"}).encode()
+        current=core.execute(payload,fake,False)
+        self.assertTrue(current["complete"],current["errors"])
+        self.assertEqual(current["public_data_version"],"20261103")
         applied=core.execute(payload,fake,True,hashlib.sha256(payload).hexdigest())
         self.assertTrue(applied["complete"],applied["errors"])
         registered=fake.db.execute("SELECT venue_key,identity_kind,identity_geo_hash_basis FROM mobile_menu_v2_venues").fetchone()
         self.assertEqual(tuple(registered),(key,"owner_verified","osm_node_v1"))
         self.assertEqual(fake.db.execute("SELECT COUNT(*) FROM mobile_menu_v2_offers").fetchone()[0],1)
+        fake.public[new_cell]=json.dumps({"v":[["n9999999999","Nearby",1,lat,lon,"",0]],
+                                          "c":[]}).encode()
+        blocked=core.execute(payload,fake,False)
+        self.assertFalse(blocked["complete"])
+        self.assertEqual(blocked["errors"][0]["code"],"possible duplicate static venue")
 
 if __name__=="__main__":
     unittest.main()

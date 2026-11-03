@@ -61,18 +61,31 @@ const priceRows = [
   ["n123", "spritz", 0, 600, "2026-10-28", 2, 0],
   ["n123", "beer_draft", 0, 1000, "2026-10-28", 0, 1],
 ];
-async function fixture() {
+async function fixture(options = {}) {
+  let menuFailures = options.menuFailOnce ? 1 : 0;
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   const writes = [];
   await page.route("**/*", (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
+    if (pathname === "/api/mobile/v2/customer-prices" && request.method() === "POST") {
+      const submitted = request.postDataJSON();
+      writes.push(submitted);
+      return route.fulfill({
+        status: submitted.kind === "new_drink" ? 202 : 201,
+        json: {
+          status: submitted.kind === "new_drink" ? "pending" : "active",
+          revision: "11111111-1111-4111-8111-111111111111",
+          source_kind: "customer",
+        },
+      });
+    }
     if (request.method() !== "GET") {
       writes.push(request.method());
       return route.abort();
     }
-    if (pathname === "/")
+    if (pathname === "/" || pathname === "/mobile/")
       return route.fulfill({
         contentType: "text/html",
         body: `<!doctype html><html lang="it" data-theme="light"><head><meta name="viewport" content="width=device-width"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; require-trusted-types-for 'script'; trusted-types default"><link rel="stylesheet" href="/assets/fixtures/fixture.css"></head><body><div id="fixture-root"></div><script type="module" src="/assets/fixtures/fixture.js"></script></body></html>`,
@@ -112,11 +125,121 @@ async function fixture() {
           g: [],
         },
       });
+    if (pathname.startsWith("/api/mobile/v2/customer-prices/venues/")) {
+      const key = pathname.slice("/api/mobile/v2/customer-prices/venues/".length);
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          venue: {
+            key,
+            cell: "u0nd9",
+            name: key.startsWith("m") ? "Locale nuovo" : "Locale di prova <strong>",
+            country: "IT",
+          },
+          price_scope: "customer_reported_drink_item",
+          rows: [
+            {
+              revision: "22222222-2222-4222-8222-222222222222",
+              item_key: "o" + "a".repeat(64),
+              kind: "menu_offer",
+              offer_id: "first",
+              name: "Spritz <script>",
+              category: "spritz",
+              serving: { label: "Calice", ml: null },
+              amount_minor: 650,
+              currency: "EUR",
+              currency_exponent: 2,
+              observed_on: "2026-11-02",
+              source_kind: "customer",
+              observation_kind: "customer_reported_price",
+              price_scope: "drink_item",
+            },
+          ],
+          next_after: null,
+        },
+      });
+    }
+    if (pathname.startsWith("/api/mobile/v2/menu/venues/")) {
+      if (options.menuHang)
+        return new Promise(() => {
+          // Deliberately keep this intercepted request unresolved.
+        });
+      if (options.menuAbsent) return route.fulfill({ status: 404, body: "Not found" });
+      if (menuFailures > 0) {
+        menuFailures--;
+        return route.fulfill({ status: 503, body: "Try again" });
+      }
+      const key = pathname.slice("/api/mobile/v2/menu/venues/".length);
+      const owner = key.startsWith("m");
+      const source = {
+        id: "source-1",
+        url: "https://example.com/menu",
+        text_sha256: "a".repeat(64),
+        checked_on: "2026-11-02",
+      };
+      const offer = (id, name, amount, context = { kind: "regular", condition: null }) => ({
+        id,
+        name,
+        category: "spritz",
+        serving: { label: "Calice", ml: null },
+        amount_minor: amount,
+        currency: "EUR",
+        currency_exponent: 2,
+        context,
+        source,
+      });
+      const after = new URL(request.url()).searchParams.get("after");
+      return route.fulfill({
+        json: {
+          schema_version: 2,
+          coverage: { complete: false, basis: "verified_source_items_only" },
+          price_scope: "menu_item_only",
+          venue: {
+            key,
+            cell: "u0nd9",
+            name: owner ? "Locale nuovo" : "Locale di prova <strong>",
+            kind: owner ? 0 : 1,
+            lat: 45.4642,
+            lon: 9.19,
+            address: "Via di prova 1",
+            city: "Milano",
+            country: "IT",
+          },
+          stored_offer_count: 3,
+          offers: after
+            ? [offer("third", "Analcolico", 450)]
+            : [
+                offer("first", "Spritz <script>", 750),
+                offer("second", "Spritz serale", 550, {
+                  kind: "conditional",
+                  condition: "dopo le 18",
+                }),
+              ],
+          next_after: after ? null : "second",
+          fees: [
+            {
+              id: "fee-1",
+              label: "Coperto",
+              kind: "fixed",
+              basis: "person",
+              amount_minor: 100,
+              currency: "EUR",
+              currency_exponent: 2,
+              rate_bps: null,
+              applicability: "conditional",
+              condition: "solo al tavolo",
+              source,
+            },
+          ],
+          fee_coverage: { status: "documented_partial", source },
+        },
+      });
+    }
     if (pathname.startsWith("/api/venues/"))
       return route.fulfill({ json: { p: priceRows, h: [] } });
     return route.abort();
   });
-  await page.goto("https://sheets.fixture.test/");
+  await page.goto(options.url ?? "https://sheets.fixture.test/");
   await page.waitForFunction(() => window.sheetFixture);
   return { page, writes, close: () => context.close() };
 }
@@ -493,6 +616,203 @@ test("three price actions retain a phone row across languages and confirmation s
     await f.page.screenshot({
       path: path.join(here, "../../test-results", "price-actions-large-text-fixture.png"),
     });
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("saved legacy drink opens the exact price and band without creating a contribution", async () => {
+  const f = await fixture({
+    url: "https://sheets.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=gin_tonic&hh=0",
+  });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.getByRole("heading", { name: "Locale di prova <strong>" }).waitFor();
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /8,00 €/);
+    assert.equal(await f.page.getByTestId("saved-drink-unavailable").count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("missing saved happy-hour price is explicit and never features a different band", async () => {
+  const f = await fixture({
+    url: "https://sheets.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=spritz&hh=1",
+  });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.equal(await f.page.locator(".mobile-price--featured").count(), 0);
+    assert.equal(await f.page.getByTestId("saved-menu-offer").count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("saved owner menu drink matches regular context but never conditional or another band", async () => {
+  const key = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  const regular = await fixture({
+    url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&drink=spritz&hh=0`,
+  });
+  try {
+    await regular.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    const saved = regular.page.getByTestId("saved-menu-offer");
+    await saved.waitFor();
+    assert.match(await saved.innerText(), /Spritz <script>[\s\S]*7,50\s*€/);
+    assert.equal(await regular.page.getByTestId("saved-drink-unavailable").count(), 0);
+    assert.deepEqual(regular.writes, []);
+  } finally {
+    await regular.close();
+  }
+  const happy = await fixture({
+    url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&drink=spritz&hh=1`,
+  });
+  try {
+    await happy.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await happy.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.equal(await happy.page.getByTestId("saved-menu-offer").count(), 0);
+    assert.deepEqual(happy.writes, []);
+  } finally {
+    await happy.close();
+  }
+});
+
+test("source-backed drink menu keeps original item, condition, fee and page boundary visible", async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
+    await menu.getByText("Spritz <script>").waitFor();
+    assert.equal(await menu.locator("script").count(), 0);
+    assert.match(await menu.innerText(), /7,50\s€[\s\S]*Solo con: dopo le 18/);
+    assert.match(await menu.innerText(), /Coperto[\s\S]*1,00\s€ a persona[\s\S]*solo al tavolo/);
+    assert.match(
+      await menu.innerText(),
+      /prezzi del drink indicati nel menu, non il totale pagato/i,
+    );
+    assert.match(await menu.innerText(), /potrebbero essercene altri/);
+    assert.equal(await menu.getByText("Analcolico").count(), 0);
+    await menu.getByRole("button", { name: "Vedi altri drink" }).click();
+    await menu.getByText("Analcolico").waitFor();
+    assert.equal(await menu.locator(".mobile-menu-v2__offer").count(), 3);
+    assert.equal(await menu.getByRole("button", { name: "Vedi altri drink" }).count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("owner-verified venue separates cited menu and customer price, and submits an update to the fixture only", async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("heading", { name: "Locale nuovo" }).waitFor();
+    assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
+    const owner = f.page.locator(".mobile-menu-v2__offer").first();
+    await owner.getByText("Prezzo segnalato da un cliente").waitFor();
+    assert.match(await owner.innerText(), /7,50\s€[\s\S]*6,50\s€/);
+    assert.match(await owner.innerText(), /Menu verificato il 2026-11-02/);
+    await owner.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
+    await owner.getByLabel("Importo pagato (EUR)").fill("8,20");
+    await owner.getByRole("button", { name: "Condividi prezzo" }).click();
+    await f.page.getByText("Prezzo salvato e visibile a tutti.").waitFor();
+    assert.deepEqual(f.writes, [
+      {
+        kind: "menu_offer",
+        venue_key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+        cell: "u0nd9",
+        offer_id: "first",
+        amount_minor: 820,
+        currency: "EUR",
+        currency_exponent: 2,
+        expected_revision: "22222222-2222-4222-8222-222222222222",
+      },
+    ]);
+    const support = f.page.getByRole("link", { name: "Segnala un problema con il locale" });
+    assert.match(await support.getAttribute("href"), /^mailto:dovebevo@gmail\.com\?/);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a new named drink enters moderation without changing the cited menu", async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    await f.page.getByRole("button", { name: "Aggiungi un drink mancante" }).click();
+    const form = f.page.locator(".mobile-customer-v2__form");
+    await form.getByLabel("Nome del drink").fill("Negroni della casa");
+    await form.getByLabel("Tipo di drink").selectOption("negroni");
+    await form.getByLabel("Porzione (facoltativa)").fill("bicchiere");
+    await form.getByLabel("Importo pagato (EUR)").fill("9,00");
+    await form.getByRole("button", { name: "Condividi prezzo" }).click();
+    await f.page.getByText("Drink inviato: sarà visibile dopo la verifica.").waitFor();
+    assert.deepEqual(f.writes, [
+      {
+        kind: "new_drink",
+        venue_key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+        cell: "u0nd9",
+        name: "Negroni della casa",
+        category: "negroni",
+        serving_label: "bicchiere",
+        serving_ml: null,
+        amount_minor: 900,
+        currency: "EUR",
+        currency_exponent: 2,
+        expected_revision: null,
+      },
+    ]);
+    assert.match(await f.page.locator(".mobile-menu-v2__offer").first().innerText(), /7,50\s€/);
+  } finally {
+    await f.close();
+  }
+});
+test("legacy add-price search excludes m venues while existing n venues remain selectable", async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(() => window.sheetFixture.price(null, false));
+    const search = f.page.locator('input[type="search"]');
+    await search.fill("Locale solo app");
+    assert.equal(await f.page.getByRole("button", { name: /Locale solo app/ }).count(), 0);
+    await search.fill("Locale di prova");
+    await f.page.getByRole("button", { name: /Locale di prova <strong>/ }).waitFor();
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+test("legacy venue opens while v2 menu hangs, but an m venue times out to retry", async () => {
+  const f = await fixture({ menuHang: true });
+  try {
+    const start = Date.now();
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.getByRole("heading", { name: "Locale di prova <strong>" }).waitFor({
+      timeout: 1500,
+    });
+    assert.ok(Date.now() - start < 1500, "Legacy sheet must not wait for the v2 request");
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("heading", { name: "Menu temporaneamente non disponibile" }).waitFor({
+      timeout: 8000,
+    });
+    await f.page.getByRole("button", { name: "Riprova" }).waitFor();
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+test("menu loading failure can retry while legacy customer prices remain", async () => {
+  const f = await fixture({ menuFailOnce: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.getByRole("button", { name: "Riprova menu" }).waitFor();
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
+    await f.page.getByRole("button", { name: "Riprova menu" }).click();
+    await f.page.getByText("Spritz <script>").waitFor();
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

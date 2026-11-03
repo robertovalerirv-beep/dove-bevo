@@ -12,6 +12,9 @@ import { HoursList, VerifiedBadge } from "@site/app/components/Verified";
 import { drinkImage } from "@mobile/drink-images";
 import { sharePresentation } from "../share-presentation";
 import { DrinkHero } from "./DrinkHero";
+import { loadMenuPage, menuMoney, mobileMenuVenue, type MenuPage, type MenuFee } from "../menu-v2";
+import { CustomerPricesV2 } from "./CustomerPricesV2";
+import { menuOfferMatchesFocus, mobileFocus, mobilePath } from "../routes";
 import "./sheets.css";
 
 export interface BarActions {
@@ -233,28 +236,148 @@ function PriceItem({
 }
 
 /** Bar page `/bar/<key>?c=<cell>` (SPEC 7.2). */
+function menuFeeAmount(fee: MenuFee): string {
+  if (fee.kind === "percent")
+    return `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 2 }).format((fee.rate_bps ?? 0) / 100)}% sul conto`;
+  const amount = menuMoney(
+    fee.amount_minor ?? 0,
+    fee.currency ?? "EUR",
+    fee.currency_exponent ?? 2,
+  );
+  const basis = {
+    person: "a persona",
+    table: "a tavolo",
+    bill: "sul conto",
+    unspecified: "base non specificata",
+  }[fee.basis];
+  return `${amount} ${basis}`;
+}
+
 export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [menu, setMenu] = useState<MenuPage | null>(null);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const [menuFailed, setMenuFailed] = useState(false);
+  const [menuMoreBusy, setMenuMoreBusy] = useState(false);
+  const [menuAttempt, setMenuAttempt] = useState(0);
+  const menuAbort = useRef<AbortController | null>(null);
+  const savedFocus =
+    typeof location !== "undefined" &&
+    mobilePath(location) === "/bar/" + venueKey &&
+    new URLSearchParams(location.search).get("c") === cell
+      ? mobileFocus(location)
+      : null;
+  const matchesMenu = (offer: MenuPage["offers"][number]) =>
+    savedFocus !== null && menuOfferMatchesFocus(offer, savedFocus);
   useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    menuAbort.current = controller;
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 6000);
+    setVenue(undefined);
+    setPrices(null);
+    setPricesFailed(false);
+    setMenu(null);
+    setMenuLoading(true);
+    setMenuFailed(false);
+    setMenuMoreBusy(false);
+
+    // Legacy venues must open as soon as their existing cell arrives, even if the
+    // independent v2 menu request stalls. M keys still need their registry menu.
     void loadCell(cell)
-      .then((venues) => {
-        // A proposed bar is public only once the admin approved it (ADR 0019): not here by its link.
-        const found = venues.find((v) => v.key === venueKey && !v.pending) ?? null;
+      .then((legacy) => {
+        if (!active || venueKey.startsWith("m")) return;
+        const found = legacy.find((row) => row.key === venueKey && !row.pending) ?? null;
         setVenue(found);
         if (found) onVenue(found);
       })
       .catch(() => {
-        setVenue(null);
+        if (active && !venueKey.startsWith("m")) setVenue(null);
       });
-    loadVenuePrices(venueKey)
-      .then(setPrices)
+    void loadMenuPage(venueKey, cell, null, controller.signal)
+      .then((page) => {
+        if (!active) return;
+        setMenu(page);
+        setMenuLoading(false);
+        if (venueKey.startsWith("m")) {
+          const selected = page ? mobileMenuVenue(page.venue) : null;
+          setVenue(selected);
+          if (selected) onVenue(selected);
+        }
+      })
       .catch(() => {
-        setPricesFailed(true);
+        if (!active) return;
+        setMenuFailed(true);
+        setMenuLoading(false);
+        if (venueKey.startsWith("m")) setVenue(null);
+      })
+      .finally(() => {
+        clearTimeout(timeout);
       });
-  }, [venueKey, cell]);
+    if (!venueKey.startsWith("m"))
+      void loadVenuePrices(venueKey)
+        .then((value) => {
+          if (active) setPrices(value);
+        })
+        .catch(() => {
+          if (active) setPricesFailed(true);
+        });
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [venueKey, cell, menuAttempt]);
+  async function loadMoreMenu() {
+    const after = menu?.next_after;
+    const controller = menuAbort.current;
+    if (!after || !controller || menuMoreBusy) return;
+    setMenuMoreBusy(true);
+    setMenuFailed(false);
+    const pageController = new AbortController();
+    const cancelPage = () => {
+      pageController.abort();
+    };
+    controller.signal.addEventListener("abort", cancelPage, { once: true });
+    const timeout = setTimeout(cancelPage, 6000);
+    try {
+      const page = await loadMenuPage(venueKey, cell, after, pageController.signal);
+      if (!page) throw new Error("Menu vanished");
+      if (controller.signal.aborted) return;
+      const existing = new Set(menu.offers.map((offer) => offer.id));
+      if (page.offers.some((offer) => existing.has(offer.id)))
+        throw new Error("Duplicate menu page");
+      setMenu((previous) =>
+        previous?.next_after === after
+          ? { ...page, offers: [...previous.offers, ...page.offers] }
+          : previous,
+      );
+    } catch {
+      if (!controller.signal.aborted) setMenuFailed(true);
+    } finally {
+      clearTimeout(timeout);
+      controller.signal.removeEventListener("abort", cancelPage);
+      if (!controller.signal.aborted) setMenuMoreBusy(false);
+    }
+  }
+
+  // Search all bounded menu pages before declaring a saved drink unavailable.
+  useEffect(() => {
+    if (
+      !savedFocus ||
+      !menu?.next_after ||
+      menuMoreBusy ||
+      menuFailed ||
+      menu.offers.some(matchesMenu)
+    )
+      return;
+    void loadMoreMenu();
+  }, [menu, menuMoreBusy, menuFailed, savedFocus?.drink, savedFocus?.hh]);
 
   if (venue === undefined) {
     return (
@@ -266,6 +389,23 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     );
   }
   if (venue === null) {
+    if (venueKey.startsWith("m"))
+      return (
+        <Sheet title="Menu temporaneamente non disponibile" onClose={onClose}>
+          <div class="mobile-menu-v2__error" role="alert">
+            <p>Non riusciamo a caricare questo locale al momento.</p>
+            <button
+              type="button"
+              class="btn btn--secondary"
+              onClick={() => {
+                setMenuAttempt((value) => value + 1);
+              }}
+            >
+              Riprova
+            </button>
+          </div>
+        </Sheet>
+      );
     return (
       <Sheet title={it.bar.notFound} onClose={onClose}>
         <p class="hint">{it.bar.notFound}</p>
@@ -273,17 +413,31 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     );
   }
   const isFocus = (p: PriceRow) => focus.includes(p[1]);
+  const matchesSaved = (p: PriceRow) =>
+    savedFocus !== null && p[1] === savedFocus.drink && p[2] === savedFocus.hh;
   const active = [...(prices?.p.filter((p) => p[6] === 0) ?? [])].sort(
-    (a, b) => Number(isFocus(b)) - Number(isFocus(a)),
+    (a, b) =>
+      Number(matchesSaved(b)) - Number(matchesSaved(a)) || Number(isFocus(b)) - Number(isFocus(a)),
   );
+  const savedFound = active.some(matchesSaved);
+  const menuFound = menu?.offers.some(matchesMenu) ?? false;
+  const savedMissing =
+    savedFocus &&
+    !savedFound &&
+    !menuFound &&
+    !menuLoading &&
+    !menuFailed &&
+    !menu?.next_after &&
+    (venueKey.startsWith("m") || prices !== null);
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
+  const venueKind = venueKey.startsWith("m") && venue.kind === 0 ? "Locale" : it.kinds[venue.kind];
   return (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
-        <DrinkHero drink={active[0]?.[1] ?? focus[0] ?? "spritz"} />
+        <DrinkHero drink={savedFocus?.drink ?? active[0]?.[1] ?? focus[0] ?? "spritz"} />
         <div class="scontrino__paper">
-          <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
+          <p class="bar__kind">{[venueKind, venue.city].filter(Boolean).join(" · ")}</p>
           <h2 class="scontrino__name" tabIndex={-1}>
             {venue.name}
           </h2>
@@ -301,7 +455,15 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               {it.bar.pricesError}
             </p>
           )}
-          {prices && active.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
+          {prices && active.length === 0 && !menu?.offers.length && (
+            <p class="hint">{it.bar.noPrices}</p>
+          )}
+          {savedMissing && (
+            <p class="hint" role="status" data-testid="saved-drink-unavailable">
+              Il prezzo salvato per questo drink e orario non è più disponibile. Gli altri prezzi
+              del locale sono qui sotto.
+            </p>
+          )}
           <ul class="prices">
             {shown.flatMap((row, index) => [
               index === 1 && (
@@ -316,7 +478,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 actions={actions}
                 inReview={false}
                 tier={tier(row)}
-                featured={index === 0}
+                featured={index === 0 && (!savedFocus || savedFound)}
               />,
             ])}
           </ul>
@@ -338,6 +500,84 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               <span>{it.bar.drinkCount(active.length)}</span>
             </p>
           )}
+          {menuLoading && (
+            <p class="hint" role="status">
+              Caricamento menu online…
+            </p>
+          )}
+          {menu && (
+            <section class="mobile-menu-v2" aria-label="Prezzi dal menu online">
+              <div class="mobile-menu-v2__heading">
+                <h3>Dal menu del locale</h3>
+                <span>{menu.stored_offer_count} prezzi</span>
+              </div>
+              <p class="mobile-menu-v2__disclaimer">
+                Prezzi del drink indicati nel menu, non il totale pagato. Le condizioni e i
+                supplementi sono separati.
+              </p>
+              <CustomerPricesV2 key={`${venueKey}:${cell}`} menu={menu} focus={savedFocus} />
+              {menu.next_after && (
+                <button
+                  type="button"
+                  class="btn btn--secondary mobile-menu-v2__more"
+                  disabled={menuMoreBusy}
+                  onClick={() => void loadMoreMenu()}
+                >
+                  {menuMoreBusy ? "Caricamento…" : "Vedi altri drink"}
+                </button>
+              )}
+              <div class="mobile-menu-v2__fees">
+                <h4>Coperto e supplementi</h4>
+                {menu.fees.length > 0 && (
+                  <ul>
+                    {menu.fees.map((fee) => (
+                      <li key={fee.id}>
+                        <span>{fee.label}</span>
+                        <strong>{menuFeeAmount(fee)}</strong>
+                        {fee.applicability === "conditional" && fee.condition && (
+                          <small>Solo se: {fee.condition}</small>
+                        )}
+                        {fee.applicability === "unknown" && (
+                          <small>Applicazione da verificare</small>
+                        )}
+                        <a href={fee.source.url} target="_blank" rel="noopener noreferrer">
+                          Fonte verificata il {fee.source.checked_on}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {menu.fee_coverage.status === "unknown" && (
+                  <p>Eventuali costi aggiuntivi non sono stati verificati.</p>
+                )}
+                {menu.fee_coverage.status === "documented_partial" && (
+                  <p>Questi supplementi sono documentati; potrebbero essercene altri.</p>
+                )}
+                {menu.fee_coverage.status === "explicit_no_fee" && (
+                  <p>Il menu consultato dichiara che non ci sono supplementi.</p>
+                )}
+              </div>
+            </section>
+          )}
+          {menuFailed && (
+            <div class="mobile-menu-v2__error" role="alert">
+              <p>
+                {venueKey.startsWith("m")
+                  ? "Menu online non disponibile. Riprova tra poco."
+                  : "Menu online non disponibile. I prezzi segnalati dalle persone restano visibili."}
+              </p>
+              <button
+                type="button"
+                class="btn btn--secondary"
+                onClick={() => {
+                  if (menu?.next_after) void loadMoreMenu();
+                  else setMenuAttempt((value) => value + 1);
+                }}
+              >
+                Riprova menu
+              </button>
+            </div>
+          )}
         </div>
         <div class="bar__actions">
           <a
@@ -350,15 +590,17 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             <Icon name="directions" />
             {it.bar.directions}
           </a>
-          <button
-            type="button"
-            class="btn btn--primary"
-            onClick={() => {
-              actions.addHere(venue);
-            }}
-          >
-            {it.actions.addHere}
-          </button>
+          {!venue.key.startsWith("m") && (
+            <button
+              type="button"
+              class="btn btn--primary"
+              onClick={() => {
+                actions.addHere(venue);
+              }}
+            >
+              {it.actions.addHere}
+            </button>
+          )}
         </div>
         {review.length > 0 && (
           <>
@@ -378,15 +620,25 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             </ul>
           </>
         )}
-        <button
-          type="button"
-          class="btn btn--ghost"
-          onClick={() => {
-            actions.report(venue, null);
-          }}
-        >
-          {it.actions.reportBar}
-        </button>
+        {!venue.key.startsWith("m") && (
+          <button
+            type="button"
+            class="btn btn--ghost"
+            onClick={() => {
+              actions.report(venue, null);
+            }}
+          >
+            {it.actions.reportBar}
+          </button>
+        )}
+        {venue.key.startsWith("m") && (
+          <a
+            class="btn btn--ghost"
+            href={`mailto:dovebevo@gmail.com?subject=${encodeURIComponent(`Segnalazione locale ${venue.key}`)}&body=${encodeURIComponent(`${venue.name} · ${venue.city} · ${venue.key}`)}`}
+          >
+            Segnala un problema con il locale
+          </a>
+        )}
         <AppLegalLinks />
       </div>
     </Sheet>

@@ -697,7 +697,8 @@ def execute(raw,transport,apply=False,approved_sha256=None):
              "manifest_sha256":hashlib.sha256(raw).hexdigest() if isinstance(raw,bytes) else None,
              "mode":"apply" if apply else "dry_run","complete":False,
              "binding_attestation":None,"sources":[],"venues":[],"rows":[],
-             "customer_presence":{},"errors":[],"legacy_prices_modified":False}
+             "customer_presence":{},"errors":[],"legacy_prices_modified":False,
+             "public_data_version":None}
     phase="manifest"
     try:
         doc=validate(raw);receipt["batch_id"]=doc["batch_id"]
@@ -707,11 +708,22 @@ def execute(raw,transport,apply=False,approved_sha256=None):
             raise Error("held source is unseedable")
         phase="public_site"
         health=legacy.strict_json(public_fetch(transport,SITE+"/api/health",65536))
-        if not isinstance(health,dict) or health.get("status")!="ok" or health.get("data_version")!=doc["data_version"]:
-            raise Error("public catalogue version mismatch")
+        if not isinstance(health,dict) or health.get("status")!="ok":
+            raise Error("public site unhealthy")
+        live_version=health.get("data_version")
+        if not isinstance(live_version,str) or not re.fullmatch(r"[0-9]{8}",live_version):
+            raise Error("invalid public catalogue version")
+        if live_version<doc["data_version"]:
+            raise Error("public catalogue older than reviewed manifest")
+        receipt["public_data_version"]=live_version
         cells={}
         for venue in doc["venues"]:
-            public_identity(venue,transport,doc["data_version"],cells)
+            if live_version!=doc["data_version"] and venue["identity_kind"]=="osm_external":
+                raise Error("external venue needs current-version review")
+            # The reviewed manifest is the pinned identity. Historical public
+            # catalogue URLs can disappear after deploy; verify the exact
+            # venue against the current live version before any private write.
+            public_identity(venue,transport,live_version,cells)
             receipt["venues"].append({"venue_key":venue["venue_key"],"cell":venue["cell"],
                                       "identity":"verified"})
         phase="source"

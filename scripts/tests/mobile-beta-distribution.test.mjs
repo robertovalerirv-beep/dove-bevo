@@ -245,7 +245,7 @@ test("audit is GET-only, pins the exact build/groups and discards private fields
   }
 });
 
-test("feedback build 271 is exact and rejects the historical build 62 plan before credentials", async () => {
+test("feedback build 278 is exact and rejects the historical build 62 plan before credentials", async () => {
   const old = fixture();
   const oldReceipt = await old.audit();
   const oldBytes = planBytes(oldReceipt.plan);
@@ -272,7 +272,7 @@ test("feedback build 271 is exact and rejects the historical build 62 plan befor
   assert.equal(called, false);
 
   const f = fixture({
-    buildId: "build-271",
+    buildId: "build-278",
     number: FEEDBACK_BUILD_NUMBER,
     targetNumber: FEEDBACK_BUILD_NUMBER,
   });
@@ -280,7 +280,7 @@ test("feedback build 271 is exact and rejects the historical build 62 plan befor
   assert.equal(audited.complete, true);
   assert.equal(audited.ready, true);
   assert.equal(audited.build_number, FEEDBACK_BUILD_NUMBER);
-  assert.equal(audited.plan.build_id, "build-271");
+  assert.equal(audited.plan.build_id, "build-278");
   assert.equal(audited.plan.build_number, FEEDBACK_BUILD_NUMBER);
   assert.deepEqual(
     audited.plan.groups.map((g) => g.name),
@@ -288,7 +288,7 @@ test("feedback build 271 is exact and rejects the historical build 62 plan befor
   );
   assert.ok(f.calls.every((call) => call.method === "GET"));
   const bytes = planBytes(audited.plan);
-  assert.equal(validatePlan(bytes, sha256(bytes), FEEDBACK_BUILD_NUMBER).build_id, "build-271");
+  assert.equal(validatePlan(bytes, sha256(bytes), FEEDBACK_BUILD_NUMBER).build_id, "build-278");
   assert.throws(() => validatePlan(bytes, sha256(bytes)));
   const applied = await f.apply(audited.plan);
   assert.equal(applied.complete, true);
@@ -300,17 +300,17 @@ test("feedback build 271 is exact and rejects the historical build 62 plan befor
       "/v1/betaAppReviewSubmissions",
     ],
   );
-  assert.equal(applied.after.build_id, "build-271");
+  assert.equal(applied.after.build_id, "build-278");
 
   const wrongNumber = fixture({
-    buildId: "build-271",
+    buildId: "build-278",
     number: BUILD_NUMBER,
     targetNumber: FEEDBACK_BUILD_NUMBER,
   });
   assert.equal((await wrongNumber.audit()).complete, false);
   assert.ok(wrongNumber.calls.every((call) => call.method === "GET"));
   const publicGroup = fixture({
-    buildId: "build-271",
+    buildId: "build-278",
     number: FEEDBACK_BUILD_NUMBER,
     targetNumber: FEEDBACK_BUILD_NUMBER,
     groups: f.state.groups.map((group) => ({
@@ -955,20 +955,20 @@ test("initial workflow is one exact read-only tag with no apply or public-releas
     assert.match(action, /@[a-f0-9]{40}$/);
 });
 
-test("build 271 has a separate exact read-only audit tag and no apply lane before a pinned plan", async () => {
+test("build 278 has a separate exact read-only audit tag and no apply lane before a pinned plan", async () => {
   const workflow = await readFile(
-    new URL("../../.github/workflows/mobile-beta-distribution-271-audit.yml", import.meta.url),
+    new URL("../../.github/workflows/mobile-beta-distribution-278-audit.yml", import.meta.url),
     "utf8",
   );
-  assert.match(workflow, /mobile-beta-distribution-audit\/20261103-build271-v1/);
+  assert.match(workflow, /mobile-beta-distribution-audit\/20261103-build278-v1/);
   assert.match(workflow, /github\.repository == 'robertovalerirv-beep\/dove-bevo'/);
   assert.match(
     workflow,
-    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261103-build271-v1'/,
+    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261103-build278-v1'/,
   );
   assert.match(
     workflow,
-    /node scripts\/mobile-beta-distribution\.mjs "\$OUTPUT_PATH" --plan-output "\$PLAN_PATH" --build-number 271/,
+    /node scripts\/mobile-beta-distribution\.mjs "\$OUTPUT_PATH" --plan-output "\$PLAN_PATH" --build-number 278/,
   );
   assert.match(workflow, /contents: read/);
   assert.match(workflow, /persist-credentials: false/);

@@ -8,7 +8,7 @@ import { tokenFor } from "./mobile-store-status.mjs";
 
 export const APP_ID = "6827324444";
 export const BUILD_NUMBER = "62";
-export const FEEDBACK_BUILD_NUMBER = "271";
+export const FEEDBACK_BUILD_NUMBER = "278";
 export const VERSION = "1.0.0";
 export const ORIGIN = "https://api.appstoreconnect.apple.com";
 export const GROUPS = Object.freeze([

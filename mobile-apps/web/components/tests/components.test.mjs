@@ -69,6 +69,18 @@ async function fixture(options = {}) {
   await page.route("**/*", (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
+    if (pathname === "/api/mobile/v2/customer-prices" && request.method() === "POST") {
+      const submitted = request.postDataJSON();
+      writes.push(submitted);
+      return route.fulfill({
+        status: submitted.kind === "new_drink" ? 202 : 201,
+        json: {
+          status: submitted.kind === "new_drink" ? "pending" : "active",
+          revision: "11111111-1111-4111-8111-111111111111",
+          source_kind: "customer",
+        },
+      });
+    }
     if (request.method() !== "GET") {
       writes.push(request.method());
       return route.abort();
@@ -113,6 +125,40 @@ async function fixture(options = {}) {
           g: [],
         },
       });
+    if (pathname.startsWith("/api/mobile/v2/customer-prices/venues/")) {
+      const key = pathname.slice("/api/mobile/v2/customer-prices/venues/".length);
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          venue: {
+            key,
+            cell: "u0nd9",
+            name: key.startsWith("m") ? "Locale nuovo" : "Locale di prova <strong>",
+            country: "IT",
+          },
+          price_scope: "customer_reported_drink_item",
+          rows: [
+            {
+              revision: "22222222-2222-4222-8222-222222222222",
+              item_key: "o" + "a".repeat(64),
+              kind: "menu_offer",
+              offer_id: "first",
+              name: "Spritz <script>",
+              category: "spritz",
+              serving: { label: "Calice", ml: null },
+              amount_minor: 650,
+              currency: "EUR",
+              currency_exponent: 2,
+              observed_on: "2026-11-02",
+              source_kind: "customer",
+              observation_kind: "customer_reported_price",
+              price_scope: "drink_item",
+            },
+          ],
+          next_after: null,
+        },
+      });
+    }
     if (pathname.startsWith("/api/mobile/v2/menu/venues/")) {
       if (options.menuHang)
         return new Promise(() => {
@@ -601,29 +647,72 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
   }
 });
 
-test("owner-verified Italian venue shows menu without unsupported public contribution controls", async () => {
+test("owner-verified venue separates cited menu and customer price, and submits an update to the fixture only", async () => {
   const f = await fixture();
   try {
     await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
     await f.page.getByRole("heading", { name: "Locale nuovo" }).waitFor();
     assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
-    assert.equal(
-      await f.page.getByRole("button", { name: "Segnala un problema con il bar" }).count(),
-      0,
-    );
-    assert.match(
-      await f.page.locator(".mobile-venue").innerText(),
-      /segnalazioni dei clienti.*disponibili presto/i,
-    );
+    const owner = f.page.locator(".mobile-menu-v2__offer").first();
+    await owner.getByText("Prezzo segnalato da un cliente").waitFor();
+    assert.match(await owner.innerText(), /7,50\s€[\s\S]*6,50\s€/);
+    assert.match(await owner.innerText(), /Menu verificato il 2026-11-02/);
+    await owner.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
+    await owner.getByLabel("Importo pagato (EUR)").fill("8,20");
+    await owner.getByRole("button", { name: "Condividi prezzo" }).click();
+    await f.page.getByText("Prezzo salvato e visibile a tutti.").waitFor();
+    assert.deepEqual(f.writes, [
+      {
+        kind: "menu_offer",
+        venue_key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+        cell: "u0nd9",
+        offer_id: "first",
+        amount_minor: 820,
+        currency: "EUR",
+        currency_exponent: 2,
+        expected_revision: "22222222-2222-4222-8222-222222222222",
+      },
+    ]);
     const support = f.page.getByRole("link", { name: "Segnala un problema con il locale" });
     assert.match(await support.getAttribute("href"), /^mailto:dovebevo@gmail\.com\?/);
-    assert.equal(await f.page.locator(".scontrino__paper [role=alert]").count(), 0);
-    assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
   }
 });
 
+test("a new named drink enters moderation without changing the cited menu", async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    await f.page.getByRole("button", { name: "Aggiungi un drink mancante" }).click();
+    const form = f.page.locator(".mobile-customer-v2__form");
+    await form.getByLabel("Nome del drink").fill("Negroni della casa");
+    await form.getByLabel("Tipo di drink").selectOption("negroni");
+    await form.getByLabel("Porzione (facoltativa)").fill("bicchiere");
+    await form.getByLabel("Importo pagato (EUR)").fill("9,00");
+    await form.getByRole("button", { name: "Condividi prezzo" }).click();
+    await f.page.getByText("Drink inviato: sarà visibile dopo la verifica.").waitFor();
+    assert.deepEqual(f.writes, [
+      {
+        kind: "new_drink",
+        venue_key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+        cell: "u0nd9",
+        name: "Negroni della casa",
+        category: "negroni",
+        serving_label: "bicchiere",
+        serving_ml: null,
+        amount_minor: 900,
+        currency: "EUR",
+        currency_exponent: 2,
+        expected_revision: null,
+      },
+    ]);
+    assert.match(await f.page.locator(".mobile-menu-v2__offer").first().innerText(), /7,50\s€/);
+  } finally {
+    await f.close();
+  }
+});
 test("legacy add-price search excludes m venues while existing n venues remain selectable", async () => {
   const f = await fixture();
   try {

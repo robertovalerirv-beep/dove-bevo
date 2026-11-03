@@ -1,4 +1,5 @@
 // Exact-build TestFlight operator: read-only audit first; separately pinned apply.
+// Historical callers default to build 62; each newer build must be named explicitly.
 import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { open, readFile } from "node:fs/promises";
@@ -24,7 +25,9 @@ const fail = () => {
   throw new Error("Beta distribution scope or response invalid");
 };
 const targetBuild = (number) => {
-  if (number !== BUILD_NUMBER && number !== FEEDBACK_BUILD_NUMBER) fail();
+  // GitHub run numbers used for CFBundleVersion are decimal, positive, and
+  // canonical. The approved plan hash and live build identity fence the target.
+  if (typeof number !== "string" || !/^[1-9][0-9]{0,8}$/.test(number)) fail();
   return number;
 };
 export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -644,10 +647,11 @@ export async function applyBetaDistribution(
 }
 
 async function main(args) {
-  const feedbackBuild =
-    args.length >= 3 && args.at(-2) === "--build-number" && args.at(-1) === FEEDBACK_BUILD_NUMBER;
-  const buildNumber = feedbackBuild ? FEEDBACK_BUILD_NUMBER : BUILD_NUMBER;
-  if (feedbackBuild) args = args.slice(0, -2);
+  let buildNumber = BUILD_NUMBER;
+  if (args.at(-2) === "--build-number") {
+    buildNumber = targetBuild(args.at(-1));
+    args = args.slice(0, -2);
+  } else if (args.includes("--build-number")) fail();
   if (!args[0] || args[0].startsWith("-") || ![1, 3, 6].includes(args.length)) fail();
   const applying =
     args.length === 6 &&

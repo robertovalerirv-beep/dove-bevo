@@ -49,7 +49,10 @@ def validate_apk(path, expected):
 
 def owned_avd(raw):
     try:
-        return raw.decode("ascii", "strict").splitlines() == ["dove-live", "OK"]
+        # Windows adb's emulator console emits CR CR LF. Normalize only that
+        # framing (and ordinary CR LF), then keep the exact two-line identity.
+        lines = raw.decode("ascii", "strict").replace("\r\r\n", "\n").replace("\r\n", "\n")
+        return lines.splitlines() == ["dove-live", "OK"]
     except UnicodeDecodeError:
         return False
 

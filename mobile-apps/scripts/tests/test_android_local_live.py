@@ -28,6 +28,7 @@ class AndroidLocalLiveTests(unittest.TestCase):
 
     def test_only_dedicated_avd_name_is_accepted(self):
         self.assertTrue(local.owned_avd(b'dove-live\r\nOK\r\n'))
+        self.assertTrue(local.owned_avd(b'dove-live\r\r\nOK\r\r\n'))
         for wrong in [b'other-project\r\nOK\r\n', b'dove-live-extra\nOK\n',
                       b'dove-live\nKO\n', b'dove-live\nOK\nextra\n', b'\xff\nOK\n']:
             self.assertFalse(local.owned_avd(wrong))

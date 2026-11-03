@@ -98,7 +98,13 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertNotIn("saveMenuEnabled", browser)
         self.assertNotIn("toolbar.items", browser)
         save = browser.split("@objc func saveCurrentVenue()", 1)[1].split("@objc func showRecommendations()", 1)[0]
-        self.assertIn("try self.savedVenues.save(url: venue.url, label: venue.label)", save)
+        venue_choice = save.split("case .venue:", 1)[1].split("case .drink:", 1)[0]
+        drink_choice = save.split("case .drink:", 1)[1].split("outcome =", 1)[0]
+        self.assertIn("try self.savedVenues.save(url: context.venue.url, label: context.venue.label)", venue_choice)
+        self.assertNotIn("savedDrinks", venue_choice)
+        self.assertIn("try self.savedDrinks.save(SavedDrink.validated", drink_choice)
+        self.assertNotIn("self.savedVenues.save", drink_choice)
+        self.assertIn("self.favouriteSave.consume(context, currentURL: self.webView?.url, active: self.isBookmarkInteractionActive)", save)
         self.assertNotIn("showSavedVenues()", save)
         self.assertIn('"Preferito salvato"', save)
 

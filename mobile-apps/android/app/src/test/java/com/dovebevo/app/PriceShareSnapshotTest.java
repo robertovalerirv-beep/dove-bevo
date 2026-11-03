@@ -9,6 +9,17 @@ public class PriceShareSnapshotTest {
         {"href":"https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9","version":"1","venue":"n123","venueName":"Locale reale","drink":"spritz","drinkName":"Spritz","hh":"0","amountMinor":"1300","currency":"GBP","serving":"drink","provenance":"Dal menu online · verificato il 02/11/2026 · Aperol Spritz","confirmations":"0","tier":"neutro","location":"London"}
         """;}
     private PriceShareSnapshot read(String raw){return PriceShareSnapshot.decode(raw,URL,URL,4,4);}
+    @Test public void focusedCategoryAndBandMustAgreeWithActualFeaturedMarker(){
+        for(RecommendationDrink drink:new RecommendationDrink[]{RecommendationDrink.SPRITZ,RecommendationDrink.NEGRONI})for(int band=0;band<2;band++){
+            String route=MobileEntry.drinkDocument(URL,drink,band);
+            String matching=json().replace(URL,route).replace("\"drink\":\"spritz\"","\"drink\":\""+drink.code+"\"").replace("\"hh\":\"0\"","\"hh\":\""+band+"\"");
+            assertNotNull(PriceShareSnapshot.decode(matching,route,route,4,4));
+            assertNull(PriceShareSnapshot.decode(matching.replace("\"hh\":\""+band+"\"","\"hh\":\""+(1-band)+"\""),route,route,4,4));
+            String other=drink==RecommendationDrink.SPRITZ?"negroni":"spritz";
+            assertNull(PriceShareSnapshot.decode(matching.replace("\"drink\":\""+drink.code+"\"","\"drink\":\""+other+"\""),route,route,4,4));
+        }
+        assertNotNull(read(json()));
+    }
     @Test public void originalPoundsAndMenuProvenanceArePreserved(){PriceShareSnapshot p=read(json());assertNotNull(p);assertEquals("£13.00",p.amountLabel());assertTrue(p.provenance.startsWith("Dal menu online"));assertEquals(0,p.confirmations);assertEquals(URL,p.url);assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",p.identityUrl);}
     @Test public void foreignVenueShareRetainsAppsOnlyMobileRoute(){String url=URL.replace("n123","n6044678286");PriceShareSnapshot p=PriceShareSnapshot.decode(json().replace("n123","n6044678286"),url,url,4,4);assertNotNull(p);assertEquals(url,p.url);assertTrue(p.url.contains("/mobile/?path=%2Fbar%2F"));assertEquals("GBP",p.currency);}
     @Test public void accessiblePosterIncludesServingBandAndConfirmations(){PriceShareSnapshot p=read(json().replace("\"serving\":\"drink\"","\"serving\":\"500 ml\"").replace("\"hh\":\"0\"","\"hh\":\"1\""));assertNotNull(p);String description=p.accessibilityDescription();assertTrue(description.contains("500 ml"));assertTrue(description.contains("Happy hour"));assertTrue(description.contains("0 conferme"));assertTrue(description.contains("London"));assertTrue(description.contains("non foto del locale"));}

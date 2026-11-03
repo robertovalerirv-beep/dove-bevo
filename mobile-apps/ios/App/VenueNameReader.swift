@@ -9,8 +9,16 @@ enum VenueNameReader {
         const href = location.href;
         const url = new URL(href);
         const mobile = /^\/mobile\/(?:index\.html)?$/.test(url.pathname);
+        const pairs = [...url.searchParams];
+        const rawKeys = url.search.slice(1).split("&").map(pair => pair.split("=")[0]);
+        const focused = pairs.length === 4 && rawKeys.every(key => ["path","c","drink","hh"].includes(key)) &&
+            new Set(rawKeys).size === 4 && url.searchParams.getAll("drink").length === 1 &&
+            /^(beer_draft|spritz|negroni|sbagliato|gin_tonic|gin_lemon|wine_glass|alcohol_free|water)$/.test(url.searchParams.get("drink") || "") &&
+            url.searchParams.getAll("hh").length === 1 && /^[01]$/.test(url.searchParams.get("hh") || "") &&
+            /(?:^|&)drink=(?:beer_draft|spritz|negroni|sbagliato|gin_tonic|gin_lemon|wine_glass|alcohol_free|water)(?:&|$)/.test(url.search.slice(1)) &&
+            /(?:^|&)hh=[01](?:&|$)/.test(url.search.slice(1));
         if (mobile && (document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1" ||
-            [...url.searchParams].length !== 2 || url.searchParams.getAll("path").length !== 1 ||
+            (!(pairs.length === 2 && rawKeys.every(key => ["path","c"].includes(key))) && !focused) || url.searchParams.getAll("path").length !== 1 ||
             url.searchParams.getAll("c").length !== 1 || !/^[0-9b-hjkmnp-z]{5}$/.test(url.searchParams.get("c") || ""))) return null;
         const key = /^\/bar\/((?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24}))$/.exec(mobile ? url.searchParams.get("path") || "" : url.pathname)?.[1];
         if (url.protocol !== "https:" || !["www.dovebevo.com", "dovebevo.com"].includes(url.hostname) ||

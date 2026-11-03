@@ -22,10 +22,12 @@ final class MobileEntry {
             Map<String,String> query = new HashMap<>();
             for (String part : uri.getRawQuery().split("&", -1)) {
                 String[] pair = part.split("=", -1);
-                if (pair.length != 2 || !(pair[0].equals("path") || pair[0].equals("c"))
+                if (pair.length != 2 || !(pair[0].equals("path") || pair[0].equals("c") || pair[0].equals("drink") || pair[0].equals("hh"))
                         || query.put(pair[0], pair[1]) != null) return null;
             }
-            if (query.size() != 2) return null;
+            if (!(query.size() == 2 && query.containsKey("path") && query.containsKey("c")) &&
+                    !(query.size() == 4 && query.containsKey("path") && query.containsKey("c") &&
+                    RecommendationDrink.from(query.get("drink")) != null && ("0".equals(query.get("hh")) || "1".equals(query.get("hh"))))) return null;
             String path = URLDecoder.decode(query.get("path"), StandardCharsets.UTF_8.name());
             String cell = query.get("c");
             if (!path.matches("/bar/(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})") || !cell.matches("[0-9b-hjkmnp-z]{5}")) return null;
@@ -61,6 +63,32 @@ final class MobileEntry {
         String valid = SavedVenueUrl.canonicalize(canonical);
         if (valid == null) return null;
         URI uri = URI.create(valid);
-        return HOME + "?path=%2Fbar%2F" + uri.getPath().substring(5) + "&" + uri.getRawQuery();
+        String result = HOME + "?path=%2Fbar%2F" + uri.getPath().substring(5) + "&" + uri.getRawQuery();
+        if (publicVenue(canonical) != null) {
+            String query = URI.create(canonical).getRawQuery();
+            String drink = null, band = null;
+            for (String part : query.split("&")) {
+                if (part.startsWith("drink=")) drink = part.substring(6);
+                if (part.startsWith("hh=")) band = part.substring(3);
+            }
+            if (drink != null && band != null) result += "&drink=" + drink + "&hh=" + band;
+        }
+        return result;
+    }
+
+    static String drinkDocument(String venueUrl, RecommendationDrink drink, int band) {
+        String identity = SavedVenueUrl.canonicalize(venueUrl);
+        if (identity == null || drink == null || (band != 0 && band != 1)) return null;
+        return venueDocument(identity) + "&drink=" + drink.code + "&hh=" + band;
+    }
+
+    static boolean matchesDrink(String raw, RecommendationDrink drink, int band) {
+        if (publicVenue(raw) == null || drink == null || (band != 0 && band != 1)) return false;
+        String selected = null, selectedBand = null;
+        for (String part : URI.create(raw).getRawQuery().split("&")) {
+            if (part.startsWith("drink=")) selected = part.substring(6);
+            if (part.startsWith("hh=")) selectedBand = part.substring(3);
+        }
+        return selected == null || (selected.equals(drink.code) && selectedBand.equals(Integer.toString(band)));
     }
 }

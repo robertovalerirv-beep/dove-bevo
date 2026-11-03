@@ -25,14 +25,27 @@ final class FavoritesScreen {
     private final ScrollView view;private final LinearLayout rows;private final TextView status;private final Button refresh;private final Spinner drinks,bands;
     private List<SavedVenueStore.Venue> saved=Collections.emptyList();private Map<String,FavoriteComparison.Cell> cells=Collections.emptyMap();
     private RecommendationDrink drink=RecommendationDrink.BEER_DRAFT;private int band;private long generation;private boolean visible,busy,closed;private FavoritesLoader.Batch request;
+    private final LinearLayout localContent;private final SavedDrinkScreen drinkPane;private final Button localTab,drinkTab;private boolean drinksVisible;
     FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground){
         this(activity,store,navigate,foreground,new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)));
     }
+    FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,SavedDrinkStore drinks){
+        this(activity,store,navigate,foreground,new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)),drinks,new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)));
+    }
     FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,FavoritesLoader loader){
+        this(activity,store,navigate,foreground,loader,new SavedDrinkStore(new SavedVenueFile(activity.getFilesDir(),"saved-drinks-v1")),new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)));
+    }
+    FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,FavoritesLoader loader,SavedDrinkStore drinkStore,FavoritesLoader drinkLoader){
         this.activity=activity;this.store=store;this.navigate=navigate;this.foreground=foreground;this.loader=loader;
         view=new ScrollView(activity);view.setId(R.id.favorites_screen);view.setBackgroundColor(activity.getColor(R.color.shell_background));LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);int pad=dp(16);body.setPadding(pad,pad,pad,pad);view.addView(body);
         TextView title=text(activity.getString(R.string.saved_venues),26);heading(title);NativeAppearance.title(title);body.addView(title);
         TextView explanation=text(activity.getString(R.string.favorites_explanation),15);NativeAppearance.muted(explanation);explanation.setPadding(0,dp(4),0,dp(12));body.addView(explanation);
+        LinearLayout tabs=new LinearLayout(activity);body.addView(tabs);
+        localTab=new Button(activity);localTab.setText("Locali");localTab.setTag("favourites_local_tab");NativeAppearance.button(localTab,true);tabs.addView(localTab,new LinearLayout.LayoutParams(0,-2,1));
+        drinkTab=new Button(activity);drinkTab.setText("Drink");drinkTab.setTag("favourites_drink_tab");NativeAppearance.button(drinkTab,false);tabs.addView(drinkTab,new LinearLayout.LayoutParams(0,-2,1));
+        localContent=new LinearLayout(activity);localContent.setOrientation(LinearLayout.VERTICAL);body.addView(localContent);
+        drinkPane=new SavedDrinkScreen(activity,drinkStore,drinkLoader,navigate,foreground);body.addView(drinkPane.view());drinkPane.view().setVisibility(View.GONE);
+        localTab.setOnClickListener(v->{if(usable())selectPane(false);});drinkTab.setOnClickListener(v->{if(usable())selectPane(true);});body=localContent;
         LinearLayout filters=new ComparisonFilters(activity);NativeAppearance.card(filters);body.addView(filters,new LinearLayout.LayoutParams(-1,-2));
         LinearLayout drinkFilter=new LinearLayout(activity);drinkFilter.setOrientation(LinearLayout.VERTICAL);filters.addView(drinkFilter);
         LinearLayout bandFilter=new LinearLayout(activity);bandFilter.setOrientation(LinearLayout.VERTICAL);filters.addView(bandFilter);
@@ -50,16 +63,23 @@ final class FavoritesScreen {
         rows=new LinearLayout(activity);rows.setId(R.id.favorites_rows);rows.setOrientation(LinearLayout.VERTICAL);body.addView(rows);
     }
     View view(){return view;}
-    void show(){if(closed)return;visible=true;if(foreground.get())refresh();else render();}
-    void hide(){visible=false;retire();cells=Collections.emptyMap();}
-    void pause(){retire();cells=Collections.emptyMap();if(visible){status.setText(R.string.favorites_paused);render();}}
-    void resume(){if(visible&&!closed&&foreground.get())refresh();}
-    void close(){closed=true;hide();loader.close();}
+    void show(){if(closed)return;visible=true;if(drinksVisible)drinkPane.show();else if(foreground.get())refresh();else render();}
+    void hide(){visible=false;retire();cells=Collections.emptyMap();drinkPane.hide();}
+    void pause(){retire();cells=Collections.emptyMap();drinkPane.pause();if(visible){status.setText(R.string.favorites_paused);render();}}
+    void resume(){if(visible&&!closed&&foreground.get()){if(drinksVisible)drinkPane.resume();else refresh();}}
+    void close(){closed=true;hide();loader.close();drinkPane.close();}
+    boolean showingDrinks(){return drinksVisible;}
+    void restorePane(boolean value){selectPane(value);}
+    private void selectPane(boolean value){
+        if(drinksVisible==value)return;retire();cells=Collections.emptyMap();drinksVisible=value;localContent.setVisibility(value?View.GONE:View.VISIBLE);drinkPane.view().setVisibility(value?View.VISIBLE:View.GONE);NativeAppearance.button(localTab,!value);NativeAppearance.button(drinkTab,value);localTab.setSelected(!value);drinkTab.setSelected(value);
+        if(value){if(visible)drinkPane.show();}else{drinkPane.hide();if(visible)refresh();}
+    }
     String selectedDrink(){return drink.code;}int selectedBand(){return band;}
     void restoreSelection(String code,int band){RecommendationDrink selection=RecommendationDrink.from(code);if(selection!=null){drink=selection;drinks.setSelection(selection.ordinal());}if(band==0||band==1){this.band=band;bands.setSelection(band);}}
     private boolean usable(){return visible&&!closed&&foreground.get()&&!activity.isFinishing()&&!activity.isDestroyed();}
     private void retire(){generation++;if(request!=null)request.cancel();request=null;busy=false;}
     void refresh(){
+        if(drinksVisible){drinkPane.refresh();return;}
         if(!usable())return;retire();long token=generation;cells=Collections.emptyMap();
         try{saved=store.load();}catch(IOException unavailable){saved=Collections.emptyList();status.setText(R.string.saved_venues_storage_error);render();return;}
         if(saved.isEmpty()){status.setText(R.string.saved_venues_empty);render();return;}

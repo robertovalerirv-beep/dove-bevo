@@ -69,6 +69,18 @@ async function fixture(options = {}) {
   await page.route("**/*", (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
+    if (pathname === "/api/mobile/v2/customer-prices" && request.method() === "POST") {
+      const submitted = request.postDataJSON();
+      writes.push(submitted);
+      return route.fulfill({
+        status: submitted.kind === "new_drink" ? 202 : 201,
+        json: {
+          status: submitted.kind === "new_drink" ? "pending" : "active",
+          revision: "11111111-1111-4111-8111-111111111111",
+          source_kind: "customer",
+        },
+      });
+    }
     if (request.method() !== "GET") {
       writes.push(request.method());
       return route.abort();
@@ -113,7 +125,38 @@ async function fixture(options = {}) {
           g: [],
         },
       });
-    if (pathname.startsWith("/api/mobile/v2/menu/venues/")) {
+    if (pathname.startsWith("/api/mobile/v2/customer-prices/venues/")) {
+      const key = pathname.slice("/api/mobile/v2/customer-prices/venues/".length);
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          venue: {
+            key,
+            cell: "u0nd9",
+            name: key.startsWith("m") ? "Locale nuovo" : "Locale di prova <strong>",
+            country: "IT",
+          },
+          price_scope: "customer_reported_drink_item",
+          rows: [{
+            revision: "22222222-2222-4222-8222-222222222222",
+            item_key: "o" + "a".repeat(64),
+            kind: "menu_offer",
+            offer_id: "first",
+            name: "Spritz <script>",
+            category: "spritz",
+            serving: { label: "Calice", ml: null },
+            amount_minor: 650,
+            currency: "EUR",
+            currency_exponent: 2,
+            observed_on: "2026-11-02",
+            source_kind: "customer",
+            observation_kind: "customer_reported_price",
+            price_scope: "drink_item",
+          }],
+          next_after: null,
+        },
+      });
+    }    if (pathname.startsWith("/api/mobile/v2/menu/venues/")) {
       if (options.menuAbsent) return route.fulfill({ status: 404, body: "Not found" });
       if (menuFailures > 0) {
         menuFailures--;

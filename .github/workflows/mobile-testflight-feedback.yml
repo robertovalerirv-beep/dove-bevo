@@ -1,0 +1,37 @@
+name: Read-only TestFlight screenshot feedback
+
+on:
+  push:
+    tags:
+      - "mobile-testflight-feedback-audit/20261103-v1"
+
+permissions:
+  contents: read
+
+jobs:
+  feedback:
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/tags/mobile-testflight-feedback-audit/20261103-v1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify read-only scope and private-output boundaries
+        run: node --test scripts/tests/mobile-testflight-feedback.test.mjs
+      - name: Read and encrypt screenshot feedback
+        run: node scripts/mobile-testflight-feedback.mjs "$RUNNER_TEMP/dovebevo-feedback-20261103.enc.json"
+        env:
+          DOVEBEVO_ASC_PRIVATE_KEY: ${{ secrets.DOVEBEVO_ASC_PRIVATE_KEY }}
+          DOVEBEVO_ASC_KEY_ID: ${{ secrets.DOVEBEVO_ASC_KEY_ID }}
+          DOVEBEVO_ASC_ISSUER_ID: ${{ secrets.DOVEBEVO_ASC_ISSUER_ID }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: encrypted-testflight-feedback
+          path: ${{ runner.temp }}/dovebevo-feedback-20261103.enc.json
+          if-no-files-found: warn
+          retention-days: 1

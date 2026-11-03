@@ -373,6 +373,7 @@ test("visible price-pin head and geographic tip both open the correct venue", as
   const f = await fixture();
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     await f.page.waitForFunction(
       () =>
         document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
@@ -454,6 +455,8 @@ test("orange mobile controls retain readable selected, unselected and focused dr
     await f.page.goto("https://mobile.fixture.test/mobile/");
     const strip = f.page.locator(".mobile-drink-strip");
     await strip.waitFor();
+    assert.equal(await f.page.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"), "true");
+    await strip.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     for (const name of ["Spritz", "Birra media"]) {
       const option = strip
         .locator("label")
@@ -493,6 +496,7 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
   const f = await fixture({ width: 390, height: 844 }, { menu: true });
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     await f.page.locator(".mobile-menu-map-note").waitFor();
     await f.page.waitForFunction(
       () =>
@@ -578,7 +582,7 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
     );
     assert.equal(await f.page.locator(".map__retry").count(), 0);
-    assert.equal(await f.page.locator(".mobile-menu-map-note").count(), 0);
+    assert.match(await f.page.locator(".mobile-menu-map-note").innerText(), /prezzi segnalati/);
     const initialAllRequests = options.cellRequests.filter(
       (request) => request.cell === "u0nd9" && request.categories.length === 0,
     ).length;

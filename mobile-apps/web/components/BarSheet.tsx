@@ -281,7 +281,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     let active = true;
     const controller = new AbortController();
     menuAbort.current = controller;
-    const timeout = setTimeout(() => { controller.abort(); }, 6000);
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 6000);
     setVenue(undefined);
     setPrices(null);
     setPricesFailed(false);
@@ -319,7 +321,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         setMenuLoading(false);
         if (venueKey.startsWith("m")) setVenue(null);
       })
-      .finally(() => { clearTimeout(timeout); });
+      .finally(() => {
+        clearTimeout(timeout);
+      });
     if (!venueKey.startsWith("m"))
       void loadVenuePrices(venueKey)
         .then((value) => {
@@ -341,7 +345,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     setMenuMoreBusy(true);
     setMenuFailed(false);
     const pageController = new AbortController();
-    const cancelPage = () => { pageController.abort(); };
+    const cancelPage = () => {
+      pageController.abort();
+    };
     controller.signal.addEventListener("abort", cancelPage, { once: true });
     const timeout = setTimeout(cancelPage, 6000);
     try {

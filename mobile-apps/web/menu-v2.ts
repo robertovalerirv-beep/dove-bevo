@@ -319,9 +319,7 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
           const all = identity.value;
           const filtered = sampled.value;
           const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
-          const merged = new Map<string, Venue>(
-            legacy.map((venue) => [venue.key, { ...venue }]),
-          );
+          const merged = new Map<string, Venue>(legacy.map((venue) => [venue.key, { ...venue }]));
           for (const row of [
             ...new Map([...all, ...filtered].map((venue) => [venue.key, venue])).values(),
           ]) {
@@ -337,9 +335,7 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
           }
           mobileCellCache.set(cacheKey, Promise.resolve([...merged.values()]));
           if (typeof window !== "undefined")
-            window.dispatchEvent(
-              new CustomEvent("dovebevo:menu-cell-ready", { detail: { cell } }),
-            );
+            window.dispatchEvent(new CustomEvent("dovebevo:menu-cell-ready", { detail: { cell } }));
         });
         return legacy;
       },

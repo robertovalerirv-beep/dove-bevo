@@ -58,3 +58,11 @@ condition = "AND"
 regexTarget = "secret"
 paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/32a80c0940583054a054dded46f4e339577e2035561f68ce64e0e6a5469de6ed\.json$''']
 regexes = ['''^m3d468e889759905d952c66db$''']
+
+# Exact public owner venue identifier for Baccanale Roma source manifest.
+[[rules.allowlists]]
+description = "Baccanale public owner venue identifier"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/8741b7cc070c12d0460866142b0b91f5807fb5259f360625f99fd4899022df64\.json$''']
+regexes = ['''^me54f8d7b3e8a303fed3b9ad2$''']

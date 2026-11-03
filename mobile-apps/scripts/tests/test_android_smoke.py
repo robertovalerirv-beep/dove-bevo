@@ -415,10 +415,25 @@ class AndroidSmokeTests(unittest.TestCase):
             self.assertIsNone(m.menu_venue_row(m.ET.fromstring(invalid)))
 
     def test_venue_detail_requires_matching_name_amount_owner_provenance_and_source(self):
-        detail = ('<hierarchy><node text="The Dome"/><node text="Prezzo da menu"/>'
-                  '<node text="5,50 €"/><node text="Menu verificato il 2026-11-03"/></hierarchy>')
+        detail = ('<hierarchy><node text="The Dome"/><node text="Dal menu del locale">'
+                  '<node text="Spritz"><node text="Prezzo da menu"/>'
+                  '<node text="5,50 €"/><node text="Menu verificato il 2026-11-03"/>'
+                  '</node></node></hierarchy>')
         self.assertEqual(m.menu_detail_state(m.ET.fromstring(detail), 'The Dome'),
                          {'venue': 'The Dome', 'menu_price': '5,50 €'})
+        mixed = ('<hierarchy><node text="The Dome"/><node text="Prezzi segnalati dai clienti">'
+                 '<node text="Birra media 9,00 €"/></node><node text="Dal menu del locale">'
+                 '<node text="Still water 75 cl"><node text="4,00 €"/>'
+                 '<node text="Prezzo da menu"/><node text="Menu verificato il 2026-11-03"/>'
+                 '</node></node></hierarchy>')
+        self.assertEqual(m.menu_detail_state(m.ET.fromstring(mixed), 'The Dome'),
+                         {'venue': 'The Dome', 'menu_price': '4,00 €'})
+        self.assertIsNone(m.menu_detail_state(m.ET.fromstring(
+            mixed.replace('4,00 €', 'nessun prezzo')), 'The Dome'))
+        self.assertIsNone(m.menu_detail_state(m.ET.fromstring(
+            '<hierarchy><node text="The Dome"/><node text="Birra media 9,00 €"/>'
+            '<node text="Prezzo da menu"/><node text="Menu verificato il 2026-11-03"/>'
+            '</hierarchy>'), 'The Dome'))
         for wrong_name, invalid in [('Other venue', detail),
                                     ('The Dome', detail.replace('Prezzo da menu', 'Prezzo segnalato')),
                                     ('The Dome', detail.replace('5,50 €', 'nessun prezzo')),

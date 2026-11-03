@@ -551,13 +551,25 @@ def menu_detail_state(ui, venue_name):
               for value in (node.get("text", ""), node.get("content-desc", "")) if value.strip()]
     if not any(value == venue_name or value.startswith(venue_name + " ") for value in labels):
         return None
-    if not any("Prezzo da menu" in value for value in labels):
-        return None
-    if not any("Menu verificato il" in value for value in labels):
-        return None
-    prices = [match.group(0) for value in labels
-              for match in re.finditer(r"\b[0-9]+(?:\.[0-9]{3})*,[0-9]{2}\s*€", value)]
-    return {"venue": venue_name, "menu_price": prices[0]} if prices else None
+    offers = []
+    for node in ui.iter("node"):
+        descendants = list(node.iter("node"))
+        own_labels = [value.strip() for child in descendants
+                      for value in (child.get("text", ""), child.get("content-desc", "")) if value.strip()]
+        # The whole sheet contains both customer and owner prices. A source
+        # amount must come from a narrower owner-offer subtree, not the first
+        # price shown anywhere on the sheet.
+        if any("Prezzi segnalati dai clienti" in value for value in own_labels):
+            continue
+        if not any("Prezzo da menu" in value for value in own_labels):
+            continue
+        if not any("Menu verificato il" in value for value in own_labels):
+            continue
+        prices = [match.group(0) for value in own_labels
+                  for match in re.finditer(r"\b[0-9]+(?:\.[0-9]{3})*,[0-9]{2}\s*€", value)]
+        if prices:
+            offers.append((len(descendants), prices[0]))
+    return {"venue": venue_name, "menu_price": min(offers, key=lambda offer: offer[0])[1]} if offers else None
 
 
 def wait_for_menu_detail(venue_name):

@@ -85,7 +85,7 @@ async function fixture(options = {}) {
       writes.push(request.method());
       return route.abort();
     }
-    if (pathname === "/")
+    if (pathname === "/" || pathname === "/mobile/")
       return route.fulfill({
         contentType: "text/html",
         body: `<!doctype html><html lang="it" data-theme="light"><head><meta name="viewport" content="width=device-width"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; require-trusted-types-for 'script'; trusted-types default"><link rel="stylesheet" href="/assets/fixtures/fixture.css"></head><body><div id="fixture-root"></div><script type="module" src="/assets/fixtures/fixture.js"></script></body></html>`,
@@ -239,7 +239,7 @@ async function fixture(options = {}) {
       return route.fulfill({ json: { p: priceRows, h: [] } });
     return route.abort();
   });
-  await page.goto("https://sheets.fixture.test/");
+  await page.goto(options.url ?? "https://sheets.fixture.test/");
   await page.waitForFunction(() => window.sheetFixture);
   return { page, writes, close: () => context.close() };
 }
@@ -619,6 +619,64 @@ test("three price actions retain a phone row across languages and confirmation s
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
+  }
+});
+
+test("saved legacy drink opens the exact price and band without creating a contribution", async () => {
+  const f = await fixture({
+    url: "https://sheets.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=gin_tonic&hh=0",
+  });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.getByRole("heading", { name: "Locale di prova <strong>" }).waitFor();
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /8,00 €/);
+    assert.equal(await f.page.getByTestId("saved-drink-unavailable").count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("missing saved happy-hour price is explicit and never features a different band", async () => {
+  const f = await fixture({
+    url: "https://sheets.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=spritz&hh=1",
+  });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.equal(await f.page.locator(".mobile-price--featured").count(), 0);
+    assert.equal(await f.page.getByTestId("saved-menu-offer").count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("saved owner menu drink matches regular context but never conditional or another band", async () => {
+  const key = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  const regular = await fixture({
+    url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&drink=spritz&hh=0`,
+  });
+  try {
+    await regular.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    const saved = regular.page.getByTestId("saved-menu-offer");
+    await saved.waitFor();
+    assert.match(await saved.innerText(), /Spritz <script>[\s\S]*7,50 €/);
+    assert.equal(await regular.page.getByTestId("saved-drink-unavailable").count(), 0);
+    assert.deepEqual(regular.writes, []);
+  } finally {
+    await regular.close();
+  }
+  const happy = await fixture({
+    url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&drink=spritz&hh=1`,
+  });
+  try {
+    await happy.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await happy.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.equal(await happy.page.getByTestId("saved-menu-offer").count(), 0);
+    assert.deepEqual(happy.writes, []);
+  } finally {
+    await happy.close();
   }
 });
 

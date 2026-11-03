@@ -142,7 +142,9 @@ export async function auditFeedback(
   transport = globalThis.fetch,
   auth = tokenFor,
   publicKeyPem,
+  diagnostic = () => {},
 ) {
+  diagnostic("auth", 0);
   const token = auth(env);
   const seenPages = new Set();
   const seenRows = new Set();
@@ -150,6 +152,7 @@ export async function auditFeedback(
   let next = initial;
   let pages = 0;
   while (next && pages < MAX_PAGES) {
+    diagnostic("list_request", 0);
     const target = validPageUrl(next.href);
     if (seenPages.has(target.href)) throw new Error("Repeated feedback page");
     seenPages.add(target.href);
@@ -160,6 +163,7 @@ export async function auditFeedback(
       signal: globalThis.AbortSignal.timeout(20000),
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     });
+    diagnostic("list_response", response.status);
     if (
       response.status !== 200 ||
       response.redirected ||
@@ -167,6 +171,7 @@ export async function auditFeedback(
       !/^application\/json(?:;|$)/i.test(response.headers.get("content-type") ?? "")
     )
       throw new Error("Feedback read unavailable");
+    diagnostic("list_decode", response.status);
     const body = JSON.parse((await bytesOf(response, MAX_JSON_BYTES)).toString("utf8"));
     for (const row of feedbackRows(body)) {
       if (seenRows.has(row.record.id)) throw new Error("Repeated feedback record");
@@ -182,6 +187,7 @@ export async function auditFeedback(
   const images = [];
   for (const [recordIndex, row] of rows.entries()) {
     for (const [imageIndex, url] of row.images.entries()) {
+      diagnostic("image_request", 0);
       if (++imageCount > MAX_IMAGES) throw new Error("Too many feedback images");
       const response = await transport(url.href, {
         method: "GET",
@@ -189,12 +195,14 @@ export async function auditFeedback(
         signal: globalThis.AbortSignal.timeout(20000),
         headers: { Accept: "image/*" },
       });
+      diagnostic("image_response", response.status);
       if (
         response.status !== 200 ||
         response.redirected ||
         (response.url && response.url !== url.href)
       )
         throw new Error("Feedback image read unavailable");
+      diagnostic("image_decode", response.status);
       const extension = imageExtension(response.headers.get("content-type") ?? "");
       const filename = `feedback-${String(recordIndex + 1).padStart(3, "0")}-${imageIndex + 1}.${extension}`;
       const bytes = await bytesOf(response, MAX_IMAGE_BYTES);
@@ -216,6 +224,7 @@ export async function auditFeedback(
     feedback: rows.map(({ record }) => record),
   };
   // No plaintext feedback is written to the public runner artifact path.
+  diagnostic("encrypt", 0);
   await writeFile(outputFile, encryptFeedback({ result, images }, publicKeyPem), {
     flag: "wx",
     mode: 0o600,
@@ -248,6 +257,8 @@ export function encryptFeedback(payload, publicKeyPem) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  let stage = "setup";
+  let status = 0;
   try {
     if (process.argv.length !== 3) throw new Error("Expected ciphertext file");
     const publicKey = await readFile(
@@ -260,6 +271,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       globalThis.fetch,
       tokenFor,
       publicKey,
+      (currentStage, httpStatus) => {
+        stage = currentStage;
+        status = Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599 ? httpStatus : 0;
+      },
     );
     process.stdout.write(
       JSON.stringify({
@@ -268,8 +283,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         image_count: result.image_count,
       }) + "\n",
     );
-  } catch {
-    process.stderr.write("Read-only TestFlight feedback audit unavailable\n");
+  } catch (error) {
+    // Keep tester data, Apple response bodies, URLs, and credentials out of
+    // public Actions logs. Only known internal failure classes are reported.
+    const known = new Map([
+      ["Feedback read unavailable", "http_or_content_type"],
+      ["Unexpected feedback response", "response_schema"],
+      ["Unexpected feedback record", "record_schema"],
+      ["Missing feedback image", "image_schema"],
+      ["Unexpected feedback image host", "image_host"],
+      ["Unexpected feedback image type", "image_type"],
+      ["Unexpected feedback encryption key", "encryption_key"],
+      ["Feedback pagination incomplete", "pagination_limit"],
+      ["Feedback response too large", "size_limit"],
+    ]);
+    const reason = known.get(error?.message) ?? "other";
+    process.stderr.write(`Read-only TestFlight feedback audit unavailable: stage=${stage} status=${status} reason=${reason}\n`);
     process.exitCode = 2;
   }
 }

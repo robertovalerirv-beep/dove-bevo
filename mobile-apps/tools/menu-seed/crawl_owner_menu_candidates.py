@@ -50,6 +50,10 @@ class Held(ValueError):
     """A bounded research item cannot be trusted or fetched."""
 
 
+class RunLimit(Held):
+    """The page budget ended before this venue was fully examined."""
+
+
 @dataclass(frozen=True)
 class Page:
     url: str
@@ -390,7 +394,7 @@ def crawl(raw_queue: bytes, *, maximum: int = 12, offset: int = 0, max_requests:
         current = url
         for redirect_number in range(3):
             if clock() >= deadline or attempts >= max_requests:
-                raise Held("run_limit")
+                raise RunLimit("run_limit")
             host, clean = host_for(current, allow_http_upgrade=True)
             if not owner_host(host):
                 raise Held("third_party_host")
@@ -399,7 +403,7 @@ def crawl(raw_queue: bytes, *, maximum: int = 12, offset: int = 0, max_requests:
             if since < required_gap:
                 sleep(required_gap - since)
             if clock() >= deadline:
-                raise Held("run_limit")
+                raise RunLimit("run_limit")
             attempts += 1
             last_host_time[host] = clock()
             page = fetch(clean)
@@ -420,6 +424,8 @@ def crawl(raw_queue: bytes, *, maximum: int = 12, offset: int = 0, max_requests:
         if host not in robots:
             try:
                 page = bounded_fetch("https://" + host + "/robots.txt")
+            except RunLimit:
+                raise
             except Held as error:
                 if str(error) != "http_404":
                     raise Held("robots_unavailable_" + str(error)) from None
@@ -492,20 +498,35 @@ def crawl(raw_queue: bytes, *, maximum: int = 12, offset: int = 0, max_requests:
                                               "raw_bytes": len(page.raw), "text_sha256": sha(body_text.encode("utf-8")),
                                               "checked_on": today().isoformat(), "first_party_basis": "same_host_and_venue_name_on_landing",
                                               "review_state": "candidate_only", "price_candidates": prices})
+                except RunLimit:
+                    result["status"] = "incomplete"
+                    result["reason"] = "run_limit"
+                    break
                 except Held as error:
                     result["sources"].append({"url": url, "status": "held", "reason": str(error)})
-            result["status"] = "candidate" if any(
-                price["kind_guess"] == "drink"
-                for source in result["sources"] for price in source.get("price_candidates", [])
-            ) else "held"
-            result["reason"] = None if result["status"] == "candidate" else "no_explicit_drink_candidates"
+            if result["status"] != "incomplete":
+                result["status"] = "candidate" if any(
+                    price["kind_guess"] == "drink"
+                    for source in result["sources"] for price in source.get("price_candidates", [])
+                ) else "held"
+                result["reason"] = None if result["status"] == "candidate" else "no_explicit_drink_candidates"
+        except RunLimit:
+            result["status"] = "incomplete"
+            result["reason"] = "run_limit"
         except (Held, ValueError) as error:
             result["reason"] = str(error)
+        if result["status"] == "incomplete":
+            break
+    completed = sum(row["status"] != "incomplete" for row in records)
+    next_offset = offset + completed
+    page_complete = completed == len(chosen)
     report = {"schema_version": 1, "purpose": "review_only_existing_italian_venues", "checked_on": today().isoformat(),
               "queue_sha256": sha(raw_queue), "queue_inventory_complete": queue.get("inventory_complete") is True,
               "queue_candidates": len(rows), "selected_offset": offset,
-              "selected_venues": len(chosen), "next_offset": offset + len(chosen),
-              "remaining_candidates": len(rows) - offset - len(chosen),
+              "selected_venues": len(chosen), "recorded_venues": len(records), "completed_venues": completed,
+              "page_complete": page_complete, "next_offset": next_offset,
+              "retry_offset": None if page_complete else next_offset,
+              "remaining_candidates": len(rows) - next_offset,
               "request_attempts": attempts, "max_requests": max_requests,
               "max_seconds": max_seconds, "candidate_venues": sum(row["status"] == "candidate" for row in records),
               "raw_price_candidates": sum(len(source.get("price_candidates", [])) for row in records for source in row["sources"]),
@@ -562,7 +583,9 @@ def main(argv=None):
                                 max_requests=args.max_requests, max_seconds=args.max_seconds,
                                 pdf_converter=args.pdftotext)
         write_report(Path(args.output), project_root(), report, sources)
-        print(json.dumps({"selected_venues": report["selected_venues"], "next_offset": report["next_offset"],
+        print(json.dumps({"selected_venues": report["selected_venues"], "completed_venues": report["completed_venues"],
+                          "page_complete": report["page_complete"], "next_offset": report["next_offset"],
+                          "retry_offset": report["retry_offset"],
                           "remaining_candidates": report["remaining_candidates"], "request_attempts": report["request_attempts"],
                           "candidate_venues": report["candidate_venues"], "publication_blocked": True}))
         return 0

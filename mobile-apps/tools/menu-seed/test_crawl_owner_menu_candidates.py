@@ -147,6 +147,76 @@ class CandidateCrawlerTests(unittest.TestCase):
         with self.assertRaisesRegex(c.Held, "offset_past_queue_end"):
             c.crawl(source, maximum=2, offset=5, fetch=fetch)
 
+    def test_request_budget_retries_first_unfinished_venue_without_skipping(self):
+        source = queue(row("n1", "Milano", website="https://bar-one.it/"),
+                       row("n2", "Roma", website="https://bar-two.it/"),
+                       row("n3", "Torino", website="https://bar-three.it/"))
+        now = [0.0]
+
+        def fetch(url):
+            if url.endswith("robots.txt"):
+                raise c.Held("http_404")
+            return c.Page(url, "html", b"<h1>Bar Uno</h1>")
+
+        def sleep(seconds):
+            now[0] += seconds
+
+        first, _ = c.crawl(source, maximum=3, max_requests=3, max_seconds=30,
+                           fetch=fetch, clock=lambda: now[0], sleep=sleep)
+        self.assertEqual([r["venue_key"] for r in first["records"]], ["n1", "n2"])
+        self.assertEqual([r["status"] for r in first["records"]], ["held", "incomplete"])
+        self.assertEqual((first["selected_venues"], first["completed_venues"], first["next_offset"],
+                          first["remaining_candidates"]), (3, 1, 1, 2))
+        self.assertFalse(first["page_complete"])
+        self.assertEqual(first["retry_offset"], 1)
+        second, _ = c.crawl(source, maximum=2, offset=first["retry_offset"], max_requests=4,
+                            max_seconds=30, fetch=fetch, clock=lambda: now[0], sleep=sleep)
+        self.assertEqual([r["venue_key"] for r in second["records"]], ["n2", "n3"])
+        self.assertEqual((second["completed_venues"], second["next_offset"], second["remaining_candidates"]),
+                         (2, 3, 0))
+        self.assertTrue(second["page_complete"])
+        self.assertIsNone(second["retry_offset"])
+        self.assertEqual(first["queue_sha256"], second["queue_sha256"])
+        self.assertEqual(first["public_imports"], 0)
+
+    def test_time_budget_inside_first_venue_keeps_cursor_at_start(self):
+        source = queue(row("n1", "Milano"), row("n2", "Roma"))
+        now = [0.0]
+
+        def slow_fetch(url):
+            if url.endswith("robots.txt"):
+                now[0] += 11.0
+                raise c.Held("http_404")
+            self.fail("deadline should stop landing fetch")
+
+        first, _ = c.crawl(source, maximum=2, max_requests=4, max_seconds=10,
+                           fetch=slow_fetch, clock=lambda: now[0], sleep=lambda seconds: now.__setitem__(0, now[0] + seconds))
+        self.assertEqual((first["request_attempts"], first["completed_venues"], first["next_offset"]),
+                         (1, 0, 0))
+        self.assertEqual(first["records"][0]["status"], "incomplete")
+        self.assertEqual(first["retry_offset"], 0)
+        self.assertEqual(first["remaining_candidates"], 2)
+
+    def test_partial_source_evidence_does_not_complete_venue(self):
+        source = queue(row("n1", "Milano"))
+
+        def fetch(url):
+            if url.endswith("robots.txt"):
+                raise c.Held("http_404")
+            if url == "https://bar-uno.it/":
+                html = '<h1>Bar Uno</h1><p>Spritz 5,00 €</p><a href="/menu">Drink menu</a>'
+                return c.Page(url, "html", html.encode("utf-8"))
+            self.fail("menu request should be stopped by the request budget")
+
+        report, evidence = c.crawl(source, maximum=1, max_requests=2, max_seconds=30,
+                                   fetch=fetch, sleep=lambda _: None)
+        self.assertEqual(report["candidate_venues"], 0)
+        self.assertEqual(report["drink_price_candidates"], 1)
+        self.assertEqual(report["records"][0]["status"], "incomplete")
+        self.assertEqual(report["records"][0]["reason"], "run_limit")
+        self.assertEqual(report["next_offset"], 0)
+        self.assertEqual(len(evidence), 1)
+
     def test_live_flow_is_read_only_bounded_and_honors_robots(self):
         calls = []
         clock_value = [0.0]

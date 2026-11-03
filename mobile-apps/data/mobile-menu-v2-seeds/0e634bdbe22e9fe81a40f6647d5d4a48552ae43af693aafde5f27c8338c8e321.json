@@ -7,7 +7,7 @@
   "offers": [
     {
       "amount_minor": 500,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -23,7 +23,7 @@
     },
     {
       "amount_minor": 500,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -39,7 +39,7 @@
     },
     {
       "amount_minor": 600,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -55,7 +55,7 @@
     },
     {
       "amount_minor": 600,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -71,7 +71,7 @@
     },
     {
       "amount_minor": 600,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -87,7 +87,7 @@
     },
     {
       "amount_minor": 600,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -103,7 +103,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -119,7 +119,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -135,7 +135,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -151,7 +151,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -167,7 +167,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -183,7 +183,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -199,7 +199,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -215,7 +215,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -231,7 +231,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",
@@ -247,7 +247,7 @@
     },
     {
       "amount_minor": 800,
-      "category": null,
+      "category": "spritz",
       "cell": "srbj4",
       "condition_text": null,
       "currency": "EUR",

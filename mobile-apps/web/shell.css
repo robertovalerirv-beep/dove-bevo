@@ -286,7 +286,7 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu {
   padding: 8px;
   border: 1px solid var(--line-soft);
   border-radius: 16px;
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 6px 24px rgb(16 24 32 / 18%);
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu > .btn {
@@ -298,18 +298,18 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu > .btn {
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__toggle:focus-visible,
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu > .btn:focus-visible {
-  outline: 3px solid #f78f52;
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 html[data-dovebevo-mobile-shell="1"] .map__attribution {
-  background: rgb(255 255 255 / 90%);
+  background: rgb(255 251 244 / 90%);
 }
 html[data-dovebevo-mobile-shell="1"] .sheet {
   max-height: 95dvh;
   border-top: 0;
 }
 html[data-dovebevo-mobile-shell="1"] .sheet__grip > span {
-  background: #cbd1d7;
+  background: var(--ink-muted);
   height: 4px;
   width: 36px;
 }

@@ -29,9 +29,9 @@
   --map-pill-bg: #fffbf4;
   --map-pill-text: #1b1611;
   --map-pill-border: #1b1611;
-  --focus: #2459b7;
-  --map-focus: #2459b7;
-  --error: #a12332;
+  --focus: #1f4fff;
+  --map-focus: #1f4fff;
+  --error: #b93a0b;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --weight-regular: 400;
@@ -53,8 +53,8 @@
   --radius-lg: 24px;
   --shadow-stampa: none;
   --shadow-premuto: none;
-  --shadow-sheet: 0 -4px 24px rgb(16 24 32 / 0.12);
-  --color-backdrop: rgb(16 24 32 / 0.36);
+  --shadow-sheet: 0 -4px 24px rgb(27 22 17 / 0.12);
+  --color-backdrop: rgb(27 22 17 / 0.45);
   --press: 0px;
 }
 html[data-dovebevo-app-theme="1"] .top {
@@ -82,7 +82,7 @@ html[data-dovebevo-app-theme="1"] .drink-menu__button { min-height: 54px; }
 html[data-dovebevo-app-theme="1"] .drink-menu__list,
 html[data-dovebevo-app-theme="1"] .lang-menu__list {
   border-color: var(--line-soft);
-  box-shadow: 0 8px 24px rgb(16 24 32 / 0.10);
+  box-shadow: 0 8px 24px rgb(27 22 17 / 0.10);
 }
 html[data-dovebevo-app-theme="1"] .drink-option {
   background: var(--surface-2);
@@ -103,7 +103,7 @@ html[data-dovebevo-app-theme="1"] .bottom__primary { font-size: 15px; }
 html[data-dovebevo-app-theme="1"] .legend {
   border-color: var(--line-soft);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgb(16 24 32 / 0.06);
+  box-shadow: 0 2px 8px rgb(27 22 17 / 0.06);
 }
 html[data-dovebevo-app-theme="1"] .legend__item {
   font: var(--type-caption);
@@ -131,7 +131,7 @@ html[data-dovebevo-app-theme="1"] .sheet--bare .sheet__body { padding-top: 0; }
 html[data-dovebevo-app-theme="1"] .sheet__grip > span {
   width: 36px;
   height: 5px;
-  background: #cbd1d7;
+  background: var(--ink-muted);
 }
 html[data-dovebevo-app-theme="1"] .scontrino__paper {
   padding: 8px 0 16px;
@@ -194,7 +194,7 @@ html[data-dovebevo-app-theme="1"] .scontrino .price__actions .btn[aria-disabled=
   opacity: 0.55;
 }
 html[data-dovebevo-app-theme="1"] .field {
-  border-color: #c9d0d7;
+  border-color: var(--line-soft);
   background: var(--surface);
   border-radius: 12px;
 }
@@ -212,7 +212,7 @@ html[data-dovebevo-app-theme="1"] .price-input input {
 }
 html[data-dovebevo-app-theme="1"] .price-input {
   padding: 0 14px;
-  border: 1px solid #c9d0d7;
+  border: 1px solid var(--line-soft);
   border-radius: 12px;
   font-size: 24px;
 }
@@ -238,7 +238,7 @@ html[data-dovebevo-app-theme="1"] .chip:has(input:checked) {
 }
 html[data-dovebevo-app-theme="1"] .row { padding-block: 14px; }
 html[data-dovebevo-app-theme="1"] .hint { line-height: 1.45; }
-html[data-dovebevo-app-theme="1"] .price__stale { color: #9b2938; }
+html[data-dovebevo-app-theme="1"] .price__stale { color: var(--spritz-text); }
 /* Keep the real site dropdown usable, with the same orange selected state. */
 html[data-dovebevo-app-theme="1"] .top { padding: 7px 12px 8px; }
 html[data-dovebevo-app-theme="1"] .drink-menu { margin-top: 6px; }
@@ -265,7 +265,7 @@ html[data-dovebevo-app-theme="1"] .scontrino .prices > .price:not(:first-child) 
 html[data-dovebevo-app-theme="1"] .price[data-dovebevo-collapsed="1"] .price__actions { display: none; }
 html[data-dovebevo-app-theme="1"] .dovebevo-price-toggle {
   grid-column: 1 / -1; justify-self: start; min-height: 48px; padding: 4px 8px; border: 0;
-  background: transparent; color: #315c72; font: 600 13px/1.3 var(--font-sans);
+  background: transparent; color: var(--spritz-text); font: 600 13px/1.3 var(--font-sans);
 }
 html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .sheet__body { padding-top: 8px; }
 html[data-dovebevo-app-theme="1"] .sheet:has(.price-input) .context-tag {
@@ -296,7 +296,7 @@ html[data-dovebevo-app-theme="1"] .context-tag[data-dovebevo-art="spritz"] {
 html[data-dovebevo-app-theme="1"] .context-tag[data-dovebevo-art="spritz"] > .icon { display: none; }
 html[data-dovebevo-app-theme="1"] .dovebevo-drink-art {
   display: block; width: 100%; height: 132px; object-fit: contain;
-  border-radius: 12px; background: #fafafa;
+  border-radius: 12px; background: var(--surface-2);
 }
 @media (max-width: 359px) {
   html[data-dovebevo-app-theme="1"] .scontrino .price {

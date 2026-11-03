@@ -211,8 +211,6 @@ export function transformMap(source, styleURLExpression) {
     'paint: { "circle-radius": 24, "circle-opacity": 0 },',
     'paint: { "circle-radius": id === "price-hit" ? 32 : 24, "circle-opacity": 0, "circle-translate": id === "price-hit" ? [0, -25] : [0, 0], "circle-translate-anchor": "viewport" },',
   );
-  result = once(result, '"circle-color": ink,', '"circle-color": "#eef1f3",');
-  result = once(result, 'paint: { "text-color": bg },', 'paint: { "text-color": "#65717b" },');
   // Price symbols can collide at city zoom. The same selected-filter source also has a
   // non-colliding visible dot, so a priced venue never vanishes as the map zooms out.
   result = once(
@@ -271,26 +269,7 @@ export function transformMap(source, styleURLExpression) {
   return 'import { mobilePinImage } from "@mobile/map-pins";\n' + result;
 }
 
-/** Recolour an existing licensed style; retain sources, names, sprites and attribution. */
+/** Keep the licensed basemap and website palette unchanged for the app. */
 export function mobileMapStyle(original) {
-  const style = structuredClone(original);
-  for (const layer of style.layers) {
-    if (!layer.paint) continue;
-    const name = layer.id.toLowerCase();
-    if (layer.type === "background") layer.paint["background-color"] = "#f5f6f3";
-    if (layer.type === "fill") {
-      layer.paint["fill-color"] = /water|ocean|river/.test(name)
-        ? "#b9dfed"
-        : /park|wood|grass|forest|garden/.test(name)
-          ? "#e3efdf"
-          : /building/.test(name)
-            ? "#e8ebe7"
-            : "#f3f5f0";
-    }
-    if (layer.type === "line" && /road|highway|motorway|street|bridge|tunnel/.test(name))
-      layer.paint["line-color"] = /casing|case|outline/.test(name) ? "#e1e5df" : "#ffffff";
-    if (layer.type === "symbol" && layer.paint["text-color"])
-      layer.paint["text-color"] = /water/.test(name) ? "#618b9c" : "#7b8583";
-  }
-  return style;
+  return structuredClone(original);
 }

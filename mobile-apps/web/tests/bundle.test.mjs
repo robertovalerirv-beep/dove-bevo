@@ -302,7 +302,7 @@ test("production mobile entry renders chips and preserves venue route across rel
       bg: getComputedStyle(el).backgroundColor,
       text: getComputedStyle(el).color,
     }));
-    assert.deepEqual(selected, { bg: "rgb(255, 90, 31)", text: "rgb(16, 24, 32)" });
+    assert.deepEqual(selected, { bg: "rgb(255, 90, 31)", text: "rgb(27, 22, 17)" });
     await chips.getByRole("checkbox", { name: "Spritz", exact: true }).focus();
     await f.page.keyboard.press("Space");
     assert.equal(

@@ -218,7 +218,7 @@ test("compile-time seams preserve original source and reject upstream drift", ()
   assert.equal(read("app/lib/maplibre-map.ts"), map);
 });
 
-test("map restyling retains licensed source and attribution identity", () => {
+test("mobile map preserves the licensed website style and palette exactly", () => {
   const original = {
     sources: { world: { attribution: "OSM", url: "https://tiles.openfreemap.org/planet" } },
     sprite: "same",
@@ -227,7 +227,7 @@ test("map restyling retains licensed source and attribution identity", () => {
   const result = mobileMapStyle(original);
   assert.deepEqual(result.sources, original.sources);
   assert.equal(result.sprite, original.sprite);
-  assert.equal(result.layers[0].paint["fill-color"], "#b9dfed");
+  assert.deepEqual(result, original);
   assert.equal(original.layers[0].paint["fill-color"], "red");
 });
 

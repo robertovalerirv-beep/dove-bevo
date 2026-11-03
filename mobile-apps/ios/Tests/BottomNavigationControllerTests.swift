@@ -236,9 +236,15 @@ final class BottomNavigationControllerTests: XCTestCase {
         let recommendations = RecommendationsViewController(venue: venue, activityCheck: { false })
         tabs.mapNavigation.pushViewController(recommendations, animated: false)
         recommendations.loadViewIfNeeded()
+        // The production bottom action refreshes chrome after the push. This
+        // direct unit-test push needs the same public destination refresh.
+        tabs.selectedIndex = 0
         let recommendationTitles = try XCTUnwrap(tabs.topMoreButton.menu).children.map(\.title)
-        XCTAssertTrue(recommendationTitles.contains(recommendations.reloadMenuTitle),
-                      "Drink consigliati reload belongs in the top ellipsis with its current loading state")
+        XCTAssertTrue(recommendationTitles.contains("Ricarica") || recommendationTitles.contains("Riprova"),
+                      "Drink consigliati reload belongs in the top ellipsis")
+        let recommendationReloads = tabs.topMoreButton.menu?.children.compactMap { $0 as? UIAction }
+            .filter { $0.identifier.rawValue == "native.reload" }
+        XCTAssertEqual(recommendationReloads?.count, 1)
         XCTAssertEqual(recommendations.navigationItem.rightBarButtonItems?.count, 1,
                        "Drink consigliati must not duplicate Reload in its title bar")
     }

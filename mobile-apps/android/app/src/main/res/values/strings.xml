@@ -3,13 +3,14 @@
     <string name="app_name">Dove bevo</string>
     <string name="back">Indietro</string>
     <string name="forward">Avanti</string>
-    <string name="home">Home</string>
+    <string name="home">Cerca</string>
     <string name="share">Condividi</string>
     <string name="refresh">Ricarica</string>
     <string name="stop_loading">Interrompi</string>
     <string name="loading_stopped_title">Caricamento interrotto</string>
     <string name="loading_stopped_body">Tocca Riprova quando vuoi caricare Dove bevo.</string>
     <string name="more_options">Altre opzioni</string>
+    <string name="more_short">Altro</string>
     <string name="more_symbol" translatable="false">⋮</string>
     <string name="privacy">Privacy</string>
     <string name="support">Contatta l’assistenza</string>
@@ -87,7 +88,7 @@
     <string name="discovery_title">Scopri</string>
     <string name="discovery_explanation">Confronta i prezzi segnalati nella zona che stai guardando sulla Mappa.</string>
     <string name="discovery_choose_area">Scegli zona sulla Mappa</string>
-    <string name="discovery_unready">Apri una città e avvicina la Mappa, poi torna su Home per confrontare i prezzi della zona.</string>
+    <string name="discovery_unready">Apri una città e avvicina la Mappa, poi torna su Scopri per confrontare i prezzi della zona.</string>
     <string name="discovery_unavailable">Prezzi della zona non verificabili. Controlla la connessione e aggiorna.</string>
     <string name="discovery_loaded">%1$d prezzi per questo drink, per valuta e formato.</string>
     <string name="discovery_empty">Nessun prezzo segnalato per questo drink e questa fascia nella zona letta. Prova un altro drink o un’altra zona.</string>

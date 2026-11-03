@@ -145,9 +145,9 @@ export function PriceForm({
               }}
             />
           </label>
-        ) : (
+        ) : serving.unit !== "drink" ? (
           <p class="hint">{servingLabel(serving)}</p>
-        )}
+        ) : null}
         <p class="europe-currency" role="note">
           {t("Prezzo in ", "Price in ")}
           {venue.currency} ({venue.currency === "GBP" ? "£" : "€"}) ·{" "}

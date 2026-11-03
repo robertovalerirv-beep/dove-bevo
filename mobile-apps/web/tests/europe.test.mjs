@@ -279,6 +279,9 @@ async function openLondon(f, venue = true) {
     await f.page.waitForFunction(
       () => !document.querySelector(".europe-coverage")?.textContent.includes("Caricamento"),
     );
+  await f.page
+    .getByRole("combobox", { name: "Scegli cosa bere", exact: true })
+    .selectOption("spritz");
 }
 async function changeCity(page, name) {
   await page.getByRole("button", { name: "Cambia città", exact: true }).click();
@@ -446,7 +449,9 @@ test("beer formats and quarantined prices are never merged into one cheap price"
   const f = await fixture();
   try {
     await openLondon(f, false);
-    await f.page.getByRole("radio", { name: "Birra media", exact: true }).click();
+    await f.page
+      .getByRole("combobox", { name: "Scegli cosa bere", exact: true })
+      .selectOption("beer_draft");
     const formats = f.page.getByRole("combobox", { name: "Formato da confrontare" });
     assert.deepEqual(await formats.locator("option").allTextContents(), ["400 ml", "568 ml"]);
     assert.equal(await formats.inputValue(), "ml:400");
@@ -571,6 +576,9 @@ test("Retry refreshes the catalogue after a deployed version change", async () =
     await f.page.getByRole("alert").waitFor();
     await f.page.getByRole("button", { name: "Riprova", exact: true }).click();
     await f.page.locator("h2.scontrino__name").waitFor();
+    await f.page
+      .getByRole("combobox", { name: "Scegli cosa bere", exact: true })
+      .selectOption("spritz");
     assert.equal(f.reads.filter((v) => v === "/mobile-data/catalog.json").length, 2);
     assert.equal(await f.page.getByRole("alert").count(), 0);
     assert.match(await f.page.locator(".mobile-price--featured").innerText(), /7,50/);
@@ -763,6 +771,13 @@ test("legacy Italian search opens real app catalogue coordinates without synthet
     await input.press("ArrowDown");
     await input.press("Enter");
     await f.page.locator(".europe-app .europe-search").waitFor();
+    const nativeSearch = f.page.locator('.europe-app button[data-dovebevo-search="1"]');
+    assert.equal(await nativeSearch.count(), 1, "Cerca also opens the European city picker");
+    await nativeSearch.click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("textbox", { name: "Cerca una città o un bar" })
+      .waitFor();
     const url = new URL(f.page.url());
     assert.equal(url.pathname, "/mobile/");
     assert.equal(url.searchParams.get("at"), "51.50790,-0.12780");
@@ -801,7 +816,7 @@ test("European venue and city search privacy links use the approved app policy",
   }
 });
 
-test("European price actions and orange drink choices remain readable on small phones", async () => {
+test("European price actions and selected drink dropdown remain readable on small phones", async () => {
   let release;
   const holdConfirm = new Promise((resolve) => {
     release = resolve;
@@ -809,10 +824,13 @@ test("European price actions and orange drink choices remain readable on small p
   const f = await fixture({ holdConfirm });
   try {
     await openLondon(f, false);
-    for (const name of ["Spritz", "Birra media"]) {
-      const chip = f.page.getByRole("radio", { name, exact: true });
-      await chip.focus();
-      const colors = await chip.evaluate((element) => {
+    const drinkSelect = f.page.getByRole("combobox", { name: "Scegli cosa bere", exact: true });
+    assert.equal(await drinkSelect.inputValue(), "spritz");
+    assert.equal(await drinkSelect.locator("option").count(), 9);
+    for (const code of ["spritz", "beer_draft"]) {
+      await drinkSelect.selectOption(code);
+      await drinkSelect.focus();
+      const colors = await drinkSelect.evaluate((element) => {
         const style = getComputedStyle(element);
         return {
           background: style.backgroundColor,
@@ -821,7 +839,6 @@ test("European price actions and orange drink choices remain readable on small p
           outlineStyle: style.outlineStyle,
         };
       });
-      if (name === "Spritz") assert.equal(colors.background, "rgb(255, 90, 31)");
       assert.ok(contrastRatio(colors.text, colors.background) >= 4.5, JSON.stringify(colors));
       assert.equal(colors.outlineStyle, "solid");
       assert.ok(contrastRatio(colors.outline, colors.background) >= 4.5, JSON.stringify(colors));

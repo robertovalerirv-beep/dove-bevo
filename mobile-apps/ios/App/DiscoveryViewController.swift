@@ -15,10 +15,10 @@ final class DiscoveryViewController: UITableViewController {
     private var visible = false
     private var lifecycleActive = true
     private var busy = false
-    private var drink = DrinkCategory.all.first { $0.code == "spritz" } ?? DrinkCategory.all[0]
+    private var drink = DrinkCategory.all[0]
     private var band = ComparisonBand.normal
     private var renderedCategory: UIContentSizeCategory?
-    private var drinkButtons: [DiscoveryCategoryButton] = []
+    private let drinkSelector = UIButton(type: .system)
     private let bands = ComparisonBandSelector()
     private let statusLabel = UILabel()
     private lazy var refreshButton = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
@@ -61,28 +61,13 @@ final class DiscoveryViewController: UITableViewController {
         heading.accessibilityTraits = .header
         let introduction = label("I prezzi nella zona della mappa", style: .footnote)
         introduction.textColor = NativeAppearance.muted
-        let scroll = UIScrollView()
-        scroll.showsHorizontalScrollIndicator = false
-        scroll.accessibilityIdentifier = "discovery.drinks"
-        let choices = UIStackView()
-        choices.axis = .horizontal; choices.spacing = 8; choices.translatesAutoresizingMaskIntoConstraints = false
-        scroll.addSubview(choices)
-        for (index, category) in DrinkCategory.all.enumerated() {
-            let button = DiscoveryCategoryButton(category: category)
-            button.tag = index
-            button.accessibilityIdentifier = "discovery.drink.\(category.code)"
-            button.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
-            button.widthAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
-            button.addTarget(self, action: #selector(drinkTapped), for: .touchUpInside)
-            choices.addArrangedSubview(button); drinkButtons.append(button)
-        }
-        NSLayoutConstraint.activate([
-            choices.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
-            choices.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
-            choices.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor, constant: 4),
-            choices.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor, constant: -4),
-            scroll.heightAnchor.constraint(equalTo: choices.heightAnchor, constant: 8)
-        ])
+        drinkSelector.accessibilityIdentifier = "discovery.drinkSelector"
+        drinkSelector.accessibilityLabel = "Scegli cosa bere"
+        drinkSelector.accessibilityHint = "Apre l'elenco dei drink disponibili"
+        drinkSelector.showsMenuAsPrimaryAction = true
+        drinkSelector.contentHorizontalAlignment = .leading
+        drinkSelector.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        drinkSelector.configuration = .bordered()
         bands.accessibilityIdentifier = "discovery.band"
         bands.accessibilityLabel = "Fascia di prezzo"
         bands.addTarget(self, action: #selector(bandChanged), for: .valueChanged)
@@ -91,7 +76,7 @@ final class DiscoveryViewController: UITableViewController {
         statusLabel.textColor = NativeAppearance.muted
         statusLabel.adjustsFontForContentSizeCategory = true
         let header = UIView()
-        let stack = UIStackView(arrangedSubviews: [heading, introduction, scroll, bands, statusLabel])
+        let stack = UIStackView(arrangedSubviews: [heading, introduction, drinkSelector, bands, statusLabel])
         stack.axis = .vertical; stack.spacing = 8; stack.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -174,15 +159,18 @@ final class DiscoveryViewController: UITableViewController {
         guard isViewLoaded else { return }
         let allRows = snapshot?.displayRows(drink: drink.code, band: band) ?? []
         rows = Array(allRows.prefix(200))
-        for (index, button) in drinkButtons.enumerated() {
-            let category = DrinkCategory.all[index], selected = category == drink
-            let categoryRows = snapshot?.displayRows(drink: category.code, band: band) ?? []
-            let available = snapshot.map { $0.unavailableCells.count != $0.area.cells.count } ?? false
-            button.update(summary: DiscoveryCategorySummary(rows: categoryRows, loading: busy, available: available), selected: selected)
-        }
+        var selectorConfiguration = drinkSelector.configuration ?? .bordered()
+        selectorConfiguration.title = drink.name
+        drinkSelector.configuration = selectorConfiguration
+        drinkSelector.accessibilityValue = drink.name
+        drinkSelector.menu = UIMenu(title: "Scegli cosa bere", children: DrinkCategory.all.map { category in
+            UIAction(title: category.name, state: category == drink ? .on : .off) { [weak self] _ in
+                self?.selectDrink(category.code)
+            }
+        })
         refreshButton.isEnabled = canRead && area != nil && !busy
         if area == nil {
-            statusLabel.text = "Apri Mappa, scegli una città o avvicina la mappa, poi tocca Home per confrontare i prezzi in quella zona."
+            statusLabel.text = "Apri Mappa, scegli una città o avvicina la mappa, poi torna su Scopri per confrontare i prezzi in quella zona."
             statusLabel.accessibilityIdentifier = "discovery.chooseArea"
         } else if busy {
             statusLabel.text = "Caricamento dei prezzi della zona…"
@@ -212,10 +200,6 @@ final class DiscoveryViewController: UITableViewController {
     func selectDrink(_ code: String) {
         guard let category = DrinkCategory.all.first(where: { $0.code == code }) else { return }
         drink = category; render()
-    }
-    @objc private func drinkTapped(_ sender: UIButton) {
-        guard DrinkCategory.all.indices.contains(sender.tag) else { return }
-        selectDrink(DrinkCategory.all[sender.tag].code)
     }
     @objc private func bandChanged() { band = bands.selectedBand; render() }
     @objc private func showMap() { onMap() }

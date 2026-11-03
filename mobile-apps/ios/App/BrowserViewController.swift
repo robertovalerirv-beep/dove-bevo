@@ -32,6 +32,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private let favouriteSave = FavouriteSaveCapture()
     private var favouriteSaveTimeout: DispatchWorkItem?
     private var pageLoading = false
+    private var searchPending = false
     private var browserVisible = false
     private let bookmarkCapture: VenueBookmarkCapture
     private let recommendationClient: RecommendationServing
@@ -45,15 +46,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     var onShowFavourites: (() -> Void)?
     var isMapDestinationSelected: (() -> Bool)?
     var onVenueActionsChanged: ((Bool) -> Void)?
+    var onMoreMenuChanged: ((UIMenu) -> Void)?
 
     private lazy var backButton = item("Indietro", symbol: "chevron.backward", action: #selector(goBack), id: "browser.back")
     private lazy var forwardButton = item("Avanti", symbol: "chevron.forward", action: #selector(goForward), id: "browser.forward")
-    private lazy var moreButton: UIBarButtonItem = {
-        let button = UIBarButtonItem(image: UIImage(systemName: "ellipsis.circle"), menu: moreMenu())
-        button.accessibilityLabel = "Altre opzioni"
-        button.accessibilityIdentifier = "browser.more"
-        return button
-    }()
 
     init(savedVenues: SavedVenueStore = SavedVenueStore(), bookmarkCapture: VenueBookmarkCapture = VenueBookmarkCapture(),
          savedDrinks: SavedDrinkStore = SavedDrinkStore(),
@@ -109,23 +105,25 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             bookmarkLifecycleActive = true
         }
         updateMoreMenu()
+        dispatchPendingSearch()
     }
 
     private func configureChrome() {
-        // Keep the browser header independent of the enclosing Mappa tab item.
-        navigationItem.title = "Dove bevo"
+        // The map uses the full viewport; browser actions live in the bottom bar.
+        navigationItem.title = nil
         view.backgroundColor = NativeAppearance.canvas
         navigationController?.navigationBar.prefersLargeTitles = false
         NativeAppearance.configure(navigationController)
 
-        navigationItem.rightBarButtonItem = moreButton
-        navigationItem.leftBarButtonItems = [backButton]
         backButton.isEnabled = false
         forwardButton.isEnabled = false
     }
 
-    private func moreMenu() -> UIMenu {
+    func moreMenu() -> UIMenu {
         UIMenu(children: [
+            UIAction(title: "Indietro", image: UIImage(systemName: "chevron.backward"), identifier: UIAction.Identifier("browser.back"), attributes: backButton.isEnabled ? [] : [.disabled]) { [weak self] _ in
+                self?.goBack()
+            },
             UIAction(title: "Condividi", image: UIImage(systemName: "square.and.arrow.up"), identifier: UIAction.Identifier("browser.share"), attributes: canSharePage ? [] : [.disabled]) { [weak self] _ in
                 self?.sharePage()
             },
@@ -208,7 +206,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private func updateMoreMenu() {
         // Refresh from the complete page state, even when save eligibility did
         // not change (for example home loading, finish, stop and recovery).
-        if isViewLoaded { navigationItem.rightBarButtonItem?.menu = moreMenu() }
+        if isViewLoaded { onMoreMenuChanged?(moreMenu()) }
         onVenueActionsChanged?(canSaveCurrentVenue)
     }
 
@@ -477,6 +475,32 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
     @objc func goHome() { loadWebsite(MobileEntry.homeURL) }
 
+    func openMapSearch() {
+        searchPending = true
+        loadViewIfNeeded()
+        guard MobileEntry.isDocument(webView.url) else {
+            loadWebsite(MobileEntry.homeURL)
+            return
+        }
+        dispatchPendingSearch()
+    }
+
+    func cancelPendingSearch() { searchPending = false }
+
+    private func dispatchPendingSearch() {
+        guard searchPending, let webView, MobileEntry.isDocument(webView.url),
+              hasLoadedPage, !pageLoading, !webView.isLoading, errorView.isHidden,
+              navigationController?.topViewController === self, isBookmarkInteractionActive,
+              isMapDestinationSelected?() != false else { return }
+        searchPending = false
+        webView.evaluateJavaScript(MobileEntry.searchScript, in: nil, in: .defaultClient) { [weak self] result in
+            guard case .success(let value) = result, (value as? Bool) == true else {
+                self?.showAlert(title: "Cerca non disponibile", message: "Riprova quando la mappa è pronta.")
+                return
+            }
+        }
+    }
+
     /// Read only when Home is explicitly tapped on the real visible visitor
     /// page. Any navigation, backgrounding or destination change retires it.
     func captureDiscoveryArea(completion: @escaping (DiscoveryArea?) -> Void) {
@@ -700,7 +724,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         present(sheet, animated: true)
     }
 
-    private func openCurrentPageInBrowser() {
+    func openCurrentPageInBrowser() {
         openExternal(currentWebsiteURL)
     }
 
@@ -967,6 +991,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         progressView.isHidden = true
         updateLoadingControl(false)
         updateMoreMenu()
+        if usable { dispatchPendingSearch() }
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {

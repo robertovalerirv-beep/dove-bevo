@@ -80,6 +80,7 @@ public final class NativeUsabilityRuntimeTest {
               content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
             <meta name="owned-response" content="OWNED_RESPONSE">
             <title>Owned native fixture</title><p>Local browser fixture</p>
+            <button data-dovebevo-search="1" onclick="document.body.dataset.searchOpen='1'">Cerca città o bar</button>
             <button id="open-venue" style="min-height:64px;width:240px"
               onclick="document.querySelector('section.map').setAttribute('data-selected','n123');history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')">Open owned venue fixture</button>
             <section class="map" data-selected="OWNED_VENUE_KEY"></section>
@@ -325,30 +326,30 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals("Entry/GET must not publish a recommendation", 0, posts.get());
     }
 
-    @Test public void fiveBottomControlsRemainVisibleAndOverflowHasNoDestinationDuplicates() throws Exception {
+    @Test public void sixBottomControlsRemainVisibleAndOverflowHasNoDestinationDuplicates() throws Exception {
         onMain(() -> {
             android.view.ViewGroup bottom = activity.findViewById(R.id.bottom_navigation);
             assertNotNull(bottom);
             for (int id : new int[]{R.id.home, R.id.map_destination, R.id.favorites_destination,
-                    R.id.save_venue, R.id.recommendation_entry}) {
+                    R.id.save_venue, R.id.recommendation_entry, R.id.more}) {
                 View control = bottom.findViewById(id);
                 assertNotNull(control); assertEquals(View.VISIBLE, control.getVisibility());
             }
             assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
             assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
-            android.view.ViewGroup top = activity.findViewById(R.id.browser_tools);
-            assertEquals(3, top.getChildCount());
-            int historyActions=0;
-            for(int i=0;i<top.getChildCount();i++) if(top.getChildAt(i) instanceof Button) historyActions++;
-            assertEquals("The compact header has Back and More",2,historyActions);
-            assertNull(top.findViewById(R.id.forward));
-            assertNull(top.findViewById(R.id.home)); assertNull(top.findViewById(R.id.save_venue));
+            assertNull("The map has no duplicate browser header", activity.findViewById(R.id.browser_tools));
+            assertNull("Back remains in Android system navigation and overflow", bottom.findViewById(R.id.back));
+            assertSame("Overflow is the last bottom action", bottom.findViewById(R.id.more),
+                    ((android.view.ViewGroup)bottom.getChildAt(bottom.getChildCount()-1)).getChildAt(
+                            ((android.view.ViewGroup)bottom.getChildAt(bottom.getChildCount()-1)).getChildCount()-1));
             assertNull(activity.findViewById(R.id.share)); assertNull(activity.findViewById(R.id.refresh));
             android.view.Menu menu = browserMenu().getMenu();
             assertNotNull(menu.findItem(R.id.share)); assertNotNull(menu.findItem(R.id.refresh));
             assertNotNull(menu.findItem(R.id.forward));
+            assertNotNull(menu.findItem(R.id.back));
+            assertNotNull(menu.findItem(R.id.discover_action));
             for (int id : new int[]{R.id.home, R.id.map_destination, R.id.favorites_destination,
-                    R.id.saved_venues, R.id.save_venue, R.id.recommendation_entry}) assertNull(menu.findItem(id));
+                    R.id.saved_venues, R.id.save_venue, R.id.recommendation_entry, R.id.more}) assertNull(menu.findItem(id));
         });
         navigate(ONE);
         WebView original = web;
@@ -385,10 +386,19 @@ public final class NativeUsabilityRuntimeTest {
             assertFalse((Boolean)get("favoritesVisible"));
             assertSame(original, get("website"));
         });
+        AtomicBoolean searchOpened = new AtomicBoolean();
+        await(()->{
+            web.evaluateJavascript("document.body.dataset.searchOpen === '1'", result -> searchOpened.set("true".equals(result)));
+            return searchOpened.get();
+        });
+        onMain(()->{
+            assertFalse((Boolean)get("discoveryVisible"));
+            assertFalse(activity.findViewById(R.id.home).isSelected());assertTrue(activity.findViewById(R.id.map_destination).isSelected());
+            assertEquals(APP_ONE,web.getUrl());assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.discover_action,0));
+        });
         await(()->(Boolean)get("discoveryVisible"));
         onMain(()->{
-            assertTrue(activity.findViewById(R.id.home).isSelected());assertFalse(activity.findViewById(R.id.map_destination).isSelected());
-            assertEquals(APP_ONE,web.getUrl());assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
             assertTrue(((TextView)activity.findViewById(R.id.discovery_status)).getText().toString().contains("Apri una città"));
             activity.findViewById(R.id.map_destination).performClick();assertFalse((Boolean)get("discoveryVisible"));assertEquals(APP_ONE,web.getUrl());assertSame(original,get("website"));
         });
@@ -439,13 +449,13 @@ public final class NativeUsabilityRuntimeTest {
                 android.content.res.Configuration config = new android.content.res.Configuration(activity.getResources().getConfiguration());
                 config.screenWidthDp = (int)fixture[0]; config.fontScale = fixture[1];
                 android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
-                BottomNavigationBar bar = new BottomNavigationBar(context, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
+                BottomNavigationBar bar = new BottomNavigationBar(context, () -> {}, () -> {}, () -> {}, () -> {}, () -> {}, v -> {});
                 float density = context.getResources().getDisplayMetrics().density;
                 int width = Math.round(fixture[0] * density);
                 bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 bar.layout(0, 0, width, bar.getMeasuredHeight());
                 java.util.ArrayList<android.graphics.Rect> boxes = new java.util.ArrayList<>();
-                for (int id : new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
+                for (int id : new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry,R.id.more}) {
                     Button button = bar.findViewById(id); assertNotNull(button);
                     assertEquals(View.VISIBLE, button.getVisibility());
                     assertTrue(button.getWidth() >= 48*density); assertTrue(button.getHeight() >= 48*density);
@@ -471,7 +481,7 @@ public final class NativeUsabilityRuntimeTest {
             config.screenWidthDp = 640; config.fontScale = 1.5f;
             android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
             AtomicInteger taps = new AtomicInteger();
-            BottomNavigationBar bar = new BottomNavigationBar(context, taps::incrementAndGet, () -> {}, () -> {}, () -> {}, () -> {});
+            BottomNavigationBar bar = new BottomNavigationBar(context, taps::incrementAndGet, () -> {}, () -> {}, () -> {}, () -> {}, v -> {});
             View originalHome = bar.findViewById(R.id.home);
             float density = context.getResources().getDisplayMetrics().density;
             for (int widthDp : new int[]{640,320,640,360,640}) {
@@ -480,7 +490,7 @@ public final class NativeUsabilityRuntimeTest {
                 bar.layout(0,0,width,bar.getMeasuredHeight());
                 assertEquals(widthDp==640?1:2,bar.getChildCount());
                 assertSame(originalHome,bar.findViewById(R.id.home));
-                for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
+                for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry,R.id.more}) {
                     Button button=bar.findViewById(id);
                     assertTrue(button.getWidth()>=48*density); assertTrue(button.getHeight()>=48*density);
                     assertNotNull(button.getLayout());
@@ -532,17 +542,18 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals("light",state.getString(2));
     }
 
-    @Test public void compactHeaderKeepsNamedHistoryControlsVisibleAtNarrowWidth() {
+    @Test public void bottomOverflowRemainsReachableWithoutBrowserHeaderAtNarrowWidth() {
         onMain(()->{
             if(Build.VERSION.SDK_INT>=26) assertTrue("Light system navigation must request dark controls",
                     (activity.getWindow().getDecorView().getSystemUiVisibility()&View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR)!=0);
-            LinearLayout header=(LinearLayout)invoke("createBrowserTools");
+            assertNull(activity.findViewById(R.id.browser_tools));
+            BottomNavigationBar bottom=(BottomNavigationBar)activity.findViewById(R.id.bottom_navigation);
             float density=activity.getResources().getDisplayMetrics().density;
             int width=Math.round(320*density);
-            header.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
-            header.layout(0,0,width,header.getMeasuredHeight());
-            for(int id:new int[]{R.id.back,R.id.more}) {
-                Button action=header.findViewById(id);
+            bottom.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
+            bottom.layout(0,0,width,bottom.getMeasuredHeight());
+            for(int id:new int[]{R.id.home,R.id.more}) {
+                Button action=bottom.findViewById(id);
                 assertNotNull(action);assertTrue(action.getWidth()>=48*density);assertTrue(action.getHeight()>=48*density);
                 assertNotNull(action.getContentDescription());assertTrue(action.getContentDescription().length()>1);
                 assertNotNull(action.getLayout());

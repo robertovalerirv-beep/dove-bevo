@@ -64,16 +64,19 @@ function customerDate(row: CustomerRow): string {
 /** App-only source menu plus separate, public customer observations. */
 export function CustomerPricesV2({
   menu,
+  venue,
   focus,
   offerFocus,
   hasLegacyPrices,
 }: {
-  menu: MenuPage;
+  menu: MenuPage | null;
+  venue: { key: string; cell: string; country: string };
   focus: DrinkFocus | null;
   offerFocus: string | null;
   hasLegacyPrices: boolean;
 }) {
-  const { key, cell, country } = menu.venue;
+  const { key, cell, country } = menu?.venue ?? venue;
+  const offers = menu?.offers ?? [];
   const [rows, setRows] = useState<CustomerRow[]>([]);
   const [nativeOfferSave, setNativeOfferSave] = useState(nativeOfferSaveEnabled);
   const [nextAfter, setNextAfter] = useState<string | null>(null);
@@ -218,7 +221,7 @@ export function CustomerPricesV2({
         ? { currency: selected.offer.currency, exponent: selected.offer.currency_exponent }
         : selected.row
           ? { currency: selected.row.currency, exponent: selected.row.currency_exponent }
-          : customerCurrency(country, menu.offers);
+          : customerCurrency(country, offers);
     const amountMinor = money && parseCustomerAmount(amount, money.exponent);
     if (!money || amountMinor === null) {
       setSubmitError("Inserisci un importo valido nella valuta indicata.");
@@ -311,20 +314,20 @@ export function CustomerPricesV2({
   }
 
   const orderedOffers = offerFocus
-    ? [...menu.offers].sort((a, b) => Number(b.id === offerFocus) - Number(a.id === offerFocus))
+    ? [...offers].sort((a, b) => Number(b.id === offerFocus) - Number(a.id === offerFocus))
     : focus
-      ? [...menu.offers].sort(
+      ? [...offers].sort(
           (a, b) =>
             Number(menuOfferMatchesFocus(b, focus)) - Number(menuOfferMatchesFocus(a, focus)),
         )
-      : menu.offers;
+      : offers;
   const observations = new Map(
     rows
       .filter((row) => row.kind === "menu_offer" && row.offer_id)
       .map((row) => [row.offer_id, row]),
   );
   const additional = rows.filter((row) => row.kind === "new_drink");
-  const newCurrency = customerCurrency(country, menu.offers);
+  const newCurrency = customerCurrency(country, offers);
   const chosenCurrency =
     editor?.kind === "menu_offer"
       ? { currency: editor.offer.currency, exponent: editor.offer.currency_exponent }
@@ -469,87 +472,89 @@ export function CustomerPricesV2({
     );
   }
 
+  if (!menu && loadState === "missing") return null;
+
   return (
     <>
-      <ul class="mobile-menu-v2__offers">
-        {orderedOffers.map((offer) => {
-          const customer = observations.get(offer.id);
-          const exactSaved = offerFocus === offer.id;
-          const categorySaved = focus !== null && menuOfferMatchesFocus(offer, focus);
-          return (
-            <li
-              key={offer.id}
-              class={`mobile-menu-v2__offer${exactSaved || categorySaved ? " mobile-menu-v2__offer--focused" : ""}`}
-              data-testid={
-                exactSaved ? "saved-exact-offer" : categorySaved ? "saved-menu-offer" : undefined
-              }
-            >
-              <span class="mobile-menu-v2__name">
-                {offer.name}
-                <small class="mobile-menu-v2__provenance">Prezzo da menu</small>
-                {exactSaved ? (
-                  <small class="mobile-menu-v2__saved">Questo drink è nei tuoi preferiti</small>
-                ) : (
-                  categorySaved && (
-                    <small class="mobile-menu-v2__saved">
-                      Stesso tipo di drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
-                    </small>
-                  )
-                )}
-              </span>
-              <strong class="mobile-menu-v2__amount">
-                {menuMoney(offer.amount_minor, offer.currency, offer.currency_exponent)}
-              </strong>
-              <span class="mobile-menu-v2__meta">
-                {[
-                  offer.serving.label ?? (offer.serving.ml ? `${String(offer.serving.ml)} ml` : ""),
-                  offer.context.kind === "happy_hour"
-                    ? ["Happy hour", offer.context.condition].filter(Boolean).join(" · ")
-                    : offer.context.kind === "conditional"
-                      ? offer.context.condition
-                        ? `Solo con: ${offer.context.condition}`
-                        : "Prezzo condizionato"
-                      : (offer.context.condition ?? ""),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
-              <a
-                href={offer.source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="mobile-menu-v2__source"
+      {offers.length > 0 && (
+        <ul class="mobile-menu-v2__offers">
+          {orderedOffers.map((offer) => {
+            const customer = observations.get(offer.id);
+            const exactSaved = offerFocus === offer.id;
+            const categorySaved = focus !== null && menuOfferMatchesFocus(offer, focus);
+            return (
+              <li
+                key={offer.id}
+                class={`mobile-menu-v2__offer${exactSaved || categorySaved ? " mobile-menu-v2__offer--focused" : ""}`}
+                data-testid={
+                  exactSaved ? "saved-exact-offer" : categorySaved ? "saved-menu-offer" : undefined
+                }
               >
-                Menu verificato il {offer.source.checked_on}
-              </a>
-              {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
+                <span class="mobile-menu-v2__name">
+                  {offer.name}
+                  <small class="mobile-menu-v2__provenance">Prezzo da menu</small>
+                  {exactSaved ? (
+                    <small class="mobile-menu-v2__saved">Questo drink è nei tuoi preferiti</small>
+                  ) : (
+                    categorySaved && (
+                      <small class="mobile-menu-v2__saved">
+                        Stesso tipo di drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
+                      </small>
+                    )
+                  )}
+                </span>
+                <strong class="mobile-menu-v2__amount">
+                  {menuMoney(offer.amount_minor, offer.currency, offer.currency_exponent)}
+                </strong>
+                <span class="mobile-menu-v2__meta">
+                  {[
+                    offer.serving.label ??
+                      (offer.serving.ml ? `${String(offer.serving.ml)} ml` : ""),
+                    offer.context.kind === "happy_hour"
+                      ? ["Happy hour", offer.context.condition].filter(Boolean).join(" · ")
+                      : offer.context.kind === "conditional"
+                        ? offer.context.condition
+                          ? `Solo con: ${offer.context.condition}`
+                          : "Prezzo condizionato"
+                        : (offer.context.condition ?? ""),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
                 <a
-                  href={mobileOfferSaveURL(key, cell, offer.id)}
-                  class="btn btn--secondary mobile-menu-v2__save"
+                  href={offer.source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mobile-menu-v2__source"
                 >
-                  Salva questo drink
+                  Menu verificato il {offer.source.checked_on}
                 </a>
-              )}
-              {customer && observation(customer)}
-              {loadState === "ready" && (
-                <button
-                  type="button"
-                  class="btn btn--secondary mobile-customer-v2__update"
-                  disabled={resolvingOffer !== null || saving || moreBusy}
-                  onClick={() => {
-                    void beginOffer(offer);
-                  }}
-                >
-                  Prezzo diverso? Aggiorna
-                </button>
-              )}
-              {editor?.kind === "menu_offer" && editor.offer.id === offer.id && priceForm}
-            </li>
-          );
-        })}
-      </ul>
-      {menu.offers.length === 0 && (
-        <p class="hint">Nessun drink da un menu verificato per questo locale.</p>
+                {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
+                  <a
+                    href={mobileOfferSaveURL(key, cell, offer.id)}
+                    class="btn btn--secondary mobile-menu-v2__save"
+                  >
+                    Salva questo drink
+                  </a>
+                )}
+                {customer && observation(customer)}
+                {loadState === "ready" && (
+                  <button
+                    type="button"
+                    class="btn btn--secondary mobile-customer-v2__update"
+                    disabled={resolvingOffer !== null || saving || moreBusy}
+                    onClick={() => {
+                      void beginOffer(offer);
+                    }}
+                  >
+                    Prezzo diverso? Aggiorna
+                  </button>
+                )}
+                {editor?.kind === "menu_offer" && editor.offer.id === offer.id && priceForm}
+              </li>
+            );
+          })}
+        </ul>
       )}
       <section class="mobile-customer-v2" aria-label="Prezzi segnalati dai clienti">
         <h4>Prezzi segnalati dai clienti</h4>
@@ -562,7 +567,7 @@ export function CustomerPricesV2({
             Caricamento segnalazioni…
           </p>
         )}
-        {loadState === "missing" && (
+        {loadState === "missing" && !hasLegacyPrices && (
           <p class="hint">Le segnalazioni dei clienti non sono ancora disponibili qui.</p>
         )}
         {loadState === "failed" && (
@@ -584,8 +589,12 @@ export function CustomerPricesV2({
             {rows.length === 0 && (
               <p class="hint">
                 {hasLegacyPrices
-                  ? "Nessun altro prezzo segnalato per i drink del menu."
-                  : "Nessun prezzo segnalato per i drink del menu."}
+                  ? offers.length === 0
+                    ? "Nessun altro prezzo segnalato."
+                    : "Nessun altro prezzo segnalato per i drink del menu."
+                  : offers.length === 0
+                    ? "Nessun prezzo segnalato ancora."
+                    : "Nessun prezzo segnalato per i drink del menu."}
               </p>
             )}
             {additional.length > 0 && (

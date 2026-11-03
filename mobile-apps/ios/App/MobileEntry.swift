@@ -4,6 +4,16 @@ import Foundation
 enum MobileEntry {
     static let homeURL = URL(string: "https://www.dovebevo.com/mobile/")!
     static let markerScript = "document.documentElement.getAttribute('data-dovebevo-mobile-shell') === '1'"
+    static let searchScript = """
+    (() => {
+      if (document.documentElement.getAttribute('data-dovebevo-mobile-shell') !== '1' ||
+          !['/mobile/', '/mobile/index.html'].includes(location.pathname)) return false;
+      const button = document.querySelector('button[data-dovebevo-search="1"], button.search-field, button.europe-search');
+      if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+      button.click();
+      return true;
+    })()
+    """
 
     static func publicVenue(_ url: URL?) -> URL? {
         guard let url, url.absoluteString.utf8.count <= 512, URLPolicy.isWebsite(url),

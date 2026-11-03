@@ -42,6 +42,7 @@
     <item name="favorite_open" type="id" />
     <item name="favorite_remove" type="id" />
     <item name="discovery_screen" type="id" />
+    <item name="discover_action" type="id" />
     <item name="discovery_drink" type="id" />
     <item name="discovery_band" type="id" />
     <item name="discovery_status" type="id" />

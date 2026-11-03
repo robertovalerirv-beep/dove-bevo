@@ -25,20 +25,23 @@ final class DiscoveryCardsTests: XCTestCase {
         XCTAssertEqual(DiscoveryCategorySummary(rows: [], loading: false, available: false).headline, "Prezzi non caricati")
     }
 
-    @MainActor func testPhotographicFiltersKeepAllNineRealCategoriesAndSelectedIdentity() throws {
+    @MainActor func testDrinkDropdownKeepsAllNineRealCategoriesAndSelectedIdentity() throws {
         let controller = DiscoveryViewController(activityCheck: { false }, onOpen: { _ in }, onMap: {})
         controller.loadViewIfNeeded()
-        let cards = descendants(controller.view).compactMap { $0 as? DiscoveryCategoryButton }
-        XCTAssertEqual(cards.count, 9)
-        XCTAssertEqual(Set(cards.compactMap(\.accessibilityIdentifier)), Set(DrinkCategory.all.map { "discovery.drink.\($0.code)" }))
-        let spritz = try XCTUnwrap(cards.first { $0.accessibilityIdentifier == "discovery.drink.spritz" })
-        XCTAssertTrue(spritz.isSelected)
-        XCTAssertTrue(descendants(spritz).compactMap { $0 as? UIImageView }.contains { $0.image != nil })
-        XCTAssertTrue(spritz.accessibilityValue?.contains("Immagine illustrativa") == true)
-        let beer = try XCTUnwrap(cards.first { $0.accessibilityIdentifier == "discovery.drink.beer_draft" })
-        beer.sendActions(for: .touchUpInside)
-        XCTAssertTrue(beer.isSelected); XCTAssertFalse(spritz.isSelected)
-        let size = beer.systemLayoutSizeFitting(CGSize(width: 132, height: 0),
+        let selector = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? UIButton }.first {
+            $0.accessibilityIdentifier == "discovery.drinkSelector"
+        })
+        XCTAssertEqual(selector.accessibilityLabel, "Scegli cosa bere")
+        XCTAssertEqual(selector.accessibilityValue, "Birra media")
+        XCTAssertTrue(selector.showsMenuAsPrimaryAction)
+        let initialOptions = selector.menu?.children.compactMap { $0 as? UIAction } ?? []
+        XCTAssertEqual(initialOptions.map(\.title), DrinkCategory.all.map(\.name))
+        XCTAssertEqual(initialOptions.filter { $0.state == .on }.map(\.title), ["Birra media"])
+        controller.selectDrink("spritz")
+        XCTAssertEqual(selector.accessibilityValue, "Spritz")
+        let updatedOptions = selector.menu?.children.compactMap { $0 as? UIAction } ?? []
+        XCTAssertEqual(updatedOptions.filter { $0.state == .on }.map(\.title), ["Spritz"])
+        let size = selector.systemLayoutSizeFitting(CGSize(width: 320, height: 0),
             withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel)
         XCTAssertGreaterThanOrEqual(size.height, 48)
     }

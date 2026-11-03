@@ -4,6 +4,6 @@ package com.dovebevo.app;
 final class BottomNavigationLayout {
     private BottomNavigationLayout() {}
     static int columns(int widthDp, float fontScale) {
-        return widthDp / 5f >= 72f * Math.max(1f, fontScale) ? 5 : 3;
+        return widthDp / 6f >= 64f * Math.max(1f, fontScale) ? 6 : 3;
     }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { UNDO_MS } from "@site/shared/config";
 import { createPortal } from "preact/compat";
-import { CATALOG as DRINKS } from "@site/shared/catalog";
+import { CATALOG as DRINKS, DEFAULT_DRINK } from "@site/shared/catalog";
 import { currentLang, it } from "@site/app/i18n/lang";
 import { useLang } from "@site/app/lib/use-lang";
 import { holdableTimeout, type HoldableTimer } from "@site/app/lib/timer";
@@ -74,7 +74,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
     [venueKey, setVenueKey] = useState<string | null>(initialVenue?.key ?? null);
   const initialFocus = initialVenue ? mobileFocus(location) : null;
   const [savedFocus, setSavedFocus] = useState<DrinkFocus | null>(initialFocus);
-  const [drink, setDrink] = useState(initialFocus?.drink ?? "spritz"),
+  const [drink, setDrink] = useState(initialFocus?.drink ?? DEFAULT_DRINK),
     [band, setBand] = useState<0 | 1>(initialFocus?.hh ?? 0),
     [serveChoice, setServeChoice] = useState("");
   const [loaded, setLoaded] = useState<{ scope: string; snapshot: Snapshot } | null>(null),
@@ -510,6 +510,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
         <div class="europe-search-row">
           <button
             class="europe-search"
+            data-dovebevo-search="1"
             aria-label={it.search.open}
             onClick={() => {
               setPicker(true);
@@ -523,47 +524,50 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
             {city.currency} ({city.currency === "GBP" ? "£" : "€"})
           </span>
         </div>
-        <div class="europe-drinks" role="radiogroup" aria-label={it.map.drinks}>
-          {DRINKS.map((d) => (
-            <button
-              role="radio"
-              aria-checked={drink === d.code}
-              class={drink === d.code ? "selected" : ""}
-              key={d.code}
-              onClick={() => {
-                setDrink(d.code);
-                setSavedFocus(null);
-                setServeChoice("");
-              }}
-            >
-              {it.drinks[d.code] ?? d.code}
-            </button>
-          ))}
-        </div>
+        <label class="europe-drinks">
+          {it.map.pickDrinks}
+          <select
+            aria-label={it.map.pickDrinks}
+            value={drink}
+            onChange={(event) => {
+              setDrink(event.currentTarget.value);
+              setSavedFocus(null);
+              setServeChoice("");
+            }}
+          >
+            {DRINKS.map((d) => (
+              <option value={d.code} key={d.code}>
+                {it.drinks[d.code] ?? d.code}
+              </option>
+            ))}
+          </select>
+        </label>
         <div class="europe-filter-row">
-          <label>
-            {t("Formato", "Serving")}{" "}
-            <select
-              aria-label={t("Formato da confrontare", "Serving to compare")}
-              value={serving ? servingKey(serving) : ""}
-              onChange={(event) => {
-                setServeChoice(event.currentTarget.value);
-              }}
-            >
-              {available.length === 0 && (
-                <option value={serving ? servingKey(serving) : ""}>
-                  {serving
-                    ? servingLabel(serving)
-                    : t("Nessun formato con prezzi", "No priced servings")}
-                </option>
-              )}
-              {available.map((s) => (
-                <option key={servingKey(s)} value={servingKey(s)}>
-                  {servingLabel(s)}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!(serving?.unit === "drink" && available.length <= 1) && (
+            <label>
+              {t("Formato", "Serving")}{" "}
+              <select
+                aria-label={t("Formato da confrontare", "Serving to compare")}
+                value={serving ? servingKey(serving) : ""}
+                onChange={(event) => {
+                  setServeChoice(event.currentTarget.value);
+                }}
+              >
+                {available.length === 0 && (
+                  <option value={serving ? servingKey(serving) : ""}>
+                    {serving
+                      ? servingLabel(serving)
+                      : t("Nessun formato con prezzi", "No priced servings")}
+                  </option>
+                )}
+                {available.map((s) => (
+                  <option key={servingKey(s)} value={servingKey(s)}>
+                    {servingLabel(s)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label class="europe-band">
             <input
               type="checkbox"
@@ -630,7 +634,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
             ? t("Prezzi non disponibili. Riprova.", "Prices unavailable. Retry.")
             : !snapshot
               ? t("Caricamento prezzi…", "Loading prices…")
-              : `${String(visiblePriced)} ${t("locali su", "venues out of")} ${String(visibleVenues.length)} ${t("qui hanno un prezzo per", "here have a price for")} ${it.drinks[drink] ?? drink}${serving ? ` · ${servingLabel(serving)}` : ""}`}
+              : `${String(visiblePriced)}/${String(visibleVenues.length)} ${t("con prezzo", "with prices")}${serving && serving.unit !== "drink" ? ` · ${servingLabel(serving)}` : ""}`}
         </div>
         <div class="map__attribution">
           <a href="https://openfreemap.org" target="_blank" rel="noopener">
@@ -778,10 +782,16 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
         >
           <div class="mobile-price-flow">
             <p>
-              {city.name} · {city.currency} ·{" "}
-              {serving
-                ? servingLabel(serving)
-                : t("Formato non selezionato", "No serving selected")}
+              {city.name} · {city.currency}
+              {serving?.unit !== "drink" && (
+                <>
+                  {" "}
+                  ·{" "}
+                  {serving
+                    ? servingLabel(serving)
+                    : t("Formato non selezionato", "No serving selected")}
+                </>
+              )}
             </p>
             <ul class="rows">
               {venues.map((v) => {
@@ -1016,7 +1026,9 @@ function PriceItem({
       <span class="price__name">
         {it.drinks[row.drink] ?? row.drink}
         {row.hh ? " · Happy hour" : ""}
-        <span class="europe-serving">{servingLabel(row.serving)}</span>
+        {row.serving.unit !== "drink" && (
+          <span class="europe-serving">{servingLabel(row.serving)}</span>
+        )}
       </span>
       <span class={`price__value price__value--${tier}${stale ? " price__value--stale" : ""}`}>
         {money(row.amount_minor, row.currency)}

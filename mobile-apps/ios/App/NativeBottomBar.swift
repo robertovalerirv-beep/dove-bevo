@@ -1,40 +1,44 @@
 import UIKit
 
 enum BottomNavigationAction: Int, CaseIterable {
-    case home, map, favourites, save, recommendations
+    case home, map, favourites, save, recommendations, more
 
     var title: String {
         switch self {
-        case .home: return "Home"
+        case .home: return "Cerca"
         case .map: return "Mappa"
         case .favourites: return "Preferiti"
         case .save: return "Salva"
         case .recommendations: return "Consigliati"
+        case .more: return "Altro"
         }
     }
     var label: String {
         switch self {
         case .save: return "Salva nei preferiti"
         case .recommendations: return "Drink consigliati"
+        case .more: return "Altre opzioni"
         default: return title
         }
     }
     var identifier: String {
         switch self {
-        case .home: return "browser.home"
+        case .home: return "tab.search"
         case .map: return "tab.map"
         case .favourites: return "tab.favorites"
         case .save: return "browser.saveVenue"
         case .recommendations: return "browser.recommendations"
+        case .more: return "browser.more"
         }
     }
     var symbol: String {
         switch self {
-        case .home: return "house"
+        case .home: return "magnifyingglass"
         case .map: return "map"
         case .favourites: return "bookmark"
         case .save: return "bookmark"
         case .recommendations: return "hand.thumbsup"
+        case .more: return "ellipsis"
         }
     }
 }
@@ -94,7 +98,7 @@ final class NativeBottomBar: UIView {
             button.addTarget(self, action: #selector(selectAction), for: .touchUpInside)
             buttons.append(button)
         }
-        arrange(columns: 5)
+        arrange(columns: 6)
         update(destination: 0, venueActionsEnabled: false)
     }
 
@@ -106,7 +110,7 @@ final class NativeBottomBar: UIView {
             update(destination: destination, venueActionsEnabled: venueActionsEnabled)
         }
         let usableWidth = bounds.width - safeAreaInsets.left - safeAreaInsets.right
-        let requiredColumns = usableWidth < 360 || traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 3 : 5
+        let requiredColumns = usableWidth < 390 || traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 3 : 6
         if bounds.width > 0 && columns != requiredColumns { arrange(columns: requiredColumns) }
         super.layoutSubviews()
         updateContentHeights()
@@ -151,7 +155,7 @@ final class NativeBottomBar: UIView {
         self.venueActionsEnabled = venueActionsEnabled
         for action in BottomNavigationAction.allCases {
             let button = button(for: action)
-            let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .home && destination == 2)
+            let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .more && destination == 2)
             let enabled = action != .save && action != .recommendations || venueActionsEnabled
             var configuration = UIButton.Configuration.plain()
             let fill = selected ? NativeAppearance.accent : NativeAppearance.chrome
@@ -166,7 +170,7 @@ final class NativeBottomBar: UIView {
                 attributes.font = titleFont
                 return attributes
             }
-            let symbol = selected && (action == .map || action == .favourites || action == .home) ? "\(action.symbol).fill" : action.symbol
+            let symbol = selected && (action == .map || action == .favourites) ? "\(action.symbol).fill" : action.symbol
             configuration.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 20))
             configuration.imagePlacement = .top
             configuration.imagePadding = 4
@@ -189,7 +193,7 @@ final class NativeBottomBar: UIView {
             if !enabled { traits.insert(.notEnabled) }
             button.accessibilityTraits = traits
         }
-        button(for: .save).accessibilityHint = "Salva il nome esistente nei preferiti privati di questo dispositivo"
+        button(for: .save).accessibilityHint = "Salva un drink di questo locale nei preferiti privati di questo dispositivo"
         button(for: .recommendations).accessibilityHint = "Mostra i consigli sui drink condivisi da tutti"
     }
 

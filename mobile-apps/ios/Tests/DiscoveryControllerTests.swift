@@ -4,15 +4,14 @@ import XCTest
 @testable import DoveBevo
 
 final class DiscoveryControllerTests: XCTestCase {
-    @MainActor func testReferenceDiscoveryPrivateFixtureRendersCompactPhotoCardsAndRealRows() throws {
+    @MainActor func testReferenceDiscoveryPrivateFixtureRendersDrinkSelectorAndRealRows() throws {
         let (controller, mounted) = try referenceFixture(category: .large)
         defer { mounted.close() }
-        let cards = descendants(controller.view).compactMap { $0 as? DiscoveryCategoryButton }
-        XCTAssertEqual(cards.count, 9)
-        for card in cards {
-            XCTAssertGreaterThanOrEqual(card.bounds.height, 100)
-            XCTAssertLessThanOrEqual(card.bounds.height, 145, "Regular photo filters must remain compact")
-        }
+        let selector = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? UIButton }.first {
+            $0.accessibilityIdentifier == "discovery.drinkSelector"
+        })
+        XCTAssertGreaterThanOrEqual(selector.bounds.height, 48)
+        XCTAssertEqual(selector.accessibilityValue, "Spritz")
         let first = try XCTUnwrap(controller.tableView.cellForRow(at: IndexPath(row: 0, section: 0)))
         XCTAssertTrue(first.window === mounted.window)
         XCTAssertGreaterThanOrEqual(first.bounds.height, 48)
@@ -47,6 +46,7 @@ final class DiscoveryControllerTests: XCTestCase {
         let controller = DiscoveryViewController(client: client, activityCheck: { true }, onOpen: { _ in }, onMap: {})
         let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
         controller.setArea(area)
+        controller.selectDrink("spritz")
         let mounted = try OwnedReferenceWindow(root: UINavigationController(rootViewController: controller), category: category)
         let requested = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in client.calls.count == 1 }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [requested], timeout: 5), .completed)
@@ -76,7 +76,9 @@ final class DiscoveryControllerTests: XCTestCase {
         let venue = DiscoveryVenue(key: "n123", name: "Real current name", cell: "u0nd9", latitude: 45.4642, longitude: 9.19,
                                    address: "Via pubblica", city: "Milano", prices: [price])
         client.complete(0, DiscoverySnapshot(area: area, venues: [venue], unavailableCells: []))
-        XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 1, "Both platforms start on the real Spritz filter")
+        XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 0, "Both platforms start on the first real drink filter")
+        controller.selectDrink("spritz")
+        XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 1)
         controller.selectDrink("beer_draft")
         XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 0, "A beer filter cannot show a Spritz price")
         controller.selectDrink("spritz")

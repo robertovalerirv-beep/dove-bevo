@@ -1,6 +1,6 @@
 import UIKit
 
-/// Three retained destinations and two venue actions share one native bottom bar.
+/// Map, favourites and Discover remain retained; Search opens the map search.
 /// Actions never select an empty controller or replace the browser's history.
 final class NativeTabsController: UIViewController, UINavigationControllerDelegate {
     private let store: SavedVenueStore
@@ -32,6 +32,9 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         controller.onVenueActionsChanged = { [weak self] enabled in
             self?.venueActionsAvailable = enabled
             self?.refreshBottomBar()
+        }
+        controller.onMoreMenuChanged = { [weak self] _ in
+            self?.refreshMoreMenu()
         }
         return controller
     }()
@@ -85,11 +88,14 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         NativeAppearance.configure(mapNavigation)
         NativeAppearance.configure(favouritesNavigation)
         NativeAppearance.configure(discoveryNavigation)
+        mapNavigation.setNavigationBarHidden(true, animated: false)
         [content, bottomBackground, bottomBar].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         }
         bottomBar.onSelect = { [weak self] action in self?.performBottomAction(action) }
+        bottomBar.button(for: .more).showsMenuAsPrimaryAction = true
+        refreshMoreMenu()
         NSLayoutConstraint.activate([
             content.topAnchor.constraint(equalTo: view.topAnchor),
             content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -168,6 +174,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         guard index != destinationIndex else { refreshBottomBar(); return }
         let previous = activeNavigation
         destinationIndex = index
+        if index != 0 { browser.cancelPendingSearch() }
         browser.retireVenueActions()
         guard isViewLoaded else { return }
         let next = activeNavigation
@@ -197,28 +204,72 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         guard isViewLoaded else { return }
         let enabled = destinationIndex == 0 && mapNavigation.topViewController === browser && venueActionsAvailable
         bottomBar.update(destination: destinationIndex, venueActionsEnabled: enabled)
+        refreshMoreMenu()
+    }
+
+    private func refreshMoreMenu() {
+        guard isViewLoaded else { return }
+        let discover = UIAction(title: "Scopri", image: UIImage(systemName: "safari"), identifier: UIAction.Identifier("tab.discover")) { [weak self] _ in
+            self?.openDiscovery()
+        }
+        if destinationIndex == 0 && mapNavigation.topViewController === browser {
+            bottomBar.button(for: .more).menu = UIMenu(children: browser.moreMenu().children + [discover])
+            return
+        }
+        bottomBar.button(for: .more).menu = UIMenu(children: [
+            discover,
+            UIAction(title: "Privacy", image: UIImage(systemName: "hand.raised"), identifier: UIAction.Identifier("native.privacy")) { [weak self] _ in
+                self?.showPrivacyFromMore()
+            },
+            UIAction(title: "Informazioni", image: UIImage(systemName: "info.circle"), identifier: UIAction.Identifier("native.information")) { [weak self] _ in
+                self?.showInformationFromMore()
+            }
+        ])
+    }
+
+    func showPrivacyFromMore() {
+        activeNavigation.pushViewController(PrivacyViewController(), animated: true)
+    }
+
+    func showInformationFromMore() {
+        let information = AppInformationViewController(onMap: { [weak self] in self?.selectedIndex = 0 }, onBrowser: { [weak self] in self?.browser.openCurrentPageInBrowser() })
+        activeNavigation.pushViewController(information, animated: true)
+    }
+
+    private func openDiscovery() {
+        browser.retireVenueActions()
+        if selectedIndex == 0 && mapNavigation.topViewController === browser {
+            let intent = UUID(); homeIntent = intent
+            browser.captureDiscoveryArea { [weak self] area in
+                guard let self, self.homeIntent == intent, self.selectedIndex == 0 else { return }
+                self.discovery.setArea(area)
+                self.selectedIndex = 2
+            }
+        } else { selectedIndex = 2 }
     }
 
     private func performBottomAction(_ action: BottomNavigationAction) {
         switch action {
         case .home:
-            browser.retireVenueActions()
-            if selectedIndex == 0 && mapNavigation.topViewController === browser {
-                let intent = UUID(); homeIntent = intent
-                browser.captureDiscoveryArea { [weak self] area in
-                    guard let self, self.homeIntent == intent, self.selectedIndex == 0 else { return }
-                    self.discovery.setArea(area)
-                    self.selectedIndex = 2
-                }
-            } else { selectedIndex = 2 }
+            mapNavigation.popToRootViewController(animated: false)
+            selectedIndex = 0
+            browser.openMapSearch()
         case .map: selectedIndex = 0
         case .favourites: selectedIndex = 1
         case .save, .recommendations:
             guard selectedIndex == 0, mapNavigation.topViewController === browser, venueActionsAvailable else { return }
             if action == .save { browser.saveCurrentVenue() }
             else { browser.showRecommendations() }
+        case .more:
+            break
         }
         refreshBottomBar()
+    }
+
+    func navigationController(_ navigationController: UINavigationController, willShow viewController: UIViewController, animated: Bool) {
+        if navigationController === mapNavigation {
+            navigationController.setNavigationBarHidden(viewController === browser, animated: animated)
+        }
     }
 
     func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {

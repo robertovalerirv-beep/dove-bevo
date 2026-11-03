@@ -684,7 +684,9 @@ public final class NativeUsabilityRuntimeTest {
             ((Button) get("forwardButton")).performClick();
         });
         await(() -> APP_ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
-        assertOwnedDocument(1);
+        // WebView exposes a restored history URL before its main document is ready.
+        // Keep this a real rendering assertion: a permanently blank entry still times out.
+        awaitOwnedDocumentAt(APP_ONE, 1);
     }
 
     @Test public void firstLoadStopOffersRetryAndARealServerFailureStillShowsRecovery() throws Exception {
@@ -873,6 +875,33 @@ public final class NativeUsabilityRuntimeTest {
 
     private android.widget.PopupMenu browserMenu() {
         return (android.widget.PopupMenu) invoke("createBrowserMenu", new Class<?>[]{View.class}, activity.findViewById(R.id.more));
+    }
+
+    private void awaitOwnedDocumentAt(String expectedUrl, int minimumToken) throws Exception {
+        String predicate = "(() => {const m=document.querySelector('meta[name=owned-response]');"
+                + "return location.href===" + org.json.JSONObject.quote(expectedUrl)
+                + "&&m!==null&&Number(m.content)>=" + minimumToken
+                + "&&!navigator.serviceWorker.controller;})()";
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+        int stableChecks = 0;
+        AtomicReference<String> last = new AtomicReference<>();
+        while (System.nanoTime() < deadline) {
+            CountDownLatch measured = new CountDownLatch(1);
+            onMain(() -> web.evaluateJavascript(predicate, value -> {
+                last.set(value);
+                measured.countDown();
+            }));
+            assertTrue("Restored document identity callback missing", measured.await(5, TimeUnit.SECONDS));
+            if ("true".equals(last.get())) {
+                if (++stableChecks >= 2) {
+                    assertOwnedDocument(minimumToken);
+                    return;
+                }
+            } else stableChecks = 0;
+            SystemClock.sleep(100);
+        }
+        fail("Restored forward entry never rendered the owned document: " + expectedUrl
+                + " last=" + last.get() + " events=" + String.join(" | ", events));
     }
 
     private void assertOwnedDocument(int minimumToken) throws Exception {

@@ -915,6 +915,7 @@
   line-height: 1.3;
   pointer-events: none;
 }
+
 /* App-only customer prices remain visually distinct from cited menu facts. */
 .scontrino.mobile-venue .mobile-customer-v2 {
   margin: 16px 0 0;

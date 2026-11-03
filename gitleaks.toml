@@ -1,0 +1,14 @@
+title = "Dove Bevo secret scanning"
+
+[extend]
+useDefault = true
+
+# The owner-verified venue key is a public SHA-derived venue identifier, not a credential.
+# Scope this exception to its exact value and manifest, and retain every default rule.
+[[allowlists]]
+description = "Dambo public owner venue identifier in its pinned menu manifest"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "secret"
+paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/351634d027e740a1f8840697fb58187e1b4aa3ef6d09f8bf7ee2badfc6bd163c5\.json$''']
+regexes = ['''^m4900240db731f0b53e2b7bf6$''']

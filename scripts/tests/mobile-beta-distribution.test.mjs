@@ -322,6 +322,91 @@ test("feedback build 278 is exact and rejects the historical build 62 plan befor
   assert.ok(publicGroup.calls.every((call) => call.method === "GET"));
 });
 
+test("a future exact build can be audited and distributed only with its own approved plan", async () => {
+  const future = "301";
+  const f = fixture({ buildId: "build-301", number: future, targetNumber: future });
+  const audited = await f.audit();
+  assert.equal(audited.complete, true);
+  assert.equal(audited.ready, true);
+  assert.equal(audited.plan.build_number, future);
+  assert.equal(audited.plan.build_id, "build-301");
+  assert.ok(f.calls.every((call) => call.method === "GET"));
+
+  const oldPlan = (await fixture().audit()).plan;
+  const oldBytes = planBytes(oldPlan);
+  const oldHash = sha256(oldBytes);
+  assert.throws(() => validatePlan(oldBytes, oldHash, future));
+  let touched = false;
+  await assert.rejects(
+    applyBetaDistribution(
+      new Proxy(
+        {},
+        {
+          get: () => {
+            touched = true;
+            assert.fail("credential access");
+          },
+        },
+      ),
+      {
+        bytes: oldBytes,
+        approvedSha: oldHash,
+        buildNumber: future,
+        checkpoint: async () => {
+          touched = true;
+        },
+        transport: async () => {
+          touched = true;
+          assert.fail("provider access");
+        },
+      },
+    ),
+  );
+  assert.equal(touched, false);
+
+  const bytes = planBytes(audited.plan);
+  assert.equal(validatePlan(bytes, sha256(bytes), future).build_id, "build-301");
+  const applied = await f.apply(audited.plan);
+  assert.equal(applied.complete, true);
+  assert.equal(applied.after.build_id, "build-301");
+  assert.deepEqual(
+    f.calls.filter((call) => call.method === "POST").map((call) => call.path),
+    [
+      "/v1/betaGroups/owner-group/relationships/builds",
+      "/v1/betaGroups/roberto-group/relationships/builds",
+      "/v1/betaAppReviewSubmissions",
+    ],
+  );
+});
+
+test("invalid or noncanonical new build numbers fail before credential or provider access", async () => {
+  for (const buildNumber of ["0", "0301", "301.0", "-1", "9999999999", 301, "301\n"]) {
+    let touched = false;
+    await assert.rejects(
+      auditBetaDistribution(
+        new Proxy(
+          {},
+          {
+            get: () => {
+              touched = true;
+              assert.fail("credential access");
+            },
+          },
+        ),
+        {
+          buildNumber,
+          now,
+          transport: async () => {
+            touched = true;
+            assert.fail("provider access");
+          },
+        },
+      ),
+    );
+    assert.equal(touched, false);
+  }
+});
+
 test("no uploaded exact build yields no plan or mutation", async () => {
   const f = fixture({ noBuild: true });
   const receipt = await f.audit();

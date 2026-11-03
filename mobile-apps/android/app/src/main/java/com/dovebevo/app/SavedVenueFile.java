@@ -16,8 +16,13 @@ final class SavedVenueFile implements SavedVenueStore.Storage {
     private final File temporary;
 
     SavedVenueFile(File directory) {
-        file = new File(directory, "saved-venues-v1.bin");
-        temporary = new File(directory, "saved-venues-v1.tmp");
+        this(directory, "saved-venues-v1");
+    }
+
+    SavedVenueFile(File directory, String name) {
+        if (!name.equals("saved-venues-v1") && !name.equals("saved-drinks-v1")) throw new IllegalArgumentException("Unknown private store");
+        file = new File(directory, name + ".bin");
+        temporary = new File(directory, name + ".tmp");
     }
 
     @Override public byte[] read() throws IOException {

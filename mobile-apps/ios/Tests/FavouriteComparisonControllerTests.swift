@@ -60,7 +60,7 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             let header = try XCTUnwrap(controller.tableView.tableHeaderView)
             XCTAssertGreaterThan(header.bounds.height, 0)
             let headerLabels = descendants(header).compactMap { $0 as? UILabel }
-            for expected in ["Confronta i tuoi posti", "Scegli cosa bere e confronta i prezzi segnalati nei tuoi preferiti.",
+            for expected in ["I tuoi preferiti", "Locali e drink salvati solo in questa app. I prezzi si aggiornano da internet.",
                              "Prezzi segnalati aggiornati. Ogni prezzo mostra la sua data."] {
                 let label = try XCTUnwrap(headerLabels.first { $0.text == expected && !$0.isHidden })
                 XCTAssertGreaterThan(label.bounds.width, 0)
@@ -140,14 +140,15 @@ final class FavouriteComparisonControllerTests: XCTestCase {
     func testCoordinatorRetainsMapStackUntilFavouriteIntentThenPopsToSameBrowser() throws {
         try withStore { store in
             let saved = ComparisonFixtures.saved("n123")
-            try store.save(url: saved.url, label: saved.label)
+            let drinkStore = SavedDrinkStore(directoryURL: store.fileURL.deletingLastPathComponent().appendingPathComponent("coordinator-drinks", isDirectory: true))
+            try drinkStore.save(SavedDrink.validated(url: saved.url, label: saved.label, drink: "spritz", band: .normal))
             let client = DelayedFavouriteService()
             var websiteLoads: [URL] = []
             let browser = BrowserViewController(savedVenues: store, websiteLoader: { _, request in
                 if let url = request.url { websiteLoads.append(url) }
                 return nil
             })
-            let tabs = NativeTabsController(store: store, comparisonClient: client, browser: browser)
+            let tabs = NativeTabsController(store: store, comparisonClient: client, drinkStore: drinkStore, browser: browser)
             assertDestinationTitles(tabs)
             tabs.loadViewIfNeeded()
             let browserView = browser.view
@@ -172,7 +173,7 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             XCTAssertTrue(browser.view === browserView)
             assertDestinationTitles(tabs)
             XCTAssertEqual(browser.navigationItem.title, "Dove bevo")
-            XCTAssertEqual(websiteLoads, [MobileEntry.homeURL, MobileEntry.documentURL(saved.url)], "Opening the favourite must issue exactly its validated request through the owned loader")
+            XCTAssertEqual(websiteLoads, [MobileEntry.homeURL, try XCTUnwrap(MobileEntry.drinkDocument(saved.url, drink: "spritz", band: .normal))], "Opening the saved drink must issue its validated focused document through the owned loader")
             XCTAssertTrue(client.calls.isEmpty, "The offscreen owned coordinator fixture cannot start live comparisons")
         }
     }

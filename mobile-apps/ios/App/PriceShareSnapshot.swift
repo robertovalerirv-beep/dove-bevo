@@ -44,6 +44,7 @@ struct PriceShareSnapshot: Equatable {
               let confirmations = integer(fields["confirmations"], minimum: 0, maximum: 1_000_000),
               let tier = fields["tier"] as? String, ["affare", "giusto", "salato", "neutro"].contains(tier),
               let location = text(fields["location"], maximum: 160, allowEmpty: true) else { return nil }
+        if let focus = MobileEntry.drinkFocus(currentURL), focus.drink != drink || (focus.band == .happyHour) != (hh == "1") { return nil }
         return PriceShareSnapshot(venueKey: key, venueName: name, drink: drink, drinkName: drinkName, happyHour: hh == "1",
             amountMinor: amount, currency: currency, serving: serving, provenance: provenance,
             confirmations: confirmations, tier: tier, location: location)

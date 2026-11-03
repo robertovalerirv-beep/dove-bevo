@@ -23,20 +23,22 @@ final class MobileEntryBrowserTests: XCTestCase {
             let response = URLResponse(url: request.url!, mimeType: "text/html", expectedContentLength: data.count, textEncodingName: "UTF-8")
             return web.loadSimulatedRequest(request, response: response, responseData: data)
         })
-        let navigation = UINavigationController(rootViewController: browser)
-        window.rootViewController = navigation
+        let tabs = NativeTabsController(browser: browser)
+        window.rootViewController = tabs
         window.makeKeyAndVisible(); window.layoutIfNeeded(); browser.view.layoutIfNeeded()
         let error = try XCTUnwrap(descendants(browser.view).first { $0.accessibilityIdentifier == "browser.error" })
         let retry = try XCTUnwrap(descendants(browser.view).first { $0.accessibilityIdentifier == "browser.retry" } as? UIButton)
         waitUntil("Missing app marker must show native retry") { !error.isHidden }
         XCTAssertEqual(loads, [MobileEntry.homeURL])
-        XCTAssertTrue(try share(browser).attributes.contains(.disabled))
+        XCTAssertTrue(try share(tabs).attributes.contains(.disabled))
+        XCTAssertFalse(tabs.bottomBar.button(for: .save).isEnabled, "Home has no venue to save while the app document is unverified")
         XCTAssertTrue(try XCTUnwrap(ownedWeb).accessibilityElementsHidden)
         marked = true
         retry.sendActions(for: .touchUpInside)
-        waitUntil("Retry must finish the actual marked document") { error.isHidden && (try? self.share(browser).attributes.contains(.disabled)) == false }
+        waitUntil("Retry must finish the actual marked document") { error.isHidden && (try? self.share(tabs).attributes.contains(.disabled)) == false }
         XCTAssertEqual(loads, [MobileEntry.homeURL, MobileEntry.homeURL])
         XCTAssertFalse(try XCTUnwrap(ownedWeb).accessibilityElementsHidden)
+        XCTAssertFalse(tabs.bottomBar.button(for: .save).isEnabled, "A verified Home document still cannot create a venue bookmark")
     }
 
     @MainActor
@@ -86,8 +88,8 @@ final class MobileEntryBrowserTests: XCTestCase {
         withExtendedLifetime(delegate) {}
     }
 
-    @MainActor private func share(_ browser: BrowserViewController) throws -> UIAction {
-        try XCTUnwrap(browser.navigationItem.rightBarButtonItem?.menu?.children.compactMap { $0 as? UIAction }.first { $0.identifier.rawValue == "browser.share" })
+    @MainActor private func share(_ tabs: NativeTabsController) throws -> UIAction {
+        try XCTUnwrap(tabs.bottomBar.button(for: .more).menu?.children.compactMap { $0 as? UIAction }.first { $0.identifier.rawValue == "browser.share" })
     }
     @MainActor private func descendants(_ view: UIView) -> [UIView] { view.subviews + view.subviews.flatMap { descendants($0) } }
     @MainActor private func waitUntil(_ message: String, _ predicate: @escaping () -> Bool) {

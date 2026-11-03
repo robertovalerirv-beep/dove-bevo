@@ -84,7 +84,14 @@ test("partial or duplicate saved drink links fail closed", () => {
     }),
     "/",
   );
-  assert.throws(() => mobileURL("/bar/n123?c=u0nd9&drink=spritz", origin), TypeError);
+  for (const path of [
+    "/bar/n123?c=u0nd9&drink=spritz",
+    "/bar/n123?c=u0nd9&drink=spritz&drink=negroni&hh=0",
+    "/bar/n123?c=u0nd9&drink=spritz&hh=0&token=private",
+    "/bar/n123?c=u0nd9&drink=spritz&hh=0&path=/bar/n123",
+    "/bar/n123?c=u0nd9&dr%69nk=spritz&hh=0",
+  ])
+    assert.throws(() => mobileURL(path, origin), TypeError, path);
   assert.throws(() => mobileURL("/?drink=spritz&hh=0", origin), TypeError);
 });
 

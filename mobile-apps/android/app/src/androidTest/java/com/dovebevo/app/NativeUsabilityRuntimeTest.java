@@ -140,8 +140,6 @@ public final class NativeUsabilityRuntimeTest {
                         R.id.forward, R.string.forward, (Runnable) () -> invoke("goForward")));
                 ProgressBar progress = new ProgressBar(activity);
                 set("progress", progress); layout.addView(progress);
-                layout.addView((View) invoke("createTopActions"),
-                        new LinearLayout.LayoutParams(-1, Math.round(52*activity.getResources().getDisplayMetrics().density)));
                 FrameLayout content = new FrameLayout(activity);
                 set("content", content);
                 layout.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -153,6 +151,11 @@ public final class NativeUsabilityRuntimeTest {
                 retry.setOnClickListener(view -> invoke("navigate", new Class<?>[]{String.class}, get("lastTrustedUrl")));
                 error.addView(retry); error.setVisibility(View.GONE); set("errorPanel", error);
                 content.addView(error, new FrameLayout.LayoutParams(-1, -1));
+                LinearLayout topActions = (LinearLayout) invoke("createTopActions");
+                set("topActions", topActions);
+                content.addView(topActions, new FrameLayout.LayoutParams(-2,
+                        Math.round(48*activity.getResources().getDisplayMetrics().density),
+                        android.view.Gravity.TOP | android.view.Gravity.END));
                 layout.addView((View) invoke("createBottomNavigation"));
                 activity.setContentView(layout);
                 installFixtureWebView();
@@ -648,8 +651,13 @@ public final class NativeUsabilityRuntimeTest {
             assertEquals(activity.getString(R.string.more_options),topMore.getContentDescription());
             int[] menuPosition=new int[2], mapPosition=new int[2];
             topMore.getLocationOnScreen(menuPosition);web.getLocationOnScreen(mapPosition);
-            assertTrue("The top menu must not cover city or currency controls in the map",
-                    menuPosition[1]+topMore.getHeight()<=mapPosition[1]);
+            assertTrue("The native menu sits inside the first map row",menuPosition[1]>=mapPosition[1]);
+            assertTrue("The native menu does not create a blank rail above the map",
+                    menuPosition[1]+topMore.getHeight()<=mapPosition[1]+Math.round(48*density));
+            assertTrue("The native menu stays within the map width",
+                    menuPosition[0]>=mapPosition[0]&&menuPosition[0]+topMore.getWidth()<=mapPosition[0]+web.getWidth());
+            FrameLayout content=(FrameLayout)get("content");
+            assertSame(content,((View)get("topActions")).getParent());
         });
     }
 

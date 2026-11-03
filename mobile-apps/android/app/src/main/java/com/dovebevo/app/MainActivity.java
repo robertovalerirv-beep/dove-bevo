@@ -55,6 +55,7 @@ public final class MainActivity extends ComponentActivity {
     private WebView website;
     private WebView popup;
     private FrameLayout content;
+    private LinearLayout topActions;
     private LinearLayout errorPanel;
     private TextView offline;
     private ProgressBar progress;
@@ -221,7 +222,6 @@ public final class MainActivity extends ComponentActivity {
         offline.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         offline.setVisibility(View.GONE);
         shell.addView(offline, new LinearLayout.LayoutParams(-1, -2));
-        shell.addView(createTopActions(), new LinearLayout.LayoutParams(-1, dp(52)));
         content = new FrameLayout(this);
         shell.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
         shell.addView(createBottomNavigation(),new LinearLayout.LayoutParams(-1,-2));
@@ -253,6 +253,8 @@ public final class MainActivity extends ComponentActivity {
         content.addView(favorites.view(),new FrameLayout.LayoutParams(-1,-1));favorites.view().setVisibility(View.GONE);
         discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},this::showMap,()->foreground&&!destroyed);
         content.addView(discovery.view(),new FrameLayout.LayoutParams(-1,-1));discovery.view().setVisibility(View.GONE);
+        topActions = createTopActions();
+        content.addView(topActions, new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.END));
         if(state!=null){favorites.restoreSelection(state.getString("favorite_drink"),state.getInt("favorite_band",0));favorites.restorePane(state.getBoolean("favorite_drinks_visible",false));}
         if(state!=null)discovery.restoreSelection(state.getString("discovery_drink"),state.getInt("discovery_band",0));
         recommendations = new RecommendationsUi(this,
@@ -271,11 +273,11 @@ public final class MainActivity extends ComponentActivity {
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private LinearLayout createTopActions() {
-        // Only the overflow stays above the map. Reserving its own slim row
-        // keeps it clear of city, currency and drink controls in the WebView.
+        // The overflow shares the map's first row instead of reserving an
+        // otherwise empty native toolbar above the WebView.
         LinearLayout topActions = new LinearLayout(this);
         topActions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        topActions.setPadding(dp(8), 0, dp(8), 0);
+        topActions.setPadding(0, 0, dp(8), 0);
         Button more = button(R.id.more, R.string.more_symbol, () -> {});
         more.setContentDescription(getString(R.string.more_options));
         more.setTextSize(26);
@@ -476,6 +478,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void updateToolbar() {
         if (backButton == null) return;
+        if (topActions != null) topActions.bringToFront();
         backButton.setEnabled(foreground && !destroyed && (nativeDestinationVisible() || website != null && website.canGoBack()));
         forwardButton.setEnabled(foreground && !destroyed && !nativeDestinationVisible() && website != null && website.canGoForward());
         if (recommendationButton != null) {

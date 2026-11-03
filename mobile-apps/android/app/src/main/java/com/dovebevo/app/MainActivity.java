@@ -63,6 +63,8 @@ public final class MainActivity extends ComponentActivity {
     private Button backButton;
     private Button forwardButton;
     private SavedVenuesUi savedVenues;
+    private SavedDrinkUi savedDrinks;
+    private long drinkCapture;
     private FavoritesScreen favorites;
     private boolean favoritesVisible;
     private DiscoveryScreen discovery;
@@ -232,11 +234,13 @@ public final class MainActivity extends ComponentActivity {
         SavedVenueStore savedStore=new SavedVenueStore(new SavedVenueFile(getFilesDir()));
         savedVenues = new SavedVenuesUi(this, savedStore,
                 this::eligibleSavedVenue, this::readSavedVenue, this::navigate);
-        favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed);
+        SavedDrinkStore drinkStore=new SavedDrinkStore(new SavedVenueFile(getFilesDir(),"saved-drinks-v1"));
+        savedDrinks=new SavedDrinkUi(this,drinkStore,this::eligibleSavedVenue,this::readSavedVenue,()->venueCaptureEpoch);
+        favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore);
         content.addView(favorites.view(),new FrameLayout.LayoutParams(-1,-1));favorites.view().setVisibility(View.GONE);
         discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},this::showMap,()->foreground&&!destroyed);
         content.addView(discovery.view(),new FrameLayout.LayoutParams(-1,-1));discovery.view().setVisibility(View.GONE);
-        if(state!=null)favorites.restoreSelection(state.getString("favorite_drink"),state.getInt("favorite_band",0));
+        if(state!=null){favorites.restoreSelection(state.getString("favorite_drink"),state.getInt("favorite_band",0));favorites.restorePane(state.getBoolean("favorite_drinks_visible",false));}
         if(state!=null)discovery.restoreSelection(state.getString("discovery_drink"),state.getInt("discovery_band",0));
         recommendations = new RecommendationsUi(this,
                 new RecommendationsClient(new RecommendationVoter(new RecommendationVoterFile(getNoBackupFilesDir())), testLabPolicy),
@@ -507,7 +511,7 @@ public final class MainActivity extends ComponentActivity {
         discoveryCapture++;if(discovery!=null){discovery.hide();discovery.view().setVisibility(View.GONE);}discoveryVisible=false;
         venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
         cancelLocation();disposePopup();
-        if(savedVenues!=null)savedVenues.dismiss();if(recommendations!=null)recommendations.dismiss();
+        if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
         favoritesVisible=true;
         if(website!=null){website.setVisibility(View.GONE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
         errorPanel.setVisibility(View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
@@ -524,14 +528,15 @@ public final class MainActivity extends ComponentActivity {
     }
     private void saveCurrentVenue(){
         if(!foreground||savedVenues==null||eligibleSavedVenue()==null)return;
-        recommendationCapture++;recommendationCapturing=false;savedVenues.saveCurrent();updateToolbar();
+        retireSharePresentation();
+        recommendationCapture++;recommendationCapturing=false;if(savedDrinks!=null)savedDrinks.show();updateToolbar();
     }
 
     private void goHome(){
         if(!foreground||destroyed)return;
         if(discoveryVisible){discovery.refresh();return;}
         venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
-        if(savedVenues!=null)savedVenues.dismiss();if(recommendations!=null)recommendations.dismiss();
+        if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
         disposePopup();showMap();
         if(discovery==null)return;
         String capturedUrl=website==null?null:website.getUrl();WebView source=website;
@@ -551,7 +556,7 @@ public final class MainActivity extends ComponentActivity {
     private void showDiscovery(DiscoveryArea area){
         if(!foreground||destroyed||discovery==null)return;
         discoveryCapture++;venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
-        cancelLocation();disposePopup();if(savedVenues!=null)savedVenues.dismiss();if(recommendations!=null)recommendations.dismiss();
+        cancelLocation();disposePopup();if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
         if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}favoritesVisible=false;discoveryVisible=true;
         if(website!=null){website.setVisibility(View.GONE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
         errorPanel.setVisibility(View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);progress.setVisibility(View.GONE);
@@ -560,7 +565,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void showRecommendations() {
         if (!foreground || recommendations == null || eligibleSavedVenue() == null || recommendationCapturing) return;
-        if(savedVenues!=null)savedVenues.dismiss();
+        if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();
         long request = ++recommendationCapture;
         recommendationCapturing = true; updateToolbar();
         recommendationButton.postDelayed(() -> {
@@ -643,7 +648,19 @@ public final class MainActivity extends ComponentActivity {
             &&!failed&&!loading&&!awaitingDocumentStart&&hasUsablePage&&!documentHasHttpError&&captured.equals(source.getUrl());
     }
     private void retireSharePresentation() {
+        drinkCapture++;if(savedDrinks!=null)savedDrinks.dismiss();
         shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}
+    }
+    private void readFeaturedDrink(java.util.function.Consumer<PriceShareSnapshot> completion) {
+        if(website==null||eligibleSavedVenue()==null||!foreground||destroyed){completion.accept(null);return;}
+        WebView source=website;String captured=source.getUrl();long epoch=venueCaptureEpoch,request=++drinkCapture;
+        final boolean[] done={false};
+        java.util.function.BooleanSupplier current=()->foreground&&!destroyed&&!nativeDestinationVisible()&&source==website&&epoch==venueCaptureEpoch&&request==drinkCapture&&captured.equals(source.getUrl())&&eligibleSavedVenue()!=null&&(informationDialog==null||!informationDialog.isShowing())&&(privacyDialog==null||!privacyDialog.isShowing())&&(locationHelpDialog==null||!locationHelpDialog.isShowing());
+        source.postDelayed(()->{if(!done[0]&&current.getAsBoolean()){done[0]=true;completion.accept(null);}},5000);
+        try{source.evaluateJavascript(PriceShareSnapshot.SCRIPT,result->{
+            if(done[0]||!current.getAsBoolean())return;done[0]=true;
+            completion.accept(PriceShareSnapshot.decode(result,captured,source.getUrl(),epoch,venueCaptureEpoch));
+        });}catch(RuntimeException unavailable){if(!done[0]&&current.getAsBoolean()){done[0]=true;completion.accept(null);}}
     }
     private void share() {
         if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
@@ -1037,7 +1054,7 @@ public final class MainActivity extends ComponentActivity {
         foreground = false;
         recommendationCapture++; recommendationCapturing = false;
         if (recommendations != null) recommendations.pause();
-        if(savedVenues!=null)savedVenues.dismiss();
+        if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();
         if(favorites!=null)favorites.pause();
         if(discovery!=null)discovery.pause();
         // The system permission dialog may pause us. Only deliver its result
@@ -1055,7 +1072,7 @@ public final class MainActivity extends ComponentActivity {
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putBoolean("favorites_visible",favoritesVisible||restoreFavoritesPending);
         state.putBoolean("discovery_visible",discoveryVisible||restoreDiscoveryPending);
-        if(favorites!=null){state.putString("favorite_drink",favorites.selectedDrink());state.putInt("favorite_band",favorites.selectedBand());}
+        if(favorites!=null){state.putString("favorite_drink",favorites.selectedDrink());state.putInt("favorite_band",favorites.selectedBand());state.putBoolean("favorite_drinks_visible",favorites.showingDrinks());}
         if(discovery!=null){state.putString("discovery_drink",discovery.selectedDrink());state.putInt("discovery_band",discovery.selectedBand());}
         state.putString("trusted_url", lastTrustedUrl);
         if (website != null && !failed) {
@@ -1079,7 +1096,7 @@ public final class MainActivity extends ComponentActivity {
         if(discovery!=null)discovery.close();
         if (privacyDialog != null) privacyDialog.dismiss();
         if (locationHelpDialog != null) locationHelpDialog.dismiss();
-        if (savedVenues != null) savedVenues.dismiss();
+        if (savedVenues != null) savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();
         cancelLocation();
         disposePopup();
         if (connectivity != null && networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback);

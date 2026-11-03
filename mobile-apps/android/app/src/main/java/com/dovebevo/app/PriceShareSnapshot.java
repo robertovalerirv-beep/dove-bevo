@@ -35,7 +35,9 @@ final class PriceShareSnapshot {
         try{
             Object value=NativeJson.read(raw.getBytes(StandardCharsets.UTF_8),8192);if(!(value instanceof Map<?,?> d))return null;
             if(!d.keySet().equals(Set.of("href","version","venue","venueName","drink","drinkName","hh","amountMinor","currency","serving","provenance","confirmations","tier","location"))||!"1".equals(d.get("version"))||!captured.equals(d.get("href")))return null;
-            return new PriceShareSnapshot(url,d);
+            PriceShareSnapshot snapshot = new PriceShareSnapshot(url,d);
+            if (!MobileEntry.matchesDrink(captured,snapshot.drink,snapshot.hh) || !MobileEntry.matchesDrink(current,snapshot.drink,snapshot.hh)) return null;
+            return snapshot;
         }catch(IOException|RuntimeException invalid){return null;}
     }
     private static String text(Map<?,?> d,String key,int max,boolean empty)throws IOException {
@@ -50,7 +52,12 @@ final class PriceShareSnapshot {
           const u = new URL(location.href);
           if (u.protocol !== 'https:' || !['www.dovebevo.com','dovebevo.com'].includes(u.hostname) ||
               u.username || u.password || (u.port && u.port !== '443') || u.hash ||
-              !/^\\/mobile\\/(?:index\\.html)?$/.test(u.pathname) || [...u.searchParams].length !== 2 ||
+              !u.search.slice(1).split('&').every(part=>/^(?:path=[^&=]+|c=[0-9b-hjkmnp-z]{5}|drink=(?:beer_draft|spritz|negroni|sbagliato|gin_tonic|gin_lemon|wine_glass|alcohol_free|water)|hh=[01])$/.test(part)) ||
+              !/^\\/mobile\\/(?:index\\.html)?$/.test(u.pathname) || ![2,4].includes([...u.searchParams].length) ||
+              [...u.searchParams.keys()].some(k=>!['path','c','drink','hh'].includes(k)) ||
+              (u.searchParams.has('drink') || u.searchParams.has('hh') ?
+                u.searchParams.getAll('drink').length!==1 || u.searchParams.getAll('hh').length!==1 ||
+                !['beer_draft','spritz','negroni','sbagliato','gin_tonic','gin_lemon','wine_glass','alcohol_free','water'].includes(u.searchParams.get('drink')) || !/^[01]$/.test(u.searchParams.get('hh')||'') : [...u.searchParams].length!==2) ||
               u.searchParams.getAll('path').length !== 1 || u.searchParams.getAll('c').length !== 1 ||
               !/^[0-9b-hjkmnp-z]{5}$/.test(u.searchParams.get('c') || '')) return null;
           const match = /^\\/bar\\/([nwru][1-9][0-9]{0,14})$/.exec(u.searchParams.get('path') || '');

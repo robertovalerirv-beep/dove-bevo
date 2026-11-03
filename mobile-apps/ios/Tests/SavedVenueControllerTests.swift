@@ -44,7 +44,7 @@ final class SavedVenueControllerTests: XCTestCase {
             XCTAssertFalse(browser.isViewLoaded)
             XCTAssertFalse(capture.isPending)
             prepare(list)
-            list.tableView(list.tableView, commit: .delete, forRowAt: IndexPath(row: 0, section: 0))
+            list.tableView(list.tableView, commit: .delete, forRowAt: IndexPath(row: 0, section: 1))
             XCTAssertTrue(try store.load().isEmpty)
             let delayedCompletion = {
                 let venue = try capture.complete(request, value: [

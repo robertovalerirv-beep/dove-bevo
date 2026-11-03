@@ -14,6 +14,7 @@ import { sharePresentation } from "../share-presentation";
 import { DrinkHero } from "./DrinkHero";
 import { loadMenuPage, menuMoney, mobileMenuVenue, type MenuPage, type MenuFee } from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
+import { menuOfferMatchesFocus, mobileFocus, mobilePath } from "../routes";
 import "./sheets.css";
 
 export interface BarActions {
@@ -263,6 +264,14 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const [menuMoreBusy, setMenuMoreBusy] = useState(false);
   const [menuAttempt, setMenuAttempt] = useState(0);
   const menuAbort = useRef<AbortController | null>(null);
+  const savedFocus =
+    typeof location !== "undefined" &&
+    mobilePath(location) === "/bar/" + venueKey &&
+    new URLSearchParams(location.search).get("c") === cell
+      ? mobileFocus(location)
+      : null;
+  const matchesMenu = (offer: MenuPage["offers"][number]) =>
+    savedFocus !== null && menuOfferMatchesFocus(offer, savedFocus);
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -357,6 +366,19 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     }
   }
 
+  // Search all bounded menu pages before declaring a saved drink unavailable.
+  useEffect(() => {
+    if (
+      !savedFocus ||
+      !menu?.next_after ||
+      menuMoreBusy ||
+      menuFailed ||
+      menu.offers.some(matchesMenu)
+    )
+      return;
+    void loadMoreMenu();
+  }, [menu, menuMoreBusy, menuFailed, savedFocus?.drink, savedFocus?.hh]);
+
   if (venue === undefined) {
     return (
       <Sheet title={it.bar.loading} onClose={onClose}>
@@ -391,16 +413,29 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     );
   }
   const isFocus = (p: PriceRow) => focus.includes(p[1]);
+  const matchesSaved = (p: PriceRow) =>
+    savedFocus !== null && p[1] === savedFocus.drink && p[2] === savedFocus.hh;
   const active = [...(prices?.p.filter((p) => p[6] === 0) ?? [])].sort(
-    (a, b) => Number(isFocus(b)) - Number(isFocus(a)),
+    (a, b) =>
+      Number(matchesSaved(b)) - Number(matchesSaved(a)) || Number(isFocus(b)) - Number(isFocus(a)),
   );
+  const savedFound = active.some(matchesSaved);
+  const menuFound = menu?.offers.some(matchesMenu) ?? false;
+  const savedMissing =
+    savedFocus &&
+    !savedFound &&
+    !menuFound &&
+    !menuLoading &&
+    !menuFailed &&
+    !menu?.next_after &&
+    (venueKey.startsWith("m") || prices !== null);
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
   const venueKind = venueKey.startsWith("m") && venue.kind === 0 ? "Locale" : it.kinds[venue.kind];
   return (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
-        <DrinkHero drink={active[0]?.[1] ?? focus[0] ?? "spritz"} />
+        <DrinkHero drink={savedFocus?.drink ?? active[0]?.[1] ?? focus[0] ?? "spritz"} />
         <div class="scontrino__paper">
           <p class="bar__kind">{[venueKind, venue.city].filter(Boolean).join(" · ")}</p>
           <h2 class="scontrino__name" tabIndex={-1}>
@@ -423,6 +458,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           {prices && active.length === 0 && !menu?.offers.length && (
             <p class="hint">{it.bar.noPrices}</p>
           )}
+          {savedMissing && (
+            <p class="hint" role="status" data-testid="saved-drink-unavailable">
+              Il prezzo salvato per questo drink e orario non è più disponibile. Gli altri prezzi
+              del locale sono qui sotto.
+            </p>
+          )}
           <ul class="prices">
             {shown.flatMap((row, index) => [
               index === 1 && (
@@ -437,7 +478,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 actions={actions}
                 inReview={false}
                 tier={tier(row)}
-                featured={index === 0}
+                featured={index === 0 && (!savedFocus || savedFound)}
               />,
             ])}
           </ul>
@@ -474,7 +515,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 Prezzi del drink indicati nel menu, non il totale pagato. Le condizioni e i
                 supplementi sono separati.
               </p>
-              <CustomerPricesV2 key={`${venueKey}:${cell}`} menu={menu} />
+              <CustomerPricesV2 key={`${venueKey}:${cell}`} menu={menu} focus={savedFocus} />
               {menu.next_after && (
                 <button
                   type="button"

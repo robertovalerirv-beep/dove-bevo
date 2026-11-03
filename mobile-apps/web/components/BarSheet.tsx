@@ -12,6 +12,14 @@ import { HoursList, VerifiedBadge } from "@site/app/components/Verified";
 import { drinkImage } from "@mobile/drink-images";
 import { sharePresentation } from "../share-presentation";
 import { DrinkHero } from "./DrinkHero";
+import {
+  loadMenuPage,
+  menuMoney,
+  mobileMenuVenue,
+  type MenuPage,
+  type MenuOffer,
+  type MenuFee,
+} from "../menu-v2";
 import "./sheets.css";
 
 export interface BarActions {
@@ -233,28 +241,108 @@ function PriceItem({
 }
 
 /** Bar page `/bar/<key>?c=<cell>` (SPEC 7.2). */
+function menuOfferContext(offer: MenuOffer): string {
+  if (offer.context.kind === "happy_hour")
+    return ["Happy hour", offer.context.condition].filter(Boolean).join(" · ");
+  if (offer.context.kind === "conditional")
+    return offer.context.condition ? `Solo con: ${offer.context.condition}` : "Prezzo condizionato";
+  return offer.context.condition ?? "";
+}
+
+function menuFeeAmount(fee: MenuFee): string {
+  if (fee.kind === "percent")
+    return `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 2 }).format((fee.rate_bps ?? 0) / 100)}% sul conto`;
+  const amount = menuMoney(
+    fee.amount_minor ?? 0,
+    fee.currency ?? "EUR",
+    fee.currency_exponent ?? 2,
+  );
+  const basis = {
+    person: "a persona",
+    table: "a tavolo",
+    bill: "sul conto",
+    unspecified: "base non specificata",
+  }[fee.basis];
+  return `${amount} ${basis}`;
+}
+
 export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [menu, setMenu] = useState<MenuPage | null>(null);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const [menuFailed, setMenuFailed] = useState(false);
+  const [menuMoreBusy, setMenuMoreBusy] = useState(false);
+  const [menuAttempt, setMenuAttempt] = useState(0);
+  const menuAbort = useRef<AbortController | null>(null);
   useEffect(() => {
-    void loadCell(cell)
-      .then((venues) => {
-        // A proposed bar is public only once the admin approved it (ADR 0019): not here by its link.
-        const found = venues.find((v) => v.key === venueKey && !v.pending) ?? null;
-        setVenue(found);
-        if (found) onVenue(found);
+    let active = true;
+    const controller = new AbortController();
+    menuAbort.current = controller;
+    setVenue(undefined);
+    setPrices(null);
+    setPricesFailed(false);
+    setMenu(null);
+    setMenuLoading(true);
+    setMenuFailed(false);
+    setMenuMoreBusy(false);
+    void Promise.allSettled([
+      loadCell(cell),
+      loadMenuPage(venueKey, cell, null, controller.signal),
+    ]).then(([legacy, online]) => {
+      if (!active) return;
+      const found =
+        legacy.status === "fulfilled"
+          ? (legacy.value.find((v) => v.key === venueKey && !v.pending) ?? null)
+          : null;
+      const page = online.status === "fulfilled" ? online.value : null;
+      if (online.status === "rejected") setMenuFailed(true);
+      setMenu(page);
+      setMenuLoading(false);
+      const selected =
+        found ?? (page && venueKey.startsWith("m") ? mobileMenuVenue(page.venue) : null);
+      setVenue(selected);
+      if (selected) onVenue(selected);
+    });
+    void loadVenuePrices(venueKey)
+      .then((value) => {
+        if (active) setPrices(value);
       })
       .catch(() => {
-        setVenue(null);
+        if (active) setPricesFailed(true);
       });
-    loadVenuePrices(venueKey)
-      .then(setPrices)
-      .catch(() => {
-        setPricesFailed(true);
-      });
-  }, [venueKey, cell]);
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [venueKey, cell, menuAttempt]);
+
+  async function loadMoreMenu() {
+    const after = menu?.next_after;
+    const controller = menuAbort.current;
+    if (!after || !controller || menuMoreBusy) return;
+    setMenuMoreBusy(true);
+    setMenuFailed(false);
+    try {
+      const page = await loadMenuPage(venueKey, cell, after, controller.signal);
+      if (!page) throw new Error("Menu vanished");
+      if (controller.signal.aborted) return;
+      const existing = new Set(menu?.offers.map((offer) => offer.id) ?? []);
+      if (page.offers.some((offer) => existing.has(offer.id)))
+        throw new Error("Duplicate menu page");
+      setMenu((previous) =>
+        previous?.next_after === after
+          ? { ...page, offers: [...previous.offers, ...page.offers] }
+          : previous,
+      );
+    } catch {
+      if (!controller.signal.aborted) setMenuFailed(true);
+    } finally {
+      if (!controller.signal.aborted) setMenuMoreBusy(false);
+    }
+  }
 
   if (venue === undefined) {
     return (
@@ -301,7 +389,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               {it.bar.pricesError}
             </p>
           )}
-          {prices && active.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
+          {prices && active.length === 0 && !menu?.offers.length && (
+            <p class="hint">{it.bar.noPrices}</p>
+          )}
           <ul class="prices">
             {shown.flatMap((row, index) => [
               index === 1 && (
@@ -338,6 +428,105 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               <span>{it.bar.drinkCount(active.length)}</span>
             </p>
           )}
+          {menuLoading && (
+            <p class="hint" role="status">
+              Caricamento menu online…
+            </p>
+          )}
+          {menu && (menu.offers.length > 0 || menu.fees.length > 0) && (
+            <section class="mobile-menu-v2" aria-label="Prezzi dal menu online">
+              <div class="mobile-menu-v2__heading">
+                <h3>Dal menu del locale</h3>
+                <span>{menu.stored_offer_count} prezzi</span>
+              </div>
+              <p class="mobile-menu-v2__disclaimer">
+                Prezzi del drink indicati nel menu, non il totale pagato. Le condizioni e i
+                supplementi sono separati.
+              </p>
+              <ul class="mobile-menu-v2__offers">
+                {menu.offers.map((offer) => (
+                  <li key={offer.id} class="mobile-menu-v2__offer">
+                    <span class="mobile-menu-v2__name">{offer.name}</span>
+                    <strong class="mobile-menu-v2__amount">
+                      {menuMoney(offer.amount_minor, offer.currency, offer.currency_exponent)}
+                    </strong>
+                    <span class="mobile-menu-v2__meta">
+                      {[
+                        offer.serving.label ?? (offer.serving.ml ? `${offer.serving.ml} ml` : ""),
+                        menuOfferContext(offer),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                    <a
+                      href={offer.source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="mobile-menu-v2__source"
+                    >
+                      Menu verificato il {offer.source.checked_on}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              {menu.next_after && (
+                <button
+                  type="button"
+                  class="btn btn--secondary mobile-menu-v2__more"
+                  disabled={menuMoreBusy}
+                  onClick={() => void loadMoreMenu()}
+                >
+                  {menuMoreBusy ? "Caricamento…" : "Vedi altri drink"}
+                </button>
+              )}
+              <div class="mobile-menu-v2__fees">
+                <h4>Coperto e supplementi</h4>
+                {menu.fees.length > 0 && (
+                  <ul>
+                    {menu.fees.map((fee) => (
+                      <li key={fee.id}>
+                        <span>{fee.label}</span>
+                        <strong>{menuFeeAmount(fee)}</strong>
+                        {fee.applicability === "conditional" && fee.condition && (
+                          <small>Solo se: {fee.condition}</small>
+                        )}
+                        {fee.applicability === "unknown" && (
+                          <small>Applicazione da verificare</small>
+                        )}
+                        <a href={fee.source.url} target="_blank" rel="noopener noreferrer">
+                          Fonte verificata il {fee.source.checked_on}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {menu.fee_coverage.status === "unknown" && (
+                  <p>Eventuali costi aggiuntivi non sono stati verificati.</p>
+                )}
+                {menu.fee_coverage.status === "documented_partial" && (
+                  <p>Questi supplementi sono documentati; potrebbero essercene altri.</p>
+                )}
+                {menu.fee_coverage.status === "explicit_no_fee" && (
+                  <p>Il menu consultato dichiara che non ci sono supplementi.</p>
+                )}
+              </div>
+            </section>
+          )}
+          {menuFailed && (
+            <div class="mobile-menu-v2__error" role="alert">
+              <p>Menu online non disponibile. I prezzi segnalati dalle persone restano visibili.</p>
+              <button
+                type="button"
+                class="btn btn--secondary"
+                onClick={() => {
+                  if (menu?.next_after) void loadMoreMenu();
+                  else setMenuAttempt((value) => value + 1);
+                }}
+              >
+                Riprova menu
+              </button>
+            </div>
+          )}
         </div>
         <div class="bar__actions">
           <a
@@ -350,15 +539,23 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             <Icon name="directions" />
             {it.bar.directions}
           </a>
-          <button
-            type="button"
-            class="btn btn--primary"
-            onClick={() => {
-              actions.addHere(venue);
-            }}
-          >
-            {it.actions.addHere}
-          </button>
+          {!venue.key.startsWith("m") && (
+            <button
+              type="button"
+              class="btn btn--primary"
+              onClick={() => {
+                actions.addHere(venue);
+              }}
+            >
+              {it.actions.addHere}
+            </button>
+          )}
+          {venue.key.startsWith("m") && (
+            <p class="hint">
+              Puoi consultare i prezzi del menu. Le segnalazioni dei clienti per questo locale
+              saranno disponibili presto.
+            </p>
+          )}
         </div>
         {review.length > 0 && (
           <>
@@ -378,15 +575,17 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             </ul>
           </>
         )}
-        <button
-          type="button"
-          class="btn btn--ghost"
-          onClick={() => {
-            actions.report(venue, null);
-          }}
-        >
-          {it.actions.reportBar}
-        </button>
+        {!venue.key.startsWith("m") && (
+          <button
+            type="button"
+            class="btn btn--ghost"
+            onClick={() => {
+              actions.report(venue, null);
+            }}
+          >
+            {it.actions.reportBar}
+          </button>
+        )}
         <AppLegalLinks />
       </div>
     </Sheet>

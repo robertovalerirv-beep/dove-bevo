@@ -782,3 +782,119 @@
     height: 84px;
   }
 }
+
+/* Source-backed menu facts are separate from community-confirmed prices. */
+.scontrino.mobile-venue .mobile-menu-v2 {
+  margin: 18px 0 8px;
+  padding: 0;
+  border-top: 1px solid #e6e9e6;
+  color: #101820;
+}
+.mobile-menu-v2__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 15px;
+}
+.mobile-menu-v2__heading h3,
+.mobile-menu-v2__fees h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 750;
+}
+.mobile-menu-v2__heading > span {
+  color: #667078;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.mobile-menu-v2__disclaimer,
+.mobile-menu-v2__fees > p {
+  margin: 8px 0 12px;
+  color: #59636b;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.mobile-menu-v2__offers,
+.mobile-menu-v2__fees ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mobile-menu-v2__offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  padding: 12px;
+  border: 1px solid #e8ebea;
+  border-radius: 13px;
+  margin: 7px 0;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+.mobile-menu-v2__name {
+  font-size: 15px;
+  font-weight: 680;
+}
+.mobile-menu-v2__amount {
+  color: #1b6e38;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mobile-menu-v2__meta,
+.mobile-menu-v2__source {
+  grid-column: 1 / -1;
+  color: #5b6871;
+  font-size: 12px;
+}
+.mobile-menu-v2__source,
+.mobile-menu-v2__fees a {
+  color: #315c72;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.mobile-menu-v2__more {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin: 9px 0;
+}
+.mobile-menu-v2__fees {
+  margin: 15px 0 0;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f7f5f0;
+}
+.mobile-menu-v2__fees li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #e3e0d8;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.mobile-menu-v2__fees li strong {
+  color: #a94820;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.mobile-menu-v2__fees li small,
+.mobile-menu-v2__fees li a {
+  grid-column: 1 / -1;
+  font-size: 12px;
+}
+.mobile-menu-v2__error {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff4ee;
+  color: #602b16;
+}
+.mobile-menu-v2__error p {
+  margin: 0 0 8px;
+}
+.mobile-menu-v2__error .btn {
+  min-height: 48px;
+}

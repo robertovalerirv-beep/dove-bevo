@@ -163,5 +163,5 @@ export function customerCurrency(
     [`${offer.currency}:${String(offer.currency_exponent)}`,
       { currency: offer.currency, exponent: offer.currency_exponent }] as const,
   ));
-  return distinct.size === 1 ? [...distinct.values()][0] : null;
+  return distinct.size === 1 ? (distinct.values().next().value ?? null) : null;
 }

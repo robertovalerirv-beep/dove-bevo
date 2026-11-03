@@ -35,6 +35,20 @@ export function MapContributeActions({
 
   return (
     <div ref={root} class="mobile-map-actions" data-testid="mobile-map-actions">
+      <button
+        type="button"
+        class="btn mobile-map-actions__toggle"
+        aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
+        onClick={() => {
+          setOpen((value) => !value);
+        }}
+      >
+        <span class="mobile-map-actions__plus" aria-hidden="true">
+          ＋
+        </span>
+        {label}
+      </button>
       {open && (
         <div id={menuId} class="mobile-map-actions__menu" role="group" aria-label={label}>
           <button
@@ -59,20 +73,6 @@ export function MapContributeActions({
           </button>
         </div>
       )}
-      <button
-        type="button"
-        class="btn mobile-map-actions__toggle"
-        aria-expanded={open}
-        aria-controls={open ? menuId : undefined}
-        onClick={() => {
-          setOpen((value) => !value);
-        }}
-      >
-        <span class="mobile-map-actions__plus" aria-hidden="true">
-          ＋
-        </span>
-        {label}
-      </button>
     </div>
   );
 }

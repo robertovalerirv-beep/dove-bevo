@@ -676,6 +676,24 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     await f.page.keyboard.press("Escape");
     assert.equal(await toggle.getAttribute("aria-expanded"), "false");
     assert.equal(await toggle.evaluate((element) => element === document.activeElement), true);
+    await f.page.keyboard.press("Enter");
+    assert.equal(await toggle.getAttribute("aria-expanded"), "true");
+    await f.page.keyboard.press("Tab");
+    assert.equal(
+      await choices
+        .getByRole("button", { name: "Aggiungi prezzo", exact: true })
+        .evaluate((element) => element === document.activeElement),
+      true,
+    );
+    await f.page.keyboard.press("Tab");
+    assert.equal(
+      await choices
+        .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+        .evaluate((element) => element === document.activeElement),
+      true,
+    );
+    await f.page.keyboard.press("Escape");
+    assert.equal(await toggle.evaluate((element) => element === document.activeElement), true);
     await toggle.click();
     await choices.getByRole("button", { name: "Aggiungi prezzo", exact: true }).click();
     const priceDialog = f.page.getByRole("dialog");

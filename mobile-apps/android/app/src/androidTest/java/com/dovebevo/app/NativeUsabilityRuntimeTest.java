@@ -80,8 +80,9 @@ public final class NativeUsabilityRuntimeTest {
               content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
             <meta name="owned-response" content="OWNED_RESPONSE">
             <title>Owned native fixture</title><p>Local browser fixture</p>
+            <button data-dovebevo-search="1" onclick="history.replaceState({inApp:true},'', '/mobile/');document.body.dataset.searchOpen='1'">Cerca città o bar</button>
             <button id="open-venue" style="min-height:64px;width:240px"
-              onclick="document.querySelector('section.map').setAttribute('data-selected','n123');history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')">Open owned venue fixture</button>
+              onclick="document.body.dataset.searchOpen='0';document.querySelector('section.map').setAttribute('data-selected','n123');history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')">Open owned venue fixture</button>
             <section class="map" data-selected="OWNED_VENUE_KEY"></section>
             <dialog class="sheet sheet--bare" open aria-label="Locale di prova">
               <div class="sheet__body"><div class="scontrino"><div class="scontrino__paper">
@@ -131,9 +132,16 @@ public final class NativeUsabilityRuntimeTest {
                 ServiceWorkerController.getInstance().getServiceWorkerWebSettings().setBlockNetworkLoads(true);
                 LinearLayout layout = new LinearLayout(activity);
                 layout.setOrientation(LinearLayout.VERTICAL);
-                layout.addView((View) invoke("createBrowserTools"));
+                // Production keeps history actions for Android Back and the top
+                // overflow, without mounting a duplicate browser title.
+                set("backButton", invoke("button", new Class<?>[]{int.class, int.class, Runnable.class},
+                        R.id.back, R.string.back, (Runnable) () -> invoke("goBack")));
+                set("forwardButton", invoke("button", new Class<?>[]{int.class, int.class, Runnable.class},
+                        R.id.forward, R.string.forward, (Runnable) () -> invoke("goForward")));
                 ProgressBar progress = new ProgressBar(activity);
                 set("progress", progress); layout.addView(progress);
+                layout.addView((View) invoke("createTopActions"),
+                        new LinearLayout.LayoutParams(-1, Math.round(52*activity.getResources().getDisplayMetrics().density)));
                 FrameLayout content = new FrameLayout(activity);
                 set("content", content);
                 layout.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
@@ -325,30 +333,31 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals("Entry/GET must not publish a recommendation", 0, posts.get());
     }
 
-    @Test public void fiveBottomControlsRemainVisibleAndOverflowHasNoDestinationDuplicates() throws Exception {
+    @Test public void sixBottomControlsAndTopOverflowHaveNoDestinationDuplicates() throws Exception {
         onMain(() -> {
             android.view.ViewGroup bottom = activity.findViewById(R.id.bottom_navigation);
             assertNotNull(bottom);
-            for (int id : new int[]{R.id.home, R.id.map_destination, R.id.favorites_destination,
-                    R.id.save_venue, R.id.recommendation_entry}) {
+            for (int id : new int[]{R.id.home, R.id.search_destination, R.id.map_destination,
+                    R.id.favorites_destination, R.id.save_venue, R.id.recommendation_entry}) {
                 View control = bottom.findViewById(id);
                 assertNotNull(control); assertEquals(View.VISIBLE, control.getVisibility());
             }
             assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
             assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
-            android.view.ViewGroup top = activity.findViewById(R.id.browser_tools);
-            assertEquals(3, top.getChildCount());
-            int historyActions=0;
-            for(int i=0;i<top.getChildCount();i++) if(top.getChildAt(i) instanceof Button) historyActions++;
-            assertEquals("The compact header has Back and More",2,historyActions);
-            assertNull(top.findViewById(R.id.forward));
-            assertNull(top.findViewById(R.id.home)); assertNull(top.findViewById(R.id.save_venue));
+            assertNull("The map has no duplicate browser header", activity.findViewById(R.id.browser_tools));
+            assertNull("Back remains in Android system navigation and overflow", bottom.findViewById(R.id.back));
+            assertNull("Overflow belongs only at the top", bottom.findViewById(R.id.more));
+            View topMore = activity.findViewById(R.id.more);
+            assertNotNull(topMore); assertEquals(View.VISIBLE, topMore.getVisibility());
+            assertEquals(activity.getString(R.string.more_options), topMore.getContentDescription());
             assertNull(activity.findViewById(R.id.share)); assertNull(activity.findViewById(R.id.refresh));
             android.view.Menu menu = browserMenu().getMenu();
             assertNotNull(menu.findItem(R.id.share)); assertNotNull(menu.findItem(R.id.refresh));
             assertNotNull(menu.findItem(R.id.forward));
-            for (int id : new int[]{R.id.home, R.id.map_destination, R.id.favorites_destination,
-                    R.id.saved_venues, R.id.save_venue, R.id.recommendation_entry}) assertNull(menu.findItem(id));
+            assertNotNull(menu.findItem(R.id.back));
+            assertNull("Home is a bottom destination", menu.findItem(R.id.discover_action));
+            for (int id : new int[]{R.id.home, R.id.search_destination, R.id.map_destination, R.id.favorites_destination,
+                    R.id.saved_venues, R.id.save_venue, R.id.recommendation_entry, R.id.more}) assertNull(menu.findItem(id));
         });
         navigate(ONE);
         WebView original = web;
@@ -381,18 +390,85 @@ public final class NativeUsabilityRuntimeTest {
                     new DiscoveryLoader(new FavoritePricesClient((url,max,call)->{throw new IOException("Unready owned map must not fetch");},()->"2026-11-01"),task->activity.runOnUiThread(task)));
             set("discovery",home);((FrameLayout)get("content")).addView(home.view());home.view().setVisibility(View.GONE);
             activity.findViewById(R.id.favorites_destination).performClick();
-            activity.findViewById(R.id.home).performClick();
+            activity.findViewById(R.id.search_destination).performClick();
             assertFalse((Boolean)get("favoritesVisible"));
             assertSame(original, get("website"));
         });
+        AtomicBoolean searchOpened = new AtomicBoolean();
+        await(()->{
+            web.evaluateJavascript("document.body.dataset.searchOpen === '1'", result -> searchOpened.set("true".equals(result)));
+            return searchOpened.get() && APP_HOME.equals(web.getUrl());
+        });
+        onMain(()->{
+            assertFalse((Boolean)get("discoveryVisible"));
+            assertFalse(activity.findViewById(R.id.home).isSelected());assertTrue(activity.findViewById(R.id.map_destination).isSelected());
+            assertEquals("Cerca must leave the old venue for the plain map",APP_HOME,web.getUrl());
+            assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+        });
+        tapOwnedVenueButton();
+        AtomicBoolean searchClosed = new AtomicBoolean();
+        await(()->{
+            web.evaluateJavascript("document.body.dataset.searchOpen === '0'", result -> searchClosed.set("true".equals(result)));
+            return searchClosed.get() && APP_ONE.equals(web.getUrl()) && activity.findViewById(R.id.save_venue).isEnabled()
+                && activity.findViewById(R.id.recommendation_entry).isEnabled();
+        });
+        onMain(()->{
+            assertEquals("A newly selected venue restores contextual actions",APP_ONE,web.getUrl());
+            activity.findViewById(R.id.home).performClick();
+        });
         await(()->(Boolean)get("discoveryVisible"));
         onMain(()->{
-            assertTrue(activity.findViewById(R.id.home).isSelected());assertFalse(activity.findViewById(R.id.map_destination).isSelected());
-            assertEquals(APP_ONE,web.getUrl());assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertTrue(activity.findViewById(R.id.home).isSelected());
             assertTrue(((TextView)activity.findViewById(R.id.discovery_status)).getText().toString().contains("Apri una città"));
             activity.findViewById(R.id.map_destination).performClick();assertFalse((Boolean)get("discoveryVisible"));assertEquals(APP_ONE,web.getUrl());assertSame(original,get("website"));
         });
         assertOwnedDocument(1);
+    }
+
+    @Test public void staleSearchFailureCannotSurfaceAfterDestinationNavigationOrBackgroundChange() throws Exception {
+        navigate(ONE);
+        onMain(() -> {
+            assertEquals(APP_ONE, web.getUrl());
+            String captured = web.getUrl();
+            long search = (Long) get("searchCallbackGeneration");
+            long document = (Long) get("documentCheckGeneration");
+            long venue = (Long) get("venueCaptureEpoch");
+            Class<?>[] signature = {WebView.class, String.class, long.class, long.class, long.class};
+            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
+
+            FavoritesScreen screen = new FavoritesScreen(activity, store,
+                    url -> invoke("navigate", new Class<?>[]{String.class}, url),
+                    () -> (Boolean) get("foreground"),
+                    new FavoritesLoader(new FavoritePricesClient((url, max, call) -> {
+                        throw new IOException("Empty owned favourites must not fetch");
+                    }, () -> "2026-11-03"), task -> activity.runOnUiThread(task)));
+            set("favorites", screen);
+            ((FrameLayout) get("content")).addView(screen.view());
+            screen.view().setVisibility(View.GONE);
+            activity.findViewById(R.id.favorites_destination).performClick();
+            assertTrue((Boolean) get("favoritesVisible"));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
+            activity.findViewById(R.id.map_destination).performClick();
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
+
+            long currentSearch = (Long) get("searchCallbackGeneration");
+            long currentVenue = (Long) get("venueCaptureEpoch");
+            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
+            set("documentCheckGeneration", document + 1);
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
+            set("documentCheckGeneration", document);
+            set("foreground", false);
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
+            set("foreground", true);
+            set("searchPending", true);
+            set("searchOpening", true);
+            invoke("onPause");
+            assertFalse("Backgrounding must cancel the queued search", (Boolean) get("searchPending"));
+            assertFalse((Boolean) get("searchOpening"));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
+            invoke("onResume");
+            assertFalse("Resume must require a fresh Cerca tap", (Boolean) get("searchPending"));
+        });
     }
 
     @Test public void restoringFavoritesBeforeResumeWaitsForForegroundAndKeepsRetainedBrowser() throws Exception {
@@ -439,13 +515,13 @@ public final class NativeUsabilityRuntimeTest {
                 android.content.res.Configuration config = new android.content.res.Configuration(activity.getResources().getConfiguration());
                 config.screenWidthDp = (int)fixture[0]; config.fontScale = fixture[1];
                 android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
-                BottomNavigationBar bar = new BottomNavigationBar(context, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
+                BottomNavigationBar bar = new BottomNavigationBar(context, () -> {}, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
                 float density = context.getResources().getDisplayMetrics().density;
                 int width = Math.round(fixture[0] * density);
                 bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 bar.layout(0, 0, width, bar.getMeasuredHeight());
                 java.util.ArrayList<android.graphics.Rect> boxes = new java.util.ArrayList<>();
-                for (int id : new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
+                for (int id : new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
                     Button button = bar.findViewById(id); assertNotNull(button);
                     assertEquals(View.VISIBLE, button.getVisibility());
                     assertTrue(button.getWidth() >= 48*density); assertTrue(button.getHeight() >= 48*density);
@@ -471,7 +547,7 @@ public final class NativeUsabilityRuntimeTest {
             config.screenWidthDp = 640; config.fontScale = 1.5f;
             android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
             AtomicInteger taps = new AtomicInteger();
-            BottomNavigationBar bar = new BottomNavigationBar(context, taps::incrementAndGet, () -> {}, () -> {}, () -> {}, () -> {});
+            BottomNavigationBar bar = new BottomNavigationBar(context, taps::incrementAndGet, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
             View originalHome = bar.findViewById(R.id.home);
             float density = context.getResources().getDisplayMetrics().density;
             for (int widthDp : new int[]{640,320,640,360,640}) {
@@ -480,7 +556,7 @@ public final class NativeUsabilityRuntimeTest {
                 bar.layout(0,0,width,bar.getMeasuredHeight());
                 assertEquals(widthDp==640?1:2,bar.getChildCount());
                 assertSame(originalHome,bar.findViewById(R.id.home));
-                for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
+                for(int id:new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
                     Button button=bar.findViewById(id);
                     assertTrue(button.getWidth()>=48*density); assertTrue(button.getHeight()>=48*density);
                     assertNotNull(button.getLayout());
@@ -532,17 +608,33 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals("light",state.getString(2));
     }
 
-    @Test public void compactHeaderKeepsNamedHistoryControlsVisibleAtNarrowWidth() {
+    @Test public void verifiedMobileShellHidesWebLensAndBottomSearchStillOpens() throws Exception {
+        presentationMode=5;
+        navigate(BrowserPolicy.HOME);
+        AtomicReference<String> appearance=new AtomicReference<>();CountDownLatch measured=new CountDownLatch(1);
+        onMain(()->web.evaluateJavascript("[document.documentElement.getAttribute('data-dovebevo-app-theme'),document.querySelectorAll('#dovebevo-native-theme-v1').length,getComputedStyle(document.querySelector('.top__row > .search-field')).display]",
+                result->{appearance.set(result);measured.countDown();}));
+        assertTrue(measured.await(5,TimeUnit.SECONDS));
+        JSONArray state=new JSONArray(appearance.get());
+        assertEquals("1",state.getString(0));assertEquals(1,state.getInt(1));assertEquals("none",state.getString(2));
+        onMain(()->activity.findViewById(R.id.search_destination).performClick());
+        AtomicBoolean opened=new AtomicBoolean();
+        await(()->{web.evaluateJavascript("document.body.dataset.searchOpen === '1'",result->opened.set("true".equals(result)));return opened.get();});
+    }
+
+    @Test public void topOverflowRemainsReachableWithoutBrowserTitleAtNarrowWidth() {
         onMain(()->{
             if(Build.VERSION.SDK_INT>=26) assertTrue("Light system navigation must request dark controls",
                     (activity.getWindow().getDecorView().getSystemUiVisibility()&View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR)!=0);
-            LinearLayout header=(LinearLayout)invoke("createBrowserTools");
+            assertNull(activity.findViewById(R.id.browser_tools));
+            BottomNavigationBar bottom=(BottomNavigationBar)activity.findViewById(R.id.bottom_navigation);
             float density=activity.getResources().getDisplayMetrics().density;
             int width=Math.round(320*density);
-            header.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
-            header.layout(0,0,width,header.getMeasuredHeight());
-            for(int id:new int[]{R.id.back,R.id.more}) {
-                Button action=header.findViewById(id);
+            bottom.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
+            bottom.layout(0,0,width,bottom.getMeasuredHeight());
+            assertNull(bottom.findViewById(R.id.more));
+            for(int id:new int[]{R.id.home,R.id.search_destination}) {
+                Button action=bottom.findViewById(id);
                 assertNotNull(action);assertTrue(action.getWidth()>=48*density);assertTrue(action.getHeight()>=48*density);
                 assertNotNull(action.getContentDescription());assertTrue(action.getContentDescription().length()>1);
                 assertNotNull(action.getLayout());
@@ -551,6 +643,13 @@ public final class NativeUsabilityRuntimeTest {
                     assertTrue(action.getLayout().getLineWidth(line)<=action.getWidth()-action.getCompoundPaddingLeft()-action.getCompoundPaddingRight()+1);
                 }
             }
+            Button topMore=activity.findViewById(R.id.more);
+            assertTrue(topMore.getWidth()>=48*density);assertTrue(topMore.getHeight()>=48*density);
+            assertEquals(activity.getString(R.string.more_options),topMore.getContentDescription());
+            int[] menuPosition=new int[2], mapPosition=new int[2];
+            topMore.getLocationOnScreen(menuPosition);web.getLocationOnScreen(mapPosition);
+            assertTrue("The top menu must not cover city or currency controls in the map",
+                    menuPosition[1]+topMore.getHeight()<=mapPosition[1]);
         });
     }
 
@@ -662,7 +761,9 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> {
             assertFalse(((Button) get("forwardButton")).isEnabled());
             assertEquals(ONE, invoke("eligibleSavedVenue"));
-            ((Button) get("backButton")).performClick();
+            android.widget.PopupMenu menu = browserMenu();
+            assertTrue("Back must be available in the real top overflow", menu.getMenu().findItem(R.id.back).isEnabled());
+            assertTrue(menu.getMenu().performIdentifierAction(R.id.back, 0));
         });
         await(() -> APP_HOME.equals(web.getUrl()) && ((Button) get("forwardButton")).isEnabled());
         assertOwnedDocument(1);
@@ -681,7 +782,9 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> {
             assertFalse(((Button) get("backButton")).isEnabled());
             assertTrue(((Button) get("forwardButton")).isEnabled());
-            ((Button) get("forwardButton")).performClick();
+            android.widget.PopupMenu menu = browserMenu();
+            assertTrue("Forward must be available in the real top overflow", menu.getMenu().findItem(R.id.forward).isEnabled());
+            assertTrue(menu.getMenu().performIdentifierAction(R.id.forward, 0));
         });
         await(() -> APP_ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
         // WebView exposes a restored history URL before its main document is ready.
@@ -958,7 +1061,16 @@ public final class NativeUsabilityRuntimeTest {
                         .replace("OWNED_MOBILE_ATTRIBUTE", markerMode == 1 ? "data-dovebevo-mobile-shell=\"1\""
                                 : markerMode == 2 ? "data-dovebevo-mobile-shell=\"false\"" : "")
                         .replace("OWNED_VENUE_KEY", key == null ? "" : key).getBytes(StandardCharsets.UTF_8);
-                if(presentationMode!=0) {
+                if(presentationMode==5) {
+                    String html="<!doctype html><html data-dovebevo-mobile-shell=\"1\"><head><meta charset=\"utf-8\">"
+                            +"<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+                            +"<meta name=\"owned-response\" content=\""+responseToken+"\">"
+                            +"<script nonce=\"fixtureThemeNonce20261029\">document.addEventListener('DOMContentLoaded',()=>document.querySelector('[data-dovebevo-search]').addEventListener('click',()=>document.body.dataset.searchOpen='1'));</script>"
+                            +"</head><body><div id=\"app\"><div class=\"app\"><header class=\"top\"><div class=\"top__row\">"
+                            +"<button class=\"search-field\" data-dovebevo-search=\"1\">Cerca città o bar</button></div></header>"
+                            +"<main class=\"main\"><section class=\"map\"></section></main></div></div></body></html>";
+                    bytes=html.getBytes(StandardCharsets.UTF_8);
+                } else if(presentationMode!=0) {
                     String nonce=presentationMode==2?"":" nonce=\"fixtureThemeNonce20261029\"";
                     String html="<!doctype html><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
                             +"<meta name=\"owned-response\" content=\""+responseToken+"\"><script"+nonce+"></script>"

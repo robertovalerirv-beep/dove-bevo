@@ -191,6 +191,7 @@ html[data-dovebevo-mobile-shell="1"] .map__list {
   box-shadow: 0 1px 7px rgb(27 22 17 / 8%);
 }
 html[data-dovebevo-mobile-shell="1"] .map__status {
+  display: block;
   top: 72px;
   left: 12px;
   right: 12px;
@@ -207,19 +208,20 @@ html[data-dovebevo-mobile-shell="1"] .map__status {
 html[data-dovebevo-mobile-shell="1"] .map__status .meter {
   display: none;
 }
-html[data-dovebevo-mobile-shell="1"] .map__status[data-mobile-selection] {
-  display: block;
-  padding: 9px 13px;
-  font-weight: 650;
-}
-html[data-dovebevo-mobile-shell="1"] .map__status[data-mobile-selection]::after {
-  content: attr(data-mobile-selection);
-  display: block;
-  margin-top: 2px;
-  color: var(--ink-muted);
-  font-size: 0.875em;
-  font-weight: 400;
-  line-height: 1.35;
+html[data-dovebevo-mobile-shell="1"] .map__status[data-mobile-zoom-hint="1"] {
+  top: 12px;
+  right: 72px;
+  left: 72px;
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  padding: 6px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 html[data-dovebevo-mobile-shell="1"] .map__status .mobile-menu-map-note {
   display: block;

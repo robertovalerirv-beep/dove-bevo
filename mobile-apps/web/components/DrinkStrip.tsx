@@ -74,18 +74,6 @@ export function DrinkMenu({ selected, onChange }: Props) {
         aria-label={it.map.drinks}
         hidden={!open}
       >
-        <button
-          type="button"
-          class="mobile-drink-all"
-          aria-pressed={selected.length === 0}
-          onClick={() => {
-            onChange([]);
-            setOpen(false);
-            toggle.current?.focus();
-          }}
-        >
-          Tutti
-        </button>
         {CATALOG.map((drink) => {
           const checked = selected.includes(drink.code);
           const last = checked && selected.length === 1;
@@ -114,6 +102,18 @@ export function DrinkMenu({ selected, onChange }: Props) {
             </label>
           );
         })}
+        <button
+          type="button"
+          class="mobile-drink-all"
+          aria-pressed={selected.length === 0}
+          onClick={() => {
+            onChange([]);
+            setOpen(false);
+            toggle.current?.focus();
+          }}
+        >
+          Tutti
+        </button>
       </div>
     </div>
   );

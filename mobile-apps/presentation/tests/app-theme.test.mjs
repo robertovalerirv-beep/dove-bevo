@@ -36,7 +36,11 @@ function fixture(options = {}) {
   const document = {
     documentElement: root,
     head: options.noHead ? null : { appendChild: (node) => nodes.set(node.id, node) },
-    querySelector: () => (options.noShell ? null : app),
+    querySelector: (selector) =>
+      options.noShell ||
+      (options.europe && (selector.includes(".app .top") || selector.includes(".app .main")))
+        ? null
+        : app,
     querySelectorAll: () =>
       options.noNonce ? [] : [{ nonce: options.nonce ?? "testResponseNonce0123456789==" }],
     getElementById: (id) => nodes.get(id) ?? null,
@@ -97,6 +101,7 @@ function fixture(options = {}) {
 for (const url of [
   "https://www.dovebevo.com/",
   "https://www.dovebevo.com/mobile/",
+  "https://www.dovebevo.com/mobile/index.html",
   "https://dovebevo.com:443/",
   "https://www.dovebevo.com/bar/n4170005990?c=u0nd9h",
 ])
@@ -109,6 +114,21 @@ for (const url of [
     assert.match(page.nodes.values().next().value.textContent, /--bg: #fff4e4/);
     assert.match(page.nodes.values().next().value.textContent, /--spritz: #ff5a1f/);
   });
+
+test("native European document installs only the app shell style and hides its duplicate top search", () => {
+  const page = fixture({
+    url: "https://www.dovebevo.com/mobile/?at=51.5074,-0.1278",
+    europe: true,
+  });
+  assert.equal(page.run(), true);
+  const style = page.nodes.values().next().value.textContent;
+  assert.match(
+    style,
+    /\[data-dovebevo-app-theme="1"\]\[data-dovebevo-mobile-shell="1"\] \.europe-search/,
+  );
+  assert.match(style, /\[data-dovebevo-mobile-shell="1"\] \.europe-city-current/);
+  assert.equal(page.rootAttributes.get("data-dovebevo-app-theme"), "1");
+});
 
 for (const url of [
   "http://www.dovebevo.com/",

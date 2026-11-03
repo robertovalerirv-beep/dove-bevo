@@ -44,6 +44,16 @@
   width: 23px;
   height: 23px;
 }
+.europe-city-current {
+  display: none;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .europe-currency {
   display: inline-block;
   margin: 0;
@@ -56,27 +66,22 @@
   white-space: nowrap;
 }
 .europe-drinks {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 3px 0;
-  scrollbar-width: none;
-}
-.europe-drinks button {
-  flex: none;
-  min-width: 48px;
-  min-height: 48px;
-  padding: 0 14px;
-  border: 1px solid var(--ink, #1b1611);
-  border-radius: 24px;
-  background: var(--surface-2, #f6e9d6);
+  display: grid;
+  gap: 4px;
   color: var(--ink, #1b1611);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 650;
 }
-.europe-drinks button.selected {
-  background: var(--spritz, #ff5a1f);
-  color: var(--on-spritz, #1b1611);
+.europe-drinks select {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--ink, #1b1611);
+  border-radius: 10px;
+  background: var(--surface, #fffbf4);
+  color: var(--ink, #1b1611);
+  font-size: 16px;
+  font-weight: 650;
 }
 .europe-filter-row {
   display: flex;
@@ -152,6 +157,9 @@
   box-shadow: 0 1px 7px rgb(27 22 17 / 6%);
   font-size: 13px;
   line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .europe-map .map__attribution {
   position: absolute;

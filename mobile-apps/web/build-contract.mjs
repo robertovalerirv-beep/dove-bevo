@@ -53,8 +53,18 @@ export function transformApp(source) {
   result = once(result, "{it.map.start}", '{mapFailed ? "Riprova mappa" : it.map.start}');
   result = once(
     result,
+    "const coverageText = it.map.coverage(zoneCoverage.withPrice, zoneCoverage.total);",
+    "const coverageText = mobileCoverageText(zoneCoverage.withPrice, zoneCoverage.total);",
+  );
+  result = once(
+    result,
+    "const status = picture && rawStatus === it.map.zoomIn ? null : rawStatus;",
+    "const status = picture && rawStatus === it.map.zoomIn ? null : rawStatus === it.map.zoomIn ? mobileZoomHint() : rawStatus;",
+  );
+  result = once(
+    result,
     '<p class="map__status" data-testid="map-status" role="status">',
-    '<p class="map__status" data-testid="map-status" role="status" data-mobile-selection={showMeter ? (drinks.length ? drinks.map((code) => it.drinks[code] ?? code).join(" · ") : "Tutti") : undefined}>',
+    '<p class="map__status" data-testid="map-status" data-mobile-zoom-hint={rawStatus === it.map.zoomIn ? "1" : undefined} role="status">',
   );
   result = once(
     result,
@@ -151,10 +161,10 @@ export function transformApp(source) {
   if (buttons.length !== 1) throw new Error("Map search presentation seam changed");
   result =
     result.slice(0, buttons[0].getStart(tree)) +
-    '<MobileSearchButton venues={inView} onOpen={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
+    '<MobileSearchButton venues={inView} onOpen={() => { if (route.name === "bar") { history.replaceState(null, "", mobileURL("/")); setRoute(parseRoute()); } setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
+    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, mobileCoverageText, mobileZoomHint, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }
@@ -244,6 +254,23 @@ export function transformMap(source, styleURLExpression) {
     '      id: "venue-price",\n      type: "symbol",',
     '      id: "venue-price",\n      type: "symbol",\n      minzoom: 14,',
   );
+  // A dense price label may be hidden by MapLibre collision handling. Keep the
+  // last explicitly viewed price in its selected cork after its sheet closes.
+  result = once(
+    result,
+    "  setSelected(key: string | null) {\n    this.selectedKey = key;",
+    "  setSelected(key: string | null) {\n    if (key !== null) this.selectedKey = key;",
+  );
+  result = once(
+    result,
+    "    const point = key ? this.points.find((p) => p.key === key) : undefined;",
+    '    const point = key ? this.points.find((p) => p.key === key && p.label) : undefined;\n    this.map.getContainer().dataset.selectedPrice = point?.label ?? "";',
+  );
+  result = once(
+    result,
+    'for (const id of ["venue-hit", "price-hit", "cluster-hit"])',
+    'for (const id of ["venue-hit", "price-hit", "priced-dot", "cluster-hit"])',
+  );
   // One physical tap produces one selection even where expanded hit targets overlap.
   const updated = ts.createSourceFile(
     "map.ts",
@@ -263,9 +290,8 @@ export function transformMap(source, styleURLExpression) {
     result.slice(0, click.body.getStart(updated)) +
     `{
     this.map.on("click", (event) => {
-      const hits = this.map.queryRenderedFeatures(event.point, { layers: ["price-hit", "priced-dot", "venue-hit"] });
-      const preferred = this.map.getZoom() < 14 ? "priced-dot" : "price-hit";
-      const target = hits.find((hit) => hit.layer.id === preferred) ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
+      const hits = this.map.queryRenderedFeatures(event.point, { layers: ["venue-price", "price-hit", "priced-dot", "venue-hit"] });
+      const target = hits.find((hit) => hit.layer.id === "venue-price") ?? hits.find((hit) => hit.layer.id === "priced-dot") ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
       if (target?.properties) listener(String(target.properties.key), String(target.properties.cell));
     });
   }` +

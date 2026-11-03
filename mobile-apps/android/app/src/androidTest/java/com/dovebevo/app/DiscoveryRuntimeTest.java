@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -25,7 +26,7 @@ public final class DiscoveryRuntimeTest {
     private static final String PRICES="{\"p\":[[\"n123\",\"spritz\",0,800,\"2026-10-28\",2,0],[\"n123\",\"spritz\",1,500,\"2026-10-27\",1,0],[\"w9\",\"spritz\",0,600,\"2026-06-01\",0,0]],\"u\":[],\"pend\":[],\"h\":[],\"g\":[]}";
     private final Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
     private final AtomicBoolean active=new AtomicBoolean(true);private final AtomicInteger requests=new AtomicInteger();private final AtomicReference<String> opened=new AtomicReference<>();
-    private MainActivity activity;private DiscoveryScreen screen;private SharedPreferences rules;private String previous;private boolean hadPrevious;
+    private MainActivity activity;private DiscoveryScreen screen;private SharedPreferences rules;private String previous;private boolean hadPrevious;private boolean partialOne;
     @Before public void setUp(){
         rules=instrumentation.getTargetContext().getSharedPreferences("dovebevo_rules",0);hadPrevious=rules.contains("accepted_rules_version");previous=rules.getString("accepted_rules_version",null);assertTrue(rules.edit().remove("accepted_rules_version").commit());
         activity=(MainActivity)instrumentation.startActivitySync(new Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK));
@@ -38,7 +39,7 @@ public final class DiscoveryRuntimeTest {
             ((Spinner)activity.findViewById(R.id.discovery_band)).setSelection(1);});
         onMain(()->{assertEquals(1,rows().getChildCount());assertTrue(text(rows().getChildAt(0)).contains("5,00"));assertTrue(text(rows().getChildAt(0)).contains("27/10/2026"));rows().getChildAt(0).findViewById(R.id.discovery_open).performClick();});
         assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",opened.get());assertEquals(20,requests.get());
-        onMain(()->{activity.findViewById(R.id.discovery_screen).findViewWithTag("discovery.category.negroni").performClick();});
+        onMain(()->{((Spinner)activity.findViewById(R.id.discovery_drink)).setSelection(RecommendationDrink.NEGRONI.ordinal());});
         onMain(()->{assertEquals(0,rows().getChildCount());assertTrue(status().contains("Nessun prezzo"));assertFalse(status().contains("0,00"));});
     }
     @Test public void unreadyAndUnavailableAreExplicitAndBackgroundCannotRefresh()throws Exception {
@@ -47,15 +48,30 @@ public final class DiscoveryRuntimeTest {
         onMain(()->{assertTrue(status().contains("non verificabili"));assertEquals(0,rows().getChildCount());active.set(false);screen.pause();screen.refresh();});
         int count=requests.get();onMain(()->screen.refresh());assertEquals(count,requests.get());
     }
-    @Test public void nineIllustratedCategoriesUseActualCountsAndKeepBandWithoutNewRequests()throws Exception {
-        show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();int before=requests.get();
-        onMain(()->{assertNull(activity.findViewById(R.id.discovery_drink));assertTrue(rows().getChildAt(0).getHeight()>0);assertTrue(rows().getChildAt(0).getHeight()<=Math.round(120*activity.getResources().getDisplayMetrics().density));});
+    @Test public void drinkDropdownExposesNineCategoriesAndKeepsBandWithoutNewRequests()throws Exception {
+        partialOne=true;show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();int before=requests.get();
+        onMain(()->{assertNotNull(activity.findViewById(R.id.discovery_drink));assertTrue(rows().getChildAt(0).getHeight()>0);assertTrue(rows().getChildAt(0).getHeight()<=Math.round(120*activity.getResources().getDisplayMetrics().density));
+            HorizontalScrollView carousel=activity.findViewById(android.R.id.content).findViewWithTag("discovery.categoryCarousel");
+            assertNotNull(carousel);assertEquals(9,((LinearLayout)carousel.getChildAt(0)).getChildCount());
+            View spritz=carousel.findViewWithTag("discovery.category.spritz");View beer=carousel.findViewWithTag("discovery.category.beer_draft");
+            String spritzSummary=spritz.getContentDescription().toString();
+            assertTrue("Actual category summary: "+spritzSummary,spritzSummary.contains("Da 6,00"));
+            assertTrue("Original euro currency must remain visible",spritzSummary.contains("€"));
+            assertTrue(spritzSummary.contains("Segnalato il 2026-06-01"));
+            assertTrue(spritzSummary.contains("Da ricontrollare"));
+            assertTrue(spritz.getContentDescription().toString().contains("Immagine illustrativa"));
+            assertTrue(beer.getContentDescription().toString().contains("Nessun prezzo nei dati caricati"));
+            assertTrue(spritzSummary.contains("Zona parziale"));
+            beer.performClick();assertEquals("beer_draft",screen.selectedDrink());assertEquals(0,rows().getChildCount());
+            activity.findViewById(android.R.id.content).findViewWithTag("discovery.category.spritz").performClick();
+            assertEquals("spritz",screen.selectedDrink());assertEquals(2,rows().getChildCount());});
         onMain(()->{
-            LinearLayout tiles=activity.findViewById(R.id.discovery_screen).findViewWithTag("discovery_categories");
-            assertEquals(9,tiles.getChildCount());assertTrue(text(tiles.getChildAt(RecommendationDrink.SPRITZ.ordinal())).contains("2 prezzi"));
-            assertTrue(tiles.getChildAt(RecommendationDrink.SPRITZ.ordinal()).isSelected());
+            Spinner drinks=activity.findViewById(R.id.discovery_drink);
+            assertEquals(9,drinks.getCount());assertEquals("Scegli cosa bere",drinks.getContentDescription());
+            assertEquals(RecommendationDrink.SPRITZ.ordinal(),drinks.getSelectedItemPosition());
+            assertEquals(NativePricePresentation.category(RecommendationDrink.NEGRONI),drinks.getItemAtPosition(RecommendationDrink.NEGRONI.ordinal()));
             ((Spinner)activity.findViewById(R.id.discovery_band)).setSelection(1);
-            tiles.getChildAt(RecommendationDrink.NEGRONI.ordinal()).performClick();
+            drinks.setSelection(RecommendationDrink.NEGRONI.ordinal());
         });
         onMain(()->{assertEquals("negroni",screen.selectedDrink());assertEquals(1,screen.selectedBand());assertEquals(0,rows().getChildCount());assertFalse(text(rows()).contains("0,00"));});
         assertEquals(before,requests.get());
@@ -73,8 +89,8 @@ public final class DiscoveryRuntimeTest {
         }finally{onMain(()->resources.updateConfiguration(saved,resources.getDisplayMetrics()));}
     }
     private void show(boolean unavailable,DiscoveryArea area){onMain(()->{
-        FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable)throw new IOException("Owned offline response");String body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");
-        screen=new DiscoveryScreen(activity,opened::set,()->{},active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));activity.setContentView(screen.view());screen.show(area);
+        FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable||partialOne&&url.contains("/api/prices/")&&!url.contains("u0nd9"))throw new IOException("Owned offline response");String body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");
+        screen=new DiscoveryScreen(activity,opened::set,()->{},active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));assertEquals("beer_draft",screen.selectedDrink());screen.restoreSelection("spritz",0);activity.setContentView(screen.view());screen.show(area);
     });}
     private void awaitLoaded()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(!status().contains("Caricamento")&&(rows().getChildCount()==0||rows().getChildAt(0).getHeight()>0)));if(loaded.get())return;Thread.sleep(10);}fail("Owned discovery did not complete");}
     private LinearLayout rows(){return activity.findViewById(R.id.discovery_rows);}private String status(){return((TextView)activity.findViewById(R.id.discovery_status)).getText().toString();}

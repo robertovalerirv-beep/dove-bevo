@@ -100,7 +100,7 @@ class PriceShareReaderTests(unittest.TestCase):
         self.assertLess(fixture.index("OwnedReferenceWindow(root: host)"), fixture.index("web.loadSimulatedRequest"))
         self.assertIn("web.window === mounted.window", fixture)
         self.assertIn("mounted.window.isKeyWindow", fixture)
-        self.assertIn("timeout: 15", fixture)
+        self.assertIn("timeout: 45", fixture)
         self.assertIn("guard navigationResult == .completed", fixture)
         evaluator = source.split("@MainActor private func evaluate", 1)[1].split("@MainActor private func descendants", 1)[0]
         self.assertIn("timeout: 5", evaluator)

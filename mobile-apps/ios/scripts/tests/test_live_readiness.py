@@ -32,20 +32,22 @@ class LiveReadinessTests(unittest.TestCase):
         for damaged in ["\u00c3\u00a0", "\u00e2\u201a\u00ac", "\ufffd"]:
             self.assertNotIn(damaged, self.source)
 
-    def test_city_search_uses_anchored_label_and_exact_selected_city_without_loosening_map_readiness(self):
+    def test_city_search_uses_anchored_label_but_only_the_bottom_action_is_visible(self):
         query = self.source.split("private func citySearchPredicate(", 1)[1].split("private func interactiveMap()", 1)[0]
         for required in ["NSRegularExpression.escapedPattern(for: $0)", 'label MATCHES %@',
-                         "{1,120}", "citySearchPredicate(city: city)", "website.buttons.matching"]:
+                         "{1,120}", "website.buttons.matching", 'app.buttons["tab.search"]']:
             self.assertIn(required, query)
         self.assertIn(chr(92) * 2 + "A", query)
         self.assertIn(chr(92) * 2 + "z", query)
         self.assertNotIn("CONTAINS", query)
-        self.assertIn('citySearchButton(in: website, city: "Milano")', self.source)
+        self.assertIn('assertOnlyNativeSearch(in: website)', self.source)
         self.assertIn('"(?:" + NSRegularExpression.escapedPattern(for: $0) + " · )?"', query)
         self.assertIn('citySearchPredicate(city: "Milano").evaluate(with: ["label": "Cerca città o bar"])', self.source)
         self.assertIn('XCTAssertFalse(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Torino · Cerca città o bar"]))', self.source)
         self.assertIn("hasVisiblePositiveCoverage()", self.source)
-        self.assertIn('website.buttons.matching(citySearchPredicate()).count, 1', self.source)
+        self.assertIn('website.buttons.matching(citySearchPredicate()).count, 0', self.source)
+        self.assertIn('searchButton.tap()', self.source)
+        self.assertIn('let searchClosed = XCTNSPredicateExpectation', self.source)
 
     def test_original_field_receives_one_real_focus_tap_and_keyboard_readiness_before_typing(self):
         live = self.source.split("func testLiveWebsiteCitySearchAndMap()", 1)[1].split("\n    private func", 1)[0]
@@ -54,13 +56,17 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertLess(live.index("waitForOrdinaryKeyboard()"), live.index('searchField.typeText("Milano")'))
         self.assertIn('XCTAssertEqual(searchField.value as? String, "Milano"', live)
         ready = self.source.split("private func waitForOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
-        self.assertIn("keyboards.allElementsBoundByIndex.contains", ready)
-        self.assertIn("self.isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)", ready)
-        self.assertLess(ready.index("guard keyboard.exists"), ready.index("frame: keyboard.frame"))
-        self.assertIn("self.app.windows.firstMatch.frame", ready)
+        self.assertIn("self.ordinaryKeyboardVisible()", ready)
+        sample = self.source.split("private func ordinaryKeyboardVisible()", 1)[1].split("\n    private func", 1)[0]
+        self.assertIn("keyboards.allElementsBoundByIndex.contains", sample)
+        self.assertIn("isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)", sample)
+        self.assertLess(sample.index("guard keyboard.exists"), sample.index("frame: keyboard.frame"))
+        self.assertIn("app.windows.firstMatch.frame", sample)
         keyboard = self.source.split("private func isOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
         self.assertIn("frame.width >= 250, frame.height >= 150", keyboard)
-        self.assertIn("key.isHittable", keyboard)
+        self.assertIn("guard key.exists", keyboard)
+        self.assertIn("keyFrame.width >= 20 && keyFrame.height >= 20", keyboard)
+        self.assertNotIn("key.isHittable", keyboard)
         self.assertIn("windowFrame.contains(keyFrame)", keyboard)
         simultaneous = live.split("let searchVisible =", 1)[1].split("city.tap()", 1)[0]
         for required in ["keyboards.allElementsBoundByIndex", "self.isOrdinaryKeyboard(keyboard, frame: candidateFrame, windowFrame: windowFrame)",

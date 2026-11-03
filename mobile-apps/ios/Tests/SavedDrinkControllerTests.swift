@@ -89,6 +89,11 @@ final class SavedDrinkControllerTests: XCTestCase {
                 XCTAssertEqual(row.accessibilityIdentifier, "favorites.migrate.n123")
                 XCTAssertTrue(try drinkStore.load().isEmpty)
                 XCTAssertEqual(try venueStore.load().count, 1)
+                guard waitUntil("Visible favourites must finish their actual appearance before legacy selection", {
+                    controller.navigationItem.rightBarButtonItems?.contains(where: {
+                        $0.accessibilityIdentifier == "favorites.refresh" && $0.isEnabled
+                    }) == true
+                }) else { return }
                 controller.tableView(controller.tableView, didSelectRowAt: index)
                 waitUntil("Explicit old place drink chooser") { (controller.presentedViewController as? UINavigationController)?.topViewController is FavouriteSaveChooser }
                 let chooser = try XCTUnwrap((controller.presentedViewController as? UINavigationController)?.topViewController as? FavouriteSaveChooser)
@@ -131,12 +136,20 @@ final class SavedDrinkControllerTests: XCTestCase {
         window.rootViewController = UINavigationController(rootViewController: root)
         window.makeKeyAndVisible(); window.layoutIfNeeded(); root.view.layoutIfNeeded()
         defer { window.isHidden = true; window.rootViewController = nil; previous?.makeKey() }
-        waitUntil("Actual foreground fixture window must be mounted") { root.view.window === window && window.isKeyWindow && !root.view.bounds.isEmpty }
+        guard waitUntil("Actual foreground fixture window must be mounted", {
+            root.view.window === window && window.isKeyWindow && !root.view.bounds.isEmpty
+        }) else {
+            throw NSError(domain: "OwnedSavedDrinkFixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "Fixture window did not mount"])
+        }
         try body(window)
     }
-    @MainActor private func waitUntil(_ label: String, _ predicate: @escaping () -> Bool) {
+    @MainActor @discardableResult private func waitUntil(_ label: String, _ predicate: @escaping () -> Bool) -> Bool {
+        if predicate() { return true }
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in predicate() }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed, label)
+        let result = XCTWaiter.wait(for: [ready], timeout: 15)
+        let mounted = predicate()
+        XCTAssertTrue(mounted, "\(label); waiter=\(result.rawValue)")
+        return mounted
     }
     private func withStores(_ body: (SavedVenueStore, SavedDrinkStore) throws -> Void) throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

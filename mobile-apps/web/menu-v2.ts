@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { bestPrice, loadCell, type Venue } from "@site/app/lib/data";
+import { currentLang } from "@site/app/i18n/lang";
 
 const Key = z.string().regex(/^(?:[nwru][1-9]\d{0,14}|m[0-9a-f]{24})$/);
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
@@ -406,6 +407,18 @@ export function mobileCoverage(venues: Venue[], drinks: readonly string[]) {
       .length,
     total: venues.length,
   };
+}
+
+/** The selected drink is already named by the dropdown; keep the map count short. */
+export function mobileCoverageText(withPrice: number, total: number): string {
+  return currentLang() === "en"
+    ? `${String(withPrice)}/${String(total)} with prices`
+    : `${String(withPrice)}/${String(total)} con prezzo`;
+}
+
+/** Keep the map-start hint between the language and venue-list controls. */
+export function mobileZoomHint(): string {
+  return currentLang() === "en" ? "Zoom or search city" : "Avvicinati o cerca città";
 }
 
 export function invalidateMobileCell(cell: string): void {

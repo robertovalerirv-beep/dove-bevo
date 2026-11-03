@@ -5,7 +5,7 @@ import XCTest
 
 final class BottomNavigationControllerTests: XCTestCase {
     @MainActor
-    func testFiveActualBottomControlsFitNarrowWidthAndAccessibilityTextWithoutBlankDestinations() throws {
+    func testSixActualBottomControlsFitNarrowWidthAndAccessibilityTextWithoutBlankDestinations() throws {
         let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first {
             $0.activationState == .foregroundActive
@@ -67,12 +67,17 @@ final class BottomNavigationControllerTests: XCTestCase {
             XCTAssertTrue(bar.window === window, "Measure the actual mounted native controls")
             XCTAssertEqual(tabs.traitCollection.preferredContentSizeCategory, .accessibilityExtraExtraExtraLarge)
             XCTAssertEqual(bar.bounds.width, 320, accuracy: 0.5)
-            XCTAssertEqual(bar.buttons.map { $0.configuration?.title }, ["Home", "Mappa", "Preferiti", "Salva", "Consigliati"])
-            XCTAssertEqual(bar.buttons.compactMap(\.accessibilityLabel), ["Home", "Mappa", "Preferiti", "Salva nei preferiti", "Drink consigliati"])
+            XCTAssertEqual(bar.buttons.map { $0.configuration?.title }, ["Home", "Cerca", "Mappa", "Preferiti", "Salva", "Consigliati"])
+            XCTAssertEqual(bar.buttons.compactMap(\.accessibilityLabel), ["Home", "Cerca", "Mappa", "Preferiti", "Salva nei preferiti", "Drink consigliati"])
             XCTAssertTrue(tabs.children.contains { $0 === tabs.mapNavigation })
             XCTAssertTrue(tabs.children.contains { $0 === tabs.favouritesNavigation })
             XCTAssertTrue(tabs.children.contains { $0 === tabs.discoveryNavigation })
-            XCTAssertEqual(tabs.children.count, 3, "Home owns a real discovery controller; venue actions must not create empty destinations")
+            XCTAssertEqual(tabs.children.count, 3, "Home/Discover remains retained; venue actions must not create empty destinations")
+            let topMore = tabs.topMoreButton.convert(tabs.topMoreButton.bounds, to: tabs.view)
+            let mapContent = tabs.mapNavigation.view.convert(tabs.mapNavigation.view.bounds, to: tabs.view)
+            XCTAssertGreaterThanOrEqual(topMore.width, 48)
+            XCTAssertGreaterThanOrEqual(topMore.height, 48)
+            XCTAssertLessThanOrEqual(topMore.maxY, mapContent.minY + 0.5, "The top menu must not cover city, currency or drink controls")
             XCTAssertEqual(bar.frame.maxY, tabs.view.safeAreaLayoutGuide.layoutFrame.maxY, accuracy: 0.5)
             XCTAssertGreaterThanOrEqual(bar.frame.height, 48)
             XCTAssertLessThanOrEqual(tabs.mapNavigation.view.frame.maxY, bar.frame.minY + 0.5)
@@ -81,7 +86,7 @@ final class BottomNavigationControllerTests: XCTestCase {
             let controls = descendants(bar).compactMap { $0 as? UIControl }
             let frames = controls.map { $0.convert($0.bounds, to: bar) }
             let hierarchy = descendants(bar).map { "\(type(of: $0)): \($0.frame)" }.joined(separator: "\n")
-            XCTAssertEqual(controls.count, 5, "Measure actual UIKit controls, not a duplicated geometry formula: \(hierarchy)")
+            XCTAssertEqual(controls.count, 6, "Measure actual UIKit controls, not a duplicated geometry formula: \(hierarchy)")
             for (index, frame) in frames.enumerated() {
                 XCTAssertGreaterThanOrEqual(frame.width, 48)
                 XCTAssertGreaterThanOrEqual(frame.height, 48)
@@ -160,7 +165,7 @@ final class BottomNavigationControllerTests: XCTestCase {
     }
 
     @MainActor
-    func testHomeShowsNativeDiscoveryButMapResumesItsRetainedStack() throws {
+    func testCercaReturnsToMapSearchAndMoreUsesTheVisibleNavigationStack() throws {
         var requests: [URL] = []
         let browser = BrowserViewController(websiteLoader: { _, request in
             requests.append(request.url!); return nil
@@ -178,22 +183,35 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertTrue(tabs.mapNavigation.topViewController === details)
         XCTAssertEqual(requests, [MobileEntry.homeURL])
         tabs.selectedIndex = 1
-        bar.button(for: .home).sendActions(for: .touchUpInside)
-        XCTAssertEqual(tabs.selectedIndex, 2)
-        XCTAssertFalse(bar.button(for: .map).isSelected)
-        XCTAssertTrue(bar.button(for: .home).isSelected)
-        XCTAssertTrue(tabs.discoveryNavigation.topViewController === tabs.discovery)
-        XCTAssertEqual(tabs.discovery.title, "Scopri")
-        XCTAssertFalse(tabs.discoveryNavigation.view.isHidden)
+        bar.button(for: .search).sendActions(for: .touchUpInside)
+        XCTAssertEqual(tabs.selectedIndex, 0)
+        XCTAssertTrue(bar.button(for: .map).isSelected)
+        XCTAssertFalse(bar.button(for: .search).isSelected)
+        XCTAssertTrue(tabs.mapNavigation.topViewController === browser)
+        XCTAssertTrue(tabs.discoveryNavigation.view.isHidden)
         XCTAssertFalse(bar.button(for: .save).isEnabled)
         XCTAssertFalse(bar.button(for: .recommendations).isEnabled)
-        XCTAssertTrue(tabs.mapNavigation.topViewController === details, "Home must retain the actual map stack and history")
         XCTAssertTrue(browser.view === originalView)
-        XCTAssertEqual(requests, [MobileEntry.homeURL], "Native discovery does not reload or reset the website")
-        bar.button(for: .map).sendActions(for: .touchUpInside)
-        XCTAssertEqual(tabs.selectedIndex, 0)
-        XCTAssertTrue(tabs.mapNavigation.topViewController === details)
-        XCTAssertTrue(tabs.discoveryNavigation.view.isHidden)
+        XCTAssertEqual(requests.last, MobileEntry.homeURL, "Search loads only the validated app map when no document is ready")
+        tabs.selectedIndex = 1
+        bar.button(for: .home).sendActions(for: .touchUpInside)
+        XCTAssertEqual(tabs.selectedIndex, 2, "Home opens the retained native Discover feed")
+        XCTAssertTrue(bar.button(for: .home).isSelected)
+        tabs.selectedIndex = 1
+        let more = try XCTUnwrap(tabs.topMoreButton.menu)
+        let titles = more.children.map(\.title)
+        XCTAssertTrue(titles.contains("Privacy"))
+        XCTAssertTrue(titles.contains("Informazioni"))
+        for hiddenBrowserAction in ["Condividi", "Ricarica", "Avanti", "Preferiti"] {
+            XCTAssertFalse(titles.contains(hiddenBrowserAction), "Hidden browser action appeared on Preferiti: \(hiddenBrowserAction)")
+        }
+        tabs.showPrivacyFromMore()
+        XCTAssertTrue(tabs.favouritesNavigation.topViewController is PrivacyViewController)
+        XCTAssertEqual(tabs.selectedIndex, 1, "Privacy must stay on the visible Preferiti stack")
+        tabs.favouritesNavigation.popToRootViewController(animated: false)
+        tabs.showInformationFromMore()
+        XCTAssertTrue(tabs.favouritesNavigation.topViewController is AppInformationViewController)
+        XCTAssertEqual(tabs.selectedIndex, 1, "Back from Informazioni returns to Preferiti")
     }
 
     @MainActor
@@ -255,9 +273,10 @@ final class BottomNavigationControllerTests: XCTestCase {
         let browser = BrowserViewController(websiteLoader: { web, _ in webView = web; return nil })
         let navigation = UINavigationController(rootViewController: browser)
         browser.loadViewIfNeeded()
-        XCTAssertEqual(browser.navigationItem.leftBarButtonItems?.compactMap(\.accessibilityIdentifier), ["browser.back"])
+        XCTAssertNil(browser.navigationItem.leftBarButtonItem)
         XCTAssertTrue(try actions(browser).contains { $0.title == "Avanti" })
-        XCTAssertEqual(browser.navigationItem.rightBarButtonItems?.compactMap(\.accessibilityIdentifier), ["browser.more"])
+        XCTAssertNil(browser.navigationItem.rightBarButtonItem)
+        XCTAssertTrue(try actions(browser).contains { $0.title == "Indietro" })
         XCTAssertTrue(try actions(browser).contains { $0.title == "Interrompi" })
         XCTAssertTrue(try share(browser).attributes.contains(.disabled))
         let web = try XCTUnwrap(webView)
@@ -269,7 +288,7 @@ final class BottomNavigationControllerTests: XCTestCase {
         browser.webView(web, didFailProvisionalNavigation: nil, withError: NSError(domain: NSURLErrorDomain, code: NSURLErrorNotConnectedToInternet))
         XCTAssertTrue(try actions(browser).contains { $0.title == "Ricarica" })
         XCTAssertTrue(try share(browser).attributes.contains(.disabled))
-        XCTAssertFalse(try actions(browser).contains { ["Preferiti", "Salva nei preferiti", "Drink consigliati", "Home"].contains($0.title) })
+        XCTAssertFalse(try actions(browser).contains { ["Preferiti", "Salva nei preferiti", "Drink consigliati", "Cerca"].contains($0.title) })
         XCTAssertTrue(navigation.topViewController === browser)
     }
 
@@ -323,8 +342,7 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertEqual(web.backForwardList.currentItem?.url, venueURL)
         XCTAssertEqual(web.backForwardList.backList.count, 1)
         XCTAssertTrue(web.backForwardList.forwardList.isEmpty)
-        let back = try XCTUnwrap(browser.navigationItem.leftBarButtonItems?.first)
-        _ = browser.perform(try XCTUnwrap(back.action))
+        _ = browser.perform(NSSelectorFromString("goBack"))
         waitUntil("Back returns to owned home") {
             web.url == homeURL && web.canGoForward && (try? self.share(browser).attributes.contains(.disabled)) == false
         }
@@ -349,7 +367,7 @@ final class BottomNavigationControllerTests: XCTestCase {
 
     @MainActor
     private func actions(_ browser: BrowserViewController) throws -> [UIAction] {
-        try XCTUnwrap(browser.navigationItem.rightBarButtonItem?.menu).children.compactMap { $0 as? UIAction }
+        browser.moreMenu().children.compactMap { $0 as? UIAction }
     }
 
     @MainActor

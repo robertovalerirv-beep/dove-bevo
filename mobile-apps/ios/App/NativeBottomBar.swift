@@ -1,11 +1,12 @@
 import UIKit
 
 enum BottomNavigationAction: Int, CaseIterable {
-    case home, map, favourites, save, recommendations
+    case home, search, map, favourites, save, recommendations
 
     var title: String {
         switch self {
         case .home: return "Home"
+        case .search: return "Cerca"
         case .map: return "Mappa"
         case .favourites: return "Preferiti"
         case .save: return "Salva"
@@ -21,7 +22,8 @@ enum BottomNavigationAction: Int, CaseIterable {
     }
     var identifier: String {
         switch self {
-        case .home: return "browser.home"
+        case .home: return "tab.home"
+        case .search: return "tab.search"
         case .map: return "tab.map"
         case .favourites: return "tab.favorites"
         case .save: return "browser.saveVenue"
@@ -31,6 +33,7 @@ enum BottomNavigationAction: Int, CaseIterable {
     var symbol: String {
         switch self {
         case .home: return "house"
+        case .search: return "magnifyingglass"
         case .map: return "map"
         case .favourites: return "bookmark"
         case .save: return "bookmark"
@@ -94,7 +97,7 @@ final class NativeBottomBar: UIView {
             button.addTarget(self, action: #selector(selectAction), for: .touchUpInside)
             buttons.append(button)
         }
-        arrange(columns: 5)
+        arrange(columns: 6)
         update(destination: 0, venueActionsEnabled: false)
     }
 
@@ -106,7 +109,7 @@ final class NativeBottomBar: UIView {
             update(destination: destination, venueActionsEnabled: venueActionsEnabled)
         }
         let usableWidth = bounds.width - safeAreaInsets.left - safeAreaInsets.right
-        let requiredColumns = usableWidth < 360 || traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 3 : 5
+        let requiredColumns = usableWidth < 390 || traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 3 : 6
         if bounds.width > 0 && columns != requiredColumns { arrange(columns: requiredColumns) }
         super.layoutSubviews()
         updateContentHeights()
@@ -189,7 +192,7 @@ final class NativeBottomBar: UIView {
             if !enabled { traits.insert(.notEnabled) }
             button.accessibilityTraits = traits
         }
-        button(for: .save).accessibilityHint = "Salva il nome esistente nei preferiti privati di questo dispositivo"
+        button(for: .save).accessibilityHint = "Salva un drink di questo locale nei preferiti privati di questo dispositivo"
         button(for: .recommendations).accessibilityHint = "Mostra i consigli sui drink condivisi da tutti"
     }
 

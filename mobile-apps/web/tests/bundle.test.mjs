@@ -6,7 +6,7 @@ import { before, after, test } from "node:test";
 import { chromium } from "@playwright/test";
 import { contrastRatio } from "./contrast.mjs";
 import { pageCsp } from "../../../src/worker/lib/security-headers.ts";
-/* global document, getComputedStyle, history */
+/* global document, getComputedStyle, history, location */
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const client = path.join(root, "dist/client");
@@ -101,7 +101,15 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
               c: [[62505581, "Milano"]],
               v: [
                 ["n123", "Locale di prova", 1, 45.4642, 9.19, "Via di prova 1", 0],
-                ["n456", "Altro locale di prova", 1, 45.4652, 9.195, "Via di prova 2", 0],
+                [
+                  "n456",
+                  "Altro locale di prova",
+                  1,
+                  options.priceHeadOverlap ? 45.46495 : options.densePrices ? 45.4645 : 45.4652,
+                  options.priceHeadOverlap ? 9.19 : options.densePrices ? 9.1906 : 9.195,
+                  "Via di prova 2",
+                  0,
+                ],
                 ["n789", "Unpriced overlap fixture", 0, 45.4647, 9.19, "Via di prova 3", 0],
               ],
             }
@@ -243,7 +251,17 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     }
     if (/^\/api\/prices\//.test(url.pathname))
       return route.fulfill({
-        json: { p: url.pathname.endsWith("u0nd9") ? rows : [], u: [], pend: [], h: [], g: [] },
+        json: {
+          p: url.pathname.endsWith("u0nd9")
+            ? options.densePrices
+              ? [...rows, ["n456", "spritz", 0, 600, "2026-11-01", 0, 0]]
+              : rows
+            : [],
+          u: [],
+          pend: [],
+          h: [],
+          g: [],
+        },
       });
     if (/^\/api\/venues\/n123\/prices$/.test(url.pathname))
       return route.fulfill({ json: { p: rows.filter((r) => r[0] === "n123"), h: [] } });
@@ -275,6 +293,15 @@ async function openDrinks(page) {
   return page.locator(".mobile-drink-strip");
 }
 
+async function selectOnlyDrink(page, name) {
+  const drinks = await openDrinks(page);
+  await drinks.getByRole("checkbox", { name, exact: true }).check({ force: true });
+  await drinks.getByRole("checkbox", { name: "Birra media", exact: true }).uncheck({
+    force: true,
+  });
+  await page.locator(".mobile-drink-menu__button").click();
+}
+
 test("production mobile entry renders chips and preserves venue route across reload and close", async () => {
   const f = await fixture();
   try {
@@ -282,7 +309,10 @@ test("production mobile entry renders chips and preserves venue route across rel
     const name = f.page.locator("h2.scontrino__name");
     await name.waitFor();
     assert.equal(await name.textContent(), "Locale di prova");
-    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /Spritz[\s\S]*5,50/);
+    assert.match(
+      await f.page.locator(".mobile-price--featured").innerText(),
+      /Birra media[\s\S]*5,00/,
+    );
     const photo = f.page.locator(".mobile-price--featured img");
     assert.equal(await photo.evaluate((img) => img.complete && img.naturalWidth > 0), true);
     await f.page.reload();
@@ -312,8 +342,18 @@ test("production mobile entry renders chips and preserves venue route across rel
     const chips = await openDrinks(f.page);
     assert.equal(await chips.getByRole("checkbox").count(), 9);
     assert.equal(
+      await chips.getByRole("checkbox", { name: "Birra media", exact: true }).isChecked(),
+      true,
+    );
+    assert.equal(
+      await chips
+        .getByRole("button", { name: "Tutti", exact: true })
+        .evaluate((el) => el === el.parentElement?.lastElementChild),
+      true,
+    );
+    assert.equal(
       await chips.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
-      "true",
+      "false",
     );
     assert.equal(
       await chips.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
@@ -328,20 +368,27 @@ test("production mobile entry renders chips and preserves venue route across rel
       await chips
         .getByRole("checkbox", { name: "Spritz", exact: true })
         .getAttribute("aria-disabled"),
-      "true",
+      null,
     );
-    const selected = await chips.locator("label:has(input:checked)").evaluate((el) => ({
-      bg: getComputedStyle(el).backgroundColor,
-      text: getComputedStyle(el).color,
-    }));
+    const selected = await chips
+      .locator("label:has(input:checked)")
+      .first()
+      .evaluate((el) => ({
+        bg: getComputedStyle(el).backgroundColor,
+        text: getComputedStyle(el).color,
+      }));
     assert.deepEqual(selected, { bg: "rgb(255, 90, 31)", text: "rgb(27, 22, 17)" });
     await chips.getByRole("checkbox", { name: "Spritz", exact: true }).focus();
     await f.page.keyboard.press("Space");
     assert.equal(
       await chips.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
+      false,
+    );
+    await chips.getByText("Spritz", { exact: true }).click();
+    assert.equal(
+      await chips.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
       true,
     );
-    await chips.getByText("Birra media", { exact: true }).click();
     await chips.getByText("Spritz", { exact: true }).click();
     assert.equal(
       await chips.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
@@ -389,7 +436,13 @@ test("drink checkboxes stay inside the narrow scrolling strip and viewport", asy
     assert.equal(await f.page.evaluate(() => document.documentElement.scrollWidth), 412);
     const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
     assert.ok(locate && locate.x >= 0 && locate.x + locate.width <= 412);
-    await f.page.locator(".search-field").click();
+    const nativeSearch = f.page.locator('button[data-dovebevo-search="1"]');
+    assert.equal(
+      await nativeSearch.count(),
+      1,
+      "The native Cerca command has one app-owned map target",
+    );
+    await nativeSearch.click();
     const dialog = f.page.getByRole("dialog");
     await dialog.waitFor();
     await dialog.getByRole("combobox").fill("Milano");
@@ -420,9 +473,7 @@ test("visible price-pin head and geographic tip both open the correct venue", as
   const f = await fixture();
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
-    await openDrinks(f.page);
-    await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
-    await f.page.locator(".mobile-drink-menu__button").click();
+    await selectOnlyDrink(f.page, "Spritz");
     await f.page.waitForFunction(
       () =>
         document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
@@ -474,6 +525,126 @@ test("visible price-pin head and geographic tip both open the correct venue", as
   }
 });
 
+test("zoom hint fits between the map language and venue-list controls", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/");
+    const status = f.page.getByTestId("map-status");
+    await status.getByText("Avvicinati o cerca città").waitFor();
+    assert.equal(await status.getAttribute("data-mobile-zoom-hint"), "1");
+    for (const width of [320, 390]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const hint = await status.boundingBox();
+      const language = await f.page.locator(".map__lang").boundingBox();
+      const list = await f.page.locator(".map__list").boundingBox();
+      assert.ok(hint && language && list);
+      assert.ok(language.x + language.width <= hint.x);
+      assert.ok(hint.x + hint.width <= list.x);
+      assert.ok(Math.abs(hint.y - language.y) <= 4);
+      assert.ok(hint.height <= 48);
+      if (width === 320)
+        await f.page.screenshot({ path: path.join(output, "map-zoom-hint-320-fixture.png") });
+    }
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a dense priced dot opens its own venue and retains the exact viewed price after closing", async () => {
+  const f = await fixture({ width: 393, height: 852 }, { densePrices: true });
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const menu = await openDrinks(f.page);
+    await menu.getByText("Spritz", { exact: true }).click();
+    await menu.getByText("Birra media", { exact: true }).click();
+    await f.page.locator(".mobile-drink-menu__button").click();
+    await f.page.waitForFunction(
+      () => document.querySelector("section.map")?.getAttribute("data-ready") === "true",
+    );
+    await f.page.waitForFunction(
+      () =>
+        (document.querySelector("section.map")?.getAttribute("data-prices-shown") ?? "").includes(
+          "5,50",
+        ) ||
+        (document.querySelector("section.map")?.getAttribute("data-prices-shown") ?? "").includes(
+          "6,00",
+        ),
+    );
+    const point = await f.page.evaluate(() => {
+      const map = document.querySelector("section.map"),
+        rect = map.querySelector(".map__canvas").getBoundingClientRect();
+      const [lat, lon] = map.dataset.center.split(",").map(Number),
+        zoom = Number(map.dataset.zoom);
+      const scale = 512 * 2 ** zoom;
+      const mercatorY = (degrees) => {
+        const radians = (degrees * Math.PI) / 180;
+        return ((1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) * scale) / 2;
+      };
+      return {
+        x: rect.left + rect.width / 2 + ((9.1906 - lon) * scale) / 360,
+        y: rect.top + rect.height / 2 + mercatorY(45.4645) - mercatorY(lat),
+      };
+    });
+    await f.page.mouse.move(point.x, point.y);
+    await f.page.mouse.wheel(0, 650);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) < 14,
+    );
+    await f.page.mouse.click(point.x, point.y);
+    await f.page.getByRole("heading", { name: "Altro locale di prova" }).waitFor();
+    assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n456");
+    await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
+    await f.page.waitForFunction(() =>
+      (document.querySelector(".maplibregl-map")?.dataset.selectedPrice ?? "").includes("6,00"),
+    );
+    await f.page.mouse.move(point.x, point.y);
+    await f.page.mouse.wheel(0, -650);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14,
+    );
+    assert.match(
+      await f.page.locator(".maplibregl-map").getAttribute("data-selected-price"),
+      /6,00/,
+    );
+    assert.equal(new URL(f.page.url()).searchParams.has("path"), false);
+    const again = await openDrinks(f.page);
+    await again.getByText("Birra media", { exact: true }).click();
+    await again.getByText("Spritz", { exact: true }).click();
+    await f.page.waitForFunction(
+      () => document.querySelector(".maplibregl-map")?.dataset.selectedPrice === "",
+    );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a visible price label opens its own venue even when another priced dot is underneath", async () => {
+  const f = await fixture(
+    { width: 393, height: 852 },
+    { densePrices: true, priceHeadOverlap: true },
+  );
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await selectOnlyDrink(f.page, "Spritz");
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    );
+    const box = await f.page.locator("section.map").boundingBox();
+    assert.ok(box);
+    await f.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 - 25);
+    await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
+    assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n123");
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("Italian city search in the production mobile entry links the approved app privacy policy", async () => {
   const f = await fixture();
   try {
@@ -498,6 +669,45 @@ test("Italian city search in the production mobile entry links the approved app 
   }
 });
 
+test("Cerca closes the selected Italian venue before search and Cancel leaves the loaded map", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+    await f.page.locator("h2.scontrino__name").waitFor();
+    const historyLength = await f.page.evaluate(() => history.length);
+    const map = f.page.locator("section.map");
+    await f.page.waitForFunction(() =>
+      Boolean(document.querySelector("section.map")?.getAttribute("data-center")),
+    );
+    const center = await map.getAttribute("data-center");
+    const afterClick = await f.page.evaluate(() => {
+      document.querySelector('button[data-dovebevo-search="1"]').click();
+      return location.href;
+    });
+    assert.equal(new URL(afterClick).pathname, "/mobile/");
+    assert.equal(new URL(afterClick).searchParams.has("path"), false);
+    assert.equal(await f.page.evaluate(() => history.length), historyLength);
+    const search = f.page.getByRole("dialog");
+    await search.getByRole("combobox").waitFor();
+    assert.equal(await map.getAttribute("data-selected"), "");
+    await f.page.keyboard.press("Escape");
+    await search.waitFor({ state: "hidden" });
+    assert.equal(await map.getAttribute("data-center"), center);
+    assert.equal(await map.count(), 1, "Cancel keeps the existing map instance");
+    await f.page.locator(".map__list").click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("link", { name: /^Locale di prova/ })
+      .click();
+    await f.page.locator("h2.scontrino__name").waitFor();
+    assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n123");
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("orange mobile controls retain readable selected, unselected and focused drink chips", async () => {
   const f = await fixture();
   try {
@@ -506,7 +716,7 @@ test("orange mobile controls retain readable selected, unselected and focused dr
     await strip.waitFor();
     assert.equal(
       await f.page.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
-      "true",
+      "false",
     );
     await strip.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     for (const name of ["Spritz", "Birra media"]) {
@@ -583,7 +793,10 @@ test("empty menu-linked customer section does not deny an existing legacy price"
     await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
     await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
     await f.page.locator(".prices .price").first().waitFor();
-    assert.match(await f.page.locator(".prices .price").first().innerText(), /Spritz[\s\S]*5,50/);
+    assert.match(
+      await f.page.locator(".prices .price").first().innerText(),
+      /Birra media[\s\S]*5,00/,
+    );
     const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
     await customer.getByText("Nessun altro prezzo segnalato per i drink del menu.").waitFor();
     await f.page.goto(
@@ -602,9 +815,20 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
   const options = { menu: true, uncategorized: true, cellRequests: [] };
   const f = await fixture({ width: 390, height: 844 }, options);
   try {
+    const coverageLines = () =>
+      f.page.getByTestId("map-status").evaluate((element) => {
+        const count = [...element.childNodes].find(
+          (node) => node.nodeType === 3 && /\d+\/\d+ con prezzo/.test(node.textContent ?? ""),
+        );
+        if (!count) return 0;
+        const range = document.createRange();
+        range.selectNodeContents(count);
+        return [...range.getClientRects()].filter((rect) => rect.width > 0).length;
+      });
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     const all = (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true });
-    assert.equal(await all.getAttribute("aria-pressed"), "true");
+    await all.click();
+    assert.equal(await f.page.locator(".mobile-drink-all").getAttribute("aria-pressed"), "true");
     await f.page.waitForFunction(
       () =>
         document
@@ -613,15 +837,11 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
           ?.includes("1 VOCE"),
       { timeout: 30000 },
     );
-    assert.match(
-      await f.page.getByTestId("map-status").innerText(),
-      /3 bar su 4 qui hanno un prezzo/,
-    );
+    assert.match(await f.page.getByTestId("map-status").innerText(), /3\/4 con prezzo/);
     assert.match(
       await f.page.locator(".mobile-menu-map-note").innerText(),
       /voci di menu verificate/,
     );
-    await f.page.locator(".mobile-drink-menu__button").click();
     for (const width of [320, 390, 430]) {
       await f.page.setViewportSize({ width, height: 700 });
       const card = await f.page.getByTestId("map-status").boundingBox();
@@ -642,7 +862,10 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
       );
       assert.ok(language.y + language.height + 8 <= card.y);
       assert.ok(list.y + list.height + 8 <= card.y);
+      assert.equal(await coverageLines(), 1, `Coverage wraps at ${width}px`);
     }
+    await f.page.setViewportSize({ width: 393, height: 700 });
+    await f.page.screenshot({ path: path.join(output, "app-map-summary-393-fixture.png") });
     await f.page.setViewportSize({ width: 430, height: 700 });
     await f.page.screenshot({ path: path.join(output, "app-map-summary-430-fixture.png") });
     await f.page.evaluate(() => {
@@ -665,6 +888,7 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
         largeCard.y + largeCard.height + 8 <= largeAdd.y,
         `Large text overlaps Add at ${width}px`,
       );
+      assert.equal(await coverageLines(), 1, `Large-text coverage wraps at ${width}px`);
     }
     await f.page.setViewportSize({ width: 430, height: 700 });
     await f.page.screenshot({ path: path.join(output, "app-map-summary-large-text-fixture.png") });
@@ -705,7 +929,8 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     const all = (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true });
-    assert.equal(await all.getAttribute("aria-pressed"), "true");
+    await all.click();
+    assert.equal(await f.page.locator(".mobile-drink-all").getAttribute("aria-pressed"), "true");
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
     );
@@ -716,6 +941,7 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
     ).length;
     assert.ok(initialAllRequests >= 1);
     options.menuUnavailable = false;
+    await openDrinks(f.page);
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     await f.page.locator(".mobile-menu-map-note").waitFor();
     await f.page.waitForFunction(() =>
@@ -743,6 +969,7 @@ test("a stale identity failure cannot discard a successful new selected drink", 
   const f = await fixture({ width: 390, height: 844 }, options);
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true }).click();
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
     );
@@ -760,7 +987,7 @@ test("a stale identity failure cannot discard a successful new selected drink", 
         cause: error,
       });
     });
-    await f.page.locator('[data-mobile-selection="Spritz"]').waitFor();
+    await f.page.getByTestId("drink-summary").getByText("Spritz").waitFor();
     options.releaseOldIdentity();
     await f.page
       .waitForFunction(
@@ -814,9 +1041,7 @@ test("selected drink venue keeps a selectable dot below price-label zoom", async
   const f = await fixture();
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
-    await openDrinks(f.page);
-    await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
-    await f.page.locator(".mobile-drink-menu__button").click();
+    await selectOnlyDrink(f.page, "Spritz");
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
     );
@@ -840,9 +1065,11 @@ test("selected drink venue keeps a selectable dot below price-label zoom", async
     await f.page.waitForFunction(
       () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14,
     );
-    await f.page.waitForFunction(() =>
-      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    await f.page.waitForFunction(
+      () =>
+        document.querySelector(".map__canvas")?.getAttribute("data-selected-price") === "5,50 €",
     );
+    await f.page.screenshot({ path: path.join(output, "selected-drink-zoomed-cork-fixture.png") });
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {

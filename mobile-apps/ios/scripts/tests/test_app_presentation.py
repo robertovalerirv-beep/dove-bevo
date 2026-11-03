@@ -10,7 +10,7 @@ class AppPresentationGuards(unittest.TestCase):
         source = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
         self.assertIn("verifyLiveVenueAndPriceFormReadOnly(venueName: publicName)", source)
         flow = source.split("private func verifyLiveVenueAndPriceFormReadOnly", 1)[1].split("private func ordinaryDecimalKeyboard", 1)[0]
-        for required in ['website.buttons["Aggiungi un prezzo qui"]', 'app.buttons["Birra media"]',
+        for required in ['website.buttons["Aggiungi un prezzo qui"]', 'website.buttons["Birra media"]',
                          'app.textFields["Prezzo in euro"]', 'website.buttons["Salva"]', "XCTAssertFalse(submit.isEnabled",
                          "visibleAboveKeyboard(price", "visibleAboveKeyboard(submit", "ordinaryDecimalKeyboard()",
                          'DoveBevo-live-venue-detail-read-only', 'DoveBevo-live-price-form-empty-read-only',
@@ -49,8 +49,12 @@ class AppPresentationGuards(unittest.TestCase):
         for required in ['Bundle.main.url(forResource: "app-theme", withExtension: "js")',
                          "data.count <= 32 * 1024", "encoding: .utf8", ".atDocumentEnd",
                          "forMainFrameOnly: true, in: .defaultClient", "URLPolicy.isWebsite(url)",
-                         "path(percentEncoded: true)", "guard canApply(to: webView.url), let source",
+                         "path(percentEncoded: true)", "guard let url = webView.url, canApply(to: url), let source",
                          "evaluateJavaScript(source, in: nil, in: .defaultClient)"]:
+            self.assertIn(required, source)
+        for required in ["documentToken: String", "attemptsLeft: 16", "Date().addingTimeInterval(8)",
+                         "webView.url == url", "!webView.isLoading", ".defaultClient",
+                         "window.__dovebevoNativeThemeDocumentToken"]:
             self.assertIn(required, source)
         for forbidden in ["addScriptMessageHandler", "addScriptMessageHandlerWithReply", ".page", "MutationObserver",
                           "HTTPCookie", "customUserAgent", "URLSession", "evaluateJavaScript(source +"]:
@@ -59,6 +63,9 @@ class AppPresentationGuards(unittest.TestCase):
         self.assertLess(browser.index("AppPresentationTheme.install(in: configuration)"), browser.index("webView = WKWebView"))
         finish = browser.split("func webView(_ webView: WKWebView, didFinish", 1)[1].split("func webView", 1)[0]
         self.assertLess(finish.index("guard navigationState.acceptsCallback"), finish.index("AppPresentationTheme.applyAfterFinish"))
+        marker_success = finish.split("guard case .success(let value) = result", 1)[1].split("return", 2)[1]
+        self.assertLess(marker_success.index("AppPresentationTheme.applyAfterFinish(to: webView)"),
+                        marker_success.index("self.completeDocumentLoad()"))
         self.assertIn("configuration.websiteDataStore = .default()", browser)
 
     def test_new_checks_use_actual_wk_csp_and_large_text_native_cards(self):

@@ -6,7 +6,7 @@ import { before, after, test } from "node:test";
 import { chromium } from "@playwright/test";
 import { contrastRatio } from "./contrast.mjs";
 import { pageCsp } from "../../../src/worker/lib/security-headers.ts";
-/* global document, structuredClone, getComputedStyle */
+/* global document, structuredClone, getComputedStyle, history, location */
 
 // Synthetic records exist only inside intercepted requests. No public read/write is used.
 const client = path.resolve(fileURLToPath(new URL("../../../dist/client/", import.meta.url)));
@@ -279,6 +279,9 @@ async function openLondon(f, venue = true) {
     await f.page.waitForFunction(
       () => !document.querySelector(".europe-coverage")?.textContent.includes("Caricamento"),
     );
+  await f.page
+    .getByRole("combobox", { name: "Scegli cosa bere", exact: true })
+    .selectOption("spritz");
 }
 async function changeCity(page, name) {
   await page.getByRole("button", { name: "Cambia città", exact: true }).click();
@@ -446,7 +449,9 @@ test("beer formats and quarantined prices are never merged into one cheap price"
   const f = await fixture();
   try {
     await openLondon(f, false);
-    await f.page.getByRole("radio", { name: "Birra media", exact: true }).click();
+    await f.page
+      .getByRole("combobox", { name: "Scegli cosa bere", exact: true })
+      .selectOption("beer_draft");
     const formats = f.page.getByRole("combobox", { name: "Formato da confrontare" });
     assert.deepEqual(await formats.locator("option").allTextContents(), ["400 ml", "568 ml"]);
     assert.equal(await formats.inputValue(), "ml:400");
@@ -571,6 +576,9 @@ test("Retry refreshes the catalogue after a deployed version change", async () =
     await f.page.getByRole("alert").waitFor();
     await f.page.getByRole("button", { name: "Riprova", exact: true }).click();
     await f.page.locator("h2.scontrino__name").waitFor();
+    await f.page
+      .getByRole("combobox", { name: "Scegli cosa bere", exact: true })
+      .selectOption("spritz");
     assert.equal(f.reads.filter((v) => v === "/mobile-data/catalog.json").length, 2);
     assert.equal(await f.page.getByRole("alert").count(), 0);
     assert.match(await f.page.locator(".mobile-price--featured").innerText(), /7,50/);
@@ -646,6 +654,49 @@ test("price form requires real units, rejects currency symbols and Undo cancels 
     assert.match(await f.page.locator(".europe-notice").innerText(), /annullato/);
     assert.equal(await f.page.evaluate(() => document.documentElement.scrollWidth <= 320), true);
     await f.page.waitForTimeout(5200);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("single-drink report and undo notice omit a redundant serving while measured beer keeps its size", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f);
+    const featured = f.page.locator(".mobile-price--featured");
+    await featured.getByRole("button", { name: "Segnala un errore", exact: true }).click();
+    const report = f.page.locator(".europe-report");
+    await report.waitFor();
+    const spritz = await report.innerText();
+    assert.match(spritz, /Spritz · 7,50\s£/);
+    assert.doesNotMatch(spritz, /Drink singolo/);
+    await f.page
+      .getByRole("dialog", { name: "Segnala un problema" })
+      .getByRole("button", { name: "Chiudi" })
+      .click();
+
+    await f.page.getByRole("combobox", { name: "Scegli cosa bere" }).selectOption("beer_draft");
+    await featured.getByRole("button", { name: "Segnala un errore", exact: true }).click();
+    assert.match(await report.innerText(), /Birra media · \d+ ml · [\d,]+\s£/);
+    await f.page
+      .getByRole("dialog", { name: "Segnala un problema" })
+      .getByRole("button", { name: "Chiudi" })
+      .click();
+
+    await f.page.clock.install();
+    await addPrice(f);
+    const form = f.page.locator(".europe-price-form");
+    await form.getByRole("combobox").selectOption("spritz");
+    await form.getByRole("textbox", { name: "Importo", exact: true }).fill("8,25");
+    await form.getByRole("button", { name: "Salva prezzo", exact: true }).click();
+    const notice = f.page.locator(".europe-notice");
+    await notice.waitFor();
+    assert.match(await notice.innerText(), /8,25\s£/);
+    assert.doesNotMatch(await notice.innerText(), /Drink singolo/);
+    await notice.getByRole("button", { name: "Annulla", exact: true }).click();
+    await f.page.clock.fastForward(6000);
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {
@@ -763,10 +814,80 @@ test("legacy Italian search opens real app catalogue coordinates without synthet
     await input.press("ArrowDown");
     await input.press("Enter");
     await f.page.locator(".europe-app .europe-search").waitFor();
+    const nativeSearch = f.page.locator('.europe-app button[data-dovebevo-search="1"]');
+    assert.equal(await nativeSearch.count(), 1, "Cerca also opens the European city picker");
+    assert.equal(await nativeSearch.isVisible(), true, "ordinary browser keeps its city search");
+    assert.equal(await f.page.locator(".europe-city-current").isVisible(), false);
+    await nativeSearch.click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("textbox", { name: "Cerca una città o un bar" })
+      .waitFor();
     const url = new URL(f.page.url());
     assert.equal(url.pathname, "/mobile/");
     assert.equal(url.searchParams.get("at"), "51.50790,-0.12780");
     assert.equal(url.searchParams.has("place"), false);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("European map coverage remains one line at phone widths", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f, false);
+    for (const width of [320, 390]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const coverage = f.page.locator(".europe-coverage");
+      assert.equal(
+        await coverage.evaluate((element) => getComputedStyle(element).whiteSpace),
+        "nowrap",
+      );
+      assert.ok((await coverage.boundingBox()).height <= 48);
+      if (width === 320)
+        await f.page.screenshot({ path: path.join(output, "europe-coverage-320-fixture.png") });
+    }
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("Cerca closes a London venue to the same city map before opening the picker", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f);
+    const historyLength = await f.page.evaluate(() => history.length);
+    const map = f.page.locator(".map");
+    await f.page.waitForFunction(() =>
+      Boolean(document.querySelector(".map")?.getAttribute("data-center")),
+    );
+    const afterClick = await f.page.evaluate(() => {
+      document.querySelector('.europe-app button[data-dovebevo-search="1"]').click();
+      return location.href;
+    });
+    const route = new URL(afterClick);
+    assert.equal(route.pathname, "/mobile/");
+    assert.equal(route.searchParams.get("at"), "51.50790,-0.12780");
+    assert.equal(route.searchParams.has("path"), false);
+    assert.equal(await f.page.evaluate(() => history.length), historyLength);
+    const picker = f.page.getByRole("dialog");
+    await picker.getByRole("textbox", { name: "Cerca una città o un bar" }).waitFor();
+    assert.equal(await map.getAttribute("data-selected"), "");
+    await picker.getByRole("button", { name: "Chiudi", exact: true }).click();
+    await picker.waitFor({ state: "hidden" });
+    assert.equal(await map.getAttribute("data-center"), "51.50790,-0.12780");
+    assert.equal(await map.count(), 1);
+    await f.page.getByRole("button", { name: "Elenco locali", exact: true }).click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("button", { name: /^Fixture/ })
+      .click();
+    await f.page.locator("h2.scontrino__name").waitFor();
+    assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n1001");
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {
@@ -801,7 +922,7 @@ test("European venue and city search privacy links use the approved app policy",
   }
 });
 
-test("European price actions and orange drink choices remain readable on small phones", async () => {
+test("European price actions and selected drink dropdown remain readable on small phones", async () => {
   let release;
   const holdConfirm = new Promise((resolve) => {
     release = resolve;
@@ -809,10 +930,13 @@ test("European price actions and orange drink choices remain readable on small p
   const f = await fixture({ holdConfirm });
   try {
     await openLondon(f, false);
-    for (const name of ["Spritz", "Birra media"]) {
-      const chip = f.page.getByRole("radio", { name, exact: true });
-      await chip.focus();
-      const colors = await chip.evaluate((element) => {
+    const drinkSelect = f.page.getByRole("combobox", { name: "Scegli cosa bere", exact: true });
+    assert.equal(await drinkSelect.inputValue(), "spritz");
+    assert.equal(await drinkSelect.locator("option").count(), 9);
+    for (const code of ["spritz", "beer_draft"]) {
+      await drinkSelect.selectOption(code);
+      await drinkSelect.focus();
+      const colors = await drinkSelect.evaluate((element) => {
         const style = getComputedStyle(element);
         return {
           background: style.backgroundColor,
@@ -821,7 +945,6 @@ test("European price actions and orange drink choices remain readable on small p
           outlineStyle: style.outlineStyle,
         };
       });
-      if (name === "Spritz") assert.equal(colors.background, "rgb(255, 90, 31)");
       assert.ok(contrastRatio(colors.text, colors.background) >= 4.5, JSON.stringify(colors));
       assert.equal(colors.outlineStyle, "solid");
       assert.ok(contrastRatio(colors.outline, colors.background) >= 4.5, JSON.stringify(colors));

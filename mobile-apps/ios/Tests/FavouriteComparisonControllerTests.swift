@@ -152,7 +152,8 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             assertDestinationTitles(tabs)
             tabs.loadViewIfNeeded()
             let browserView = browser.view
-            XCTAssertEqual(browser.navigationItem.title, "Dove bevo", "The browser header must keep its app title independently of the map destination")
+            XCTAssertNil(browser.navigationItem.title, "The map uses the website heading instead of a duplicate native title")
+            XCTAssertTrue(tabs.mapNavigation.isNavigationBarHidden, "The map header stays hidden while the bottom destinations remain visible")
             assertDestinationTitles(tabs)
             XCTAssertEqual(websiteLoads, [MobileEntry.homeURL], "The owned loader must positively intercept the initial website request")
             XCTAssertTrue(client.calls.isEmpty, "A hidden favourites destination must not request comparisons")
@@ -172,7 +173,8 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             XCTAssertTrue(tabs.mapNavigation.topViewController === browser)
             XCTAssertTrue(browser.view === browserView)
             assertDestinationTitles(tabs)
-            XCTAssertEqual(browser.navigationItem.title, "Dove bevo")
+            XCTAssertNil(browser.navigationItem.title)
+            XCTAssertTrue(tabs.mapNavigation.isNavigationBarHidden, "Returning from a saved drink restores the header-free map")
             XCTAssertEqual(websiteLoads, [MobileEntry.homeURL, try XCTUnwrap(MobileEntry.drinkDocument(saved.url, drink: "spritz", band: .normal))], "Opening the saved drink must issue its validated focused document through the owned loader")
             XCTAssertTrue(client.calls.isEmpty, "The offscreen owned coordinator fixture cannot start live comparisons")
         }

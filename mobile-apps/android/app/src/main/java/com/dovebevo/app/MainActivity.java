@@ -92,6 +92,9 @@ public final class MainActivity extends ComponentActivity {
     private boolean websiteStarted;
     private boolean loading;
     private boolean hasUsablePage;
+    private boolean searchPending;
+    private boolean searchOpening;
+    private long searchCallbackGeneration;
     private boolean documentHasHttpError;
     private boolean awaitingDocumentStart;
     private String stoppedUrl;
@@ -205,7 +208,9 @@ public final class MainActivity extends ComponentActivity {
         // The first WebView and network observer are created only after current rules acceptance.
         WebView.setWebContentsDebuggingEnabled(false);
         LinearLayout shell = createShell();
-        shell.addView(createBrowserTools(), new LinearLayout.LayoutParams(-1, -2));
+        // Preserve browser history for Android Back and the top overflow.
+        backButton = button(R.id.back, R.string.back, this::goBack);
+        forwardButton = button(R.id.forward, R.string.forward, this::goForward);
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(true);
         progress.setContentDescription(getString(R.string.loading));
@@ -216,6 +221,7 @@ public final class MainActivity extends ComponentActivity {
         offline.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         offline.setVisibility(View.GONE);
         shell.addView(offline, new LinearLayout.LayoutParams(-1, -2));
+        shell.addView(createTopActions(), new LinearLayout.LayoutParams(-1, dp(52)));
         content = new FrameLayout(this);
         shell.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
         shell.addView(createBottomNavigation(),new LinearLayout.LayoutParams(-1,-2));
@@ -264,36 +270,23 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
-    private LinearLayout createBrowserTools() {
-        LinearLayout tools = new LinearLayout(this);
-        tools.setId(R.id.browser_tools);
-        tools.setGravity(Gravity.CENTER_VERTICAL);
-        tools.setBackgroundColor(getColor(R.color.shell_background));
-        tools.setPadding(dp(8), 0, dp(8), 0);
-        backButton = button(R.id.back, R.string.back, this::goBack);
-        forwardButton = button(R.id.forward, R.string.forward, this::goForward);
-        backButton.setText("‹"); backButton.setTextSize(28);
-        forwardButton.setText("›"); forwardButton.setTextSize(28);
-        tools.addView(backButton, new LinearLayout.LayoutParams(dp(48), -2));
-        // Forward remains available in overflow; the map header needs one back control.
-        for (Button control : new Button[]{backButton, forwardButton}) {
-            control.setPadding(0, 0, 0, 0);
-            control.setBackground(NativeAppearance.shape(this, R.color.surface, 24, true));
-        }
-        TextView brand = text(R.string.app_name, 18);
-        NativeAppearance.title(brand);
-        tools.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-        Button more = button(R.id.more, R.string.more_options, () -> {});
-        more.setText(R.string.more_symbol); more.setTextSize(24);
-        more.setPadding(0, 0, 0, 0);
-        more.setBackground(NativeAppearance.shape(this, R.color.surface, 24, true));
+    private LinearLayout createTopActions() {
+        // Only the overflow stays above the map. Reserving its own slim row
+        // keeps it clear of city, currency and drink controls in the WebView.
+        LinearLayout topActions = new LinearLayout(this);
+        topActions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        topActions.setPadding(dp(8), 0, dp(8), 0);
+        Button more = button(R.id.more, R.string.more_symbol, () -> {});
+        more.setContentDescription(getString(R.string.more_options));
+        more.setTextSize(26);
+        more.setMinWidth(dp(48)); more.setMinimumWidth(dp(48));
         more.setOnClickListener(this::showMenu);
-        tools.addView(more, new LinearLayout.LayoutParams(dp(48), -2));
-        return tools;
+        topActions.addView(more, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        return topActions;
     }
     private LinearLayout createBottomNavigation() {
-        BottomNavigationBar bottom = new BottomNavigationBar(this, this::goHome, this::showMap,
-                this::showFavorites, this::saveCurrentVenue, this::showRecommendations);
+        BottomNavigationBar bottom = new BottomNavigationBar(this, this::goHome, this::openMapSearch,
+                this::showMap, this::showFavorites, this::saveCurrentVenue, this::showRecommendations);
         mapDestination = bottom.findViewById(R.id.map_destination);
         favoritesDestination = bottom.findViewById(R.id.favorites_destination);
         saveButton = bottom.findViewById(R.id.save_venue);
@@ -491,10 +484,10 @@ public final class MainActivity extends ComponentActivity {
         }
         if(saveButton!=null){saveButton.setEnabled(foreground&&eligibleSavedVenue()!=null);saveButton.setAlpha(saveButton.isEnabled()?1f:.5f);}
         if(mapDestination!=null){styleDestination(mapDestination,!nativeDestinationVisible());styleDestination(favoritesDestination,favoritesVisible);}
-        for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination}){
+        for(int id:new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.more}){
             View control=findViewById(id);if(control!=null)control.setEnabled(foreground&&!destroyed);
         }
-        for(int id:new int[]{R.id.home,R.id.save_venue,R.id.recommendation_entry}){
+        for(int id:new int[]{R.id.home,R.id.search_destination,R.id.save_venue,R.id.recommendation_entry}){
             Button control=findViewById(id);if(control!=null)styleDestination(control,id==R.id.home&&discoveryVisible);
         }
         if (recommendations != null) recommendations.contextChanged();
@@ -516,6 +509,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void showFavorites(){
         if(!foreground||destroyed||favorites==null||favoritesVisible)return;
+        searchPending=false;searchOpening=false;searchCallbackGeneration++;
         discoveryCapture++;if(discovery!=null){discovery.hide();discovery.view().setVisibility(View.GONE);}discoveryVisible=false;
         venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
         cancelLocation();disposePopup();
@@ -533,6 +527,42 @@ public final class MainActivity extends ComponentActivity {
         if(website!=null){website.setVisibility(failed?View.GONE:View.VISIBLE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);}
         if(errorPanel!=null){errorPanel.setVisibility(failed?View.VISIBLE:View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);}
         if(progress!=null)progress.setVisibility(loading?View.VISIBLE:View.GONE);updateToolbar();
+        dispatchPendingSearch();
+    }
+    private void openMapSearch(){
+        if(!foreground||destroyed)return;
+        retireSharePresentation();
+        if(recommendations!=null)recommendations.dismiss();
+        searchCallbackGeneration++;
+        searchPending=true;
+        searchOpening=true;
+        venueCaptureEpoch++;
+        showMap();
+        if(website==null||!MobileEntry.isDocument(website.getUrl())){navigate(MobileEntry.HOME);return;}
+        dispatchPendingSearch();
+    }
+    private void dispatchPendingSearch(){
+        if(!searchPending||!foreground||destroyed||nativeDestinationVisible()||website==null||
+                !hasUsablePage||failed||loading||awaitingDocumentStart||documentHasHttpError||
+                !MobileEntry.isDocument(website.getUrl()))return;
+        searchPending=false;
+        WebView source=website;String captured=source.getUrl();
+        long searchGeneration=searchCallbackGeneration,documentGeneration=documentCheckGeneration,venueGeneration=venueCaptureEpoch;
+        source.evaluateJavascript(MobileEntry.SEARCH_SCRIPT,result->{
+            if(searchGeneration!=searchCallbackGeneration||source!=website||!foreground||destroyed||
+                    nativeDestinationVisible()||!hasUsablePage||failed||loading||awaitingDocumentStart||documentHasHttpError)return;
+            searchOpening=false;
+            updateToolbar();
+            if(!"true".equals(result)&&searchFailureIsCurrent(source,captured,searchGeneration,documentGeneration,venueGeneration))
+                Toast.makeText(this,"Cerca non disponibile. Riprova quando la mappa è pronta.",Toast.LENGTH_SHORT).show();
+        });
+    }
+    private boolean searchFailureIsCurrent(WebView source,String captured,long searchGeneration,long documentGeneration,long venueGeneration){
+        return foreground&&!destroyed&&!nativeDestinationVisible()&&source==website&&captured!=null&&
+                captured.equals(source.getUrl())&&MobileEntry.isDocument(source.getUrl())&&
+                searchGeneration==searchCallbackGeneration&&documentGeneration==documentCheckGeneration&&
+                venueGeneration==venueCaptureEpoch&&hasUsablePage&&!failed&&!loading&&
+                !awaitingDocumentStart&&!documentHasHttpError;
     }
     private void saveCurrentVenue(){
         if(!foreground||savedVenues==null||eligibleSavedVenue()==null)return;
@@ -542,6 +572,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void goHome(){
         if(!foreground||destroyed)return;
+        searchPending=false;searchOpening=false;searchCallbackGeneration++;
         if(discoveryVisible){discovery.refresh();return;}
         venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
         if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
@@ -590,7 +621,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private String eligibleSavedVenue() {
-        if (destroyed || nativeDestinationVisible() || website == null || failed || loading || awaitingDocumentStart || !hasUsablePage
+        if (destroyed || searchOpening || nativeDestinationVisible() || website == null || failed || loading || awaitingDocumentStart || !hasUsablePage
                 || documentHasHttpError || stoppedUrl != null) return null;
         return SavedVenueUrl.canonicalize(website.getUrl());
     }
@@ -735,6 +766,8 @@ public final class MainActivity extends ComponentActivity {
         menu.getMenu().add(Menu.NONE, R.id.share, Menu.NONE, R.string.share)
                 .setEnabled(mapActive&&hasUsablePage&&!failed&&!loading&&!awaitingDocumentStart);
         menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, loading?R.string.stop_loading:R.string.refresh).setEnabled(mapActive);
+        menu.getMenu().add(Menu.NONE, R.id.back, Menu.NONE, R.string.back)
+                .setEnabled(foreground && (nativeDestinationVisible() || website != null && website.canGoBack()));
         menu.getMenu().add(Menu.NONE, R.id.forward, Menu.NONE, R.string.forward)
                 .setEnabled(mapActive && website.canGoForward());
         menu.getMenu().add(Menu.NONE, R.id.information, Menu.NONE, "Informazioni");
@@ -751,6 +784,7 @@ public final class MainActivity extends ComponentActivity {
             if (item.getItemId() == R.id.refresh) {
                 if(!nativeDestinationVisible()&&website!=null)refresh();return true;
             }
+            if (item.getItemId() == R.id.back) { goBack(); return true; }
             if (item.getItemId() == R.id.forward) {
                 if(!nativeDestinationVisible()&&website!=null)goForward();return true;
             }
@@ -768,7 +802,7 @@ public final class MainActivity extends ComponentActivity {
         NativePanel panel=new NativePanel(this,"Altro",false);informationDialog=panel;
         ScrollView scroll=new ScrollView(this);LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(20),dp(4),dp(20),dp(20));scroll.addView(body);panel.body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         informationRow(body,"Cambia città / zona",R.drawable.native_map,this::showMap);
-        informationRow(body,"Come funziona",android.R.drawable.ic_menu_help,()->{informationDialog=new AlertDialog.Builder(this).setTitle("Come funziona").setMessage("Cerca una città sulla Mappa, scegli un drink e confronta i prezzi. Home apre Scopri per la zona della Mappa. Preferiti resta sul tuo dispositivo. Le fonti del menu e le segnalazioni sono indicate nei dettagli disponibili.").setPositiveButton(R.string.close,null).create();informationDialog.show();});
+        informationRow(body,"Come funziona",android.R.drawable.ic_menu_help,()->{informationDialog=new AlertDialog.Builder(this).setTitle("Come funziona").setMessage("Cerca una città sulla Mappa, scegli un drink e confronta i prezzi. Scopri confronta i prezzi nella zona della Mappa. I drink salvati in Preferiti restano sul tuo dispositivo. Le fonti del menu e le segnalazioni sono indicate nei dettagli disponibili.").setPositiveButton(R.string.close,null).create();informationDialog.show();});
         informationRow(body,"Linee guida della community",android.R.drawable.ic_menu_agenda,this::showBundledRules);
         informationRow(body,getString(R.string.privacy),android.R.drawable.ic_menu_info_details,this::showPrivacy);
         informationRow(body,"Contatti",android.R.drawable.ic_dialog_email,()->openExternal("mailto:dovebevo@gmail.com"));
@@ -836,6 +870,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void showFailure(int title, int message) {
         if (destroyed) return;
+        searchOpening=false;searchCallbackGeneration++;
         venueCaptureEpoch++;
         failed = true;
         cancelLocation();
@@ -880,6 +915,8 @@ public final class MainActivity extends ComponentActivity {
         }
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
             if (view != website || destroyed) return;
+            searchOpening=false;searchCallbackGeneration++;
+            if (!MobileEntry.isDocument(url)) searchPending = false;
             documentCheckGeneration++;
             venueCaptureEpoch++;
             retireOfferSave();
@@ -910,11 +947,17 @@ public final class MainActivity extends ComponentActivity {
                     documentCheckGeneration++;
                     if (!"true".equals(result)) { showFailure(); return; }
                     hasUsablePage = true;
+                    // The verified /mobile/ document also needs the bundled
+                    // native presentation. The early document-start guard only
+                    // fixes colour mode; without this call the duplicate web
+                    // search lens remains visible above native Cerca.
+                    installMobilePresentation(view, view.getUrl());
                     view.evaluateJavascript("window.DoveBevoNativeOfferSave=true;window.dispatchEvent(new Event('dovebevo-native-ready'));",null);
                     setLoading(false);
                     errorPanel.setVisibility(View.GONE);
                     view.setVisibility(nativeDestinationVisible()?View.GONE:View.VISIBLE);
                     updateToolbar();
+                    dispatchPendingSearch();
                 });
                 view.postDelayed(() -> {
                     if (!destroyed && view == website && check == documentCheckGeneration && !failed) {
@@ -1092,6 +1135,7 @@ public final class MainActivity extends ComponentActivity {
         resolveLocationResult();
     }
     @Override protected void onPause() {
+        searchPending=false;searchOpening=false;searchCallbackGeneration++;
         shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}if(informationDialog!=null){informationDialog.dismiss();informationDialog=null;}
         discoveryCapture++;
         venueCaptureEpoch++;

@@ -10,6 +10,7 @@ import java.util.Map;
 final class MobileEntry {
     static final String HOME = "https://www.dovebevo.com/mobile/";
     static final String MARKER = "document.documentElement.getAttribute('data-dovebevo-mobile-shell') === '1'";
+    static final String SEARCH_SCRIPT = "(function(){if(document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1'||!['/mobile/','/mobile/index.html'].includes(location.pathname))return false;var button=document.querySelector('button[data-dovebevo-search=\"1\"],button.search-field,button.europe-search');if(!(button instanceof HTMLButtonElement)||button.disabled)return false;button.click();return true})()";
     private MobileEntry() {}
 
     static String publicVenue(String raw) {

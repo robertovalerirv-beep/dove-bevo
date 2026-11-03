@@ -63,6 +63,7 @@ const priceRows = [
 ];
 async function fixture(options = {}) {
   let menuFailures = options.menuFailOnce ? 1 : 0;
+  let menuPageFailures = options.menuPageFailOnce ? 1 : 0;
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   const writes = [];
@@ -126,6 +127,7 @@ async function fixture(options = {}) {
         },
       });
     if (pathname.startsWith("/api/mobile/v2/customer-prices/venues/")) {
+      if (options.customerAbsent) return route.fulfill({ status: 404, body: "Not found" });
       const key = pathname.slice("/api/mobile/v2/customer-prices/venues/".length);
       return route.fulfill({
         json: {
@@ -137,24 +139,46 @@ async function fixture(options = {}) {
             country: "IT",
           },
           price_scope: "customer_reported_drink_item",
-          rows: [
-            {
-              revision: "22222222-2222-4222-8222-222222222222",
-              item_key: "o" + "a".repeat(64),
-              kind: "menu_offer",
-              offer_id: "first",
-              name: "Spritz <script>",
-              category: "spritz",
-              serving: { label: "Calice", ml: null },
-              amount_minor: 650,
-              currency: "EUR",
-              currency_exponent: 2,
-              observed_on: "2026-11-02",
-              source_kind: "customer",
-              observation_kind: "customer_reported_price",
-              price_scope: "drink_item",
-            },
-          ],
+          rows: options.customerEmpty
+            ? []
+            : [
+                {
+                  revision: "22222222-2222-4222-8222-222222222222",
+                  item_key: "o" + "a".repeat(64),
+                  kind: "menu_offer",
+                  offer_id: "first",
+                  name: "Spritz <script>",
+                  category: "spritz",
+                  serving: { label: "Calice", ml: null },
+                  amount_minor: 650,
+                  currency: "EUR",
+                  currency_exponent: 2,
+                  observed_on: "2026-11-02",
+                  source_kind: "customer",
+                  observation_kind: "customer_reported_price",
+                  price_scope: "drink_item",
+                },
+                ...(options.customerNewDrink
+                  ? [
+                      {
+                        revision: "33333333-3333-4333-8333-333333333333",
+                        item_key: "c" + "b".repeat(64),
+                        kind: "new_drink",
+                        offer_id: null,
+                        name: "Negroni segnalato",
+                        category: "negroni",
+                        serving: { label: "Bicchiere", ml: null },
+                        amount_minor: 900,
+                        currency: "EUR",
+                        currency_exponent: 2,
+                        observed_on: "2026-11-02",
+                        source_kind: "customer",
+                        observation_kind: "customer_reported_price",
+                        price_scope: "drink_item",
+                      },
+                    ]
+                  : []),
+              ],
           next_after: null,
         },
       });
@@ -189,6 +213,10 @@ async function fixture(options = {}) {
         source,
       });
       const after = new URL(request.url()).searchParams.get("after");
+      if (after && menuPageFailures > 0) {
+        menuPageFailures--;
+        return route.fulfill({ status: 503, body: "Try again" });
+      }
       return route.fulfill({
         json: {
           schema_version: 2,
@@ -205,41 +233,45 @@ async function fixture(options = {}) {
             city: "Milano",
             country: "IT",
           },
-          stored_offer_count: 3,
-          offers: after
-            ? [offer("third", "Analcolico", 450)]
+          stored_offer_count: options.menuEmpty ? 0 : 3,
+          offers: options.menuEmpty
+            ? []
+            : after
+              ? [offer("third", "Analcolico", 450)]
+              : [
+                  offer(
+                    "first",
+                    options.menuCategory === null ? "Cocktail della casa" : "Spritz <script>",
+                    750,
+                  ),
+                  offer(
+                    "second",
+                    options.menuCategory === null ? "Cocktail serale" : "Spritz serale",
+                    550,
+                    {
+                      kind: "conditional",
+                      condition: "dopo le 18",
+                    },
+                  ),
+                ],
+          next_after: options.menuEmpty || after ? null : "second",
+          fees: options.menuEmpty
+            ? []
             : [
-                offer(
-                  "first",
-                  options.menuCategory === null ? "Cocktail della casa" : "Spritz <script>",
-                  750,
-                ),
-                offer(
-                  "second",
-                  options.menuCategory === null ? "Cocktail serale" : "Spritz serale",
-                  550,
-                  {
-                    kind: "conditional",
-                    condition: "dopo le 18",
-                  },
-                ),
+                {
+                  id: "fee-1",
+                  label: "Coperto",
+                  kind: "fixed",
+                  basis: "person",
+                  amount_minor: 100,
+                  currency: "EUR",
+                  currency_exponent: 2,
+                  rate_bps: null,
+                  applicability: "conditional",
+                  condition: "solo al tavolo",
+                  source,
+                },
               ],
-          next_after: after ? null : "second",
-          fees: [
-            {
-              id: "fee-1",
-              label: "Coperto",
-              kind: "fixed",
-              basis: "person",
-              amount_minor: 100,
-              currency: "EUR",
-              currency_exponent: 2,
-              rate_bps: null,
-              applicability: "conditional",
-              condition: "solo al tavolo",
-              source,
-            },
-          ],
           fee_coverage: { status: "documented_partial", source },
         },
       });
@@ -884,14 +916,166 @@ test("legacy venue opens while v2 menu hangs, but an m venue times out to retry"
     await f.close();
   }
 });
-test("menu loading failure can retry while legacy customer prices remain", async () => {
+test("menu loading failure leaves legacy customer prices without an empty menu section", async () => {
   const f = await fixture({ menuFailOnce: true });
   try {
     await f.page.evaluate(() => window.sheetFixture.bar());
-    await f.page.getByRole("button", { name: "Riprova menu" }).waitFor();
+    await f.page.locator(".mobile-price--featured").waitFor();
     assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
-    await f.page.getByRole("button", { name: "Riprova menu" }).click();
-    await f.page.getByText("Spritz <script>").waitFor();
+    assert.equal(await f.page.getByRole("region", { name: "Prezzi dal menu online" }).count(), 0);
+    assert.equal(await f.page.getByRole("button", { name: "Riprova menu" }).count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("an empty owner menu has no owner section while customer price entry remains available", async () => {
+  const f = await fixture({ menuEmpty: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("heading", { name: "Locale nuovo" }).waitFor();
+    await f.page.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    assert.equal(await f.page.getByRole("region", { name: "Prezzi dal menu online" }).count(), 0);
+    assert.equal(await f.page.getByRole("heading", { name: "Prezzi", exact: true }).count(), 0);
+    assert.equal(
+      await f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" }).count(),
+      1,
+    );
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("an empty menu and empty customer feed keep one contribution action without an empty card", async () => {
+  const f = await fixture({ menuEmpty: true, customerEmpty: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.locator(".mobile-price--featured").waitFor();
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    await customer.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    assert.equal(await f.page.getByRole("heading", { name: "Dal menu del locale" }).count(), 0);
+    assert.equal(await customer.getByRole("heading").count(), 0);
+    assert.equal(await customer.getByText(/Nessun.*prezzo segnalato/).count(), 0);
+    assert.equal(
+      await customer.evaluate((element) => getComputedStyle(element).borderTopWidth),
+      "0px",
+    );
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a menu-only venue with no prices still exposes its own price contribution flow", async () => {
+  const f = await fixture({ menuEmpty: true, customerEmpty: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("heading", { name: "Locale nuovo" }).waitFor();
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    await customer.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    assert.equal(await f.page.getByRole("heading", { name: "Dal menu del locale" }).count(), 0);
+    assert.equal(await customer.getByRole("heading").count(), 0);
+    assert.equal(
+      await f.page.getByText("Menu online non disponibile. Riprova tra poco.").count(),
+      0,
+    );
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a linked customer price remains visible when its owner menu is unavailable", async () => {
+  const f = await fixture({ menuAbsent: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.locator(".mobile-price--featured").waitFor();
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    await customer.getByText("Spritz <script>").waitFor();
+    assert.match(await customer.innerText(), /Spritz <script>[\s\S]*6,50\s*€/);
+    assert.equal(await customer.getByRole("button", { name: "Segnala prezzo errato" }).count(), 1);
+    assert.equal(
+      await customer.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).count(),
+      0,
+    );
+    assert.equal(await f.page.getByRole("heading", { name: "Dal menu del locale" }).count(), 0);
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a failed extra menu page offers a compact retry without the unavailable-menu notice", async () => {
+  const f = await fixture({ menuPageFailOnce: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("button", { name: "Vedi altri drink" }).click();
+    await f.page.getByRole("button", { name: "Riprova altri drink" }).waitFor();
+    assert.equal(
+      await f.page.getByText("Menu online non disponibile. Riprova tra poco.").count(),
+      0,
+    );
+    await f.page.getByRole("button", { name: "Riprova altri drink" }).click();
+    await f.page.getByText("Analcolico").waitFor();
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("an existing Italian venue retains a customer drink when its owner menu is empty", async () => {
+  const f = await fixture({ menuEmpty: true, customerNewDrink: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.getByRole("heading", { name: "Locale di prova <strong>" }).waitFor();
+    assert.equal(await f.page.getByRole("region", { name: "Prezzi dal menu online" }).count(), 0);
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    await customer.getByText("Negroni segnalato").waitFor();
+    assert.match(await customer.innerText(), /Negroni segnalato[\s\S]*9,00\s*€/);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("an existing Italian venue retains customer drinks when its owner menu returns 404", async () => {
+  const f = await fixture({ menuAbsent: true, customerNewDrink: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.getByRole("heading", { name: "Locale di prova <strong>" }).waitFor();
+    assert.equal(await f.page.getByRole("region", { name: "Prezzi dal menu online" }).count(), 0);
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    await customer.getByText("Negroni segnalato").waitFor();
+    assert.match(await customer.innerText(), /Negroni segnalato[\s\S]*9,00\s*€/);
+    await customer.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("missing owner and customer menus leave a real legacy price without empty headings", async () => {
+  const f = await fixture({ menuAbsent: true, customerAbsent: true });
+  try {
+    const customerRead = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/customer-prices/venues/n123") &&
+        response.status() === 404,
+    );
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await customerRead;
+    await f.page.locator(".mobile-price--featured").waitFor();
+    await f.page.waitForFunction(() => document.querySelector(".mobile-customer-v2") === null);
+    assert.equal(await f.page.getByRole("heading", { name: "Dal menu del locale" }).count(), 0);
+    assert.equal(
+      await f.page.getByRole("heading", { name: "Prezzi segnalati dai clienti" }).count(),
+      0,
+    );
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

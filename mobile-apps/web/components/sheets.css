@@ -959,6 +959,12 @@
   border-radius: 14px;
   background: var(--surface-2, #f6e9d6);
 }
+.scontrino.mobile-venue .mobile-customer-v2--compact {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
 .mobile-customer-v2 h4,
 .mobile-customer-v2 h5 {
   margin: 0;

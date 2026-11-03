@@ -42,9 +42,10 @@ final class SavedDrinkScreen {
         view=new LinearLayout(activity);view.setOrientation(LinearLayout.VERTICAL);view.setTag("drink_favourites_pane");
         view.addView(text("Drink salvati su questo dispositivo. Confronta i prezzi per drink; valuta e formato restano separati.",15));
         categoryFilter=new Spinner(activity);categoryFilter.setTag("drink_favourites_filter");categoryFilter.setContentDescription("Filtra i drink preferiti");
-        String[] choices=new String[RecommendationDrink.values().length+1];choices[0]="Tutti i drink";
-        for(int i=0;i<RecommendationDrink.values().length;i++)choices[i+1]=NativePricePresentation.category(RecommendationDrink.values()[i]);
-        ArrayAdapter<String> options=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,choices);options.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);categoryFilter.setAdapter(options);view.addView(categoryFilter);
+        String[] choices=new String[RecommendationDrink.values().length+1];
+        for(int i=0;i<RecommendationDrink.values().length;i++)choices[i]=NativePricePresentation.category(RecommendationDrink.values()[i]);
+        choices[RecommendationDrink.values().length]="Tutti i drink";
+        ArrayAdapter<String> options=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,choices);options.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);categoryFilter.setAdapter(options);categoryFilter.setSelection(RecommendationDrink.values().length);view.addView(categoryFilter);
         categoryFilter.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> parent,View v,int position,long id){render();}public void onNothingSelected(AdapterView<?> parent){}});
         status=text("",15);status.setTag("drink_favourites_status");status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);view.addView(status);
         refresh=button("Aggiorna prezzi",()->refresh());refresh.setTag("drink_favourites_refresh");view.addView(refresh);
@@ -83,7 +84,7 @@ final class SavedDrinkScreen {
         List<SavedDrinkComparison.Row> values;
         try{values=SavedDrinkComparison.rows(saved,cells,menus);}catch(IOException invalid){status.setText("Prezzi non disponibili");return;}
         int filter=categoryFilter.getSelectedItemPosition();
-        if(filter>0)values.removeIf(value->value.saved.drink!=RecommendationDrink.values()[filter-1]);
+        if(filter>=0&&filter<RecommendationDrink.values().length)values.removeIf(value->value.saved.drink!=RecommendationDrink.values()[filter]);
         values.sort(Comparator.comparingInt((SavedDrinkComparison.Row value)->value.saved.drink.ordinal())
                 .thenComparingInt(value->value.saved.band)
                 .thenComparing(SavedDrinkComparison.Row::group)
@@ -117,7 +118,7 @@ final class SavedDrinkScreen {
         }
         int visibleOffers=0;
         for(SavedMenuOfferStore.Entry item:offers){
-            if(filter>0&&(item.category==null||!item.category.equals(RecommendationDrink.values()[filter-1].code)))continue;
+            if(filter>=0&&filter<RecommendationDrink.values().length&&(item.category==null||!item.category.equals(RecommendationDrink.values()[filter].code)))continue;
             visibleOffers++;
             MenuV2Prices.Venue menu=menus.get(item.venue.url);MenuV2Prices.Price current=null;
             if(menu!=null)for(MenuV2Prices.Price price:menu.prices)if(!price.customer&&item.id.equals(price.id)){current=price;break;}

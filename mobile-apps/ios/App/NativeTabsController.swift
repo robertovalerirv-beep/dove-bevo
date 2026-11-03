@@ -1,6 +1,6 @@
 import UIKit
 
-/// Three retained destinations and two venue actions share one native bottom bar.
+/// Map, favourites and Home/Discover remain retained; Cerca opens the map search.
 /// Actions never select an empty controller or replace the browser's history.
 final class NativeTabsController: UIViewController, UINavigationControllerDelegate {
     private let store: SavedVenueStore
@@ -12,6 +12,8 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private let discoveryClient: DiscoveryServing
     private let providedBrowser: BrowserViewController?
     private let content = UIView()
+    private let topChrome = UIView()
+    private(set) var topMoreButton = UIButton(type: .system)
     private let bottomBackground = UIView()
     private(set) var bottomBar = NativeBottomBar()
     private var destinationIndex = 0
@@ -32,6 +34,9 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         controller.onVenueActionsChanged = { [weak self] enabled in
             self?.venueActionsAvailable = enabled
             self?.refreshBottomBar()
+        }
+        controller.onMoreMenuChanged = { [weak self] _ in
+            self?.refreshMoreMenu()
         }
         return controller
     }()
@@ -81,17 +86,40 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         super.viewDidLoad()
         view.backgroundColor = NativeAppearance.canvas
         view.tintColor = NativeAppearance.ink
+        topChrome.backgroundColor = NativeAppearance.canvas
         bottomBackground.backgroundColor = NativeAppearance.chrome
         NativeAppearance.configure(mapNavigation)
         NativeAppearance.configure(favouritesNavigation)
         NativeAppearance.configure(discoveryNavigation)
-        [content, bottomBackground, bottomBar].forEach {
+        mapNavigation.setNavigationBarHidden(true, animated: false)
+        [content, topChrome, bottomBackground, bottomBar].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         }
         bottomBar.onSelect = { [weak self] action in self?.performBottomAction(action) }
+        var moreConfiguration = UIButton.Configuration.plain()
+        moreConfiguration.image = UIImage(systemName: "ellipsis")
+        moreConfiguration.baseForegroundColor = NativeAppearance.ink
+        moreConfiguration.background.backgroundColor = NativeAppearance.surface
+        moreConfiguration.background.cornerRadius = NativeAppearance.radius
+        topMoreButton.configuration = moreConfiguration
+        topMoreButton.accessibilityIdentifier = "browser.more"
+        topMoreButton.accessibilityLabel = "Altre opzioni"
+        topMoreButton.showsMenuAsPrimaryAction = true
+        topMoreButton.translatesAutoresizingMaskIntoConstraints = false
+        topChrome.addSubview(topMoreButton)
+        refreshMoreMenu()
         NSLayoutConstraint.activate([
-            content.topAnchor.constraint(equalTo: view.topAnchor),
+            topChrome.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            topChrome.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            topChrome.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            topChrome.heightAnchor.constraint(equalToConstant: 48),
+            topMoreButton.topAnchor.constraint(equalTo: topChrome.topAnchor),
+            topMoreButton.bottomAnchor.constraint(equalTo: topChrome.bottomAnchor),
+            topMoreButton.trailingAnchor.constraint(equalTo: topChrome.trailingAnchor, constant: -8),
+            topMoreButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 48),
+            topMoreButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 48),
+            content.topAnchor.constraint(equalTo: topChrome.bottomAnchor),
             content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             content.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             content.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
@@ -168,6 +196,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         guard index != destinationIndex else { refreshBottomBar(); return }
         let previous = activeNavigation
         destinationIndex = index
+        if index != 0 { browser.cancelPendingSearch() }
         browser.retireVenueActions()
         guard isViewLoaded else { return }
         let next = activeNavigation
@@ -197,20 +226,56 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         guard isViewLoaded else { return }
         let enabled = destinationIndex == 0 && mapNavigation.topViewController === browser && venueActionsAvailable
         bottomBar.update(destination: destinationIndex, venueActionsEnabled: enabled)
+        refreshMoreMenu()
+    }
+
+    private func refreshMoreMenu() {
+        guard isViewLoaded else { return }
+        if destinationIndex == 0 && mapNavigation.topViewController === browser {
+            topMoreButton.accessibilityHint = "Condividi, ricarica e informazioni"
+            topMoreButton.menu = browser.moreMenu()
+            return
+        }
+        topMoreButton.accessibilityHint = "Privacy e informazioni"
+        topMoreButton.menu = UIMenu(children: [
+            UIAction(title: "Privacy", image: UIImage(systemName: "hand.raised"), identifier: UIAction.Identifier("native.privacy")) { [weak self] _ in
+                self?.showPrivacyFromMore()
+            },
+            UIAction(title: "Informazioni", image: UIImage(systemName: "info.circle"), identifier: UIAction.Identifier("native.information")) { [weak self] _ in
+                self?.showInformationFromMore()
+            }
+        ])
+    }
+
+    func showPrivacyFromMore() {
+        activeNavigation.pushViewController(PrivacyViewController(), animated: true)
+    }
+
+    func showInformationFromMore() {
+        let information = AppInformationViewController(onMap: { [weak self] in self?.selectedIndex = 0 }, onBrowser: { [weak self] in self?.browser.openCurrentPageInBrowser() })
+        activeNavigation.pushViewController(information, animated: true)
+    }
+
+    private func openDiscovery() {
+        browser.retireVenueActions()
+        if selectedIndex == 0 && mapNavigation.topViewController === browser {
+            let intent = UUID(); homeIntent = intent
+            browser.captureDiscoveryArea { [weak self] area in
+                guard let self, self.homeIntent == intent, self.selectedIndex == 0 else { return }
+                self.discovery.setArea(area)
+                self.selectedIndex = 2
+            }
+        } else { selectedIndex = 2 }
     }
 
     private func performBottomAction(_ action: BottomNavigationAction) {
         switch action {
         case .home:
-            browser.retireVenueActions()
-            if selectedIndex == 0 && mapNavigation.topViewController === browser {
-                let intent = UUID(); homeIntent = intent
-                browser.captureDiscoveryArea { [weak self] area in
-                    guard let self, self.homeIntent == intent, self.selectedIndex == 0 else { return }
-                    self.discovery.setArea(area)
-                    self.selectedIndex = 2
-                }
-            } else { selectedIndex = 2 }
+            openDiscovery()
+        case .search:
+            mapNavigation.popToRootViewController(animated: false)
+            selectedIndex = 0
+            browser.openMapSearch()
         case .map: selectedIndex = 0
         case .favourites: selectedIndex = 1
         case .save, .recommendations:
@@ -219,6 +284,12 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             else { browser.showRecommendations() }
         }
         refreshBottomBar()
+    }
+
+    func navigationController(_ navigationController: UINavigationController, willShow viewController: UIViewController, animated: Bool) {
+        if navigationController === mapNavigation {
+            navigationController.setNavigationBarHidden(viewController === browser, animated: animated)
+        }
     }
 
     func navigationController(_ navigationController: UINavigationController, didShow viewController: UIViewController, animated: Bool) {

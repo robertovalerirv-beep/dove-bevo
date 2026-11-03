@@ -61,6 +61,17 @@ html[data-dovebevo-app-theme="1"] .top {
   background: var(--bg);
   padding: 10px 16px 12px;
 }
+/* Native Cerca owns city search. Retain the real button in the document for
+ * the native action to click, while removing the duplicate top lens. */
+html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .top__row > .search-field {
+  display: none !important;
+}
+html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .europe-search {
+  display: none !important;
+}
+html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .europe-city-current {
+  display: block;
+}
 html[data-dovebevo-app-theme="1"] .btn,
 html[data-dovebevo-app-theme="1"] .chip,
 html[data-dovebevo-app-theme="1"] .drink {
@@ -424,11 +435,15 @@ html[data-dovebevo-app-theme="1"] .dovebevo-drink-art {
       url.username ||
       url.password ||
       (url.port && url.port !== "443") ||
-      !/^(?:\/|\/mobile\/|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname)
+      !/^(?:\/|\/mobile\/(?:index\.html)?|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname)
     )
       return false;
-    if (!document.querySelector("#app > .app .top") || !document.querySelector("#app > .app .main"))
-      return false;
+    const legacyShell =
+      !!document.querySelector("#app > .app .top") && !!document.querySelector("#app > .app .main");
+    const europeShell =
+      !!document.querySelector("#app > .europe-app .europe-top") &&
+      !!document.querySelector("#app > .europe-app .europe-map");
+    if (!legacyShell && !europeShell) return false;
     root = document.documentElement;
     const existing = document.getElementById(id);
     if (
@@ -455,7 +470,7 @@ html[data-dovebevo-app-theme="1"] .dovebevo-drink-art {
     if (!existing) document.head.appendChild(style);
     root.setAttribute(marker, "1");
     if (getComputedStyle(root).getPropertyValue("--dovebevo-app-theme").trim() === "1") {
-      if (url.pathname !== "/mobile/") installAdapter(root);
+      if (url.pathname !== "/mobile/" && legacyShell) installAdapter(root);
       return true;
     }
   } catch {

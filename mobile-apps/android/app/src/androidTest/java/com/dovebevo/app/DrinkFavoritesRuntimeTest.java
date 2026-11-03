@@ -57,15 +57,47 @@ public final class DrinkFavoritesRuntimeTest {
         drinks.save(URL,"Saved name",RecommendationDrink.SPRITZ,1);drinks.save(URL,"Saved name",RecommendationDrink.BEER_DRAFT,0);
         AtomicReference<String> opened=new AtomicReference<>();showScreen(opened,false);awaitRows("7,00");
         onMain(()->{assertEquals(View.GONE,favorites.view().findViewWithTag("favourites_local_tab").getParent() instanceof View ? ((View)favorites.view().findViewWithTag("favourites_local_tab").getParent()).getVisibility():View.VISIBLE);assertEquals(2,countTag(screen.view(),"drink_favourite_open"));
-            Spinner filter=(Spinner)screen.view().findViewWithTag("drink_favourites_filter");filter.setSelection(RecommendationDrink.SPRITZ.ordinal()+1);});
+            Spinner filter=(Spinner)screen.view().findViewWithTag("drink_favourites_filter");
+            assertEquals(RecommendationDrink.values().length,filter.getSelectedItemPosition());
+            assertEquals("Tutti i drink",filter.getItemAtPosition(RecommendationDrink.values().length).toString());
+            assertEquals(NativePricePresentation.category(RecommendationDrink.BEER_DRAFT),filter.getItemAtPosition(0).toString());
+            filter.setSelection(RecommendationDrink.SPRITZ.ordinal());});
         onMain(()->{assertEquals(1,countTag(screen.view(),"drink_favourite_open"));screen.view().findViewWithTag("drink_favourite_open").performClick();});
         assertEquals(URL+"&drink=spritz&hh=1",opened.get());
     }
     @Test public void oldPlaceConversionKeepsOldRecordUntilDrinkWriteSucceeds()throws Exception {
-        venues.save(URL,"Old saved place");showScreen(new AtomicReference<>(),false);awaitRows("Old saved place");
-        onMain(()->{View action=screen.view().findViewWithTag("drink_favourite_migrate_"+URL);assertNotNull(action);action.performClick();assertNotNull(dialogFromScreen());choiceFromScreen("migration_drink").setSelection(RecommendationDrink.SPRITZ.ordinal()+1);failDrinkWrites=true;dialogFromScreen().getButton(AlertDialog.BUTTON_POSITIVE).performClick();});
+        assertEquals(SavedVenueStore.Result.SAVED,venues.save(URL,"Old saved place"));
+        String savedUrl=venues.load().get(0).url;
+        assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",savedUrl);
+        showScreen(new AtomicReference<>(),false);awaitRows("Old saved place");
+        onMain(()->{
+            View action=screen.view().findViewWithTag("drink_favourite_migrate_"+savedUrl);
+            assertNotNull("The old venue must offer an explicit drink conversion",action);
+            assertTrue("The old venue conversion control must accept a tap",action.performClick());
+            AlertDialog dialog=dialogFromScreen();
+            assertNotNull("Tapping the old venue must open the conversion dialog",dialog);
+            Spinner choice=choiceFromScreen("migration_drink");
+            assertNotNull("Conversion must require a drink choice",choice);
+            choice.setSelection(RecommendationDrink.SPRITZ.ordinal()+1);
+        });
+        // Let the real dialog OnShow listener and spinner selection run before
+        // tapping Save, as they do before a user can interact with the window.
+        onMain(()->{
+            failDrinkWrites=true;
+            AlertDialog dialog=dialogFromScreen();
+            assertNotNull("Conversion dialog must remain open for saving",dialog);
+            Button confirm=dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            assertNotNull("Conversion must present an explicit save action",confirm);
+            confirm.performClick();
+        });
         assertTrue(drinks.load().isEmpty());assertEquals(1,venues.load().size());
-        onMain(()->{failDrinkWrites=false;dialogFromScreen().getButton(AlertDialog.BUTTON_POSITIVE).performClick();});
+        onMain(()->{
+            AlertDialog retry=dialogFromScreen();
+            assertNotNull("A failed write must keep the conversion dialog available",retry);
+            assertTrue(retry.isShowing());
+            failDrinkWrites=false;
+            retry.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        });
         assertEquals(1,drinks.load().size());assertTrue(venues.load().isEmpty());
     }
     private SavedVenueCapture.Venue verified(){return new SavedVenueCapture(URL,7L).complete(URL,"Locale verificato","n123",URL,7L);}

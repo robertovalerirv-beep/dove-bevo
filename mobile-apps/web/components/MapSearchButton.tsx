@@ -18,6 +18,7 @@ export function MapSearchButton({
     <button
       type="button"
       class="btn search-field"
+      data-dovebevo-search="1"
       aria-label={city ? `${city} · ${it.search.open}` : it.search.open}
       aria-description={city}
       onClick={onOpen}

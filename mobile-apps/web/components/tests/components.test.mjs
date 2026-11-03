@@ -114,6 +114,10 @@ async function fixture(options = {}) {
         },
       });
     if (pathname.startsWith("/api/mobile/v2/menu/venues/")) {
+      if (options.menuHang)
+        return new Promise(() => {
+          // Deliberately keep this intercepted request unresolved.
+        });
       if (options.menuAbsent) return route.fulfill({ status: 404, body: "Not found" });
       if (menuFailures > 0) {
         menuFailures--;
@@ -620,6 +624,26 @@ test("owner-verified Italian venue shows menu without unsupported public contrib
   }
 });
 
+test("legacy venue opens while v2 menu hangs, but an m venue times out to retry", async () => {
+  const f = await fixture({ menuHang: true });
+  try {
+    const start = Date.now();
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.getByRole("heading", { name: "Locale di prova <strong>" }).waitFor({
+      timeout: 1500,
+    });
+    assert.ok(Date.now() - start < 1500, "Legacy sheet must not wait for the v2 request");
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("heading", { name: "Menu temporaneamente non disponibile" }).waitFor({
+      timeout: 8000,
+    });
+    await f.page.getByRole("button", { name: "Riprova" }).waitFor();
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
 test("menu loading failure can retry while legacy customer prices remain", async () => {
   const f = await fixture({ menuFailOnce: true });
   try {

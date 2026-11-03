@@ -633,7 +633,7 @@ test("m-key detail outage offers retry instead of saying the venue does not exis
 });
 
 test("app map actions reclaim the footer and retain both contribution routes", async () => {
-  const f = await fixture({ width: 390, height: 844 });
+  const f = await fixture({ width: 430, height: 700 });
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     const actions = f.page.getByTestId("mobile-map-actions");
@@ -642,7 +642,15 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     assert.equal(await f.page.locator(".bottom").isVisible(), false);
     const map = await f.page.locator("section.map").boundingBox();
     assert.ok(map && map.height >= 500, JSON.stringify(map));
+    await f.page.getByTestId("map-status").waitFor();
+    const status = await f.page.getByTestId("map-status").boundingBox();
+    const actionBox = await toggle.boundingBox();
+    const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
+    assert.ok(status && actionBox && locate);
+    assert.ok(actionBox.y + actionBox.height <= status.y, "Add must clear coverage card");
+    assert.ok(locate.y + locate.height <= actionBox.y, "Add must clear locate control");
     await toggle.click();
+    await f.page.screenshot({ path: path.join(output, "app-map-actions-iphone16plus-fixture.png") });
     const choices = actions.getByRole("group", { name: "Aggiungi" });
     assert.equal(await choices.getByRole("button").count(), 2);
     await f.page.keyboard.press("Escape");
@@ -650,8 +658,13 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     assert.equal(await toggle.evaluate((element) => element === document.activeElement), true);
     await toggle.click();
     await choices.getByRole("button", { name: "Aggiungi prezzo", exact: true }).click();
-    await f.page.getByRole("dialog").waitFor();
+    const priceDialog = f.page.getByRole("dialog");
+    await priceDialog.waitFor();
     assert.equal(await toggle.getAttribute("aria-expanded"), "false");
+    await f.page.setViewportSize({ width: 430, height: 420 });
+    const keyboardBox = await priceDialog.boundingBox();
+    assert.ok(keyboardBox && keyboardBox.y >= 0 && keyboardBox.y + keyboardBox.height <= 420);
+    await f.page.setViewportSize({ width: 430, height: 700 });
 
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     const again = f.page.getByTestId("mobile-map-actions");

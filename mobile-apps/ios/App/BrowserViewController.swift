@@ -842,7 +842,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                 return
             }
             let alert = UIAlertController(title: "Salva nei Preferiti?",
-                message: "\(saved.name) � \(saved.venue.label). Il prezzo si aggiorna online e non viene salvato sul telefono.", preferredStyle: .alert)
+                message: "\(saved.name) - \(saved.venue.label). Il prezzo si aggiorna online e non viene salvato sul telefono.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "Annulla", style: .cancel) { [weak self] _ in self?.offerSaveAlert = nil })
             alert.addAction(UIAlertAction(title: "Salva", style: .default) { [weak self] _ in
                 guard let self, self.offerSaveIntent == token, self.usableVenueURL == venueURL,
@@ -850,7 +850,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                 self.offerSaveAlert = nil
                 do {
                     try self.savedMenuOffers.save(saved)
-                    self.showVenueReadError(title: "Preferito salvato", message: "\(saved.name) � \(saved.venue.label) e nei Preferiti.")
+                    self.showVenueReadError(title: "Preferito salvato", message: "\(saved.name) - \(saved.venue.label) e nei Preferiti.")
                 } catch {
                     self.showBookmarkError("Non riesco a salvare. Potresti aver raggiunto il limite di 50 drink del menu. I preferiti precedenti sono stati mantenuti.")
                 }

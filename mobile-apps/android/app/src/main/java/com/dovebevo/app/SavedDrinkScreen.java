@@ -122,17 +122,17 @@ final class SavedDrinkScreen {
             MenuV2Prices.Venue menu=menus.get(item.venue.url);MenuV2Prices.Price current=null;
             if(menu!=null)for(MenuV2Prices.Price price:menu.prices)if(!price.customer&&item.id.equals(price.id)){current=price;break;}
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);NativeAppearance.card(card);card.setTag("menu_offer_favourite_"+item.key());
-            TextView title=text(item.name+" � "+(menu==null?item.venue.label:menu.name),18);NativeAppearance.title(title);card.addView(title);
+            TextView title=text(item.name+" - "+(menu==null?item.venue.label:menu.name),18);NativeAppearance.title(title);card.addView(title);
             if(current!=null){card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
                 card.addView(text(current.evidence(),15));}
-            else card.addView(text(menuBusy?"Caricamento del prezzo online�":"Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi.",15));
+            else card.addView(text(menuBusy?"Caricamento del prezzo online...":"Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi.",15));
             Button open=button("Apri "+item.name,()->{if(usable()&&containsOffer(item.key()))navigate.accept(item.focusedUrl());});
             open.setTag("menu_offer_favourite_open");NativeAppearance.button(open,true);card.addView(open);
             Button remove=button("Rimuovi questo drink",()->{if(!usable()||!containsOffer(item.key())||offerStore==null)return;
                 retire();SavedMenuOfferStore.Result result=offerStore.remove(item);
                 if(result==SavedMenuOfferStore.Result.REMOVED||result==SavedMenuOfferStore.Result.NOT_FOUND)refresh();
                 else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});
-            remove.setTag("menu_offer_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+item.name+" � "+item.venue.label);card.addView(remove);
+            remove.setTag("menu_offer_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+item.name+" - "+item.venue.label);card.addView(remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
         }
         if(values.isEmpty()&&visibleOffers==0&&(!saved.isEmpty()||!offers.isEmpty()))rows.addView(text("Nessun drink salvato per questa scelta.",15));

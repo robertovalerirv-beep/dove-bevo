@@ -642,7 +642,7 @@ public final class MainActivity extends ComponentActivity {
             SavedMenuOfferStore.Entry saved=SavedMenuOfferStore.verified(venue,verified);
             if(saved==null){Toast.makeText(this,"Questo drink non e piu disponibile nel menu verificato. Nessun preferito salvato.",Toast.LENGTH_LONG).show();return;}
             AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Salva nei Preferiti?")
-                .setMessage(saved.name+" � "+saved.venue.label+". Il prezzo si aggiorna online e non viene salvato sul telefono.")
+                .setMessage(saved.name+" - "+saved.venue.label+". Il prezzo si aggiorna online e non viene salvato sul telefono.")
                 .setNegativeButton("Annulla",(d,w)->{}).setPositiveButton("Salva",(d,w)->{
                     if(token!=offerSaveGeneration||!foreground||destroyed||!active.equals(eligibleSavedVenue()))return;
                     SavedMenuOfferStore.Result result=offerStore.save(saved);

@@ -384,11 +384,11 @@ final class SavedVenuesViewController: UITableViewController {
         if showingDrinks && indexPath.row >= drinkRows.count {
             let (item, live) = offerRows[indexPath.row - drinkRows.count]
             var content = cell.defaultContentConfiguration()
-            content.text = "\(item.name) � \(live?.venueName ?? item.venue.label)"
+            content.text = "\(item.name) - \(live?.venueName ?? item.venue.label)"
             if let live {
                 content.secondaryText = "\(live.serving)\n\(live.amount)\n\(live.evidence)"
             } else if menuBusy {
-                content.secondaryText = "Caricamento del prezzo online�"
+                content.secondaryText = "Caricamento del prezzo online..."
             } else {
                 content.secondaryText = "Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi."
             }

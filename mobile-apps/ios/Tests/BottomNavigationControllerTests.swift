@@ -237,7 +237,8 @@ final class BottomNavigationControllerTests: XCTestCase {
         tabs.mapNavigation.pushViewController(recommendations, animated: false)
         recommendations.loadViewIfNeeded()
         let recommendationTitles = try XCTUnwrap(tabs.topMoreButton.menu).children.map(\.title)
-        XCTAssertTrue(recommendationTitles.contains("Riprova"), "Drink consigliati reload belongs in the top ellipsis")
+        XCTAssertTrue(recommendationTitles.contains(recommendations.reloadMenuTitle),
+                      "Drink consigliati reload belongs in the top ellipsis with its current loading state")
         XCTAssertEqual(recommendations.navigationItem.rightBarButtonItems?.count, 1,
                        "Drink consigliati must not duplicate Reload in its title bar")
     }

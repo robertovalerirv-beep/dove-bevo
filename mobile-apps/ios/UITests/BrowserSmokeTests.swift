@@ -399,11 +399,11 @@ final class BrowserSmokeTests: XCTestCase {
         let listTitle = website.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Bar nella zona")).firstMatch
         XCTAssertTrue(listTitle.waitForExistence(timeout: 10))
         attachState(named: "DoveBevo-live-Birra-media-list")
-        // The Milano centre currently has real customer beer observations but
-        // need not contain one of the owner-menu venues. That separate route is
-        // checked through a known venue in verifyLiveOwnerMenuVenueReadOnly.
-        let pricedLinks = website.links.matching(NSPredicate(format: "label MATCHES %@", ".*[1-9][0-9]* (prezzo segnalato|prezzi segnalati).*"))
-        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20), "The selected beer list must expose an actual positive reported-price count")
+        // The live list exposes the selected drink's amount beside each priced
+        // venue. Its old reported-price count wording is no longer in this UI.
+        // Owner-menu provenance is checked separately on a known venue.
+        let pricedLinks = website.links.matching(NSPredicate(format: "label MATCHES %@", ".*[1-9][0-9]*,[0-9]{2} €.*"))
+        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20), "The selected beer list must expose an actual positive price")
         var visibleVenue: XCUIElement?
         for _ in 0..<12 {
             if let venue = pricedLinks.allElementsBoundByIndex.first(where: { $0.exists && $0.isHittable }) {

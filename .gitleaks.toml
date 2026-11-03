@@ -40,5 +40,5 @@ regexes = ['''^m1354096fc013d6e5d045b2ed$''']
 description = "CasaCinema Napoli public owner venue identifier"
 condition = "AND"
 regexTarget = "secret"
-paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/c4c8eed8b90a39df4c0217b0fcae4293d87158b173fb2ee4eb6c6c85fe0fd10b\.json$''']
+paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/4b0aded8401c012cc8d02fb5961dc36cc65c8bcb1fc81b8f0e530a98e339d2c4\.json$''']
 regexes = ['''^m31771b8f0063bacd3dfb2f37$''']

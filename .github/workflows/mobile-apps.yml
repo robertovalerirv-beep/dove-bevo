@@ -16,6 +16,8 @@ on:
       - "!mobile-apps/tools/menu-seed/**"
       - "!mobile-apps/data/italy-menu-*.json"
       - "!mobile-apps/docs/*-italy-menu-*.md"
+      - "!mobile-apps/data/mobile-menu-v2-seeds/**"
+      - "!mobile-apps/tools/mobile-menu-v2-import/**"
       - ".github/workflows/mobile-apps.yml"
 
 permissions:

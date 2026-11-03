@@ -38,7 +38,7 @@ final class AppInformationViewController: UITableViewController {
         banner.isLayoutMarginsRelativeArrangement = true
         banner.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
         banner.layer.cornerRadius = NativeAppearance.radius
-        banner.backgroundColor = UIColor(red: 1, green: 0.97, blue: 0.90, alpha: 1)
+        banner.backgroundColor = NativeAppearance.chrome
         banner.translatesAutoresizingMaskIntoConstraints = false
         let footer = UIView(); footer.addSubview(banner)
         NSLayoutConstraint.activate([
@@ -119,7 +119,7 @@ private final class AppInformationTextController: UIViewController {
     init(title: String, text: String) { content = text; super.init(nibName: nil, bundle: nil); self.title = title }
     required init?(coder: NSCoder) { return nil }
     override func viewDidLoad() {
-        super.viewDidLoad(); view.backgroundColor = NativeAppearance.surface
+        super.viewDidLoad(); view.backgroundColor = NativeAppearance.canvas
         let text = UITextView(); text.translatesAutoresizingMaskIntoConstraints = false
         text.isEditable = false; text.isSelectable = true; text.text = content
         text.font = .preferredFont(forTextStyle: .body); text.adjustsFontForContentSizeCategory = true

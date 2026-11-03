@@ -40,7 +40,7 @@ export function transformApp(source) {
   result = once(
     result,
     '<p class="map__status" data-testid="map-status" role="status">',
-    '<p class="map__status" data-testid="map-status" role="status" data-mobile-selection={showMeter ? drinks.map((code) => it.drinks[code] ?? code).join(" · ") : undefined}>',
+    '<p class="map__status" data-testid="map-status" role="status" data-mobile-selection={showMeter ? (drinks.length ? drinks.map((code) => it.drinks[code] ?? code).join(" · ") : "Tutti") : undefined}>',
   );
   result = once(
     result,
@@ -94,7 +94,7 @@ export function transformApp(source) {
   result = once(
     result,
     "          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}",
-    '          {inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n            <p class="mobile-menu-map-note">M+ = prezzo del drink da menu; coperto e supplementi esclusi</p>\n          )}\n          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}',
+    '          {inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n            <p class="mobile-menu-map-note">{drinks.length ? "M+ = prezzo del drink da menu; coperto e supplementi esclusi" : "Numeri sulla mappa = voci di menu verificate o prezzi segnalati; non sono prezzi medi"}</p>\n          )}\n          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}',
   );
   const tree = ts.createSourceFile(
     "app.tsx",

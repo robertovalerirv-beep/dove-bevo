@@ -435,7 +435,7 @@ html[data-dovebevo-app-theme="1"] .dovebevo-drink-art {
       url.username ||
       url.password ||
       (url.port && url.port !== "443") ||
-      !/^(?:\/|\/mobile\/|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname)
+      !/^(?:\/|\/mobile\/(?:index\.html)?|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname)
     )
       return false;
     const legacyShell =

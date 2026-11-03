@@ -101,6 +101,7 @@ function fixture(options = {}) {
 for (const url of [
   "https://www.dovebevo.com/",
   "https://www.dovebevo.com/mobile/",
+  "https://www.dovebevo.com/mobile/index.html",
   "https://dovebevo.com:443/",
   "https://www.dovebevo.com/bar/n4170005990?c=u0nd9h",
 ])

@@ -128,6 +128,56 @@ final class AppPresentationThemeTests: XCTestCase {
     }
 
     @MainActor
+    func testDelayedMobileMountAppliesThemeAndHidesDuplicateTopSearch() throws {
+        let configuration = WKWebViewConfiguration()
+        AppPresentationTheme.install(in: configuration)
+        let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), configuration: configuration)
+        let savedVenue = URL(string: "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9")!
+        try loadDelayedMobile(web, url: savedVenue)
+        XCTAssertEqual(try evaluate(web, "document.querySelectorAll('#dovebevo-native-theme-v1').length") as? Int, 0)
+        AppPresentationTheme.applyAfterFinish(to: web)
+        _ = try evaluate(web, """
+        document.querySelector('#app').innerHTML =
+          '<div class="app"><header class="top"><div class="top__row"><button class="btn search-field">Cerca città o bar</button></div></header><main class="main"></main></div>';
+        """)
+        let styled = expectation(description: "Delayed owned mobile shell receives its nonce-bound theme")
+        var value: Result<Any, Error>?
+        web.callAsyncJavaScript("""
+        const deadline = Date.now() + 6500;
+        while (Date.now() < deadline) {
+          const button = document.querySelector('.top__row > .search-field');
+          if (document.documentElement.getAttribute('data-dovebevo-app-theme') === '1' &&
+              button && getComputedStyle(button).display === 'none') return '1|none';
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        const button = document.querySelector('.top__row > .search-field');
+        return String(document.documentElement.getAttribute('data-dovebevo-app-theme')) + '|' +
+          (button ? getComputedStyle(button).display : 'missing');
+        """, arguments: [:], in: nil, in: .defaultClient) { result in value = result; styled.fulfill() }
+        wait(for: [styled], timeout: 8)
+        XCTAssertEqual(try XCTUnwrap(value).get() as? String, "1|none")
+        XCTAssertEqual(try evaluate(web, "document.querySelectorAll('#dovebevo-native-theme-v1').length") as? Int, 1)
+    }
+
+    @MainActor
+    func testDelayedThemeRetryStopsWhenNavigationLeavesTrustedVisitorDocument() throws {
+        let configuration = WKWebViewConfiguration()
+        AppPresentationTheme.install(in: configuration)
+        let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), configuration: configuration)
+        let savedVenue = URL(string: "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9")!
+        try loadDelayedMobile(web, url: savedVenue)
+        AppPresentationTheme.applyAfterFinish(to: web)
+        try loadDelayedMobile(web, url: URL(string: "https://www.dovebevo.com/auth")!)
+        _ = try evaluate(web, #"document.querySelector('#app').innerHTML = '<div class="app"><header class="top"></header><main class="main"></main></div>';"#)
+        let settled = expectation(description: "Old mobile retry cannot style the new auth document")
+        var value: Result<Any, Error>?
+        web.callAsyncJavaScript("await new Promise(resolve => setTimeout(resolve, 800)); return document.querySelectorAll('#dovebevo-native-theme-v1').length;",
+                                arguments: [:], in: nil, in: .defaultClient) { result in value = result; settled.fulfill() }
+        wait(for: [settled], timeout: 3)
+        XCTAssertEqual(try XCTUnwrap(value).get() as? Int, 0)
+    }
+
+    @MainActor
     private func loadOwned(_ web: WKWebView, nonce: Bool, cspAllowsNonce: Bool = true, artwork: Bool = false) throws {
         let finished = expectation(description: "Owned visitor response finishes")
         let delegate = ThemeNavigationDelegate(finished: finished)
@@ -144,6 +194,25 @@ final class AppPresentationThemeTests: XCTestCase {
         """.utf8)
         let url = URLPolicy.homeURL
         let response = URLResponse(url: url, mimeType: "text/html", expectedContentLength: data.count, textEncodingName: "UTF-8")
+        XCTAssertNotNil(web.loadSimulatedRequest(URLRequest(url: url), response: response, responseData: data))
+        wait(for: [finished], timeout: 15)
+        XCTAssertNil(delegate.error)
+        web.navigationDelegate = nil
+    }
+
+    @MainActor
+    private func loadDelayedMobile(_ web: WKWebView, url: URL) throws {
+        let finished = expectation(description: "Mobile visitor document finishes before its shell mounts")
+        let delegate = ThemeNavigationDelegate(finished: finished)
+        web.navigationDelegate = delegate
+        let nonce = "dGhlbWVmaXh0dXJlb25seQ=="
+        let data = Data("""
+        <!doctype html><html data-dovebevo-mobile-shell="1"><head>
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-\(nonce)'; script-src 'nonce-\(nonce)'; img-src data:">
+        <style nonce="\(nonce)">body { margin: 0; }</style></head><body><div id="app"></div></body></html>
+        """.utf8)
+        let response = URLResponse(url: url, mimeType: "text/html", expectedContentLength: data.count,
+                                   textEncodingName: "UTF-8")
         XCTAssertNotNil(web.loadSimulatedRequest(URLRequest(url: url), response: response, responseData: data))
         wait(for: [finished], timeout: 15)
         XCTAssertNil(delegate.error)

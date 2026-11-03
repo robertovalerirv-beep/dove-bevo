@@ -49,8 +49,12 @@ class AppPresentationGuards(unittest.TestCase):
         for required in ['Bundle.main.url(forResource: "app-theme", withExtension: "js")',
                          "data.count <= 32 * 1024", "encoding: .utf8", ".atDocumentEnd",
                          "forMainFrameOnly: true, in: .defaultClient", "URLPolicy.isWebsite(url)",
-                         "path(percentEncoded: true)", "guard canApply(to: webView.url), let source",
+                         "path(percentEncoded: true)", "guard let url = webView.url, canApply(to: url), let source",
                          "evaluateJavaScript(source, in: nil, in: .defaultClient)"]:
+            self.assertIn(required, source)
+        for required in ["documentToken: String", "attemptsLeft: 16", "Date().addingTimeInterval(8)",
+                         "webView.url == url", "!webView.isLoading", ".defaultClient",
+                         "window.__dovebevoNativeThemeDocumentToken"]:
             self.assertIn(required, source)
         for forbidden in ["addScriptMessageHandler", "addScriptMessageHandlerWithReply", ".page", "MutationObserver",
                           "HTTPCookie", "customUserAgent", "URLSession", "evaluateJavaScript(source +"]:

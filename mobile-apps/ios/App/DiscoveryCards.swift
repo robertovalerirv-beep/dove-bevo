@@ -93,7 +93,7 @@ struct DiscoveryCategorySummary: Equatable {
         photoHeight?.constant = UIFontMetrics(forTextStyle: .caption1).scaledValue(for: 60, compatibleWith: traitCollection)
         isSelected = selected
         layer.borderWidth = selected ? 2 : 1
-        layer.borderColor = (selected ? NativeAppearance.accent : NativeAppearance.line).cgColor
+        layer.borderColor = NativeAppearance.ink.cgColor
         backgroundColor = selected ? NativeAppearance.accent.withAlphaComponent(0.07) : NativeAppearance.surface
         accessibilityValue = "\(value.headline). \(value.detail). \(value.countText ?? ""). Immagine illustrativa del drink"
         accessibilityTraits = selected ? [.button, .selected] : [.button]

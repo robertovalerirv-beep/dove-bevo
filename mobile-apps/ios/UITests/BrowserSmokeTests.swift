@@ -277,6 +277,7 @@ final class BrowserSmokeTests: XCTestCase {
         verifyLiveSavedVenueRoundTrip()
         verifyLiveDiscoveryReadOnly()
         attachScreen(named: "DoveBevo-live-Milano-map")
+        verifyLiveOwnerMenuVenueReadOnly()
     }
 
     private func verifyLiveDiscoveryReadOnly() {
@@ -330,6 +331,49 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(hasVisiblePositiveCoverage())
     }
 
+    private func verifyLiveOwnerMenuVenueReadOnly() {
+        let website = app.webViews["browser.website"]
+        XCTAssertTrue(app.buttons["tab.map"].isSelected)
+        app.buttons["tab.search"].tap()
+        let searchField = app.textFields["Cerca una città o un bar"]
+        XCTAssertTrue(searchField.waitForExistence(timeout: 15))
+        dismissKeyboardIntroductionIfPresent(searchField: searchField)
+        if !ordinaryKeyboardVisible() {
+            searchField.tap()
+            dismissKeyboardIntroductionIfPresent(searchField: searchField)
+        }
+        waitForOrdinaryKeyboard()
+        searchField.typeText("Carico")
+        dismissKeyboardIntroductionIfPresent(searchField: searchField)
+        // Carico is an existing OSM venue in Milano. Its owner menu is kept
+        // separately from customer observations; search navigates through the
+        // same venue route a customer uses, without submitting any content.
+        let venueResult = website.descendants(matching: .any).matching(
+            NSPredicate(format: "label BEGINSWITH[c] %@ AND label CONTAINS[c] %@", "Carico", "Bar · Milano")
+        ).firstMatch
+        XCTAssertTrue(venueResult.waitForExistence(timeout: 30), "The real static venue search must find Carico")
+        XCTAssertTrue(venueResult.isHittable, "The owner-menu venue result must be reachable above the keyboard")
+        venueResult.tap()
+        let searchClosed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: searchField)
+        XCTAssertEqual(XCTWaiter.wait(for: [searchClosed], timeout: 15), .completed)
+        XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 30), "Carico must open as a real venue")
+        XCTAssertTrue(website.staticTexts["Carico"].waitForExistence(timeout: 15))
+        let menuHeading = website.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "Dal menu del locale")
+        ).firstMatch
+        XCTAssertTrue(menuHeading.waitForExistence(timeout: 30), "The selected owner-menu venue must display its actual verified menu")
+        let menuCount = website.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "[1-9][0-9]* prezzi")).firstMatch
+        XCTAssertTrue(menuCount.exists, "The owner-menu section must report a positive stored offer count")
+        XCTAssertTrue(website.staticTexts.matching(NSPredicate(format: "label == %@", "Prezzo da menu")).firstMatch.exists,
+                      "At least one source-backed drink price must be rendered in the venue")
+        XCTAssertTrue(website.links.matching(NSPredicate(format: "label BEGINSWITH %@", "Menu verificato il")).firstMatch.exists,
+                      "A displayed owner price must retain a source link and checked date")
+        attachScreen(named: "DoveBevo-live-Carico-owner-menu")
+        website.buttons["Chiudi"].tap()
+        XCTAssertTrue(interactiveMap().waitForExistence(timeout: 15))
+        assertOnlyNativeSearch(in: website)
+    }
+
     private func verifyLiveSavedVenueRoundTrip() {
         let website = app.webViews["browser.website"]
         // A fresh owned installation lets this test remove only its own entry.
@@ -354,11 +398,12 @@ final class BrowserSmokeTests: XCTestCase {
         listButton.tap()
         let listTitle = website.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Bar nella zona")).firstMatch
         XCTAssertTrue(listTitle.waitForExistence(timeout: 10))
-        attachState(named: "DoveBevo-live-default-tutti-list")
-        let menuLinks = website.links.matching(NSPredicate(format: "label MATCHES %@", ".*[1-9][0-9]* (voce|voci) menu.*"))
-        XCTAssertTrue(menuLinks.firstMatch.waitForExistence(timeout: 20), "Tutti must expose an actual verified owner-menu count")
+        attachState(named: "DoveBevo-live-Birra-media-list")
+        // The Milano centre currently has real customer beer observations but
+        // need not contain one of the owner-menu venues. That separate route is
+        // checked through a known venue in verifyLiveOwnerMenuVenueReadOnly.
         let pricedLinks = website.links.matching(NSPredicate(format: "label MATCHES %@", ".*[1-9][0-9]* (prezzo segnalato|prezzi segnalati).*"))
-        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20), "Tutti must expose an actual positive reported-price count")
+        XCTAssertTrue(pricedLinks.firstMatch.waitForExistence(timeout: 20), "The selected beer list must expose an actual positive reported-price count")
         var visibleVenue: XCUIElement?
         for _ in 0..<12 {
             if let venue = pricedLinks.allElementsBoundByIndex.first(where: { $0.exists && $0.isHittable }) {

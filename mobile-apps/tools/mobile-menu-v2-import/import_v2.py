@@ -42,6 +42,13 @@ TABLES = ("mobile_menu_v2_venues","mobile_menu_v2_sources","mobile_menu_v2_offer
           "venues_user")
 MAX_MANIFEST = 2*1024*1024
 MAX_SOURCE = 8*1024*1024
+MAX_PINNED_PDF_SOURCE = 16*1024*1024
+PINNED_LARGE_PDFS = {
+    "https://spillerbirrerie.it/wp-content/uploads/2025/10/menu_spiller_inverno25_MILANO_CENA.pdf":
+        "10fb3c8e0b863872531390d5ee78d1ed2777adc59fe0d8c99449ed91bc9f8053",
+    "https://stmartinpub.com/wp-content/uploads/2026/07/Menu_st_martin_26_07.pdf":
+        "ac045fb1178d98d2aec89c9ca433413a4871185a08fe9fbc6999684170f5d1c9",
+}
 
 class Error(Exception):
     pass
@@ -236,6 +243,9 @@ def validate_source(row,venues,checked):
     if row["source_format"] not in ("html_text_v1","pdf_text_v1","json_menu_v1"):
         raise Error("unsupported source format")
     digest(row["source_sha256"]);digest(row["source_text_sha256"])
+    pin=PINNED_LARGE_PDFS.get(row["source_url"])
+    if pin and row["source_format"]=="pdf_text_v1" and row["source_sha256"]!=pin:
+        raise Error("pinned PDF manifest hash mismatch")
     if row["source_format"]=="json_menu_v1" and (row["source_url"]!="https://www.carico.io/api/menu"
         or row["use_review_reference"]!=CARICO_RENDERER_URL):
         raise Error("unreviewed JSON menu endpoint or renderer")
@@ -355,8 +365,20 @@ def validate(raw):
             raise Error("approved source without evidence row")
     return doc
 
-def source_digests(raw,fmt):
-    if len(raw)>MAX_SOURCE: raise Error("source too large")
+def source_limit(row):
+    pin=PINNED_LARGE_PDFS.get(row["source_url"])
+    if pin and row["source_format"]=="pdf_text_v1":
+        if row["source_sha256"]!=pin: raise Error("pinned PDF manifest hash mismatch")
+        return MAX_PINNED_PDF_SOURCE
+    return MAX_SOURCE
+
+def source_digests(raw,fmt,source_url=None):
+    pin=PINNED_LARGE_PDFS.get(source_url) if fmt=="pdf_text_v1" else None
+    if len(raw)>(MAX_PINNED_PDF_SOURCE if pin else MAX_SOURCE):
+        raise Error("source too large")
+    # A large PDF must match its reviewed raw bytes before pdftotext sees it.
+    if pin and hashlib.sha256(raw).hexdigest()!=pin:
+        raise Error("pinned PDF bytes changed")
     if fmt=="html_text_v1":
         result=legacy.source_digest(raw,"html_text_v1")
         return result,result
@@ -591,13 +613,13 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
         # Redirects, HTTP errors, and changed content are never retried or accepted.
         for attempt in range(2):
             try:
-                source_raw=public_fetch(transport,row["source_url"],MAX_SOURCE,content_kind)
+                source_raw=public_fetch(transport,row["source_url"],source_limit(row),content_kind)
                 break
             except Error as exc:
                 if str(exc)!="public source timeout" or attempt:
                     raise
         content_type=getattr(transport,"last_fetch_content_type",None)
-        cache[key]=(source_digests(source_raw,row["source_format"]),
+        cache[key]=(source_digests(source_raw,row["source_format"],row["source_url"]),
                     source_raw,content_type)
     hashes,source_raw,content_type=cache[key]
     if hashes!=(row["source_sha256"],row["source_text_sha256"]):

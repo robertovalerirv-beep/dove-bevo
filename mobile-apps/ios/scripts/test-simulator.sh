@@ -3,9 +3,12 @@ set -euo pipefail
 TEST_ARGS=(-parallel-testing-enabled NO)
 if [[ "$#" == 1 && "$1" == --unit-only ]]; then
     TEST_ARGS+=(-only-testing:DoveBevoTests)
+    RUN_UI_TESTS=false
 elif [[ "$#" != 0 ]]; then
     printf 'Usage: bash mobile-apps/ios/scripts/test-simulator.sh [--unit-only]\n' >&2
     exit 2
+else
+    RUN_UI_TESTS=true
 fi
 IOS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ ! -d "$IOS_ROOT/DoveBevo.xcodeproj" ]]; then
@@ -91,6 +94,20 @@ xcrun simctl bootstatus "$SIMULATOR_ID" -b
 python3 "$IOS_ROOT/scripts/collect-native-lifecycle.py" --device "$SIMULATOR_ID" \
     --output "$DIAGNOSTICS/native-lifecycle-$(basename "$RESULT_BUNDLE" .xcresult).json" &
 COLLECTOR_PID=$!
+# Build the exact unsigned app and verify a positive launch PID on this selected
+# simulator before starting the live UI suite. This catches hosted launch stalls
+# without treating a missing app process as a passed product test.
+if [[ "$RUN_UI_TESTS" == true ]]; then
+    xcodebuild \
+        -project "$IOS_ROOT/DoveBevo.xcodeproj" \
+        -scheme DoveBevo -configuration Debug \
+        -destination "platform=iOS Simulator,id=$SIMULATOR_ID,arch=$SIMULATOR_ARCH" \
+        -derivedDataPath "$IOS_ROOT/.build/DerivedData" \
+        CODE_SIGNING_ALLOWED=NO build
+    python3 "$IOS_ROOT/scripts/preflight-simulator-app.py" \
+        --device-id "$SIMULATOR_ID" --ios-root "$IOS_ROOT" \
+        --app "$IOS_ROOT/.build/DerivedData/Build/Products/Debug-iphonesimulator/DoveBevo.app"
+fi
 set +e
 xcodebuild \
     -project "$IOS_ROOT/DoveBevo.xcodeproj" \

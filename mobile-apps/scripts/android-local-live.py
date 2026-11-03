@@ -47,11 +47,29 @@ def validate_apk(path, expected):
     return actual
 
 
+def owned_avd(raw):
+    try:
+        return raw.decode("ascii", "strict").splitlines() == ["dove-live", "OK"]
+    except UnicodeDecodeError:
+        return False
+
+
+def rules_or_home(ui):
+    for stage, label in (("rules", "Ho almeno 18 anni e accetto"), ("home", "Cerca città o bar")):
+        for node in ui.iter("node"):
+            values = (node.get("text", ""), node.get("content-desc", ""))
+            if any(value.casefold() == label.casefold() for value in values):
+                return stage, node
+    return None
+
+
 def run(adb_binary, apk_sha, apk_path):
     stage = "device"
     result = {"result": "failed", "stage": stage, "apk_sha256": apk_sha, "checks": []}
     evidence = EVIDENCE / (datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:8])
     evidence.mkdir(parents=True, exist_ok=False)
+    verified_target = False
+    launch_attempted = False
 
     def adb(*args, timeout=25, check=True):
         command = [str(adb_binary), "-s", "emulator-5554", *args]
@@ -73,19 +91,26 @@ def run(adb_binary, apk_sha, apk_path):
         return ui
 
     smoke.adb, smoke.tree, smoke.EVIDENCE = adb, tree, evidence
+
     try:
         if adb("shell", "getprop", "ro.kernel.qemu").stdout.strip() != b"1":
             raise RuntimeError("Target must be a virtual emulator, not a physical phone")
         if adb("shell", "getprop", "ro.build.version.sdk").stdout.strip() != b"36":
             raise RuntimeError("The approved API 36 image is required")
+        if not owned_avd(adb("emu", "avd", "name").stdout):
+            raise RuntimeError("Emulator-5554 is not the dedicated dove-live AVD")
+        verified_target = True
         adb("install", "-r", str(apk_path), timeout=90)
+        launch_attempted = True
         adb("shell", "am", "start", "-W", "-n", "com.dovebevo.app/.MainActivity")
         stage = "rules"
-        smoke.tap(smoke.wait_for("18+ rules gate", lambda: smoke.find("Ho almeno 18 anni e accetto"), 20))
+        gate = smoke.wait_for("18+ rules or already accepted app home", lambda: rules_or_home(tree()), 20)
+        if gate[0] == "rules":
+            smoke.tap(gate[1])
         stage = "home"
         smoke.wait_for("public app search", lambda: smoke.find("Cerca città o bar"), 60)
         smoke.screenshot("01-live-home.png")
-        result["checks"].append("18+ rules accepted on isolated emulator; public app home loaded")
+        result["checks"].append("18+ gate respected on isolated emulator; public app home loaded")
         stage = "search"
         smoke.tap(smoke.find("Cerca città o bar"))
         edit = smoke.wait_for("city search input", lambda: next((node for node in tree().iter("node")
@@ -118,18 +143,20 @@ def run(adb_binary, apk_sha, apk_path):
     except BaseException as error:
         result.update(result="blocked" if isinstance(error, ChallengeBlocked) else "failed",
                       stage=stage, error=str(error)[:200])
-        try:
-            smoke.screenshot("last-state.png")
-        except (OSError, RuntimeError, subprocess.SubprocessError):
-            pass
+        if verified_target and launch_attempted:
+            try:
+                smoke.screenshot("last-state.png")
+            except (OSError, RuntimeError, subprocess.SubprocessError):
+                pass
     finally:
         result["screenshots"] = {path.name: sha256_file(path) for path in evidence.glob("*.png")}
         (evidence / "receipt.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         result["receipt_path"] = str(evidence / "receipt.json")
-        try:
-            adb("shell", "am", "force-stop", "com.dovebevo.app", check=False)
-        except (OSError, RuntimeError, subprocess.SubprocessError):
-            pass
+        if verified_target and launch_attempted:
+            try:
+                adb("shell", "am", "force-stop", "com.dovebevo.app", check=False)
+            except (OSError, RuntimeError, subprocess.SubprocessError):
+                pass
     return result
 
 

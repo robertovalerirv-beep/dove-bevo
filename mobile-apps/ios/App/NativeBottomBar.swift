@@ -173,6 +173,8 @@ final class NativeBottomBar: UIView {
             configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 4, bottom: 6, trailing: 4)
             configuration.baseForegroundColor = enabled ? (selected ? NativeAppearance.onAccent : NativeAppearance.muted) : NativeAppearance.disabled
             configuration.background.cornerRadius = NativeAppearance.radius
+            configuration.background.strokeColor = NativeAppearance.ink
+            configuration.background.strokeWidth = selected ? 2 : 0
             configuration.cornerStyle = .fixed
             button.configuration = configuration
             button.titleLabel?.numberOfLines = 0

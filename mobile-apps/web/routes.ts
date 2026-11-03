@@ -28,20 +28,14 @@ function focusPair(params: URLSearchParams): DrinkFocus | null {
 
 function offerId(params: URLSearchParams): string | null {
   const id = params.get("offer");
-  return params.getAll("offer").length === 1 &&
-    id &&
-    mobileOfferIdPattern.test(id)
-    ? id
-    : null;
+  return params.getAll("offer").length === 1 && id && mobileOfferIdPattern.test(id) ? id : null;
 }
 
 export function mobilePath(value: MobileLocation): string {
-  if (value.pathname !== ENTRY && value.pathname !== `${ENTRY}index.html`)
-    return "/";
+  if (value.pathname !== ENTRY && value.pathname !== `${ENTRY}index.html`) return "/";
   if (value.hash) return "/";
   const params = new URLSearchParams(value.search);
-  if (params.getAll("path").length > 1 || params.getAll("c").length > 1)
-    return "/";
+  if (params.getAll("path").length > 1 || params.getAll("c").length > 1) return "/";
   const path = params.get("path") ?? "/";
   if (path === "/") return "/";
   const keys = [...params.keys()];
@@ -70,23 +64,15 @@ export function mobilePath(value: MobileLocation): string {
 }
 
 export function mobileFocus(value: MobileLocation): DrinkFocus | null {
-  return mobilePath(value) === "/"
-    ? null
-    : focusPair(new URLSearchParams(value.search));
+  return mobilePath(value) === "/" ? null : focusPair(new URLSearchParams(value.search));
 }
 
 export function mobileOfferFocus(value: MobileLocation): string | null {
-  return mobilePath(value) === "/"
-    ? null
-    : offerId(new URLSearchParams(value.search));
+  return mobilePath(value) === "/" ? null : offerId(new URLSearchParams(value.search));
 }
 
 /** Native-only command. The app re-fetches the live offer and confirms before saving. */
-export function mobileOfferSaveURL(
-  key: string,
-  cell: string,
-  id: string,
-): string {
+export function mobileOfferSaveURL(key: string, cell: string, id: string): string {
   if (
     !mobileVenueKeyPattern.test(key) ||
     !CELL_PATTERN.test(cell) ||
@@ -97,8 +83,7 @@ export function mobileOfferSaveURL(
 }
 
 export function mobileURL(path: string, origin = location.origin): string {
-  if (typeof path !== "string" || path.length > 2048)
-    throw new TypeError("Invalid app route");
+  if (typeof path !== "string" || path.length > 2048) throw new TypeError("Invalid app route");
   const value = new URL(path, origin);
   if (
     value.origin !== origin ||
@@ -136,10 +121,7 @@ export function mobileURL(path: string, origin = location.origin): string {
       const id = offerId(value.searchParams);
       if (!id) throw new TypeError("Invalid app offer focus");
       params.set("offer", id);
-    } else if (
-      value.searchParams.has("drink") ||
-      value.searchParams.has("hh")
-    ) {
+    } else if (value.searchParams.has("drink") || value.searchParams.has("hh")) {
       const rawKeys = value.search
         .replace(/^\?/, "")
         .split("&")
@@ -163,8 +145,7 @@ export function mobileURL(path: string, origin = location.origin): string {
       value.searchParams.has("save_offer")
     )
       throw new TypeError("Saved drink focus requires a venue");
-    if (value.searchParams.has("at"))
-      params.set("at", value.searchParams.get("at") ?? "");
+    if (value.searchParams.has("at")) params.set("at", value.searchParams.get("at") ?? "");
   }
   const query = params.toString();
   return ENTRY + (query ? `?${query}` : "");
@@ -176,21 +157,16 @@ export function menuOfferMatchesFocus(
   focus: DrinkFocus,
 ): boolean {
   return (
-    offer.category === focus.drink &&
-    offer.context.kind === (focus.hh ? "happy_hour" : "regular")
+    offer.category === focus.drink && offer.context.kind === (focus.hh ? "happy_hour" : "regular")
   );
 }
 
 export function mobileDefaultDrink(
   websiteDefault: string,
-  value: MobileLocation | undefined = typeof location === "undefined"
-    ? undefined
-    : location,
+  value: MobileLocation | undefined = typeof location === "undefined" ? undefined : location,
 ): string {
   return (
     (value && mobileFocus(value)?.drink) ||
-    (CATALOG.some((drink) => drink.code === "spritz")
-      ? "spritz"
-      : websiteDefault)
+    (CATALOG.some((drink) => drink.code === "spritz") ? "spritz" : websiteDefault)
   );
 }

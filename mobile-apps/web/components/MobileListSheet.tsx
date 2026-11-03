@@ -75,11 +75,7 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
               >
                 <span class="row__name">{venue.name}</span>
                 <span
-                  class={
-                    price || menuPrice || count
-                      ? "row__price"
-                      : "row__price row__price--none"
-                  }
+                  class={price || menuPrice || count ? "row__price" : "row__price row__price--none"}
                 >
                   {summary}
                 </span>

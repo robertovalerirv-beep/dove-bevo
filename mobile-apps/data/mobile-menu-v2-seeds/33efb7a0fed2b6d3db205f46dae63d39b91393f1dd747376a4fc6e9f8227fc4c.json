@@ -33,10 +33,10 @@
       "source_url": "https://www.la-drogheria.it/wp-content/uploads/2026/10/LA-DROGHERIA-WINES-AND-SPIRITS-WEB.pdf",
       "source_format": "pdf_text_v1",
       "source_sha256": "9c41dd1e52c2f5148caa29cd7cfc4988c3a24d8d1dac5102f3a594e056d6aacb",
-      "source_text_sha256": "1db986808bc1559bfe8ee1ece0eb00701c2c5ee8a6e32036f0a60b1e41a8f2a8",
+      "source_text_sha256": "09049ef5ad7660a1b94f3869f686be8c47a99c410800bf516b1b40f749307a51",
       "source_checked_on": "2026-11-03",
       "use_review_status": "approved",
-      "use_review_basis": "Current first-party October 2026 wines/spirits PDF is linked from owner La Drogheria site. Exact published static/OSM n4413587403 at Piazza Vittorio Veneto 18d in Torino. On spirit pages, the PDF explicitly marks the second amount with *Versione miscelata; mixer composition and serving volume are unstated. Paired wines with no glass/bottle legend, ambiguous beer layout, and one unstarred mixed-price interpretation are held. 2025 cocktail PDF exceeds current source-size guard and is not included.",
+      "use_review_basis": "Owner-linked October 2026 La Drogheria wines/spirits PDF; static/OSM n4413587403, Piazza Vittorio Veneto 18d Torino. Starred second spirit prices mean Versione miscelata; mixer and volume unknown. Unlabelled wine pairs, ambiguous beer layout, unstarred Martin Miller second price and oversized 2025 cocktail PDF are held. Exact raw PDF SHA and 5,551,707 bytes matched protected audit 41618447723; normalized text SHA pins hosted Poppler pdftotext 24.02.0. All 189 drink facts unchanged.",
       "use_review_reference": "https://www.la-drogheria.it/cocktail/",
       "use_reviewed_on": "2026-11-03"
     }

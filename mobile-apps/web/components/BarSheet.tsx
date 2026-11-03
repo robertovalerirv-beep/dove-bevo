@@ -550,6 +550,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 menu={menu}
                 focus={savedFocus}
                 offerFocus={savedOfferFocus}
+                hasLegacyPrices={active.length > 0}
               />
               {menu.next_after && (
                 <button

@@ -306,42 +306,56 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
     const menuRequest = Promise.allSettled([identityRequest, sampleRequest]);
     request = loadCell(cell).then(
       (legacy) => {
-        void menuRequest.then(([identity, sampled]) => {
-          if (mobileCellCache.get(cacheKey) !== request) return;
-          // A temporary v2 failure does not hold or erase legacy venues. Evict the
-          // selection so a later map view retries the bounded menu request.
-          if (
-            identity.status === "rejected" ||
-            sampled.status === "rejected" ||
-            identity.value === null ||
-            sampled.value === null
-          ) {
-            mobileCellCache.delete(cacheKey);
-            return;
-          }
-          const all = identity.value;
-          const filtered = sampled.value;
-          const counts = new Map(all.map((venue) => [venue.key, venue.matching_offer_count]));
-          const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
-          const merged = new Map<string, Venue>(legacy.map((venue) => [venue.key, { ...venue }]));
-          for (const row of [
-            ...new Map([...all, ...filtered].map((venue) => [venue.key, venue])).values(),
-          ]) {
-            if (row.country !== "IT") continue;
-            const known = merged.get(row.key);
-            if (!known && (row.identity_kind !== "owner_verified" || !row.key.startsWith("m")))
-              continue;
-            const venue = known ?? mobileMenuVenue(row);
-            merged.set(row.key, {
-              ...venue,
-              mobileMenuSamples: samples.get(row.key) ?? [],
-              mobileMenuCount: counts.get(row.key) ?? 0,
-            } as WithMenu);
-          }
-          mobileCellCache.set(cacheKey, Promise.resolve([...merged.values()]));
-          if (typeof window !== "undefined")
-            window.dispatchEvent(new CustomEvent("dovebevo:menu-cell-ready", { detail: { cell } }));
-        });
+        void menuRequest
+          .then(async ([identity, sampled]) => {
+            if (mobileCellCache.get(cacheKey) !== request) return;
+            let all = identity.status === "fulfilled" ? identity.value : null;
+            const filtered = sampled.status === "fulfilled" ? sampled.value : null;
+            // The old unfiltered identity read can fail while a newly selected
+            // drink already has a successful sample. Read identity once more so
+            // that stale failure cannot discard the newer selected price.
+            if (categories.length > 0 && all === null && filtered !== null) {
+              if (mobileIdentityCache.get(cell) === identityRequest)
+                mobileIdentityCache.delete(cell);
+              try {
+                all = await menuIdentityVenues(cell);
+              } catch {
+                all = null;
+              }
+              if (mobileCellCache.get(cacheKey) !== request) return;
+            }
+            // A temporary v2 failure does not hold or erase legacy venues. Evict the
+            // selection so a later map view retries the bounded menu request.
+            if (all === null || filtered === null) {
+              mobileCellCache.delete(cacheKey);
+              return;
+            }
+            const counts = new Map(all.map((venue) => [venue.key, venue.matching_offer_count]));
+            const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
+            const merged = new Map<string, Venue>(legacy.map((venue) => [venue.key, { ...venue }]));
+            for (const row of [
+              ...new Map([...all, ...filtered].map((venue) => [venue.key, venue])).values(),
+            ]) {
+              if (row.country !== "IT") continue;
+              const known = merged.get(row.key);
+              if (!known && (row.identity_kind !== "owner_verified" || !row.key.startsWith("m")))
+                continue;
+              const venue = known ?? mobileMenuVenue(row);
+              merged.set(row.key, {
+                ...venue,
+                mobileMenuSamples: samples.get(row.key) ?? [],
+                mobileMenuCount: counts.get(row.key) ?? 0,
+              } as WithMenu);
+            }
+            mobileCellCache.set(cacheKey, Promise.resolve([...merged.values()]));
+            if (typeof window !== "undefined")
+              window.dispatchEvent(
+                new CustomEvent("dovebevo:menu-cell-ready", { detail: { cell } }),
+              );
+          })
+          .catch(() => {
+            if (mobileCellCache.get(cacheKey) === request) mobileCellCache.delete(cacheKey);
+          });
         return legacy;
       },
       (error: unknown) => {

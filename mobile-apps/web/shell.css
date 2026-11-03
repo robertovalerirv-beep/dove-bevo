@@ -191,10 +191,10 @@ html[data-dovebevo-mobile-shell="1"] .map__list {
   box-shadow: 0 1px 7px rgb(27 22 17 / 8%);
 }
 html[data-dovebevo-mobile-shell="1"] .map__status {
-  top: auto;
+  top: 72px;
   left: 12px;
   right: 12px;
-  bottom: 40px;
+  bottom: auto;
   max-width: none;
   min-height: 48px;
   padding: 10px 14px;
@@ -202,7 +202,7 @@ html[data-dovebevo-mobile-shell="1"] .map__status {
   border: 1px solid var(--line-soft);
   background: var(--surface);
   box-shadow: 0 2px 12px rgb(27 22 17 / 8%);
-  font: 500 14px/1.35 var(--font-sans);
+  font: 500 0.875rem/1.35 var(--font-sans);
 }
 html[data-dovebevo-mobile-shell="1"] .map__status .meter {
   display: none;
@@ -217,7 +217,15 @@ html[data-dovebevo-mobile-shell="1"] .map__status[data-mobile-selection]::after 
   display: block;
   margin-top: 2px;
   color: var(--ink-muted);
-  font-size: 12px;
+  font-size: 0.875em;
+  font-weight: 400;
+  line-height: 1.35;
+}
+html[data-dovebevo-mobile-shell="1"] .map__status .mobile-menu-map-note {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-muted);
+  font-size: 0.875em;
   font-weight: 400;
   line-height: 1.35;
 }

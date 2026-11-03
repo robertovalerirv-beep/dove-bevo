@@ -201,7 +201,8 @@ function fixture(overrides = {}) {
   const checkpoint = async (receipt) => {
     checkpoints.push(clone(receipt));
   };
-  const audit = () => auditBetaDistribution(env, { transport, now, buildNumber: state.targetNumber });
+  const audit = () =>
+    auditBetaDistribution(env, { transport, now, buildNumber: state.targetNumber });
   const apply = (plan) => {
     const bytes = planBytes(plan);
     return applyBetaDistribution(env, {
@@ -251,45 +252,72 @@ test("feedback build 271 is exact and rejects the historical build 62 plan befor
   const oldHash = sha256(oldBytes);
   assert.throws(() => validatePlan(oldBytes, oldHash, FEEDBACK_BUILD_NUMBER));
   let called = false;
-  await assert.rejects(applyBetaDistribution({}, {
-    bytes: oldBytes,
-    approvedSha: oldHash,
-    buildNumber: FEEDBACK_BUILD_NUMBER,
-    checkpoint: async () => { called = true; },
-    transport: async () => { called = true; assert.fail("no provider call for stale plan"); },
-  }));
+  await assert.rejects(
+    applyBetaDistribution(
+      {},
+      {
+        bytes: oldBytes,
+        approvedSha: oldHash,
+        buildNumber: FEEDBACK_BUILD_NUMBER,
+        checkpoint: async () => {
+          called = true;
+        },
+        transport: async () => {
+          called = true;
+          assert.fail("no provider call for stale plan");
+        },
+      },
+    ),
+  );
   assert.equal(called, false);
 
-  const f = fixture({ buildId: "build-271", number: FEEDBACK_BUILD_NUMBER,
-    targetNumber: FEEDBACK_BUILD_NUMBER });
+  const f = fixture({
+    buildId: "build-271",
+    number: FEEDBACK_BUILD_NUMBER,
+    targetNumber: FEEDBACK_BUILD_NUMBER,
+  });
   const audited = await f.audit();
   assert.equal(audited.complete, true);
   assert.equal(audited.ready, true);
   assert.equal(audited.build_number, FEEDBACK_BUILD_NUMBER);
   assert.equal(audited.plan.build_id, "build-271");
   assert.equal(audited.plan.build_number, FEEDBACK_BUILD_NUMBER);
-  assert.deepEqual(audited.plan.groups.map((g) => g.name), GROUPS.map((g) => g.name));
+  assert.deepEqual(
+    audited.plan.groups.map((g) => g.name),
+    GROUPS.map((g) => g.name),
+  );
   assert.ok(f.calls.every((call) => call.method === "GET"));
   const bytes = planBytes(audited.plan);
   assert.equal(validatePlan(bytes, sha256(bytes), FEEDBACK_BUILD_NUMBER).build_id, "build-271");
   assert.throws(() => validatePlan(bytes, sha256(bytes)));
   const applied = await f.apply(audited.plan);
   assert.equal(applied.complete, true);
-  assert.deepEqual(f.calls.filter((call) => call.method === "POST").map((call) => call.path), [
-    "/v1/betaGroups/owner-group/relationships/builds",
-    "/v1/betaGroups/roberto-group/relationships/builds",
-    "/v1/betaAppReviewSubmissions",
-  ]);
+  assert.deepEqual(
+    f.calls.filter((call) => call.method === "POST").map((call) => call.path),
+    [
+      "/v1/betaGroups/owner-group/relationships/builds",
+      "/v1/betaGroups/roberto-group/relationships/builds",
+      "/v1/betaAppReviewSubmissions",
+    ],
+  );
   assert.equal(applied.after.build_id, "build-271");
 
-  const wrongNumber = fixture({ buildId: "build-271", number: BUILD_NUMBER,
-    targetNumber: FEEDBACK_BUILD_NUMBER });
+  const wrongNumber = fixture({
+    buildId: "build-271",
+    number: BUILD_NUMBER,
+    targetNumber: FEEDBACK_BUILD_NUMBER,
+  });
   assert.equal((await wrongNumber.audit()).complete, false);
   assert.ok(wrongNumber.calls.every((call) => call.method === "GET"));
-  const publicGroup = fixture({ buildId: "build-271", number: FEEDBACK_BUILD_NUMBER,
+  const publicGroup = fixture({
+    buildId: "build-271",
+    number: FEEDBACK_BUILD_NUMBER,
     targetNumber: FEEDBACK_BUILD_NUMBER,
-    groups: f.state.groups.map((group) => ({ ...group,
-      publicLink: group.is_internal_group ? null : true })) });
+    groups: f.state.groups.map((group) => ({
+      ...group,
+      publicLink: group.is_internal_group ? null : true,
+    })),
+  });
   assert.equal((await publicGroup.audit()).ready, false);
   assert.ok(publicGroup.calls.every((call) => call.method === "GET"));
 });
@@ -934,11 +962,21 @@ test("build 271 has a separate exact read-only audit tag and no apply lane befor
   );
   assert.match(workflow, /mobile-beta-distribution-audit\/20261103-build271-v1/);
   assert.match(workflow, /github\.repository == 'robertovalerirv-beep\/dove-bevo'/);
-  assert.match(workflow, /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261103-build271-v1'/);
-  assert.match(workflow, /node scripts\/mobile-beta-distribution\.mjs "\$OUTPUT_PATH" --plan-output "\$PLAN_PATH" --build-number 271/);
+  assert.match(
+    workflow,
+    /github\.ref == 'refs\/tags\/mobile-beta-distribution-audit\/20261103-build271-v1'/,
+  );
+  assert.match(
+    workflow,
+    /node scripts\/mobile-beta-distribution\.mjs "\$OUTPUT_PATH" --plan-output "\$PLAN_PATH" --build-number 271/,
+  );
   assert.match(workflow, /contents: read/);
   assert.match(workflow, /persist-credentials: false/);
-  assert.ok(!/--apply|workflow_dispatch|pull_request|write:|contents: write|mobile-beta-distribution-apply/.test(workflow));
+  assert.ok(
+    !/--apply|workflow_dispatch|pull_request|write:|contents: write|mobile-beta-distribution-apply/.test(
+      workflow,
+    ),
+  );
   for (const [, action] of workflow.matchAll(/uses:\s*(\S+)/g))
     assert.match(action, /@[a-f0-9]{40}$/);
 });

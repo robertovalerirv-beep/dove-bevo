@@ -508,7 +508,12 @@ export async function auditBetaDistribution(
   const receipt = base("audit", now, buildNumber);
   const diagnostics = { stage: "BUILD_FETCH", request_index: 0, http_status: null };
   try {
-    receipt.before = await inspect(clientFor(env, transport, diagnostics), undefined, diagnostics, buildNumber);
+    receipt.before = await inspect(
+      clientFor(env, transport, diagnostics),
+      undefined,
+      diagnostics,
+      buildNumber,
+    );
     receipt.ready = eligible(receipt.before, now());
     if (receipt.ready) {
       receipt.plan = proposal(receipt.before, buildNumber);
@@ -524,12 +529,23 @@ export async function auditBetaDistribution(
 
 export async function applyBetaDistribution(
   env,
-  { bytes, approvedSha, checkpoint, transport = globalThis.fetch, now = () => new Date(), buildNumber = BUILD_NUMBER } = {},
+  {
+    bytes,
+    approvedSha,
+    checkpoint,
+    transport = globalThis.fetch,
+    now = () => new Date(),
+    buildNumber = BUILD_NUMBER,
+  } = {},
 ) {
   // These local guards precede credential access and every API call.
   const plan = validatePlan(bytes, approvedSha, buildNumber);
   if (typeof checkpoint !== "function") fail();
-  const receipt = { ...base("apply", now, buildNumber), plan_sha256: approvedSha, build_id: plan.build_id };
+  const receipt = {
+    ...base("apply", now, buildNumber),
+    plan_sha256: approvedSha,
+    build_id: plan.build_id,
+  };
   const client = clientFor(env, transport);
   async function fresh() {
     const current = await inspect(client, plan, undefined, buildNumber);
@@ -628,8 +644,8 @@ export async function applyBetaDistribution(
 }
 
 async function main(args) {
-  const feedbackBuild = args.length >= 3 &&
-    args.at(-2) === "--build-number" && args.at(-1) === FEEDBACK_BUILD_NUMBER;
+  const feedbackBuild =
+    args.length >= 3 && args.at(-2) === "--build-number" && args.at(-1) === FEEDBACK_BUILD_NUMBER;
   const buildNumber = feedbackBuild ? FEEDBACK_BUILD_NUMBER : BUILD_NUMBER;
   if (feedbackBuild) args = args.slice(0, -2);
   if (!args[0] || args[0].startsWith("-") || ![1, 3, 6].includes(args.length)) fail();
@@ -656,7 +672,12 @@ async function main(args) {
   };
   try {
     const receipt = applying
-      ? await applyBetaDistribution(process.env, { bytes, approvedSha: args[5], checkpoint, buildNumber })
+      ? await applyBetaDistribution(process.env, {
+          bytes,
+          approvedSha: args[5],
+          checkpoint,
+          buildNumber,
+        })
       : await auditBetaDistribution(process.env, { buildNumber });
     await checkpoint(receipt);
     if (!applying && args.length === 3 && receipt.plan) {

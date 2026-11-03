@@ -230,7 +230,8 @@ export function ReportForm({
         <p>{venue.name}</p>
         {row && (
           <p>
-            {it.drinks[row.drink] ?? row.drink} · {servingLabel(row.serving)} ·{" "}
+            {it.drinks[row.drink] ?? row.drink}
+            {row.serving.unit !== "drink" && <> · {servingLabel(row.serving)}</>} ·{" "}
             {money(row.amount_minor, row.currency)}
           </p>
         )}

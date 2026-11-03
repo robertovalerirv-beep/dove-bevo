@@ -661,6 +661,49 @@ test("price form requires real units, rejects currency symbols and Undo cancels 
   }
 });
 
+test("single-drink report and undo notice omit a redundant serving while measured beer keeps its size", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f);
+    const featured = f.page.locator(".mobile-price--featured");
+    await featured.getByRole("button", { name: "Segnala un errore", exact: true }).click();
+    const report = f.page.locator(".europe-report");
+    await report.waitFor();
+    const spritz = await report.innerText();
+    assert.match(spritz, /Spritz · 7,50\s£/);
+    assert.doesNotMatch(spritz, /Drink singolo/);
+    await f.page
+      .getByRole("dialog", { name: "Segnala un problema" })
+      .getByRole("button", { name: "Chiudi" })
+      .click();
+
+    await f.page.getByRole("combobox", { name: "Scegli cosa bere" }).selectOption("beer_draft");
+    await featured.getByRole("button", { name: "Segnala un errore", exact: true }).click();
+    assert.match(await report.innerText(), /Birra media · \d+ ml · [\d,]+\s£/);
+    await f.page
+      .getByRole("dialog", { name: "Segnala un problema" })
+      .getByRole("button", { name: "Chiudi" })
+      .click();
+
+    await f.page.clock.install();
+    await addPrice(f);
+    const form = f.page.locator(".europe-price-form");
+    await form.getByRole("combobox").selectOption("spritz");
+    await form.getByRole("textbox", { name: "Importo", exact: true }).fill("8,25");
+    await form.getByRole("button", { name: "Salva prezzo", exact: true }).click();
+    const notice = f.page.locator(".europe-notice");
+    await notice.waitFor();
+    assert.match(await notice.innerText(), /8,25\s£/);
+    assert.doesNotMatch(await notice.innerText(), /Drink singolo/);
+    await notice.getByRole("button", { name: "Annulla", exact: true }).click();
+    await f.page.clock.fastForward(6000);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("customer price submission uses protected session and exact original target without source claims", async () => {
   const f = await fixture({ first401: true });
   try {

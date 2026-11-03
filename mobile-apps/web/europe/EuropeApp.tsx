@@ -376,7 +376,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
     setQueued(true);
     setForm(null);
     setNotice(
-      `${draft.venue.name} · ${money(draft.amount_minor, draft.venue.currency)} · ${servingLabel(draft.serving)}`,
+      `${draft.venue.name} · ${money(draft.amount_minor, draft.venue.currency)}${draft.serving.unit === "drink" ? "" : ` · ${servingLabel(draft.serving)}`}`,
     );
   }
   function undo() {

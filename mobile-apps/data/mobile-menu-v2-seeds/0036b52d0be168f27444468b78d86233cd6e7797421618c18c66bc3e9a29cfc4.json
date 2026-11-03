@@ -1316,6 +1316,22 @@
       "serving_ml": null,
       "source_id": "src-barbillar-torino-9a430e688c21",
       "venue_key": "n7535326651"
+    },
+    {
+      "amount_minor": 200,
+      "category": "water",
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "Owner CAFFETTERIA: ACQUA MINERALE - 0,5LT / EUR 2.00",
+      "id": "barbillar-torino-20261103-083",
+      "name": "ACQUA MINERALE - 0,5LT",
+      "price_context": "regular",
+      "serving_label": "0,5LT",
+      "serving_ml": 500,
+      "source_id": "src-barbillar-torino-9a430e688c21",
+      "venue_key": "n7535326651"
     }
   ],
   "schema_version": 1,

@@ -56,6 +56,15 @@ class AndroidSmokeTests(unittest.TestCase):
         self.assertEqual(m.city_result(ui, 'Milano').get('bounds'), '[42,695][1042,878]')
         self.assertIsNone(m.city_result(ui, 'Torino'))
 
+    def test_native_back_requires_owned_resource_and_enabled_state(self):
+        ui = m.ET.fromstring('''<hierarchy>
+          <node resource-id="web:back" content-desc="Indietro" enabled="true" bounds="[1,1][50,50]"/>
+          <node resource-id="com.dovebevo.app:id/back" content-desc="Indietro" enabled="true" bounds="[21,128][147,254]"/>
+        </hierarchy>''')
+        self.assertEqual(m.native_back(ui).get('bounds'), '[21,128][147,254]')
+        ui[1].set('enabled', 'false')
+        self.assertIsNone(m.native_back(ui))
+
     def setUp(self):
         base.mkdir(parents=True, exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory(dir=base)

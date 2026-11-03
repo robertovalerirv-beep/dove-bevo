@@ -585,6 +585,13 @@ def map_after_venue_back(ui):
     return "Chiudi" not in labels and not any("Prezzo da menu" in value for value in labels)
 
 
+def native_back(ui):
+    return next((node for node in ui.iter("node")
+                 if node.get("resource-id") == "com.dovebevo.app:id/back"
+                 and node.get("content-desc") == "Indietro"
+                 and node.get("enabled") == "true"), None)
+
+
 def main():
     global ADB_OWNER, PUBLIC_STAGE, OWNED_PASS
     PUBLIC_STAGE, OWNED_PASS = None, False
@@ -668,9 +675,7 @@ def main():
         screenshot("04-verified-venue-menu.png")
         result["checks"].append("real venue name, owner-menu amount and dated source were visible")
         PUBLIC_STAGE = "back"
-        tap(wait_for("enabled native Back from the venue", lambda: next(
-            (node for node in tree().iter("node")
-             if node.get("content-desc") == "Indietro" and node.get("enabled") == "true"), None), 15))
+        tap(wait_for("enabled native Back from the venue", lambda: native_back(tree()), 15))
         wait_for("Milano map restored by native Back", lambda: map_after_venue_back(tree()), 30)
         screenshot("05-milano-map-after-back.png")
         result["checks"].append("native Back returned to the live Milano map")

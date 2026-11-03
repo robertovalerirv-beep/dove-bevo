@@ -137,8 +137,7 @@ def run(adb_binary, apk_sha, apk_path):
         smoke.screenshot("03-verified-venue-menu.png")
         result["checks"].append("matching live venue, owner-menu amount and dated source")
         stage = "back"
-        back = smoke.wait_for("enabled native Back", lambda: next((node for node in tree().iter("node")
-             if node.get("content-desc") == "Indietro" and node.get("enabled") == "true"), None), 15)
+        back = smoke.wait_for("enabled native Back", lambda: smoke.native_back(tree()), 15)
         smoke.tap(back)
         smoke.wait_for("Milano map restored", lambda: smoke.map_after_venue_back(tree()), 30)
         smoke.screenshot("04-map-after-back.png")

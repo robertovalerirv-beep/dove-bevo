@@ -166,22 +166,6 @@
       "venue_key": "n7154744122"
     },
     {
-      "amount_minor": 400,
-      "category": null,
-      "cell": "sr607",
-      "condition_text": "Prezzo STANDARD fuori da Happy Hours 18:30-20:30",
-      "currency": "EUR",
-      "currency_exponent": 2,
-      "evidence_ref": "Official Swig SHOT BRUCIA ANIME: STANDARD €4, HAPPY HOURS €3",
-      "id": "swig-napoli-011",
-      "name": "BRUCIA ANIME",
-      "price_context": "conditional",
-      "serving_label": null,
-      "serving_ml": null,
-      "source_id": "src-swig-napoli-cd221918661a",
-      "venue_key": "n7154744122"
-    },
-    {
       "amount_minor": 300,
       "category": null,
       "cell": "sr607",
@@ -1872,7 +1856,7 @@
       "source_sha256": "cd221918661a3b810ec92080268519fd0b0753e7faf861834dbca5d26ec04415",
       "source_text_sha256": "cd221918661a3b810ec92080268519fd0b0753e7faf861834dbca5d26ec04415",
       "source_url": "https://www.swigbar.net/en",
-      "use_review_basis": "Owner live menu identifies Swig as Vomero cocktail bar; exact Roberto static/OSM n7154744122, sr607, on Via Alessandro Scarlatti. 38 named shots and 14 named cocktails each show STANDARD and HAPPY HOURS prices; live text says 18:30-20:30 daily. Six beers and three wines have no separately printed promo amounts, so only menu prices are staged with caveat. New Arrakis entry lacks a clear dual-price label and is held. EUR sizes as printed; fees unknown. Independent review before seed.",
+      "use_review_basis": "Owner live menu identifies Swig, Vomero; exact Roberto static/OSM n7154744122, sr607. 37 named shots and 14 cocktails have STANDARD/HAPPY HOURS pairs (18:30-20:30). BRUCIA ANIME only has explicit HAPPY HOURS €3; its €4 says SHOT, so hold €4. Six beers and three wines have no printed promo amounts, so only regular menu prices with caveat. New Arrakis lacks a clear dual-price label and is held. Sizes as printed; fees unknown. Review before seed.",
       "use_review_reference": "https://www.swigbar.net/en",
       "use_review_status": "approved",
       "use_reviewed_on": "2026-11-03",

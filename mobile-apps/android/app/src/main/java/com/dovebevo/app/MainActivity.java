@@ -268,7 +268,7 @@ public final class MainActivity extends ComponentActivity {
         LinearLayout tools = new LinearLayout(this);
         tools.setId(R.id.browser_tools);
         tools.setGravity(Gravity.CENTER_VERTICAL);
-        tools.setBackgroundColor(getColor(R.color.surface));
+        tools.setBackgroundColor(getColor(R.color.chrome));
         tools.setPadding(dp(8), 0, dp(8), 0);
         backButton = button(R.id.back, R.string.back, this::goBack);
         forwardButton = button(R.id.forward, R.string.forward, this::goForward);
@@ -278,7 +278,7 @@ public final class MainActivity extends ComponentActivity {
         // Forward remains available in overflow; the map header needs one back control.
         for (Button control : new Button[]{backButton, forwardButton}) {
             control.setPadding(0, 0, 0, 0);
-            control.setBackground(NativeAppearance.shape(this, R.color.surface, 24, false));
+            control.setBackground(NativeAppearance.shape(this, R.color.surface, 24, true));
         }
         TextView brand = text(R.string.app_name, 18);
         NativeAppearance.title(brand);
@@ -286,7 +286,7 @@ public final class MainActivity extends ComponentActivity {
         Button more = button(R.id.more, R.string.more_options, () -> {});
         more.setText(R.string.more_symbol); more.setTextSize(24);
         more.setPadding(0, 0, 0, 0);
-        more.setBackground(NativeAppearance.shape(this, R.color.surface, 24, false));
+        more.setBackground(NativeAppearance.shape(this, R.color.surface, 24, true));
         more.setOnClickListener(this::showMenu);
         tools.addView(more, new LinearLayout.LayoutParams(dp(48), -2));
         return tools;
@@ -356,6 +356,7 @@ public final class MainActivity extends ComponentActivity {
         // Capture only immutable policy: the process-wide client must not retain this activity.
         ServiceWorkerController.getInstance().setServiceWorkerClient(new TestLabServiceWorkerClient(policy));
         WebView view = new WebView(this);
+        view.setBackgroundColor(getColor(R.color.shell_background));
         WebSettings settings = view.getSettings();
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);

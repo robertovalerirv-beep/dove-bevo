@@ -218,6 +218,29 @@ class ImportTests(unittest.TestCase):
         self.assertFalse(stale["complete"])
         self.assertEqual(stale["errors"][0]["code"],"source hash mismatch")
 
+    def test_customer_price_digest_detects_changed_value_after_v2_apply(self):
+        class ChangedCustomer(Fake):
+            changed=False
+            def query(self,sql,params):
+                result=super().query(sql,params)
+                if sql.startswith("INSERT INTO mobile_menu_v2_") and not self.changed:
+                    self.db.execute("UPDATE prices_current SET price_cents=951 "
+                                    "WHERE venue_key=?",(VENUE["venue_key"],))
+                    self.changed=True
+                return result
+        transport=ChangedCustomer()
+        transport.db.execute("INSERT INTO prices_current VALUES (?,?)",
+                             (VENUE["venue_key"],900))
+        payload=raw(manifest())
+        receipt=core.execute(payload,transport,True,hashlib.sha256(payload).hexdigest())
+        self.assertFalse(receipt["complete"])
+        self.assertEqual(receipt["errors"],[
+            {"phase":"write","code":"customer price digest changed"}])
+        self.assertTrue(receipt["legacy_prices_modified"])
+        self.assertEqual(receipt["customer_price_digests"][VENUE["venue_key"]]["count"],1)
+        self.assertEqual(transport.db.execute(
+            "SELECT price_cents FROM prices_current").fetchone()[0],951)
+
     def test_pdf_hash_mismatch_reports_only_bounded_evidence_and_no_writes(self):
         doc=manifest()
         doc["sources"][0]["source_format"]="pdf_text_v1"

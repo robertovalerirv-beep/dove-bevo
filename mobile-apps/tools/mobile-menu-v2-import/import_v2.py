@@ -836,6 +836,9 @@ def execute(raw,transport,apply=False,approved_sha256=None):
             result["outcome"]="inserted"
         for key,before in receipt["customer_price_digests"].items():
             if customer_price_digest(transport,key)!=before:
+                # A concurrent customer update is possible; fail without attribution
+                # or automatic retry because the v2 apply is not transactional.
+                receipt["legacy_prices_modified"]=True
                 raise Error("customer price digest changed")
         receipt["complete"]=True
     except Error as exc:

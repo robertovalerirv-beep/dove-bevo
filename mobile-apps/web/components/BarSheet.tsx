@@ -281,6 +281,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     let active = true;
     const controller = new AbortController();
     menuAbort.current = controller;
+    const timeout = setTimeout(() => { controller.abort(); }, 6000);
     setVenue(undefined);
     setPrices(null);
     setPricesFailed(false);
@@ -288,24 +289,37 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     setMenuLoading(true);
     setMenuFailed(false);
     setMenuMoreBusy(false);
-    void Promise.allSettled([
-      loadCell(cell),
-      loadMenuPage(venueKey, cell, null, controller.signal),
-    ]).then(([legacy, online]) => {
-      if (!active) return;
-      const found =
-        legacy.status === "fulfilled"
-          ? (legacy.value.find((v) => v.key === venueKey && !v.pending) ?? null)
-          : null;
-      const page = online.status === "fulfilled" ? online.value : null;
-      if (online.status === "rejected") setMenuFailed(true);
-      setMenu(page);
-      setMenuLoading(false);
-      const selected =
-        found ?? (page && venueKey.startsWith("m") ? mobileMenuVenue(page.venue) : null);
-      setVenue(selected);
-      if (selected) onVenue(selected);
-    });
+
+    // Legacy venues must open as soon as their existing cell arrives, even if the
+    // independent v2 menu request stalls. M keys still need their registry menu.
+    void loadCell(cell)
+      .then((legacy) => {
+        if (!active || venueKey.startsWith("m")) return;
+        const found = legacy.find((row) => row.key === venueKey && !row.pending) ?? null;
+        setVenue(found);
+        if (found) onVenue(found);
+      })
+      .catch(() => {
+        if (active && !venueKey.startsWith("m")) setVenue(null);
+      });
+    void loadMenuPage(venueKey, cell, null, controller.signal)
+      .then((page) => {
+        if (!active) return;
+        setMenu(page);
+        setMenuLoading(false);
+        if (venueKey.startsWith("m")) {
+          const selected = page ? mobileMenuVenue(page.venue) : null;
+          setVenue(selected);
+          if (selected) onVenue(selected);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setMenuFailed(true);
+        setMenuLoading(false);
+        if (venueKey.startsWith("m")) setVenue(null);
+      })
+      .finally(() => { clearTimeout(timeout); });
     if (!venueKey.startsWith("m"))
       void loadVenuePrices(venueKey)
         .then((value) => {
@@ -316,10 +330,10 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         });
     return () => {
       active = false;
+      clearTimeout(timeout);
       controller.abort();
     };
   }, [venueKey, cell, menuAttempt]);
-
   async function loadMoreMenu() {
     const after = menu?.next_after;
     const controller = menuAbort.current;

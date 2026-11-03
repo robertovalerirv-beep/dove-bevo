@@ -103,8 +103,14 @@ final class SavedDrinkScreen {
             }
         }
     }
+    private boolean hasLegacy(String url){
+        if(legacyStore==null)return false;
+        try{for(SavedVenueStore.Venue item:legacyStore.load())if(item.url.equals(url))return true;}
+        catch(IOException unavailable){return false;}
+        return false;
+    }
     private void migrate(SavedVenueStore.Venue venue){
-        if(!usable()||legacyStore==null||migrationDialog!=null||!legacy.contains(venue))return;
+        if(!usable()||legacyStore==null||migrationDialog!=null||!hasLegacy(venue.url))return;
         LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);int pad=dp(16);body.setPadding(pad,pad,pad,pad);
         body.addView(text("Scegli un drink da "+venue.label+". Il vecchio locale resta salvato finche il drink non viene salvato.",15));
         Spinner drinkChoice=new Spinner(activity);drinkChoice.setTag("migration_drink");
@@ -114,7 +120,7 @@ final class SavedDrinkScreen {
         AlertDialog dialog=new AlertDialog.Builder(activity).setTitle("Salva un drink").setView(body).setPositiveButton("Salva",null).setNegativeButton("Annulla",null).create();migrationDialog=dialog;
         dialog.setOnDismissListener(ignored->{if(migrationDialog==dialog)migrationDialog=null;});
         dialog.setOnShowListener(ignored->dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
-            if(!usable()||migrationDialog!=dialog||!legacy.contains(venue))return;
+            if(!usable()||migrationDialog!=dialog||!hasLegacy(venue.url))return;
             int chosen=drinkChoice.getSelectedItemPosition();if(chosen<=0){Toast.makeText(activity,"Scegli un drink",Toast.LENGTH_LONG).show();return;}
             SavedDrinkStore.Result result=store.save(venue.url,venue.label,RecommendationDrink.values()[chosen-1],bandChoice.getSelectedItemPosition());
             if(result!=SavedDrinkStore.Result.SAVED){Toast.makeText(activity,"Drink non salvato. Il vecchio locale e stato mantenuto.",Toast.LENGTH_LONG).show();return;}

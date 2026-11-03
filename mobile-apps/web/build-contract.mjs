@@ -37,6 +37,16 @@ export function transformApp(source) {
     "useState<string[]>([DEFAULT_DRINK])",
     "useState<string[]>(mobileInitialDrinks())",
   );
+  // The native Map tab starts its Italy map immediately; the static preview covers tile loading.
+  result = once(result, "useState(initialAt !== null)", "useState(true)");
+  result = once(
+    result,
+    "  const ensureMap = () => {\n    setMapWanted(true);\n  };",
+    "  const [mapAttempt, setMapAttempt] = useState(0);\n  const ensureMap = () => {\n    if (mapFailed) {\n      setMapFailed(false);\n      setReady(false);\n      setMapAttempt((value) => value + 1);\n    }\n    setMapWanted(true);\n  };",
+  );
+  result = once(result, "  }, [mapWanted]);", "  }, [mapWanted, mapAttempt]);");
+  result = once(result, "const picture = !mapWanted && !ready;", "const picture = (!mapWanted || mapFailed) && !ready;");
+  result = once(result, "{it.map.start}", '{mapFailed ? "Riprova mappa" : it.map.start}');
   result = once(
     result,
     '<p class="map__status" data-testid="map-status" role="status">',
@@ -158,6 +168,35 @@ export function transformMap(source, styleURLExpression) {
     "{ return mobilePinImage(tier, stale, label); }" +
     result.slice(declaration.body.end);
   result = once(result, "MAP_STYLES[theme()]", styleURLExpression);
+  // Keep the static preview until the first tiles have actually settled, with a bounded retry.
+  result = once(
+    result,
+    "    await map.ready;\n    return map;",
+    `    try {
+      await map.ready;
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const finish = (error?: Error) => {
+          if (settled) return;
+          settled = true;
+          window.clearTimeout(timer);
+          map.map.off("idle", onIdle);
+          map.map.off("error", onError);
+          if (error) reject(error); else resolve();
+        };
+        const onIdle = () => { if (map.map.loaded()) finish(); };
+        const onError = () => finish(new Error("Map tiles unavailable"));
+        const timer = window.setTimeout(() => finish(new Error("Map tiles timed out")), 12000);
+        map.map.on("idle", onIdle);
+        map.map.on("error", onError);
+        onIdle();
+      });
+      return map;
+    } catch (error) {
+      map.map.remove();
+      throw error;
+    }`,
+  );
   result = once(
     result,
     'layout: { "icon-image": ["get", "pin"] },',
@@ -170,6 +209,30 @@ export function transformMap(source, styleURLExpression) {
   );
   result = once(result, '"circle-color": ink,', '"circle-color": "#eef1f3",');
   result = once(result, 'paint: { "text-color": bg },', 'paint: { "text-color": "#65717b" },');
+  // Price symbols can collide at city zoom. The same selected-filter source also has a
+  // non-colliding visible dot, so a priced venue never vanishes as the map zooms out.
+  result = once(
+    result,
+    '    map.addLayer({\n      id: "venue-price",',
+    `    map.addLayer({
+      id: "priced-dot",
+      type: "circle",
+      source: "prices",
+      paint: {
+        "circle-radius": 6,
+        "circle-color": "#ff5a1f",
+        "circle-stroke-color": "#1b1611",
+        "circle-stroke-width": 2,
+      },
+    });
+    map.addLayer({
+      id: "venue-price",`,
+  );
+  result = once(
+    result,
+    '      id: "venue-price",\n      type: "symbol",',
+    '      id: "venue-price",\n      type: "symbol",\n      minzoom: 14,',
+  );
   // One physical tap produces one selection even where expanded hit targets overlap.
   const updated = ts.createSourceFile(
     "map.ts",
@@ -189,8 +252,9 @@ export function transformMap(source, styleURLExpression) {
     result.slice(0, click.body.getStart(updated)) +
     `{
     this.map.on("click", (event) => {
-      const hits = this.map.queryRenderedFeatures(event.point, { layers: ["price-hit", "venue-hit"] });
-      const target = hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
+      const hits = this.map.queryRenderedFeatures(event.point, { layers: ["price-hit", "priced-dot", "venue-hit"] });
+      const preferred = this.map.getZoom() < 14 ? "priced-dot" : "price-hit";
+      const target = hits.find((hit) => hit.layer.id === preferred) ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
       if (target?.properties) listener(String(target.properties.key), String(target.properties.cell));
     });
   }` +
@@ -198,7 +262,7 @@ export function transformMap(source, styleURLExpression) {
   result = once(
     result,
     "const id = e.features?.[0]?.properties.cluster_id as number | undefined;",
-    'if (map.queryRenderedFeatures(e.point, { layers: ["price-hit", "venue-hit"] }).length) return;\n      const id = e.features?.[0]?.properties.cluster_id as number | undefined;',
+    'if (map.queryRenderedFeatures(e.point, { layers: ["price-hit", "priced-dot", "venue-hit"] }).length) return;\n      const id = e.features?.[0]?.properties.cluster_id as number | undefined;',
   );
   return 'import { mobilePinImage } from "@mobile/map-pins";\n' + result;
 }

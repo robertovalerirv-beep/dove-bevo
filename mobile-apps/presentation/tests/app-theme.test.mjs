@@ -96,6 +96,7 @@ function fixture(options = {}) {
 
 for (const url of [
   "https://www.dovebevo.com/",
+  "https://www.dovebevo.com/mobile/",
   "https://dovebevo.com:443/",
   "https://www.dovebevo.com/bar/n4170005990?c=u0nd9h",
 ])
@@ -105,6 +106,8 @@ for (const url of [
     assert.equal(page.nodes.size, 1);
     assert.equal(page.rootAttributes.get("data-dovebevo-app-theme"), "1");
     assert.match(page.nodes.values().next().value.textContent, /\.price-input input/);
+    assert.match(page.nodes.values().next().value.textContent, /--bg: #fff4e4/);
+    assert.match(page.nodes.values().next().value.textContent, /--spritz: #ff5a1f/);
   });
 
 for (const url of [

@@ -75,13 +75,25 @@ public final class DrinkFavoritesRuntimeTest {
             Spinner choice=choiceFromScreen("migration_drink");
             assertNotNull("Conversion must require a drink choice",choice);
             choice.setSelection(RecommendationDrink.SPRITZ.ordinal()+1);
+        });
+        // Let the real dialog OnShow listener and spinner selection run before
+        // tapping Save, as they do before a user can interact with the window.
+        onMain(()->{
             failDrinkWrites=true;
+            AlertDialog dialog=dialogFromScreen();
+            assertNotNull("Conversion dialog must remain open for saving",dialog);
             Button confirm=dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             assertNotNull("Conversion must present an explicit save action",confirm);
             confirm.performClick();
         });
         assertTrue(drinks.load().isEmpty());assertEquals(1,venues.load().size());
-        onMain(()->{failDrinkWrites=false;dialogFromScreen().getButton(AlertDialog.BUTTON_POSITIVE).performClick();});
+        onMain(()->{
+            AlertDialog retry=dialogFromScreen();
+            assertNotNull("A failed write must keep the conversion dialog available",retry);
+            assertTrue(retry.isShowing());
+            failDrinkWrites=false;
+            retry.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        });
         assertEquals(1,drinks.load().size());assertTrue(venues.load().isEmpty());
     }
     private SavedVenueCapture.Venue verified(){return new SavedVenueCapture(URL,7L).complete(URL,"Locale verificato","n123",URL,7L);}

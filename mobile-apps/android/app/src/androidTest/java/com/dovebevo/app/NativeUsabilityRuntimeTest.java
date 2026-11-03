@@ -447,20 +447,21 @@ public final class NativeUsabilityRuntimeTest {
             activity.findViewById(R.id.map_destination).performClick();
             assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
 
+            long currentSearch = (Long) get("searchCallbackGeneration");
             long currentVenue = (Long) get("venueCaptureEpoch");
-            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, currentVenue));
+            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
             set("documentCheckGeneration", document + 1);
-            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, currentVenue));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
             set("documentCheckGeneration", document);
             set("foreground", false);
-            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, currentVenue));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
             set("foreground", true);
             set("searchPending", true);
             set("searchOpening", true);
             invoke("onPause");
             assertFalse("Backgrounding must cancel the queued search", (Boolean) get("searchPending"));
             assertFalse((Boolean) get("searchOpening"));
-            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, currentVenue));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
             invoke("onResume");
             assertFalse("Resume must require a fresh Cerca tap", (Boolean) get("searchPending"));
         });

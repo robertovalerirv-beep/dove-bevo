@@ -17,7 +17,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 env:
-  IMPORTER_SHA256: fe75886b510ae5ed73bce847c7c5d15b80439e370327bce8cecb7838a4d4818e
+  IMPORTER_SHA256: 9d692432a59b8c6c6d2f198c770f243dbc054edef9382fca2f5cccf47654a81b
   TRANSPORT_SHA256: a6ee8ea2f8277584beb83f22baae7787448b83db417fa80716b61e8f431fad78
 jobs:
   preservation:
@@ -59,13 +59,16 @@ jobs:
         run: |
           set -euo pipefail
           git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-          if [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-audit/([0-9a-f]{64})$ ]]; then
+          audit_revision=""
+          if [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-audit/([0-9a-f]{64})(-r([1-9][0-9]*))?$ ]]; then
             mode=audit
             manifest_sha="${BASH_REMATCH[1]}"
-          elif [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-seed/([0-9a-f]{64})-([1-9][0-9]*)$ ]]; then
+            audit_revision="${BASH_REMATCH[3]:-}"
+          elif [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-seed/([0-9a-f]{64})(-r([1-9][0-9]*))?-([1-9][0-9]*)$ ]]; then
             mode=seed
             manifest_sha="${BASH_REMATCH[1]}"
-            audit_run="${BASH_REMATCH[2]}"
+            audit_revision="${BASH_REMATCH[3]:-}"
+            audit_run="${BASH_REMATCH[4]}"
             printf '%s\n' "$audit_run" > "$RUNNER_TEMP/audit-run-id"
           else
             exit 2
@@ -75,17 +78,19 @@ jobs:
           printf '%s  %s\n' "$manifest_sha" "$manifest" | sha256sum --check --strict
           printf '%s  %s\n' "$IMPORTER_SHA256" mobile-apps/tools/mobile-menu-v2-import/import_v2.py | sha256sum --check --strict
           printf '%s  %s\n' "$TRANSPORT_SHA256" mobile-apps/tools/menu-seed/live_import.py | sha256sum --check --strict
-          printf 'mode=%s\nmanifest_sha=%s\nmanifest=%s\n' "$mode" "$manifest_sha" "$manifest" >> "$GITHUB_OUTPUT"
+          printf 'mode=%s\nmanifest_sha=%s\nmanifest=%s\naudit_revision=%s\n' "$mode" "$manifest_sha" "$manifest" "$audit_revision" >> "$GITHUB_OUTPUT"
       - name: Verify successful pinned protected audit before seed
         if: steps.pin.outputs.mode == 'seed'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           MANIFEST_SHA: ${{ steps.pin.outputs.manifest_sha }}
+          AUDIT_REVISION: ${{ steps.pin.outputs.audit_revision }}
         run: |
           set -euo pipefail
           audit_run="$(cat "$RUNNER_TEMP/audit-run-id")"
           audit_tag="mobile-menu-v2-audit/$MANIFEST_SHA"
+          if test -n "$AUDIT_REVISION"; then audit_tag="${audit_tag}-r${AUDIT_REVISION}"; fi
           audit_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$audit_tag" --jq '.object.sha')"
           test "$audit_ref" = "$GITHUB_SHA"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$audit_run" |

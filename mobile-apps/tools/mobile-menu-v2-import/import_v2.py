@@ -751,7 +751,8 @@ def execute(raw,transport,apply=False,approved_sha256=None):
     receipt={"schema_version":1,"batch_id":None,
              "manifest_sha256":hashlib.sha256(raw).hexdigest() if isinstance(raw,bytes) else None,
              "mode":"apply" if apply else "dry_run","complete":False,
-             "binding_attestation":None,"sources":[],"source_diagnostics":[],"venues":[],"rows":[],
+             "binding_attestation":None,"sources":[],"source_diagnostics":[],
+             "source_fetch_diagnostics":[],"venues":[],"rows":[],
              "customer_presence":{},"customer_price_digests":{},"errors":[],"legacy_prices_modified":False,
              "public_data_version":None}
     phase="manifest"
@@ -784,7 +785,15 @@ def execute(raw,transport,apply=False,approved_sha256=None):
         phase="source"
         cache={}
         for source in doc["sources"]:
-            status=source_identity(source,transport,cache,doc["offers"],receipt["source_diagnostics"])
+            if hasattr(transport,"last_fetch_failure"):
+                transport.last_fetch_failure=None
+            try:
+                status=source_identity(source,transport,cache,doc["offers"],receipt["source_diagnostics"])
+            except Error as exc:
+                failure=getattr(transport,"last_fetch_failure",None)
+                if isinstance(failure,dict) and str(exc).startswith("public source "):
+                    receipt["source_fetch_diagnostics"].append({"source_id":source["id"],**failure})
+                raise
             receipt["sources"].append({"id":source["id"],"venue_key":source["venue_key"],
                                        "status":status})
         phase="binding"

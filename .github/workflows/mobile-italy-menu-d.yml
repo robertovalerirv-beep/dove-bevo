@@ -17,7 +17,7 @@ concurrency:
 env:
   MANIFEST: mobile-apps/data/italy-menu-seed-20261102-d.json
   MANIFEST_SHA256: 189db1e198ec6c984358cff25b91cb4f1c464a0050a106f616c7804b4680a1dc
-  IMPORTER_SHA256: a939cb8f60ad349282412358ebe03206de88a98413878f85f77518c43e511dc5
+  IMPORTER_SHA256: 147a6051c66dd8523ec0d634ab18976e4a0ccf33efec5873d2d921bc6a300239
 jobs:
   preservation:
     runs-on: ubuntu-24.04

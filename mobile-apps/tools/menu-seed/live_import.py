@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import sys
+import time
 from urllib.parse import urlsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler
 
@@ -185,6 +186,8 @@ class Transport:
         self.opener = build_opener(NoRedirect())
     def fetch(self, address, maximum=MAX_SOURCE_BYTES):
         self.last_fetch_content_type = None
+        self.last_fetch_failure = None
+        started = time.monotonic()
         try:
             with self.opener.open(Request(address, headers={"User-Agent": "DoveBevoMenuAudit/1"}), timeout=45) as response:
                 self.last_fetch_content_type = response.headers.get("Content-Type")
@@ -194,6 +197,15 @@ class Transport:
         except Error:
             raise
         except Exception as exc:
+            reason = getattr(exc, "reason", None)
+            def kind(value):
+                name = type(value).__name__
+                return name if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,63}", name) else "Other"
+            self.last_fetch_failure = {
+                "error_type": kind(exc),
+                "reason_type": kind(reason) if reason is not None and reason is not exc else None,
+                "elapsed_ms": min(60000, max(0, int((time.monotonic() - started) * 1000))),
+            }
             if isinstance(getattr(exc, "reason", exc), TimeoutError):
                 raise Error("public source timeout") from None
             status = getattr(exc, "code", None)

@@ -33,6 +33,22 @@ public final class SavedVenueTest {
                 SavedVenueUrl.canonicalize("https://www.dovebevo.com/bar/n999999999999999?c=00000"));
     }
 
+    @Test public void catalogueLinksRequireExactLowercaseHexAndCanonicalOrigin() {
+        String key = "m000000000000000000000007";
+        String canonical = "https://www.dovebevo.com/bar/" + key + "?c=u0nd9";
+        assertEquals(canonical, SavedVenueUrl.canonicalize(canonical));
+        assertEquals(canonical, SavedVenueUrl.canonicalize("HTTPS://DOVEBEVO.COM:443/bar/" + key + "?c=u0nd9"));
+        for (String invalid : new String[]{
+                "https://www.dovebevo.com/bar/m00000000000000000000000A?c=u0nd9",
+                "https://www.dovebevo.com/bar/m00000000000000000000000?c=u0nd9",
+                "https://www.dovebevo.com/bar/m0000000000000000000000001?c=u0nd9",
+                "https://www.dovebevo.com/bar/m00000000000000000000000g?c=u0nd9",
+                "https://www.dovebevo.com/bar/%6d000000000000000000000001?c=u0nd9",
+                canonical + "&token=private",
+                "https://evil.example/bar/" + key + "?c=u0nd9"
+        }) assertNull(invalid, SavedVenueUrl.canonicalize(invalid));
+    }
+
     @Test public void rejectsUntrustedOrAmbiguousLinksInsteadOfFallingBackToHome() {
         for (String invalid : new String[]{null, "", "https://www.dovebevo.com/", "https://www.dovebevo.com/admin",
                 "https://www.dovebevo.com/?at=45,9", "http://www.dovebevo.com/bar/n123?c=u0nd9",

@@ -16,6 +16,18 @@ final class VenueBookmarkCaptureTests: XCTestCase {
         XCTAssertThrowsError(try capture.complete(request, value: snapshot(first), currentUsableURL: first), "A callback can be consumed only once")
     }
 
+    func testCatalogueVenueCaptureKeepsPublicNameAndCanonicalIdentity() throws {
+        let key = "m000000000000000000000007"
+        let document = try XCTUnwrap(URL(string: "https://www.dovebevo.com/mobile/?path=%2Fbar%2F\(key)&c=u0nd9"))
+        let capture = VenueBookmarkCapture()
+        let request = try XCTUnwrap(capture.begin(url: document))
+        let venue = try capture.complete(request, value: [
+            "href": document.absoluteString, "name": "  Bar verificato  ", "selectedKey": key
+        ], currentUsableURL: document)
+        XCTAssertEqual(venue.url.absoluteString, "https://www.dovebevo.com/bar/\(key)?c=u0nd9")
+        XCTAssertEqual(venue.label, "Bar verificato")
+    }
+
     func testNameBoundUsesUTF16AndNeverTruncatesOrInventsAName() throws {
         for name in ["A", String(repeating: "a", count: 120), String(repeating: "🍹", count: 60)] {
             let capture = VenueBookmarkCapture()

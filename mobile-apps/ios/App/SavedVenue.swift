@@ -28,7 +28,7 @@ enum SavedVenuePolicy {
               let host = components.percentEncodedHost?.lowercased(),
               ["www.dovebevo.com", "dovebevo.com"].contains(host),
               components.percentEncodedFragment == nil,
-              matchesEntirely(components.percentEncodedPath, pattern: #"/bar/[nwru][1-9][0-9]{0,14}"#),
+              matchesEntirely(components.percentEncodedPath, pattern: #"/bar/(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})"#),
               let query = components.percentEncodedQuery,
               matchesEntirely(query, pattern: #"c=[0-9b-hjkmnp-z]{5}"#) else { return nil }
         return URL(string: "https://www.dovebevo.com\(components.percentEncodedPath)?\(query)")

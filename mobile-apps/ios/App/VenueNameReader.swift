@@ -12,7 +12,7 @@ enum VenueNameReader {
         if (mobile && (document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1" ||
             [...url.searchParams].length !== 2 || url.searchParams.getAll("path").length !== 1 ||
             url.searchParams.getAll("c").length !== 1 || !/^[0-9b-hjkmnp-z]{5}$/.test(url.searchParams.get("c") || ""))) return null;
-        const key = /^\/bar\/([nwru][1-9][0-9]{0,14})$/.exec(mobile ? url.searchParams.get("path") || "" : url.pathname)?.[1];
+        const key = /^\/bar\/((?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24}))$/.exec(mobile ? url.searchParams.get("path") || "" : url.pathname)?.[1];
         if (url.protocol !== "https:" || !["www.dovebevo.com", "dovebevo.com"].includes(url.hostname) ||
             url.username || url.password || (url.port && url.port !== "443") ||
             !key || (!mobile && !/^\?c=[0-9b-hjkmnp-z]{5}$/.test(url.search)) || url.hash) return null;

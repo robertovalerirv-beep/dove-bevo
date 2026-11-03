@@ -57,10 +57,10 @@ final class MobileEntryBrowserTests: XCTestCase {
         let loaded = expectation(description: "Owned marked venue")
         let delegate = OwnedDocumentDelegate(loaded)
         web.navigationDelegate = delegate
-        let url = try XCTUnwrap(URL(string: "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9"))
+        let url = try XCTUnwrap(URL(string: "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm000000000000000000000007&c=u0nd9"))
         let html = """
         <!doctype html><html data-dovebevo-mobile-shell="1"><head><meta name="viewport" content="width=device-width"></head><body>
-        <section class="map" data-selected="n123"></section>
+        <section class="map" data-selected="m000000000000000000000007"></section>
         <dialog class="sheet sheet--bare" aria-label="Owned Venue"><div class="sheet__body"><div class="scontrino"><div class="scontrino__paper"><h2 class="scontrino__name">Owned Venue</h2></div></div></div></dialog>
         <script>document.querySelector('dialog').showModal()</script></body></html>
         """
@@ -82,7 +82,7 @@ final class MobileEntryBrowserTests: XCTestCase {
         wait(for: [captured], timeout: 10)
         XCTAssertNil(failure)
         XCTAssertEqual(venue?.label, "Owned Venue")
-        XCTAssertEqual(venue?.url.absoluteString, "https://www.dovebevo.com/bar/n123?c=u0nd9")
+        XCTAssertEqual(venue?.url.absoluteString, "https://www.dovebevo.com/bar/m000000000000000000000007?c=u0nd9")
         withExtendedLifetime(delegate) {}
     }
 

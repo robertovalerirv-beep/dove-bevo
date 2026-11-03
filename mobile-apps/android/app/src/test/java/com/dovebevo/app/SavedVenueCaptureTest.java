@@ -16,6 +16,19 @@ public final class SavedVenueCaptureTest {
         assertEquals("A", capture.complete(ONE, "A", "n123", ONE, 4).name);
     }
 
+    @Test public void catalogueCaptureKeepsPublicNameAndCanonicalIdentity() {
+        String key = "m000000000000000000000007";
+        String canonical = "https://www.dovebevo.com/bar/" + key + "?c=u0nd9";
+        String document = "https://www.dovebevo.com/mobile/?path=%2Fbar%2F" + key + "&c=u0nd9";
+        SavedVenueCapture capture = new SavedVenueCapture(document, 8);
+        SavedVenueCapture.Venue venue = capture.complete(document, "  Bar verificato  ", key, document, 8);
+        assertNotNull(venue);
+        assertEquals(canonical, venue.url);
+        assertEquals("Bar verificato", venue.name);
+        assertNull(capture.complete(document, "Wrong venue", "n123", document, 8));
+        assertNull(capture.complete(document, "Wrong page", key, ONE, 8));
+    }
+
     @Test public void rejectsMissingUnsafeAndOversizedNamesWithoutAnIdFallback() {
         SavedVenueCapture capture = new SavedVenueCapture(ONE, 1);
         for (String name : new String[]{null, "", " \u2003 ", "x".repeat(121), "🍷".repeat(61),

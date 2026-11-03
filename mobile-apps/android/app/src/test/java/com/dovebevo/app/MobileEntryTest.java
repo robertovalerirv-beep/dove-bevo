@@ -13,6 +13,26 @@ public class MobileEntryTest {
         assertNull(MobileEntry.publicVenue(canonical));
         assertNull(MobileEntry.venueDocument("https://evil.test/bar/n123?c=u0nd9"));
     }
+    @Test public void catalogueDocumentRoundTripsOnlyExactLowercaseMKey() {
+        String key = "m000000000000000000000007";
+        String canonical = "https://www.dovebevo.com/bar/" + key + "?c=u0nd9";
+        String document = "https://www.dovebevo.com/mobile/?path=%2Fbar%2F" + key + "&c=u0nd9";
+        assertEquals(canonical, MobileEntry.publicVenue(document));
+        assertEquals(document, MobileEntry.venueDocument(canonical));
+        assertEquals(document, MobileEntry.documentURL(canonical));
+        assertEquals(canonical, SavedVenueUrl.canonicalize(document));
+        assertEquals(document, BrowserPolicy.shareUrl(document));
+        for (String invalid : new String[]{
+                "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm00000000000000000000000A&c=u0nd9",
+                "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm00000000000000000000000&c=u0nd9",
+                "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm0000000000000000000000001&c=u0nd9",
+                "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm00000000000000000000000g&c=u0nd9",
+                "https://www.dovebevo.com/mobile/?path=%252Fbar%252F" + key + "&c=u0nd9",
+                "https://www.dovebevo.com/mobile/?path=%2Fbar%2F" + key + "&c=u0nd9&extra=1",
+                "https://evil.example/mobile/?path=%2Fbar%2F" + key + "&c=u0nd9"
+        }) assertNull(invalid, MobileEntry.publicVenue(invalid));
+    }
+
     @Test public void documentRoutesRejectMalformedAndAmbiguousIdentity() {
         for (String raw : new String[]{
             "https://evil.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9",

@@ -20,6 +20,26 @@ final class MobileEntryTests: XCTestCase {
         XCTAssertEqual(MobileEntry.shareURL(URL(string: "https://evil.test/bar/n123?c=u0nd9")!), URLPolicy.homeURL)
     }
 
+    func testCatalogueVenueDocumentRoundTripsOnlyExactLowercaseMKey() throws {
+        let key = "m000000000000000000000007"
+        let canonical = try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/\(key)?c=u0nd9"))
+        let document = try XCTUnwrap(URL(string: "https://www.dovebevo.com/mobile/?path=%2Fbar%2F\(key)&c=u0nd9"))
+        XCTAssertEqual(MobileEntry.publicVenue(document), canonical)
+        XCTAssertEqual(MobileEntry.venueDocument(canonical), document)
+        XCTAssertEqual(MobileEntry.documentURL(canonical), document)
+        XCTAssertEqual(MobileEntry.shareURL(document), document)
+        XCTAssertEqual(SavedVenuePolicy.canonicalURL(document), canonical)
+        for invalid in [
+            "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm00000000000000000000000A&c=u0nd9",
+            "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm00000000000000000000000&c=u0nd9",
+            "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm0000000000000000000000001&c=u0nd9",
+            "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm00000000000000000000000g&c=u0nd9",
+            "https://www.dovebevo.com/mobile/?path=%252Fbar%252F\(key)&c=u0nd9",
+            "https://www.dovebevo.com/mobile/?path=%2Fbar%2F\(key)&c=u0nd9&extra=1",
+            "https://evil.example/mobile/?path=%2Fbar%2F\(key)&c=u0nd9"
+        ] { XCTAssertNil(MobileEntry.publicVenue(URL(string: invalid)), invalid) }
+    }
+
     func testAmbiguousAndExternalDocumentIdentityIsRejected() {
         for raw in [
             "https://evil.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9",

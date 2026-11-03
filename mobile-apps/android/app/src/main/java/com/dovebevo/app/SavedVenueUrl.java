@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 /** A saved venue is a public venue link, never a generic browser bookmark. */
 public final class SavedVenueUrl {
     private static final Pattern AUTHORITY = Pattern.compile("(?:www\\.)?dovebevo\\.com(?::443)?", Pattern.CASE_INSENSITIVE);
-    private static final Pattern PATH = Pattern.compile("/bar/[nwru][1-9][0-9]{0,14}");
+    private static final Pattern PATH = Pattern.compile("/bar/(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})");
     private static final Pattern QUERY = Pattern.compile("c=[0-9b-hjkmnp-z]{5}");
 
     private SavedVenueUrl() {}

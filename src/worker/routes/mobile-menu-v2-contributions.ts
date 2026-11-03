@@ -376,7 +376,7 @@ mobileMenuV2CustomerPrices.post("/", async (c) => {
 
 mobileMenuV2CustomerPrices.post("/report", async (c) => {
   const body = await readJson(c, Report);
-  await resolveContributableMenuVenue(c.env, body.venue_key, body.cell);
+  const venue = await resolveContributableMenuVenue(c.env, body.venue_key, body.cell);
   const active = await c.env.DB.prepare(
     "SELECT id FROM mobile_menu_v2_customer_entries" +
       " WHERE id=?1 AND venue_key=?2 AND cell=?3 AND status='active'",
@@ -404,9 +404,18 @@ mobileMenuV2CustomerPrices.post("/report", async (c) => {
       " SELECT ?1,?2,?3 WHERE EXISTS (SELECT 1 FROM mobile_menu_v2_customer_entries e" +
       " WHERE e.id=?1 AND e.status='active' AND " +
       " NOT EXISTS (SELECT 1 FROM venues_hidden h WHERE h.venue_key=e.venue_key)" +
-      " AND NOT EXISTS (SELECT 1 FROM mobile_venues_moderation m WHERE m.venue_key=e.venue_key))",
+      " AND NOT EXISTS (SELECT 1 FROM mobile_venues_moderation m WHERE m.venue_key=e.venue_key)" +
+      " AND (?4=0 OR EXISTS (SELECT 1 FROM mobile_menu_v2_offers o" +
+      " JOIN mobile_menu_v2_sources s ON s.id=o.source_id AND s.venue_key=o.venue_key" +
+      " AND s.cell=o.cell AND s.use_review_status='approved'" +
+      " WHERE o.venue_key=e.venue_key AND o.cell=e.cell AND o.status='active')))",
   )
-    .bind(body.entry_id, body.reason, day)
+    .bind(
+      body.entry_id,
+      body.reason,
+      day,
+      venue.identity_kind === "osm" && venue.country === "IT" ? 1 : 0,
+    )
     .run();
   if (!result.meta.changes) throw new ApiError("conflict");
   await c.env.DB.prepare(

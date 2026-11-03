@@ -1017,6 +1017,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                     self.showError(title: "Dove bevo non si carica", message: "L'interfaccia dell'app richiede internet. Controlla la connessione e tocca Riprova.")
                     return
                 }
+                AppPresentationTheme.applyAfterFinish(to: webView)
                 self.completeDocumentLoad()
             }
             return

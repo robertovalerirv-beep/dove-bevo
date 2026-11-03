@@ -59,6 +59,9 @@ class AppPresentationGuards(unittest.TestCase):
         self.assertLess(browser.index("AppPresentationTheme.install(in: configuration)"), browser.index("webView = WKWebView"))
         finish = browser.split("func webView(_ webView: WKWebView, didFinish", 1)[1].split("func webView", 1)[0]
         self.assertLess(finish.index("guard navigationState.acceptsCallback"), finish.index("AppPresentationTheme.applyAfterFinish"))
+        marker_success = finish.split("guard case .success(let value) = result", 1)[1].split("return", 2)[1]
+        self.assertLess(marker_success.index("AppPresentationTheme.applyAfterFinish(to: webView)"),
+                        marker_success.index("self.completeDocumentLoad()"))
         self.assertIn("configuration.websiteDataStore = .default()", browser)
 
     def test_new_checks_use_actual_wk_csp_and_large_text_native_cards(self):

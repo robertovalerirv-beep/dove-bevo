@@ -180,6 +180,15 @@ final class BrowserSmokeTests: XCTestCase {
         waitForOrdinaryKeyboard()
         attachScreen(named: "DoveBevo-live-city-search-before-input")
         searchField.typeText("Milano")
+        // iOS may show its Slide to Type introduction after the first real
+        // keystrokes. The page can already have the query and results while
+        // XCTest still reads the field's stale placeholder through that overlay.
+        dismissKeyboardIntroductionIfPresent(searchField: searchField)
+        let typedValue = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "Milano"), object: searchField)
+        let typedResult = XCTWaiter.wait(for: [typedValue], timeout: 15)
+        if typedResult != .completed { attachState(named: "DoveBevo-live-city-value-not-ready") }
+        XCTAssertEqual(typedResult, .completed, "The actual website input must receive Milano after keyboard onboarding")
         XCTAssertEqual(searchField.value as? String, "Milano", "The actual website input must receive the query")
         let city = website.descendants(matching: .any).matching(
             NSPredicate(format: "label BEGINSWITH[c] %@ AND label CONTAINS[c] %@", "Milano", "Città")

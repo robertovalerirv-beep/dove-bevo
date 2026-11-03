@@ -15,7 +15,7 @@ final class NativePanel extends Dialog {
     final LinearLayout body;
     NativePanel(Activity activity,String title,boolean dark) {
         super(activity,android.R.style.Theme_Material_Light_NoActionBar);
-        int background=dark?0xff101820:Color.WHITE,ink=dark?Color.WHITE:activity.getColor(R.color.shell_text);
+        int background=dark?0xff1B1611:activity.getColor(R.color.shell_background),ink=dark?Color.WHITE:activity.getColor(R.color.shell_text);
         body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);body.setBackgroundColor(background);
         body.setOnApplyWindowInsetsListener((view,insets)->{
             if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());view.setPadding(bars.left,bars.top,bars.right,bars.bottom);}

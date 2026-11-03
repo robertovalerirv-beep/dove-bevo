@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { AddPriceSheet, parseCents } from "../AddPriceSheet";
 import { BarSheet } from "../BarSheet";
+import { legacyPriceVenues } from "../../menu-v2";
 import type { Draft, Prefill } from "../AddPriceSheet";
 import type { Venue } from "@site/app/lib/data";
 import type { PriceRow } from "@site/shared/api-types";
@@ -36,6 +37,7 @@ const venues: Venue[] = [600, 700, 800, 900, 1000].map((cents, index) => ({
   lat: venue.lat + index * 0.0001,
   prices: [[`n${String(123 + index)}`, "spritz", 0, cents, "2026-10-28", 0, 0] as PriceRow],
 }));
+venues.push({ ...venue, key: "maaaaaaaaaaaaaaaaaaaaaaaa", name: "Locale solo app" });
 let version = 0;
 let confirmationMode: "success" | "failed" | "hold" = "success";
 let releaseConfirmation: (() => void) | undefined;
@@ -90,7 +92,7 @@ function price(prefill: Prefill | null = { venue, drink: "spritz" }, withOrigin 
   render(
     <AddPriceSheet
       key={version}
-      venues={venues}
+      venues={legacyPriceVenues(venues)}
       prefill={prefill}
       origin={withOrigin ? { lat: 45.4642, lon: 9.19 } : null}
       onSave={(draft: Draft) => {

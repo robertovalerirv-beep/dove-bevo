@@ -818,3 +818,37 @@ test("menu loading failure can retry while legacy customer prices remain", async
     await f.close();
   }
 });
+
+test("iPhone 16 Plus width keeps venue price actions and footer reachable by scrolling", async () => {
+  const f = await fixture();
+  try {
+    // The embedded web viewport is shorter than the physical display after native chrome.
+    await f.page.setViewportSize({ width: 430, height: 700 });
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const body = f.page.locator(".sheet__body");
+    await f.page.locator("h2.scontrino__name").waitFor();
+    const dimensions = await body.evaluate((element) => ({
+      height: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      scrollWidth: element.scrollWidth,
+      width: element.clientWidth,
+    }));
+    assert.ok(dimensions.scrollHeight > dimensions.height, JSON.stringify(dimensions));
+    assert.ok(dimensions.scrollWidth <= dimensions.width, JSON.stringify(dimensions));
+    await body.hover();
+    await f.page.mouse.wheel(0, 600);
+    await f.page.waitForFunction(() => document.querySelector(".sheet__body")?.scrollTop > 0);
+    const privacy = f.page.getByRole("link", { name: "Privacy", exact: true });
+    await privacy.scrollIntoViewIfNeeded();
+    const footerBox = await privacy.boundingBox();
+    const bodyBox = await body.boundingBox();
+    assert.ok(footerBox && bodyBox && footerBox.y + footerBox.height <= bodyBox.y + bodyBox.height);
+    const addPrice = f.page.getByRole("button", { name: "Aggiungi un prezzo qui", exact: true });
+    await addPrice.scrollIntoViewIfNeeded();
+    const priceBox = await addPrice.boundingBox();
+    assert.ok(priceBox && bodyBox && priceBox.y + priceBox.height <= bodyBox.y + bodyBox.height);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});

@@ -95,7 +95,9 @@ export function menuOfferMatchesFocus(
   offer: { category: string | null; context: { kind: string } },
   focus: DrinkFocus,
 ): boolean {
-  return offer.category === focus.drink && offer.context.kind === (focus.hh ? "happy_hour" : "regular");
+  return (
+    offer.category === focus.drink && offer.context.kind === (focus.hh ? "happy_hour" : "regular")
+  );
 }
 
 export function mobileDefaultDrink(

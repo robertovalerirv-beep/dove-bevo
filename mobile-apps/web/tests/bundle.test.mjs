@@ -133,7 +133,7 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         country: "IT",
         identity_url: "https://official.fixture.test/",
         identity_kind: "owner_verified",
-        matching_offer_count: categories.length ? 1 : 1,
+        matching_offer_count: 1,
         sample_offers: !options.uncategorized && categories.includes("spritz") ? [offer] : [],
         fee_coverage: { status: "unknown", source: null },
       };
@@ -523,6 +523,10 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
           ?.getAttribute("data-prices-shown")
           ?.includes("1 VOCE"),
       { timeout: 30000 },
+    );
+    assert.match(
+      await f.page.getByTestId("map-status").innerText(),
+      /3 bar su 4 qui hanno un prezzo/,
     );
     assert.match(
       await f.page.locator(".mobile-menu-map-note").innerText(),

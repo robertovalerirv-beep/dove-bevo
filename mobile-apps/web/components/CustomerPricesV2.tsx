@@ -58,6 +58,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [moreBusy, setMoreBusy] = useState(false);
   const [moreFailed, setMoreFailed] = useState(false);
+  const [resolvingOffer, setResolvingOffer] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [amount, setAmount] = useState("");
@@ -121,11 +122,45 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
     }
   }
 
-  function beginOffer(offer: MenuOffer) {
+  async function beginOffer(offer: MenuOffer) {
+    if (saving || moreBusy || resolvingOffer) return;
     setEditor({ kind: "menu_offer", offer });
     setAmount("");
     setSubmitError("");
     setSubmitMessage("");
+    if (rows.some((row) => row.offer_id === offer.id) || !nextAfter) return;
+    // The read route is paginated. Resolve this offer's latest observation before
+    // setting expected_revision, so an unseen row is never treated as a new one.
+    setResolvingOffer(offer.id);
+    try {
+      const controller = abort.current;
+      if (!controller) throw new Error("Customer price request unavailable");
+      const collected = [...rows];
+      const known = new Set(rows.map((row) => row.item_key));
+      let cursor: string | null = nextAfter;
+      while (cursor) {
+        const page = await loadCustomerPricesPage(key, cell, cursor, controller.signal);
+        if (!page) throw new Error("Customer prices unavailable");
+        if (page.rows.some((row) => known.has(row.item_key)))
+          throw new Error("Duplicate customer price page");
+        for (const row of page.rows) {
+          known.add(row.item_key);
+          collected.push(row);
+        }
+        cursor = page.next_after;
+        if (page.rows.some((row) => row.offer_id === offer.id)) break;
+      }
+      if (controller.signal.aborted) return;
+      setRows(collected);
+      setNextAfter(cursor);
+    } catch {
+      if (!abort.current?.signal.aborted) {
+        setEditor(null);
+        setSubmitMessage("Non riusciamo a verificare il prezzo attuale. Riprova.");
+      }
+    } finally {
+      setResolvingOffer(null);
+    }
   }
 
   function beginNew(row: CustomerRow | null) {
@@ -210,6 +245,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
     } catch (error) {
       setSubmitError(errorMessage(error));
       if (error instanceof CustomerPriceHttpError && error.status === 409) {
+        setSubmitMessage(errorMessage(error));
         setEditor(null);
         setReload((value) => value + 1);
       }
@@ -342,9 +378,9 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
         <button
           type="submit"
           class="btn btn--primary"
-          disabled={saving || validAmount === null || !validNewName}
+          disabled={saving || resolvingOffer !== null || validAmount === null || !validNewName}
         >
-          {saving ? "Invio…" : "Condividi prezzo"}
+          {saving ? "Invio…" : resolvingOffer ? "Caricamento…" : "Condividi prezzo"}
         </button>
       </div>
       {submitError && <p class="error" role="alert">{submitError}</p>}
@@ -407,7 +443,8 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
                 <button
                   type="button"
                   class="btn btn--secondary mobile-customer-v2__update"
-                  onClick={() => { beginOffer(offer); }}
+                  disabled={resolvingOffer !== null || saving || moreBusy}
+                  onClick={() => { void beginOffer(offer); }}
                 >
                   Prezzo diverso? Aggiorna
                 </button>

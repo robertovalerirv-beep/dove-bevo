@@ -48,6 +48,27 @@ export function transformApp(source) {
     "Promise.all(cells.map((cell) => loadMobileCell(cell, drinks)))",
   );
   result = once(result, "}, [view, attempt]);", "}, [view, attempt, drinks]);");
+  result = once(
+    result,
+    '    // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.',
+    `    useEffect(() => {
+      const refresh = (event: Event) => {
+        const cell = (event as CustomEvent<{ cell?: string }>).detail?.cell;
+        if (cell && view && visibleCells(view)?.includes(cell))
+          setAttempt((value) => value + 1);
+      };
+      window.addEventListener("dovebevo:menu-cell-ready", refresh);
+      return () => { window.removeEventListener("dovebevo:menu-cell-ready", refresh); };
+    }, [view]);
+
+    // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.`,
+  );
+  result = once(
+    result,
+    "  function openAdd(prefill: Prefill | null) {",
+    '  function openAdd(prefill: Prefill | null) {\n    if (prefill?.venue.key.startsWith("m")) {\n      navigate(`/bar/${prefill.venue.key}?c=${prefill.venue.cell}`);\n      return;\n    }',
+  );
+  result = once(result, "venues={everyVenue}", "venues={legacyPriceVenues(everyVenue)}");
   result = once(result, "() => coverage(inView, drinks)", "() => mobileCoverage(inView, drinks)");
   result = once(result, "VENUE_KEY_PATTERN.test(match[1])", "mobileVenueKeyPattern.test(match[1])");
   result = once(
@@ -99,7 +120,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileDefaultDrink, mobileVenueKeyPattern } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell } from "@mobile/menu-v2";\n' +
+    'import { mobilePath, mobileURL, mobileDefaultDrink, mobileVenueKeyPattern } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }

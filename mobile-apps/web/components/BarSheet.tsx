@@ -12,13 +12,7 @@ import { HoursList, VerifiedBadge } from "@site/app/components/Verified";
 import { drinkImage } from "@mobile/drink-images";
 import { sharePresentation } from "../share-presentation";
 import { DrinkHero } from "./DrinkHero";
-import {
-  loadMenuPage,
-  menuMoney,
-  mobileMenuVenue,
-  type MenuPage,
-  type MenuFee,
-} from "../menu-v2";
+import { loadMenuPage, menuMoney, mobileMenuVenue, type MenuPage, type MenuFee } from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
 import "./sheets.css";
 
@@ -540,7 +534,6 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               {it.actions.addHere}
             </button>
           )}
-
         </div>
         {review.length > 0 && (
           <>

@@ -86,8 +86,11 @@ export async function loadCustomerPricesPage(
   after: string | null,
   signal: AbortSignal,
 ): Promise<CustomerPage | null> {
-  if (!Key.safeParse(key).success || !Cell.safeParse(cell).success ||
-      (after !== null && !ItemKey.safeParse(after).success))
+  if (
+    !Key.safeParse(key).success ||
+    !Cell.safeParse(cell).success ||
+    (after !== null && !ItemKey.safeParse(after).success)
+  )
     throw new Error("Invalid customer price identity");
   const params = new URLSearchParams({ cell, limit: "50" });
   if (after) params.set("after", after);
@@ -98,9 +101,12 @@ export async function loadCustomerPricesPage(
   // The menu and customer routes deploy independently during this additive rollout.
   if (response.status === 404) return null;
   const page = CustomerPageSchema.parse(await parseJson(response));
-  if (page.venue.key !== key || page.venue.cell !== cell ||
-      (page.next_after !== null &&
-        (page.next_after !== page.rows.at(-1)?.item_key || page.next_after === after)))
+  if (
+    page.venue.key !== key ||
+    page.venue.cell !== cell ||
+    (page.next_after !== null &&
+      (page.next_after !== page.rows.at(-1)?.item_key || page.next_after === after))
+  )
     throw new Error("Customer price identity mismatch");
   if (new Set(page.rows.map((row) => row.item_key)).size !== page.rows.length)
     throw new Error("Duplicate customer price items");
@@ -142,14 +148,31 @@ export function parseCustomerAmount(raw: string, exponent: number): number | nul
   if (!match) return null;
   const fraction = match[2] ?? "";
   if (fraction.length > exponent) return null;
-  const minor = Number(match[1]) * 10 ** exponent +
-    Number(fraction.padEnd(exponent, "0") || "0");
+  const minor = Number(match[1]) * 10 ** exponent + Number(fraction.padEnd(exponent, "0") || "0");
   return Number.isSafeInteger(minor) && minor >= 1 && minor <= 100000 ? minor : null;
 }
 
 const EURO_COUNTRIES = new Set([
-  "IT", "FR", "ES", "DE", "AT", "BE", "PT", "NL", "IE", "FI", "GR",
-  "SK", "SI", "EE", "LV", "LT", "MT", "CY", "LU", "HR",
+  "IT",
+  "FR",
+  "ES",
+  "DE",
+  "AT",
+  "BE",
+  "PT",
+  "NL",
+  "IE",
+  "FI",
+  "GR",
+  "SK",
+  "SI",
+  "EE",
+  "LV",
+  "LT",
+  "MT",
+  "CY",
+  "LU",
+  "HR",
 ]);
 
 /** For new drinks only: retain the venue currency, never relabel or convert a price. */
@@ -159,9 +182,14 @@ export function customerCurrency(
 ): { currency: string; exponent: number } | null {
   if (country === "GB") return { currency: "GBP", exponent: 2 };
   if (EURO_COUNTRIES.has(country)) return { currency: "EUR", exponent: 2 };
-  const distinct = new Map(offers.map((offer) =>
-    [`${offer.currency}:${String(offer.currency_exponent)}`,
-      { currency: offer.currency, exponent: offer.currency_exponent }] as const,
-  ));
+  const distinct = new Map(
+    offers.map(
+      (offer) =>
+        [
+          `${offer.currency}:${String(offer.currency_exponent)}`,
+          { currency: offer.currency, exponent: offer.currency_exponent },
+        ] as const,
+    ),
+  );
   return distinct.size === 1 ? (distinct.values().next().value ?? null) : null;
 }

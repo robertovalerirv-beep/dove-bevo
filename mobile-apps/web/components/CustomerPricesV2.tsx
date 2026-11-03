@@ -13,8 +13,7 @@ import {
 import { menuMoney, type MenuOffer, type MenuPage } from "../menu-v2";
 
 type Editor =
-  | { kind: "menu_offer"; offer: MenuOffer }
-  | { kind: "new_drink"; row: CustomerRow | null };
+  { kind: "menu_offer"; offer: MenuOffer } | { kind: "new_drink"; row: CustomerRow | null };
 type LoadState = "loading" | "ready" | "missing" | "failed";
 
 const CATEGORY_OPTIONS = [
@@ -38,8 +37,7 @@ function errorMessage(error: unknown): string {
       return "Hai raggiunto il limite di segnalazioni per oggi. Riprova domani.";
     if (error.status === 404)
       return "Questo drink o locale non è più disponibile. Ricarica la scheda.";
-    if (error.status === 400)
-      return "Controlla drink, porzione e importo prima di riprovare.";
+    if (error.status === 400) return "Controlla drink, porzione e importo prima di riprovare.";
     if (error.status === 403 || error.status === 401)
       return "Non riusciamo a verificare la sessione. Riprova tra poco.";
   }
@@ -97,7 +95,9 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
       .catch(() => {
         if (!controller.signal.aborted) setLoadState("failed");
       });
-    return () => { controller.abort(); };
+    return () => {
+      controller.abort();
+    };
   }, [key, cell, reload]);
 
   async function loadMore() {
@@ -204,11 +204,11 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
       };
     } else {
       const cleanName = selected.row?.name ?? name.trim();
-      const cleanServing = selected.row ? selected.row.serving.label : (servingLabel.trim() || null);
-      const ml = selected.row?.serving.ml ??
-        (servingMl.trim() ? Number(servingMl) : null);
+      const cleanServing = selected.row ? selected.row.serving.label : servingLabel.trim() || null;
+      const ml = selected.row?.serving.ml ?? (servingMl.trim() ? Number(servingMl) : null);
       if (
-        cleanName.length < 2 || cleanName.length > 80 ||
+        cleanName.length < 2 ||
+        cleanName.length > 80 ||
         (cleanServing !== null && cleanServing.length > 80) ||
         (ml !== null && (!Number.isInteger(ml) || ml < 1 || ml > 2000))
       ) {
@@ -220,7 +220,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
         venue_key: key,
         cell,
         name: cleanName,
-        category: selected.row ? selected.row.category : (category || null),
+        category: selected.row ? selected.row.category : category || null,
         serving_label: cleanServing,
         serving_ml: ml,
         amount_minor: amountMinor,
@@ -276,19 +276,23 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
   }
 
   const observations = new Map(
-    rows.filter((row) => row.kind === "menu_offer" && row.offer_id)
+    rows
+      .filter((row) => row.kind === "menu_offer" && row.offer_id)
       .map((row) => [row.offer_id, row]),
   );
   const additional = rows.filter((row) => row.kind === "new_drink");
   const newCurrency = customerCurrency(country, menu.offers);
-  const chosenCurrency = editor?.kind === "menu_offer"
-    ? { currency: editor.offer.currency, exponent: editor.offer.currency_exponent }
-    : editor?.row
-      ? { currency: editor.row.currency, exponent: editor.row.currency_exponent }
-      : newCurrency;
+  const chosenCurrency =
+    editor?.kind === "menu_offer"
+      ? { currency: editor.offer.currency, exponent: editor.offer.currency_exponent }
+      : editor?.row
+        ? { currency: editor.row.currency, exponent: editor.row.currency_exponent }
+        : newCurrency;
   const validAmount = chosenCurrency && parseCustomerAmount(amount, chosenCurrency.exponent);
-  const validNewName = editor?.kind !== "new_drink" ||
-    (editor.row !== null || (name.trim().length >= 2 && name.trim().length <= 80));
+  const validNewName =
+    editor?.kind !== "new_drink" ||
+    editor.row !== null ||
+    (name.trim().length >= 2 && name.trim().length <= 80);
   const priceForm = editor && chosenCurrency && (
     <form
       class="mobile-customer-v2__form"
@@ -313,7 +317,9 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             required
             maxLength={80}
             readOnly={editor.row !== null}
-            onInput={(event) => { setName(event.currentTarget.value); }}
+            onInput={(event) => {
+              setName(event.currentTarget.value);
+            }}
             placeholder="Es. Negroni della casa"
           />
           <label htmlFor={`${formId}-category`}>Tipo di drink</label>
@@ -321,10 +327,14 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             id={`${formId}-category`}
             value={category}
             disabled={editor.row !== null}
-            onChange={(event) => { setCategory(event.currentTarget.value); }}
+            onChange={(event) => {
+              setCategory(event.currentTarget.value);
+            }}
           >
             {CATEGORY_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
           <label htmlFor={`${formId}-serving`}>Porzione (facoltativa)</label>
@@ -333,7 +343,9 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             value={servingLabel}
             maxLength={80}
             readOnly={editor.row !== null}
-            onInput={(event) => { setServingLabel(event.currentTarget.value); }}
+            onInput={(event) => {
+              setServingLabel(event.currentTarget.value);
+            }}
             placeholder="Es. bicchiere"
           />
           <label htmlFor={`${formId}-ml`}>Quantità in ml (facoltativa)</label>
@@ -344,13 +356,13 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             max="2000"
             value={servingMl}
             readOnly={editor.row !== null}
-            onInput={(event) => { setServingMl(event.currentTarget.value); }}
+            onInput={(event) => {
+              setServingMl(event.currentTarget.value);
+            }}
           />
         </>
       )}
-      <label htmlFor={`${formId}-amount`}>
-        Importo pagato ({chosenCurrency.currency})
-      </label>
+      <label htmlFor={`${formId}-amount`}>Importo pagato ({chosenCurrency.currency})</label>
       <input
         id={`${formId}-amount`}
         type="text"
@@ -359,19 +371,24 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
         value={amount}
         required
         maxLength={9}
-        onInput={(event) => { setAmount(event.currentTarget.value); }}
+        onInput={(event) => {
+          setAmount(event.currentTarget.value);
+        }}
         placeholder={chosenCurrency.exponent === 2 ? "0,00" : "0"}
       />
       <small>
-        Prezzo del drink e della porzione indicata, nella valuta originale. Eventuali
-        supplementi restano separati.
+        Prezzo del drink e della porzione indicata, nella valuta originale. Eventuali supplementi
+        restano separati.
       </small>
       <div class="mobile-customer-v2__form-actions">
         <button
           type="button"
           class="btn btn--secondary"
           disabled={saving}
-          onClick={() => { setEditor(null); setSubmitError(""); }}
+          onClick={() => {
+            setEditor(null);
+            setSubmitError("");
+          }}
         >
           Annulla
         </button>
@@ -383,7 +400,11 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
           {saving ? "Invio…" : resolvingOffer ? "Caricamento…" : "Condividi prezzo"}
         </button>
       </div>
-      {submitError && <p class="error" role="alert">{submitError}</p>}
+      {submitError && (
+        <p class="error" role="alert">
+          {submitError}
+        </p>
+      )}
     </form>
   );
 
@@ -392,9 +413,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
       <div class="mobile-customer-v2__observation">
         <span>Prezzo segnalato da un cliente</span>
         <strong>{menuMoney(row.amount_minor, row.currency, row.currency_exponent)}</strong>
-        <small>
-          Pagato il {customerDate(row)} · prezzo del drink, non totale del conto
-        </small>
+        <small>Pagato il {customerDate(row)} · prezzo del drink, non totale del conto</small>
         <button
           type="button"
           class="btn btn--ghost"
@@ -427,8 +446,10 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
                       ? offer.context.condition
                         ? `Solo con: ${offer.context.condition}`
                         : "Prezzo condizionato"
-                      : offer.context.condition ?? "",
-                ].filter(Boolean).join(" · ")}
+                      : (offer.context.condition ?? ""),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </span>
               <a
                 href={offer.source.url}
@@ -444,7 +465,9 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
                   type="button"
                   class="btn btn--secondary mobile-customer-v2__update"
                   disabled={resolvingOffer !== null || saving || moreBusy}
-                  onClick={() => { void beginOffer(offer); }}
+                  onClick={() => {
+                    void beginOffer(offer);
+                  }}
                 >
                   Prezzo diverso? Aggiorna
                 </button>
@@ -460,11 +483,13 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
       <section class="mobile-customer-v2" aria-label="Prezzi segnalati dai clienti">
         <h4>Prezzi segnalati dai clienti</h4>
         <p>
-          Prezzi pagati e condivisi dalle persone. Restano distinti dai prezzi documentati
-          nel menu del locale e non li sostituiscono.
+          Prezzi pagati e condivisi dalle persone. Restano distinti dai prezzi documentati nel menu
+          del locale e non li sostituiscono.
         </p>
         {loadState === "loading" && (
-          <p class="hint" role="status">Caricamento segnalazioni…</p>
+          <p class="hint" role="status">
+            Caricamento segnalazioni…
+          </p>
         )}
         {loadState === "missing" && (
           <p class="hint">Le segnalazioni dei clienti non sono ancora disponibili qui.</p>
@@ -475,7 +500,9 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             <button
               type="button"
               class="btn btn--secondary"
-              onClick={() => { setReload((value) => value + 1); }}
+              onClick={() => {
+                setReload((value) => value + 1);
+              }}
             >
               Riprova
             </button>
@@ -492,20 +519,23 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
                     <li key={row.item_key}>
                       <strong>{row.name}</strong>
                       <small>
-                        {[row.serving.label,
-                          row.serving.ml ? `${String(row.serving.ml)} ml` : ""]
-                          .filter(Boolean).join(" · ")}
+                        {[row.serving.label, row.serving.ml ? `${String(row.serving.ml)} ml` : ""]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </small>
                       {observation(row)}
                       <button
                         type="button"
                         class="btn btn--secondary mobile-customer-v2__update"
-                        onClick={() => { beginNew(row); }}
+                        onClick={() => {
+                          beginNew(row);
+                        }}
                       >
                         Prezzo diverso? Aggiorna
                       </button>
                       {editor?.kind === "new_drink" &&
-                        editor.row?.item_key === row.item_key && priceForm}
+                        editor.row?.item_key === row.item_key &&
+                        priceForm}
                     </li>
                   ))}
                 </ul>
@@ -530,7 +560,9 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
               <button
                 type="button"
                 class="btn btn--secondary mobile-customer-v2__add"
-                onClick={() => { beginNew(null); }}
+                onClick={() => {
+                  beginNew(null);
+                }}
               >
                 Aggiungi un drink mancante
               </button>
@@ -542,8 +574,16 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             {editor?.kind === "new_drink" && !editor.row && priceForm}
           </>
         )}
-        {submitMessage && <p class="hint" role="status">{submitMessage}</p>}
-        {reportMessage && <p class="hint" role="status">{reportMessage}</p>}
+        {submitMessage && (
+          <p class="hint" role="status">
+            {submitMessage}
+          </p>
+        )}
+        {reportMessage && (
+          <p class="hint" role="status">
+            {reportMessage}
+          </p>
+        )}
         <div ref={host} class="mobile-customer-v2__turnstile" />
       </section>
     </>

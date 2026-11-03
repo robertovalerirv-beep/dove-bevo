@@ -137,26 +137,29 @@ async function fixture(options = {}) {
             country: "IT",
           },
           price_scope: "customer_reported_drink_item",
-          rows: [{
-            revision: "22222222-2222-4222-8222-222222222222",
-            item_key: "o" + "a".repeat(64),
-            kind: "menu_offer",
-            offer_id: "first",
-            name: "Spritz <script>",
-            category: "spritz",
-            serving: { label: "Calice", ml: null },
-            amount_minor: 650,
-            currency: "EUR",
-            currency_exponent: 2,
-            observed_on: "2026-11-02",
-            source_kind: "customer",
-            observation_kind: "customer_reported_price",
-            price_scope: "drink_item",
-          }],
+          rows: [
+            {
+              revision: "22222222-2222-4222-8222-222222222222",
+              item_key: "o" + "a".repeat(64),
+              kind: "menu_offer",
+              offer_id: "first",
+              name: "Spritz <script>",
+              category: "spritz",
+              serving: { label: "Calice", ml: null },
+              amount_minor: 650,
+              currency: "EUR",
+              currency_exponent: 2,
+              observed_on: "2026-11-02",
+              source_kind: "customer",
+              observation_kind: "customer_reported_price",
+              price_scope: "drink_item",
+            },
+          ],
           next_after: null,
         },
       });
-    }    if (pathname.startsWith("/api/mobile/v2/menu/venues/")) {
+    }
+    if (pathname.startsWith("/api/mobile/v2/menu/venues/")) {
       if (options.menuAbsent) return route.fulfill({ status: 404, body: "Not found" });
       if (menuFailures > 0) {
         menuFailures--;
@@ -654,16 +657,18 @@ test("owner-verified venue separates cited menu and customer price, and submits 
     await owner.getByLabel("Importo pagato (EUR)").fill("8,20");
     await owner.getByRole("button", { name: "Condividi prezzo" }).click();
     await f.page.getByText("Prezzo salvato e visibile a tutti.").waitFor();
-    assert.deepEqual(f.writes, [{
-      kind: "menu_offer",
-      venue_key: "maaaaaaaaaaaaaaaaaaaaaaaa",
-      cell: "u0nd9",
-      offer_id: "first",
-      amount_minor: 820,
-      currency: "EUR",
-      currency_exponent: 2,
-      expected_revision: "22222222-2222-4222-8222-222222222222",
-    }]);
+    assert.deepEqual(f.writes, [
+      {
+        kind: "menu_offer",
+        venue_key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+        cell: "u0nd9",
+        offer_id: "first",
+        amount_minor: 820,
+        currency: "EUR",
+        currency_exponent: 2,
+        expected_revision: "22222222-2222-4222-8222-222222222222",
+      },
+    ]);
     const support = f.page.getByRole("link", { name: "Segnala un problema con il locale" });
     assert.match(await support.getAttribute("href"), /^mailto:dovebevo@gmail\.com\?/);
   } finally {
@@ -684,19 +689,21 @@ test("a new named drink enters moderation without changing the cited menu", asyn
     await form.getByLabel("Importo pagato (EUR)").fill("9,00");
     await form.getByRole("button", { name: "Condividi prezzo" }).click();
     await f.page.getByText("Drink inviato: sarà visibile dopo la verifica.").waitFor();
-    assert.deepEqual(f.writes, [{
-      kind: "new_drink",
-      venue_key: "maaaaaaaaaaaaaaaaaaaaaaaa",
-      cell: "u0nd9",
-      name: "Negroni della casa",
-      category: "negroni",
-      serving_label: "bicchiere",
-      serving_ml: null,
-      amount_minor: 900,
-      currency: "EUR",
-      currency_exponent: 2,
-      expected_revision: null,
-    }]);
+    assert.deepEqual(f.writes, [
+      {
+        kind: "new_drink",
+        venue_key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+        cell: "u0nd9",
+        name: "Negroni della casa",
+        category: "negroni",
+        serving_label: "bicchiere",
+        serving_ml: null,
+        amount_minor: 900,
+        currency: "EUR",
+        currency_exponent: 2,
+        expected_revision: null,
+      },
+    ]);
     assert.match(await f.page.locator(".mobile-menu-v2__offer").first().innerText(), /7,50\s€/);
   } finally {
     await f.close();

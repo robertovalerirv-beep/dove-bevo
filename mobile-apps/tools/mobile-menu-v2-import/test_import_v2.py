@@ -50,10 +50,15 @@ def raw(doc):
     return (json.dumps(doc,ensure_ascii=False,sort_keys=True)+"\n").encode()
 
 class Fake:
-    def __init__(self,public=None):
+    def __init__(self,public=None,post_osm_node_migration=False):
         self.db=sqlite3.connect(":memory:")
         self.db.row_factory=sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
+        schema=MIGRATION.read_text(encoding="utf-8")
+        if post_osm_node_migration:
+            needle="identity_geo_hash_basis IN ('raw_utf8','html_text_v1')"
+            if schema.count(needle)!=1: raise AssertionError("expected v2 registry CHECK")
+            schema=schema.replace(needle,"identity_geo_hash_basis IN ('raw_utf8','html_text_v1','osm_node_v1')")
         self.db.executescript(
             "CREATE TABLE venues_hidden(venue_key TEXT);"
             "CREATE TABLE mobile_venues_moderation(venue_key TEXT);"
@@ -61,7 +66,7 @@ class Fake:
             "CREATE TABLE prices_current(venue_key TEXT,price_cents INTEGER);"
             "CREATE TABLE price_obs(venue_key TEXT);"
             "CREATE TABLE venues_user(id INTEGER,name TEXT,kind INTEGER,lat REAL,lon REAL,cell TEXT,status TEXT);"
-            +MIGRATION.read_text(encoding="utf-8")
+            +schema
         )
         self.public=public or {
             core.SITE+"/api/health":json.dumps({"status":"ok","data_version":"20261101"}).encode(),
@@ -170,6 +175,27 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(conflict["errors"][0]["code"],"conflicting existing v2 row")
         self.assertEqual(transport.db.execute("SELECT amount_minor FROM mobile_menu_v2_offers").fetchone()[0],999)
 
+    def test_osm_node_v1_ignores_generator_and_xml_order_but_not_semantic_changes(self):
+        base=(b'<osm version="0.6" generator="host-a"><node id="5263850434" version="3" '
+              b'lat="40.8395536" lon="14.2515693"><tag k="name" v="Dambo Beef And Grill"/>'
+              b'<tag k="addr:street" v="Piazza Municipio"/></node></osm>')
+        equivalent=(b'<osm generator="host-b" version="0.6"><node lon="14.25156930" '
+                    b'lat="40.83955360" version="3" id="5263850434">'
+                    b'<tag v="Piazza Municipio" k="addr:street"/>'
+                    b'<tag v="Dambo Beef And Grill" k="name"/></node></osm>')
+        first=core.osm_node_v1(base)[0]
+        self.assertEqual(first,core.osm_node_v1(equivalent)[0])
+        for changed in (base.replace(b'40.8395536',b'40.8395537'),
+                        base.replace(b'version="3"',b'version="4"'),
+                        base.replace(b'Dambo Beef And Grill',b'Other Venue')):
+            self.assertNotEqual(first,core.osm_node_v1(changed)[0])
+        with self.assertRaises(core.Error):
+            core.osm_node_v1(base.replace(b'</node>',b'<tag k="name" v="Other"/></node>'))
+        with self.assertRaises(core.Error):
+            core.osm_node_v1(base.replace(b'lat="40.8395536"',b'lat="1e-1000000000"'))
+        with self.assertRaises(core.Error):
+            core.osm_node_v1(b'<!DOCTYPE osm><osm><node id="1" version="1" lat="1" lon="1"/></osm>')
+
     def test_owner_key_and_nearby_duplicate_hold(self):
         owner_url="https://example.org/locations/perosa/"
         address="Via Perosa 32/A"
@@ -178,7 +204,7 @@ class ImportTests(unittest.TestCase):
         lat,lon=45.0673001,7.6490370
         cell=core.legacy.geo(lat,lon)
         page=b"<html><body>Birrificio La Piazza Perosa, Via Perosa 32/A Torino</body></html>"
-        xml=(b'<osm><node id="4734734625" lat="45.0673001" lon="7.6490370">'
+        xml=(b'<osm><node id="4734734625" version="1" lat="45.0673001" lon="7.6490370">'
              b'<tag k="addr:street" v="Via Perosa"/>'
              b'<tag k="addr:housenumber" v="32/A"/></node></osm>')
         venue={
@@ -188,8 +214,8 @@ class ImportTests(unittest.TestCase):
             "identity_checked_on":DAY,"identity_fingerprint":fingerprint,
             "owner_page_sha256":core.legacy.source_digest(page,"html_text_v1"),
             "geo_reference_url":"https://www.openstreetmap.org/node/4734734625",
-            "geo_reference_sha256":hashlib.sha256(xml).hexdigest(),
-            "geo_reference_hash_basis":"raw_utf8","static_city_id":None,
+            "geo_reference_sha256":core.osm_node_v1(xml)[0],
+            "geo_reference_hash_basis":"osm_node_v1","static_city_id":None,
         }
         core.validate_venue(venue,DAY)
         public={
@@ -198,7 +224,7 @@ class ImportTests(unittest.TestCase):
             core.SITE+"/data/20261101/v/"+cell+".json":json.dumps({"v":[],"c":[]}).encode(),
         }
         core.public_identity(venue,Fake(public),"20261101",{})
-        fake=Fake(public)
+        fake=Fake(public,post_osm_node_migration=True)
         fake.db.execute("INSERT INTO venues_user VALUES (?,?,?,?,?,?,?)",
                         (1,"Birrificio La Piazza Perosa",2,lat+0.0001,lon,cell,"approved"))
         with self.assertRaises(core.Error):core.private_owner_duplicate(venue,fake)
@@ -211,10 +237,15 @@ class ImportTests(unittest.TestCase):
             doc[table][0]["venue_key"]=key
             doc[table][0]["cell"]=cell
         payload=raw(doc)
+        unready=core.execute(payload,Fake(public),False)
+        self.assertFalse(unready["complete"])
+        self.assertEqual(unready["errors"][0]["code"],"OSM node hash basis migration absent")
+        ready=core.execute(payload,fake,False)
+        self.assertTrue(ready["complete"],ready["errors"])
         applied=core.execute(payload,fake,True,hashlib.sha256(payload).hexdigest())
         self.assertTrue(applied["complete"],applied["errors"])
         registered=fake.db.execute("SELECT venue_key,identity_kind,identity_geo_hash_basis FROM mobile_menu_v2_venues").fetchone()
-        self.assertEqual(tuple(registered),(key,"owner_verified","raw_utf8"))
+        self.assertEqual(tuple(registered),(key,"owner_verified","osm_node_v1"))
         self.assertEqual(fake.db.execute("SELECT COUNT(*) FROM mobile_menu_v2_offers").fetchone()[0],1)
 
 if __name__=="__main__":

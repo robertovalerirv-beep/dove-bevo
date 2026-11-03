@@ -192,7 +192,7 @@ def validate_venue(row,checked):
         if not re.fullmatch(r"https://www\.openstreetmap\.org/node/[1-9][0-9]*",row["geo_reference_url"]):
             raise Error("owner geo reference must be OSM address node")
         digest(row["geo_reference_sha256"])
-        if row["geo_reference_hash_basis"]!="raw_utf8": raise Error("unsupported geo hash basis")
+        if row["geo_reference_hash_basis"]!="osm_node_v1": raise Error("unsupported geo hash basis")
         if row["static_city_id"] is not None: raise Error("owner key cannot claim static city")
     else:
         if row["identity_url"]!=osm_identity_url(key): raise Error("OSM URL mismatch")
@@ -348,6 +348,42 @@ def source_digests(raw,fmt):
     if not 10<=len(canonical)<=2*1024*1024: raise Error("PDF text unavailable")
     return hashlib.sha256(raw).hexdigest(),hashlib.sha256(canonical).hexdigest()
 
+def osm_node_v1(raw):
+    """Hash semantic OSM node evidence, excluding server generator and XML ordering."""
+    import decimal
+    import xml.etree.ElementTree as ET
+    if not isinstance(raw,bytes) or not 1<=len(raw)<=65536 or b"<!DOCTYPE" in raw.upper() or b"<!ENTITY" in raw.upper():
+        raise Error("OSM node XML invalid")
+    try:
+        root=ET.fromstring(raw)
+        if root.tag!="osm" or len(root)!=1 or root[0].tag!="node":
+            raise ValueError("expected one OSM node")
+        node=root[0]
+        ident=node.attrib["id"]
+        version=node.attrib["version"]
+        if not re.fullmatch(r"[1-9][0-9]{0,19}",ident) or not re.fullmatch(r"[1-9][0-9]{0,9}",version):
+            raise ValueError("invalid OSM node identity")
+        if node.attrib.get("visible")=="false": raise ValueError("deleted OSM node")
+        coordinates=[]
+        for field,limit in (("lat",90),("lon",180)):
+            coord=node.attrib[field]
+            if not re.fullmatch(r"-?[0-9]{1,3}(?:\.[0-9]{1,15})?",coord):
+                raise ValueError("invalid OSM coordinate syntax")
+            value=decimal.Decimal(coord)
+            if not value.is_finite() or abs(value)>limit: raise ValueError("invalid OSM coordinate")
+            coordinates.append("0" if value==0 else format(value.normalize(),"f"))
+        tags={}
+        for child in node:
+            if child.tag!="tag" or set(child.attrib)!={"k","v"} or not child.attrib["k"]:
+                raise ValueError("invalid OSM tag")
+            if child.attrib["k"] in tags: raise ValueError("duplicate OSM tag")
+            tags[child.attrib["k"]]=child.attrib["v"]
+        canonical=json.dumps({"id":ident,"version":str(int(version)),"lat":coordinates[0],"lon":coordinates[1],"tags":tags},
+                             sort_keys=True,separators=(",",":"),ensure_ascii=False).encode("utf-8")
+        return hashlib.sha256(canonical).hexdigest(),ident,float(coordinates[0]),float(coordinates[1]),tags
+    except (ET.ParseError,KeyError,ValueError,decimal.InvalidOperation,OverflowError,UnicodeError) as exc:
+        raise Error("OSM node XML invalid") from exc
+
 def distance_m(lat1,lon1,lat2,lon2):
     import math
     earth=6371000
@@ -402,18 +438,12 @@ def public_identity(row,transport,version,cells):
             raise Error("owner location text invalid") from exc
         if normalized_name(row["name"]) not in visible or normalized_address(row["address"]) not in visible:
             raise Error("owner location name/address absent")
-        import xml.etree.ElementTree as ET
         node_id=row["geo_reference_url"].rsplit("/",1)[1]
         xml=public_fetch(transport,f"https://api.openstreetmap.org/api/0.6/node/{node_id}",65536,"xml")
-        if hashlib.sha256(xml).hexdigest()!=row["geo_reference_sha256"]:
+        geo_hash,actual_id,lat,lon,tags=osm_node_v1(xml)
+        if geo_hash!=row["geo_reference_sha256"]:
             raise Error("OSM address reference changed")
-        try:
-            node=ET.fromstring(xml).find("node")
-            tags={t.attrib["k"]:t.attrib["v"] for t in node.findall("tag")}
-            lat,lon=float(node.attrib["lat"]),float(node.attrib["lon"])
-        except (AttributeError,KeyError,TypeError,ValueError,ET.ParseError) as exc:
-            raise Error("OSM address reference invalid") from exc
-        if node.attrib.get("id")!=node_id or distance_m(row["lat"],row["lon"],lat,lon)>50:
+        if actual_id!=node_id or distance_m(row["lat"],row["lon"],lat,lon)>50:
             raise Error("owner venue not near OSM address")
         mapped=" ".join([tags.get("addr:street",""),tags.get("addr:housenumber","")]).strip()
         if not mapped or normalized_address(mapped)!=normalized_address(row["address"]):
@@ -457,6 +487,11 @@ def tables_exist(transport):
     rows=transport.query(f"SELECT name FROM sqlite_master WHERE type='table' AND name IN ({marks})",list(TABLES))
     if {r.get("name") for r in rows if isinstance(r,dict)}!=set(TABLES):
         raise Error("v2 migration or guard table absent")
+
+def require_owner_geo_schema(transport):
+    schema=one(transport,"SELECT sql FROM sqlite_master WHERE type='table' AND name=?",["mobile_menu_v2_venues"]).get("sql")
+    if not isinstance(schema,str) or "osm_node_v1" not in schema:
+        raise Error("OSM node hash basis migration absent")
 
 def presence(transport,key):
     return one(transport,
@@ -585,6 +620,8 @@ def execute(raw,transport,apply=False,approved_sha256=None):
         receipt["binding_attestation"]=attestation
         phase="private_preflight"
         tables_exist(transport)
+        if any(v["identity_kind"]=="owner_verified" for v in doc["venues"]):
+            require_owner_geo_schema(transport)
         for venue in doc["venues"]:
             key=venue["venue_key"]
             private_owner_duplicate(venue,transport)

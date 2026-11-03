@@ -41,6 +41,7 @@ private final class DiscoveryLoad: RecommendationRequest {
     private var menu: [String: MenuV2CellVenue] = [:]
     private var menuOrigins: [String: String] = [:]
     private var menuUnavailableCells = Set<String>()
+    private var menuPending = Set<String>()
     private let today: () -> String
     private var completion: ((DiscoverySnapshot) -> Void)?
     private var deadline: RecommendationRequest?
@@ -127,46 +128,44 @@ private final class DiscoveryLoad: RecommendationRequest {
     }
 
     private func fetchMenuV2(_ cell: String, parsed: DiscoveryJSON.Cell?, mobileAvailable: Bool) {
+        // Existing validated prices must survive a stalled optional menu read
+        // and the global deadline. Keep the cell active until that read ends.
+        commitBase(cell, parsed: parsed, mobileAvailable: mobileAvailable)
         guard includeMenuV2, EuropeJSON.italianCell(cell) else {
-            completed(cell, parsed: parsed, mobileAvailable: mobileAvailable); return
+            releaseCell(cell); return
         }
-        readMenuPage(cell, after: nil, pagesLeft: 10, collected: [:], partial: false,
-                     parsed: parsed, mobileAvailable: mobileAvailable)
+        menuPending.insert(cell)
+        readMenuPage(cell, after: nil, pagesLeft: 10, collected: [:], partial: false)
     }
 
     private func readMenuPage(_ cell: String, after: String?, pagesLeft: Int,
-                              collected: [String: MenuV2CellVenue], partial: Bool,
-                              parsed: DiscoveryJSON.Cell?, mobileAvailable: Bool) {
+                              collected: [String: MenuV2CellVenue], partial: Bool) {
         let categories = DrinkCategory.all.map(\.code)
         fetch(.menuV2Cell(cell: cell, categories: categories, after: after)) { [weak self] result in
             guard let self else { return }
             guard let page = try? MenuV2JSON.cellPage(result.get(), cell: cell,
                                                       categories: categories, after: after) else {
-                self.finishMenu(cell, collected: collected, partial: true,
-                                parsed: parsed, mobileAvailable: mobileAvailable); return
+                self.finishMenu(cell, collected: collected, partial: true); return
             }
             var next = collected
             for venue in page.venues {
                 guard next[venue.key] == nil else {
-                    self.finishMenu(cell, collected: next, partial: true,
-                                    parsed: parsed, mobileAvailable: mobileAvailable); return
+                    self.finishMenu(cell, collected: next, partial: true); return
                 }
                 next[venue.key] = venue
             }
             if let cursor = page.next, pagesLeft > 1 {
                 self.readMenuPage(cell, after: cursor, pagesLeft: pagesLeft - 1,
-                                  collected: next, partial: partial || page.incomplete,
-                                  parsed: parsed, mobileAvailable: mobileAvailable)
+                                  collected: next, partial: partial || page.incomplete)
             } else {
                 self.finishMenu(cell, collected: next,
-                                partial: partial || page.incomplete || page.next != nil,
-                                parsed: parsed, mobileAvailable: mobileAvailable)
+                                partial: partial || page.incomplete || page.next != nil)
             }
         }
     }
 
-    private func finishMenu(_ cell: String, collected: [String: MenuV2CellVenue], partial: Bool,
-                            parsed: DiscoveryJSON.Cell?, mobileAvailable: Bool) {
+    private func finishMenu(_ cell: String, collected: [String: MenuV2CellVenue], partial: Bool) {
+        menuPending.remove(cell)
         if partial { menuUnavailableCells.insert(cell) }
         for venue in collected.values {
             if let previous = menuOrigins[venue.key], previous != cell {
@@ -177,10 +176,10 @@ private final class DiscoveryLoad: RecommendationRequest {
                 menu[venue.key] = venue
             }
         }
-        completed(cell, parsed: parsed, mobileAvailable: mobileAvailable)
+        releaseCell(cell)
     }
 
-    private func completed(_ cell: String, parsed: DiscoveryJSON.Cell?, mobileAvailable: Bool) {
+    private func commitBase(_ cell: String, parsed: DiscoveryJSON.Cell?, mobileAvailable: Bool) {
         if let parsed {
             for venue in parsed.venues {
                 if let known = catalog?.venues[venue.key], known.cell != cell {
@@ -205,6 +204,9 @@ private final class DiscoveryLoad: RecommendationRequest {
             if !parsed.incomplete && !self.conflictingCells.contains(cell) { self.unavailable.remove(cell) }
         }
         if mobileAvailable && !conflictingCells.contains(cell) { unavailable.remove(cell) }
+    }
+
+    private func releaseCell(_ cell: String) {
         active.remove(cell); pump()
     }
 
@@ -226,6 +228,7 @@ private final class DiscoveryLoad: RecommendationRequest {
 
     private func finish() {
         guard let callback = completion else { return }
+        menuUnavailableCells.formUnion(menuPending)
         let value = DiscoverySnapshot(area: area, venues: Array(results.values), unavailableCells: unavailable,
                                       europe: includeEurope ? europe : nil,
                                       menu: menu, menuUnavailableCells: menuUnavailableCells)

@@ -113,6 +113,58 @@ final class DiscoveryTests: XCTestCase {
         XCTAssertTrue(value.displayRows(drink: "beer_draft", band: .normal).isEmpty)
     }
 
+    func testFailedOrStalledMenuKeepsValidatedExistingPricesAndMarksMenuPartial() throws {
+        let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
+        let firstCell = try XCTUnwrap(area.cells.first)
+        let point = cellCenter(firstCell)
+        for stall in [false, true] {
+            let transport = DelayedComparisonTransport(), timer = ManualComparisonDeadline()
+            let client = DiscoveryClient(transport: transport, today: { "2026-11-03" }, schedule: timer.schedule)
+            var output: DiscoverySnapshot?
+            var completions = 0
+            let operation = client.load(area) { output = $0; completions += 1 }; defer { operation.cancel() }
+            var italian = EuropeFixtures.venues[0]
+            italian["city"] = "Milano"; italian["country"] = "IT"; italian["currency"] = "EUR"
+            italian["cell"] = firstCell; italian["lat"] = point.0; italian["lon"] = point.1
+            try transport.complete(0, .success(EuropeFixtures.json([
+                "schema_version": 1, "version": "fixture-v1", "venues": [italian]])))
+            try transport.complete(1, .success(ComparisonFixtures.health))
+            XCTAssertEqual(try transport.call(2).endpoint, .venues(version: "20261027", cell: firstCell))
+            try transport.complete(2, .success(ComparisonFixtures.json(["c": [], "v": [
+                ["n123", "Legacy", 1, point.0, point.1, "Via reale 1", -1]
+            ]])))
+            XCTAssertEqual(try transport.call(5).endpoint, .prices(cell: firstCell))
+            try transport.complete(5, .success(ComparisonFixtures.prices([
+                ["n123", "beer_draft", 0, 600, "2026-11-01", 0, 0]
+            ])))
+            XCTAssertEqual(try transport.call(6).endpoint, .mobilePrices(cell: firstCell))
+            var row = EuropeFixtures.rows("gcpvj")[1]
+            row["cell"] = firstCell; row["currency"] = "EUR"
+            try transport.complete(6, .success(EuropeFixtures.cell(firstCell, rows: [row])))
+            guard case .menuV2Cell(let requestedCell, _, nil) = try transport.call(7).endpoint else {
+                return XCTFail("Expected the optional menu read after both validated price reads")
+            }
+            XCTAssertEqual(requestedCell, firstCell)
+            XCTAssertNil(output, "The cell stays active until optional menu settles or the deadline fires")
+            if !stall { try transport.complete(7, .failure(.unavailable)) }
+            timer.fire()
+            let value = try XCTUnwrap(output)
+            XCTAssertEqual(value.venues.first?.price(drink: "beer_draft", band: .normal)?.cents, 600)
+            XCTAssertEqual(value.europe?.venues["n1001"]?.prices.first?.amountMinor, 650)
+            XCTAssertFalse(value.unavailableCells.contains(firstCell), "Existing price reads were complete")
+            XCTAssertTrue(value.menuUnavailableCells.contains(firstCell), "The menu feed was not complete")
+            XCTAssertTrue(value.partialCells.contains(firstCell))
+            XCTAssertEqual(value.displayRows(drink: "beer_draft", band: .normal).count, 2)
+            XCTAssertEqual(transport.outstanding, 0)
+            XCTAssertEqual(completions, 1)
+            if stall {
+                try transport.complete(7, .success(menuCellFixture(cell: firstCell,
+                    categories: DrinkCategory.all.map(\.code), includeOffer: false)))
+                XCTAssertEqual(completions, 1, "Late menu data cannot publish another result")
+            }
+        }
+    }
+
     private func menuCellFixture(cell: String, categories: [String], includeOffer: Bool) throws -> Data {
         let venue: [String: Any] = [
             "key": "n123", "cell": cell, "name": "Nome attuale", "kind": 1,

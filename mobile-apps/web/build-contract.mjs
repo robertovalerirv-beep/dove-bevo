@@ -173,23 +173,27 @@ export function transformMap(source, styleURLExpression) {
     result,
     "    await map.ready;\n    return map;",
     `    try {
-      await map.ready;
       await new Promise<void>((resolve, reject) => {
         let settled = false;
+        let listening = false;
         const finish = (error?: Error) => {
           if (settled) return;
           settled = true;
           window.clearTimeout(timer);
-          map.map.off("idle", onIdle);
-          map.map.off("error", onError);
+          if (listening) map.map.off("idle", onIdle);
           if (error) reject(error); else resolve();
         };
         const onIdle = () => { if (map.map.loaded()) finish(); };
-        const onError = () => finish(new Error("Map tiles unavailable"));
         const timer = window.setTimeout(() => finish(new Error("Map tiles timed out")), 12000);
-        map.map.on("idle", onIdle);
-        map.map.on("error", onError);
-        onIdle();
+        void map.ready.then(
+          () => {
+            if (settled) return;
+            map.map.on("idle", onIdle);
+            listening = true;
+            onIdle();
+          },
+          () => finish(new Error("Map style unavailable")),
+        );
       });
       return map;
     } catch (error) {

@@ -64,10 +64,13 @@ final class SavedDrinkScreen {
         try{saved=store.load();offers=offerStore==null?Collections.emptyList():offerStore.load();}
         catch(IOException unavailable){saved=Collections.emptyList();offers=Collections.emptyList();status.setText("Impossibile leggere i drink salvati. Nessun dato modificato.");render();return;}
         if(saved.isEmpty()&&offers.isEmpty()){status.setText(legacy.isEmpty()?"Non hai ancora salvato drink. Apri un locale sulla mappa e tocca Salva.":"Hai locali salvati in precedenza: scegli un drink qui sotto per conservarli.");render();return;}
-        List<SavedVenueStore.Venue> venues=new ArrayList<>();for(SavedDrinkStore.Entry item:saved)venues.add(item.venue);for(SavedMenuOfferStore.Entry item:offers)venues.add(item.venue);
-        busy=true;status.setText("Aggiornamento prezzi…");render();
-        try{request=loader.load(venues,value->{if(token!=generation||!usable())return;request=null;busy=false;cells=value;status.setText("Prezzi disponibili aggiornati");render();});}
-        catch(IOException unavailable){busy=false;status.setText("Prezzi non disponibili. I drink salvati restano sul dispositivo.");render();}
+        List<SavedVenueStore.Venue> legacyVenues=new ArrayList<>();for(SavedDrinkStore.Entry item:saved)legacyVenues.add(item.venue);
+        List<SavedVenueStore.Venue> venues=new ArrayList<>(legacyVenues);for(SavedMenuOfferStore.Entry item:offers)venues.add(item.venue);
+        if(!legacyVenues.isEmpty()){
+            busy=true;status.setText("Aggiornamento prezzi...");render();
+            try{request=loader.load(legacyVenues,value->{if(token!=generation||!usable())return;request=null;busy=false;cells=value;status.setText("Prezzi disponibili aggiornati");render();});}
+            catch(IOException unavailable){busy=false;status.setText("Prezzi non disponibili. I drink salvati restano sul dispositivo.");render();}
+        }
         if(menuLoader!=null){
             menuBusy=true;render();
             try{menuRequest=menuLoader.load(venues,value->{if(token!=generation||!usable())return;menuRequest=null;menuBusy=false;menus=value;render();});}

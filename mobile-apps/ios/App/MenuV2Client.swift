@@ -33,7 +33,7 @@ private final class MenuV2Load: RecommendationRequest {
         queued = saved.filter { seen.insert($0.url).inserted }
     }
     func start() {
-        guard saved.count <= 50, saved.allSatisfy({ ComparisonJSON.cell(from: $0) != nil }) else { finish(); return }
+        guard saved.count <= 100, saved.allSatisfy({ ComparisonJSON.cell(from: $0) != nil }) else { finish(); return }
         let deadline = DispatchWorkItem { [weak self] in self?.finish() }
         self.deadline = deadline
         DispatchQueue.main.asyncAfter(deadline: .now() + 60, execute: deadline)

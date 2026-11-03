@@ -183,15 +183,21 @@ final class SavedVenuesViewController: UITableViewController {
         guard !(showingDrinks ? drinksFailed || offersFailed : storeFailed), !selected.isEmpty else { return }
         var seen = Set<URL>()
         let requested = selected.filter { seen.insert($0.url).inserted }
-        let token = UUID(); generation = token; busy = true
-        render()
-        let handle = client.load(requested) { [weak self] value in
-            guard let self, self.generation == token, self.busy else { return }
-            guard self.canRead else { self.retire(); return }
-            self.request = nil; self.busy = false; self.snapshot = value
-            self.render()
+        let token = UUID(); generation = token
+        let legacyRequested: [SavedVenue] = showingDrinks ? {
+            var unique = Set<URL>()
+            return drinks.map(\.venue).filter { unique.insert($0.url).inserted }
+        }() : requested
+        if !legacyRequested.isEmpty {
+            busy = true; render()
+            let handle = client.load(legacyRequested) { [weak self] value in
+                guard let self, self.generation == token, self.busy else { return }
+                guard self.canRead else { self.retire(); return }
+                self.request = nil; self.busy = false; self.snapshot = value
+                self.render()
+            }
+            if generation == token && busy { request = handle } else { handle.cancel() }
         }
-        if generation == token && busy { request = handle } else { handle.cancel() }
         if showingDrinks, let menuClient {
             menuBusy = true; render()
             let menuHandle = menuClient.load(requested) { [weak self] value in

@@ -484,6 +484,7 @@ export function CustomerPricesV2({
             >
               <span class="mobile-menu-v2__name">
                 {offer.name}
+                <small class="mobile-menu-v2__provenance">Prezzo da menu</small>
                 {exactSaved ? (
                   <small class="mobile-menu-v2__saved">Questo drink è nei tuoi preferiti</small>
                 ) : (

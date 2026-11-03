@@ -442,18 +442,23 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
   const venueKind = venueKey.startsWith("m") && venue.kind === 0 ? "Locale" : it.kinds[venue.kind];
+  const heroOffer = menu?.offers.find(matchesMenu);
+  const heroDrink =
+    savedOfferFocus !== null
+      ? (heroOffer?.category ?? null)
+      : savedFocus !== null
+        ? savedFound || heroOffer
+          ? savedFocus.drink
+          : null
+        : (active.find(isFocus)?.[1] ??
+          menu?.offers.find((offer) => offer.category && focus.includes(offer.category))?.category ??
+          active[0]?.[1] ??
+          menu?.offers.find((offer) => offer.category)?.category ??
+          null);
   return (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
-        <DrinkHero
-          drink={
-            savedFocus?.drink ??
-            menu?.offers.find((offer) => offer.id === savedOfferFocus)?.category ??
-            active[0]?.[1] ??
-            focus[0] ??
-            "spritz"
-          }
-        />
+        <DrinkHero drink={heroDrink} />
         <div class="scontrino__paper">
           <p class="bar__kind">{[venueKind, venue.city].filter(Boolean).join(" · ")}</p>
           <h2 class="scontrino__name" tabIndex={-1}>

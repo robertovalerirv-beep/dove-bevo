@@ -180,7 +180,7 @@ async function fixture(options = {}) {
       const offer = (id, name, amount, context = { kind: "regular", condition: null }) => ({
         id,
         name,
-        category: "spritz",
+        category: options.menuCategory === undefined ? "spritz" : options.menuCategory,
         serving: { label: "Calice", ml: null },
         amount_minor: amount,
         currency: "EUR",
@@ -209,8 +209,8 @@ async function fixture(options = {}) {
           offers: after
             ? [offer("third", "Analcolico", 450)]
             : [
-                offer("first", "Spritz <script>", 750),
-                offer("second", "Spritz serale", 550, {
+                offer("first", options.menuCategory === null ? "Cocktail della casa" : "Spritz <script>", 750),
+                offer("second", options.menuCategory === null ? "Cocktail serale" : "Spritz serale", 550, {
                   kind: "conditional",
                   condition: "dopo le 18",
                 }),
@@ -750,6 +750,26 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
   }
 });
 
+test("uncategorized sourced drinks use neutral venue art and menu prices do not look like deals", async () => {
+  const f = await fixture({ menuCategory: null });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByText("Cocktail della casa").waitFor();
+    const hero = f.page.locator(".mobile-venue__hero--neutral");
+    await hero.waitFor();
+    assert.equal(await hero.locator('img[src="/brand/simbolo.svg"]').count(), 1);
+    assert.equal(await f.page.locator(".mobile-venue__hero figcaption").count(), 0);
+    const first = f.page.locator(".mobile-menu-v2__offer").first();
+    assert.match(await first.innerText(), /Cocktail della casa[\s\S]*Prezzo da menu[\s\S]*7,50\s*€/);
+    assert.equal(
+      await first.locator(".mobile-menu-v2__amount").evaluate((element) => getComputedStyle(element).color),
+      "rgb(16, 24, 32)",
+    );
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
 test("owner-verified venue separates cited menu and customer price, and submits an update to the fixture only", async () => {
   const f = await fixture();
   try {

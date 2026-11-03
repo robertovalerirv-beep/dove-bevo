@@ -11,6 +11,7 @@ import {
   type CustomerSubmission,
 } from "../customer-prices-v2";
 import { menuMoney, type MenuOffer, type MenuPage } from "../menu-v2";
+import { menuOfferMatchesFocus, type DrinkFocus } from "../routes";
 
 type Editor =
   { kind: "menu_offer"; offer: MenuOffer } | { kind: "new_drink"; row: CustomerRow | null };
@@ -49,7 +50,7 @@ function customerDate(row: CustomerRow): string {
 }
 
 /** App-only source menu plus separate, public customer observations. */
-export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
+export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: DrinkFocus | null }) {
   const { key, cell, country } = menu.venue;
   const [rows, setRows] = useState<CustomerRow[]>([]);
   const [nextAfter, setNextAfter] = useState<string | null>(null);
@@ -275,6 +276,12 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
     }
   }
 
+  const orderedOffers = focus
+    ? [...menu.offers].sort(
+        (a, b) =>
+          Number(menuOfferMatchesFocus(b, focus)) - Number(menuOfferMatchesFocus(a, focus)),
+      )
+    : menu.offers;
   const observations = new Map(
     rows
       .filter((row) => row.kind === "menu_offer" && row.offer_id)
@@ -429,11 +436,18 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
   return (
     <>
       <ul class="mobile-menu-v2__offers">
-        {menu.offers.map((offer) => {
+        {orderedOffers.map((offer) => {
           const customer = observations.get(offer.id);
           return (
-            <li key={offer.id} class="mobile-menu-v2__offer">
+            <li
+              key={offer.id}
+              class={`mobile-menu-v2__offer${focus && menuOfferMatchesFocus(offer, focus) ? " mobile-menu-v2__offer--focused" : ""}`}
+              data-testid={focus && menuOfferMatchesFocus(offer, focus) ? "saved-menu-offer" : undefined}
+            >
               <span class="mobile-menu-v2__name">{offer.name}</span>
+              {focus && menuOfferMatchesFocus(offer, focus) && (
+                <small class="mobile-menu-v2__saved">Drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}</small>
+              )}
               <strong class="mobile-menu-v2__amount">
                 {menuMoney(offer.amount_minor, offer.currency, offer.currency_exponent)}
               </strong>

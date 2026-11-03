@@ -91,10 +91,22 @@ final class FavouriteComparisonControllerTests: XCTestCase {
             controller.loadViewIfNeeded()
             XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 0)
             XCTAssertTrue(client.calls.isEmpty, "Loading a hidden tab must not read the network")
-            appear(controller)
-            XCTAssertEqual(client.calls.count, 1)
+            // Mount after the hidden-state assertion: UIKit only materialises a scrolled
+            // table cell reliably when its controller belongs to an active window.
+            let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first {
+                $0.activationState == .foregroundActive
+            })
+            let previous = scene.windows.first { $0.isKeyWindow }
+            let window = UIWindow(windowScene: scene)
+            window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+            window.rootViewController = controller
+            window.makeKeyAndVisible()
+            defer { window.isHidden = true; window.rootViewController = nil; previous?.makeKey() }
+            let appeared = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in client.calls.count == 1 }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [appeared], timeout: 5), .completed)
             try client.complete(0, snapshot(saved, name: "Nome attuale", prices: [price(.normal, 800)]))
             let cell = try row(controller)
+            XCTAssertTrue(cell.window === window)
             XCTAssertEqual(cell.accessibilityLabel, "Nome attuale")
             XCTAssertTrue(try XCTUnwrap(cell.accessibilityValue).contains("8,00 €"))
             XCTAssertTrue(try XCTUnwrap(cell.accessibilityValue).contains("2026-10-28"))

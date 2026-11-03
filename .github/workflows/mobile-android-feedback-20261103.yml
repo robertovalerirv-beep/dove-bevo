@@ -1,0 +1,67 @@
+name: Verified Android internal candidate 100
+
+on:
+  push:
+    tags:
+      - "mobile-android-feedback/20261103-build100-v1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dovebevo-android-feedback-100
+  cancel-in-progress: false
+
+jobs:
+  checked-internal-bundle:
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      github.ref == 'refs/tags/mobile-android-feedback/20261103-build100-v1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/mobile-apps/android/.gradle-user-home
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Require the independently tested Android and presentation source
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD:mobile-apps/android)" == acdf8da88628f759ea74c0c0f324f2ef6a5785eb ]]
+          [[ "$(git rev-parse HEAD:mobile-apps/presentation)" == ccf726821dbd72ab7a4f240830ba49ea97115e04 ]]
+          [[ "$(git rev-parse HEAD:mobile-apps/scripts/release-android.sh)" == 51636349982d32bec117ab712270dec84327ee7a ]]
+          node scripts/check-workflows.mjs
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Run Android unit tests, lint and unsigned compilation
+        working-directory: mobile-apps/android
+        run: bash gradlew --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - name: Verify existing signing and private-runtime guards without credentials
+        run: |
+          python3 -B mobile-apps/android/tests/release_android_test.py -q
+          python3 -B -m unittest discover -s mobile-apps/scripts/tests -p 'test_android_smoke.py' -q
+      - name: Sign and verify the internal Android bundle only
+        env:
+          DOVEBEVO_ANDROID_KEYSTORE_BASE64: ${{ secrets.DOVEBEVO_ANDROID_KEYSTORE_BASE64 }}
+          DOVEBEVO_SIGNING_PASSWORD: ${{ secrets.DOVEBEVO_SIGNING_PASSWORD }}
+          DOVEBEVO_ANDROID_CERT_SHA256: ${{ secrets.DOVEBEVO_ANDROID_CERT_SHA256 }}
+          DOVEBEVO_BUILD_NUMBER: "100"
+        run: bash mobile-apps/scripts/release-android.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dove-bevo-android-internal-100-${{ github.sha }}
+          path: mobile-apps/android/app/build/outputs/bundle/release/*.aab
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-android-internal-100-checks-${{ github.sha }}
+          path: mobile-apps/android/app/build/reports/
+          retention-days: 7
+          if-no-files-found: warn

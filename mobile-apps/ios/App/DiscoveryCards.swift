@@ -61,7 +61,7 @@ struct DiscoveryCategorySummary: Equatable {
         text.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
         count.font = .preferredFont(forTextStyle: .caption2); count.adjustsFontForContentSizeCategory = true
         count.numberOfLines = 0; count.textAlignment = .center; count.textColor = NativeAppearance.ink
-        let badge = UIView(); badge.backgroundColor = .white; badge.layer.cornerRadius = 6
+        let badge = UIView(); badge.backgroundColor = NativeAppearance.surface; badge.layer.cornerRadius = 6
         badge.translatesAutoresizingMaskIntoConstraints = false; count.translatesAutoresizingMaskIntoConstraints = false
         badge.addSubview(count); photo.addSubview(badge)
         NSLayoutConstraint.activate([

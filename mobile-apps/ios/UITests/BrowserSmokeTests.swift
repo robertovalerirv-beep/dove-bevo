@@ -370,7 +370,7 @@ final class BrowserSmokeTests: XCTestCase {
         waitForNativePageReady()
         // Saving the reopened venue must update that same record, not create a
         // different URL/key or ask the tester to provide an invented name.
-        saveCurrentVenueInOneTap()
+        saveCurrentDrinkAtVenue()
         app.buttons["tab.favorites"].tap()
         XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 1)
         let qaRow = app.tables["savedVenues.list"].cells[savedIdentity]

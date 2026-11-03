@@ -94,7 +94,7 @@ export function transformApp(source) {
   result = once(
     result,
     "          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}",
-    '          {inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n            <p class="mobile-menu-map-note">{drinks.length ? "M+ = prezzo del drink da menu; coperto e supplementi esclusi" : "Numeri sulla mappa = voci di menu verificate o prezzi segnalati; non sono prezzi medi"}</p>\n          )}\n          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}',
+    '          {!pinning && <MobileMapActions onAddPrice={() => openAdd(null)} onAddVenue={() => startProposal()} />}\n          {inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n            <p class="mobile-menu-map-note">{drinks.length ? "M+ = prezzo del drink da menu; coperto e supplementi esclusi" : "Numeri sulla mappa = voci di menu verificate o prezzi segnalati; non sono prezzi medi"}</p>\n          )}\n          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}',
   );
   const tree = ts.createSourceFile(
     "app.tsx",
@@ -125,7 +125,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileDefaultDrink, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
+    'import { mobilePath, mobileURL, mobileDefaultDrink, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }

@@ -56,7 +56,9 @@ final class SavedDrinkControllerTests: XCTestCase {
                 client.complete(FavouriteComparisonSnapshot(venues: [url: current], unavailable: []))
                 controller.tableView.layoutIfNeeded()
                 XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 2)
-                let index = IndexPath(row: 0, section: 0)
+                let index = try XCTUnwrap((0..<2).map { IndexPath(row: $0, section: 0) }.first {
+                    controller.tableView(controller.tableView, cellForRowAt: $0).accessibilityLabel?.contains("Happy hour") == true
+                })
                 let row = controller.tableView(controller.tableView, cellForRowAt: index)
                 XCTAssertTrue(row.accessibilityLabel?.contains("Happy hour") == true)
                 XCTAssertTrue(row.accessibilityLabel?.contains("Current automatic name") == true)

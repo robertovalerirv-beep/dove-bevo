@@ -27,3 +27,11 @@ condition = "AND"
 regexTarget = "secret"
 paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/e6275baccc29ad8ef4ca7a3c7aa20d8717e2eb3549c22105ab0ce9975e69fc49\.json$''']
 regexes = ['''^mbbd4a28a10bfcb50c6d9daef$''']
+
+# Exact public identifier exception for the Sa Panada owner venue manifest.
+[[rules.allowlists]]
+description = "Sa Panada public owner venue identifier"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/e6f7a4f76eeee6e178fb7621d61277d615540d7c7b218a889efb33ce51890d5d\.json$''']
+regexes = ['''^m1354096fc013d6e5d045b2ed$''']

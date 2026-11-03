@@ -41,6 +41,12 @@ public final class MenuV2PricesTest {
         SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Saved actual name");
         MenuV2Prices client=new MenuV2Prices((url,max,call)->url.contains("customer-prices")?bytes(customer(300)):bytes(menu(offer("a2","regular",550),1,null)));
         assertEquals(1,client.load(venue,call()).prices.size());
+        String incomplete=customer(200).replace("\"next_after\":null", "\"next_after\":\"c"+"b".repeat(64)+"\"");
+        MenuV2Prices interrupted=new MenuV2Prices((url,max,call)->{
+            if(url.contains("customer-prices")&&url.contains("&after="))throw new IOException("Owned second page unavailable");
+            return bytes(url.contains("customer-prices")?incomplete:menu(offer("a2","regular",550),1,null));
+        });
+        assertEquals(1,interrupted.load(venue,call()).prices.size(),"A partial customer page must never become a claimed complete comparison");
         MenuV2Prices broken=new MenuV2Prices((url,max,call)->bytes(menu(offer("a1","regular",550),2,"wrong")));
         assertThrows(IOException.class,()->broken.load(venue,call()));
     }

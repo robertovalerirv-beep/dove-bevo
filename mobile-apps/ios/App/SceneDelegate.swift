@@ -14,13 +14,13 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.tintColor = NativeAppearance.ink
         let acceptance = RulesAcceptance()
         if acceptance.isCurrent {
-            window.rootViewController = NativeTabsController()
+            window.rootViewController = NativeTabsController(menuClient: MenuV2Client())
         } else {
             let navigationController = UINavigationController()
             let welcome = WelcomeViewController { [weak window] in
                 guard let window else { return }
                 acceptance.acceptCurrentVersion()
-                window.rootViewController = NativeTabsController()
+                window.rootViewController = NativeTabsController(menuClient: MenuV2Client())
             }
             navigationController.setViewControllers([welcome], animated: false)
             window.rootViewController = navigationController

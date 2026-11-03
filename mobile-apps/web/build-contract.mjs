@@ -50,9 +50,9 @@ export function transformApp(source) {
   result = once(result, "}, [view, attempt]);", "}, [view, attempt, drinks]);");
   result = once(
     result,
-    '    // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.',
-    `    useEffect(() => {
-      const refresh = (event: Event) => {
+    '  // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.',
+    `  useEffect(() => {
+    const refresh = (event: Event) => {
         const cell = (event as CustomEvent<{ cell?: string }>).detail?.cell;
         if (cell && view && visibleCells(view)?.includes(cell))
           setAttempt((value) => value + 1);
@@ -61,7 +61,7 @@ export function transformApp(source) {
       return () => { window.removeEventListener("dovebevo:menu-cell-ready", refresh); };
     }, [view]);
 
-    // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.`,
+  // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.`,
   );
   result = once(
     result,

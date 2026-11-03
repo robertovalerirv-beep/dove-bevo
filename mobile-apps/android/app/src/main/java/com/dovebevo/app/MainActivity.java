@@ -208,7 +208,7 @@ public final class MainActivity extends ComponentActivity {
         // The first WebView and network observer are created only after current rules acceptance.
         WebView.setWebContentsDebuggingEnabled(false);
         LinearLayout shell = createShell();
-        // Preserve browser history for Android Back and the bottom overflow.
+        // Preserve browser history for Android Back and the top overflow.
         backButton = button(R.id.back, R.string.back, this::goBack);
         forwardButton = button(R.id.forward, R.string.forward, this::goForward);
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -221,6 +221,7 @@ public final class MainActivity extends ComponentActivity {
         offline.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         offline.setVisibility(View.GONE);
         shell.addView(offline, new LinearLayout.LayoutParams(-1, -2));
+        shell.addView(createTopActions(), new LinearLayout.LayoutParams(-1, dp(52)));
         content = new FrameLayout(this);
         shell.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
         shell.addView(createBottomNavigation(),new LinearLayout.LayoutParams(-1,-2));
@@ -269,9 +270,23 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+    private LinearLayout createTopActions() {
+        // Only the overflow stays above the map. Reserving its own slim row
+        // keeps it clear of city, currency and drink controls in the WebView.
+        LinearLayout topActions = new LinearLayout(this);
+        topActions.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        topActions.setPadding(dp(8), 0, dp(8), 0);
+        Button more = button(R.id.more, R.string.more_symbol, () -> {});
+        more.setContentDescription(getString(R.string.more_options));
+        more.setTextSize(26);
+        more.setMinWidth(dp(48)); more.setMinimumWidth(dp(48));
+        more.setOnClickListener(this::showMenu);
+        topActions.addView(more, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        return topActions;
+    }
     private LinearLayout createBottomNavigation() {
-        BottomNavigationBar bottom = new BottomNavigationBar(this, this::openMapSearch, this::showMap,
-                this::showFavorites, this::saveCurrentVenue, this::showRecommendations, this::showMenu);
+        BottomNavigationBar bottom = new BottomNavigationBar(this, this::goHome, this::openMapSearch,
+                this::showMap, this::showFavorites, this::saveCurrentVenue, this::showRecommendations);
         mapDestination = bottom.findViewById(R.id.map_destination);
         favoritesDestination = bottom.findViewById(R.id.favorites_destination);
         saveButton = bottom.findViewById(R.id.save_venue);
@@ -469,10 +484,10 @@ public final class MainActivity extends ComponentActivity {
         }
         if(saveButton!=null){saveButton.setEnabled(foreground&&eligibleSavedVenue()!=null);saveButton.setAlpha(saveButton.isEnabled()?1f:.5f);}
         if(mapDestination!=null){styleDestination(mapDestination,!nativeDestinationVisible());styleDestination(favoritesDestination,favoritesVisible);}
-        for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination}){
+        for(int id:new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.more}){
             View control=findViewById(id);if(control!=null)control.setEnabled(foreground&&!destroyed);
         }
-        for(int id:new int[]{R.id.home,R.id.save_venue,R.id.recommendation_entry}){
+        for(int id:new int[]{R.id.home,R.id.search_destination,R.id.save_venue,R.id.recommendation_entry}){
             Button control=findViewById(id);if(control!=null)styleDestination(control,id==R.id.home&&discoveryVisible);
         }
         if (recommendations != null) recommendations.contextChanged();
@@ -755,7 +770,6 @@ public final class MainActivity extends ComponentActivity {
                 .setEnabled(foreground && (nativeDestinationVisible() || website != null && website.canGoBack()));
         menu.getMenu().add(Menu.NONE, R.id.forward, Menu.NONE, R.string.forward)
                 .setEnabled(mapActive && website.canGoForward());
-        menu.getMenu().add(Menu.NONE, R.id.discover_action, Menu.NONE, "Scopri");
         menu.getMenu().add(Menu.NONE, R.id.information, Menu.NONE, "Informazioni");
         menu.getMenu().add(Menu.NONE, R.id.location_help, Menu.NONE, R.string.location_help);
         menu.getMenu().add(Menu.NONE, R.id.privacy, Menu.NONE, R.string.privacy);
@@ -774,7 +788,6 @@ public final class MainActivity extends ComponentActivity {
             if (item.getItemId() == R.id.forward) {
                 if(!nativeDestinationVisible()&&website!=null)goForward();return true;
             }
-            if (item.getItemId() == R.id.discover_action) { goHome(); return true; }
             if (item.getItemId() == R.id.information) { showInformation(); return true; }
             if (item.getItemId() == R.id.location_help) { showLocationHelp(); return true; }
             if (item.getItemId() == R.id.privacy) { showPrivacy(); return true; }
@@ -934,6 +947,11 @@ public final class MainActivity extends ComponentActivity {
                     documentCheckGeneration++;
                     if (!"true".equals(result)) { showFailure(); return; }
                     hasUsablePage = true;
+                    // The verified /mobile/ document also needs the bundled
+                    // native presentation. The early document-start guard only
+                    // fixes colour mode; without this call the duplicate web
+                    // search lens remains visible above native Cerca.
+                    installMobilePresentation(view, view.getUrl());
                     view.evaluateJavascript("window.DoveBevoNativeOfferSave=true;window.dispatchEvent(new Event('dovebevo-native-ready'));",null);
                     setLoading(false);
                     errorPanel.setVisibility(View.GONE);

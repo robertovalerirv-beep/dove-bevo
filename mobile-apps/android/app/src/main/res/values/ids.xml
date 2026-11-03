@@ -5,6 +5,7 @@
     <item name="bottom_navigation" type="id" />
     <item name="forward" type="id" />
     <item name="home" type="id" />
+    <item name="search_destination" type="id" />
     <item name="share" type="id" />
     <item name="refresh" type="id" />
     <item name="more" type="id" />

@@ -3,7 +3,8 @@
     <string name="app_name">Dove bevo</string>
     <string name="back">Indietro</string>
     <string name="forward">Avanti</string>
-    <string name="home">Cerca</string>
+    <string name="home">Home</string>
+    <string name="search">Cerca</string>
     <string name="share">Condividi</string>
     <string name="refresh">Ricarica</string>
     <string name="stop_loading">Interrompi</string>

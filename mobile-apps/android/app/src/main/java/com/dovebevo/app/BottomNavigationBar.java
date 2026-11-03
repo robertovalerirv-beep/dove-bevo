@@ -7,26 +7,25 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
-/** Six persistent controls: three destinations, two venue actions and overflow. */
+/** Six persistent controls: Home, search, map, favourites and venue actions. */
 final class BottomNavigationBar extends LinearLayout {
     private final Button[] controls;
     private int columns;
-    BottomNavigationBar(Context context, Runnable home, Runnable map, Runnable favorites,
-            Runnable save, Runnable recommendations, View.OnClickListener more) {
+    BottomNavigationBar(Context context, Runnable home, Runnable search, Runnable map,
+            Runnable favorites, Runnable save, Runnable recommendations) {
         super(context);
         setId(R.id.bottom_navigation);
         setOrientation(VERTICAL);
         setBackgroundColor(context.getColor(R.color.shell_background));
         setPadding(dp(6), dp(6), dp(6), dp(6));
         controls = new Button[]{
-            control(R.id.home, R.string.home, R.string.home, R.drawable.native_search, home),
+            control(R.id.home, R.string.home, R.string.home, R.drawable.native_home, home),
+            control(R.id.search_destination, R.string.search, R.string.search, R.drawable.native_search, search),
             control(R.id.map_destination, R.string.map_destination, R.string.map_destination, R.drawable.native_map, map),
             control(R.id.favorites_destination, R.string.saved_venues, R.string.saved_venues, R.drawable.native_bookmark, favorites),
             control(R.id.save_venue, R.string.save_venue_short, R.string.save_venue, R.drawable.native_bookmark_add, save),
             control(R.id.recommendation_entry, R.string.recommendation_short, R.string.recommendation_entry, R.drawable.native_thumb, recommendations),
-            control(R.id.more, R.string.more_short, R.string.more_options, R.drawable.native_more, () -> {}),
         };
-        controls[controls.length - 1].setOnClickListener(more);
         android.content.res.Configuration config = getResources().getConfiguration();
         arrange(BottomNavigationLayout.columns(config.screenWidthDp, config.fontScale));
     }

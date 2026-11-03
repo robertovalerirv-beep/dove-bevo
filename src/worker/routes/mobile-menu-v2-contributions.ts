@@ -9,7 +9,7 @@ import { hmacHex } from "../lib/hmac";
 import { clientIp, consumeQuota } from "../lib/quota";
 import type { AppEnv } from "../types";
 import { MobileCell } from "./mobile-price-catalog";
-import { resolveRegisteredMenuVenue } from "./mobile-menu-v2";
+import { currentStaticMenuVenue, resolveContributableMenuVenue } from "./mobile-menu-v2";
 
 const Key = z.string().regex(/^(?:m[0-9a-f]{24}|[nwr][1-9][0-9]{0,14})$/);
 const OfferId = z
@@ -111,6 +111,11 @@ const LATEST =
 const UNBLOCKED =
   "NOT EXISTS (SELECT 1 FROM venues_hidden h WHERE h.venue_key=?1)" +
   " AND NOT EXISTS (SELECT 1 FROM mobile_venues_moderation m WHERE m.venue_key=?1)";
+const APPROVED_ACTIVE_VENUE =
+  "EXISTS (SELECT 1 FROM mobile_menu_v2_offers o" +
+  " JOIN mobile_menu_v2_sources s ON s.id=o.source_id" +
+  " AND s.venue_key=o.venue_key AND s.cell=o.cell AND s.use_review_status='approved'" +
+  " WHERE o.venue_key=?1 AND o.cell=?2 AND o.status='active')";
 const APPROVED_OFFER =
   "EXISTS (SELECT 1 FROM mobile_menu_v2_offers o" +
   " JOIN mobile_menu_v2_sources s ON s.id=o.source_id" +
@@ -257,7 +262,7 @@ mobileMenuV2CustomerPrices.get("/venues/:key", async (c) => {
   const cell = queryCell(c.req.url);
   const limit = queryLimit(c.req.url);
   const after = queryAfter(c.req.url);
-  const venue = await resolveRegisteredMenuVenue(c.env, key.data, cell);
+  const venue = await resolveContributableMenuVenue(c.env, key.data, cell);
   const result = await c.env.DB.prepare(
     "WITH latest AS (SELECT e.*, ROW_NUMBER() OVER" +
       " (PARTITION BY e.item_key ORDER BY e.seq DESC) AS rn" +
@@ -288,7 +293,7 @@ mobileMenuV2CustomerPrices.get("/venues/:key", async (c) => {
 
 mobileMenuV2CustomerPrices.post("/", async (c) => {
   const body = await readJson(c, Body);
-  const venue = await resolveRegisteredMenuVenue(c.env, body.venue_key, body.cell);
+  const venue = await resolveContributableMenuVenue(c.env, body.venue_key, body.cell);
   const item = await resolveItem(c.env, body, venue.country);
   const current = await c.env.DB.prepare(LATEST)
     .bind(body.venue_key, body.cell, item.key)
@@ -318,8 +323,10 @@ mobileMenuV2CustomerPrices.post("/", async (c) => {
       " (id,venue_key,cell,item_key,item_kind,offer_id,name,category,serving_label,serving_ml," +
       " amount_minor,currency,currency_exponent,observed_on,status,previous_revision,changed_at)" +
       " SELECT ?4,?1,?2,?3,?5,?12,?6,?7,?8,?9,?10,?13,?14,?15,?16,?17,?18" +
-      " WHERE EXISTS (SELECT 1 FROM mobile_menu_v2_venues v WHERE v.venue_key=?1 AND v.cell=?2)" +
-      " AND " +
+      " WHERE (EXISTS (SELECT 1 FROM mobile_menu_v2_venues v WHERE v.venue_key=?1 AND v.cell=?2)" +
+      " OR (?20=1 AND " +
+      APPROVED_ACTIVE_VENUE +
+      ")) AND " +
       UNBLOCKED +
       " AND (?5='new_drink' OR " +
       APPROVED_OFFER +
@@ -360,6 +367,7 @@ mobileMenuV2CustomerPrices.post("/", async (c) => {
       current?.id ?? null,
       new Date().toISOString(),
       body.expected_revision,
+      venue.identity_kind === "osm" && venue.country === "IT" ? 1 : 0,
     )
     .run();
   if (!insert.meta.changes) throw new ApiError("conflict");
@@ -368,7 +376,7 @@ mobileMenuV2CustomerPrices.post("/", async (c) => {
 
 mobileMenuV2CustomerPrices.post("/report", async (c) => {
   const body = await readJson(c, Report);
-  await resolveRegisteredMenuVenue(c.env, body.venue_key, body.cell);
+  await resolveContributableMenuVenue(c.env, body.venue_key, body.cell);
   const active = await c.env.DB.prepare(
     "SELECT id FROM mobile_menu_v2_customer_entries" +
       " WHERE id=?1 AND venue_key=?2 AND cell=?3 AND status='active'",

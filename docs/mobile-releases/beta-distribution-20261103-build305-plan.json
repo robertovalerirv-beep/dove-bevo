@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "app_id": "6827324444",
+  "build_id": "f1ece343-17ac-4ee5-8afc-91fad333d0c6",
+  "build_number": "305",
+  "version": "1.0.0",
+  "groups": [
+    {
+      "id": "c8a85ec6-997c-4a9c-b241-7a1efbf756eb",
+      "name": "Dove Bevo owner testing",
+      "is_internal_group": true
+    },
+    {
+      "id": "31303001-c08a-4696-a87b-447304705279",
+      "name": "Roberto feedback",
+      "is_internal_group": false
+    }
+  ],
+  "submit_beta_review_if_needed": true
+}

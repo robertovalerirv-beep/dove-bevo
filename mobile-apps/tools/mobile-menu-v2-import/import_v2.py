@@ -161,6 +161,16 @@ def canonical_owner_url(value):
 def normalized_address(value):
     return re.sub(r"\s+"," ",unicodedata.normalize("NFKC",text(value,5,512)).strip()).lower()
 
+def owner_address_visible(address,visible):
+    # Owner pages may place one comma between the same street and civic number.
+    # Keep the canonical m-key and OSM address comparison unchanged.
+    exact=normalized_address(address)
+    if exact in visible: return True
+    match=re.fullmatch(r"(.+\S) ([1-9][0-9]*(?:/[0-9a-z]+|[a-z])?)",exact)
+    if not match: return False
+    comma=match.group(1)+", "+match.group(2)
+    return bool(re.search(r"(?<![\w])"+re.escape(comma)+r"(?![\w/])",visible))
+
 def normalized_name(value):
     return re.sub(r"\s+"," ",unicodedata.normalize("NFKC",text(value,2,512)).strip()).lower()
 
@@ -541,7 +551,7 @@ def public_identity(row,transport,version,cells):
             visible=re.sub(r"\s+"," ",unicodedata.normalize("NFKC"," ".join(parser.parts)).strip()).lower()
         except (UnicodeError,ValueError) as exc:
             raise Error("owner location text invalid") from exc
-        if normalized_name(row["name"]) not in visible or normalized_address(row["address"]) not in visible:
+        if normalized_name(row["name"]) not in visible or not owner_address_visible(row["address"],visible):
             raise Error("owner location name/address absent")
         node_id=row["geo_reference_url"].rsplit("/",1)[1]
         xml=public_fetch(transport,f"https://api.openstreetmap.org/api/0.6/node/{node_id}",65536,"xml")

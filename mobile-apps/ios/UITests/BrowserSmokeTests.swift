@@ -479,7 +479,8 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(selector.label.contains("Birra media"))
         XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 1)
         XCTAssertFalse(app.segmentedControls["favorites.kind"].exists)
-        XCTAssertTrue(app.buttons["favorites.refresh"].exists)
+        XCTAssertFalse(app.buttons["favorites.refresh"].exists)
+        XCTAssertTrue(app.buttons["browser.more"].exists, "Favourites reload is reached through the top ellipsis")
     }
 
     private func verifyLiveVenueHistoryReadOnly(venueName: String) {

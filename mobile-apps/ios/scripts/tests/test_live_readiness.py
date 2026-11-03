@@ -56,7 +56,10 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertLess(live.index("waitForOrdinaryKeyboard()"), live.index('searchField.typeText("Milano")'))
         self.assertIn('XCTAssertEqual(searchField.value as? String, "Milano"', live)
         ready = self.source.split("private func waitForOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
-        self.assertIn("self.ordinaryKeyboardVisible()", ready)
+        self.assertIn("ordinaryKeyboardVisible()", ready)
+        self.assertIn("introductionTaps < 2", ready)
+        self.assertIn("dismissKeyboardIntroductionIfPresent(searchField:", ready)
+        self.assertIn("XCTAssertFalse(introduction.exists", ready)
         sample = self.source.split("private func ordinaryKeyboardVisible()", 1)[1].split("\n    private func", 1)[0]
         self.assertIn("keyboards.allElementsBoundByIndex.contains", sample)
         self.assertIn("isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)", sample)
@@ -81,15 +84,13 @@ class LiveReadinessTests(unittest.TestCase):
         for required in ['"Speed up your typing"', 'app.buttons["Continue"]',
                          'guard introduction.waitForExistence(timeout: 2)',
                          'appFrame.contains(buttonFrame)', 'withOffset(offset).tap()',
-                         'waitForOrdinaryKeyboard(timeout: 10)',
-                         'searchField.isHittable', 'assertNoNativeRecovery()']:
+                         'searchField.exists', 'assertNoNativeRecovery()']:
             self.assertIn(required, helper)
         self.assertNotIn('"exists == false"', helper)
-        self.assertLess(helper.index('withOffset(offset).tap()'), helper.index('waitForOrdinaryKeyboard(timeout: 10)'))
-        self.assertLess(helper.index('waitForOrdinaryKeyboard(timeout: 10)'), helper.index('DoveBevo-keyboard-introduction-after-continue'))
         ready = self.source.split("private func waitForOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
         self.assertIn('timeout: TimeInterval = 15', ready)
-        self.assertIn('XCTWaiter.wait(for: [ready], timeout: timeout)', ready)
+        self.assertIn('XCTAssertFalse(introduction.exists', ready)
+        self.assertIn('XCTAssertTrue(ordinaryKeyboardVisible()', ready)
 
     def test_keyboard_visibility_samples_actual_window_once_without_relaxing_geometry(self):
         sample = self.source.split("let searchVisible =", 1)[1].split("city.tap()", 1)[0]

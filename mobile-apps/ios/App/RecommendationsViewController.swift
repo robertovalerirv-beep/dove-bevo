@@ -17,8 +17,11 @@ final class RecommendationsViewController: UITableViewController {
     private let statusLabel = UILabel()
     private var categories = DrinkCategory.all
     private var renderedCategory: UIContentSizeCategory?
-    private lazy var refreshButton = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
-    // The parent ellipsis floats over this corner; keep Retry to its left.
+    var onReloadMenuChanged: (() -> Void)?
+    var reloadMenuTitle: String { snapshot == nil && !busy ? "Riprova" : "Ricarica" }
+    var canReloadFromMore: Bool { canInteract && !busy }
+    func reloadFromMore() { guard canReloadFromMore else { return }; refresh() }
+    // The parent ellipsis floats over this corner; retry lives inside it.
     private lazy var moreOverlaySpace: UIBarButtonItem = {
         let spacer = UIView(frame: CGRect(x: 0, y: 0, width: 56, height: 48))
         spacer.isUserInteractionEnabled = false
@@ -57,8 +60,7 @@ final class RecommendationsViewController: UITableViewController {
         tableView.register(RecommendationCell.self, forCellReuseIdentifier: "recommendation")
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 96
-        refreshButton.accessibilityIdentifier = "recommendations.retry"
-        navigationItem.rightBarButtonItems = [moreOverlaySpace, refreshButton]
+        navigationItem.rightBarButtonItems = [moreOverlaySpace]
         let name = UILabel()
         name.text = venue.label
         name.font = .preferredFont(forTextStyle: .title2)
@@ -225,7 +227,7 @@ final class RecommendationsViewController: UITableViewController {
         request?.cancel()
         finishRequest()
         snapshot = nil
-        status = "Consigli da aggiornare. Tocca Riprova."
+        status = "Consigli da aggiornare. Apri Altre opzioni e scegli Riprova."
         if isViewLoaded { render() }
     }
 
@@ -246,12 +248,11 @@ final class RecommendationsViewController: UITableViewController {
 
     private func render() {
         guard isViewLoaded else { return }
-        refreshButton.isEnabled = !busy && canInteract
-        refreshButton.title = snapshot == nil && !busy ? "Riprova" : "Ricarica"
         statusLabel.text = status
         statusLabel.accessibilityIdentifier = snapshot == nil ? (busy ? "recommendations.loading" : "recommendations.unavailable") : "recommendations.loaded"
         tableView.reloadData()
         view.setNeedsLayout()
+        onReloadMenuChanged?()
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { DrinkCategory.all.count }

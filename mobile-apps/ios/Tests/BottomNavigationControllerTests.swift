@@ -203,7 +203,6 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertEqual(tabs.selectedIndex, 2, "Home opens the retained native Discover feed")
         XCTAssertTrue(bar.button(for: .home).isSelected)
         tabs.selectedIndex = 1
-        let more = try XCTUnwrap(tabs.topMoreButton.menu)
         // UIKit may defer loading hidden navigation roots until they are shown.
         // Inspect each screen after its view has been constructed.
         tabs.favourites.loadViewIfNeeded()
@@ -212,12 +211,19 @@ final class BottomNavigationControllerTests: XCTestCase {
                        "Favourite actions leave room for the overlaid ellipsis")
         XCTAssertEqual(try XCTUnwrap(tabs.discovery.navigationItem.rightBarButtonItems?.first?.customView).bounds.width, 56,
                        "Discover actions leave room for the overlaid ellipsis")
+        XCTAssertEqual(tabs.discovery.navigationItem.rightBarButtonItems?.count, 1,
+                       "Mappa and reload belong in the bottom bar and ellipsis, not the Discover title bar")
+        let more = try XCTUnwrap(tabs.topMoreButton.menu)
         let titles = more.children.map(\.title)
+        XCTAssertTrue(titles.contains("Ricarica"))
         XCTAssertTrue(titles.contains("Privacy"))
         XCTAssertTrue(titles.contains("Informazioni"))
-        for hiddenBrowserAction in ["Condividi", "Ricarica", "Avanti", "Preferiti"] {
+        for hiddenBrowserAction in ["Condividi", "Avanti", "Preferiti", "Mappa"] {
             XCTAssertFalse(titles.contains(hiddenBrowserAction), "Hidden browser action appeared on Preferiti: \(hiddenBrowserAction)")
         }
+        tabs.selectedIndex = 2
+        XCTAssertTrue(try XCTUnwrap(tabs.topMoreButton.menu).children.contains { $0.title == "Ricarica" })
+        tabs.selectedIndex = 1
         tabs.showPrivacyFromMore()
         XCTAssertTrue(tabs.favouritesNavigation.topViewController is PrivacyViewController)
         XCTAssertEqual(tabs.selectedIndex, 1, "Privacy must stay on the visible Preferiti stack")
@@ -225,6 +231,15 @@ final class BottomNavigationControllerTests: XCTestCase {
         tabs.showInformationFromMore()
         XCTAssertTrue(tabs.favouritesNavigation.topViewController is AppInformationViewController)
         XCTAssertEqual(tabs.selectedIndex, 1, "Back from Informazioni returns to Preferiti")
+        tabs.selectedIndex = 0
+        let venue = SavedVenue(url: URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!, label: "Locale pubblico")
+        let recommendations = RecommendationsViewController(venue: venue, activityCheck: { false })
+        tabs.mapNavigation.pushViewController(recommendations, animated: false)
+        recommendations.loadViewIfNeeded()
+        let recommendationTitles = try XCTUnwrap(tabs.topMoreButton.menu).children.map(\.title)
+        XCTAssertTrue(recommendationTitles.contains("Riprova"), "Drink consigliati reload belongs in the top ellipsis")
+        XCTAssertEqual(recommendations.navigationItem.rightBarButtonItems?.count, 1,
+                       "Drink consigliati must not duplicate Reload in its title bar")
     }
 
     @MainActor

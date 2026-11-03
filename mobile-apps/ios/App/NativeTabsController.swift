@@ -258,6 +258,16 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             }
             if !discovery.canReloadFromMore { reload.attributes = [.disabled] }
             actions.append(reload)
+        } else if destinationIndex == 0,
+                  let recommendations = mapNavigation.topViewController as? RecommendationsViewController {
+            let title = recommendations.reloadMenuTitle
+            reloadTitle = title
+            let reload = UIAction(title: title, image: UIImage(systemName: "arrow.clockwise"),
+                                  identifier: UIAction.Identifier("native.reload")) { [weak self] _ in
+                (self?.mapNavigation.topViewController as? RecommendationsViewController)?.reloadFromMore()
+            }
+            if !recommendations.canReloadFromMore { reload.attributes = [.disabled] }
+            actions.append(reload)
         }
         topMoreButton.accessibilityHint = reloadTitle.map { "\($0), privacy e informazioni" } ?? "Privacy e informazioni"
         actions += [
@@ -313,6 +323,9 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     func navigationController(_ navigationController: UINavigationController, willShow viewController: UIViewController, animated: Bool) {
         if navigationController === mapNavigation {
             navigationController.setNavigationBarHidden(viewController === browser, animated: animated)
+            if let recommendations = viewController as? RecommendationsViewController {
+                recommendations.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
+            }
         }
     }
 

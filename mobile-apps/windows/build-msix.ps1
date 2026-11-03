@@ -24,6 +24,8 @@ if ($IdentityName -notmatch '^[A-Za-z0-9][A-Za-z0-9.-]{1,49}$' -or
 }
 $parts = $Version.Split('.') | ForEach-Object { [int]$_ }
 if ($parts | Where-Object { $_ -gt 65535 }) { throw 'MSIX version components must fit 16 bits.' }
+if ($parts[0] -eq 0) { throw 'MSIX major version must be greater than zero.' }
+if ($parts[3] -ne 0) { throw 'Microsoft Store requires a zero MSIX revision component.' }
 $versionFolder = Join-Path $outputFull $Version
 if (Test-Path -LiteralPath $versionFolder) { throw 'This output version already exists; choose a fresh output root.' }
 $publish = Join-Path $versionFolder 'publish'

@@ -34,13 +34,15 @@ dotnet run --project mobile-apps/windows/tests/PolicySmoke/PolicySmoke.csproj -c
 node --check mobile-apps/windows/VenueCapture.js
 node --test mobile-apps/windows/tests/search-click.test.mjs
 node --test mobile-apps/windows/tests/venue-capture.test.mjs
+& mobile-apps/windows/tests/PackageVersionSmoke.ps1
 dotnet build mobile-apps/windows/DoveBevo.Windows.csproj -c Release
-& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.0.8'
+& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.8.0'
 ```
 
 The example uses the reserved Partner Center product **9P6XDNNQJ74N**, with
 its exact Package/Identity/Name and Publisher values. Use a fresh four-part
-version for subsequent submissions. The script produces an **unsigned** x64
+version for subsequent submissions with a **zero fourth component**, reserved
+for the Microsoft Store. The script produces an **unsigned** x64
 MSIX inside `mobile-apps/windows/out/`; it does not sign or submit it.
 Microsoft signs the accepted Store package. Test the actual Store package on
 a Windows PC before claiming public availability.
@@ -49,6 +51,13 @@ Microsoft's [manual MSIX package guide](https://learn.microsoft.com/windows/msix
 documents the desktop manifest and MakeAppx flow. [MakeAppx documentation](https://learn.microsoft.com/windows/msix/package/create-app-package-with-makeappx-tool)
 notes that a bare MSIX is not the preferred `.msixupload` bundle for Partner
 Center; the final submission route and identity must be verified there.
+
+The packaged WPF desktop executable runs at medium integrity with
+`packagedClassicApp` and therefore declares `runFullTrust`. Microsoft lists
+this as a restricted capability requiring a [Submission options explanation](https://learn.microsoft.com/windows/apps/package-and-deploy/app-capability-declarations#restricted-capabilities):
+the app needs it to run its native Windows UI, WebView2 host, and private local
+favourite storage. The [Store package version rules](https://learn.microsoft.com/windows/apps/publish/publish-your-app/package-version-numbering?pivots=store-installer-msix)
+reserve the revision component for Store use.
 
 ## Current limits
 

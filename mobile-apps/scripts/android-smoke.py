@@ -33,7 +33,7 @@ SERIAL = "emulator-5554"
 LAUNCH_STAGES = ("initial", "after_decline", "resume", "after_restart")
 OWNED_CLASSES = {"NativeUsabilityRuntimeTest": 21, "RecommendationsRuntimeTest": 6,
                  "FavoritesRuntimeTest": 5, "DiscoveryRuntimeTest": 4, "EuropePricesRuntimeTest": 1, "PriceShareRuntimeTest": 8}
-PUBLIC_STAGES = ("home", "search", "map", "resume", "restart")
+PUBLIC_STAGES = ("home", "search", "map", "list", "venue", "back", "resume", "restart")
 PUBLIC_STAGE = None
 OWNED_PASS = False
 
@@ -500,8 +500,8 @@ def screenshot(name):
     (EVIDENCE / name).write_bytes(data)
 
 
-def map_ready():
-    labels = [value for node in tree().iter("node")
+def map_ready(ui=None):
+    labels = [value for node in (ui if ui is not None else tree()).iter("node")
               for value in (node.get("text", ""), node.get("content-desc", ""))]
     return ("Mappa interattiva dei bar" in labels
             and "Esplora la mappa" not in labels
@@ -519,6 +519,70 @@ def city_result(ui, name):
         if name.casefold() in labels and "città ·" in labels:
             candidates.append((len(descendants), node))
     return min(candidates, key=lambda entry: entry[0])[1] if candidates else None
+
+
+def menu_venue_row(ui):
+    """Choose only an actual clickable list row with a positive owner-menu count."""
+    candidates = []
+    for node in ui.iter("node"):
+        if node.get("clickable") != "true":
+            continue
+        descendants = list(node.iter("node"))
+        labels = [value.strip() for child in descendants
+                  for value in (child.get("text", ""), child.get("content-desc", "")) if value.strip()]
+        counts = [match for value in labels
+                  for match in re.finditer(r"\b([1-9][0-9]{0,4}) (?:voce|voci) menu\b", value)]
+        if not counts or not any("Dal menu del locale" in value for value in labels):
+            continue
+        name = ""
+        for value in labels:
+            prefix = value.split(counts[0].group(0), 1)[0].split("Dal menu del locale", 1)[0]
+            prefix = prefix.strip(" \t\r\n,·-")
+            if 2 <= len(prefix) <= 100 and not prefix[0].isdigit():
+                name = prefix
+                break
+        if name:
+            candidates.append((len(descendants), node, name, int(counts[0].group(1))))
+    return min(candidates, key=lambda entry: entry[0])[1:] if candidates else None
+
+
+def menu_detail_state(ui, venue_name):
+    labels = [value.strip() for node in ui.iter("node")
+              for value in (node.get("text", ""), node.get("content-desc", "")) if value.strip()]
+    if not any(value == venue_name or value.startswith(venue_name + " ") for value in labels):
+        return None
+    if not any("Prezzo da menu" in value for value in labels):
+        return None
+    if not any("Menu verificato il" in value for value in labels):
+        return None
+    prices = [match.group(0) for value in labels
+              for match in re.finditer(r"\b[0-9]+(?:\.[0-9]{3})*,[0-9]{2}\s*€", value)]
+    return {"venue": venue_name, "menu_price": prices[0]} if prices else None
+
+
+def wait_for_menu_detail(venue_name):
+    deadline = time.monotonic() + 55
+    next_scroll = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        ui = tree()  # The existing stage guard rejects a Cloudflare challenge.
+        detail = menu_detail_state(ui, venue_name)
+        if detail:
+            return detail
+        now = time.monotonic()
+        if now >= next_scroll and any(venue_name in value for node in ui.iter("node")
+                                      for value in (node.get("text", ""), node.get("content-desc", ""))):
+            adb("shell", "input", "swipe", "540", "1800", "540", "800", "350")
+            next_scroll = now + 10
+        time.sleep(2)
+    raise RuntimeError("Timed out: real venue name, owner-menu price and dated source were not visible")
+
+
+def map_after_venue_back(ui):
+    if not map_ready(ui) or menu_venue_row(ui) is not None:
+        return False
+    labels = [value for node in ui.iter("node")
+              for value in (node.get("text", ""), node.get("content-desc", ""))]
+    return "Chiudi" not in labels and not any("Prezzo da menu" in value for value in labels)
 
 
 def main():
@@ -594,6 +658,22 @@ def main():
         wait_for("live map initialized after city selection", map_ready)
         screenshot("03-milano-map.png")
         result["checks"].append("live city search and result selection")
+        PUBLIC_STAGE = "list"
+        tap(wait_for("real venue list control", lambda: find("Elenco"), 15))
+        row, venue_name, menu_count = wait_for("clickable venue with verified menu in Milano",
+                                               lambda: menu_venue_row(tree()), 30)
+        PUBLIC_STAGE = "venue"
+        tap(row)
+        detail = wait_for_menu_detail(venue_name)
+        screenshot("04-verified-venue-menu.png")
+        result["checks"].append("real venue name, owner-menu amount and dated source were visible")
+        PUBLIC_STAGE = "back"
+        tap(wait_for("enabled native Back from the venue", lambda: next(
+            (node for node in tree().iter("node")
+             if node.get("content-desc") == "Indietro" and node.get("enabled") == "true"), None), 15))
+        wait_for("Milano map restored by native Back", lambda: map_after_venue_back(tree()), 30)
+        screenshot("05-milano-map-after-back.png")
+        result["checks"].append("native Back returned to the live Milano map")
         adb("shell", "input", "keyevent", "3")
         launch_app("resume")
         PUBLIC_STAGE = "resume"
@@ -607,7 +687,8 @@ def main():
             raise RuntimeError("Explicit rules acceptance did not survive a process restart")
         result["checks"].append("accepted rules survive a process restart")
         result["result"] = "passed"
-        result["public_probe"] = {"result": "passed"}
+        result["public_probe"] = {"result": "passed", "venue": detail["venue"],
+                                  "menu_count_in_list": menu_count, "menu_price": detail["menu_price"]}
     except BaseException as error:
         result["error"] = safe_text(error)
         if isinstance(error, PublicProbeBlocked) and OWNED_PASS and PUBLIC_STAGE in PUBLIC_STAGES and error.stage == PUBLIC_STAGE:

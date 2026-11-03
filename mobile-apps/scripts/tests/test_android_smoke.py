@@ -378,8 +378,54 @@ class AndroidSmokeTests(unittest.TestCase):
                 m.port_open(5041)
 
     def test_required_ui_checks_retained(self):
-        for text in ['native adult usage rules', 'live website city-search control', 'clickable Milano city result', 'live map initialized after city selection', 'accepted app restarts into live service']:
+        for text in ['native adult usage rules', 'live website city-search control', 'clickable Milano city result',
+                     'live map initialized after city selection', 'clickable venue with verified menu in Milano',
+                     'real venue name, owner-menu amount and dated source were visible',
+                     'Milano map restored by native Back', 'accepted app restarts into live service']:
             self.assertIn(text, source)
+
+    def test_venue_probe_requires_a_real_clickable_positive_menu_row(self):
+        row = ('<node clickable="true" bounds="[0,0][300,90]">'
+               '<node text="The Dome"/><node text="149 voci menu"/>'
+               '<node text="Bar · Dal menu del locale"/></node>')
+        found = m.menu_venue_row(m.ET.fromstring(row))
+        self.assertIsNotNone(found)
+        self.assertEqual((found[1], found[2]), ('The Dome', 149))
+        self.assertEqual(found[0].get('bounds'), '[0,0][300,90]')
+        for invalid in [row.replace('149 voci', '0 voci'),
+                        row.replace('Dal menu del locale', 'Prezzo segnalato'),
+                        row.replace('clickable="true"', 'clickable="false"')]:
+            self.assertIsNone(m.menu_venue_row(m.ET.fromstring(invalid)))
+
+    def test_venue_detail_requires_matching_name_amount_owner_provenance_and_source(self):
+        detail = ('<hierarchy><node text="The Dome"/><node text="Prezzo da menu"/>'
+                  '<node text="5,50 €"/><node text="Menu verificato il 2026-11-03"/></hierarchy>')
+        self.assertEqual(m.menu_detail_state(m.ET.fromstring(detail), 'The Dome'),
+                         {'venue': 'The Dome', 'menu_price': '5,50 €'})
+        for wrong_name, invalid in [('Other venue', detail),
+                                    ('The Dome', detail.replace('Prezzo da menu', 'Prezzo segnalato')),
+                                    ('The Dome', detail.replace('5,50 €', 'nessun prezzo')),
+                                    ('The Dome', detail.replace('Menu verificato il', 'Senza fonte'))]:
+            self.assertIsNone(m.menu_detail_state(m.ET.fromstring(invalid), wrong_name))
+        map_ui = m.ET.fromstring('<hierarchy><node text="Mappa interattiva dei bar"/></hierarchy>')
+        self.assertTrue(m.map_after_venue_back(map_ui))
+        self.assertFalse(m.map_after_venue_back(m.ET.fromstring(
+            '<hierarchy><node text="Mappa interattiva dei bar"/><node text="Prezzo da menu"/></hierarchy>')))
+        self.assertFalse(m.map_after_venue_back(m.ET.fromstring(
+            '<hierarchy><node text="Mappa interattiva dei bar"/><node text="Chiudi"/></hierarchy>')))
+
+    def test_menu_and_back_stages_preserve_exact_challenge_classification(self):
+        self.assertTrue({'list', 'venue', 'back'} <= set(m.PUBLIC_STAGES))
+        challenge = self.challenge_xml()
+        with mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, challenge, b'')), \
+             mock.patch.object(m, 'screenshot') as shot:
+            shot.side_effect = lambda name: (m.EVIDENCE / name).write_bytes(b'\x89PNG\r\n\x1a\nfixture-only')
+            m.OWNED_PASS = True
+            for stage in ('list', 'venue', 'back'):
+                m.PUBLIC_STAGE = stage
+                with self.assertRaises(m.PublicProbeBlocked) as blocked:
+                    m.tree()
+                self.assertEqual(blocked.exception.stage, stage)
 
     def owned_output(self):
         lines = []

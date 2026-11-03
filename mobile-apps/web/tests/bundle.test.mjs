@@ -266,6 +266,15 @@ test("production mobile entry renders chips and preserves venue route across rel
     const chips = f.page.locator(".mobile-drink-strip");
     assert.equal(await chips.getByRole("checkbox").count(), 9);
     assert.equal(
+      await chips.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.equal(
+      await chips.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
+      false,
+    );
+    await chips.getByText("Spritz", { exact: true }).click();
+    assert.equal(
       await chips.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
       true,
     );
@@ -514,7 +523,6 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     const all = f.page.getByRole("button", { name: "Tutti", exact: true });
-    await all.click();
     assert.equal(await all.getAttribute("aria-pressed"), "true");
     await f.page.waitForFunction(
       () =>
@@ -559,56 +567,40 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
   }
 });
 
-test("v2 outage preserves legacy map and retries the original filter after recovery", async () => {
+test("v2 outage preserves legacy map and retries fresh Tutti after recovery", async () => {
   const options = { menu: true, menuUnavailable: true, cellRequests: [] };
   const f = await fixture({ width: 390, height: 844 }, options);
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const all = f.page.getByRole("button", { name: "Tutti", exact: true });
+    assert.equal(await all.getAttribute("aria-pressed"), "true");
     await f.page.waitForFunction(() =>
-      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
     );
     assert.equal(await f.page.locator(".map__retry").count(), 0);
     assert.equal(await f.page.locator(".mobile-menu-map-note").count(), 0);
-    const initialSpritzRequests = options.cellRequests.filter(
-      (request) => request.cell === "u0nd9" && request.categories.join(",") === "spritz",
+    const initialAllRequests = options.cellRequests.filter(
+      (request) => request.cell === "u0nd9" && request.categories.length === 0,
     ).length;
-    assert.ok(initialSpritzRequests >= 1);
+    assert.ok(initialAllRequests >= 1);
     options.menuUnavailable = false;
-    const acqua = f.page.locator(".mobile-drink-strip").getByRole("checkbox", {
-      name: "Acqua",
-      exact: true,
-    });
-    await acqua.check({ force: true });
+    await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     await f.page.locator(".mobile-menu-map-note").waitFor();
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
     );
-    const recoveredIdentityRequests = options.cellRequests.filter(
-      (request) => request.cell === "u0nd9" && request.categories.length === 0,
-    ).length;
-    const originalFilterResponse = f.page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      return (
-        url.pathname === "/api/mobile/v2/menu/cells/u0nd9" &&
-        url.searchParams.get("categories") === "spritz" &&
-        response.status() === 200
-      );
-    });
-    await acqua.uncheck({ force: true });
-    await originalFilterResponse;
+    await all.click();
     await f.page.waitForFunction(() =>
-      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
     );
-    const localRequests = options.cellRequests.filter((request) => request.cell === "u0nd9");
-    assert.equal(
-      localRequests.filter((request) => request.categories.length === 0).length,
-      recoveredIdentityRequests,
-    );
+    assert.equal(await all.getAttribute("aria-pressed"), "true");
     assert.ok(
-      localRequests.filter((request) => request.categories.join(",") === "spritz").length >
-        initialSpritzRequests,
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length > initialAllRequests,
     );
     assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
   }

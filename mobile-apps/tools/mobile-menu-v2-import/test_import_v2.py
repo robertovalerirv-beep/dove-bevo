@@ -9,6 +9,7 @@ import tempfile
 import sqlite3
 import unittest
 from unittest import mock
+from urllib.error import URLError
 
 import import_v2 as core
 
@@ -256,6 +257,7 @@ class ImportTests(unittest.TestCase):
             receipt=core.execute(payload,transport)
         self.assertFalse(receipt["complete"])
         self.assertEqual(receipt["errors"],[{"phase":"source","code":"source hash mismatch"}])
+        self.assertEqual(receipt["source_fetch_diagnostics"],[])
         self.assertEqual(receipt["rows"],[])
         self.assertEqual(receipt["source_diagnostics"],[{
             "source_id":"src-test-1","bytes":len(b"%PDF-synthetic"),
@@ -279,6 +281,7 @@ class ImportTests(unittest.TestCase):
         transport.opener=Opener()
         self.assertEqual(transport.fetch("https://example.org/menu"),b"%PDF-small")
         self.assertEqual(transport.last_fetch_content_type,"application/pdf")
+        self.assertIsNone(transport.last_fetch_failure)
 
     def test_manifest_source_use_currency_and_fee_guards(self):
         doc=manifest()
@@ -372,6 +375,46 @@ class ImportTests(unittest.TestCase):
         with self.assertRaisesRegex(core.legacy.Error,"^public source timeout$"):
             transport.fetch("https://example.org/menu")
         self.assertEqual(transport.opener.timeout,45)
+        self.assertEqual(transport.last_fetch_failure["error_type"],"TimeoutError")
+        self.assertIsNone(transport.last_fetch_failure["reason_type"])
+        self.assertGreaterEqual(transport.last_fetch_failure["elapsed_ms"],0)
+        self.assertLessEqual(transport.last_fetch_failure["elapsed_ms"],60000)
+
+    def test_source_fetch_failure_reports_only_exception_classes_and_elapsed(self):
+        secret="private-token-and-query"
+        class FailingOpener:
+            def open(self,request,timeout):
+                raise URLError(ConnectionRefusedError(secret))
+        net=core.legacy.Transport("0"*32,"unused-token")
+        net.opener=FailingOpener()
+        with self.assertRaisesRegex(core.legacy.Error,"^public source fetch failed$"):
+            net.fetch("https://example.org/menu?"+secret)
+        self.assertEqual(net.last_fetch_failure["error_type"],"URLError")
+        self.assertEqual(net.last_fetch_failure["reason_type"],"ConnectionRefusedError")
+        self.assertGreaterEqual(net.last_fetch_failure["elapsed_ms"],0)
+        self.assertLessEqual(net.last_fetch_failure["elapsed_ms"],60000)
+        self.assertNotIn(secret,json.dumps(net.last_fetch_failure))
+        self.assertNotIn("example.org",json.dumps(net.last_fetch_failure))
+
+        class FailingSource(Fake):
+            def fetch(self,url,maximum=None):
+                if url==SOURCE["source_url"]:
+                    try:
+                        return net.fetch(url,maximum)
+                    finally:
+                        self.last_fetch_failure=net.last_fetch_failure
+                return super().fetch(url,maximum)
+        transport=FailingSource()
+        receipt=core.execute(raw(manifest()),transport)
+        self.assertFalse(receipt["complete"])
+        self.assertEqual(receipt["errors"],[{"phase":"source","code":"public source fetch failed"}])
+        self.assertEqual(receipt["source_fetch_diagnostics"],[
+            {"source_id":SOURCE["id"],**net.last_fetch_failure}])
+        self.assertEqual(receipt["rows"],[])
+        self.assertEqual(transport.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_offers").fetchone()[0],0)
+        self.assertNotIn(secret,json.dumps(receipt))
+        self.assertNotIn("example.org/menu",json.dumps(receipt["source_fetch_diagnostics"]))
 
     def test_private_dns_redirect_and_unexpected_html_fail_closed(self):
         fake=Fake()

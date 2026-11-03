@@ -102,6 +102,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     if (options.menu && /^\/api\/mobile\/v2\/menu\/cells\//.test(url.pathname)) {
       const cell = url.pathname.split("/").at(-1);
       const categories = (url.searchParams.get("categories") ?? "").split(",").filter(Boolean);
+      options.cellRequests?.push({ cell, categories: [...categories] });
+      if (options.menuUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
       const source = {
         id: "source-1",
         url: "https://official.fixture.test/menu",
@@ -142,7 +144,7 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
           price_scope: "menu_item_only",
           cell,
           category: null,
-          categories,
+          categories: categories.length ? categories : null,
           venues:
             cell === "u0nd9" && (!categories.length || categories.includes("spritz"))
               ? [venue]
@@ -153,6 +155,7 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
       });
     }
     if (options.menu && url.pathname === "/api/mobile/v2/menu/venues/maaaaaaaaaaaaaaaaaaaaaaaa") {
+      if (options.detailUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
       const source = {
         id: "source-1",
         url: "https://official.fixture.test/menu",
@@ -490,6 +493,7 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
       "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fmaaaaaaaaaaaaaaaaaaaaaaaa&c=u0nd9",
     );
     await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
+    assert.match(await f.page.locator(".bar__kind").innerText(), /Locale · Milano/);
     assert.match(
       await f.page.getByRole("region", { name: "Prezzi dal menu online" }).innerText(),
       /Spritz speciale[\s\S]*7,50 €[\s\S]*costi aggiuntivi non sono stati verificati/,
@@ -497,6 +501,78 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
     assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("v2 outage preserves legacy map and retries the original filter after recovery", async () => {
+  const options = { menu: true, menuUnavailable: true, cellRequests: [] };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    );
+    assert.equal(await f.page.locator(".map__retry").count(), 0);
+    assert.equal(await f.page.locator(".mobile-menu-map-note").count(), 0);
+    const initialSpritzRequests = options.cellRequests.filter(
+      (request) => request.cell === "u0nd9" && request.categories.join(",") === "spritz",
+    ).length;
+    assert.ok(initialSpritzRequests >= 1);
+    options.menuUnavailable = false;
+    const acqua = f.page.locator(".mobile-drink-strip").getByRole("checkbox", {
+      name: "Acqua",
+      exact: true,
+    });
+    await acqua.check({ force: true });
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+    const recoveredIdentityRequests = options.cellRequests.filter(
+      (request) => request.cell === "u0nd9" && request.categories.length === 0,
+    ).length;
+    const originalFilterResponse = f.page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname === "/api/mobile/v2/menu/cells/u0nd9" &&
+        url.searchParams.get("categories") === "spritz" &&
+        response.status() === 200
+      );
+    });
+    await acqua.uncheck({ force: true });
+    await originalFilterResponse;
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+    const localRequests = options.cellRequests.filter((request) => request.cell === "u0nd9");
+    assert.equal(
+      localRequests.filter((request) => request.categories.length === 0).length,
+      recoveredIdentityRequests,
+    );
+    assert.ok(
+      localRequests.filter((request) => request.categories.join(",") === "spritz").length >
+        initialSpritzRequests,
+    );
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("m-key detail outage offers retry instead of saying the venue does not exist", async () => {
+  const options = { menu: true, detailUnavailable: true };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto(
+      "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fmaaaaaaaaaaaaaaaaaaaaaaaa&c=u0nd9",
+    );
+    await f.page.getByRole("button", { name: "Riprova", exact: true }).waitFor();
+    assert.equal(await f.page.getByText("Locale non trovato").count(), 0);
+    options.detailUnavailable = false;
+    await f.page.getByRole("button", { name: "Riprova", exact: true }).click();
+    await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
+    assert.deepEqual(f.errors, []);
   } finally {
     await f.close();
   }

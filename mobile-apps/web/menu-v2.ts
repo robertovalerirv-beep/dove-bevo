@@ -194,7 +194,7 @@ const CellPageSchema = z.object({
   price_scope: z.literal("menu_item_only"),
   cell: Cell,
   category: Category.nullable(),
-  categories: z.array(Category).max(9),
+  categories: z.array(Category).max(9).nullable(),
   venues: z.array(CellVenue).max(50),
   next_after: Key.nullable(),
   unresolved_venues: z.number().int().min(0),
@@ -219,7 +219,7 @@ async function cellPage(
   const page = CellPageSchema.parse(await json(response));
   if (
     page.cell !== cell ||
-    page.categories.join(",") !== categories.join(",") ||
+    (page.categories ?? []).join(",") !== categories.join(",") ||
     (page.next_after !== null &&
       (page.next_after === after || (after !== null && page.next_after <= after)))
   )
@@ -240,7 +240,9 @@ async function menuCellVenues(
   categories: readonly string[],
 ): Promise<CellVenue[] | null> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12000);
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, 12000);
   try {
     const venues = new Map<string, CellVenue>();
     let after: string | null = null;
@@ -261,6 +263,26 @@ async function menuCellVenues(
   }
 }
 
+const mobileIdentityCache = new Map<string, Promise<CellVenue[] | null>>();
+function menuIdentityVenues(cell: string): Promise<CellVenue[] | null> {
+  let request = mobileIdentityCache.get(cell);
+  if (!request) {
+    request = menuCellVenues(cell, []);
+    const current = request;
+    mobileIdentityCache.set(cell, current);
+    void current.then(
+      (venues) => {
+        if (venues === null && mobileIdentityCache.get(cell) === current)
+          mobileIdentityCache.delete(cell);
+      },
+      () => {
+        if (mobileIdentityCache.get(cell) === current) mobileIdentityCache.delete(cell);
+      },
+    );
+  }
+  return request;
+}
+
 const mobileCellCache = new Map<string, Promise<Venue[]>>();
 /** App map adapter: keeps source-backed menu samples separate from customer PriceRows. */
 export function loadMobileCell(cell: string, selectedDrinks: readonly string[]): Promise<Venue[]> {
@@ -271,17 +293,29 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
   const cacheKey = `${cell}|${categories.join(",")}`;
   let request = mobileCellCache.get(cacheKey);
   if (!request) {
+    let cacheable = true;
     request = (async () => {
+      const identityRequest = menuIdentityVenues(cell);
+      const sampleRequest = categories.length ? menuCellVenues(cell, categories) : identityRequest;
       const [legacy, identity, sampled] = await Promise.allSettled([
         loadCell(cell),
-        menuCellVenues(cell, []),
-        menuCellVenues(cell, categories),
+        identityRequest,
+        sampleRequest,
       ]);
       if (legacy.status === "rejected") throw legacy.reason;
-      if (identity.status === "rejected") throw identity.reason;
-      if (sampled.status === "rejected") throw sampled.reason;
-      const all = identity.value ?? [];
-      const filtered = sampled.value ?? [];
+      // V2 is additive. A temporary menu failure must not blank the existing map.
+      // Retry this selection later so the menu pins return when the service recovers.
+      if (
+        identity.status === "rejected" ||
+        sampled.status === "rejected" ||
+        identity.value === null ||
+        sampled.value === null
+      ) {
+        cacheable = false;
+        return legacy.value;
+      }
+      const all = identity.value;
+      const filtered = sampled.value;
       const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
       const merged = new Map<string, Venue>(legacy.value.map((venue) => [venue.key, { ...venue }]));
       for (const row of [
@@ -298,8 +332,17 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
         } as WithMenu);
       }
       return [...merged.values()];
-    })();
-    request.catch(() => mobileCellCache.delete(cacheKey));
+    })().then(
+      (venues) => {
+        if (!cacheable && mobileCellCache.get(cacheKey) === request)
+          mobileCellCache.delete(cacheKey);
+        return venues;
+      },
+      (error: unknown) => {
+        if (mobileCellCache.get(cacheKey) === request) mobileCellCache.delete(cacheKey);
+        throw error;
+      },
+    );
     mobileCellCache.set(cacheKey, request);
   }
   return request;
@@ -326,6 +369,7 @@ export function mobileCoverage(venues: Venue[], drinks: readonly string[]) {
 }
 
 export function invalidateMobileCell(cell: string): void {
+  mobileIdentityCache.delete(cell);
   for (const key of mobileCellCache.keys())
     if (key.startsWith(`${cell}|`)) mobileCellCache.delete(key);
 }

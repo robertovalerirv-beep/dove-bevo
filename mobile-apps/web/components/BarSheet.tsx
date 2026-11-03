@@ -355,6 +355,21 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     );
   }
   if (venue === null) {
+    if (venueKey.startsWith("m"))
+      return (
+        <Sheet title="Menu temporaneamente non disponibile" onClose={onClose}>
+          <div class="mobile-menu-v2__error" role="alert">
+            <p>Non riusciamo a caricare questo locale al momento.</p>
+            <button
+              type="button"
+              class="btn btn--secondary"
+              onClick={() => setMenuAttempt((value) => value + 1)}
+            >
+              Riprova
+            </button>
+          </div>
+        </Sheet>
+      );
     return (
       <Sheet title={it.bar.notFound} onClose={onClose}>
         <p class="hint">{it.bar.notFound}</p>
@@ -367,12 +382,13 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   );
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
+  const venueKind = venueKey.startsWith("m") && venue.kind === 0 ? "Locale" : it.kinds[venue.kind];
   return (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
         <DrinkHero drink={active[0]?.[1] ?? focus[0] ?? "spritz"} />
         <div class="scontrino__paper">
-          <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
+          <p class="bar__kind">{[venueKind, venue.city].filter(Boolean).join(" · ")}</p>
           <h2 class="scontrino__name" tabIndex={-1}>
             {venue.name}
           </h2>
@@ -516,7 +532,11 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           )}
           {menuFailed && (
             <div class="mobile-menu-v2__error" role="alert">
-              <p>Menu online non disponibile. I prezzi segnalati dalle persone restano visibili.</p>
+              <p>
+                {venueKey.startsWith("m")
+                  ? "Menu online non disponibile. Riprova tra poco."
+                  : "Menu online non disponibile. I prezzi segnalati dalle persone restano visibili."}
+              </p>
               <button
                 type="button"
                 class="btn btn--secondary"

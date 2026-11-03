@@ -37,6 +37,20 @@ interface Props {
 
 const MAX_PLACES = 8;
 const MAX_TOTAL = 8;
+// These names are looked up in the live Italian places file. A missing city is
+// omitted; no suggestion or venue count is invented by the app.
+const FEATURED_ITALIAN_CITIES = [
+  "Milano",
+  "Roma",
+  "Torino",
+  "Napoli",
+  "Firenze",
+  "Bologna",
+  "Venezia",
+  "Genova",
+  "Palermo",
+  "Bari",
+] as const;
 
 /** Prefix matches first, then substring matches (SPEC 7.6); input order is kept within each group. */
 function matchPlaces(places: Place[], query: string): Place[] {
@@ -143,6 +157,21 @@ export function SearchSheet({
   }, [query]);
 
   const foundPlaces = useMemo(() => matchPlaces(places, key), [places, key]);
+  const featuredItalianPlaces = useMemo(
+    () =>
+      FEATURED_ITALIAN_CITIES.flatMap((name) => {
+        const place = places.find((candidate) => searchKey(candidate[1]) === searchKey(name));
+        return place ? [place] : [];
+      }),
+    [places],
+  );
+  const featuredNames = new Set(featuredItalianPlaces.map((place) => searchKey(place[1])));
+  const italianCatalogCities = europe.filter(
+    (city) => city.country === "IT" && !featuredNames.has(searchKey(city.name)),
+  );
+  const otherEuropeanCities = europe
+    .filter((city) => city.country !== "IT")
+    .sort((a, b) => a.name.localeCompare(b.name, "it"));
   const mobileOptions: Option[] = key
     ? europe.flatMap((city) => [
         ...(searchKey(city.name).includes(key)
@@ -336,11 +365,44 @@ export function SearchSheet({
               )}
             </div>
           )}
-          {!key && europe.length > 0 && (
+          {!key && (featuredItalianPlaces.length > 0 || italianCatalogCities.length > 0) && (
             <>
-              <h3 class="section-title">Città nel catalogo app</h3>
+              <h3 class="section-title">Città italiane</h3>
               <ul class="rows">
-                {europe.map((city) => (
+                {featuredItalianPlaces.map((place) => (
+                  <li key={`it-${String(place[0])}`}>
+                    <button
+                      class="row"
+                      type="button"
+                      onClick={() => {
+                        onPlace(place);
+                      }}
+                    >
+                      <span class="row__name">{place[1]}</span>
+                      <span class="row__meta">
+                        {it.search.kindPlace} · {it.search.barsCount(place[4])}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+                {italianCatalogCities.map((city) => (
+                  <li key={city.key}>
+                    <a class="row" href={cityURL(city)}>
+                      <span class="row__name">{city.name}</span>
+                      <span class="row__meta">
+                        {city.country} · {city.currency} · {city.venues.length} locali
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {!key && otherEuropeanCities.length > 0 && (
+            <>
+              <h3 class="section-title">Città europee</h3>
+              <ul class="rows">
+                {otherEuropeanCities.map((city) => (
                   <li key={city.key}>
                     <a class="row" href={cityURL(city)}>
                       <span class="row__name">{city.name}</span>

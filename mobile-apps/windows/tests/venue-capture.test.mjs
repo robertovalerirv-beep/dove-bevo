@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, URL } from "node:url";
 import { runInNewContext } from "node:vm";
 
 const here = dirname(fileURLToPath(import.meta.url));

@@ -650,7 +650,9 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     assert.ok(actionBox.y + actionBox.height <= status.y, "Add must clear coverage card");
     assert.ok(locate.y + locate.height <= actionBox.y, "Add must clear locate control");
     await toggle.click();
-    await f.page.screenshot({ path: path.join(output, "app-map-actions-iphone16plus-fixture.png") });
+    await f.page.screenshot({
+      path: path.join(output, "app-map-actions-iphone16plus-fixture.png"),
+    });
     const choices = actions.getByRole("group", { name: "Aggiungi" });
     assert.equal(await choices.getByRole("button").count(), 2);
     await f.page.keyboard.press("Escape");

@@ -42,7 +42,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("bottomBar = NativeBottomBar()", tabs)
         self.assertIn("for child in [mapNavigation, favouritesNavigation, discoveryNavigation]", tabs)
         bar = (IOS / "App/NativeBottomBar.swift").read_text(encoding="utf-8")
-        self.assertIn("case home, map, favourites, save, recommendations, more", bar)
+        self.assertIn("case home, search, map, favourites, save, recommendations", bar)
         self.assertIn("for action in BottomNavigationAction.allCases", bar)
         self.assertIn("let button = NativeBottomButton(type: .system)", bar)
         self.assertIn("private final class NativeBottomButton: UIButton", bar)
@@ -63,8 +63,11 @@ class FavouritesComparisonGuards(unittest.TestCase):
     def test_bottom_actions_are_contextual_and_do_not_select_empty_destinations(self):
         tabs = (IOS / "App/NativeTabsController.swift").read_text(encoding="utf-8")
         bar = (IOS / "App/NativeBottomBar.swift").read_text(encoding="utf-8")
-        for label in ["Cerca", "Salva nei preferiti", "Drink consigliati", "Altro"]:
+        for label in ["Home", "Cerca", "Salva nei preferiti", "Drink consigliati"]:
             self.assertIn(f'return "{label}"', bar)
+        self.assertIn('topMoreButton.accessibilityIdentifier = "browser.more"', tabs)
+        self.assertIn('content.topAnchor.constraint(equalTo: topChrome.bottomAnchor)', tabs)
+        self.assertIn('topMoreButton.menu = browser.moreMenu()', tabs)
         self.assertIn("button.isEnabled = enabled", bar)
         self.assertIn("traits.insert(.notEnabled)", bar)
         self.assertIn("sender.isEnabled", bar)

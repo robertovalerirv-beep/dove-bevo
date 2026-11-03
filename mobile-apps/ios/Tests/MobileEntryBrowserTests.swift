@@ -89,7 +89,7 @@ final class MobileEntryBrowserTests: XCTestCase {
     }
 
     @MainActor private func share(_ tabs: NativeTabsController) throws -> UIAction {
-        try XCTUnwrap(tabs.bottomBar.button(for: .more).menu?.children.compactMap { $0 as? UIAction }.first { $0.identifier.rawValue == "browser.share" })
+        try XCTUnwrap(tabs.topMoreButton.menu?.children.compactMap { $0 as? UIAction }.first { $0.identifier.rawValue == "browser.share" })
     }
     @MainActor private func descendants(_ view: UIView) -> [UIView] { view.subviews + view.subviews.flatMap { descendants($0) } }
     @MainActor private func waitUntil(_ message: String, _ predicate: @escaping () -> Bool) {

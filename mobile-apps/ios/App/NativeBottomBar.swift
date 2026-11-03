@@ -1,44 +1,43 @@
 import UIKit
 
 enum BottomNavigationAction: Int, CaseIterable {
-    case home, map, favourites, save, recommendations, more
+    case home, search, map, favourites, save, recommendations
 
     var title: String {
         switch self {
-        case .home: return "Cerca"
+        case .home: return "Home"
+        case .search: return "Cerca"
         case .map: return "Mappa"
         case .favourites: return "Preferiti"
         case .save: return "Salva"
         case .recommendations: return "Consigliati"
-        case .more: return "Altro"
         }
     }
     var label: String {
         switch self {
         case .save: return "Salva nei preferiti"
         case .recommendations: return "Drink consigliati"
-        case .more: return "Altre opzioni"
         default: return title
         }
     }
     var identifier: String {
         switch self {
-        case .home: return "tab.search"
+        case .home: return "tab.home"
+        case .search: return "tab.search"
         case .map: return "tab.map"
         case .favourites: return "tab.favorites"
         case .save: return "browser.saveVenue"
         case .recommendations: return "browser.recommendations"
-        case .more: return "browser.more"
         }
     }
     var symbol: String {
         switch self {
-        case .home: return "magnifyingglass"
+        case .home: return "house"
+        case .search: return "magnifyingglass"
         case .map: return "map"
         case .favourites: return "bookmark"
         case .save: return "bookmark"
         case .recommendations: return "hand.thumbsup"
-        case .more: return "ellipsis"
         }
     }
 }
@@ -155,7 +154,7 @@ final class NativeBottomBar: UIView {
         self.venueActionsEnabled = venueActionsEnabled
         for action in BottomNavigationAction.allCases {
             let button = button(for: action)
-            let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .more && destination == 2)
+            let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .home && destination == 2)
             let enabled = action != .save && action != .recommendations || venueActionsEnabled
             var configuration = UIButton.Configuration.plain()
             let fill = selected ? NativeAppearance.accent : NativeAppearance.chrome
@@ -170,7 +169,7 @@ final class NativeBottomBar: UIView {
                 attributes.font = titleFont
                 return attributes
             }
-            let symbol = selected && (action == .map || action == .favourites) ? "\(action.symbol).fill" : action.symbol
+            let symbol = selected && (action == .map || action == .favourites || action == .home) ? "\(action.symbol).fill" : action.symbol
             configuration.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 20))
             configuration.imagePlacement = .top
             configuration.imagePadding = 4

@@ -32,12 +32,12 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Cerca città o bar"]))
         XCTAssertFalse(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Torino · Cerca città o bar"]))
         XCTAssertFalse(app.navigationBars["Dove bevo"].exists, "The map has no duplicate native header")
-        for identifier in ["tab.search", "tab.map", "tab.favorites", "browser.more", "browser.recommendations", "browser.saveVenue"] {
+        for identifier in ["tab.home", "tab.search", "tab.map", "tab.favorites", "browser.more", "browser.recommendations", "browser.saveVenue"] {
             XCTAssertTrue(app.buttons[identifier].exists, identifier)
         }
         let bottomBar = app.descendants(matching: .any)["native.bottomNavigation"]
         XCTAssertEqual(bottomBar.buttons.count, 6)
-        for (identifier, label) in [("tab.search", "Cerca"), ("tab.map", "Mappa"), ("tab.favorites", "Preferiti"), ("browser.saveVenue", "Salva nei preferiti"), ("browser.recommendations", "Drink consigliati"), ("browser.more", "Altre opzioni")] {
+        for (identifier, label) in [("tab.home", "Home"), ("tab.search", "Cerca"), ("tab.map", "Mappa"), ("tab.favorites", "Preferiti"), ("browser.saveVenue", "Salva nei preferiti"), ("browser.recommendations", "Drink consigliati")] {
             let control = bottomBar.buttons[identifier]
             XCTAssertTrue(control.exists, "All six controls must be in the bottom bar: \(identifier)")
             XCTAssertEqual(control.label, label)
@@ -46,6 +46,13 @@ final class BrowserSmokeTests: XCTestCase {
             XCTAssertTrue(bottomBar.frame.contains(control.frame))
         }
         XCTAssertGreaterThanOrEqual(bottomBar.frame.minY, app.frame.midY)
+        let topMore = app.buttons["browser.more"]
+        XCTAssertEqual(topMore.label, "Altre opzioni")
+        XCTAssertGreaterThanOrEqual(topMore.frame.width, 48)
+        XCTAssertGreaterThanOrEqual(topMore.frame.height, 48)
+        XCTAssertLessThanOrEqual(topMore.frame.maxY, app.webViews["browser.website"].frame.minY + 0.5,
+                                 "The top three-dot menu must not cover the map city or currency")
+        XCTAssertFalse(bottomBar.frame.contains(topMore.frame), "Overflow stays at the top, outside bottom navigation")
         XCTAssertTrue(bottomBar.buttons["tab.map"].isSelected)
         XCTAssertFalse(bottomBar.buttons["tab.favorites"].isSelected)
         XCTAssertFalse(bottomBar.buttons["browser.saveVenue"].isEnabled)
@@ -58,12 +65,12 @@ final class BrowserSmokeTests: XCTestCase {
         app.buttons["browser.more"].tap()
         XCTAssertTrue(app.buttons["Condividi"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Ricarica"].exists || app.buttons["Interrompi"].exists)
-        for label in ["Cerca", "Preferiti", "Salva nei preferiti", "Drink consigliati"] {
+        for label in ["Home", "Cerca", "Preferiti", "Salva nei preferiti", "Drink consigliati"] {
             XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == %@", label)).count, 1,
                            "More must not duplicate a bottom control: \(label)")
         }
         XCTAssertFalse(app.buttons["tab.search"].isSelected, "Cerca opens search; Mappa is the current destination")
-        XCTAssertTrue(app.buttons["Scopri"].exists, "The retained discovery screen remains available from Altro")
+        XCTAssertFalse(app.buttons["Scopri"].exists, "Home is a bottom destination rather than a duplicate menu action")
         app.buttons["Informazioni"].tap()
         returnFromNativeInformation()
     }
@@ -108,13 +115,12 @@ final class BrowserSmokeTests: XCTestCase {
         app.buttons["tab.search"].tap()
         XCTAssertTrue(app.buttons["tab.map"].isSelected)
         XCTAssertFalse(app.navigationBars["Scopri"].exists, "Cerca must open map search, not Discover")
-        app.buttons["browser.more"].tap()
-        app.buttons["Scopri"].tap()
+        app.buttons["tab.home"].tap()
         XCTAssertTrue(app.navigationBars["Scopri"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.tables["discovery.list"].exists)
         XCTAssertTrue(app.staticTexts["discovery.chooseArea"].exists, "An uncaptured map area must not invent a nearby feed")
         XCTAssertFalse(app.buttons["tab.map"].isSelected)
-        XCTAssertTrue(app.buttons["browser.more"].isSelected)
+        XCTAssertTrue(app.buttons["tab.home"].isSelected)
         XCTAssertFalse(app.buttons["browser.saveVenue"].isEnabled)
         XCTAssertFalse(app.buttons["browser.recommendations"].isEnabled)
         attachState(named: "DoveBevo-native-discovery-choose-map-area")
@@ -262,12 +268,11 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func verifyLiveDiscoveryReadOnly() {
-        // The real viewed map area is captured when Discover is opened from Altro.
+        // The real viewed map area is captured when Home opens Discover.
         // All discovery requests are existing public GETs; no price or vote.
-        app.buttons["browser.more"].tap()
-        app.buttons["Scopri"].tap()
+        app.buttons["tab.home"].tap()
         XCTAssertTrue(app.navigationBars["Scopri"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["browser.more"].isSelected)
+        XCTAssertTrue(app.buttons["tab.home"].isSelected)
         XCTAssertFalse(app.buttons["browser.saveVenue"].isEnabled)
         XCTAssertFalse(app.buttons["browser.recommendations"].isEnabled)
         let table = app.tables["discovery.list"]
@@ -716,7 +721,7 @@ final class BrowserSmokeTests: XCTestCase {
 
     private func dismissMoreMenu() {
         // Select a real, harmless native menu action rather than a coordinate
-        // behind the context menu. Returning from Altro preserves this browser.
+        // behind the context menu. Returning from the top menu preserves this browser.
         let information = app.buttons["Informazioni"]
         XCTAssertTrue(information.waitForExistence(timeout: 5))
         XCTAssertTrue(information.isHittable)

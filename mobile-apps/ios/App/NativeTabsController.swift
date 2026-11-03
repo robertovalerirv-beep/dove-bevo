@@ -1,6 +1,6 @@
 import UIKit
 
-/// Map, favourites and Discover remain retained; Search opens the map search.
+/// Map, favourites and Home/Discover remain retained; Cerca opens the map search.
 /// Actions never select an empty controller or replace the browser's history.
 final class NativeTabsController: UIViewController, UINavigationControllerDelegate {
     private let store: SavedVenueStore
@@ -12,6 +12,8 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private let discoveryClient: DiscoveryServing
     private let providedBrowser: BrowserViewController?
     private let content = UIView()
+    private let topChrome = UIView()
+    private(set) var topMoreButton = UIButton(type: .system)
     private let bottomBackground = UIView()
     private(set) var bottomBar = NativeBottomBar()
     private var destinationIndex = 0
@@ -84,20 +86,40 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         super.viewDidLoad()
         view.backgroundColor = NativeAppearance.canvas
         view.tintColor = NativeAppearance.ink
+        topChrome.backgroundColor = NativeAppearance.canvas
         bottomBackground.backgroundColor = NativeAppearance.chrome
         NativeAppearance.configure(mapNavigation)
         NativeAppearance.configure(favouritesNavigation)
         NativeAppearance.configure(discoveryNavigation)
         mapNavigation.setNavigationBarHidden(true, animated: false)
-        [content, bottomBackground, bottomBar].forEach {
+        [content, topChrome, bottomBackground, bottomBar].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview($0)
         }
         bottomBar.onSelect = { [weak self] action in self?.performBottomAction(action) }
-        bottomBar.button(for: .more).showsMenuAsPrimaryAction = true
+        var moreConfiguration = UIButton.Configuration.plain()
+        moreConfiguration.image = UIImage(systemName: "ellipsis")
+        moreConfiguration.baseForegroundColor = NativeAppearance.ink
+        moreConfiguration.background.backgroundColor = NativeAppearance.surface
+        moreConfiguration.background.cornerRadius = NativeAppearance.radius
+        topMoreButton.configuration = moreConfiguration
+        topMoreButton.accessibilityIdentifier = "browser.more"
+        topMoreButton.accessibilityLabel = "Altre opzioni"
+        topMoreButton.showsMenuAsPrimaryAction = true
+        topMoreButton.translatesAutoresizingMaskIntoConstraints = false
+        topChrome.addSubview(topMoreButton)
         refreshMoreMenu()
         NSLayoutConstraint.activate([
-            content.topAnchor.constraint(equalTo: view.topAnchor),
+            topChrome.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            topChrome.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            topChrome.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            topChrome.heightAnchor.constraint(equalToConstant: 48),
+            topMoreButton.topAnchor.constraint(equalTo: topChrome.topAnchor),
+            topMoreButton.bottomAnchor.constraint(equalTo: topChrome.bottomAnchor),
+            topMoreButton.trailingAnchor.constraint(equalTo: topChrome.trailingAnchor, constant: -8),
+            topMoreButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 48),
+            topMoreButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 48),
+            content.topAnchor.constraint(equalTo: topChrome.bottomAnchor),
             content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             content.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             content.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),
@@ -209,15 +231,13 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
 
     private func refreshMoreMenu() {
         guard isViewLoaded else { return }
-        let discover = UIAction(title: "Scopri", image: UIImage(systemName: "safari"), identifier: UIAction.Identifier("tab.discover")) { [weak self] _ in
-            self?.openDiscovery()
-        }
         if destinationIndex == 0 && mapNavigation.topViewController === browser {
-            bottomBar.button(for: .more).menu = UIMenu(children: browser.moreMenu().children + [discover])
+            topMoreButton.accessibilityHint = "Condividi, ricarica e informazioni"
+            topMoreButton.menu = browser.moreMenu()
             return
         }
-        bottomBar.button(for: .more).menu = UIMenu(children: [
-            discover,
+        topMoreButton.accessibilityHint = "Privacy e informazioni"
+        topMoreButton.menu = UIMenu(children: [
             UIAction(title: "Privacy", image: UIImage(systemName: "hand.raised"), identifier: UIAction.Identifier("native.privacy")) { [weak self] _ in
                 self?.showPrivacyFromMore()
             },
@@ -251,6 +271,8 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private func performBottomAction(_ action: BottomNavigationAction) {
         switch action {
         case .home:
+            openDiscovery()
+        case .search:
             mapNavigation.popToRootViewController(animated: false)
             selectedIndex = 0
             browser.openMapSearch()
@@ -260,8 +282,6 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             guard selectedIndex == 0, mapNavigation.topViewController === browser, venueActionsAvailable else { return }
             if action == .save { browser.saveCurrentVenue() }
             else { browser.showRecommendations() }
-        case .more:
-            break
         }
         refreshBottomBar()
     }

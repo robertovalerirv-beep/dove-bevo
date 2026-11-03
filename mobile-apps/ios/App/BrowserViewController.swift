@@ -114,7 +114,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func configureChrome() {
-        // The map uses the full viewport; browser actions live in the bottom bar.
+        // The map uses the viewport below the titleless native overflow rail.
         navigationItem.title = nil
         view.backgroundColor = NativeAppearance.canvas
         navigationController?.navigationBar.prefersLargeTitles = false
@@ -755,7 +755,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         guard canSharePage, isBookmarkInteractionActive, presentedViewController == nil else { return }
         let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         if let popover = sheet.popoverPresentationController {
-            if let more = (navigationController?.parent as? NativeTabsController)?.bottomBar.button(for: .more) {
+            if let more = (navigationController?.parent as? NativeTabsController)?.topMoreButton {
                 popover.sourceView = more
                 popover.sourceRect = more.bounds
             } else {

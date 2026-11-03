@@ -19,8 +19,8 @@ import java.util.function.Consumer;
 /** At most nine cells, three public GET workers and one global deadline. No persistent data. */
 final class DiscoveryLoader {
     static final class Result {
-        final Map<String,DiscoveryData.Cell> cells;final int expected;final boolean partial;
-        Result(Map<String,DiscoveryData.Cell> cells,int expected){this.cells=Collections.unmodifiableMap(new HashMap<>(cells));this.expected=expected;boolean partial=cells.size()!=expected;for(DiscoveryData.Cell cell:cells.values())if(!cell.approved.staticVerified)partial=true;this.partial=partial;}
+        final Map<String,DiscoveryData.Cell> cells;final int expected;final boolean partial,menuSamples;
+        Result(Map<String,DiscoveryData.Cell> cells,int expected){this.cells=Collections.unmodifiableMap(new HashMap<>(cells));this.expected=expected;boolean partial=cells.size()!=expected,samples=false;for(DiscoveryData.Cell cell:cells.values()){if(!cell.approved.staticVerified||!cell.menuAvailable)partial=true;samples|=cell.menuSamples;}this.partial=partial;this.menuSamples=samples;}
     }
     private final FavoritePricesClient client;private final Executor deliver;private final ExecutorService network;private final ScheduledExecutorService timer;private final long timeoutMs;
     DiscoveryLoader(FavoritePricesClient client,Executor deliver){this(client,deliver,Executors.newFixedThreadPool(3),Executors.newSingleThreadScheduledExecutor(),60000);}
@@ -41,7 +41,14 @@ final class DiscoveryLoader {
                 EuropePrices.Catalog catalog=null;try{catalog=client.catalog(call());}catch(IOException|RuntimeException unavailable){ }
                 String current=version;EuropePrices.Catalog mobile=catalog;
                 for(String cell:cells)submit(()->{
-                    DiscoveryData.Cell value=null;try{value=client.discoveryCell(cell,current,mobile,foreignArea,call());}catch(IOException|RuntimeException unavailable){ }
+                    DiscoveryData.Cell value=null;
+                    try{value=client.discoveryCell(cell,current,mobile,foreignArea,call());}catch(IOException|RuntimeException unavailable){ }
+                    if(DiscoveryArea.legacyCell(cell)){
+                        // Preserve already loaded customer prices if the optional menu read stalls at the deadline.
+                        if(value!=null){synchronized(this){if(finished||cancelled)return;values.put(cell,DiscoveryData.withoutMenu(value));}}
+                        try{value=DiscoveryData.withMenu(value,client.menuCell(cell,call()));}
+                        catch(IOException|RuntimeException unavailable){if(value!=null)value=DiscoveryData.withoutMenu(value);}
+                    }
                     boolean done;synchronized(this){if(finished||cancelled)return;if(value!=null)values.put(cell,value);done=--remaining==0;}
                     if(done)finish(false);
                 });

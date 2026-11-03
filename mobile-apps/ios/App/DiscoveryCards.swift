@@ -28,7 +28,7 @@ struct DiscoveryCategorySummary: Equatable {
         }
         let count = rows.count == 1 ? "1 prezzo" : "\(rows.count) prezzi"
         countText = count
-        if Set(rows.map { $0.price.group }).count == 1,
+        if Set(rows.map { $0.price.discoveryGroup }).count == 1,
            let lowest = rows.min(by: { $0.price.amountMinor < $1.price.amountMinor }) {
             let source: String
             let old: Bool
@@ -42,6 +42,13 @@ struct DiscoveryCategorySummary: Equatable {
                 old = (price.observedOn ?? price.sourceCheckedOn).flatMap(ComparisonJSON.day).map { day in
                     (ComparisonJSON.day(today)?.timeIntervalSince(day) ?? .infinity) > 90 * 86400
                 } ?? true
+            case .menuV2(let price):
+                if case .ownerMenu(_, let day) = price.origin {
+                    source = "Menu verificato il \(day)"
+                    old = ComparisonJSON.day(day).map { checked in
+                        (ComparisonJSON.day(today)?.timeIntervalSince(checked) ?? .infinity) > 90 * 86400
+                    } ?? true
+                } else { source = "Origine non disponibile"; old = true }
             }
             headline = "Da \(lowest.price.amount)"
             detail = "\(first.price.groupLabel) · \(source)" + (old ? " · Da ricontrollare" : "")

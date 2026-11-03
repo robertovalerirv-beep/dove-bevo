@@ -66,6 +66,23 @@ struct MenuV2CustomerPage {
     let rows: [MenuV2Customer]
     let next: String?
 }
+struct MenuV2CellVenue: Equatable {
+    let key: String
+    let cell: String
+    let name: String
+    let latitude: Double
+    let longitude: Double
+    let address: String
+    let city: String
+    let matchingOfferCount: Int
+    let samples: [MenuV2Price]
+    var url: URL { URL(string: "https://www.dovebevo.com/bar/\(key)?c=\(cell)")! }
+}
+struct MenuV2CellPage {
+    let venues: [MenuV2CellVenue]
+    let next: String?
+    let incomplete: Bool
+}
 struct MenuV2Customer {
     let id: String
     let offerID: String?
@@ -154,6 +171,76 @@ enum MenuV2JSON {
         if status == "explicit_no_fee" { return "Nessuna spesa obbligatoria dichiarata dalla fonte." }
         let known = descriptions.isEmpty ? "" : "Spese separate: " + descriptions.joined(separator: "; ") + (fees.count > 3 ? "; altre spese nel dettaglio" : "") + ". "
         return known + (status == "unknown" ? "Altre spese non verificate." : "Copertura delle spese parziale.")
+    }
+
+    /// The public cell route provides one verified lowest sample per category,
+    /// currency and exponent. It is a discovery sample, not a complete menu.
+    static func cellPage(_ data: Data, cell: String, categories: [String], after: String?) -> MenuV2CellPage? {
+        guard data.count <= 1_048_576, !categories.isEmpty, categories.count <= 9,
+              Set(categories).count == categories.count,
+              categories.allSatisfy({ code in DrinkCategory.all.contains { $0.code == code } }),
+              after == nil || ComparisonJSON.matches(after!, "^(?:[nwr][1-9][0-9]{0,14}|m[0-9a-f]{24})$"),
+              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              ComparisonJSON.integer(root["schema_version"], minimum: 2, maximum: 2) == 2,
+              root["price_scope"] as? String == "menu_item_only", root["cell"] as? String == cell,
+              let coverage = object(root["coverage"]), coverage["complete"] as? Bool == false,
+              coverage["basis"] as? String == "verified_source_items_only",
+              root["category"] is NSNull,
+              let returnedCategories = root["categories"] as? [String], returnedCategories == categories,
+              let raw = root["venues"] as? [[String: Any]], raw.count <= 50,
+              let unresolved = ComparisonJSON.integer(root["unresolved_venues"], minimum: 0, maximum: 50),
+              let next = cursor(root["next_after"], pattern: "^(?:[nwr][1-9][0-9]{0,14}|m[0-9a-f]{24})$") else { return nil }
+        let keyPattern = "^(?:[nwr][1-9][0-9]{0,14}|m[0-9a-f]{24})$"
+        var venues: [MenuV2CellVenue] = []
+        var keys = Set<String>()
+        for row in raw {
+            guard let key = row["key"] as? String, ComparisonJSON.matches(key, keyPattern),
+                  keys.insert(key).inserted, row["cell"] as? String == cell,
+                  let name = text(row["name"]),
+                  let latitude = ComparisonJSON.number(row["lat"], range: -85.051129...85.051129),
+                  let longitude = ComparisonJSON.number(row["lon"], range: -180...180),
+                  ComparisonJSON.cellForCoordinates(latitude: latitude, longitude: longitude) == cell,
+                  ComparisonJSON.integer(row["kind"], minimum: 0, maximum: 4) != nil,
+                  let country = row["country"] as? String, ["IT", "GB", "FR", "ES", "DE"].contains(country),
+                  let identity = row["identity_url"] as? String, identity.utf8.count <= 2048,
+                  let identityURL = URLComponents(string: identity), identityURL.scheme == "https",
+                  identityURL.host != nil, identityURL.user == nil, identityURL.password == nil,
+                  identityURL.fragment == nil, identityURL.port == nil || identityURL.port == 443,
+                  let identityKind = row["identity_kind"] as? String,
+                  ["osm", "owner_verified"].contains(identityKind),
+                  let count = ComparisonJSON.integer(row["matching_offer_count"], minimum: 1, maximum: 100_000),
+                  let samples = row["sample_offers"] as? [[String: Any]], !samples.isEmpty, samples.count <= 100,
+                  let feeCoverage = object(row["fee_coverage"]),
+                  let feeStatus = feeCoverage["status"] as? String,
+                  ["unknown", "documented_partial", "explicit_no_fee"].contains(feeStatus),
+                  feeCoverage["source"] is NSNull || source(feeCoverage["source"]) != nil else { return nil }
+            let address = row["address"] is NSNull ? "" : (row["address"] as? String)
+            let city = row["city"] is NSNull ? "" : (row["city"] as? String)
+            guard let address, let city, address.utf16.count <= 240, city.utf16.count <= 120,
+                  !address.unicodeScalars.contains(where: { $0.value < 32 || (127...159).contains($0.value) }),
+                  !city.unicodeScalars.contains(where: { $0.value < 32 || (127...159).contains($0.value) }),
+                  samples.count <= count else { return nil }
+            // Reuse the complete offer decoder, including owner source, amount,
+            // serving, context and fee-coverage checks. A cell has no fee list.
+            let sampleEnvelope: [String: Any] = [
+                "schema_version": 2, "coverage": coverage, "price_scope": "menu_item_only",
+                "venue": ["key": key, "cell": cell, "name": name],
+                "stored_offer_count": count, "offers": samples, "next_after": NSNull(),
+                "fees": [], "fee_coverage": feeCoverage
+            ]
+            guard let sampleData = try? JSONSerialization.data(withJSONObject: sampleEnvelope),
+                  let decoded = menuPage(sampleData, key: key, cell: cell),
+                  decoded.offers.count == samples.count,
+                  decoded.offers.allSatisfy({ categories.contains($0.category) }) else { return nil }
+            venues.append(MenuV2CellVenue(key: key, cell: cell, name: name,
+                                          latitude: latitude, longitude: longitude,
+                                          address: address, city: city,
+                                          matchingOfferCount: count, samples: decoded.offers))
+        }
+        guard venues.map(\.key) == venues.map(\.key).sorted(),
+              next == nil || (next != after && (venues.last?.key ?? "") <= next!),
+              after == nil || venues.allSatisfy({ $0.key > after! }) else { return nil }
+        return MenuV2CellPage(venues: venues, next: next, incomplete: unresolved > 0)
     }
 
     static func menuPage(_ data: Data, key: String, cell: String) -> MenuV2Page? {

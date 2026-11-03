@@ -58,6 +58,9 @@ struct DiscoverySnapshot {
     let venues: [DiscoveryVenue]
     let unavailableCells: Set<String>
     var europe: EuropeSnapshot? = nil
+    var menu: [String: MenuV2CellVenue] = [:]
+    var menuUnavailableCells: Set<String> = []
+    var partialCells: Set<String> { unavailableCells.union(menuUnavailableCells) }
 
     func displayRows(drink: String, band: ComparisonBand) -> [DiscoveryPresentedRow] {
         let original = rows(drink: drink, band: band).filter { europe?.venues[$0.venue.key] == nil }.map { row in
@@ -70,8 +73,16 @@ struct DiscoverySnapshot {
                     location: venue.city, price: .europe(price))
             }
         }
-        return (original + added).sorted {
-            if $0.price.group != $1.price.group { return $0.price.group < $1.price.group }
+        let ownerMenus = menu.values.flatMap { venue in
+            venue.samples.filter { $0.category == drink && $0.band == band }.map { price in
+                DiscoveryPresentedRow(key: venue.key, name: venue.name, url: venue.url,
+                    latitude: venue.latitude, longitude: venue.longitude,
+                    location: [venue.address, venue.city].filter { !$0.isEmpty }.joined(separator: " · "),
+                    price: .menuV2(price))
+            }
+        }
+        return (original + added + ownerMenus).sorted {
+            if $0.price.discoveryGroup != $1.price.discoveryGroup { return $0.price.discoveryGroup < $1.price.discoveryGroup }
             if $0.price.amountMinor != $1.price.amountMinor { return $0.price.amountMinor < $1.price.amountMinor }
             let order = $0.name.localizedCaseInsensitiveCompare($1.name)
             return order == .orderedSame ? $0.key < $1.key : order == .orderedAscending

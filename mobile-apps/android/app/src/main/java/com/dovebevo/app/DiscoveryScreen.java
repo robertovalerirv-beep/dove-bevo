@@ -78,7 +78,8 @@ final class DiscoveryScreen {
         status.setText(activity.getString(R.string.discovery_status_format,
                 values.isEmpty()?activity.getString(R.string.discovery_empty):Math.min(values.size(),DiscoveryData.MAX_ROWS)+" prezzi · valuta e formato separati",
                 snapshot.partial?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_partial)):"",
-                values.size()>DiscoveryData.MAX_ROWS?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_limit)):""));
+                (snapshot.menuSamples?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_menu_samples)):"")+
+                        (values.size()>DiscoveryData.MAX_ROWS?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_limit)):"")));
         int count=0,rank=0;String group=null;
         for(DiscoveryData.Row row:values){if(count++==DiscoveryData.MAX_ROWS)break;
             if(!row.group().equals(group)){group=row.group();rank=0;}rank++;
@@ -91,19 +92,20 @@ final class DiscoveryScreen {
             TextView name=text(row.venue.name,16);heading(name);NativeAppearance.title(name);identity.addView(name);
             String distance=row.metres<1000?String.format(Locale.ITALY,"%.0f m",row.metres):String.format(Locale.ITALY,"%.1f km",row.metres/1000);
             TextView location=text((row.venue.city.isEmpty()?"":row.venue.city+" · ")+distance,12);NativeAppearance.muted(location);identity.addView(location);
-            TextView price=text(NativePricePresentation.amount(row.price,row.mobilePrice),18);NativeAppearance.title(price);headline.addView(price);
+            TextView price=text(row.amountLabel(),18);NativeAppearance.title(price);headline.addView(price);
             Button open=new Button(activity);open.setId(R.id.discovery_open);open.setText("›");open.setContentDescription(activity.getString(R.string.favorites_open_named,row.venue.name));NativeAppearance.button(open,false);open.setMinWidth(dp(44));open.setMinimumWidth(dp(44));open.setOnClickListener(v->{if(usable()&&!busy&&snapshot!=null)navigate.accept(row.venue.url());});headline.addView(open,new LinearLayout.LayoutParams(-2,-2));card.addView(headline);
-            String date=row.mobilePrice==null?row.price.day:row.mobilePrice.sourceKind.equals("online_menu")?row.mobilePrice.sourceCheckedOn:row.mobilePrice.observedOn;
+            String date=row.day();
             String formatted=date.substring(8)+"/"+date.substring(5,7)+"/"+date.substring(0,4);
-            boolean menu=row.mobilePrice!=null&&row.mobilePrice.sourceKind.equals("online_menu"),old=row.mobilePrice==null?row.price.old:row.mobilePrice.old;
-            String serving=row.mobilePrice==null?"EUR · formato non indicato":NativePricePresentation.groupLabel(null,row.mobilePrice);
+            boolean menu=row.menuSource(),old=row.old();
+            String serving=row.groupLabel();
             LinearLayout summary=new LinearLayout(activity);summary.setGravity(Gravity.CENTER_VERTICAL);
-            TextView line=text(serving+" · "+(menu?"Menu verificato ":"Segnalato ")+formatted+(old?menu?" · Menu da ricontrollare":" · Datato":""),12);NativeAppearance.muted(line);summary.addView(line,new LinearLayout.LayoutParams(0,-2,1));
+            TextView line=text((row.menuPrice==null?"":row.menuPrice.name+" · ")+serving+" · "+(menu?"Menu verificato ":"Segnalato ")+formatted+(old?menu?" · Menu da ricontrollare":" · Datato":""),12);NativeAppearance.muted(line);summary.addView(line,new LinearLayout.LayoutParams(0,-2,1));
             LinearLayout details=new LinearLayout(activity);details.setTag("discovery.details");details.setOrientation(LinearLayout.VERTICAL);details.setVisibility(View.GONE);
             details.addView(text(row.venue.address+(row.venue.address.isEmpty()?"":" · ")+activity.getString(R.string.discovery_distance,distance),13));
-            details.addView(text(NativePricePresentation.category(drink)+" · "+activity.getString(band==0?R.string.favorites_normal:R.string.favorites_happy_hour)+" · "+NativePricePresentation.groupLabel(row.price,row.mobilePrice),13));
-            if(menu||row.mobilePrice!=null){details.addView(text(NativePricePresentation.context(row.mobilePrice),13));}
+            details.addView(text(NativePricePresentation.category(drink)+" · "+activity.getString(band==0?R.string.favorites_normal:R.string.favorites_happy_hour)+" · "+row.groupLabel(),13));
+            if(menu||row.mobilePrice!=null){details.addView(text(row.context(),13));}
             else{String confirmations=activity.getResources().getQuantityString(R.plurals.favorites_confirmations,row.price.confirmations==1?1:2,row.price.confirmations);details.addView(text(activity.getString(R.string.favorites_observed,formatted)+" · "+confirmations,13));}
+            if(row.menuPrice!=null&&row.menuPrice.sourceUrl!=null)details.addView(text("Fonte: "+row.menuPrice.sourceUrl,12));
             if(old)details.addView(text(menu?NativePricePresentation.menuWarning():activity.getString(R.string.favorites_old),13));
             Button disclosure=new Button(activity);disclosure.setId(R.id.discovery_details);disclosure.setText("⌄");disclosure.setContentDescription("Dettagli prezzo per "+row.venue.name);NativeAppearance.button(disclosure,false);disclosure.setMinWidth(dp(44));disclosure.setMinimumWidth(dp(44));disclosure.setOnClickListener(v->{boolean expand=details.getVisibility()!=View.VISIBLE;details.setVisibility(expand?View.VISIBLE:View.GONE);disclosure.setText(expand?"⌃":"⌄");disclosure.setContentDescription((expand?"Nascondi dettagli prezzo per ":"Dettagli prezzo per ")+row.venue.name);});summary.addView(disclosure,new LinearLayout.LayoutParams(-2,-2));card.addView(summary);card.addView(details);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(6);rows.addView(card,size);
@@ -123,24 +125,18 @@ final class DiscoveryScreen {
                 catch(IOException unavailable){offers=null;}
                 if(offers==null){headline="Prezzi non caricati";detail="Ricarica";}
                 else if(offers.isEmpty()){
-                    headline=snapshot.partial?"Nessun prezzo nei dati caricati":"Nessun prezzo";
-                    detail=snapshot.partial?"Zona parziale · Ricarica":"Prova un altro drink";
+                    headline=snapshot.partial?"Nessun prezzo nei dati caricati":snapshot.menuSamples?"Nessun prezzo nell'anteprima":"Nessun prezzo";
+                    detail=snapshot.partial?"Zona parziale · Ricarica":snapshot.menuSamples?"Apri il locale per altri drink":"Prova un altro drink";
                 }
                 else{
                     String firstGroup=offers.get(0).group();boolean comparable=true;
                     for(DiscoveryData.Row offer:offers)if(!firstGroup.equals(offer.group())){comparable=false;break;}
                     if(comparable){
                         DiscoveryData.Row lowest=offers.get(0);
-                        headline="Da "+NativePricePresentation.amount(lowest.price,lowest.mobilePrice);
-                        String source;boolean old;
-                        if(lowest.mobilePrice==null){source="Segnalato il "+lowest.price.day;old=lowest.price.old;}
-                        else{
-                            EuropePrices.Price value=lowest.mobilePrice;
-                            source=value.sourceKind.equals("online_menu")?"Menu verificato il "+value.sourceCheckedOn:"Segnalato il "+value.observedOn;
-                            old=value.old;
-                        }
-                        detail=NativePricePresentation.groupLabel(lowest.price,lowest.mobilePrice)+" · "+source
-                                +(old?" · Da ricontrollare":"")+(snapshot.partial?" · Zona parziale":"");
+                        headline="Da "+lowest.amountLabel();
+                        String source=lowest.menuSource()?"Menu verificato il "+lowest.day():"Segnalato il "+lowest.day();
+                        detail=lowest.groupLabel()+" · "+source
+                                +(lowest.old()?" · Da ricontrollare":"")+(snapshot.partial?" · Zona parziale":"");
                     }else{headline=offers.size()+" prezzi";detail="Valute o formati diversi"+(snapshot.partial?" · Zona parziale":"");}
                 }
             }

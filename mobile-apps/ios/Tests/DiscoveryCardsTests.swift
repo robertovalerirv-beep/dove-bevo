@@ -39,6 +39,52 @@ final class DiscoveryCardsTests: XCTestCase {
         XCTAssertTrue(summary.detail.contains("Da ricontrollare"))
     }
 
+    func testOwnerMenuSampleShowsItsExactItemSourceAndServingWithoutClaimingTotalCost() throws {
+        let price = MenuV2Price(id: "owner-spritz", venueName: "Actual venue", itemName: "Spritz della casa",
+            category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+            servingLabel: "Calice", servingML: 200,
+            origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu")), "2026-11-02"),
+            feeNotice: "Altre spese non verificate.")
+        let row = DiscoveryPresentedRow(key: "n123", name: "Actual venue",
+            url: try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")),
+            latitude: 45.46, longitude: 9.19, location: "Milano", price: .menuV2(price))
+        XCTAssertEqual(row.price.amount, "5,50 €")
+        XCTAssertTrue(row.price.groupLabel.contains("Calice · 200 ml"))
+        XCTAssertTrue(row.price.details(today: "2026-11-03").contains("Spritz della casa"))
+        XCTAssertTrue(row.price.details(today: "2026-11-03").contains("bar.example"))
+        XCTAssertTrue(row.price.details(today: "2026-11-03").contains("Altre spese non verificate"))
+        let summary = DiscoveryCategorySummary(rows: [row], loading: false, today: "2026-11-03")
+        XCTAssertEqual(summary.headline, "Da 5,50 €")
+        XCTAssertTrue(summary.detail.contains("Menu verificato il 2026-11-02"))
+    }
+
+    func testEqualGlassServingAcrossFeedsCanShowCheapestWithoutMixingCurrencyOrVolume() throws {
+        let europe = EuropePrice(drink: "spritz", band: .normal, currency: "EUR", amountMinor: 600,
+            serving: EuropeServing(unit: "glass", ml: 200), observedOn: nil, confirmedOn: nil,
+            confirmations: 0, quarantined: false, revision: "fixture", sourceURL: nil,
+            sourceSHA256: nil, sourceCheckedOn: "2026-11-02", menuItem: "Spritz")
+        let menu = MenuV2Price(id: "menu-spritz", venueName: "Another venue", itemName: "Spritz",
+            category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+            servingLabel: "Calice", servingML: 200,
+            origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu")), "2026-11-02"),
+            feeNotice: "Altre spese non verificate.")
+        let url = try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9"))
+        let rows = [
+            DiscoveryPresentedRow(key: "n123", name: "First", url: url,
+                latitude: 45.46, longitude: 9.19, location: "Milano", price: .europe(europe)),
+            DiscoveryPresentedRow(key: "n124", name: "Second", url: url,
+                latitude: 45.46, longitude: 9.19, location: "Milano", price: .menuV2(menu))
+        ]
+        XCTAssertEqual(rows[0].price.discoveryGroup, rows[1].price.discoveryGroup)
+        XCTAssertEqual(DiscoveryCategorySummary(rows: rows, loading: false, today: "2026-11-03").headline, "Da 5,50 €")
+        let different = MenuV2Price(id: "other", venueName: "Another venue", itemName: "Spritz",
+            category: "spritz", band: .normal, amountMinor: 5, currency: "GBP", exponent: 0,
+            servingLabel: "Calice", servingML: 300,
+            origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu")), "2026-11-02"),
+            feeNotice: "Altre spese non verificate.")
+        XCTAssertNotEqual(rows[0].price.discoveryGroup, NativeComparablePrice.menuV2(different).discoveryGroup)
+    }
+
     @MainActor func testDrinkDropdownKeepsAllNineRealCategoriesAndSelectedIdentity() throws {
         let controller = DiscoveryViewController(activityCheck: { false }, onOpen: { _ in }, onMap: {})
         controller.loadViewIfNeeded()

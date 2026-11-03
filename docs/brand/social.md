@@ -2,7 +2,7 @@
 
 Riferimento per post, reel e storie. Vale insieme a `02-voce.md` (regole di voce e parole vietate D-31); in caso di dubbio prevalgono quelle, tranne dove questo file dichiara una deroga (solo emoji 18+, sotto). Grafica solo dal kit del brand (`tokens.json`, `fonts/`, `components/`, `assets/`). I file dei contenuti (immagini, video) non stanno nel repository.
 
-Ultimo allineamento: 02/11/2026, con le decisioni di Roberto in chat (i reel hanno audio: voce e musica; dal 4° contenuto i reel hanno un protagonista, Bevino).
+Ultimo allineamento: 03/11/2026, con le decisioni di Roberto in chat (i reel hanno audio: voce e musica; dal 4° contenuto i reel hanno un protagonista, Bevino, che compare anche nei caroselli).
 
 ## Account
 
@@ -64,11 +64,12 @@ Per maggiorenni.
 - **Post:** carosello 4:5 (1080×1350), 4 slide: domanda → problema → promessa coperta → attesa. Testo alternativo per ogni slide.
 - **Reel:** 1080×1920, circa 15 s, con audio: voce e musica insieme (decisione di Roberto, 31/10/2026). La musica si sceglie dalla libreria di Instagram; la voce, propria o sintetica, è da decidere. Testi nella fascia centrale, tra y 260 e y 1480, lontani dal bordo destro. Copertina dalla scena più curiosa.
 
-## Bevino (reel con protagonista)
+## Bevino (reel e caroselli con protagonista)
 
 - **Chi è:** Bevino, un tappo a corona vivo che ricalca il simbolo: disco arancio `spritz` lucido, bordo zigrinato a 21 denti con contorno scuro, due occhi grandi e scuri, sorriso piccolo, braccia e gambe nere sottili. Personaggio originale, alto 25 cm nella scena.
 - **Come si produce (artigianale):** clip generate con Sora (opengen), 9:16, in inglese per il prompt e in italiano per le battute; le clip si uniscono su Clipchamp (già su Windows 11). Il blocco di descrizione di Bevino si ripete identico in ogni prompt.
 - **Continuità tra clip:** stessa location descritta con le stesse parole, stato finale di una clip = stato iniziale della successiva, ultimo fotogramma come immagine di partenza quando si può. Niente testo leggibile nel video: schermate, messaggi e «Per maggiorenni» si sovrappongono nel montaggio.
+- **Nei caroselli** (dal 03/11/2026) compare in grafica ferma, con contorno crema da adesivo perché resti leggibile sul fondo `spritz`; personaggio disegnato a mano in SVG dalla stessa descrizione, non ancora nel kit del brand.
 - Valgono tutti i limiti fissi: prezzi solo reali e controllati il giorno, nessuna enfasi sul bere molto.
 
 ## Pubblicati
@@ -82,5 +83,6 @@ Dati di Instagram al 27/10/2026, ore 13:19 (35 follower, 1.001 visualizzazioni i
 | 26/10/2026 | Post | «Stessa birra.»: 3,50 € contro 9,00 €, «Più del doppio. Cambia solo dove paghi.» (caption: «Alla cassa: «sono 9€»…») | 243 (dopo 16 h) · 8 · 4 |
 | 25–26/10/2026 | Storie | Due storie: il simbolo «coming soon» e il telefono con la tastiera | 31 e 43 · 1 e 0 · 0 |
 | 02/11/2026 | Reel | Bevino, appena arrivato a Milano, chiama Franco, scopre dovebevo.com ed esce verso Piazza del Duomo: «Trova dove andare a bere vicino a te con dovebevo.com». Fatto con Sora (opengen) | da rilevare |
+| 03/11/2026 | Post | «Ma chi li scrive i prezzi sulla mappa?»: carosello a dialogo con Bevino, come si segna un prezzo e come si aggiunge un bar mancante, «Prezzi inventati: nessuno»; messaggio: chiunque può inserire, basta che sia reale (caption: «Alla cassa ti dicono la cifra e tu annuisci…», con invito a taggare il locale mancante) | da rilevare |
 
-Ordine dei contenuti nel feed al 02/11/2026: 1° carosello (24/10), 2° reel (24/10), 3° carosello (26/10), 4° reel con Bevino (02/11). Le storie non contano.
+Ordine dei contenuti nel feed al 03/11/2026: 1° carosello (24/10), 2° reel (24/10), 3° carosello (26/10), 4° reel con Bevino (02/11), 5° carosello «Ma chi li scrive» (03/11). Le storie non contano.

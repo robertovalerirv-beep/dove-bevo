@@ -4,6 +4,7 @@ Legacy customer prices and Roberto's website are never written by this module.
 """
 import argparse
 import datetime as dt
+import decimal
 import hashlib
 import importlib.util
 import ipaddress
@@ -24,6 +25,8 @@ legacy = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(legacy)
 
 SITE = legacy.SITE
+CARICO_RENDERER_URL = "https://www.carico.io/js/app.js"
+CARICO_RENDERER_SHA256 = "02f10b32d3e52033d57d30ab6ce3e321dc1da4849a70c3380cfbcbf4626fbe05"
 HEX = re.compile(r"^[0-9a-f]{64}$")
 OSM = re.compile(r"^[nwr][1-9][0-9]{0,17}$")
 OWNER = re.compile(r"^m[0-9a-f]{24}$")
@@ -142,6 +145,8 @@ def public_fetch(transport,address,maximum,content_kind=None,resolver=None):
         raise Error("unexpected PDF source content")
     if content_kind=="xml" and b"<osm" not in header:
         raise Error("unexpected OSM XML content")
+    if content_kind=="json" and not header.startswith(b"{"):
+        raise Error("unexpected JSON source content")
     return raw
 
 def canonical_owner_url(value):
@@ -214,10 +219,13 @@ def validate_source(row,venues,checked):
     if key not in venues or cell(row["cell"])!=venues[key]["cell"]:
         raise Error("source venue mismatch")
     https(row["source_url"],True)
-    if row["source_format"] not in ("html_text_v1","pdf_text_v1"):
+    if row["source_format"] not in ("html_text_v1","pdf_text_v1","json_menu_v1"):
         raise Error("unsupported source format")
     digest(row["source_sha256"]);digest(row["source_text_sha256"])
-    if row["source_format"]=="html_text_v1" and row["source_sha256"]!=row["source_text_sha256"]:
+    if row["source_format"]=="json_menu_v1" and (row["source_url"]!="https://www.carico.io/api/menu"
+        or row["use_review_reference"]!=CARICO_RENDERER_URL):
+        raise Error("unreviewed JSON menu endpoint or renderer")
+    if row["source_format"] in ("html_text_v1","json_menu_v1") and row["source_sha256"]!=row["source_text_sha256"]:
         raise Error("HTML text hashes differ")
     if day(row["source_checked_on"])>checked or day(row["use_reviewed_on"])>checked:
         raise Error("future source review")
@@ -338,7 +346,11 @@ def source_digests(raw,fmt):
     if fmt=="html_text_v1":
         result=legacy.source_digest(raw,"html_text_v1")
         return result,result
-    if not raw.startswith(b"%PDF-"): raise Error("invalid PDF")
+    if fmt=="json_menu_v1":
+        json_menu_entries(raw)
+        result=hashlib.sha256(raw).hexdigest()
+        return result,result
+    if fmt!="pdf_text_v1" or not raw.startswith(b"%PDF-"): raise Error("invalid PDF")
     try:
         proc=subprocess.run(["pdftotext","-layout","-enc","UTF-8","-","-"],
                             input=raw,capture_output=True,timeout=30,check=True)
@@ -347,6 +359,96 @@ def source_digests(raw,fmt):
         raise Error("PDF text extraction failed") from exc
     if not 10<=len(canonical)<=2*1024*1024: raise Error("PDF text unavailable")
     return hashlib.sha256(raw).hexdigest(),hashlib.sha256(canonical).hexdigest()
+
+def json_menu_entries(raw):
+    """Extract only the priced drinks visible in Carico's first-party menu UI."""
+    try:
+        doc=json.loads(raw.decode("utf-8"),object_pairs_hook=pairs,parse_constant=constant)
+    except (UnicodeError,ValueError) as exc:
+        raise Error("invalid JSON menu") from exc
+    if not isinstance(doc,dict) or not isinstance(doc.get("categories"),list):
+        raise Error("invalid JSON menu structure")
+    allowed={"cucina","pizza","cocktail","gin-tonic","vini","birre","distillati"}
+    drink=allowed-{"cucina","pizza"}
+    seen=set()
+    entries={}
+    for category in doc["categories"]:
+        if not isinstance(category,dict) or category.get("id") not in allowed:
+            raise Error("unknown JSON menu category")
+        if category["id"] in seen: raise Error("duplicate JSON menu category")
+        seen.add(category["id"])
+        if category.get("hidden") is True or category["id"] not in drink: continue
+        subgroups=category.get("subgroups")
+        if not isinstance(subgroups,list): raise Error("invalid JSON menu subgroups")
+        for subgroup in subgroups:
+            if not isinstance(subgroup,dict): raise Error("invalid JSON menu subgroup")
+            if subgroup.get("hidden") is True: continue
+            items=subgroup.get("items")
+            if not isinstance(items,list): raise Error("invalid JSON menu items")
+            for item in items:
+                if not isinstance(item,dict): raise Error("invalid JSON menu item")
+                item_id=item.get("id")
+                if not isinstance(item_id,str) or not re.fullmatch(r"[A-Za-z0-9-]{1,128}",item_id):
+                    raise Error("invalid JSON menu item ID")
+                if item_id in entries: raise Error("duplicate JSON menu item")
+                if item.get("available") is False: continue
+                name=item.get("name")
+                if not isinstance(name,dict) or not isinstance(name.get("it"),str):
+                    raise Error("invalid JSON menu item name")
+                name=text(name["it"].strip(),1,512)
+                price=item.get("price")
+                if price is None or price=="": continue
+                if not isinstance(price,str) or not re.fullmatch(r"[0-9]{1,6}(?:[.,][0-9]{1,2})?",price.strip()):
+                    raise Error("ambiguous JSON menu price")
+                amount=decimal.Decimal(price.strip().replace(",","."))*100
+                if amount!=amount.to_integral_value() or not 1<=amount<=100000000:
+                    raise Error("invalid JSON menu amount")
+                group=subgroup.get("id")
+                if not isinstance(group,str): raise Error("invalid JSON menu group")
+                category_id=category["id"]
+                offer_category=None
+                serving=None
+                if category_id=="gin-tonic": offer_category="gin_tonic"
+                elif category_id=="cocktail":
+                    if group=="analcolici": offer_category="alcohol_free"
+                    elif name.casefold()=="negroni": offer_category="negroni"
+                elif category_id=="vini":
+                    serving="Calice" if group=="calice" else "Bottiglia"
+                    if group=="calice": offer_category="wine_glass"
+                elif category_id=="birre":
+                    if group=="sec-mv9d11mj65ua":
+                        offer_category="beer_draft"
+                        if name.endswith(" Media"): serving="Media"
+                        elif name.endswith(" Piccola"): serving="Piccola"
+                        else: raise Error("unknown draft beer size")
+                    else:
+                        serving="Bottiglia"
+                        if "0.0" in name: offer_category="alcohol_free"
+                entries[item_id]=(name,int(amount),offer_category,serving)
+    if seen!=allowed: raise Error("JSON menu categories changed")
+    if not entries: raise Error("JSON menu has no priced drinks")
+    return entries
+
+def verify_json_menu_offers(raw,source,offers):
+    entries=json_menu_entries(raw)
+    matched=set()
+    prefix="Carico API item "
+    for row in offers:
+        if row["source_id"]!=source["id"]: continue
+        evidence=row["evidence_ref"]
+        if not evidence.startswith(prefix): raise Error("JSON offer evidence absent")
+        item_id=evidence[len(prefix):]
+        if item_id not in entries or item_id in matched:
+            raise Error("JSON offer missing or duplicated")
+        matched.add(item_id)
+        name,amount,category,serving=entries[item_id]
+        if (row["name"]!=name or row["amount_minor"]!=amount
+            or row["category"]!=category or row["serving_label"]!=serving
+            or row["serving_ml"] is not None or row["currency"]!="EUR"
+            or row["currency_exponent"]!=2 or row["price_context"]!="regular"
+            or row["condition_text"] is not None):
+            raise Error("JSON offer/source mismatch")
+    if matched!=set(entries): raise Error("JSON priced drink coverage incomplete")
 
 def osm_node_v1(raw):
     """Hash semantic OSM node evidence, excluding server generator and XML ordering."""
@@ -466,14 +568,21 @@ def public_identity(row,transport,version,cells):
         or abs(row["lat"]-lat)>0.0000001 or abs(row["lon"]-lon)>0.0000001):
         raise Error("foreign OSM node mismatch")
 
-def source_identity(row,transport,cache):
+def source_identity(row,transport,cache,offers):
     if row["use_review_status"]=="held": return "held"
     key=(row["source_url"],row["source_format"])
     if key not in cache:
-        cache[key]=source_digests(public_fetch(transport,row["source_url"],MAX_SOURCE,
-                   "html" if row["source_format"]=="html_text_v1" else "pdf"),row["source_format"])
-    if cache[key]!=(row["source_sha256"],row["source_text_sha256"]):
+        content_kind={"html_text_v1":"html","pdf_text_v1":"pdf","json_menu_v1":"json"}[row["source_format"]]
+        source_raw=public_fetch(transport,row["source_url"],MAX_SOURCE,content_kind)
+        cache[key]=(source_digests(source_raw,row["source_format"]),source_raw)
+    hashes,source_raw=cache[key]
+    if hashes!=(row["source_sha256"],row["source_text_sha256"]):
         raise Error("source hash mismatch")
+    if row["source_format"]=="json_menu_v1":
+        renderer=public_fetch(transport,CARICO_RENDERER_URL,MAX_SOURCE)
+        if hashlib.sha256(renderer).hexdigest()!=CARICO_RENDERER_SHA256:
+            raise Error("Carico renderer hash mismatch")
+        verify_json_menu_offers(source_raw,row,offers)
     return "verified"
 
 def one(transport,sql,params):
@@ -608,7 +717,7 @@ def execute(raw,transport,apply=False,approved_sha256=None):
         phase="source"
         cache={}
         for source in doc["sources"]:
-            status=source_identity(source,transport,cache)
+            status=source_identity(source,transport,cache,doc["offers"])
             receipt["sources"].append({"id":source["id"],"venue_key":source["venue_key"],
                                        "status":status})
         phase="binding"

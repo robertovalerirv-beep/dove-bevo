@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { URL, URLSearchParams } from "node:url";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
-import { mobilePath, mobileURL, mobileDefaultDrink } from "../routes.ts";
+import { mobilePath, mobileURL, mobileDefaultDrink, mobileFocus, menuOfferMatchesFocus } from "../routes.ts";
 import { transformApp, transformMap, mobileMapStyle } from "../build-contract.mjs";
 import { mobilePinLabel } from "../map-pins.ts";
 import { renderSw } from "../../../scripts/sw.ts";
@@ -28,6 +28,54 @@ test("mobile owner-verified venue links retain exact m identity", () => {
   assert.equal(mobilePath(new URL(url, origin)), `/bar/${key}`);
   for (const bad of ["m" + "A".repeat(24), "m" + "a".repeat(23), "m" + "a".repeat(25)])
     assert.throws(() => mobileURL(`/bar/${bad}?c=u0nd9`, origin), TypeError);
+});
+
+test("saved drink links keep the exact drink and happy-hour band", () => {
+  for (const key of ["n123", "maaaaaaaaaaaaaaaaaaaaaaaa"]) {
+    const link = mobileURL(`/bar/${key}?c=u0nd9&drink=negroni&hh=1`, origin);
+    assert.equal(link, `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&drink=negroni&hh=1`);
+    const parsed = new URL(link, origin);
+    assert.equal(mobilePath(parsed), `/bar/${key}`);
+    assert.deepEqual(mobileFocus(parsed), { drink: "negroni", hh: 1 });
+    assert.equal(mobileDefaultDrink("beer_draft", parsed), "negroni");
+  }
+  assert.equal(mobileFocus(new URL("/mobile/?path=/bar/n123&c=u0nd9", origin)), null);
+  assert.equal(
+    menuOfferMatchesFocus(
+      { category: "negroni", context: { kind: "happy_hour" } },
+      { drink: "negroni", hh: 1 },
+    ),
+    true,
+  );
+  for (const kind of ["regular", "conditional"])
+    assert.equal(
+      menuOfferMatchesFocus(
+        { category: "negroni", context: { kind } },
+        { drink: "negroni", hh: 1 },
+      ),
+      false,
+    );
+});
+
+test("partial or duplicate saved drink links fail closed", () => {
+  for (const search of [
+    "?path=/bar/n123&c=u0nd9&drink=spritz",
+    "?path=/bar/n123&c=u0nd9&hh=1",
+    "?path=/bar/n123&c=u0nd9&drink=spritz&drink=negroni&hh=0",
+    "?path=/bar/n123&c=u0nd9&drink=spritz&hh=0&hh=1",
+    "?path=/bar/n123&c=u0nd9&drink=unknown&hh=0",
+    "?path=/bar/n123&c=u0nd9&drink=spritz&hh=2",
+    "?path=/bar/n123&c=u0nd9&drink=spritz&hh=0&token=private",
+  ]) {
+    assert.equal(mobilePath({ pathname: "/mobile/", search }), "/", search);
+    assert.equal(mobileFocus({ pathname: "/mobile/", search }), null, search);
+  }
+  assert.equal(
+    mobilePath({ pathname: "/mobile/", search: "?path=/bar/n123&c=u0nd9&drink=spritz&hh=0", hash: "#bad" }),
+    "/",
+  );
+  assert.throws(() => mobileURL("/bar/n123?c=u0nd9&drink=spritz", origin), TypeError);
+  assert.throws(() => mobileURL("/?drink=spritz&hh=0", origin), TypeError);
 });
 
 test("malformed duplicate and external venue routes fail closed", () => {
@@ -86,6 +134,8 @@ test("compile-time seams preserve original source and reject upstream drift", ()
   assert.match(transformApp(app), /venues=\{legacyPriceVenues\(everyVenue\)\}/);
   assert.match(transformApp(app), /prefill\?\.venue\.key\.startsWith\("m"\)/);
   assert.match(transformApp(app), /mobileVenueKeyPattern\.test\(match\[1\]\)/);
+  assert.match(transformApp(app), /const restoredDrink = mobileFocus\(location\)/);
+  assert.match(transformApp(app), /if \(restoredDrink\) setDrinks\(\[restoredDrink\.drink\]\)/);
   assert.doesNotMatch(app, /loadMobileCell|mobileMenuPin/);
   assert.match(transformMap(map, '"/assets/mobile/test.json"'), /"icon-anchor": "bottom"/);
   assert.match(transformMap(map, '"/assets/mobile/test.json"'), /\[0, -25\]/);

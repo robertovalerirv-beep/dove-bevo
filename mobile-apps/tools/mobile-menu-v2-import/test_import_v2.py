@@ -420,6 +420,10 @@ class ImportTests(unittest.TestCase):
         self.assertTrue(core.owner_address_visible(address,"via alfonso bonafous, 2, 10123 torino"))
         for wrong in (
             "via alfonso bonafous, 20, 10123 torino",
+            "via alfonso bonafous 20, 10123 torino",
+            "via alfonso bonafous 2/a, 10123 torino",
+            "via alfonso bonafous 2-4, 10123 torino",
+            "via alfonso bonafous 2 - 4, 10123 torino",
             "via alfonso bonafous, 2/a, 10123 torino",
             "via alfonso bonafusi, 2, 10123 torino",
             "via alfonso bonafous. 2, 10123 torino",

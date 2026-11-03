@@ -165,11 +165,12 @@ def owner_address_visible(address,visible):
     # Owner pages may place one comma between the same street and civic number.
     # Keep the canonical m-key and OSM address comparison unchanged.
     exact=normalized_address(address)
-    if exact in visible: return True
+    if re.search(r"(?<![\w])"+re.escape(exact)+r"(?![a-z0-9/]|\s*[-/])",visible):
+        return True
     match=re.fullmatch(r"(.+\S) ([1-9][0-9]*(?:/[0-9a-z]+|[a-z])?)",exact)
     if not match: return False
     comma=match.group(1)+", "+match.group(2)
-    return bool(re.search(r"(?<![\w])"+re.escape(comma)+r"(?![\w/])",visible))
+    return bool(re.search(r"(?<![\w])"+re.escape(comma)+r"(?![a-z0-9/]|\s*[-/])",visible))
 
 def normalized_name(value):
     return re.sub(r"\s+"," ",unicodedata.normalize("NFKC",text(value,2,512)).strip()).lower()

@@ -348,8 +348,8 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(savedRow.waitForExistence(timeout: 10), "One explicit drink must be saved under the actual venue name")
         XCTAssertEqual(savedTable.cells.count, 1)
         XCTAssertFalse(app.textFields["savedVenue.name"].exists)
-        XCTAssertTrue(savedRow.identifier.hasPrefix("savedDrink."))
-        let savedIdentity = savedRow.identifier
+        let savedDrinkLabel = "Birra media · Normale · \(publicName)"
+        XCTAssertEqual(savedRow.label, savedDrinkLabel, "The sole favourite must be the chosen drink at this venue")
         verifyLiveFavouriteComparisonReadOnly()
         attachScreen(named: "DoveBevo-live-native-saved-venue")
         app.buttons["tab.map"].tap()
@@ -363,7 +363,9 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(hasVisiblePositiveCoverage())
         app.buttons["tab.favorites"].tap()
         XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 10))
-        let reopenRow = app.tables["savedVenues.list"].cells[savedIdentity]
+        let reopenRow = app.tables["savedVenues.list"].cells.matching(
+            NSPredicate(format: "label == %@", savedDrinkLabel)
+        ).firstMatch
         XCTAssertTrue(reopenRow.waitForExistence(timeout: 10))
         XCTAssertTrue(reopenRow.label.contains(publicName))
         reopenRow.tap()
@@ -376,7 +378,9 @@ final class BrowserSmokeTests: XCTestCase {
         saveCurrentDrinkAtVenue()
         app.buttons["tab.favorites"].tap()
         XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 1)
-        let qaRow = app.tables["savedVenues.list"].cells[savedIdentity]
+        let qaRow = app.tables["savedVenues.list"].cells.matching(
+            NSPredicate(format: "label == %@", savedDrinkLabel)
+        ).firstMatch
         XCTAssertTrue(qaRow.waitForExistence(timeout: 10))
         XCTAssertTrue(qaRow.label.contains(publicName))
         qaRow.swipeLeft()

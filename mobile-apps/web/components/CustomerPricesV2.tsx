@@ -96,7 +96,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
       .catch(() => {
         if (!controller.signal.aborted) setLoadState("failed");
       });
-    return () => controller.abort();
+    return () => { controller.abort(); };
   }, [key, cell, reload]);
 
   async function loadMore() {
@@ -277,7 +277,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             required
             maxLength={80}
             readOnly={editor.row !== null}
-            onInput={(event) => setName(event.currentTarget.value)}
+            onInput={(event) => { setName(event.currentTarget.value); }}
             placeholder="Es. Negroni della casa"
           />
           <label htmlFor={`${formId}-category`}>Tipo di drink</label>
@@ -285,7 +285,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             id={`${formId}-category`}
             value={category}
             disabled={editor.row !== null}
-            onChange={(event) => setCategory(event.currentTarget.value)}
+            onChange={(event) => { setCategory(event.currentTarget.value); }}
           >
             {CATEGORY_OPTIONS.map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
@@ -297,7 +297,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             value={servingLabel}
             maxLength={80}
             readOnly={editor.row !== null}
-            onInput={(event) => setServingLabel(event.currentTarget.value)}
+            onInput={(event) => { setServingLabel(event.currentTarget.value); }}
             placeholder="Es. bicchiere"
           />
           <label htmlFor={`${formId}-ml`}>Quantità in ml (facoltativa)</label>
@@ -308,7 +308,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             max="2000"
             value={servingMl}
             readOnly={editor.row !== null}
-            onInput={(event) => setServingMl(event.currentTarget.value)}
+            onInput={(event) => { setServingMl(event.currentTarget.value); }}
           />
         </>
       )}
@@ -323,7 +323,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
         value={amount}
         required
         maxLength={9}
-        onInput={(event) => setAmount(event.currentTarget.value)}
+        onInput={(event) => { setAmount(event.currentTarget.value); }}
         placeholder={chosenCurrency.exponent === 2 ? "0,00" : "0"}
       />
       <small>
@@ -407,7 +407,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
                 <button
                   type="button"
                   class="btn btn--secondary mobile-customer-v2__update"
-                  onClick={() => beginOffer(offer)}
+                  onClick={() => { beginOffer(offer); }}
                 >
                   Prezzo diverso? Aggiorna
                 </button>
@@ -438,7 +438,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
             <button
               type="button"
               class="btn btn--secondary"
-              onClick={() => setReload((value) => value + 1)}
+              onClick={() => { setReload((value) => value + 1); }}
             >
               Riprova
             </button>
@@ -463,7 +463,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
                       <button
                         type="button"
                         class="btn btn--secondary mobile-customer-v2__update"
-                        onClick={() => beginNew(row)}
+                        onClick={() => { beginNew(row); }}
                       >
                         Prezzo diverso? Aggiorna
                       </button>
@@ -493,7 +493,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
               <button
                 type="button"
                 class="btn btn--secondary mobile-customer-v2__add"
-                onClick={() => beginNew(null)}
+                onClick={() => { beginNew(null); }}
               >
                 Aggiungi un drink mancante
               </button>

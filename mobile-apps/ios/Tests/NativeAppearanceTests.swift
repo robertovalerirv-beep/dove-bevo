@@ -12,6 +12,8 @@ final class NativeAppearanceTests: XCTestCase {
         XCTAssertEqual(map.configuration?.baseBackgroundColor, NativeAppearance.accent)
         XCTAssertEqual(map.configuration?.background.backgroundColor, NativeAppearance.accent)
         XCTAssertEqual(map.configuration?.baseForegroundColor, NativeAppearance.onAccent)
+        XCTAssertEqual(map.configuration?.background.strokeColor, NativeAppearance.ink)
+        XCTAssertEqual(map.configuration?.background.strokeWidth, 2)
         XCTAssertTrue(map.accessibilityTraits.contains(.selected))
         XCTAssertGreaterThanOrEqual(try contrast(try XCTUnwrap(map.configuration?.baseForegroundColor), try XCTUnwrap(map.configuration?.baseBackgroundColor)), 4.5)
         XCTAssertFalse(bar.button(for: .save).isEnabled)

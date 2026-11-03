@@ -211,7 +211,7 @@ html[data-dovebevo-mobile-shell="1"] .legend__item {
 html[data-dovebevo-mobile-shell="1"] .app:not(.europe-app) {
   grid-template-rows: auto minmax(0, 1fr) 0;
 }
-html[data-dovebevo-mobile-shell="1"] .app:not(.europe-app) > .bottom {
+html[data-dovebevo-mobile-shell="1"] .app:not(.europe-app) .bottom-slot > .bottom {
   display: none;
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions {

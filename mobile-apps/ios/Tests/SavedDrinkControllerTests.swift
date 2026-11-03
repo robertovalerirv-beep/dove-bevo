@@ -75,6 +75,29 @@ final class SavedDrinkControllerTests: XCTestCase {
         }
     }
 
+    @MainActor func testOldSavedPlaceConvertsOnlyAfterExplicitDrinkChoiceInSameTab() throws {
+        try withStores { venueStore, drinkStore in
+            let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+            try venueStore.save(url: url, label: "Old saved place")
+            let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore, activityCheck: { true }) { _ in }
+            try withMounted(controller) { _ in
+                XCTAssertEqual(controller.tableView.numberOfSections, 2)
+                let index = IndexPath(row: 0, section: 1)
+                let row = controller.tableView(controller.tableView, cellForRowAt: index)
+                XCTAssertEqual(row.accessibilityIdentifier, "favorites.migrate.n123")
+                XCTAssertTrue(try drinkStore.load().isEmpty)
+                XCTAssertEqual(try venueStore.load().count, 1)
+                controller.tableView(controller.tableView, didSelectRowAt: index)
+                waitUntil("Explicit old place drink chooser") { (controller.presentedViewController as? UINavigationController)?.topViewController is FavouriteSaveChooser }
+                let chooser = try XCTUnwrap((controller.presentedViewController as? UINavigationController)?.topViewController as? FavouriteSaveChooser)
+                chooser.tableView(chooser.tableView, didSelectRowAt: IndexPath(row: 1, section: 0))
+                chooser.save()
+                XCTAssertEqual(try drinkStore.load().first?.drink, "spritz")
+                XCTAssertTrue(try venueStore.load().isEmpty)
+            }
+        }
+    }
+
     @MainActor func testProductionBrowserReadsActualFeaturedRowThenSavesOnlyPrivateDrink() throws {
         try withStores { venueStore, drinkStore in
             var ready = false

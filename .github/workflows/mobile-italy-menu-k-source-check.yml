@@ -22,7 +22,7 @@ jobs:
           from pathlib import Path
           from urllib.request import Request,build_opener
           core_path=Path("mobile-apps/tools/menu-seed/live_import.py")
-          assert hashlib.sha256(core_path.read_bytes()).hexdigest()=="49b8d86ca43d8ff9604b70b8f58dfa11bfb3a77b62b26e8e646c6d54ec92cc07"
+          assert hashlib.sha256(core_path.read_bytes()).hexdigest()=="a939cb8f60ad349282412358ebe03206de88a98413878f85f77518c43e511dc5"
           sys.path.insert(0,str(core_path.parent))
           import live_import as core
           url="https://www.fuoriluogo.org/menu"

@@ -46,7 +46,7 @@ public final class MenuV2PricesTest {
             if(url.contains("customer-prices")&&url.contains("&after="))throw new IOException("Owned second page unavailable");
             return bytes(url.contains("customer-prices")?incomplete:menu(offer("a2","regular",550),1,null));
         });
-        assertEquals(1,interrupted.load(venue,call()).prices.size(),"A partial customer page must never become a claimed complete comparison");
+        assertEquals("A partial customer page must never become a claimed complete comparison",1,interrupted.load(venue,call()).prices.size());
         MenuV2Prices broken=new MenuV2Prices((url,max,call)->bytes(menu(offer("a1","regular",550),2,"wrong")));
         assertThrows(IOException.class,()->broken.load(venue,call()));
     }

@@ -93,6 +93,7 @@ public final class MainActivity extends ComponentActivity {
     private boolean loading;
     private boolean hasUsablePage;
     private boolean searchPending;
+    private long searchCallbackGeneration;
     private boolean documentHasHttpError;
     private boolean awaitingDocumentStart;
     private String stoppedUrl;
@@ -517,6 +518,7 @@ public final class MainActivity extends ComponentActivity {
         retireSharePresentation();
         if(recommendations!=null)recommendations.dismiss();
         showMap();
+        searchCallbackGeneration++;
         searchPending=true;
         if(website==null||!MobileEntry.isDocument(website.getUrl())){navigate(MobileEntry.HOME);return;}
         dispatchPendingSearch();
@@ -527,10 +529,18 @@ public final class MainActivity extends ComponentActivity {
                 !MobileEntry.isDocument(website.getUrl()))return;
         searchPending=false;
         WebView source=website;String captured=source.getUrl();
+        long searchGeneration=searchCallbackGeneration,documentGeneration=documentCheckGeneration,venueGeneration=venueCaptureEpoch;
         source.evaluateJavascript(MobileEntry.SEARCH_SCRIPT,result->{
-            if(!"true".equals(result)&&foreground&&!destroyed&&source==website&&
-                    captured.equals(source.getUrl()))Toast.makeText(this,"Cerca non disponibile. Riprova quando la mappa è pronta.",Toast.LENGTH_SHORT).show();
+            if(!"true".equals(result)&&searchFailureIsCurrent(source,captured,searchGeneration,documentGeneration,venueGeneration))
+                Toast.makeText(this,"Cerca non disponibile. Riprova quando la mappa è pronta.",Toast.LENGTH_SHORT).show();
         });
+    }
+    private boolean searchFailureIsCurrent(WebView source,String captured,long searchGeneration,long documentGeneration,long venueGeneration){
+        return foreground&&!destroyed&&!nativeDestinationVisible()&&source==website&&captured!=null&&
+                captured.equals(source.getUrl())&&MobileEntry.isDocument(source.getUrl())&&
+                searchGeneration==searchCallbackGeneration&&documentGeneration==documentCheckGeneration&&
+                venueGeneration==venueCaptureEpoch&&hasUsablePage&&!failed&&!loading&&
+                !awaitingDocumentStart&&!documentHasHttpError;
     }
     private void saveCurrentVenue(){
         if(!foreground||savedVenues==null||eligibleSavedVenue()==null)return;

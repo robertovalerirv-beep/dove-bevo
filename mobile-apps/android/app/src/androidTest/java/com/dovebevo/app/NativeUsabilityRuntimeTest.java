@@ -405,6 +405,43 @@ public final class NativeUsabilityRuntimeTest {
         assertOwnedDocument(1);
     }
 
+    @Test public void staleSearchFailureCannotSurfaceAfterDestinationNavigationOrBackgroundChange() throws Exception {
+        navigate(ONE);
+        onMain(() -> {
+            assertEquals(APP_ONE, web.getUrl());
+            String captured = web.getUrl();
+            long search = (Long) get("searchCallbackGeneration");
+            long document = (Long) get("documentCheckGeneration");
+            long venue = (Long) get("venueCaptureEpoch");
+            Class<?>[] signature = {WebView.class, String.class, long.class, long.class, long.class};
+            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
+
+            FavoritesScreen screen = new FavoritesScreen(activity, store,
+                    url -> invoke("navigate", new Class<?>[]{String.class}, url),
+                    () -> (Boolean) get("foreground"),
+                    new FavoritesLoader(new FavoritePricesClient((url, max, call) -> {
+                        throw new IOException("Empty owned favourites must not fetch");
+                    }, () -> "2026-11-03"), task -> activity.runOnUiThread(task)));
+            set("favorites", screen);
+            ((FrameLayout) get("content")).addView(screen.view());
+            screen.view().setVisibility(View.GONE);
+            activity.findViewById(R.id.favorites_destination).performClick();
+            assertTrue((Boolean) get("favoritesVisible"));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
+            activity.findViewById(R.id.map_destination).performClick();
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
+
+            long currentVenue = (Long) get("venueCaptureEpoch");
+            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, currentVenue));
+            set("documentCheckGeneration", document + 1);
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, currentVenue));
+            set("documentCheckGeneration", document);
+            set("foreground", false);
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, currentVenue));
+            set("foreground", true);
+        });
+    }
+
     @Test public void restoringFavoritesBeforeResumeWaitsForForegroundAndKeepsRetainedBrowser() throws Exception {
         navigate(ONE);
         onMain(() -> {

@@ -33,6 +33,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var favouriteSaveTimeout: DispatchWorkItem?
     private var pageLoading = false
     private var searchPending = false
+    private var searchCallbackGeneration = UUID()
     private var browserVisible = false
     private let bookmarkCapture: VenueBookmarkCapture
     private let recommendationClient: RecommendationServing
@@ -92,6 +93,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         browserVisible = false
+        searchCallbackGeneration = UUID()
         invalidateBookmarkCapture()
     }
 
@@ -181,6 +183,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     @objc private func bookmarkAppDeactivated(_ notification: Notification) {
         bookmarkLifecycleActive = false
+        searchCallbackGeneration = UUID()
         invalidateBookmarkCapture()
     }
 
@@ -193,6 +196,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         guard let scene = notification.object as? UIWindowScene,
               scene === viewIfLoaded?.window?.windowScene else { return }
         bookmarkLifecycleActive = false
+        searchCallbackGeneration = UUID()
         invalidateBookmarkCapture()
     }
 
@@ -445,6 +449,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     private func loadWebsite(_ url: URL) {
         guard URLPolicy.isWebsite(url) else { return }
+        searchCallbackGeneration = UUID()
         let url = MobileEntry.documentURL(url)
         documentMarkerCheck = nil
         documentHasClientError = false
@@ -465,17 +470,20 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     @objc private func goBack() {
         guard webView.canGoBack else { return }
+        searchCallbackGeneration = UUID()
         invalidateBookmarkCapture()
         navigationState.begin(webView.goBack())
     }
     @objc private func goForward() {
         guard webView.canGoForward else { return }
+        searchCallbackGeneration = UUID()
         invalidateBookmarkCapture()
         navigationState.begin(webView.goForward())
     }
     @objc func goHome() { loadWebsite(MobileEntry.homeURL) }
 
     func openMapSearch() {
+        searchCallbackGeneration = UUID()
         searchPending = true
         loadViewIfNeeded()
         guard MobileEntry.isDocument(webView.url) else {
@@ -485,19 +493,27 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         dispatchPendingSearch()
     }
 
-    func cancelPendingSearch() { searchPending = false }
+    func cancelPendingSearch() {
+        searchPending = false
+        searchCallbackGeneration = UUID()
+    }
 
     private func dispatchPendingSearch() {
-        guard searchPending, let webView, MobileEntry.isDocument(webView.url),
-              hasLoadedPage, !pageLoading, !webView.isLoading, errorView.isHidden,
+        guard searchPending, let webView, let requestedURL = webView.url, MobileEntry.isDocument(requestedURL),
+              hasLoadedPage, !pageLoading, !webView.isLoading, !navigationState.isStopped, errorView.isHidden,
               navigationController?.topViewController === self, isBookmarkInteractionActive,
               isMapDestinationSelected?() != false else { return }
         searchPending = false
-        webView.evaluateJavaScript(MobileEntry.searchScript, in: nil, in: .defaultClient) { [weak self] result in
-            guard case .success(let value) = result, (value as? Bool) == true else {
-                self?.showAlert(title: "Cerca non disponibile", message: "Riprova quando la mappa è pronta.")
-                return
-            }
+        let generation = searchCallbackGeneration
+        webView.evaluateJavaScript(MobileEntry.searchScript, in: nil, in: .defaultClient) { [weak self, weak webView] result in
+            if case .success(let value) = result, (value as? Bool) == true { return }
+            guard let self, let webView, self.webView === webView,
+                  self.searchCallbackGeneration == generation, webView.url == requestedURL,
+                  MobileEntry.isDocument(webView.url), self.hasLoadedPage, !self.pageLoading,
+                  !webView.isLoading, !self.navigationState.isStopped, self.errorView.isHidden,
+                  self.navigationController?.topViewController === self, self.isBookmarkInteractionActive,
+                  self.isMapDestinationSelected?() != false else { return }
+            self.showAlert(title: "Cerca non disponibile", message: "Riprova quando la mappa è pronta.")
         }
     }
 
@@ -533,6 +549,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     @objc private func retry() { loadWebsite(lastWebsiteURL) }
 
     @objc private func reloadPage() {
+        searchCallbackGeneration = UUID()
         invalidateBookmarkCapture()
         if errorView.isHidden && webView.isLoading && !navigationState.isStopped {
             navigationState.stop()
@@ -720,7 +737,15 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private func presentSharedURL(_ url: URL) {
         guard canSharePage, isBookmarkInteractionActive, presentedViewController == nil else { return }
         let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        sheet.popoverPresentationController?.barButtonItem = moreButton
+        if let popover = sheet.popoverPresentationController {
+            if let more = (navigationController?.parent as? NativeTabsController)?.bottomBar.button(for: .more) {
+                popover.sourceView = more
+                popover.sourceRect = more.bounds
+            } else {
+                popover.sourceView = view
+                popover.sourceRect = view.bounds
+            }
+        }
         present(sheet, animated: true)
     }
 
@@ -921,6 +946,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         guard navigationState.begin(navigation) else { return }
+        searchCallbackGeneration = UUID()
         documentMarkerCheck = nil
         documentHasClientError = false
         invalidateBookmarkCapture()

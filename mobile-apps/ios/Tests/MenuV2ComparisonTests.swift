@@ -66,6 +66,23 @@ final class MenuV2ComparisonTests: XCTestCase {
         XCTAssertEqual(rows.compactMap(\.menuPrice).map(\.amountMinor), [550, 650])
     }
 
+    func testLastOfferAfter149RowsIsStillEligibleForExactFavourite() throws {
+        let saved = try venue()
+        let first = (1...100).map { offer("a\($0)", context: "regular", cents: 550) }
+        let last = (101...149).map { offer("a\($0)", context: "regular", cents: 650) }
+        let fixture = MenuTransportFixture(pages: [
+            (.menuV2(key: venueKey, cell: cell, after: nil), try menu(first, count: 149, next: "a100")),
+            (.menuV2(key: venueKey, cell: cell, after: "a100"), try menu(last, count: 149, next: nil))
+        ])
+        var loaded: MenuV2Snapshot?
+        _ = MenuV2Client(transport: fixture).load([saved]) { loaded = $0 }
+        let venue = try XCTUnwrap(loaded?.venues[saved.url])
+        XCTAssertEqual(venue.offers.count, 149)
+        let exact = try XCTUnwrap(venue.offers.first { $0.id == "a149" })
+        XCTAssertEqual(exact.amountMinor, 650)
+        XCTAssertEqual(SavedMenuOffer.verified(venue: saved, price: exact)?.offerID, "a149")
+    }
+
     func testConditionalFeeRemainsSeparateAndRetainsItsCondition() throws {
         var value = try XCTUnwrap(JSONSerialization.jsonObject(with: menu([offer("a2", context: "regular", cents: 550)], count: 1, next: nil)) as? [String: Any])
         value["fees"] = [["id": "f1", "label": "Coperto", "kind": "fixed", "basis": "person",

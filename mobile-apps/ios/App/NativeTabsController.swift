@@ -26,7 +26,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     }
 
     private(set) lazy var browser: BrowserViewController = {
-        let controller = self.providedBrowser ?? BrowserViewController(savedVenues: self.store, savedDrinks: self.drinkStore, savedMenuOffers: self.offerStore, recommendationClient: self.recommendationClient)
+        let controller = self.providedBrowser ?? BrowserViewController(savedVenues: self.store, savedDrinks: self.drinkStore, savedMenuOffers: self.offerStore, menuClient: self.menuClient ?? MenuV2Client(), recommendationClient: self.recommendationClient)
         controller.onShowFavourites = { [weak self] in self?.selectedIndex = 1 }
         controller.isMapDestinationSelected = { [weak self] in self?.selectedIndex == 0 }
         controller.onVenueActionsChanged = { [weak self] enabled in
@@ -62,7 +62,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private(set) lazy var discoveryNavigation = UINavigationController(rootViewController: discovery)
 
     init(store: SavedVenueStore = SavedVenueStore(), comparisonClient: FavouriteComparisonServing = FavouriteComparisonClient(),
-         menuClient: MenuV2Serving? = nil, drinkStore: SavedDrinkStore = SavedDrinkStore(), offerStore: SavedMenuOfferStore = SavedMenuOfferStore(),
+         menuClient: MenuV2Serving? = MenuV2Client(), drinkStore: SavedDrinkStore = SavedDrinkStore(), offerStore: SavedMenuOfferStore = SavedMenuOfferStore(),
          recommendationClient: RecommendationServing = RecommendationClient(), browser: BrowserViewController? = nil,
          discoveryClient: DiscoveryServing = DiscoveryClient()) {
         self.store = store; self.drinkStore = drinkStore; self.offerStore = offerStore; self.comparisonClient = comparisonClient; self.menuClient = menuClient; self.recommendationClient = recommendationClient

@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import XCTest
 @testable import DoveBevo
 
@@ -41,6 +42,39 @@ final class SavedMenuOfferTests: XCTestCase {
         }
     }
 
+    @MainActor func testOfferOnlyFavouriteShowsRefreshedLivePriceInSameTab() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let venueStore = SavedVenueStore(directoryURL: root.appendingPathComponent("venues"))
+        let drinkStore = SavedDrinkStore(directoryURL: root.appendingPathComponent("categories"))
+        let offerStore = SavedMenuOfferStore(directoryURL: root.appendingPathComponent("offers"))
+        let venue = try SavedVenuePolicy.venue(url: canonical, label: "Bar Milano")
+        try offerStore.save(try XCTUnwrap(SavedMenuOffer.verified(venue: venue, price: source)))
+        let live = MenuV2Price(id: source.id, venueName: "Bar Milano", itemName: source.itemName,
+            category: "", band: .normal, amountMinor: 750, currency: "EUR", exponent: 2,
+            servingLabel: "calice", servingML: 250,
+            origin: .ownerMenu(URL(string: "https://example.org/menu")!, "2026-11-03"), feeNotice: "Servizio escluso")
+        let snapshot = MenuV2Snapshot(venues: [canonical: MenuV2Venue(key: canonical.lastPathComponent,
+            cell: "u0nd9", name: "Bar Milano", offers: [live], feeNotice: "Servizio escluso")], unavailable: [])
+        let client = ImmediateOwnerMenu(snapshot: snapshot)
+        var opened: URL?
+        let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
+            offerStore: offerStore, menuClient: client, activityCheck: { true }) { opened = $0 }
+        controller.loadViewIfNeeded(); controller.viewWillAppear(false); controller.viewDidAppear(false)
+        XCTAssertEqual(client.requests, 1)
+        XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 1)
+        let index = IndexPath(row: 0, section: 0)
+        let cell = controller.tableView(controller.tableView, cellForRowAt: index)
+        XCTAssertEqual(cell.accessibilityIdentifier, "savedOffer.spritz.7")
+        XCTAssertTrue(cell.accessibilityValue?.contains("7,50") == true)
+        controller.tableView(controller.tableView, didSelectRowAt: index)
+        XCTAssertEqual(opened, MobileEntry.offerDocument(canonical, offerID: "spritz.7"))
+        controller.tableView(controller.tableView, commit: .delete, forRowAt: index)
+        XCTAssertTrue(try offerStore.load().isEmpty)
+        XCTAssertTrue(try drinkStore.load().isEmpty)
+        controller.viewWillDisappear(false)
+    }
+
     func testOfferFocusIsExactAndMissingOfferNeverBecomesAnotherDrink() throws {
         let focus = try XCTUnwrap(MobileEntry.offerDocument(canonical, offerID: "spritz.7"))
         XCTAssertEqual(MobileEntry.publicVenue(focus), canonical)
@@ -55,5 +89,14 @@ final class SavedMenuOfferTests: XCTestCase {
             category: source.category, band: source.band, amountMinor: 100, currency: "EUR", exponent: 2,
             servingLabel: source.servingLabel, servingML: source.servingML, origin: .customer("2026-11-03"), feeNotice: source.feeNotice)
         XCTAssertNil(SavedMenuOffer.verified(venue: venue, price: customer))
+    }
+}
+
+private final class ImmediateOwnerMenu: MenuV2Serving {
+    let snapshot: MenuV2Snapshot
+    var requests = 0
+    init(snapshot: MenuV2Snapshot) { self.snapshot = snapshot }
+    func load(_ saved: [SavedVenue], completion: @escaping (MenuV2Snapshot) -> Void) -> RecommendationRequest {
+        requests += 1; completion(snapshot); return ComparisonCancellation()
     }
 }

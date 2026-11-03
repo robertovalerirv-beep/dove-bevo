@@ -111,6 +111,13 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
       const cell = url.pathname.split("/").at(-1);
       const categories = (url.searchParams.get("categories") ?? "").split(",").filter(Boolean);
       options.cellRequests?.push({ cell, categories: [...categories] });
+      if (options.holdFirstIdentity && cell === "u0nd9" && categories.length === 0) {
+        options.holdFirstIdentity = false;
+        await new Promise((resolve) => {
+          options.releaseOldIdentity = resolve;
+        });
+        return route.fulfill({ status: 503, body: "Old identity request failed" });
+      }
       if (options.menuUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
       const source = {
         id: "source-1",
@@ -163,8 +170,13 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         },
       });
     }
-    if (options.menu && url.pathname === "/api/mobile/v2/menu/venues/maaaaaaaaaaaaaaaaaaaaaaaa") {
+    if (
+      options.menu &&
+      (url.pathname === "/api/mobile/v2/menu/venues/maaaaaaaaaaaaaaaaaaaaaaaa" ||
+        (options.staticMenu && url.pathname === "/api/mobile/v2/menu/venues/n123"))
+    ) {
       if (options.detailUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
+      const staticVenue = url.pathname.endsWith("/n123");
       const source = {
         id: "source-1",
         url: "https://official.fixture.test/menu",
@@ -177,9 +189,9 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
           coverage: { complete: false, basis: "verified_source_items_only" },
           price_scope: "menu_item_only",
           venue: {
-            key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+            key: staticVenue ? "n123" : "maaaaaaaaaaaaaaaaaaaaaaaa",
             cell: "u0nd9",
-            name: "Locale da menu",
+            name: staticVenue ? "Locale di prova" : "Locale da menu",
             kind: 0,
             lat: 45.4695,
             lon: 9.188,
@@ -209,6 +221,26 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     }
     if (/^\/api\/mobile\/v2\/menu\//.test(url.pathname))
       return route.fulfill({ status: 404, body: "Not found" });
+    if (
+      options.customerEmpty &&
+      /^\/api\/mobile\/v2\/customer-prices\/venues\//.test(url.pathname)
+    ) {
+      const key = url.pathname.split("/").at(-1);
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          venue: {
+            key,
+            cell: "u0nd9",
+            name: key === "n123" ? "Locale di prova" : "Locale da menu",
+            country: "IT",
+          },
+          price_scope: "customer_reported_drink_item",
+          rows: [],
+          next_after: null,
+        },
+      });
+    }
     if (/^\/api\/prices\//.test(url.pathname))
       return route.fulfill({
         json: { p: url.pathname.endsWith("u0nd9") ? rows : [], u: [], pend: [], h: [], g: [] },
@@ -542,6 +574,30 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
   }
 });
 
+test("empty menu-linked customer section does not deny an existing legacy price", async () => {
+  const f = await fixture(
+    { width: 430, height: 844 },
+    { menu: true, staticMenu: true, customerEmpty: true },
+  );
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+    await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
+    await f.page.locator(".prices .price").first().waitFor();
+    assert.match(await f.page.locator(".prices .price").first().innerText(), /Spritz[\s\S]*5,50/);
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    await customer.getByText("Nessun altro prezzo segnalato per i drink del menu.").waitFor();
+    await f.page.goto(
+      "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fmaaaaaaaaaaaaaaaaaaaaaaaa&c=u0nd9",
+    );
+    await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
+    await customer.getByText("Nessun prezzo segnalato per i drink del menu.").waitFor();
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("Tutti reveals uncategorized verified menus without inventing a drink price", async () => {
   const options = { menu: true, uncategorized: true, cellRequests: [] };
   const f = await fixture({ width: 390, height: 844 }, options);
@@ -566,6 +622,52 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
       /voci di menu verificate/,
     );
     await f.page.locator(".mobile-drink-menu__button").click();
+    for (const width of [320, 390, 430]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const card = await f.page.getByTestId("map-status").boundingBox();
+      const note = await f.page.locator(".mobile-menu-map-note").boundingBox();
+      const add = await f.page.locator(".mobile-map-actions__toggle").boundingBox();
+      const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
+      const language = await f.page.locator(".map__lang").boundingBox();
+      const list = await f.page.locator(".map__list").boundingBox();
+      assert.ok(card && note && add && locate && language && list);
+      assert.ok(note.y >= card.y && note.y + note.height <= card.y + card.height);
+      assert.ok(
+        card.y + card.height + 8 <= add.y,
+        `Summary overlaps Add at ${width}px: ${JSON.stringify({ card, note, add, locate })}`,
+      );
+      assert.ok(
+        locate.y + locate.height + 8 <= add.y,
+        `Locate overlaps Add at ${width}px: ${JSON.stringify({ card, note, add, locate })}`,
+      );
+      assert.ok(language.y + language.height + 8 <= card.y);
+      assert.ok(list.y + list.height + 8 <= card.y);
+    }
+    await f.page.setViewportSize({ width: 430, height: 700 });
+    await f.page.screenshot({ path: path.join(output, "app-map-summary-430-fixture.png") });
+    await f.page.evaluate(() => {
+      const style = document.createElement("style");
+      style.nonce = "fixture-nonce";
+      style.textContent = "html { font-size: 26px; }";
+      document.head.append(style);
+    });
+    for (const width of [320, 390, 430]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const largeCard = await f.page.getByTestId("map-status").boundingBox();
+      const largeNote = await f.page.locator(".mobile-menu-map-note").boundingBox();
+      const largeAdd = await f.page.locator(".mobile-map-actions__toggle").boundingBox();
+      assert.ok(largeCard && largeNote && largeAdd);
+      assert.ok(
+        largeNote.y >= largeCard.y &&
+          largeNote.y + largeNote.height <= largeCard.y + largeCard.height,
+      );
+      assert.ok(
+        largeCard.y + largeCard.height + 8 <= largeAdd.y,
+        `Large text overlaps Add at ${width}px`,
+      );
+    }
+    await f.page.setViewportSize({ width: 430, height: 700 });
+    await f.page.screenshot({ path: path.join(output, "app-map-summary-large-text-fixture.png") });
     await f.page.locator(".map__list").click();
     const row = f.page.getByRole("link", { name: /Locale da menu/ });
     await row.waitFor();
@@ -632,6 +734,60 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
   } finally {
+    await f.close();
+  }
+});
+
+test("a stale identity failure cannot discard a successful new selected drink", async () => {
+  const options = { menu: true, holdFirstIdentity: true, cellRequests: [] };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
+    );
+    assert.equal(typeof options.releaseOldIdentity, "function");
+    const sampled = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9?categories=spritz") &&
+        response.status() === 200,
+      { timeout: 8000 },
+    );
+    const drinks = await openDrinks(f.page);
+    await drinks.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    await sampled.catch((error) => {
+      throw new Error(`Fresh Spritz response missing: ${JSON.stringify(options.cellRequests)}`, {
+        cause: error,
+      });
+    });
+    await f.page.locator('[data-mobile-selection="Spritz"]').waitFor();
+    options.releaseOldIdentity();
+    await f.page
+      .waitForFunction(
+        () =>
+          document
+            .querySelector("section.map")
+            ?.getAttribute("data-prices-shown")
+            ?.includes("7,50"),
+        null,
+        { timeout: 8000 },
+      )
+      .catch((error) => {
+        throw new Error(`Selected price did not recover: ${JSON.stringify(options.cellRequests)}`, {
+          cause: error,
+        });
+      });
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+      "The selected drink must recover with exactly one fresh identity read",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    options.releaseOldIdentity?.();
     await f.close();
   }
 });
@@ -770,7 +926,7 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     const actionBox = await toggle.boundingBox();
     const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
     assert.ok(status && actionBox && locate);
-    assert.ok(actionBox.y + actionBox.height <= status.y, "Add must clear coverage card");
+    assert.ok(status.y + status.height + 8 <= actionBox.y, "Add must clear coverage card");
     assert.ok(locate.y + locate.height <= actionBox.y, "Add must clear locate control");
     await toggle.click();
     await f.page.screenshot({

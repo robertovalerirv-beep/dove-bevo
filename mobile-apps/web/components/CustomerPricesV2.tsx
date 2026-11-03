@@ -66,10 +66,12 @@ export function CustomerPricesV2({
   menu,
   focus,
   offerFocus,
+  hasLegacyPrices,
 }: {
   menu: MenuPage;
   focus: DrinkFocus | null;
   offerFocus: string | null;
+  hasLegacyPrices: boolean;
 }) {
   const { key, cell, country } = menu.venue;
   const [rows, setRows] = useState<CustomerRow[]>([]);
@@ -579,7 +581,13 @@ export function CustomerPricesV2({
         )}
         {loadState === "ready" && (
           <>
-            {rows.length === 0 && <p class="hint">Nessun prezzo segnalato ancora.</p>}
+            {rows.length === 0 && (
+              <p class="hint">
+                {hasLegacyPrices
+                  ? "Nessun altro prezzo segnalato per i drink del menu."
+                  : "Nessun prezzo segnalato per i drink del menu."}
+              </p>
+            )}
             {additional.length > 0 && (
               <>
                 <h5>Altri drink segnalati</h5>

@@ -630,7 +630,7 @@ public final class MainActivity extends ComponentActivity {
     private void beginOfferSave(String raw) {
         String active=eligibleSavedVenue(),id=OfferSaveCommand.offerId(raw,active);
         if(active==null||id==null||offerVerifier==null||offerStore==null||offerSaveDialog!=null)return;
-        SavedVenueStore.Venue provisional=SavedVenueStore.reference(active,"Locale "+FavoriteComparison.key(active));
+        SavedVenueStore.Venue provisional=SavedVenueStore.reference(active,"Locale "+java.net.URI.create(active).getPath().substring(5));
         if(provisional==null)return;
         retireOfferSave();long token=offerSaveGeneration;
         try{offerVerifyBatch=offerVerifier.load(java.util.Collections.singletonList(provisional),values->{

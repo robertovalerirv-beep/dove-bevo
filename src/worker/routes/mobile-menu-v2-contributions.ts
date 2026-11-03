@@ -23,10 +23,18 @@ const Category = z.enum([
   "beer_draft", "spritz", "negroni", "sbagliato", "gin_tonic",
   "gin_lemon", "wine_glass", "alcohol_free", "water",
 ]);
-const safeLabel = (value: string) =>
-  value === value.trim() &&
-  value.normalize("NFKC") === value &&
-  !/[\u0000-\u001f\u007f-\u009f]/u.test(value);
+function safeLabel(value: string): boolean {
+  if (value !== value.trim() || value.normalize("NFKC") !== value) return false;
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code < 32 || (code >= 127 && code <= 159)) return false;
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(++i);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return false;
+    } else if (code >= 0xdc00 && code <= 0xdfff) return false;
+  }
+  return true;
+}
 const NewName = z.string().min(2).max(80).refine(safeLabel);
 const ServingLabel = z.string().min(1).max(80).refine(safeLabel).nullable();
 const Base = { venue_key: Key, cell: MobileCell, ...Money };

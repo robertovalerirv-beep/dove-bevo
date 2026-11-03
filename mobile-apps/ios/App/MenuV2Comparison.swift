@@ -124,7 +124,12 @@ enum MenuV2JSON {
             guard let fee = object(item), let label = text(fee["label"]),
                   let kind = fee["kind"] as? String, let basis = fee["basis"] as? String,
                   ["person", "table", "bill", "unspecified"].contains(basis),
+                  let applicability = fee["applicability"] as? String,
+                  ["all_orders", "conditional", "unknown"].contains(applicability),
                   source(fee["source"]) != nil else { return nil }
+            let condition = fee["condition"] is NSNull ? nil : text(fee["condition"], maximum: 500)
+            guard (applicability == "conditional") == (condition != nil) else { return nil }
+            let scope = applicability == "all_orders" ? "tutti gli ordini" : applicability == "unknown" ? "applicabilita non verificata" : "solo se \(condition!)"
             let value: String
             if kind == "fixed" {
                 guard let amount = money(fee) else { return nil }
@@ -136,7 +141,7 @@ enum MenuV2JSON {
                 guard let rate = ComparisonJSON.integer(fee["rate_bps"], minimum: 1, maximum: 10_000) else { return nil }
                 value = "\(Double(rate) / 100)%"
             } else { return nil }
-            if descriptions.count < 3 { descriptions.append("\(label) \(value) / \(basis)") }
+            if descriptions.count < 3 { descriptions.append("\(label) \(value) / \(basis) (\(scope))") }
         }
         if status == "explicit_no_fee" { return "Nessuna spesa obbligatoria dichiarata dalla fonte." }
         let known = descriptions.isEmpty ? "" : "Spese separate: " + descriptions.joined(separator: "; ") + (fees.count > 3 ? "; altre spese nel dettaglio" : "") + ". "

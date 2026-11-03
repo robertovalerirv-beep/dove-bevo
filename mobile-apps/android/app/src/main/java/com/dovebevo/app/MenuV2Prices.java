@@ -147,11 +147,16 @@ final class MenuV2Prices {
         if(status.equals("explicit_no_fee")&&!fees.isEmpty())throw NativeJson.invalid();List<String> lines=new ArrayList<>();
         for(Object raw:fees){Map<?,?> fee=obj(raw);String label=text(fee.get("label"),512,null),kind=text(fee.get("kind"),16,null),basis=text(fee.get("basis"),32,null);
             if(!basis.equals("person")&&!basis.equals("table")&&!basis.equals("bill")&&!basis.equals("unspecified"))throw NativeJson.invalid();
+            String applicability=text(fee.get("applicability"),32,null);
+            if(!applicability.equals("all_orders")&&!applicability.equals("conditional")&&!applicability.equals("unknown"))throw NativeJson.invalid();
+            String condition=fee.get("condition")==null?null:text(fee.get("condition"),500,null);
+            if(applicability.equals("conditional")!=(condition!=null))throw NativeJson.invalid();
+            String scope=applicability.equals("all_orders")?"tutti gli ordini":applicability.equals("unknown")?"applicabilita non verificata":"solo se "+condition;
             sourceDay(fee.get("source"));String amount;
             if(kind.equals("fixed")){Money value=money(fee);Price sample=new Price("","","","",0,value.amount,value.currency,value.exponent,null,null,false,"","");amount=sample.amount();}
             else if(kind.equals("percent")){long bps=NativeJson.integer(fee.get("rate_bps"),1,10000);amount=String.format(Locale.ROOT,"%.2f%%",bps/100.0);}
             else throw NativeJson.invalid();
-            if(lines.size()<3)lines.add(label+" "+amount+" / "+basis);
+            if(lines.size()<3)lines.add(label+" "+amount+" / "+basis+" ("+scope+")");
         }
         if(status.equals("explicit_no_fee"))return "Nessuna spesa obbligatoria dichiarata dalla fonte.";
         return (lines.isEmpty()?"":"Spese separate: "+String.join("; ",lines)+(fees.size()>3?"; altre spese nel dettaglio":"")+". ")

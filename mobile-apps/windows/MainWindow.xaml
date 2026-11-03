@@ -1,0 +1,90 @@
+<Window x:Class="DoveBevo.Windows.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="Dove Bevo" Width="1100" Height="780" MinWidth="640" MinHeight="480"
+        Background="#FFF4E4" Foreground="#1B1611" FontFamily="Segoe UI"
+        Loaded="Window_Loaded">
+    <Window.Resources>
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Background" Value="#FFFBF4" />
+            <Setter Property="Foreground" Value="#1B1611" />
+            <Setter Property="BorderBrush" Value="#E2D3BE" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="MinHeight" Value="38" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="#FFFBF4" BorderBrush="#E2D3BE" BorderThickness="0,0,0,1" Padding="16,9">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Image Source="Assets/Logo.png" Width="44" Height="44" Stretch="Uniform" />
+                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="Dove Bevo" FontSize="19" FontWeight="Bold" />
+                    <TextBlock Text="Prima di ordinare, sai quanto costa." FontSize="12" Foreground="#5E554B" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BackButton" Style="{StaticResource NavButton}" Content="←" ToolTip="Indietro" Click="Back_Click" />
+                    <Button x:Name="ForwardButton" Style="{StaticResource NavButton}" Content="→" ToolTip="Avanti" Click="Forward_Click" />
+                    <Button Style="{StaticResource NavButton}" Content="Ricarica" Click="Reload_Click" />
+                    <Button Style="{StaticResource NavButton}" Content="Condividi" Click="Share_Click" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Background="#FFF4E4" Padding="16,8">
+            <StackPanel Orientation="Horizontal">
+                <Button Style="{StaticResource NavButton}" Content="Mappa" Click="Home_Click" />
+                <Button Style="{StaticResource NavButton}" Content="Cerca" Click="Search_Click" />
+                <Button Style="{StaticResource NavButton}" Content="Preferiti" Click="Favourites_Click" />
+                <Button Style="{StaticResource NavButton}" Content="Salva drink" Click="SaveDrink_Click" />
+                <Button Style="{StaticResource NavButton}" Content="Privacy" Click="Privacy_Click" />
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <wv2:WebView2 x:Name="Website" Visibility="Hidden" />
+            <Border x:Name="ErrorPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="24">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="480">
+                    <TextBlock Text="Non riesco a caricare Dove Bevo" FontSize="23" FontWeight="Bold" TextWrapping="Wrap" />
+                    <TextBlock x:Name="ErrorText" Margin="0,12,0,18" Text="Controlla la connessione e riprova." TextWrapping="Wrap" />
+                    <Button Style="{StaticResource NavButton}" Width="120" Content="Riprova" Click="Reload_Click" />
+                </StackPanel>
+            </Border>
+            <Border x:Name="FavouritesPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="24">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock Text="Preferiti" FontSize="26" FontWeight="Bold" />
+                        <TextBlock Text="I drink salvati su questo PC. Mappa e prezzi richiedono internet." Margin="0,5,0,16" Foreground="#5E554B" />
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Style="{StaticResource NavButton}" Content="Apri sulla mappa" Click="OpenFavourite_Click" />
+                        <Button Style="{StaticResource NavButton}" Content="Rimuovi" Click="RemoveFavourite_Click" />
+                        <Button Style="{StaticResource NavButton}" Content="Torna alla mappa" Click="Home_Click" />
+                    </StackPanel>
+                    <ListBox x:Name="FavouriteList" FontSize="16" Background="#FFFBF4"
+                             BorderBrush="#E2D3BE" DisplayMemberPath="Display"
+                             MouseDoubleClick="OpenFavourite_Click" />
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="3" Background="#FFFBF4" BorderBrush="#E2D3BE" BorderThickness="0,1,0,0" Padding="16,5">
+            <TextBlock x:Name="StatusText" Text="Caricamento…" FontSize="12" Foreground="#5E554B" />
+        </Border>
+    </Grid>
+</Window>

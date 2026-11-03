@@ -3,6 +3,8 @@ import { createExecutionContext } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import worker from "../../src/worker/index";
 import { createSession } from "../../src/worker/lib/session";
+import { hmacHex } from "../../src/worker/lib/hmac";
+import { romeDay } from "../../src/worker/lib/day";
 import { accessJwt } from "./access-jwt";
 
 const ORIGIN = "https://dovebevo.example";
@@ -117,6 +119,8 @@ describe("app-only customer prices on vetted named menu venues", () => {
     expect((await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
       { amount_minor: 0 }), signed)).status).toBe(400);
     expect((await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
+      { currency_exponent: 1 }), signed)).status).toBe(400);
+    expect((await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
       { amount_minor: 700, expected_revision: crypto.randomUUID() }), signed)).status).toBe(409);
     const updated = await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
       { amount_minor: 700, expected_revision: revision }), signed);
@@ -134,7 +138,22 @@ describe("app-only customer prices on vetted named menu venues", () => {
     const path = "/api/mobile/v2/customer-prices/venues/" + venue.key + "?cell=" + venue.cell;
     expect((await (await request(path)).json<PublicRows>()).rows).toEqual([]);
     expect((await request("/api/mobile/v2/customer-prices", newBody(venue), signed)).status).toBe(409);
+    expect((await request("/api/mobile/v2/customer-prices", newBody(venue,
+      { currency_exponent: 1 }), signed)).status).toBe(400);
+    const second = await request("/api/mobile/v2/customer-prices",
+      newBody(venue, { name: "Second house negroni" }), signed);
+    expect(second.status).toBe(202);
     const jwt = await accessJwt();
+    const firstPage = await request("/api/admin/mobile/v2/customer-prices/pending?limit=1",
+      undefined, undefined, jwt);
+    const page = await firstPage.json<{ rows: { revision: string }[]; next_after: number | null }>();
+    expect(page.rows).toHaveLength(1);
+    expect(page.rows[0]?.revision).toBe(revision);
+    expect(page.next_after).toBeTypeOf("number");
+    const nextPage = await request("/api/admin/mobile/v2/customer-prices/pending?limit=1&after=" +
+      page.next_after, undefined, undefined, jwt);
+    expect((await nextPage.json<{ rows: { revision: string }[] }>()).rows).toHaveLength(1);
+
     const decision = await request(
       "/api/admin/mobile/v2/customer-prices/entries/" + revision + "/decision",
       { decision: "approve" }, undefined, jwt,
@@ -164,6 +183,52 @@ describe("app-only customer prices on vetted named menu venues", () => {
     await env.DB.prepare("INSERT INTO mobile_venues_moderation(venue_key,status,reason) VALUES (?1,'hidden','fixture')")
       .bind(FOREIGN.key).run();
     expect((await request("/api/mobile/v2/customer-prices", body, signed)).status).toBe(404);
+  });
+
+  it("lets a customer replace a removed item only through fresh moderation", async () => {
+    await foreign();
+    const id = await offer(FOREIGN, "GBP");
+    const signed = await cookie();
+    const first = await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP"), signed);
+    expect(first.status).toBe(201);
+    const oldRevision = (await first.json<{ revision: string }>()).revision;
+    const jwt = await accessJwt();
+    const remove = await request(
+      "/api/admin/mobile/v2/customer-prices/entries/" + oldRevision + "/decision",
+      { decision: "remove" }, undefined, jwt,
+    );
+    expect(remove.status, await remove.clone().text()).toBe(200);
+    const path = "/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell;
+    expect((await (await request(path)).json<PublicRows>()).rows).toEqual([]);
+    expect((await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
+      { amount_minor: 700, expected_revision: oldRevision }), signed)).status).toBe(409);
+    const replacement = await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
+      { amount_minor: 700 }), signed);
+    expect(replacement.status, await replacement.clone().text()).toBe(202);
+    expect((await (await request(path)).json<PublicRows>()).rows).toEqual([]);
+    const revision = (await replacement.json<{ revision: string }>()).revision;
+    const approve = await request(
+      "/api/admin/mobile/v2/customer-prices/entries/" + revision + "/decision",
+      { decision: "approve" }, undefined, jwt,
+    );
+    expect(approve.status, await approve.clone().text()).toBe(200);
+    expect((await (await request(path)).json<PublicRows>()).rows).toMatchObject([
+      { revision, amount_minor: 700, currency: "GBP" },
+    ]);
+  });
+
+  it("enforces the existing per-session daily price quota", async () => {
+    await foreign();
+    const id = await offer(FOREIGN, "GBP");
+    const session = await createSession("test-session-hmac-key");
+    const day = romeDay();
+    const mark = await hmacHex(env.HASH_KEY, [day, "price", "sid", session.id]);
+    await env.DB.prepare("INSERT INTO counters(k,day,n) VALUES (?1,?2,30)").bind(mark, day).run();
+    const response = await request("/api/mobile/v2/customer-prices",
+      offerBody(FOREIGN, id, "GBP"), "__Host-sid=" + session.token);
+    expect(response.status).toBe(429);
+    expect((await (await request("/api/mobile/v2/customer-prices/venues/" +
+      FOREIGN.key + "?cell=" + FOREIGN.cell)).json<PublicRows>()).rows).toEqual([]);
   });
 
   it("reports an active observation and suppresses it after the moderation threshold", async () => {

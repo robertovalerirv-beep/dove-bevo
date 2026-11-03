@@ -185,11 +185,19 @@ class Transport:
         self.opener = build_opener(NoRedirect())
     def fetch(self, address, maximum=MAX_SOURCE_BYTES):
         try:
-            with self.opener.open(Request(address, headers={"User-Agent": "DoveBevoMenuAudit/1"}), timeout=20) as response:
+            with self.opener.open(Request(address, headers={"User-Agent": "DoveBevoMenuAudit/1"}), timeout=45) as response:
                 raw = response.read(maximum + 1)
             if len(raw) > maximum: raise Error("response exceeds limit")
             return raw
-        except Exception: raise Error("public source fetch failed") from None
+        except Error:
+            raise
+        except Exception as exc:
+            if isinstance(getattr(exc, "reason", exc), TimeoutError):
+                raise Error("public source timeout") from None
+            status = getattr(exc, "code", None)
+            if type(status) is int and 300 <= status <= 599:
+                raise Error(f"public source HTTP {status}") from None
+            raise Error("public source fetch failed") from None
     def provider_get(self, suffix):
         endpoint = f"https://api.cloudflare.com/client/v4/accounts/{self.account}" + suffix
         try:

@@ -250,6 +250,63 @@ class ImportTests(unittest.TestCase):
         doc["fee_coverage"][0]["status"]="explicit_no_fee"
         with self.assertRaises(core.Error):core.validate(raw(doc))
 
+    def test_reviewed_source_retries_only_timeout_and_keeps_hash_guard(self):
+        class TimeoutOnce(Fake):
+            def __init__(self):
+                super().__init__()
+                self.source_attempts=0
+            def fetch(self,url,maximum=None):
+                if url=="https://example.org/menu":
+                    self.source_attempts+=1
+                    if self.source_attempts==1:
+                        raise core.legacy.Error("public source timeout")
+                return super().fetch(url,maximum)
+        recovered=TimeoutOnce()
+        audit=core.execute(raw(manifest()),recovered)
+        self.assertTrue(audit["complete"],audit["errors"])
+        self.assertEqual(recovered.source_attempts,2)
+        self.assertEqual([row["outcome"] for row in audit["rows"]],
+                         ["eligible_at_read"]*2)
+        self.assertEqual(recovered.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_offers").fetchone()[0],0)
+
+        class AlwaysTimeout(TimeoutOnce):
+            def fetch(self,url,maximum=None):
+                if url=="https://example.org/menu":
+                    self.source_attempts+=1
+                    raise core.legacy.Error("public source timeout")
+                return Fake.fetch(self,url,maximum)
+        stopped=AlwaysTimeout()
+        failed=core.execute(raw(manifest()),stopped)
+        self.assertFalse(failed["complete"])
+        self.assertEqual(failed["errors"],[{"phase":"source","code":"public source timeout"}])
+        self.assertEqual(stopped.source_attempts,2)
+        self.assertEqual(failed["rows"],[])
+
+        class ChangedAfterTimeout(TimeoutOnce):
+            def fetch(self,url,maximum=None):
+                if url=="https://example.org/menu" and self.source_attempts:
+                    self.source_attempts+=1
+                    return b"<html>changed menu</html>"
+                return super().fetch(url,maximum)
+        changed=ChangedAfterTimeout()
+        mismatch=core.execute(raw(manifest()),changed)
+        self.assertFalse(mismatch["complete"])
+        self.assertEqual(mismatch["errors"][0]["code"],"source hash mismatch")
+        self.assertEqual(changed.source_attempts,2)
+        self.assertEqual(mismatch["rows"],[])
+
+    def test_transport_timeout_diagnostic_is_bounded(self):
+        class TimedOpener:
+            def open(self,request,timeout):
+                self.timeout=timeout
+                raise TimeoutError()
+        transport=core.legacy.Transport("unused-account","unused-token")
+        transport.opener=TimedOpener()
+        with self.assertRaisesRegex(core.legacy.Error,"^public source timeout$"):
+            transport.fetch("https://example.org/menu")
+        self.assertEqual(transport.opener.timeout,45)
+
     def test_private_dns_redirect_and_unexpected_html_fail_closed(self):
         fake=Fake()
         def private_answers(host,port,type=None):

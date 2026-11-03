@@ -2,13 +2,23 @@ import Foundation
 
 enum ComparisonEndpoint: Equatable {
     case health, venues(version: String, cell: String), prices(cell: String), mobileCatalog, mobilePrices(cell: String)
+    case menuV2(key: String, cell: String, after: String?), customerV2(key: String, cell: String, after: String?)
 
     var maximumBytes: Int {
-        switch self { case .health: return 8192; case .venues, .mobileCatalog, .mobilePrices: return 2 * 1024 * 1024; case .prices: return 512 * 1024 }
+        switch self { case .health: return 8192; case .venues, .mobileCatalog, .mobilePrices: return 2 * 1024 * 1024; case .prices: return 512 * 1024
+        case .menuV2, .customerV2: return 1_048_576 }
     }
 
     func url() throws -> URL {
         switch self {
+        case .menuV2(let key, let cell, let after), .customerV2(let key, let cell, let after):
+            guard ComparisonJSON.matches(key, "^(?:[nwr][1-9][0-9]{0,14}|m[0-9a-f]{24})$"),
+                  ComparisonJSON.matches(cell, "^[0-9b-hjkmnp-z]{5}$"),
+                  after == nil || ComparisonJSON.matches(after!, "^[A-Za-z0-9._:-]{1,128}$") else { throw ComparisonReadError.invalidData }
+            let family: String
+            switch self { case .menuV2: family = "menu"; default: family = "customer-prices" }
+            let suffix = after.map { "&after=\($0)" } ?? ""
+            return URL(string: "https://www.dovebevo.com/api/mobile/v2/\(family)/venues/\(key)?cell=\(cell)&limit=\(family == "menu" ? 100 : 50)\(suffix)")!
         case .mobileCatalog: return URL(string: "https://www.dovebevo.com/mobile-data/catalog.json")!
         case .mobilePrices(let cell):
             guard ComparisonJSON.matches(cell, "^[0-9b-hjkmnp-z]{5}$") else { throw ComparisonReadError.invalidData }

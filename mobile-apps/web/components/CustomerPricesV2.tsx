@@ -278,8 +278,7 @@ export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: Drink
 
   const orderedOffers = focus
     ? [...menu.offers].sort(
-        (a, b) =>
-          Number(menuOfferMatchesFocus(b, focus)) - Number(menuOfferMatchesFocus(a, focus)),
+        (a, b) => Number(menuOfferMatchesFocus(b, focus)) - Number(menuOfferMatchesFocus(a, focus)),
       )
     : menu.offers;
   const observations = new Map(
@@ -442,7 +441,9 @@ export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: Drink
             <li
               key={offer.id}
               class={`mobile-menu-v2__offer${focus && menuOfferMatchesFocus(offer, focus) ? " mobile-menu-v2__offer--focused" : ""}`}
-              data-testid={focus && menuOfferMatchesFocus(offer, focus) ? "saved-menu-offer" : undefined}
+              data-testid={
+                focus && menuOfferMatchesFocus(offer, focus) ? "saved-menu-offer" : undefined
+              }
             >
               <span class="mobile-menu-v2__name">
                 {offer.name}

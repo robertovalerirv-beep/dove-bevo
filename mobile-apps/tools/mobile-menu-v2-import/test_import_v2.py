@@ -269,6 +269,78 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(transport.db.execute(
             "SELECT COUNT(*) FROM mobile_menu_v2_sources").fetchone()[0],0)
 
+    def test_only_two_exact_raw_pinned_pdfs_can_exceed_eight_mib(self):
+        self.assertEqual(core.PINNED_LARGE_PDFS,{
+            "https://spillerbirrerie.it/wp-content/uploads/2025/10/menu_spiller_inverno25_MILANO_CENA.pdf":
+                "10fb3c8e0b863872531390d5ee78d1ed2777adc59fe0d8c99449ed91bc9f8053",
+            "https://stmartinpub.com/wp-content/uploads/2026/07/Menu_st_martin_26_07.pdf":
+                "ac045fb1178d98d2aec89c9ca433413a4871185a08fe9fbc6999684170f5d1c9",
+        })
+
+        class SourceTransport:
+            def __init__(self,body):
+                self.body=body
+                self.limits=[]
+                self.last_fetch_content_type="application/pdf"
+            def fetch(self,url,maximum=None):
+                self.limits.append(maximum)
+                if len(self.body)>maximum: raise core.Error("oversized response")
+                return self.body
+
+        body=b"%PDF-"+b"a"*(core.MAX_SOURCE-4)
+        body_sha=hashlib.sha256(body).hexdigest()
+        text_sha=hashlib.sha256(b"Named drink EUR 7").hexdigest()
+        for url in core.PINNED_LARGE_PDFS:
+            with self.subTest(url=url),mock.patch.dict(core.PINNED_LARGE_PDFS,{url:body_sha}), \
+                 mock.patch.object(core.subprocess,"run",return_value=subprocess.CompletedProcess(
+                     ["pdftotext"],0,b"Named drink EUR 7",b"")) as extraction:
+                row={"id":"src-test","source_url":url,"source_format":"pdf_text_v1",
+                     "source_sha256":body_sha,"source_text_sha256":text_sha,
+                     "use_review_status":"approved"}
+                transport=SourceTransport(body)
+                self.assertEqual(core.source_identity(row,transport,{},[]),"verified")
+                self.assertEqual(transport.limits,[core.MAX_PINNED_PDF_SOURCE])
+                extraction.assert_called_once()
+
+                changed=SourceTransport(body[:-1]+b"b")
+                extraction.reset_mock()
+                with self.assertRaisesRegex(core.Error,"pinned PDF bytes changed"):
+                    core.source_identity(row,changed,{},[])
+                extraction.assert_not_called()
+
+                wrong_url=dict(row,source_url=url+"?v=1")
+                with self.assertRaisesRegex(core.Error,"oversized response"):
+                    core.source_identity(wrong_url,SourceTransport(body),{},[])
+                extraction.assert_not_called()
+
+                wrong_manifest=dict(row,source_sha256="0"*64)
+                transport=SourceTransport(body)
+                with self.assertRaisesRegex(core.Error,"pinned PDF manifest hash mismatch"):
+                    core.source_identity(wrong_manifest,transport,{},[])
+                self.assertEqual(transport.limits,[])
+                extraction.assert_not_called()
+
+                non_pdf=SourceTransport(b"xxxxx"+body[5:])
+                with self.assertRaisesRegex(core.Error,"unexpected PDF source content"):
+                    core.source_identity(row,non_pdf,{},[])
+                extraction.assert_not_called()
+
+                wrong_format=dict(row,source_format="html_text_v1")
+                with self.assertRaisesRegex(core.Error,"oversized response"):
+                    core.source_identity(wrong_format,SourceTransport(body),{},[])
+                extraction.assert_not_called()
+
+                oversized=SourceTransport(b"%PDF-"+b"a"*core.MAX_PINNED_PDF_SOURCE)
+                with self.assertRaisesRegex(core.Error,"oversized response"):
+                    core.source_identity(row,oversized,{},[])
+                extraction.assert_not_called()
+
+        doc=manifest()
+        doc["sources"][0].update(source_url=next(iter(core.PINNED_LARGE_PDFS)),
+                                  source_format="pdf_text_v1",source_sha256="0"*64)
+        with self.assertRaisesRegex(core.Error,"pinned PDF manifest hash mismatch"):
+            core.validate(raw(doc))
+
     def test_transport_captures_content_type_without_response_body(self):
         class Response:
             headers={"Content-Type":"application/pdf"}

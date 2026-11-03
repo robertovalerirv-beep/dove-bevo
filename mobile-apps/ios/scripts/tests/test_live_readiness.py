@@ -54,10 +54,12 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertLess(live.index("waitForOrdinaryKeyboard()"), live.index('searchField.typeText("Milano")'))
         self.assertIn('XCTAssertEqual(searchField.value as? String, "Milano"', live)
         ready = self.source.split("private func waitForOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
-        self.assertIn("keyboards.allElementsBoundByIndex.contains", ready)
-        self.assertIn("self.isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)", ready)
-        self.assertLess(ready.index("guard keyboard.exists"), ready.index("frame: keyboard.frame"))
-        self.assertIn("self.app.windows.firstMatch.frame", ready)
+        self.assertIn("self.ordinaryKeyboardVisible()", ready)
+        sample = self.source.split("private func ordinaryKeyboardVisible()", 1)[1].split("\n    private func", 1)[0]
+        self.assertIn("keyboards.allElementsBoundByIndex.contains", sample)
+        self.assertIn("isOrdinaryKeyboard(keyboard, frame: keyboard.frame, windowFrame: windowFrame)", sample)
+        self.assertLess(sample.index("guard keyboard.exists"), sample.index("frame: keyboard.frame"))
+        self.assertIn("app.windows.firstMatch.frame", sample)
         keyboard = self.source.split("private func isOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
         self.assertIn("frame.width >= 250, frame.height >= 150", keyboard)
         self.assertIn("key.isHittable", keyboard)

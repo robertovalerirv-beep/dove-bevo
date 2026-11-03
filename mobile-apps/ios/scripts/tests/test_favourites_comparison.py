@@ -42,7 +42,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("bottomBar = NativeBottomBar()", tabs)
         self.assertIn("for child in [mapNavigation, favouritesNavigation, discoveryNavigation]", tabs)
         bar = (IOS / "App/NativeBottomBar.swift").read_text(encoding="utf-8")
-        self.assertIn("case home, map, favourites, save, recommendations", bar)
+        self.assertIn("case home, map, favourites, save, recommendations, more", bar)
         self.assertIn("for action in BottomNavigationAction.allCases", bar)
         self.assertIn("let button = NativeBottomButton(type: .system)", bar)
         self.assertIn("private final class NativeBottomButton: UIButton", bar)
@@ -51,7 +51,8 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("titleLabel?.accessibilityElementsHidden = true", bar)
         self.assertIn("browser.openSavedVenue(url)", tabs)
         browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
-        self.assertIn('navigationItem.title = "Dove bevo"', browser)
+        self.assertIn("navigationItem.title = nil", browser)
+        self.assertIn("mapNavigation.setNavigationBarHidden(true", tabs)
         self.assertNotIn('\n        title = "Dove bevo"', browser)
         tests = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
         self.assertIn("verifyLiveFavouriteComparisonReadOnly", tests)
@@ -62,7 +63,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
     def test_bottom_actions_are_contextual_and_do_not_select_empty_destinations(self):
         tabs = (IOS / "App/NativeTabsController.swift").read_text(encoding="utf-8")
         bar = (IOS / "App/NativeBottomBar.swift").read_text(encoding="utf-8")
-        for label in ["Home", "Salva nei preferiti", "Drink consigliati"]:
+        for label in ["Cerca", "Salva nei preferiti", "Drink consigliati", "Altro"]:
             self.assertIn(f'return "{label}"', bar)
         self.assertIn("button.isEnabled = enabled", bar)
         self.assertIn("traits.insert(.notEnabled)", bar)
@@ -70,7 +71,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("bottomBar.update(destination: destinationIndex, venueActionsEnabled: enabled)", tabs)
         self.assertIn("heightAnchor.constraint(greaterThanOrEqualToConstant: 56)", bar)
         self.assertIn("widthAnchor.constraint(greaterThanOrEqualToConstant: 48)", bar)
-        self.assertIn("preferredContentSizeCategory.isAccessibilityCategory ? 3 : 5", bar)
+        self.assertIn("preferredContentSizeCategory.isAccessibilityCategory ? 3 : 6", bar)
         self.assertIn("safeAreaLayoutGuide.leadingAnchor", bar)
         self.assertIn("safeAreaInsets.left - safeAreaInsets.right", bar)
         self.assertIn("mapNavigation.topViewController === browser && venueActionsAvailable", tabs)
@@ -82,6 +83,10 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertNotIn("browser.goHome()", tabs)
         self.assertIn("browser.saveCurrentVenue()", tabs)
         self.assertIn("browser.showRecommendations()", tabs)
+        self.assertIn("browser.openMapSearch()", tabs)
+        self.assertIn("browser.cancelPendingSearch()", tabs)
+        self.assertIn("activeNavigation.pushViewController(PrivacyViewController()", tabs)
+        self.assertIn("activeNavigation.pushViewController(information", tabs)
         browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
         self.assertIn("if isMapDestinationSelected?() == false { return nil }", browser)
         self.assertIn("guard browserVisible, bookmarkLifecycleActive", browser)
@@ -90,7 +95,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
 
     def test_more_menu_owns_share_reload_only_and_save_stays_on_current_venue(self):
         browser = (IOS / "App/BrowserViewController.swift").read_text(encoding="utf-8")
-        more = browser.split("private func moreMenu()", 1)[1].split("private var canSaveCurrentVenue", 1)[0]
+        more = browser.split("func moreMenu()", 1)[1].split("private var canSaveCurrentVenue", 1)[0]
         self.assertIn('UIAction(title: "Condividi"', more)
         self.assertIn('UIAction(title: pageLoading ? "Interrompi" : "Ricarica"', more)
         for title in ["Home", "Preferiti", "Salva nei preferiti", "Drink consigliati"]:
@@ -109,7 +114,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
         for required in ["descendants(bar).compactMap", "UIWindow(windowScene: scene)", "previousKeyWindow?.makeKey()",
                          "bar.window === window", "convert($0.bounds, to: bar)",
                          "accessibilityExtraExtraExtraLarge", "tabs.children.count, 3",
-                         "testHomeShowsNativeDiscoveryButMapResumesItsRetainedStack", "testDestinationChangesDuringParentAppearance",
+                         "testCercaReturnsToMapSearchAndMoreUsesTheVisibleNavigationStack", "testDestinationChangesDuringParentAppearance",
                          "testOffscreenFavouritesCannotFetchOrAcceptLateResults", "testOverflowUpdatesLoadingAndRecovery",
                          "testOwnedRequestHistory", "browser.openSavedVenue(canonical)", "MobileEntry.venueDocument(canonical)", "web.canGoBack",
                          "web.backForwardList.currentItem", "web.backForwardList.backList.last", "web.backForwardList.forwardList.first",
@@ -122,7 +127,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn('app.descendants(matching: .any)["native.bottomNavigation"]', ui)
         self.assertIn("assertShareAndReloadAvailable()", ui)
         self.assertIn("verifyLiveVenueHistoryReadOnly(venueName: publicName)", ui)
-        self.assertIn('let back = app.buttons["browser.back"]', ui)
+        self.assertIn('let back = app.buttons["Indietro"]', ui)
         self.assertIn('let forward = app.buttons["Avanti"]', ui)
         history_flow = ui.split("private func verifyLiveVenueHistoryReadOnly", 1)[1].split("private func waitForOrdinaryKeyboard", 1)[0]
         self.assertLess(history_flow.index('app.buttons["browser.more"].tap()'), history_flow.index('let forward = app.buttons["Avanti"]'))
@@ -130,7 +135,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn('app.tables["favorites.saveChooser"]', save)
         self.assertIn('chooser.cells["favorites.saveDrink.beer_draft"].tap()', save)
         self.assertIn('app.alerts["Preferito salvato"]', save)
-        self.assertIn('app.navigationBars["Dove bevo"].exists', save)
+        self.assertIn('XCTAssertFalse(app.navigationBars["Dove bevo"].exists)', save)
         self.assertIn('app.buttons["tab.map"].isSelected', save)
         dismiss = ui.split("private func dismissMoreMenu()", 1)[1].split("private func interactiveMap()", 1)[0]
         self.assertIn('app.buttons["Informazioni"]', dismiss)

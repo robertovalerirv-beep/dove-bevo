@@ -57,8 +57,8 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
             ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`
             : count
               ? count.kind === "menu"
-                ? `${count.count} ${count.count === 1 ? "voce" : "voci"} menu`
-                : `${count.count} ${count.count === 1 ? "prezzo segnalato" : "prezzi segnalati"}`
+                ? `${String(count.count)} ${count.count === 1 ? "voce" : "voci"} menu`
+                : `${String(count.count)} ${count.count === 1 ? "prezzo segnalato" : "prezzi segnalati"}`
               : menuPrice
                 ? menuPrice.replace(/ MENU$/, " · menu")
                 : it.list.noPrice;

@@ -50,6 +50,18 @@ public final class MenuV2PricesTest {
         MenuV2Prices broken=new MenuV2Prices((url,max,call)->bytes(menu(offer("a1","regular",550),2,"wrong")));
         assertThrows(IOException.class,()->broken.load(venue,call()));
     }
+    @Test public void conditionalFeeIsSeparateFromDrinkAmountAndRetainsItsCondition()throws Exception {
+        String fee="{\"id\":\"f1\",\"label\":\"Coperto\",\"kind\":\"fixed\",\"basis\":\"person\",\"amount_minor\":250,\"currency\":\"GBP\",\"currency_exponent\":2,\"rate_bps\":null,\"applicability\":\"conditional\",\"condition\":\"Dopo le 20:00\",\"source\":"+source()+"}";
+        String page=menu(offer("a2","regular",550),1,null).replace("\"fees\":[]","\"fees\":["+fee+"]")
+                .replace("\"status\":\"unknown\",\"source\":null","\"status\":\"documented_partial\",\"source\":"+source());
+        SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Saved actual name");
+        MenuV2Prices client=new MenuV2Prices((url,max,call)->bytes(url.contains("customer-prices")?customer(200):page));
+        MenuV2Prices.Venue loaded=client.load(venue,call());assertEquals("5,50 \u00a3",loaded.prices.get(0).amount());
+        assertTrue(loaded.feeNotice.contains("Spese separate"));assertTrue(loaded.feeNotice.contains("solo se Dopo le 20:00"));
+        assertTrue(loaded.feeNotice.contains("Copertura delle spese parziale"));
+        String invalid=page.replace("\"condition\":\"Dopo le 20:00\"","\"condition\":null");
+        MenuV2Prices broken=new MenuV2Prices((url,max,call)->bytes(invalid));assertThrows(IOException.class,()->broken.load(venue,call()));
+    }
     @Test public void v2TransportOnlyAllowsExactPinnedPublicGetRoutes()throws Exception {
         String valid=MenuV2Prices.endpoint(true,"m"+"0".repeat(24),"u0nd9",null);
         assertTrue(MenuV2Prices.allowed(valid));assertTrue(FavoritePricesClient.allowed(valid));

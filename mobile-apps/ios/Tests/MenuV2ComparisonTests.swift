@@ -66,6 +66,25 @@ final class MenuV2ComparisonTests: XCTestCase {
         XCTAssertEqual(rows.compactMap(\.menuPrice).map(\.amountMinor), [550, 650])
     }
 
+    func testConditionalFeeRemainsSeparateAndRetainsItsCondition() throws {
+        var value = try XCTUnwrap(JSONSerialization.jsonObject(with: menu([offer("a2", context: "regular", cents: 550)], count: 1, next: nil)) as? [String: Any])
+        value["fees"] = [["id": "f1", "label": "Coperto", "kind": "fixed", "basis": "person",
+                          "amount_minor": 250, "currency": "GBP", "currency_exponent": 2,
+                          "rate_bps": NSNull(), "applicability": "conditional", "condition": "Dopo le 20:00",
+                          "source": source()]]
+        value["fee_coverage"] = ["status": "documented_partial", "source": source()]
+        let data = try JSONSerialization.data(withJSONObject: value)
+        let page = try XCTUnwrap(MenuV2JSON.menuPage(data, key: venueKey, cell: cell))
+        XCTAssertEqual(page.offers[0].amount, "5,50 \u{00A3}")
+        XCTAssertTrue(page.feeNotice.contains("Spese separate"))
+        XCTAssertTrue(page.feeNotice.contains("solo se Dopo le 20:00"))
+        XCTAssertTrue(page.feeNotice.contains("Copertura delle spese parziale"))
+        var invalid = value
+        var fees = try XCTUnwrap(invalid["fees"] as? [[String: Any]])
+        fees[0]["condition"] = NSNull(); invalid["fees"] = fees
+        XCTAssertNil(MenuV2JSON.menuPage(try JSONSerialization.data(withJSONObject: invalid), key: venueKey, cell: cell))
+    }
+
     func testRejectsCursorNotMatchingLastOfferAndDoesNotInventPrice() throws {
         let data = try menu([offer("a1", context: "regular", cents: 550)], count: 2, next: "wrong")
         XCTAssertNil(MenuV2JSON.menuPage(data, key: venueKey, cell: cell))

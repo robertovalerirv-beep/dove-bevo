@@ -417,8 +417,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     savedFocus !== null && p[1] === savedFocus.drink && p[2] === savedFocus.hh;
   const active = [...(prices?.p.filter((p) => p[6] === 0) ?? [])].sort(
     (a, b) =>
-      Number(matchesSaved(b)) - Number(matchesSaved(a)) ||
-      Number(isFocus(b)) - Number(isFocus(a)),
+      Number(matchesSaved(b)) - Number(matchesSaved(a)) || Number(isFocus(b)) - Number(isFocus(a)),
   );
   const savedFound = active.some(matchesSaved);
   const menuFound = menu?.offers.some(matchesMenu) ?? false;

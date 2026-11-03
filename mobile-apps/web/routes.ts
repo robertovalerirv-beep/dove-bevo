@@ -110,12 +110,10 @@ export function menuOfferMatchesFocus(
   );
 }
 
-export function mobileDefaultDrink(
-  websiteDefault: string,
+/** Fresh app entry shows all sourced prices; an exact saved-drink link restores its filter. */
+export function mobileInitialDrinks(
   value: MobileLocation | undefined = typeof location === "undefined" ? undefined : location,
-): string {
-  return (
-    (value && mobileFocus(value)?.drink) ||
-    (CATALOG.some((drink) => drink.code === "spritz") ? "spritz" : websiteDefault)
-  );
+): string[] {
+  const saved = value && mobileFocus(value);
+  return saved ? [saved.drink] : [];
 }

@@ -6,7 +6,7 @@ import { runInNewContext } from "node:vm";
 import {
   mobilePath,
   mobileURL,
-  mobileDefaultDrink,
+  mobileInitialDrinks,
   mobileFocus,
   menuOfferMatchesFocus,
 } from "../routes.ts";
@@ -24,7 +24,8 @@ test("map and venue routes survive reload as real mobile assets", () => {
   const url = new URL(venue, origin);
   assert.equal(mobilePath(url), "/bar/n123");
   assert.equal(mobileURL("/?at=45.4642,9.19", origin), "/mobile/?at=45.4642%2C9.19");
-  assert.equal(mobileDefaultDrink("beer_draft"), "spritz");
+  assert.deepEqual(mobileInitialDrinks(), []);
+  assert.deepEqual(mobileInitialDrinks(new URL("/mobile/", origin)), []);
 });
 
 test("mobile owner-verified venue links retain exact m identity", () => {
@@ -43,7 +44,7 @@ test("saved drink links keep the exact drink and happy-hour band", () => {
     const parsed = new URL(link, origin);
     assert.equal(mobilePath(parsed), `/bar/${key}`);
     assert.deepEqual(mobileFocus(parsed), { drink: "negroni", hh: 1 });
-    assert.equal(mobileDefaultDrink("beer_draft", parsed), "negroni");
+    assert.deepEqual(mobileInitialDrinks(parsed), ["negroni"]);
   }
   assert.equal(mobileFocus(new URL("/mobile/?path=/bar/n123&c=u0nd9", origin)), null);
   assert.equal(
@@ -145,6 +146,7 @@ test("compile-time seams preserve original source and reject upstream drift", ()
     map = read("app/lib/maplibre-map.ts");
   assert.match(transformApp(app), /history\.pushState\(\{ inApp: true \}, "", mobileURL\(path\)\)/);
   assert.match(transformApp(app), /mobilePath\(location\)/);
+  assert.match(transformApp(app), /useState<string\[\]>\(mobileInitialDrinks\(\)\)/);
   assert.match(transformApp(app), /loadMobileCell\(cell, drinks\)/);
   assert.match(transformApp(app), /mobileMenuPin\(v, drinks\)/);
   assert.match(transformApp(app), /MobileMapActions onAddPrice/);

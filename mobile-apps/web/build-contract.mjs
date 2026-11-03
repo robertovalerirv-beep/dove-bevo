@@ -35,7 +35,7 @@ export function transformApp(source) {
   result = once(
     result,
     "useState<string[]>([DEFAULT_DRINK])",
-    "useState<string[]>([mobileDefaultDrink(DEFAULT_DRINK)])",
+    "useState<string[]>(mobileInitialDrinks())",
   );
   result = once(
     result,
@@ -130,7 +130,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileDefaultDrink, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
+    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }

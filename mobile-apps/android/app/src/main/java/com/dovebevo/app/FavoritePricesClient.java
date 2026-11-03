@@ -62,7 +62,7 @@ final class FavoritePricesClient {
         call.check();return DiscoveryData.parse(file,prices,cell,today.get());
     }
     private byte[] get(String url,int maximum,Call call)throws IOException{call.check();if(!allowed(url))throw NativeJson.invalid();byte[] bytes=transport.get(url,maximum,call);call.check();if(bytes==null||bytes.length>maximum)throw NativeJson.invalid();return bytes;}
-    static boolean allowed(String url){return EuropePricesClient.allowed(url)||url!=null&&(url.equals(ORIGIN+"/api/health")||url.matches("https://www\\.dovebevo\\.com/api/prices/[0-9b-hjkmnp-z]{5}")||url.matches("https://www\\.dovebevo\\.com/data/[0-9]{8}/v/[0-9b-hjkmnp-z]{5}\\.json"));}
+    static boolean allowed(String url){return MenuV2Prices.allowed(url)||EuropePricesClient.allowed(url)||url!=null&&(url.equals(ORIGIN+"/api/health")||url.matches("https://www\\.dovebevo\\.com/api/prices/[0-9b-hjkmnp-z]{5}")||url.matches("https://www\\.dovebevo\\.com/data/[0-9]{8}/v/[0-9b-hjkmnp-z]{5}\\.json"));}
     interface Connections{HttpsURLConnection open(String url)throws IOException;}
     static final class HttpsTransport implements Transport{
         private final Connections connections;

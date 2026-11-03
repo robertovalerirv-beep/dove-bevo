@@ -497,7 +497,7 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
     assert.match(await f.page.locator(".bar__kind").innerText(), /Locale · Milano/);
     assert.match(
       await f.page.getByRole("region", { name: "Prezzi dal menu online" }).innerText(),
-      /Spritz speciale[\s\S]*7,50 €[\s\S]*costi aggiuntivi non sono stati verificati/,
+      /Spritz speciale[\s\S]*7,50\s€[\s\S]*costi aggiuntivi non sono stati verificati/,
     );
     assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
     assert.deepEqual(f.errors, []);

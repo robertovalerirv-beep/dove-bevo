@@ -25,7 +25,9 @@ export function DrinkMenu({ selected, onChange }: Props) {
       if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
     };
     document.addEventListener("pointerdown", outside);
-    return () => document.removeEventListener("pointerdown", outside);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+    };
   }, [open]);
 
   return (
@@ -51,7 +53,9 @@ export function DrinkMenu({ selected, onChange }: Props) {
         class="mobile-drink-menu__button"
         aria-expanded={open}
         aria-controls={id}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          setOpen(!open);
+        }}
       >
         <span class="mobile-drink-menu__copy">
           <span class="mobile-drink-menu__title">{it.map.pickDrinks}</span>

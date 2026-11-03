@@ -78,21 +78,24 @@ final class MenuV2Prices {
         }
         if(name==null)throw NativeJson.invalid();
         Map<String,Price> byId=new HashMap<>();for(Price price:offers)byId.put(price.id,price);
-        List<Price> all=new ArrayList<>(offers);after=null;Set<String> reportIds=new HashSet<>();
+        List<Price> all=new ArrayList<>(offers);after=null;Set<String> reportIds=new HashSet<>();List<Customer> reports=new ArrayList<>();
         try{
             for(int page=0;page<10;page++){
                 CustomerPage value=customerPage(get(endpoint(false,key,cell,after),call),key,cell);
                 if(!value.name.equals(name))throw NativeJson.invalid();
                 for(Customer customer:value.rows){
                     if(!reportIds.add(customer.id)||reportIds.size()>500)throw NativeJson.invalid();
-                    Price source=byId.get(customer.offerId);
-                    if(source!=null&&source.band>=0&&source.category.equals(customer.category)&&source.currency.equals(customer.currency)
-                            &&source.exponent==customer.exponent&&same(source.servingLabel,customer.servingLabel)&&same(source.servingML,customer.ml))
-                        all.add(new Price(customer.id,name,customer.name,source.category,source.band,customer.amount,customer.currency,
-                                customer.exponent,customer.servingLabel,customer.ml,true,customer.day,feeNotice));
+                    reports.add(customer);
                 }
                 if(value.next==null)break;
                 if(value.rows.isEmpty()||value.next.equals(after)||page==9)throw NativeJson.invalid();after=value.next;
+            }
+            for(Customer customer:reports){
+                Price source=byId.get(customer.offerId);
+                if(source!=null&&source.band>=0&&source.category.equals(customer.category)&&source.currency.equals(customer.currency)
+                        &&source.exponent==customer.exponent&&same(source.servingLabel,customer.servingLabel)&&same(source.servingML,customer.ml))
+                    all.add(new Price(customer.id,name,customer.name,source.category,source.band,customer.amount,customer.currency,
+                            customer.exponent,customer.servingLabel,customer.ml,true,customer.day,feeNotice));
             }
         }catch(IOException unavailable){/* Owner-menu evidence remains independently valid when customer read fails. */}
         return new Venue(key,cell,name,feeNotice,all);

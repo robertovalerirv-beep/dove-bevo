@@ -17,9 +17,9 @@ import {
   menuMoney,
   mobileMenuVenue,
   type MenuPage,
-  type MenuOffer,
   type MenuFee,
 } from "../menu-v2";
+import { CustomerPricesV2 } from "./CustomerPricesV2";
 import "./sheets.css";
 
 export interface BarActions {
@@ -241,14 +241,6 @@ function PriceItem({
 }
 
 /** Bar page `/bar/<key>?c=<cell>` (SPEC 7.2). */
-function menuOfferContext(offer: MenuOffer): string {
-  if (offer.context.kind === "happy_hour")
-    return ["Happy hour", offer.context.condition].filter(Boolean).join(" · ");
-  if (offer.context.kind === "conditional")
-    return offer.context.condition ? `Solo con: ${offer.context.condition}` : "Prezzo condizionato";
-  return offer.context.condition ?? "";
-}
-
 function menuFeeAmount(fee: MenuFee): string {
   if (fee.kind === "percent")
     return `${new Intl.NumberFormat("it-IT", { maximumFractionDigits: 2 }).format((fee.rate_bps ?? 0) / 100)}% sul conto`;
@@ -452,7 +444,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               Caricamento menu online…
             </p>
           )}
-          {menu && (menu.offers.length > 0 || menu.fees.length > 0) && (
+          {menu && (
             <section class="mobile-menu-v2" aria-label="Prezzi dal menu online">
               <div class="mobile-menu-v2__heading">
                 <h3>Dal menu del locale</h3>
@@ -462,33 +454,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 Prezzi del drink indicati nel menu, non il totale pagato. Le condizioni e i
                 supplementi sono separati.
               </p>
-              <ul class="mobile-menu-v2__offers">
-                {menu.offers.map((offer) => (
-                  <li key={offer.id} class="mobile-menu-v2__offer">
-                    <span class="mobile-menu-v2__name">{offer.name}</span>
-                    <strong class="mobile-menu-v2__amount">
-                      {menuMoney(offer.amount_minor, offer.currency, offer.currency_exponent)}
-                    </strong>
-                    <span class="mobile-menu-v2__meta">
-                      {[
-                        offer.serving.label ??
-                          (offer.serving.ml ? `${String(offer.serving.ml)} ml` : ""),
-                        menuOfferContext(offer),
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </span>
-                    <a
-                      href={offer.source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="mobile-menu-v2__source"
-                    >
-                      Menu verificato il {offer.source.checked_on}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <CustomerPricesV2 key={`${venueKey}:${cell}`} menu={menu} />
               {menu.next_after && (
                 <button
                   type="button"
@@ -574,12 +540,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               {it.actions.addHere}
             </button>
           )}
-          {venue.key.startsWith("m") && (
-            <p class="hint">
-              Puoi consultare i prezzi del menu. Le segnalazioni dei clienti per questo locale
-              saranno disponibili presto.
-            </p>
-          )}
+
         </div>
         {review.length > 0 && (
           <>

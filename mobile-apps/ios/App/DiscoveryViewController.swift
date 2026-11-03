@@ -24,7 +24,9 @@ final class DiscoveryViewController: UITableViewController {
     private var carouselHeight: NSLayoutConstraint?
     private let bands = ComparisonBandSelector()
     private let statusLabel = UILabel()
-    private lazy var refreshButton = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
+    var onReloadMenuChanged: (() -> Void)?
+    var canReloadFromMore: Bool { canRead && area != nil && !busy }
+    func reloadFromMore() { guard canReloadFromMore else { return }; refresh() }
     // The parent ellipsis overlays the right edge of the native navigation bar.
     private lazy var moreOverlaySpace: UIBarButtonItem = {
         let spacer = UIView(frame: CGRect(x: 0, y: 0, width: 56, height: 48))
@@ -62,10 +64,9 @@ final class DiscoveryViewController: UITableViewController {
         tableView.register(DiscoveryVenueCell.self, forCellReuseIdentifier: "discoveryVenue")
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 112
-        let map = UIBarButtonItem(title: "Mappa", style: .plain, target: self, action: #selector(showMap))
-        map.accessibilityIdentifier = "discovery.map"
-        refreshButton.accessibilityIdentifier = "discovery.refresh"
-        navigationItem.rightBarButtonItems = [moreOverlaySpace, map, refreshButton]
+        // Mappa is already in the bottom navigation; reload lives in the
+        // parent's ellipsis, leaving this header clear of duplicate actions.
+        navigationItem.rightBarButtonItems = [moreOverlaySpace]
         let heading = label("Esplora i drink", style: .headline)
         heading.accessibilityTraits = .header
         let introduction = label("I prezzi nella zona della mappa", style: .footnote)
@@ -224,7 +225,6 @@ final class DiscoveryViewController: UITableViewController {
                 self?.selectDrink(category.code)
             }
         })
-        refreshButton.isEnabled = canRead && area != nil && !busy
         if area == nil {
             statusLabel.text = "Apri Mappa, scegli una città o avvicina la mappa, poi torna su Scopri per confrontare i prezzi in quella zona."
             statusLabel.accessibilityIdentifier = "discovery.chooseArea"
@@ -234,10 +234,10 @@ final class DiscoveryViewController: UITableViewController {
         } else if let snapshot {
             let suffix = allRows.count > 200 ? " Mostrati i primi 200 prezzi." : ""
             if snapshot.unavailableCells.count == snapshot.area.cells.count && snapshot.venues.isEmpty && snapshot.europe?.venues.isEmpty != false {
-                statusLabel.text = "Prezzi della zona non disponibili. Controlla la connessione e tocca Ricarica."
+                statusLabel.text = "Prezzi della zona non disponibili. Controlla la connessione, poi apri Altre opzioni e scegli Ricarica."
                 statusLabel.accessibilityIdentifier = "discovery.unavailable"
             } else if !snapshot.unavailableCells.isEmpty {
-                statusLabel.text = "\(allRows.count) prezzi per \(drink.name). Alcune parti della zona non sono disponibili: Ricarica per riprovare.\(suffix)"
+                statusLabel.text = "\(allRows.count) prezzi per \(drink.name). Alcune parti della zona non sono disponibili: scegli Ricarica in Altre opzioni.\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.partial"
             } else if allRows.isEmpty {
                 statusLabel.text = "Nessun prezzo segnalato per \(drink.name) · \(band.name) in questa zona. Prova un altro drink o una zona diversa nella mappa."
@@ -247,10 +247,11 @@ final class DiscoveryViewController: UITableViewController {
                 statusLabel.accessibilityIdentifier = "discovery.loaded"
             }
         } else {
-            statusLabel.text = "Tocca Ricarica per cercare i prezzi vicino al centro della mappa."
+            statusLabel.text = "Apri Altre opzioni e scegli Ricarica per cercare i prezzi vicino al centro della mappa."
             statusLabel.accessibilityIdentifier = "discovery.unavailable"
         }
         tableView.reloadData(); view.setNeedsLayout()
+        onReloadMenuChanged?()
     }
 
     func selectDrink(_ code: String) {

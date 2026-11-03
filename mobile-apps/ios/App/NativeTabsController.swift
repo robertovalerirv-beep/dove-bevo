@@ -50,6 +50,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             self.browser.openSavedVenue(url)
         }
         controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 1 }
+        controller.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
         return controller
     }()
     private(set) lazy var favouritesNavigation = UINavigationController(rootViewController: favourites)
@@ -62,6 +63,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             self.browser.openSavedVenue(url)
         }, onMap: { [weak self] in self?.selectedIndex = 0 })
         controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 2 }
+        controller.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
         return controller
     }()
     private(set) lazy var discoveryNavigation = UINavigationController(rootViewController: discovery)
@@ -237,15 +239,36 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             topMoreButton.menu = browser.moreMenu()
             return
         }
-        topMoreButton.accessibilityHint = "Privacy e informazioni"
-        topMoreButton.menu = UIMenu(children: [
+        var actions: [UIMenuElement] = []
+        var reloadTitle: String?
+        if destinationIndex == 1 && favouritesNavigation.topViewController === favourites {
+            let title = favourites.reloadMenuTitle
+            reloadTitle = title
+            let reload = UIAction(title: title, image: UIImage(systemName: "arrow.clockwise"),
+                                  identifier: UIAction.Identifier("native.reload")) { [weak self] _ in
+                self?.favourites.reloadFromMore()
+            }
+            if !favourites.canReloadFromMore { reload.attributes = [.disabled] }
+            actions.append(reload)
+        } else if destinationIndex == 2 && discoveryNavigation.topViewController === discovery {
+            reloadTitle = "Ricarica"
+            let reload = UIAction(title: "Ricarica", image: UIImage(systemName: "arrow.clockwise"),
+                                  identifier: UIAction.Identifier("native.reload")) { [weak self] _ in
+                self?.discovery.reloadFromMore()
+            }
+            if !discovery.canReloadFromMore { reload.attributes = [.disabled] }
+            actions.append(reload)
+        }
+        topMoreButton.accessibilityHint = reloadTitle.map { "\($0), privacy e informazioni" } ?? "Privacy e informazioni"
+        actions += [
             UIAction(title: "Privacy", image: UIImage(systemName: "hand.raised"), identifier: UIAction.Identifier("native.privacy")) { [weak self] _ in
                 self?.showPrivacyFromMore()
             },
             UIAction(title: "Informazioni", image: UIImage(systemName: "info.circle"), identifier: UIAction.Identifier("native.information")) { [weak self] _ in
                 self?.showInformationFromMore()
             }
-        ])
+        ]
+        topMoreButton.menu = UIMenu(children: actions)
     }
 
     func showPrivacyFromMore() {

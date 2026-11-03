@@ -26,4 +26,4 @@ A source offer submission returns 201 `{status:"active",revision,source_kind:"cu
 
 Access-protected `GET /api/admin/mobile/v2/customer-prices/pending?limit=50&after=<seq>` lists pending and reported entries with a monotonic `next_after` cursor; `POST /api/admin/mobile/v2/customer-prices/entries/:id/decision` with `{decision:"approve"|"remove"}` records an auditable decision. Source and venue gates are rechecked before approval. No app or website admin UI is introduced by this route.
 
-Migration `0012_mobile_menu_v2_customer_prices.sql` adds append-only customer facts, reports, and decisions. It creates no Cloudflare resource and changes no legacy table or API. Deploy only after PR review and CI, then integrate the mobile form and distinguish reported customer prices from cited menu facts in the app.
+Migration `0013_mobile_menu_v2_customer_prices.sql` adds append-only customer facts, reports, and decisions. It creates no Cloudflare resource and changes no legacy table or API. Deploy only after PR review and CI, then integrate the mobile form and distinguish reported customer prices from cited menu facts in the app.

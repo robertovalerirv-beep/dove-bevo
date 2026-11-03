@@ -10,6 +10,7 @@ import { accessJwt } from "./access-jwt";
 const ORIGIN = "https://dovebevo.example";
 const TODAY = new Date().toISOString().slice(0, 10);
 const FOREIGN = { key: "n910000001", cell: "gcpvj" };
+const ITALIAN_STATIC = { key: "n2420779240", cell: "u0nd9" }; // Published fixture Bistrot Duomo.
 let address = 0;
 const ip = () => "198.19.1." + String(++address);
 const cookie = async () => "__Host-sid=" + (await createSession("test-session-hmac-key")).token;
@@ -148,6 +149,122 @@ beforeEach(async () => {
 });
 
 describe("app-only customer prices on vetted named menu venues", () => {
+  it("accepts corrections and moderated new drinks for a sourced Italian static venue", async () => {
+    const path =
+      "/api/mobile/v2/customer-prices/venues/" +
+      ITALIAN_STATIC.key +
+      "?cell=" +
+      ITALIAN_STATIC.cell;
+    const signed = await cookie();
+    expect((await request(path)).status).toBe(404);
+    expect(
+      (await request("/api/mobile/v2/customer-prices", newBody(ITALIAN_STATIC), signed)).status,
+    ).toBe(404);
+
+    const id = await offer(ITALIAN_STATIC, "EUR");
+    const empty = await request(path);
+    expect(empty.status, await empty.clone().text()).toBe(200);
+    expect((await empty.json<PublicRows>()).rows).toEqual([]);
+    const correction = await request(
+      "/api/mobile/v2/customer-prices",
+      offerBody(ITALIAN_STATIC, id, "EUR"),
+      signed,
+    );
+    expect(correction.status, await correction.clone().text()).toBe(201);
+    const correctionId = (await correction.json<{ revision: string }>()).revision;
+    expect((await (await request(path)).json<PublicRows>()).rows).toMatchObject([
+      { revision: correctionId, amount_minor: 625, currency: "EUR" },
+    ]);
+    expect(
+      await env.DB.prepare("SELECT amount_minor FROM mobile_menu_v2_offers WHERE id=?1")
+        .bind(id)
+        .first("amount_minor"),
+    ).toBe(550);
+    const addition = await request(
+      "/api/mobile/v2/customer-prices",
+      newBody(ITALIAN_STATIC),
+      signed,
+    );
+    expect(addition.status, await addition.clone().text()).toBe(202);
+    const additionId = (await addition.json<{ revision: string }>()).revision;
+    const jwt = await accessJwt();
+    const pending = await request(
+      "/api/admin/mobile/v2/customer-prices/pending",
+      undefined,
+      undefined,
+      jwt,
+    );
+    expect(pending.status).toBe(200);
+    expect(await pending.json()).toMatchObject({
+      rows: [
+        {
+          revision: additionId,
+          venue: {
+            key: ITALIAN_STATIC.key,
+            cell: ITALIAN_STATIC.cell,
+            name: "Bistrot Duomo",
+            country: "IT",
+          },
+        },
+      ],
+    });
+    const approved = await request(
+      "/api/admin/mobile/v2/customer-prices/entries/" + additionId + "/decision",
+      { decision: "approve" },
+      undefined,
+      jwt,
+    );
+    expect(approved.status, await approved.clone().text()).toBe(200);
+    expect((await (await request(path)).json<PublicRows>()).rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ revision: correctionId, amount_minor: 625 }),
+        expect.objectContaining({ revision: additionId, name: "House negroni" }),
+      ]),
+    );
+    const reported = await request(
+      "/api/mobile/v2/customer-prices/report",
+      {
+        venue_key: ITALIAN_STATIC.key,
+        cell: ITALIAN_STATIC.cell,
+        entry_id: correctionId,
+        reason: "wrong_price",
+      },
+      signed,
+    );
+    expect(reported.status, await reported.clone().text()).toBe(200);
+    await env.DB.prepare(
+      "INSERT INTO venues_hidden(venue_key,cell,name,day) VALUES (?1,?2,'fixture',?3)",
+    )
+      .bind(ITALIAN_STATIC.key, ITALIAN_STATIC.cell, TODAY)
+      .run();
+    expect((await request(path)).status).toBe(404);
+    expect(
+      (await request("/api/mobile/v2/customer-prices", newBody(ITALIAN_STATIC), signed)).status,
+    ).toBe(404);
+  });
+
+  it("does not infer contribution eligibility from a menu source without current static identity", async () => {
+    const wrongCell = { key: ITALIAN_STATIC.key, cell: "u0nd8" };
+    const id = await offer(wrongCell, "EUR");
+    const signed = await cookie();
+    expect(
+      (
+        await request(
+          "/api/mobile/v2/customer-prices/venues/" + wrongCell.key + "?cell=" + wrongCell.cell,
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (await request("/api/mobile/v2/customer-prices", offerBody(wrongCell, id, "EUR"), signed))
+        .status,
+    ).toBe(404);
+    const forged = { key: "n999999999999999", cell: ITALIAN_STATIC.cell };
+    const forgedId = await offer(forged, "EUR");
+    expect(
+      (await request("/api/mobile/v2/customer-prices", offerBody(forged, forgedId, "EUR"), signed))
+        .status,
+    ).toBe(404);
+  });
   it("records a GBP observation without changing the source menu or legacy tables", async () => {
     await foreign();
     const id = await offer(FOREIGN, "GBP");

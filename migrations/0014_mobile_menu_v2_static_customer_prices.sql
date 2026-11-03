@@ -1,8 +1,6 @@
--- Permit customer observations for a vetted, currently published Italian static OSM
--- venue without inserting that venue into the separate owner/foreign registry.
--- Preserve every revision, report, decision, index and immutability trigger.
--- D1 enforces foreign keys; defer checks only while replacing the referenced table.
-PRAGMA defer_foreign_keys = ON;
+-- Rebuild only app-only customer tables as a unit. Existing Italian static OSM keys
+-- are guarded by the Worker and approved active menu evidence; they do not belong
+-- in the owner/foreign venue registry. Preserve revisions, reports and decisions.
 CREATE TABLE mobile_menu_v2_customer_entries_rebuild (
   seq INTEGER PRIMARY KEY AUTOINCREMENT,
   id TEXT NOT NULL UNIQUE CHECK (length(id) = 36),
@@ -32,10 +30,32 @@ CREATE TABLE mobile_menu_v2_customer_entries_rebuild (
          (item_kind='new_drink' AND offer_id IS NULL)),
   FOREIGN KEY (offer_id) REFERENCES mobile_menu_v2_offers(id)
 );
+CREATE TABLE mobile_menu_v2_customer_reports_rebuild (
+  id INTEGER PRIMARY KEY,
+  entry_id TEXT NOT NULL REFERENCES mobile_menu_v2_customer_entries_rebuild(id),
+  reason TEXT NOT NULL CHECK (reason IN ('wrong_price','spam')),
+  day TEXT NOT NULL CHECK (length(day)=10)
+);
+CREATE TABLE mobile_menu_v2_customer_decisions_rebuild (
+  id INTEGER PRIMARY KEY,
+  entry_id TEXT NOT NULL REFERENCES mobile_menu_v2_customer_entries_rebuild(id),
+  decision TEXT NOT NULL CHECK (decision IN ('approve','remove')),
+  decided_at TEXT NOT NULL
+);
 INSERT INTO mobile_menu_v2_customer_entries_rebuild (seq,id,venue_key,cell,item_key,item_kind,offer_id,name,category,serving_label,serving_ml,amount_minor,currency,currency_exponent,price_scope,source_kind,observed_on,status,previous_revision,changed_at,moderated_at)
   SELECT seq,id,venue_key,cell,item_key,item_kind,offer_id,name,category,serving_label,serving_ml,amount_minor,currency,currency_exponent,price_scope,source_kind,observed_on,status,previous_revision,changed_at,moderated_at FROM mobile_menu_v2_customer_entries;
+INSERT INTO mobile_menu_v2_customer_reports_rebuild (id,entry_id,reason,day)
+  SELECT id,entry_id,reason,day FROM mobile_menu_v2_customer_reports;
+INSERT INTO mobile_menu_v2_customer_decisions_rebuild (id,entry_id,decision,decided_at)
+  SELECT id,entry_id,decision,decided_at FROM mobile_menu_v2_customer_decisions;
+DROP TRIGGER mobile_menu_v2_customer_decision_audit;
+DROP TRIGGER mobile_menu_v2_customer_fact_immutable;
+DROP TABLE mobile_menu_v2_customer_reports;
+DROP TABLE mobile_menu_v2_customer_decisions;
 DROP TABLE mobile_menu_v2_customer_entries;
 ALTER TABLE mobile_menu_v2_customer_entries_rebuild RENAME TO mobile_menu_v2_customer_entries;
+ALTER TABLE mobile_menu_v2_customer_reports_rebuild RENAME TO mobile_menu_v2_customer_reports;
+ALTER TABLE mobile_menu_v2_customer_decisions_rebuild RENAME TO mobile_menu_v2_customer_decisions;
 CREATE INDEX mobile_menu_v2_customer_item
   ON mobile_menu_v2_customer_entries(venue_key,cell,item_key,seq DESC);
 CREATE INDEX mobile_menu_v2_customer_pending
@@ -49,6 +69,10 @@ CREATE TRIGGER mobile_menu_v2_customer_fact_immutable BEFORE UPDATE OF
   observed_on,previous_revision,changed_at
 ON mobile_menu_v2_customer_entries
 BEGIN SELECT RAISE(ABORT,'customer observation facts are immutable'); END;
+CREATE INDEX mobile_menu_v2_customer_reports_entry
+  ON mobile_menu_v2_customer_reports(entry_id);
+CREATE INDEX mobile_menu_v2_customer_decisions_entry
+  ON mobile_menu_v2_customer_decisions(entry_id);
 
 CREATE TRIGGER mobile_menu_v2_customer_decision_audit AFTER UPDATE OF status
 ON mobile_menu_v2_customer_entries

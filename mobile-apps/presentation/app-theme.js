@@ -176,14 +176,15 @@ html[data-dovebevo-app-theme="1"] .scontrino .price__value--stale {
 }
 html[data-dovebevo-app-theme="1"] .scontrino .price__actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6em), 1fr));
   gap: 4px;
+  font-size: 0.8125rem;
 }
 html[data-dovebevo-app-theme="1"] .scontrino .price__actions .btn {
   border-radius: 10px;
   background: var(--surface-2);
   padding: 7px 3px;
-  font-size: clamp(11px, 3.2vw, 13px);
+  font-size: 1em;
   line-height: 1.15;
   text-align: center;
   white-space: normal;
@@ -194,7 +195,7 @@ html[data-dovebevo-app-theme="1"] .scontrino .price__actions .btn[aria-disabled=
   opacity: 0.55;
 }
 html[data-dovebevo-app-theme="1"] .field {
-  border-color: var(--line-soft);
+  border-color: var(--ink);
   background: var(--surface);
   border-radius: 12px;
 }
@@ -212,7 +213,7 @@ html[data-dovebevo-app-theme="1"] .price-input input {
 }
 html[data-dovebevo-app-theme="1"] .price-input {
   padding: 0 14px;
-  border: 1px solid var(--line-soft);
+  border: 1px solid var(--ink);
   border-radius: 12px;
   font-size: 24px;
 }

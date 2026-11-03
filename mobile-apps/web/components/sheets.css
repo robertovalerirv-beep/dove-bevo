@@ -3,9 +3,9 @@
   max-height: min(96dvh, 900px);
   border: 0;
   border-radius: 22px 22px 0 0;
-  background: #fff;
-  color: #101820;
-  box-shadow: 0 -4px 24px rgb(16 24 32 / 12%);
+  background: var(--surface, #fffbf4);
+  color: var(--ink, #1b1611);
+  box-shadow: 0 -4px 24px rgb(27 22 17 / 12%);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -25,13 +25,13 @@
   flex: none;
   min-height: 34px;
   padding-top: 8px;
-  background: #fff;
+  background: var(--surface, #fffbf4);
 }
 
 .sheet:has(.scontrino.mobile-venue) > .sheet__grip > span {
   width: 34px;
   height: 4px;
-  background: #cbd1d7;
+  background: var(--ink-muted, #5e554b);
 }
 
 .sheet:has(.mobile-price-flow) > .sheet__head {
@@ -41,8 +41,8 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border-bottom: 1px solid #edf0f2;
-  background: #fff;
+  border-bottom: 1px solid var(--line-soft, #e2d3be);
+  background: var(--surface, #fffbf4);
 }
 
 .sheet:has(.mobile-price-flow) > .sheet__head .sheet__title {
@@ -50,7 +50,7 @@
   grid-row: 1;
   margin: 0;
   overflow: visible;
-  color: #101820;
+  color: var(--ink, #1b1611);
   font-size: 17px;
   font-weight: 700;
   line-height: 1.3;
@@ -80,7 +80,7 @@
 
 .scontrino.mobile-venue,
 .mobile-price-flow {
-  color: #101820;
+  color: var(--ink, #1b1611);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.4;
@@ -91,14 +91,14 @@
   padding: 0 0 12px;
   border: 0;
   border-radius: 0;
-  background: #fff;
+  background: var(--surface, #fffbf4);
   -webkit-mask: none;
   mask: none;
 }
 
 .scontrino.mobile-venue .bar__kind {
   margin: 0 40px 4px 0;
-  color: #5d6670;
+  color: var(--ink-muted, #5e554b);
   font:
     500 12px/1.4 -apple-system,
     BlinkMacSystemFont,
@@ -121,7 +121,7 @@
 
 .scontrino.mobile-venue .bar__addr {
   margin: 0 0 12px;
-  color: #5d6670;
+  color: var(--ink-muted, #5e554b);
   font-size: 14px;
 }
 .scontrino.mobile-venue .bar__verified {
@@ -130,7 +130,7 @@
 .scontrino.mobile-venue .section-title {
   margin: 14px 0 8px;
   border: 0;
-  color: #101820;
+  color: var(--ink, #1b1611);
   font-size: 16px;
   font-family: inherit;
   font-weight: 700;
@@ -139,7 +139,7 @@
 }
 .scontrino.mobile-venue .scontrino__paper > .section-title {
   font-size: 13px;
-  color: #5d6670;
+  color: var(--ink-muted, #5e554b);
 }
 .scontrino.mobile-venue .prices {
   list-style: none;
@@ -153,7 +153,7 @@
   column-gap: 9px;
   row-gap: 3px;
   padding: 10px 0;
-  border-bottom: 1px solid #edf0f2;
+  border-bottom: 1px solid var(--line-soft, #e2d3be);
 }
 
 .scontrino.mobile-venue .price__icon {
@@ -182,7 +182,7 @@
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: #101820;
+  color: var(--ink, #1b1611);
   box-shadow: none;
   font:
     700 16px/1.3 -apple-system,
@@ -201,7 +201,7 @@
 .scontrino.mobile-venue .price__meta {
   grid-column: 2 / -1;
   margin: 0;
-  color: #5d6670;
+  color: var(--ink-muted, #5e554b);
   font:
     400 12px/1.4 -apple-system,
     BlinkMacSystemFont,
@@ -212,7 +212,7 @@
   text-transform: none;
 }
 .scontrino.mobile-venue .price__stale {
-  color: #9b2938;
+  color: var(--spritz-text, #b93a0b);
 }
 .scontrino.mobile-venue .price__actions {
   grid-column: 1 / -1;
@@ -233,8 +233,8 @@
   padding: 6px 4px;
   border: 0;
   border-radius: 10px;
-  background: #f0f2f4;
-  color: #101820;
+  background: var(--surface-2, #f6e9d6);
+  color: var(--ink, #1b1611);
   box-shadow: none;
   font-size: inherit;
   font-weight: 600;
@@ -244,14 +244,14 @@
 }
 .scontrino.mobile-venue .price__actions .btn:first-child {
   background: var(--spritz, #ff5a1f);
-  color: var(--on-spritz, #101820);
+  color: var(--on-spritz, #1b1611);
 }
 .scontrino.mobile-venue .price__actions .btn--ghost {
-  background: #f0f2f4;
-  color: #101820;
+  background: var(--surface-2, #f6e9d6);
+  color: var(--ink, #1b1611);
 }
 .scontrino.mobile-venue .price__actions .btn:focus-visible {
-  outline: 2px solid #101820;
+  outline: 2px solid var(--ink, #1b1611);
   outline-offset: 2px;
 }
 .scontrino.mobile-venue .price__actions [aria-disabled="true"] {
@@ -264,7 +264,7 @@
   padding: 5px 0;
   border: 0;
   background: transparent;
-  color: #315c72;
+  color: var(--spritz-text, #b93a0b);
   font:
     600 12px/1.3 -apple-system,
     BlinkMacSystemFont,
@@ -285,7 +285,7 @@
   padding: 12px;
   border: 0;
   border-radius: 14px;
-  background: #f3f5f6;
+  background: var(--surface-2, #f6e9d6);
 }
 
 .scontrino.mobile-venue .mobile-price--featured .price__icon {
@@ -318,13 +318,13 @@
   grid-row: 3;
 }
 .scontrino.mobile-venue .mobile-price--featured .price__value--affare {
-  color: #226332;
+  color: var(--ink, #1b1611);
 }
 .scontrino.mobile-venue .mobile-price--featured .price__value--giusto {
-  color: #715014;
+  color: var(--ink, #1b1611);
 }
 .scontrino.mobile-venue .mobile-price--featured .price__value--salato {
-  color: #9b2938;
+  color: var(--salato, #6e1a4e);
 }
 .scontrino.mobile-venue .mobile-price__tier {
   grid-column: 3;
@@ -336,20 +336,20 @@
   font-weight: 650;
 }
 .scontrino.mobile-venue .mobile-price__tier--affare {
-  color: #226332;
-  background: #d9efdd;
+  color: var(--ink, #1b1611);
+  background: var(--affare, #c5f23e);
 }
 .scontrino.mobile-venue .mobile-price__tier--giusto {
-  color: #715014;
-  background: #fff0cb;
+  color: var(--ink, #1b1611);
+  background: var(--giusto, #fffbf4);
 }
 .scontrino.mobile-venue .mobile-price__tier--salato {
-  color: #9b2938;
-  background: #fbe5e7;
+  color: var(--on-salato, #fffbf4);
+  background: var(--salato, #6e1a4e);
 }
 .scontrino.mobile-venue .mobile-price-section {
   margin: 16px 0 1px;
-  color: #101820;
+  color: var(--ink, #1b1611);
   font-size: 16px;
   font-weight: 700;
 }
@@ -360,7 +360,7 @@
   margin: 10px 0 0;
   padding: 0;
   border: 0;
-  color: #6b747d;
+  color: var(--ink-muted, #5e554b);
   font:
     400 12px/1.4 -apple-system,
     BlinkMacSystemFont,
@@ -382,28 +382,28 @@
   padding: 9px 10px;
   border: 0;
   border-radius: 11px;
-  background: #f0f2f4;
-  color: #101820;
+  background: var(--surface-2, #f6e9d6);
+  color: var(--ink, #1b1611);
   box-shadow: none;
   font-size: 14px;
   line-height: 1.25;
 }
 .scontrino.mobile-venue .bar__actions .btn--primary {
   background: var(--spritz, #ff5a1f);
-  color: var(--on-spritz, #101820);
+  color: var(--on-spritz, #1b1611);
 }
 .scontrino.mobile-venue > .btn--ghost {
   width: 100%;
   min-height: 48px;
   margin-top: 2px;
   padding: 8px;
-  color: #5d6670;
+  color: var(--ink-muted, #5e554b);
   font-size: 13px;
 }
 .scontrino.mobile-venue .legal-links {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid #edf0f2;
+  border-top: 1px solid var(--line-soft, #e2d3be);
 }
 .scontrino.mobile-venue .legal-links .btn {
   min-height: 48px;
@@ -416,7 +416,7 @@
   margin: -8px -16px 0;
   overflow: hidden;
   height: 134px;
-  background: #f2f3f3;
+  background: var(--surface-2, #f6e9d6);
 }
 .mobile-venue__hero img {
   display: block;
@@ -431,7 +431,7 @@
   justify-content: center;
   gap: 14px;
   padding: 12px;
-  background: linear-gradient(135deg, #fff4df, #edf4ec);
+  background: linear-gradient(135deg, var(--bg, #fff4e4), var(--surface-2, #f6e9d6));
 }
 .mobile-venue__hero--neutral img {
   flex: none;
@@ -444,12 +444,12 @@
   gap: 3px;
 }
 .mobile-venue__hero--neutral strong {
-  color: #101820;
+  color: var(--ink, #1b1611);
   font-size: 20px;
   line-height: 1.2;
 }
 .mobile-venue__hero--neutral span {
-  color: #45535d;
+  color: var(--ink-muted, #5e554b);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -459,8 +459,8 @@
   bottom: 9px;
   padding: 3px 6px;
   border-radius: 5px;
-  background: #fff;
-  color: #5d6670;
+  background: var(--surface, #fffbf4);
+  color: var(--ink-muted, #5e554b);
   font-size: 10px;
   line-height: 1.3;
 }
@@ -520,7 +520,7 @@
   cursor: pointer;
 }
 .scontrino.mobile-venue .mobile-price__toggle:focus-visible {
-  outline: 2px solid #101820;
+  outline: 2px solid var(--ink, #1b1611);
   outline-offset: 1px;
 }
 .scontrino.mobile-venue .mobile-price:not(.mobile-price--featured) .price__name {
@@ -550,9 +550,9 @@
 }
 
 .mobile-price-flow .field {
-  border: 1px solid #d2d8dd;
+  border: 1px solid var(--ink, #1b1611);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface, #fffbf4);
   box-shadow: none;
 }
 .mobile-price-flow .row {
@@ -590,11 +590,11 @@
   min-height: 86px;
   width: 100%;
   padding: 10px 6px;
-  border: 1px solid #e7eaee;
+  border: 1px solid var(--ink, #1b1611);
   border-radius: 12px;
-  background: #f5f6f7;
+  background: var(--surface-2, #f6e9d6);
   box-shadow: none;
-  color: #101820;
+  color: var(--ink, #1b1611);
 }
 .mobile-price-flow .drink__name {
   font-size: 13px;
@@ -603,7 +603,7 @@
 }
 .mobile-price-flow__venue {
   margin: 0 0 12px;
-  color: #5d6670;
+  color: var(--ink-muted, #5e554b);
   font-size: 13px;
   text-align: center;
   overflow-wrap: anywhere;
@@ -611,7 +611,7 @@
 .mobile-price-form__art {
   margin-bottom: 10px;
   border-radius: 12px;
-  background: #fafafa;
+  background: var(--surface, #fffbf4);
   position: relative;
   overflow: hidden;
 }
@@ -630,8 +630,8 @@
   bottom: 6px;
   padding: 3px 6px;
   border-radius: 4px;
-  background: #fff;
-  color: #5d6670;
+  background: var(--surface, #fffbf4);
+  color: var(--ink-muted, #5e554b);
   font-size: 10px;
   line-height: 1.3;
 }
@@ -651,7 +651,7 @@
 .mobile-price-form .question {
   display: block;
   margin: 10px 0 8px;
-  color: #101820;
+  color: var(--ink, #1b1611);
   font-size: 15px;
   line-height: 1.4;
   font-weight: 600;
@@ -663,16 +663,16 @@
   gap: 10px;
   min-height: 68px;
   padding: 0 14px;
-  border: 1px solid #a6afb8;
+  border: 1px solid var(--ink, #1b1611);
   border-radius: 12px;
-  background: #fff;
-  color: #101820;
+  background: var(--surface, #fffbf4);
+  color: var(--ink, #1b1611);
   font-size: 23px;
   font-weight: 600;
   letter-spacing: normal;
 }
 .mobile-price-form .price-input:focus-within {
-  outline: 2px solid #2459b7;
+  outline: 2px solid var(--focus, #1f4fff);
   outline-offset: 2px;
 }
 .mobile-price-form .price-input input {
@@ -685,7 +685,7 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  color: #101820;
+  color: var(--ink, #1b1611);
   font:
     750 34px/1.2 -apple-system,
     BlinkMacSystemFont,
@@ -721,10 +721,10 @@
 }
 .mobile-price-form .seen__price {
   min-height: 48px;
-  border: 1px solid #dfe4e8;
+  border: 1px solid var(--ink, #1b1611);
   border-radius: 11px;
-  background: #f3f5f6;
-  color: #101820;
+  background: var(--surface-2, #f6e9d6);
+  color: var(--ink, #1b1611);
   box-shadow: none;
   font:
     600 15px/1.3 -apple-system,
@@ -734,20 +734,20 @@
     sans-serif;
 }
 .mobile-price-form .seen__price--affare {
-  background: #e1f3e3;
-  color: #226332;
+  background: var(--affare, #c5f23e);
+  color: var(--ink, #1b1611);
 }
 .mobile-price-form .seen__price--giusto {
-  background: #fff0cb;
-  color: #715014;
+  background: var(--giusto, #fffbf4);
+  color: var(--ink, #1b1611);
 }
 .mobile-price-form .seen__price--salato {
-  background: #fbe5e7;
-  color: #9b2938;
+  background: var(--salato, #6e1a4e);
+  color: var(--on-salato, #fffbf4);
 }
 .mobile-price-form .zone-range {
   margin: 10px 0;
-  color: #5d6670;
+  color: var(--ink-muted, #5e554b);
   font-size: 13px;
 }
 .mobile-price-form .switch {
@@ -763,7 +763,7 @@
   border: 0;
   border-radius: 11px;
   background: var(--spritz, #ff5a1f);
-  color: var(--on-spritz, #101820);
+  color: var(--on-spritz, #1b1611);
   box-shadow: none;
   font:
     650 17px/1.3 -apple-system,
@@ -773,8 +773,8 @@
     sans-serif;
 }
 .mobile-price-form > .btn--primary:disabled {
-  background: #e4e8eb;
-  color: #66717c;
+  background: var(--line-soft, #e2d3be);
+  color: var(--ink-muted, #5e554b);
   opacity: 1;
 }
 
@@ -815,8 +815,8 @@
 .scontrino.mobile-venue .mobile-menu-v2 {
   margin: 18px 0 8px;
   padding: 0;
-  border-top: 1px solid #e6e9e6;
-  color: #101820;
+  border-top: 1px solid var(--line-soft, #e2d3be);
+  color: var(--ink, #1b1611);
 }
 .mobile-menu-v2__heading {
   display: flex;
@@ -832,14 +832,14 @@
   font-weight: 750;
 }
 .mobile-menu-v2__heading > span {
-  color: #667078;
+  color: var(--ink-muted, #5e554b);
   font-size: 12px;
   white-space: nowrap;
 }
 .mobile-menu-v2__disclaimer,
 .mobile-menu-v2__fees > p {
   margin: 8px 0 12px;
-  color: #59636b;
+  color: var(--ink-muted, #5e554b);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -854,20 +854,20 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 3px 10px;
   padding: 12px;
-  border: 1px solid #e8ebea;
+  border: 1px solid var(--line-soft, #e2d3be);
   border-radius: 13px;
   margin: 7px 0;
-  background: #fff;
+  background: var(--surface, #fffbf4);
   overflow-wrap: anywhere;
 }
 .mobile-menu-v2__offer--focused {
-  border-color: #1b6e38;
-  background: #f4fbf5;
+  border-color: var(--spritz, #ff5a1f);
+  background: var(--surface-2, #f6e9d6);
 }
 .mobile-menu-v2__saved {
   display: block;
   margin-top: 2px;
-  color: #1b6e38;
+  color: var(--spritz-text, #b93a0b);
   font-size: 12px;
   font-weight: 600;
 }
@@ -878,12 +878,12 @@
 .mobile-menu-v2__provenance {
   display: block;
   margin-top: 2px;
-  color: #59636b;
+  color: var(--ink-muted, #5e554b);
   font-size: 11px;
   font-weight: 600;
 }
 .mobile-menu-v2__amount {
-  color: #101820;
+  color: var(--ink, #1b1611);
   font-size: 16px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -891,12 +891,12 @@
 .mobile-menu-v2__meta,
 .mobile-menu-v2__source {
   grid-column: 1 / -1;
-  color: #5b6871;
+  color: var(--ink-muted, #5e554b);
   font-size: 12px;
 }
 .mobile-menu-v2__source,
 .mobile-menu-v2__fees a {
-  color: #315c72;
+  color: var(--spritz-text, #b93a0b);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -916,19 +916,19 @@
   margin: 15px 0 0;
   padding: 14px;
   border-radius: 14px;
-  background: #f7f5f0;
+  background: var(--surface-2, #f6e9d6);
 }
 .mobile-menu-v2__fees li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 3px 10px;
   padding: 8px 0;
-  border-bottom: 1px solid #e3e0d8;
+  border-bottom: 1px solid var(--line-soft, #e2d3be);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
 .mobile-menu-v2__fees li strong {
-  color: #a94820;
+  color: var(--spritz-text, #b93a0b);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
@@ -941,8 +941,8 @@
   margin: 12px 0;
   padding: 12px;
   border-radius: 12px;
-  background: #fff4ee;
-  color: #602b16;
+  background: var(--surface-2, #f6e9d6);
+  color: var(--spritz-text, #b93a0b);
 }
 .mobile-menu-v2__error p {
   margin: 0 0 8px;
@@ -960,9 +960,9 @@
   margin: 0;
   padding: 6px 10px;
   border-radius: 10px;
-  background: rgb(255 255 255 / 94%);
-  color: #34434c;
-  box-shadow: 0 2px 10px rgb(16 24 32 / 12%);
+  background: rgb(255 251 244 / 94%);
+  color: var(--ink, #1b1611);
+  box-shadow: 0 2px 10px rgb(27 22 17 / 12%);
   font-size: 11px;
   line-height: 1.3;
   pointer-events: none;
@@ -972,9 +972,9 @@
 .scontrino.mobile-venue .mobile-customer-v2 {
   margin: 16px 0 0;
   padding: 14px;
-  border: 1px solid #dfe9e0;
+  border: 1px solid var(--line-soft, #e2d3be);
   border-radius: 14px;
-  background: #f7faf7;
+  background: var(--surface-2, #f6e9d6);
 }
 .mobile-customer-v2 h4,
 .mobile-customer-v2 h5 {
@@ -988,7 +988,7 @@
 }
 .mobile-customer-v2 > p {
   margin: 7px 0 12px;
-  color: #526058;
+  color: var(--ink-muted, #5e554b);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -1001,8 +1001,8 @@
   margin-top: 8px;
   padding: 10px;
   border-radius: 10px;
-  background: #eaf5ec;
-  color: #164d28;
+  background: var(--surface-2, #f6e9d6);
+  color: var(--ink-muted, #5e554b);
   overflow-wrap: anywhere;
 }
 .mobile-customer-v2__observation > span {
@@ -1019,7 +1019,7 @@
   grid-column: 1 / -1;
 }
 .mobile-customer-v2__observation > small {
-  color: #385a42;
+  color: var(--ink-muted, #5e554b);
   font-size: 12px;
 }
 .mobile-customer-v2__observation > button {
@@ -1048,22 +1048,22 @@
   gap: 4px;
   margin: 8px 0;
   padding: 12px;
-  border: 1px solid #dfe9e0;
+  border: 1px solid var(--line-soft, #e2d3be);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface, #fffbf4);
   overflow-wrap: anywhere;
 }
 .mobile-customer-v2__additional > li > small {
-  color: #59636b;
+  color: var(--ink-muted, #5e554b);
 }
 .mobile-customer-v2__form {
   display: grid;
   gap: 7px;
   margin-top: 10px;
   padding: 14px;
-  border: 1px solid #d8dedb;
+  border: 1px solid var(--line-soft, #e2d3be);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface, #fffbf4);
   min-width: 0;
 }
 .mobile-customer-v2__form > strong {
@@ -1080,20 +1080,20 @@
   min-width: 0;
   min-height: 48px;
   padding: 10px 12px;
-  border: 1px solid #88938d;
+  border: 1px solid var(--ink, #1b1611);
   border-radius: 9px;
-  background: #fff;
-  color: #101820;
+  background: var(--surface, #fffbf4);
+  color: var(--ink, #1b1611);
   font: inherit;
 }
 .mobile-customer-v2__form input:focus-visible,
 .mobile-customer-v2__form select:focus-visible,
 .mobile-customer-v2 button:focus-visible {
-  outline: 3px solid #e86b26;
+  outline: 3px solid var(--focus, #1f4fff);
   outline-offset: 2px;
 }
 .mobile-customer-v2__form > small {
-  color: #59636b;
+  color: var(--ink-muted, #5e554b);
   line-height: 1.4;
 }
 .mobile-customer-v2__form-actions {

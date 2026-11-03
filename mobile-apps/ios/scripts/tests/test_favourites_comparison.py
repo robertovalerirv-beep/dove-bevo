@@ -66,7 +66,8 @@ class FavouritesComparisonGuards(unittest.TestCase):
         for label in ["Home", "Cerca", "Salva nei preferiti", "Drink consigliati"]:
             self.assertIn(f'return "{label}"', bar)
         self.assertIn('topMoreButton.accessibilityIdentifier = "browser.more"', tabs)
-        self.assertIn('content.topAnchor.constraint(equalTo: topChrome.bottomAnchor)', tabs)
+        self.assertIn('content.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor)', tabs)
+        self.assertIn('topChrome.widthAnchor.constraint(equalToConstant: 48)', tabs)
         self.assertIn('topMoreButton.menu = browser.moreMenu()', tabs)
         self.assertIn("button.isEnabled = enabled", bar)
         self.assertIn("traits.insert(.notEnabled)", bar)

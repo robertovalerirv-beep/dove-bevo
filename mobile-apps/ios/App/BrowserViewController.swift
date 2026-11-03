@@ -114,7 +114,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func configureChrome() {
-        // The map uses the viewport below the titleless native overflow rail.
+        // The map begins at the safe area; the parent overlays the overflow
+        // within the visitor header's reserved right edge.
         navigationItem.title = nil
         view.backgroundColor = NativeAppearance.canvas
         navigationController?.navigationBar.prefersLargeTitles = false

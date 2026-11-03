@@ -77,7 +77,12 @@ final class BottomNavigationControllerTests: XCTestCase {
             let mapContent = tabs.mapNavigation.view.convert(tabs.mapNavigation.view.bounds, to: tabs.view)
             XCTAssertGreaterThanOrEqual(topMore.width, 48)
             XCTAssertGreaterThanOrEqual(topMore.height, 48)
-            XCTAssertLessThanOrEqual(topMore.maxY, mapContent.minY + 0.5, "The top menu must not cover city, currency or drink controls")
+            XCTAssertEqual(mapContent.minY, tabs.view.safeAreaLayoutGuide.layoutFrame.minY, accuracy: 0.5,
+                           "The map starts at the safe area without a blank native overflow rail")
+            XCTAssertEqual(topMore.minY, mapContent.minY, accuracy: 0.5)
+            XCTAssertLessThanOrEqual(topMore.maxY, mapContent.minY + 48.5,
+                                     "The overflow stays within the header space reserved by the native theme")
+            XCTAssertLessThanOrEqual(topMore.maxX, tabs.view.safeAreaLayoutGuide.layoutFrame.maxX + 0.5)
             XCTAssertEqual(bar.frame.maxY, tabs.view.safeAreaLayoutGuide.layoutFrame.maxY, accuracy: 0.5)
             XCTAssertGreaterThanOrEqual(bar.frame.height, 48)
             XCTAssertLessThanOrEqual(tabs.mapNavigation.view.frame.maxY, bar.frame.minY + 0.5)
@@ -199,6 +204,10 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertTrue(bar.button(for: .home).isSelected)
         tabs.selectedIndex = 1
         let more = try XCTUnwrap(tabs.topMoreButton.menu)
+        XCTAssertEqual(try XCTUnwrap(tabs.favourites.navigationItem.rightBarButtonItems?.first?.customView).bounds.width, 56,
+                       "Favourite actions leave room for the overlaid ellipsis")
+        XCTAssertEqual(try XCTUnwrap(tabs.discovery.navigationItem.rightBarButtonItems?.first?.customView).bounds.width, 56,
+                       "Discover actions leave room for the overlaid ellipsis")
         let titles = more.children.map(\.title)
         XCTAssertTrue(titles.contains("Privacy"))
         XCTAssertTrue(titles.contains("Informazioni"))

@@ -25,6 +25,12 @@ final class DiscoveryViewController: UITableViewController {
     private let bands = ComparisonBandSelector()
     private let statusLabel = UILabel()
     private lazy var refreshButton = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
+    // The parent ellipsis overlays the right edge of the native navigation bar.
+    private lazy var moreOverlaySpace: UIBarButtonItem = {
+        let spacer = UIView(frame: CGRect(x: 0, y: 0, width: 56, height: 48))
+        spacer.isUserInteractionEnabled = false
+        return UIBarButtonItem(customView: spacer)
+    }()
     var isDestinationSelected: (() -> Bool)?
 
     init(client: DiscoveryServing = DiscoveryClient(), activityCheck: (() -> Bool)? = nil,
@@ -59,7 +65,7 @@ final class DiscoveryViewController: UITableViewController {
         let map = UIBarButtonItem(title: "Mappa", style: .plain, target: self, action: #selector(showMap))
         map.accessibilityIdentifier = "discovery.map"
         refreshButton.accessibilityIdentifier = "discovery.refresh"
-        navigationItem.rightBarButtonItems = [map, refreshButton]
+        navigationItem.rightBarButtonItems = [moreOverlaySpace, map, refreshButton]
         let heading = label("Esplora i drink", style: .headline)
         heading.accessibilityTraits = .header
         let introduction = label("I prezzi nella zona della mappa", style: .footnote)

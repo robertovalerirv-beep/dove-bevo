@@ -50,8 +50,11 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertEqual(topMore.label, "Altre opzioni")
         XCTAssertGreaterThanOrEqual(topMore.frame.width, 48)
         XCTAssertGreaterThanOrEqual(topMore.frame.height, 48)
-        XCTAssertLessThanOrEqual(topMore.frame.maxY, app.webViews["browser.website"].frame.minY + 0.5,
-                                 "The top three-dot menu must not cover the map city or currency")
+        let webTop = app.webViews["browser.website"].frame.minY
+        XCTAssertEqual(topMore.frame.minY, webTop, accuracy: 1,
+                       "The map begins under the overlaid menu without a blank native top rail")
+        XCTAssertLessThanOrEqual(topMore.frame.maxY, webTop + 48.5,
+                                 "The top three-dot menu stays within the reserved visitor header")
         XCTAssertFalse(bottomBar.frame.contains(topMore.frame), "Overflow stays at the top, outside bottom navigation")
         XCTAssertTrue(bottomBar.buttons["tab.map"].isSelected)
         XCTAssertFalse(bottomBar.buttons["tab.favorites"].isSelected)

@@ -86,7 +86,9 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         super.viewDidLoad()
         view.backgroundColor = NativeAppearance.canvas
         view.tintColor = NativeAppearance.ink
-        topChrome.backgroundColor = NativeAppearance.canvas
+        // The overflow floats over the reserved right edge of the visitor
+        // header. A full-width native rail would waste a row of map space.
+        topChrome.backgroundColor = .clear
         bottomBackground.backgroundColor = NativeAppearance.chrome
         NativeAppearance.configure(mapNavigation)
         NativeAppearance.configure(favouritesNavigation)
@@ -111,15 +113,14 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         refreshMoreMenu()
         NSLayoutConstraint.activate([
             topChrome.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            topChrome.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            topChrome.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
+            topChrome.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -8),
+            topChrome.widthAnchor.constraint(equalToConstant: 48),
             topChrome.heightAnchor.constraint(equalToConstant: 48),
             topMoreButton.topAnchor.constraint(equalTo: topChrome.topAnchor),
             topMoreButton.bottomAnchor.constraint(equalTo: topChrome.bottomAnchor),
-            topMoreButton.trailingAnchor.constraint(equalTo: topChrome.trailingAnchor, constant: -8),
-            topMoreButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 48),
-            topMoreButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 48),
-            content.topAnchor.constraint(equalTo: topChrome.bottomAnchor),
+            topMoreButton.leadingAnchor.constraint(equalTo: topChrome.leadingAnchor),
+            topMoreButton.trailingAnchor.constraint(equalTo: topChrome.trailingAnchor),
+            content.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             content.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             content.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             content.bottomAnchor.constraint(equalTo: bottomBar.topAnchor),

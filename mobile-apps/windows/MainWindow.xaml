@@ -47,13 +47,17 @@
         </Border>
 
         <Border Grid.Row="1" Background="#FFF4E4" Padding="16,8">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
             <StackPanel Orientation="Horizontal">
                 <Button Style="{StaticResource NavButton}" Content="Mappa" Click="Home_Click" />
                 <Button Style="{StaticResource NavButton}" Content="Cerca" Click="Search_Click" />
+                <Button Style="{StaticResource NavButton}" Content="Scopri" Click="Discover_Click" />
                 <Button Style="{StaticResource NavButton}" Content="Preferiti" Click="Favourites_Click" />
                 <Button Style="{StaticResource NavButton}" Content="Salva drink" Click="SaveDrink_Click" />
+                <Button Style="{StaticResource NavButton}" Content="Consigliati" Click="Recommendations_Click" />
                 <Button Style="{StaticResource NavButton}" Content="Privacy" Click="Privacy_Click" />
             </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <Grid Grid.Row="2">
@@ -79,6 +83,21 @@
                     <ListBox x:Name="FavouriteList" FontSize="16" Background="#FFFBF4"
                              BorderBrush="#E2D3BE" DisplayMemberPath="Display"
                              MouseDoubleClick="OpenFavourite_Click" />
+                </DockPanel>
+            </Border>
+            <Border x:Name="RecommendationsPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="24">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock Text="Drink consigliati" FontSize="26" FontWeight="Bold" />
+                        <TextBlock x:Name="RecommendationVenue" Margin="0,5,0,16" Foreground="#5E554B" />
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Style="{StaticResource NavButton}" Content="Consiglia / annulla" Click="Vote_Click" />
+                        <Button Style="{StaticResource NavButton}" Content="Ricarica" Click="Recommendations_Click" />
+                        <Button Style="{StaticResource NavButton}" Content="Torna al locale" Click="CloseRecommendations_Click" />
+                    </StackPanel>
+                    <ListBox x:Name="RecommendationList" FontSize="16" Background="#FFFBF4"
+                             BorderBrush="#E2D3BE" DisplayMemberPath="Display" />
                 </DockPanel>
             </Border>
         </Grid>

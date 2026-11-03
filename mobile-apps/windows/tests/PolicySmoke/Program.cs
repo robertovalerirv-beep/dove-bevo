@@ -1,4 +1,6 @@
 using DoveBevo.Windows;
+using System.Text;
+using System.Text.Json;
 
 var trusted = new[]
 {
@@ -22,18 +24,49 @@ var venues = new[]
 {
     ("https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", true),
     ("https://www.dovebevo.com/mobile/index.html?path=%2Fbar%2Fn123&c=u0nd9", "n123", true),
+    ("https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=spritz&hh=0", "n123", true),
     ("https://www.dovebevo.com/bar/n123?c=u0nd9", "n124", false),
     ("https://www.dovebevo.com/bar/n123?c=u0nd9&c=u0nd9", "n123", false),
     ("https://www.dovebevo.com/bar/n123?c=u0nd9#secret", "n123", false),
     ("https://www.dovebevo.com/bar/n123?c=u0nd9&next=https://evil.example", "n123", false),
     ("https://www.dovebevo.com/bar/n123?c=aaaaa", "n123", false),
+    ("https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=spritz&hh=2", "n123", false),
 };
 foreach (var (address, key, expected) in venues)
     Require(NavigationPolicy.TryVenue(address, key, out _) == expected, "venue route policy mismatch");
 
-Console.WriteLine("Windows navigation policy: 14 origin and venue cases passed.");
+Require(NavigationPolicy.TryRecommendationEndpoint(
+    "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", out var endpoint)
+    && endpoint?.AbsoluteUri == "https://www.dovebevo.com/api/mobile/venues/n123/recommendations?c=u0nd9",
+    "recommendation endpoint mismatch");
+Require(!NavigationPolicy.TryRecommendationEndpoint(
+    "https://www.dovebevo.com/bar/m" + new string('a', 24) + "?c=u0nd9",
+    "m" + new string('a', 24), out _), "unsupported catalogue vote accepted");
+
+var codes = new[] { "beer_draft", "spritz", "negroni", "sbagliato", "gin_tonic",
+    "gin_lemon", "wine_glass", "alcohol_free", "water" };
+var rows = codes.Select((drink, index) =>
+    new { drink, count = index == 1 ? 5 : 0, recommended = index == 1 }).ToArray();
+var payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { venue_key = "n123", drinks = rows }));
+var snapshot = RecommendationClient.Parse(payload, "n123");
+Require(snapshot.Count == 9 && snapshot[0].Code == "spritz"
+    && snapshot[0].Count == 5 && snapshot[0].Recommended, "recommendation totals mismatch");
+var duplicate = rows.ToArray();
+duplicate[0] = duplicate[1];
+ExpectInvalid(() => RecommendationClient.Parse(
+    Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { venue_key = "n123", drinks = duplicate })), "n123"));
+ExpectInvalid(() => RecommendationClient.Parse(payload, "n124"));
+
+Console.WriteLine("Windows policy: 18 origin/venue/endpoint cases and 3 vote-schema cases passed.");
 
 static void Require(bool condition, string message)
 {
     if (!condition) throw new Exception(message);
+}
+
+static void ExpectInvalid(Action action)
+{
+    try { action(); }
+    catch (InvalidDataException) { return; }
+    throw new Exception("invalid recommendation response accepted");
 }

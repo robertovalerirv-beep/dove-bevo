@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../NavigationPolicy.cs" Link="NavigationPolicy.cs" />
+    <Compile Include="../../RecommendationClient.cs" Link="RecommendationClient.cs" />
   </ItemGroup>
 </Project>

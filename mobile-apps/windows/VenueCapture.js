@@ -1,3 +1,4 @@
+/* global URL, location, document */
 (() => {
   "use strict";
   const url = new URL(location.href);
@@ -14,9 +15,11 @@
   if (!name || name.length > 120 || name !== dialogs[0].getAttribute("aria-label")
       || !heading.getClientRects().length)
     return { status: "no_venue" };
-  const chosen = [...document.querySelectorAll(".drink-menu__list input[type=checkbox]:checked")];
-  if (chosen.length !== 1) return { status: "choose_one" };
-  const drink = chosen[0].closest(".drink-option")?.querySelector(".drink-option__name")?.textContent?.trim();
-  if (!drink || drink.length > 80) return { status: "choose_one" };
-  return { status: "ready", href: location.href, key, name, drink };
+  const list = document.querySelector(".mobile-drink-strip, .drink-menu__list");
+  const chosen = [...(list?.querySelectorAll("input[type=checkbox]:checked") || [])];
+  const drink = chosen.length === 1
+    ? chosen[0].closest(".drink-option")?.querySelector(".drink-option__name, span")?.textContent?.trim()
+    : null;
+  return { status: "ready", href: location.href, key, name,
+    drink: drink && drink.length <= 80 ? drink : null };
 })()

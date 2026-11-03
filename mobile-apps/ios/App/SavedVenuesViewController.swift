@@ -245,6 +245,13 @@ final class SavedVenuesViewController: UITableViewController {
         } else if busy || menuBusy {
             statusLabel.text = "Caricamento dei prezzi segnalati…"
             statusLabel.accessibilityIdentifier = "favorites.loading"
+        } else if showingDrinks && menuClient != nil && (snapshot != nil || menuSnapshot != nil) {
+            let available = Set(snapshot?.venues.keys.map { $0 } ?? [])
+                .union(snapshot?.europe?.venues.values.map(\.url) ?? [])
+                .union(menuSnapshot?.venues.keys.map { $0 } ?? [])
+            let missing = drinks.contains { !available.contains($0.venue.url) }
+            statusLabel.text = missing ? "Alcuni locali non sono disponibili. Tocca Ricarica per riprovare." : "Dati disponibili caricati. Ogni prezzo mostra data e fonte."
+            statusLabel.accessibilityIdentifier = missing ? "favorites.partial" : "favorites.loaded"
         } else if let snapshot {
             statusLabel.text = snapshot.unavailable.isEmpty ? "Prezzi segnalati aggiornati. Ogni prezzo mostra la sua data." : "Alcuni locali non sono disponibili. Tocca Ricarica per riprovare."
             statusLabel.accessibilityIdentifier = snapshot.unavailable.isEmpty ? "favorites.loaded" : "favorites.partial"

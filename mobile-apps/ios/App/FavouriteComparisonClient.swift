@@ -12,9 +12,14 @@ enum ComparisonEndpoint: Equatable {
     func url() throws -> URL {
         switch self {
         case .menuV2(let key, let cell, let after), .customerV2(let key, let cell, let after):
+            let cursorPattern: String
+            switch self {
+            case .customerV2: cursorPattern = "^[oc][0-9a-f]{64}$"
+            default: cursorPattern = "^[A-Za-z0-9._:-]{1,128}$"
+            }
             guard ComparisonJSON.matches(key, "^(?:[nwr][1-9][0-9]{0,14}|m[0-9a-f]{24})$"),
                   ComparisonJSON.matches(cell, "^[0-9b-hjkmnp-z]{5}$"),
-                  after == nil || ComparisonJSON.matches(after!, "^[A-Za-z0-9._:-]{1,128}$") else { throw ComparisonReadError.invalidData }
+                  after == nil || ComparisonJSON.matches(after!, cursorPattern) else { throw ComparisonReadError.invalidData }
             let family: String
             switch self { case .menuV2: family = "menu"; default: family = "customer-prices" }
             let suffix = after.map { "&after=\($0)" } ?? ""

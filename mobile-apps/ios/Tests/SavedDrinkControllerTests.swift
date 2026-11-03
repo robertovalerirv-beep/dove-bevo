@@ -142,8 +142,8 @@ final class SavedDrinkControllerTests: XCTestCase {
         if predicate() { return true }
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in predicate() }, object: nil)
         let result = XCTWaiter.wait(for: [ready], timeout: 15)
-        let mounted = result == .completed || predicate()
-        XCTAssertTrue(mounted, label)
+        let mounted = predicate()
+        XCTAssertTrue(mounted, "\(label); waiter=\(result.rawValue)")
         return mounted
     }
     private func withStores(_ body: (SavedVenueStore, SavedDrinkStore) throws -> Void) throws {

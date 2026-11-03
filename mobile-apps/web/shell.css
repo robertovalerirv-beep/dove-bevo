@@ -218,7 +218,7 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions {
   position: absolute;
   z-index: 4;
   right: 12px;
-  bottom: 104px;
+  bottom: 128px;
   display: grid;
   justify-items: end;
   max-width: calc(100% - 24px);

@@ -94,7 +94,7 @@ struct DiscoveryCategorySummary: Equatable {
         isSelected = selected
         layer.borderWidth = selected ? 2 : 1
         layer.borderColor = NativeAppearance.ink.cgColor
-        backgroundColor = selected ? NativeAppearance.accent.withAlphaComponent(0.07) : NativeAppearance.surface
+        backgroundColor = selected ? NativeAppearance.chrome : NativeAppearance.surface
         accessibilityValue = "\(value.headline). \(value.detail). \(value.countText ?? ""). Immagine illustrativa del drink"
         accessibilityTraits = selected ? [.button, .selected] : [.button]
     }

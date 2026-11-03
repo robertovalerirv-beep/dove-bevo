@@ -235,7 +235,7 @@ public final class MainActivity extends ComponentActivity {
         savedVenues = new SavedVenuesUi(this, savedStore,
                 this::eligibleSavedVenue, this::readSavedVenue, this::navigate);
         SavedDrinkStore drinkStore=new SavedDrinkStore(new SavedVenueFile(getFilesDir(),"saved-drinks-v1"));
-        savedDrinks=new SavedDrinkUi(this,drinkStore,this::eligibleSavedVenue,this::readFeaturedDrink,()->savedVenues.saveCurrent(),()->venueCaptureEpoch);
+        savedDrinks=new SavedDrinkUi(this,drinkStore,this::eligibleSavedVenue,this::readSavedVenue,()->venueCaptureEpoch);
         favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore);
         content.addView(favorites.view(),new FrameLayout.LayoutParams(-1,-1));favorites.view().setVisibility(View.GONE);
         discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},this::showMap,()->foreground&&!destroyed);

@@ -1,63 +1,81 @@
 import UIKit
 
+/// A single native choice: the drink and price band at this verified venue.
 final class FavouriteSaveChooser: UITableViewController {
-    enum Choice { case venue, drink }
     let venue: SavedVenue
-    let price: PriceShareSnapshot?
-    var onChoose: ((Choice) -> Void)?
+    var onChoose: ((String, ComparisonBand) -> Void)?
     var onCancel: (() -> Void)?
+    private var chosenDrink: DrinkCategory?
+    private let bandControl = UISegmentedControl(items: ["Normale", "Happy hour"])
 
-    init(venue: SavedVenue, price: PriceShareSnapshot?) {
-        self.venue = venue; self.price = price
+    init(venue: SavedVenue) {
+        self.venue = venue
         super.init(style: .insetGrouped)
     }
     required init?(coder: NSCoder) { return nil }
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "Salva nei preferiti"
-        NativeAppearance.configure(navigationController); NativeAppearance.configure(tableView)
+        title = "Salva un drink"
+        NativeAppearance.configure(navigationController)
+        NativeAppearance.configure(tableView)
         tableView.accessibilityIdentifier = "favorites.saveChooser"
-        tableView.rowHeight = UITableView.automaticDimension; tableView.estimatedRowHeight = 96
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 56
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "choice")
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Annulla", style: .plain, target: self, action: #selector(cancel))
+        let save = UIBarButtonItem(title: "Salva", style: .done, target: self, action: #selector(save))
+        save.accessibilityIdentifier = "favorites.saveDrink"
+        navigationItem.rightBarButtonItem = save
+        bandControl.selectedSegmentIndex = 0
+        bandControl.accessibilityIdentifier = "favorites.saveBand"
     }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { 2 }
+
+    override func numberOfSections(in tableView: UITableView) -> Int { 1 }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { DrinkCategory.all.count }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        "Scegli cosa bere da \(venue.label)"
+    }
+    override func tableView(_ tableView: UITableView, viewForFooterInSection section: Int) -> UIView? {
+        let footer = UIView()
+        let stack = UIStackView(arrangedSubviews: [bandControl])
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        footer.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: footer.topAnchor, constant: 12),
+            stack.bottomAnchor.constraint(equalTo: footer.bottomAnchor, constant: -12),
+            stack.leadingAnchor.constraint(equalTo: footer.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: footer.trailingAnchor, constant: -16)
+        ])
+        return footer
+    }
+    override func tableView(_ tableView: UITableView, heightForFooterInSection section: Int) -> CGFloat { 72 }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let category = DrinkCategory.all[indexPath.row]
         let cell = tableView.dequeueReusableCell(withIdentifier: "choice", for: indexPath)
         var content = cell.defaultContentConfiguration()
-        if indexPath.row == 0 {
-            content.text = "Salva locale"; content.secondaryText = venue.label
-            content.image = UIImage(systemName: "bookmark")
-            cell.accessibilityIdentifier = "favorites.saveVenue"
-        } else if let price {
-            content.text = "Salva \(price.drinkName) · \(price.bandLabel)"
-            content.secondaryText = "\(venue.label)\n\(price.amount) · \(price.servingLabel)"
-            content.image = UIImage(systemName: "bookmark.fill")
-            cell.accessibilityIdentifier = "favorites.saveDrink"
-        } else {
-            content.text = "Drink non disponibile"
-            content.secondaryText = "Apri un locale con un prezzo visibile per salvare quel drink. Puoi comunque salvare il locale."
-            content.image = UIImage(systemName: "bookmark.slash")
-            cell.accessibilityIdentifier = "favorites.saveDrinkUnavailable"
-        }
-        content.textProperties.font = .preferredFont(forTextStyle: .headline)
-        content.textProperties.numberOfLines = 0; content.secondaryTextProperties.numberOfLines = 0
-        content.textProperties.color = NativeAppearance.ink; content.secondaryTextProperties.color = NativeAppearance.muted
-        content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
-        cell.contentConfiguration = content; cell.backgroundConfiguration = NativeAppearance.card()
-        cell.isUserInteractionEnabled = indexPath.row == 0 || price != nil
-        cell.selectionStyle = cell.isUserInteractionEnabled ? .default : .none
-        cell.accessibilityLabel = [content.text, content.secondaryText].compactMap { $0 }.joined(separator: ". ")
-        cell.accessibilityTraits = cell.isUserInteractionEnabled ? [.button] : [.notEnabled]
+        content.text = category.name
+        content.textProperties.font = .preferredFont(forTextStyle: .body)
+        cell.contentConfiguration = content
+        cell.backgroundConfiguration = NativeAppearance.card()
+        cell.accessoryType = category.code == chosenDrink?.code ? .checkmark : .none
+        cell.accessibilityIdentifier = "favorites.saveDrink.\(category.code)"
+        cell.accessibilityTraits = [.button]
         return cell
     }
-    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        "Solo su questo dispositivo. Non pubblichi prezzi o consigli e non salvi una copia del prezzo. I nomi sono quelli del locale e del drink."
-    }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        tableView.deselectRow(at: indexPath, animated: true)
-        guard indexPath.row == 0 || (indexPath.row == 1 && price != nil) else { return }
-        onChoose?(indexPath.row == 0 ? .venue : .drink)
+        chosenDrink = DrinkCategory.all[indexPath.row]
+        tableView.reloadData()
+    }
+    override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? { nil }
+    @objc private func save() {
+        guard let chosenDrink else {
+            let alert = UIAlertController(title: "Scegli un drink", message: "Seleziona il drink da salvare in questo locale.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
+        onChoose?(chosenDrink.code, bandControl.selectedSegmentIndex == 1 ? .happyHour : .normal)
     }
     @objc private func cancel() { onCancel?(); dismiss(animated: true) }
     override func viewDidDisappear(_ animated: Bool) {

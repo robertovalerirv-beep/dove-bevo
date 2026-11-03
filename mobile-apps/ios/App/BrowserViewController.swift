@@ -525,64 +525,35 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     @objc func saveCurrentVenue() {
         guard presentedViewController == nil else { return }
         readCurrentVenue(failureTitle: "Preferito non salvato") { [weak self] venue in
-            guard let self else { return }
-            self.readSaveChoice(venue)
-        }
-    }
-
-    private func readSaveChoice(_ venue: SavedVenue) {
-        guard let webView, usableVenueURL == venue.url, presentedViewController == nil else { return }
-        let context = favouriteSave.begin(document: currentWebsiteURL, venue: venue)
-        updateMoreMenu()
-        let timeout = DispatchWorkItem { [weak self] in self?.presentSaveChoice(context, price: nil) }
-        favouriteSaveTimeout = timeout
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: timeout)
-        webView.evaluateJavaScript(PriceShareReader.script, in: nil, in: .defaultClient) { [weak self] result in
-            guard let self else { return }
-            let price = (try? result.get()).flatMap { PriceShareSnapshot.parse($0, currentURL: context.document) }
-            self.presentSaveChoice(context, price: price)
-        }
-    }
-
-    private func presentSaveChoice(_ context: FavouriteSaveCapture.Context, price: PriceShareSnapshot?) {
-        guard favouriteSave.matches(context, currentURL: webView?.url, active: isBookmarkInteractionActive),
-              presentedViewController == nil, usableVenueURL == context.venue.url else { return }
-        favouriteSaveTimeout?.cancel(); favouriteSaveTimeout = nil
-        let actual = price.flatMap { $0.venueKey == context.venue.url.lastPathComponent && $0.venueName == context.venue.label ? $0 : nil }
-        let chooser = FavouriteSaveChooser(venue: context.venue, price: actual)
-        chooser.onCancel = { [weak self] in self?.invalidateFavouriteSave() }
-        chooser.onChoose = { [weak self, weak chooser] choice in
-            guard let self, let chooser, self.navigationController?.topViewController === self,
-                  (self.presentedViewController as? UINavigationController)?.topViewController === chooser,
-                  self.favouriteSave.consume(context, currentURL: self.webView?.url, active: self.isBookmarkInteractionActive) else { return }
-            self.favouriteSaveTimeout?.cancel(); self.favouriteSaveTimeout = nil
-            let outcome: String
-            do {
-                switch choice {
-                case .venue:
-                    try self.savedVenues.save(url: context.venue.url, label: context.venue.label)
-                    outcome = "Locale salvato nei Preferiti."
-                case .drink:
-                    guard let actual else { return }
-                    try self.savedDrinks.save(SavedDrink.validated(url: context.venue.url, label: context.venue.label,
-                        drink: actual.drink, band: actual.happyHour ? .happyHour : .normal))
-                    outcome = "\(actual.drinkName) · \(actual.bandLabel) salvato nei tuoi Drink."
-                }
-                chooser.dismiss(animated: true) { [weak self] in
-                    self?.showVenueReadError(title: "Preferito salvato", message: outcome)
-                    UIAccessibility.post(notification: .announcement, argument: outcome)
-                }
-            } catch {
-                chooser.dismiss(animated: true) { [weak self] in
-                    self?.showBookmarkError("Non riesco a salvare. Potresti aver raggiunto il limite di 50 voci. I preferiti precedenti sono stati mantenuti.")
-                }
-            }
+            guard let self, self.usableVenueURL == venue.url, self.presentedViewController == nil else { return }
+            let context = self.favouriteSave.begin(document: self.currentWebsiteURL, venue: venue)
             self.updateMoreMenu()
+            let chooser = FavouriteSaveChooser(venue: venue)
+            chooser.onCancel = { [weak self] in self?.invalidateFavouriteSave() }
+            chooser.onChoose = { [weak self, weak chooser] drink, band in
+                guard let self, let chooser, self.navigationController?.topViewController === self,
+                      (self.presentedViewController as? UINavigationController)?.topViewController === chooser,
+                      self.favouriteSave.consume(context, currentURL: self.webView?.url, active: self.isBookmarkInteractionActive) else { return }
+                do {
+                    try self.savedDrinks.save(SavedDrink.validated(url: venue.url, label: venue.label, drink: drink, band: band))
+                    let name = DrinkCategory.all.first { $0.code == drink }?.name ?? drink
+                    let outcome = "\(name) · \(band.name) · \(venue.label) salvato nei Preferiti."
+                    chooser.dismiss(animated: true) { [weak self] in
+                        self?.showVenueReadError(title: "Preferito salvato", message: outcome)
+                        UIAccessibility.post(notification: .announcement, argument: outcome)
+                    }
+                } catch {
+                    chooser.dismiss(animated: true) { [weak self] in
+                        self?.showBookmarkError("Non riesco a salvare. Potresti aver raggiunto il limite di 50 drink. I preferiti precedenti sono stati mantenuti.")
+                    }
+                }
+                self.updateMoreMenu()
+            }
+            let navigation = UINavigationController(rootViewController: chooser)
+            navigation.modalPresentationStyle = .pageSheet
+            navigation.sheetPresentationController?.detents = [.medium(), .large()]
+            self.present(navigation, animated: true)
         }
-        let navigation = UINavigationController(rootViewController: chooser)
-        navigation.modalPresentationStyle = .pageSheet
-        navigation.sheetPresentationController?.detents = [.medium(), .large()]
-        present(navigation, animated: true)
     }
 
     private func invalidateFavouriteSave() {

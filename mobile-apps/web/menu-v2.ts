@@ -242,7 +242,7 @@ async function menuCellVenues(
   const controller = new AbortController();
   const timer = setTimeout(() => {
     controller.abort();
-  }, 12000);
+  }, 6000);
   try {
     const venues = new Map<string, CellVenue>();
     let after: string | null = null;
@@ -284,7 +284,13 @@ function menuIdentityVenues(cell: string): Promise<CellVenue[] | null> {
 }
 
 const mobileCellCache = new Map<string, Promise<Venue[]>>();
-/** App map adapter: keeps source-backed menu samples separate from customer PriceRows. */
+
+/** The legacy EUR price form has no m-key route; those venues use the app-only v2 form. */
+export function legacyPriceVenues(venues: readonly Venue[]): Venue[] {
+  return venues.filter((venue) => !venue.key.startsWith("m"));
+}
+
+/** Return the existing map as soon as its cell loads; add v2 pins when the menu arrives. */
 export function loadMobileCell(cell: string, selectedDrinks: readonly string[]): Promise<Venue[]> {
   if (!Cell.safeParse(cell).success) return Promise.reject(new Error("Invalid cell"));
   const categories = [...new Set(selectedDrinks)].sort();
@@ -293,50 +299,49 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
   const cacheKey = `${cell}|${categories.join(",")}`;
   let request = mobileCellCache.get(cacheKey);
   if (!request) {
-    let cacheable = true;
-    request = (async () => {
-      const identityRequest = menuIdentityVenues(cell);
-      const sampleRequest = categories.length ? menuCellVenues(cell, categories) : identityRequest;
-      const [legacy, identity, sampled] = await Promise.allSettled([
-        loadCell(cell),
-        identityRequest,
-        sampleRequest,
-      ]);
-      if (legacy.status === "rejected") throw legacy.reason;
-      // V2 is additive. A temporary menu failure must not blank the existing map.
-      // Retry this selection later so the menu pins return when the service recovers.
-      if (
-        identity.status === "rejected" ||
-        sampled.status === "rejected" ||
-        identity.value === null ||
-        sampled.value === null
-      ) {
-        cacheable = false;
-        return legacy.value;
-      }
-      const all = identity.value;
-      const filtered = sampled.value;
-      const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
-      const merged = new Map<string, Venue>(legacy.value.map((venue) => [venue.key, { ...venue }]));
-      for (const row of [
-        ...new Map([...all, ...filtered].map((venue) => [venue.key, venue])).values(),
-      ]) {
-        if (row.country !== "IT") continue;
-        const known = merged.get(row.key);
-        if (!known && (row.identity_kind !== "owner_verified" || !row.key.startsWith("m")))
-          continue;
-        const venue = known ?? mobileMenuVenue(row);
-        merged.set(row.key, {
-          ...venue,
-          mobileMenuSamples: samples.get(row.key) ?? [],
-        } as WithMenu);
-      }
-      return [...merged.values()];
-    })().then(
-      (venues) => {
-        if (!cacheable && mobileCellCache.get(cacheKey) === request)
-          mobileCellCache.delete(cacheKey);
-        return venues;
+    const identityRequest = menuIdentityVenues(cell);
+    const sampleRequest = categories.length ? menuCellVenues(cell, categories) : identityRequest;
+    request = loadCell(cell).then(
+      (legacy) => {
+        void Promise.allSettled([identityRequest, sampleRequest]).then(([identity, sampled]) => {
+          if (mobileCellCache.get(cacheKey) !== request) return;
+          // A temporary v2 failure does not hold or erase legacy venues. Evict the
+          // selection so a later map view retries the bounded menu request.
+          if (
+            identity.status === "rejected" ||
+            sampled.status === "rejected" ||
+            identity.value === null ||
+            sampled.value === null
+          ) {
+            mobileCellCache.delete(cacheKey);
+            return;
+          }
+          const all = identity.value;
+          const filtered = sampled.value;
+          const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
+          const merged = new Map<string, Venue>(
+            legacy.map((venue) => [venue.key, { ...venue }]),
+          );
+          for (const row of [
+            ...new Map([...all, ...filtered].map((venue) => [venue.key, venue])).values(),
+          ]) {
+            if (row.country !== "IT") continue;
+            const known = merged.get(row.key);
+            if (!known && (row.identity_kind !== "owner_verified" || !row.key.startsWith("m")))
+              continue;
+            const venue = known ?? mobileMenuVenue(row);
+            merged.set(row.key, {
+              ...venue,
+              mobileMenuSamples: samples.get(row.key) ?? [],
+            } as WithMenu);
+          }
+          mobileCellCache.set(cacheKey, Promise.resolve([...merged.values()]));
+          if (typeof window !== "undefined")
+            window.dispatchEvent(
+              new CustomEvent("dovebevo:menu-cell-ready", { detail: { cell } }),
+            );
+        });
+        return legacy;
       },
       (error: unknown) => {
         if (mobileCellCache.get(cacheKey) === request) mobileCellCache.delete(cacheKey);
@@ -347,7 +352,6 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
   }
   return request;
 }
-
 export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string | null {
   const samples = (venue as WithMenu).mobileMenuSamples ?? [];
   for (const category of drinks) {

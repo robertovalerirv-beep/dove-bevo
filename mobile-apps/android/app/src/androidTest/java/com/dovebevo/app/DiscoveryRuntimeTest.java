@@ -24,9 +24,11 @@ import org.junit.Test;
 public final class DiscoveryRuntimeTest {
     private static final String STATIC="{\"c\":[[1,\"Milano\"]],\"v\":[[\"n123\",\"Locale uno\",1,45.4642,9.19,\"Via A\",0],[\"w9\",\"Locale due\",1,45.4643,9.1901,\"Via B\",0]]}";
     private static final String PRICES="{\"p\":[[\"n123\",\"spritz\",0,800,\"2026-10-28\",2,0],[\"n123\",\"spritz\",1,500,\"2026-10-27\",1,0],[\"w9\",\"spritz\",0,600,\"2026-06-01\",0,0]],\"u\":[],\"pend\":[],\"h\":[],\"g\":[]}";
+    private static final String MENU_EMPTY="{\"schema_version\":2,\"coverage\":{\"complete\":false,\"basis\":\"verified_source_items_only\"},\"price_scope\":\"menu_item_only\",\"cell\":\"CELL\",\"category\":null,\"categories\":[\"beer_draft\",\"spritz\",\"negroni\",\"sbagliato\",\"gin_tonic\",\"gin_lemon\",\"wine_glass\",\"alcohol_free\",\"water\"],\"venues\":[],\"next_after\":null,\"unresolved_venues\":0}";
+    private static final String MENU_ONE=MENU_EMPTY.replace("\"venues\":[]", "\"venues\":[{\"key\":\"n123\",\"cell\":\"u0nd9\",\"name\":\"Locale uno\",\"kind\":1,\"lat\":45.4642,\"lon\":9.19,\"address\":\"Via A\",\"city\":\"Milano\",\"country\":\"IT\",\"identity_url\":\"https://www.openstreetmap.org/node/123\",\"identity_kind\":\"osm\",\"matching_offer_count\":1,\"fee_coverage\":{\"status\":\"unknown\",\"source\":null},\"sample_offers\":[{\"id\":\"spritz-owner-1\",\"name\":\"Spritz\",\"category\":\"spritz\",\"serving\":{\"label\":\"Calice\",\"ml\":200},\"amount_minor\":550,\"currency\":\"GBP\",\"currency_exponent\":2,\"context\":{\"kind\":\"regular\",\"condition\":null},\"source\":{\"id\":\"s1\",\"url\":\"https://source.example/menu\",\"text_sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"checked_on\":\"2026-11-03\"}}]}]");
     private final Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
     private final AtomicBoolean active=new AtomicBoolean(true);private final AtomicInteger requests=new AtomicInteger();private final AtomicReference<String> opened=new AtomicReference<>();
-    private MainActivity activity;private DiscoveryScreen screen;private SharedPreferences rules;private String previous;private boolean hadPrevious;private boolean partialOne;
+    private MainActivity activity;private DiscoveryScreen screen;private SharedPreferences rules;private String previous;private boolean hadPrevious;private boolean partialOne,menuOne;
     @Before public void setUp(){
         rules=instrumentation.getTargetContext().getSharedPreferences("dovebevo_rules",0);hadPrevious=rules.contains("accepted_rules_version");previous=rules.getString("accepted_rules_version",null);assertTrue(rules.edit().remove("accepted_rules_version").commit());
         activity=(MainActivity)instrumentation.startActivitySync(new Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK));
@@ -34,11 +36,11 @@ public final class DiscoveryRuntimeTest {
     }
     @After public void tearDown(){onMain(()->{if(screen!=null)screen.close();activity.finish();});SharedPreferences.Editor edit=rules.edit();if(hadPrevious)edit.putString("accepted_rules_version",previous);else edit.remove("accepted_rules_version");assertTrue(edit.commit());}
     @Test public void actualPricesSortAndFiltersKeepDateContextWithoutAnyBookmarkFile()throws Exception {
-        show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();assertEquals(20,requests.get());ReferenceCapture.save("discovery-owned-fixture.png");
+        show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();assertEquals(29,requests.get());ReferenceCapture.save("discovery-owned-fixture.png");
         onMain(()->{assertEquals(2,rows().getChildCount());View panel=rows().getChildAt(0).findViewWithTag("discovery.details");assertEquals(View.GONE,panel.getVisibility());rows().getChildAt(0).findViewById(R.id.discovery_details).performClick();assertEquals(View.VISIBLE,panel.getVisibility());assertTrue(text(rows().getChildAt(0)).contains("Locale due"));assertTrue(text(rows().getChildAt(0)).contains("6,00"));assertTrue(text(rows().getChildAt(0)).contains("oltre 90"));assertTrue(text(rows().getChildAt(0)).contains("dal centro della Mappa"));assertTrue(text(rows().getChildAt(1)).contains("2 conferme"));assertFalse(text(rows()).contains("Affare"));
             ((Spinner)activity.findViewById(R.id.discovery_band)).setSelection(1);});
         onMain(()->{assertEquals(1,rows().getChildCount());assertTrue(text(rows().getChildAt(0)).contains("5,00"));assertTrue(text(rows().getChildAt(0)).contains("27/10/2026"));rows().getChildAt(0).findViewById(R.id.discovery_open).performClick();});
-        assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",opened.get());assertEquals(20,requests.get());
+        assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",opened.get());assertEquals(29,requests.get());
         onMain(()->{((Spinner)activity.findViewById(R.id.discovery_drink)).setSelection(RecommendationDrink.NEGRONI.ordinal());});
         onMain(()->{assertEquals(0,rows().getChildCount());assertTrue(status().contains("Nessun prezzo"));assertFalse(status().contains("0,00"));});
     }
@@ -76,6 +78,19 @@ public final class DiscoveryRuntimeTest {
         onMain(()->{assertEquals("negroni",screen.selectedDrink());assertEquals(1,screen.selectedBand());assertEquals(0,rows().getChildCount());assertFalse(text(rows()).contains("0,00"));});
         assertEquals(before,requests.get());
     }
+    @Test public void verifiedMenuSampleAppearsBesideExistingCustomerPriceWithOriginalCurrencyAndSource()throws Exception {
+        menuOne=true;show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();assertEquals(29,requests.get());
+        onMain(()->{
+            assertEquals(3,rows().getChildCount());
+            View sourced=null;
+            for(int i=0;i<rows().getChildCount();i++)if(text(rows().getChildAt(i)).contains("5,50 £"))sourced=rows().getChildAt(i);
+            assertNotNull(sourced);assertTrue(text(sourced).contains("GBP · Calice · 200 ml"));
+            assertTrue(text(sourced).contains("Menu verificato"));
+            sourced.findViewById(R.id.discovery_details).performClick();
+            assertTrue(text(sourced).contains("https://source.example/menu"));
+            assertTrue(text(rows()).contains("8,00"));
+        });
+    }
     @Test public void bandLabelsNeverEllipsizeOrOverflowAt320393And411Dp() {
         android.content.res.Resources resources=activity.getResources();android.content.res.Configuration saved=new android.content.res.Configuration(resources.getConfiguration());
         try{
@@ -107,7 +122,7 @@ public final class DiscoveryRuntimeTest {
         });
     }
     private void show(boolean unavailable,DiscoveryArea area){onMain(()->{
-        FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable||partialOne&&url.contains("/api/prices/")&&!url.contains("u0nd9"))throw new IOException("Owned offline response");String body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");
+        FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable||partialOne&&url.contains("/api/prices/")&&!url.contains("u0nd9"))throw new IOException("Owned offline response");String body;if(url.contains("/api/mobile/v2/menu/cells/")){String cell=url.split("/menu/cells/")[1].substring(0,5);body=(menuOne&&cell.equals("u0nd9")?MENU_ONE:MENU_EMPTY).replace("CELL",cell);}else body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");
         screen=new DiscoveryScreen(activity,opened::set,active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));assertEquals("beer_draft",screen.selectedDrink());screen.restoreSelection("spritz",0);activity.setContentView(screen.view());screen.show(area);
     });}
     private void awaitLoaded()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(!status().contains("Caricamento")&&(rows().getChildCount()==0||rows().getChildAt(0).getHeight()>0)));if(loaded.get())return;Thread.sleep(10);}fail("Owned discovery did not complete");}

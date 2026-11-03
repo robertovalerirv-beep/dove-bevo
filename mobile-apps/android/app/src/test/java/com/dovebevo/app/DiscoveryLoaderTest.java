@@ -15,11 +15,25 @@ public final class DiscoveryLoaderTest {
     @Test public void boundedPublicReadGetsNineCellsAndOneVersionWithoutBookmarks()throws Exception {
         List<String> urls=new CopyOnWriteArrayList<>();FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{
             urls.add(url);if(url.endsWith("health"))return DiscoveryTest.bytes("{\"status\":\"ok\",\"data_version\":\"20261030\"}");
+            if(url.contains("/api/mobile/v2/menu/cells/"))return DiscoveryTest.bytes(DiscoveryMenuV2Test.empty(url.substring(url.indexOf("/cells/")+7,url.indexOf("/cells/")+12)));
             if(url.contains("u0nd9"))return DiscoveryTest.bytes(url.endsWith(".json")?DiscoveryTest.STATIC:DiscoveryTest.PRICES);
             return DiscoveryTest.bytes(url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}");
         },()->"2026-11-01");
         DiscoveryLoader loader=new DiscoveryLoader(client,Runnable::run);CountDownLatch done=new CountDownLatch(1);AtomicReference<DiscoveryLoader.Result> result=new AtomicReference<>();
-        try{loader.load(new DiscoveryArea(45.4642,9.19,14),r->{result.set(r);done.countDown();});assertTrue(done.await(3,TimeUnit.SECONDS));assertEquals(20,urls.size());assertEquals(9,result.get().cells.size());assertFalse(result.get().partial);assertEquals(3,DiscoveryData.rows(result.get().cells,new DiscoveryArea(45.4642,9.19,14),RecommendationDrink.SPRITZ,0).size());}
+        try{loader.load(new DiscoveryArea(45.4642,9.19,14),r->{result.set(r);done.countDown();});assertTrue(done.await(3,TimeUnit.SECONDS));assertEquals(29,urls.size());assertEquals(9,result.get().cells.size());assertFalse(result.get().partial);assertEquals(3,DiscoveryData.rows(result.get().cells,new DiscoveryArea(45.4642,9.19,14),RecommendationDrink.SPRITZ,0).size());}
+        finally{loader.close();}
+    }
+    @Test public void menuOutageRetainsCustomerPricesAndLabelsAreaPartial()throws Exception {
+        FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{
+            if(url.endsWith("health"))return DiscoveryTest.bytes("{\"status\":\"ok\",\"data_version\":\"20261030\"}");
+            if(url.contains("/api/mobile/v2/menu/cells/"))throw new IOException("Owned v2 outage");
+            if(url.contains("u0nd9"))return DiscoveryTest.bytes(url.endsWith(".json")?DiscoveryTest.STATIC:DiscoveryTest.PRICES);
+            return DiscoveryTest.bytes(url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}");
+        },()->"2026-11-03");
+        DiscoveryLoader loader=new DiscoveryLoader(client,Runnable::run);CountDownLatch done=new CountDownLatch(1);AtomicReference<DiscoveryLoader.Result> result=new AtomicReference<>();
+        try{loader.load(new DiscoveryArea(45.4642,9.19,14),r->{result.set(r);done.countDown();});assertTrue(done.await(3,TimeUnit.SECONDS));
+            assertTrue(result.get().partial);assertEquals(9,result.get().cells.size());
+            assertEquals(3,DiscoveryData.rows(result.get().cells,new DiscoveryArea(45.4642,9.19,14),RecommendationDrink.SPRITZ,0).size());}
         finally{loader.close();}
     }
     @Test public void globalDeadlineBoundsConcurrencyAndReturnsExplicitPartialResult()throws Exception {

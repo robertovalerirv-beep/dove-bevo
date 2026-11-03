@@ -15,7 +15,9 @@ import java.util.Set;
 /** Read-only, bounded named-menu facts. Never combines an individual drink price with venue fees. */
 final class MenuV2Prices {
     static final int BYTES=1_048_576;
+    static final String DISCOVERY_CATEGORIES="beer_draft,spritz,negroni,sbagliato,gin_tonic,gin_lemon,wine_glass,alcohol_free,water";
     private static final String KEY="(?:[nwr][1-9][0-9]{0,14}|m[0-9a-f]{24})";
+    private static final String CELL_KEY="(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})";
     private static final String CELL="[0-9b-hjkmnp-z]{5}";
     private static final String CURSOR="[A-Za-z0-9._:-]{1,128}";
     private static final String ITEM_KEY="[oc][0-9a-f]{64}";
@@ -23,13 +25,15 @@ final class MenuV2Prices {
         if(url==null)return false;
         String root="https://www\\.dovebevo\\.com/api/mobile/v2/";
         return url.matches(root+"menu/venues/"+KEY+"\\?cell="+CELL+"&limit=100(?:&after="+CURSOR+")?")
-                ||url.matches(root+"customer-prices/venues/"+KEY+"\\?cell="+CELL+"&limit=50(?:&after="+ITEM_KEY+")?");
+                ||url.matches(root+"customer-prices/venues/"+KEY+"\\?cell="+CELL+"&limit=50(?:&after="+ITEM_KEY+")?")
+                ||url.matches(root+"menu/cells/"+CELL+"\\?categories="+DISCOVERY_CATEGORIES+"(?:&after="+CELL_KEY+")?");
     }
     private final FavoritePricesClient.Transport transport;
     MenuV2Prices(FavoritePricesClient.Transport transport){this.transport=transport;}
     MenuV2Prices(){this(new FavoritePricesClient.HttpsTransport());}
     static final class Price {
         final String id,venueName,name,category,currency,servingLabel,day,feeNotice,linkedOfferId,condition;
+        final String sourceUrl;
         final int band,amountMinor,exponent;final Integer servingML;final boolean customer;
         Price(String id,String venueName,String name,String category,int band,int amountMinor,String currency,int exponent,
               String servingLabel,Integer servingML,boolean customer,String day,String feeNotice){
@@ -37,10 +41,14 @@ final class MenuV2Prices {
         }
         Price(String id,String venueName,String name,String category,int band,int amountMinor,String currency,int exponent,
               String servingLabel,Integer servingML,boolean customer,String day,String feeNotice,String linkedOfferId,String condition){
+            this(id,venueName,name,category,band,amountMinor,currency,exponent,servingLabel,servingML,customer,day,feeNotice,linkedOfferId,condition,null);
+        }
+        Price(String id,String venueName,String name,String category,int band,int amountMinor,String currency,int exponent,
+              String servingLabel,Integer servingML,boolean customer,String day,String feeNotice,String linkedOfferId,String condition,String sourceUrl){
             this.id=id;this.venueName=venueName;this.name=name;this.category=category;this.band=band;
             this.amountMinor=amountMinor;this.currency=currency;this.exponent=exponent;
             this.servingLabel=servingLabel;this.servingML=servingML;this.customer=customer;this.day=day;this.feeNotice=feeNotice;
-            this.linkedOfferId=linkedOfferId;this.condition=condition;
+            this.linkedOfferId=linkedOfferId;this.condition=condition;this.sourceUrl=sourceUrl;
         }
         String group(){return currency+"|"+exponent+"|"+(servingLabel==null?"":servingLabel.toLowerCase(Locale.ROOT))+"|"+(servingML==null?0:servingML);}
         String amount(){int factor=new int[]{1,10,100,1000}[exponent];String minor=Integer.toString(amountMinor%factor);
@@ -61,6 +69,40 @@ final class MenuV2Prices {
         }
         List<Price> selected(RecommendationDrink drink,int band){List<Price> result=new ArrayList<>();for(Price price:prices)
             if(price.category.equals(drink.code)&&price.band==band)result.add(price);return result;}
+    }
+    /** Verified venue metadata and a bounded set of actual named menu samples in one map cell. */
+    static final class CellVenue {
+        final String key,cell,name,address,city;final double lat,lon;final List<Price> samples;
+        CellVenue(String key,String cell,String name,String address,String city,double lat,double lon,List<Price> samples){
+            this.key=key;this.cell=cell;this.name=name;this.address=address;this.city=city;this.lat=lat;this.lon=lon;
+            this.samples=Collections.unmodifiableList(new ArrayList<>(samples));
+        }
+    }
+    static final class Cell {
+        final List<CellVenue> venues;final boolean partial;
+        Cell(List<CellVenue> venues,boolean partial){this.venues=Collections.unmodifiableList(new ArrayList<>(venues));this.partial=partial;}
+    }
+    private static final class CellPage {
+        final List<CellVenue> venues;final String next;final boolean partial;
+        CellPage(List<CellVenue> venues,String next,boolean partial){this.venues=venues;this.next=next;this.partial=partial;}
+    }
+    static String cellEndpoint(String cell,String after)throws IOException{
+        if(cell==null||!cell.matches(CELL)||after!=null&&!after.matches(CELL_KEY))throw NativeJson.invalid();
+        return FavoritePricesClient.ORIGIN+"/api/mobile/v2/menu/cells/"+cell+"?categories="+DISCOVERY_CATEGORIES
+                +(after==null?"":"&after="+after);
+    }
+    Cell loadCell(String cell,FavoritePricesClient.Call call)throws IOException{
+        String after=null;List<CellVenue> venues=new ArrayList<>();Set<String> keys=new HashSet<>();boolean partial=false;
+        for(int page=0;page<20;page++){
+            CellPage value=cellPage(get(cellEndpoint(cell,after),call),cell,after);
+            partial|=value.partial;
+            for(CellVenue venue:value.venues)if(!keys.add(venue.key))throw NativeJson.invalid();else venues.add(venue);
+            if(venues.size()>1000)throw NativeJson.invalid();
+            if(value.next==null)return new Cell(venues,partial);
+            if(value.venues.isEmpty()||page==19)throw NativeJson.invalid();
+            after=value.next;
+        }
+        throw NativeJson.invalid();
     }
     private static final class MenuPage {
         final String name,next,fees;final int count;final List<Price> prices;
@@ -121,6 +163,75 @@ final class MenuV2Prices {
     static String endpoint(boolean menu,String key,String cell,String after)throws IOException{
         if(key==null||!key.matches(KEY)||cell==null||!cell.matches(CELL)||after!=null&&!after.matches(menu?CURSOR:ITEM_KEY))throw NativeJson.invalid();
         String family=menu?"menu":"customer-prices";return FavoritePricesClient.ORIGIN+"/api/mobile/v2/"+family+"/venues/"+key+"?cell="+cell+"&limit="+(menu?100:50)+(after==null?"":"&after="+after);
+    }
+    private static CellPage cellPage(byte[] bytes,String cell,String previous)throws IOException{
+        Map<?,?> root=obj(NativeJson.read(bytes,BYTES));NativeJson.integer(root.get("schema_version"),2,2);
+        if(!"menu_item_only".equals(root.get("price_scope"))||!cell.equals(root.get("cell"))||root.get("category")!=null)throw NativeJson.invalid();
+        Map<?,?> coverage=obj(root.get("coverage"));
+        if(!Boolean.FALSE.equals(coverage.get("complete"))||!"verified_source_items_only".equals(coverage.get("basis")))throw NativeJson.invalid();
+        List<?> categories=array(root.get("categories"),9);String[] expected=DISCOVERY_CATEGORIES.split(",");
+        if(categories.size()!=expected.length)throw NativeJson.invalid();
+        for(int i=0;i<expected.length;i++)if(!expected[i].equals(categories.get(i)))throw NativeJson.invalid();
+        boolean partial=NativeJson.integer(root.get("unresolved_venues"),0,100000)>0;
+        String next=optional(root.get("next_after"),CELL_KEY);
+        if(next!=null&&previous!=null&&next.compareTo(previous)<=0)throw NativeJson.invalid();
+        List<?> raw=array(root.get("venues"),50);List<CellVenue> venues=new ArrayList<>();Set<String> keys=new HashSet<>();
+        for(Object value:raw){
+            Map<?,?> row=obj(value);String key=text(row.get("key"),32,CELL_KEY);
+            if(!keys.add(key)||!cell.equals(row.get("cell")))throw NativeJson.invalid();
+            String name=text(row.get("name"),512,null);if(name.length()<2)throw NativeJson.invalid();
+            NativeJson.integer(row.get("kind"),0,4);
+            double lat=NativeJson.decimal(row.get("lat"),-90,90),lon=NativeJson.decimal(row.get("lon"),-180,180);
+            if(!cell.equals(DiscoveryArea.geohash(lat,lon))||!"IT".equals(row.get("country")))throw NativeJson.invalid();
+            String address=optionalDisplay(row.get("address"),512);
+            String city=optionalDisplay(row.get("city"),200);
+            if(!city.isEmpty()&&city.length()<2)throw NativeJson.invalid();
+            String identityKind=text(row.get("identity_kind"),32,null);
+            if(!identityKind.equals("owner_verified")&&!identityKind.equals("osm")||
+                    key.startsWith("m")&&!identityKind.equals("owner_verified"))throw NativeJson.invalid();
+            httpsURL(row.get("identity_url"));
+            Map<?,?> fees=obj(row.get("fee_coverage"));String status=text(fees.get("status"),32,null);
+            if(!status.equals("unknown")&&!status.equals("documented_partial")&&!status.equals("explicit_no_fee"))throw NativeJson.invalid();
+            if(fees.get("source")!=null)sourceDay(fees.get("source"));
+            String feeNotice=status.equals("explicit_no_fee")?"Nessuna spesa obbligatoria dichiarata dalla fonte.":
+                    status.equals("documented_partial")?"Le spese del locale sono documentate solo in parte; controlla la scheda del locale.":
+                            "Altre spese del locale non verificate; controlla la scheda del locale.";
+            List<?> samples=array(row.get("sample_offers"),100);
+            int count=(int)NativeJson.integer(row.get("matching_offer_count"),0,100000);
+            if(samples.size()>count)throw NativeJson.invalid();
+            List<Price> prices=new ArrayList<>();Set<String> ids=new HashSet<>();
+            for(Object sample:samples){Map<?,?> offer=obj(sample);String id=text(offer.get("id"),128,CURSOR);
+                if(!ids.add(id))throw NativeJson.invalid();
+                String item=text(offer.get("name"),512,null),category=text(offer.get("category"),32,null);
+                if(RecommendationDrink.from(category)==null)throw NativeJson.invalid();
+                Money money=money(offer);Serving serving=serving(offer.get("serving"));Map<?,?> context=obj(offer.get("context"));
+                String kind=text(context.get("kind"),32,null);
+                int band=kind.equals("regular")?0:kind.equals("happy_hour")?1:kind.equals("conditional")?-1:-2;
+                if(band==-2)throw NativeJson.invalid();
+                String condition=context.get("condition")==null?null:text(context.get("condition"),500,null);
+                Map<?,?> source=obj(offer.get("source"));String sourceURL=httpsURL(source.get("url"));
+                String day=sourceDay(source);
+                prices.add(new Price(id,name,item,category,band,money.amount,money.currency,money.exponent,
+                        serving.label,serving.ml,false,day,feeNotice,null,band<0?condition:null,sourceURL));
+            }
+            venues.add(new CellVenue(key,cell,name,address,city,lat,lon,prices));
+        }
+        if(next!=null&&raw.isEmpty())throw NativeJson.invalid();
+        return new CellPage(venues,next,partial);
+    }
+    private static String httpsURL(Object value)throws IOException{
+        String url=text(value,2048,null);
+        try{URI parsed=new URI(url);if(!"https".equals(parsed.getScheme())||parsed.getHost()==null||parsed.getRawUserInfo()!=null||parsed.getPort()!=-1||parsed.getRawFragment()!=null)throw NativeJson.invalid();}
+        catch(URISyntaxException invalid){throw NativeJson.invalid();}
+        return url;
+    }
+    private static String optionalDisplay(Object value,int max)throws IOException{
+        if(value==null)return "";
+        if(!(value instanceof String)||((String)value).length()>max)throw NativeJson.invalid();
+        String text=(String)value;
+        if(!text.equals(text.trim()))throw NativeJson.invalid();
+        for(int i=0;i<text.length();i++)if(Character.isISOControl(text.charAt(i))||text.charAt(i)=='\ufffd')throw NativeJson.invalid();
+        return text;
     }
     private static MenuPage menuPage(byte[] bytes,String key,String cell)throws IOException{
         Map<?,?> root=obj(NativeJson.read(bytes,BYTES));int schema=(int)NativeJson.integer(root.get("schema_version"),2,2);

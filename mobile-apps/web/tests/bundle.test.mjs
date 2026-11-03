@@ -906,7 +906,16 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     assert.ok(await menu.locator('a[href="https://official.fixture.test/menu"]').count());
     await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
     await openDrinks(f.page);
+    const spritzResponse = f.page.waitForResponse(
+      (response) => {
+        const url = new URL(response.url());
+        return /^\/api\/mobile\/v2\/menu\/cells\//.test(url.pathname) &&
+          url.searchParams.get("categories") === "spritz" && response.status() === 200;
+      },
+      { timeout: 30000 },
+    );
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    await spritzResponse;
     await f.page.waitForFunction(
       () =>
         !document

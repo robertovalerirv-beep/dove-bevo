@@ -508,12 +508,30 @@ final class BrowserSmokeTests: XCTestCase {
     }
 
     private func waitForOrdinaryKeyboard(timeout: TimeInterval = 15) {
-        let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            self.ordinaryKeyboardVisible()
-        }, object: nil)
-        let result = XCTWaiter.wait(for: [ready], timeout: timeout)
-        if result != .completed { attachState(named: "DoveBevo-original-field-keyboard-not-ready") }
-        XCTAssertEqual(result, .completed, "The existing field must have an ordinary visible keyboard before typing")
+        let deadline = Date().addingTimeInterval(timeout)
+        var introductionTaps = 0
+        repeat {
+            // iOS can introduce Slide to Type after focus, even when an earlier
+            // probe found no tutorial. Dismiss only Apple's observed prompt.
+            let introduction = app.staticTexts.matching(
+                NSPredicate(format: "label BEGINSWITH %@", "Speed up your typing")
+            ).firstMatch
+            if introduction.exists {
+                if introductionTaps < 2 {
+                    introductionTaps += 1
+                    dismissKeyboardIntroductionIfPresent(searchField: app.textFields["Cerca una città o un bar"])
+                }
+            } else if ordinaryKeyboardVisible() {
+                return
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        } while Date() < deadline
+        attachState(named: "DoveBevo-original-field-keyboard-not-ready")
+        let introduction = app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Speed up your typing")
+        ).firstMatch
+        XCTAssertFalse(introduction.exists, "The system keyboard introduction still obscures the city search")
+        XCTAssertTrue(ordinaryKeyboardVisible(), "The existing field must have an ordinary visible keyboard before typing")
     }
 
     private func ordinaryKeyboardVisible() -> Bool {
@@ -899,13 +917,10 @@ final class BrowserSmokeTests: XCTestCase {
         // or re-resolving this transient keyboard element as its process changes.
         let offset = CGVector(dx: buttonFrame.midX - appFrame.minX, dy: buttonFrame.midY - appFrame.minY)
         app.coordinate(withNormalizedOffset: .zero).withOffset(offset).tap()
-        // The actual failed-run screenshot showed ordinary keys after this tap,
-        // although the tutorial-disappearance predicate timed out. Require the
-        // usable visible keyboard instead of inferring readiness from absence.
-        waitForOrdinaryKeyboard(timeout: 10)
-        attachState(named: "DoveBevo-keyboard-introduction-after-continue")
+        // The caller waits for the real keyboard; Apple's tutorial can be
+        // replaced asynchronously after Continue is tapped.
+        attachScreen(named: "DoveBevo-keyboard-introduction-after-continue")
         XCTAssertTrue(searchField.exists, "The original city search sheet was lost while dismissing the tutorial")
-        XCTAssertTrue(searchField.isHittable, "The original city search field must remain reachable with the ordinary keyboard")
         assertNoNativeRecovery()
     }
 

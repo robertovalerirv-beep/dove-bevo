@@ -204,6 +204,10 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertTrue(bar.button(for: .home).isSelected)
         tabs.selectedIndex = 1
         let more = try XCTUnwrap(tabs.topMoreButton.menu)
+        // UIKit may defer loading hidden navigation roots until they are shown.
+        // Inspect each screen after its view has been constructed.
+        tabs.favourites.loadViewIfNeeded()
+        tabs.discovery.loadViewIfNeeded()
         XCTAssertEqual(try XCTUnwrap(tabs.favourites.navigationItem.rightBarButtonItems?.first?.customView).bounds.width, 56,
                        "Favourite actions leave room for the overlaid ellipsis")
         XCTAssertEqual(try XCTUnwrap(tabs.discovery.navigationItem.rightBarButtonItems?.first?.customView).bounds.width, 56,

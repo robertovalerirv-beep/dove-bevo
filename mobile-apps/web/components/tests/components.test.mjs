@@ -695,7 +695,7 @@ test("exact named favorite reloads its menu page and native save link uses only 
     assert.equal(await f.page.getByRole("link", { name: "Salva questo drink" }).count(), 0);
     await f.page.evaluate(() => {
       window.DoveBevoNativeOfferSave = true;
-      window.dispatchEvent(new Event("dovebevo-native-ready"));
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
     });
     const links = f.page.getByRole("link", { name: "Salva questo drink" });
     await links.first().waitFor();

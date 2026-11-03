@@ -42,3 +42,11 @@ condition = "AND"
 regexTarget = "secret"
 paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/4b0aded8401c012cc8d02fb5961dc36cc65c8bcb1fc81b8f0e530a98e339d2c4\.json$''']
 regexes = ['''^m31771b8f0063bacd3dfb2f37$''']
+
+# Exact public owner venue identifier for Al Bona Torino source manifest.
+[[rules.allowlists]]
+description = "Al Bona Torino public owner venue identifier"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/1af1c5db0448a38d12ad3c0074521b1ed013c2c4c6bb6ee20e10aa5462e1aeeb\.json$''']
+regexes = ['''^m27338e3fa8fb54c4d5c3b1c3$''']

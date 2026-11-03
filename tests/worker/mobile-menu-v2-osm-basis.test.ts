@@ -43,7 +43,9 @@ describe("migration 0012: app venue OSM evidence", () => {
 
     const stored = await env.DB.prepare(
       "SELECT identity_geo_hash_basis FROM mobile_menu_v2_venues WHERE venue_key = ?1",
-    ).bind(values[0]).first<{ identity_geo_hash_basis: string }>();
+    )
+      .bind(values[0])
+      .first<{ identity_geo_hash_basis: string }>();
     expect(stored?.identity_geo_hash_basis).toBe("osm_node_v1");
 
     const invalid = [...values];

@@ -50,3 +50,11 @@ condition = "AND"
 regexTarget = "secret"
 paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/bf33c69c905a8e8f6a1162657ccb1feb70032afaa675e4d7a9df697983cf4568\.json$''']
 regexes = ['''^m27338e3fa8fb54c4d5c3b1c3$''']
+
+# Exact public owner venue identifier for La Duchessa Parma source manifest.
+[[rules.allowlists]]
+description = "La Duchessa Parma public owner venue identifier"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/32a80c0940583054a054dded46f4e339577e2035561f68ce64e0e6a5469de6ed\.json$''']
+regexes = ['''^m3d468e889759905d952c66db$''']

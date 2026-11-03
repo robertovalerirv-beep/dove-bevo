@@ -21,12 +21,19 @@ struct SavedMenuOffer: Equatable {
                           servingLabel: String?, servingML: Int?) -> SavedMenuOffer? {
         guard let safeVenue = try? SavedVenuePolicy.venue(url: venue.url, label: venue.label),
               id.range(of: #"\A[A-Za-z0-9._:-]{1,128}\z"#, options: .regularExpression) != nil,
-              ComparisonJSON.name(name) != nil,
+              safeText(name, maximum: 512),
               category == nil || DrinkCategory.all.contains(where: { $0.code == category }),
-              servingLabel == nil || ComparisonJSON.name(servingLabel) != nil,
-              servingML == nil || (servingML! > 0 && servingML! <= 10000) else { return nil }
+              servingLabel == nil || safeText(servingLabel!, maximum: 256),
+              servingML == nil || (servingML! > 0 && servingML! <= 100_000) else { return nil }
         return SavedMenuOffer(venue: safeVenue, offerID: id, name: name,
                               category: category, servingLabel: servingLabel, servingML: servingML)
+    }
+
+    private static func safeText(_ value: String, maximum: Int) -> Bool {
+        !value.isEmpty && value == value.trimmingCharacters(in: .whitespacesAndNewlines)
+            && value.utf16.count <= maximum && !value.unicodeScalars.contains(where: {
+                $0.value < 32 || (127...159).contains($0.value) || $0.value == 0xfffd
+            })
     }
 
     func focusedURL() -> URL? { MobileEntry.offerDocument(venue.url, offerID: offerID) }
@@ -66,10 +73,10 @@ final class SavedMenuOfferStore {
                   let name = value["name"] as? String,
                   value["category"] is NSNull || value["category"] is String,
                   value["serving"] is NSNull || value["serving"] is String,
-                  value["ml"] is NSNull || ComparisonJSON.integer(value["ml"], minimum: 1, maximum: 10000) != nil,
+                  value["ml"] is NSNull || ComparisonJSON.integer(value["ml"], minimum: 1, maximum: 100_000) != nil,
                   let item = SavedMenuOffer.validated(venue: SavedVenue(url: url, label: label), id: id, name: name,
                      category: value["category"] as? String, servingLabel: value["serving"] as? String,
-                     servingML: ComparisonJSON.integer(value["ml"], minimum: 1, maximum: 10000)),
+                     servingML: ComparisonJSON.integer(value["ml"], minimum: 1, maximum: 100_000)),
                   seen.insert(item.identity).inserted else { throw SavedDrinkStore.StoreError.unreadableRecords }
             items.append(item)
         }

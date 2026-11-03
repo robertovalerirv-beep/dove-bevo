@@ -384,13 +384,33 @@ final class SavedVenuesViewController: UITableViewController {
         if showingDrinks && indexPath.row >= drinkRows.count {
             let (item, live) = offerRows[indexPath.row - drinkRows.count]
             var content = cell.defaultContentConfiguration()
-            content.text = "\(item.name) - \(live?.venueName ?? item.venue.label)"
+            content.text = "\(live?.itemName ?? item.name) - \(live?.venueName ?? item.venue.label)"
             if let live {
-                content.secondaryText = "\(live.serving)\n\(live.amount)\n\(live.evidence)"
-            } else if menuBusy {
-                content.secondaryText = "Caricamento del prezzo online..."
+                var details = [live.serving, "Menu del locale: \(live.amount)", live.evidence]
+                if live.band == nil {
+                    details.append("Prezzo soggetto a condizioni: \(live.condition ?? "verifica il menu del locale").")
+                }
+                if live.servingLabel == nil && live.servingML == nil {
+                    details.append("Formato non dichiarato: prezzi con formati diversi non sono confrontabili.")
+                }
+                let linked = menuSnapshot?.venues[item.venue.url]?.linkedReports.filter { $0.linkedOfferID == item.offerID } ?? []
+                for report in linked.prefix(3) {
+                    details.append("Segnalazione cliente distinta: \(report.amount) - \(report.serving)")
+                    details.append(report.evidence)
+                    if report.currency != live.currency || report.exponent != live.exponent
+                        || report.category != live.category || report.servingLabel != live.servingLabel
+                        || report.servingML != live.servingML {
+                        details.append("Formato, categoria o valuta diversi dal menu: non confrontabile.")
+                    }
+                }
+                if linked.count > 3 { details.append("Altre \(linked.count - 3) segnalazioni cliente nel locale.") }
+                content.secondaryText = details.joined(separator: "\n")
             } else {
-                content.secondaryText = "Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi."
+                let savedServing = (item.servingLabel ?? "Formato non dichiarato")
+                    + (item.servingML.map { " - \($0) ml" } ?? "")
+                let state = menuBusy ? "Caricamento del prezzo online..."
+                    : "Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi."
+                content.secondaryText = "\(savedServing)\n\(state)"
             }
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
             content.secondaryTextProperties.numberOfLines = 0
@@ -399,8 +419,8 @@ final class SavedVenuesViewController: UITableViewController {
             cell.backgroundConfiguration = NativeAppearance.card()
             cell.accessoryType = .disclosureIndicator
             cell.accessibilityIdentifier = "savedOffer.\(item.offerID)"
-            cell.accessibilityLabel = "\(item.name), \(live?.venueName ?? item.venue.label)"
-            cell.accessibilityValue = live?.amount ?? "Prezzo non disponibile"
+            cell.accessibilityLabel = "\(live?.itemName ?? item.name), \(live?.venueName ?? item.venue.label)"
+            cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
             return cell
         }
         if showingDrinks, let menuPrice = drinkRows[indexPath.row].menuPrice {

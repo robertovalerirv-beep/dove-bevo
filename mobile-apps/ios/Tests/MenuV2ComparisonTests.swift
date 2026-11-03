@@ -25,13 +25,13 @@ final class MenuV2ComparisonTests: XCTestCase {
             "fees": [], "fee_coverage": ["status": "unknown", "source": NSNull()]
         ] as [String: Any])
     }
-    private func customer() throws -> Data {
+    private func customer(ml: Int = 200) throws -> Data {
         try JSONSerialization.data(withJSONObject: [
             "schema_version": 1, "price_scope": "customer_reported_drink_item",
             "venue": ["key": venueKey, "cell": cell, "name": "Current venue", "country": "GB"],
             "rows": [["revision": 4, "item_key": "c" + String(repeating: "b", count: 64),
                       "kind": "menu_offer", "offer_id": "a2", "name": "Spritz della casa",
-                      "category": "spritz", "serving": ["label": "Calice", "ml": 200],
+                      "category": "spritz", "serving": ["label": "Calice", "ml": ml],
                       "amount_minor": 650, "currency": "GBP", "currency_exponent": 2,
                       "observed_on": "2026-11-03", "source_kind": "customer",
                       "observation_kind": "customer_reported_price", "price_scope": "drink_item"]],
@@ -58,12 +58,37 @@ final class MenuV2ComparisonTests: XCTestCase {
         XCTAssertTrue(result.offers[2].evidence.contains("cliente"))
         XCTAssertTrue(result.offers[1].evidence.contains("menu online"))
         XCTAssertTrue(result.offers[1].feeNotice.contains("spese non verificate"))
+        XCTAssertEqual(result.linkedReports.count, 1)
+        XCTAssertEqual(result.linkedReports[0].linkedOfferID, "a2")
         XCTAssertEqual(fixture.seen.count, 3)
         let drink = try SavedDrink.validated(url: saved.url, label: saved.label, drink: "spritz", band: .normal)
         let base = FavouriteComparisonSnapshot(venues: [:], unavailable: [])
         let rows = SavedDrinkRow.rows([drink], snapshot: base, menuSnapshot: loaded)
         XCTAssertEqual(rows.count, 2, "Only exact normal-band source and linked customer prices are comparable")
         XCTAssertEqual(rows.compactMap(\.menuPrice).map(\.amountMinor), [550, 650])
+    }
+
+    func testLinkedCustomerWithDifferentServingStaysSeparateFromComparableRows() throws {
+        let saved = try venue()
+        let fixture = MenuTransportFixture(pages: [
+            (.menuV2(key: venueKey, cell: cell, after: nil), try menu([offer("a2", context: "regular", cents: 550)], count: 1, next: nil)),
+            (.customerV2(key: venueKey, cell: cell, after: nil), try customer(ml: 300))
+        ])
+        var loaded: MenuV2Snapshot?
+        _ = MenuV2Client(transport: fixture).load([saved]) { loaded = $0 }
+        let result = try XCTUnwrap(loaded?.venues[saved.url])
+        XCTAssertEqual(result.offers.count, 1, "A different serving must not enter category price comparison")
+        XCTAssertEqual(result.linkedReports.count, 1, "The exact linked customer fact remains visible on the saved offer")
+        XCTAssertEqual(result.linkedReports[0].linkedOfferID, "a2")
+        XCTAssertEqual(result.linkedReports[0].servingML, 300)
+    }
+
+    func testConditionalOfferRetainsItsOwnCondition() throws {
+        var conditional = offer("a1", context: "conditional", cents: 450)
+        conditional["context"] = ["kind": "conditional", "condition": "Solo dopo le 18"]
+        let page = try XCTUnwrap(MenuV2JSON.menuPage(menu([conditional], count: 1, next: nil), key: venueKey, cell: cell))
+        XCTAssertNil(page.offers[0].band)
+        XCTAssertEqual(page.offers[0].condition, "Solo dopo le 18")
     }
 
     func testLastOfferAfter149RowsIsStillEligibleForExactFavourite() throws {

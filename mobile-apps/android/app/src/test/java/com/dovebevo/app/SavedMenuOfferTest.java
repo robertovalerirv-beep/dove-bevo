@@ -37,6 +37,12 @@ public final class SavedMenuOfferTest {
                 "https://evil.test/mobile/?path=%2Fbar%2Fm000000000000000000000007&c=u0nd9&save_offer=spritz.7"})
             assertNull(invalid,OfferSaveCommand.offerId(invalid,VENUE));
     }
+    @Test public void verifiedMetadataAcceptsThePublicV2NameServingAndVolumeBounds(){
+        SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Bar Milano");
+        assertNotNull(SavedMenuOfferStore.validated(venue,"long.1","A".repeat(512),null,"B".repeat(256),100000));
+        assertNull(SavedMenuOfferStore.validated(venue,"long.1","A".repeat(513),null,"B".repeat(256),100000));
+        assertNull(SavedMenuOfferStore.validated(venue,"long.1","A".repeat(512),null,"B".repeat(257),100000));
+    }
     @Test public void focusRejectsExtraAndEncodedIdentifiersAndCustomerIsNotAnOwner() {
         String focus=MobileEntry.offerDocument(VENUE,"spritz.7");
         assertEquals(VENUE,MobileEntry.publicVenue(focus));assertEquals(focus,MobileEntry.documentURL(focus));

@@ -22,8 +22,8 @@ final class SavedMenuOfferStore {
         return validated(venue,offer.id,offer.name,offer.category.isEmpty()?null:offer.category,offer.servingLabel,offer.servingML);
     }
     static Entry validated(SavedVenueStore.Venue venue,String id,String name,String category,String serving,Integer ml){
-        if(venue==null||id==null||!id.matches("[A-Za-z0-9._:-]{1,128}")||!text(name,120)||category!=null&&RecommendationDrink.from(category)==null
-                ||serving!=null&&!text(serving,120)||ml!=null&&(ml<1||ml>10000))return null;
+        if(venue==null||id==null||!id.matches("[A-Za-z0-9._:-]{1,128}")||!text(name,512)||category!=null&&RecommendationDrink.from(category)==null
+                ||serving!=null&&!text(serving,256)||ml!=null&&(ml<1||ml>100000))return null;
         return new Entry(venue,id,name,category,serving,ml);
     }
     private static boolean text(String value,int max){

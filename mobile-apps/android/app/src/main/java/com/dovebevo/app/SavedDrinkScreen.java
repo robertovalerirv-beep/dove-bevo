@@ -123,9 +123,30 @@ final class SavedDrinkScreen {
             if(menu!=null)for(MenuV2Prices.Price price:menu.prices)if(!price.customer&&item.id.equals(price.id)){current=price;break;}
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);NativeAppearance.card(card);card.setTag("menu_offer_favourite_"+item.key());
             TextView title=text(item.name+" - "+(menu==null?item.venue.label:menu.name),18);NativeAppearance.title(title);card.addView(title);
-            if(current!=null){card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
-                card.addView(text(current.evidence(),15));}
-            else card.addView(text(menuBusy?"Caricamento del prezzo online...":"Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi.",15));
+            if(current!=null){
+                card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
+                card.addView(text(current.evidence(),15));
+                if(current.band<0)card.addView(text("Prezzo soggetto a condizioni: "+(current.condition==null?"verifica il menu del locale":current.condition)+".",15));
+                if(current.servingLabel==null&&current.servingML==null)
+                    card.addView(text("Formato non dichiarato: prezzi con formati diversi non sono confrontabili.",15));
+                int linkedCount=0;
+                for(MenuV2Prices.Price report:menu.linkedReports)if(item.id.equals(report.linkedOfferId)){
+                    linkedCount++;
+                    if(linkedCount<=3){
+                        card.addView(text("Segnalazione cliente distinta: "+report.amount()+" - "+report.serving(),15));
+                        card.addView(text(report.evidence(),14));
+                        if(!report.currency.equals(current.currency)||report.exponent!=current.exponent
+                                ||!report.category.equals(current.category)||!java.util.Objects.equals(report.servingLabel,current.servingLabel)
+                                ||!java.util.Objects.equals(report.servingML,current.servingML))
+                            card.addView(text("Formato, categoria o valuta diversi dal menu: non confrontabile.",14));
+                    }
+                }
+                if(linkedCount>3)card.addView(text("Altre "+(linkedCount-3)+" segnalazioni cliente nel locale.",14));
+            }else{
+                String serving=(item.serving==null?"Formato non dichiarato":item.serving)+(item.ml==null?"":" - "+item.ml+" ml");
+                card.addView(text(serving,15));
+                card.addView(text(menuBusy?"Caricamento del prezzo online...":"Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi.",15));
+            }
             Button open=button("Apri "+item.name,()->{if(usable()&&containsOffer(item.key()))navigate.accept(item.focusedUrl());});
             open.setTag("menu_offer_favourite_open");NativeAppearance.button(open,true);card.addView(open);
             Button remove=button("Rimuovi questo drink",()->{if(!usable()||!containsOffer(item.key())||offerStore==null)return;

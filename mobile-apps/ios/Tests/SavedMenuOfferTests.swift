@@ -50,12 +50,18 @@ final class SavedMenuOfferTests: XCTestCase {
         let offerStore = SavedMenuOfferStore(directoryURL: root.appendingPathComponent("offers"))
         let venue = try SavedVenuePolicy.venue(url: canonical, label: "Bar Milano")
         try offerStore.save(try XCTUnwrap(SavedMenuOffer.verified(venue: venue, price: source)))
-        let live = MenuV2Price(id: source.id, venueName: "Bar Milano", itemName: source.itemName,
-            category: "", band: .normal, amountMinor: 750, currency: "EUR", exponent: 2,
+        var live = MenuV2Price(id: source.id, venueName: "Bar Milano", itemName: source.itemName,
+            category: "", band: nil, amountMinor: 750, currency: "EUR", exponent: 2,
             servingLabel: "calice", servingML: 250,
             origin: .ownerMenu(URL(string: "https://example.org/menu")!, "2026-11-03"), feeNotice: "Servizio escluso")
+        live.condition = "Solo dopo le 18"
+        var customer = MenuV2Price(id: "c" + String(repeating: "b", count: 64), venueName: "Bar Milano",
+            itemName: source.itemName, category: "", band: nil, amountMinor: 850, currency: "EUR", exponent: 2,
+            servingLabel: "calice", servingML: 300, origin: .customer("2026-11-03"), feeNotice: "Spese non verificate")
+        customer.linkedOfferID = source.id
         let snapshot = MenuV2Snapshot(venues: [canonical: MenuV2Venue(key: canonical.lastPathComponent,
-            cell: "u0nd9", name: "Bar Milano", offers: [live], feeNotice: "Servizio escluso")], unavailable: [])
+            cell: "u0nd9", name: "Bar Milano", offers: [live], feeNotice: "Servizio escluso",
+            linkedReports: [customer])], unavailable: [])
         let client = ImmediateOwnerMenu(snapshot: snapshot)
         var opened: URL?
         let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
@@ -67,12 +73,30 @@ final class SavedMenuOfferTests: XCTestCase {
         let cell = controller.tableView(controller.tableView, cellForRowAt: index)
         XCTAssertEqual(cell.accessibilityIdentifier, "savedOffer.spritz.7")
         XCTAssertTrue(cell.accessibilityValue?.contains("7,50") == true)
+        XCTAssertTrue(cell.accessibilityValue?.contains("8,50") == true)
+        let details = (cell.contentConfiguration as? UIListContentConfiguration)?.secondaryText
+        XCTAssertTrue(details?.contains("Menu del locale: 7,50") == true)
+        XCTAssertTrue(details?.contains("Segnalazione cliente distinta: 8,50") == true)
+        XCTAssertTrue(details?.contains("Prezzo soggetto a condizioni: Solo dopo le 18") == true)
+        XCTAssertTrue(details?.contains("Formato, categoria o valuta diversi dal menu") == true)
         controller.tableView(controller.tableView, didSelectRowAt: index)
         XCTAssertEqual(opened, MobileEntry.offerDocument(canonical, offerID: "spritz.7"))
         controller.tableView(controller.tableView, commit: .delete, forRowAt: index)
         XCTAssertTrue(try offerStore.load().isEmpty)
         XCTAssertTrue(try drinkStore.load().isEmpty)
         controller.viewWillDisappear(false)
+    }
+
+    func testVerifiedLongMenuMetadataFitsThePublicV2Bounds() throws {
+        let venue = try SavedVenuePolicy.venue(url: canonical, label: "Bar Milano")
+        let long = MenuV2Price(id: "long.1", venueName: "Bar Milano",
+            itemName: String(repeating: "A", count: 512), category: "",
+            band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+            servingLabel: String(repeating: "B", count: 256), servingML: 100_000,
+            origin: .ownerMenu(URL(string: "https://example.org/menu")!, "2026-11-03"), feeNotice: "")
+        let saved = try XCTUnwrap(SavedMenuOffer.verified(venue: venue, price: long))
+        XCTAssertEqual(saved.name.count, 512)
+        XCTAssertEqual(saved.servingML, 100_000)
     }
 
     func testOfferFocusIsExactAndMissingOfferNeverBecomesAnotherDrink() throws {

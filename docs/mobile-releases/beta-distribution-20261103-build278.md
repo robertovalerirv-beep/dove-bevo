@@ -37,11 +37,18 @@ errors and credentials are excluded.
 
 ## Reviewed apply follows the audit
 
-No build 278 apply workflow or plan exists yet. After a complete fresh audit,
-independently check the plan's app ID, version, build ID and number, exact two
-existing group IDs/names/types, disabled external public link and byte hash.
-Then add a separate apply workflow that pins those literal canonical bytes and
-SHA-256 under a new exact tag. Review it before triggering it. The guarded
+Read-only audit run `41643287144`, attempt 2, completed at 13:21 UTC. Its
+artifact `13233404951` pins the exact build and the same two groups above,
+with the external public link disabled and neither group linked yet. Attempt 1
+was a read-only parent-relationship request timeout; no POST occurred.
+
+The audited canonical plan is `beta-distribution-20261103-build278-plan.json`,
+SHA-256 `f9c7dd76a1fa5e6445eea12033ab3fb80f6fc1e5dd2b9a6a23f53d780a867eed`.
+The separate apply workflow accepts only
+`mobile-beta-distribution-apply/20261103-build278-v1` and checks that hash
+before credential access. It may associate only those two existing groups and
+submit this exact build for beta review if needed. Review it before triggering
+the tag on the green canonical merge. The guarded
 `--build-number 278` apply path validates the approved bytes and build number
 **before** credential access or any API request; a build 62 plan is rejected.
 Before each possible group link or beta review submission it re-reads the live

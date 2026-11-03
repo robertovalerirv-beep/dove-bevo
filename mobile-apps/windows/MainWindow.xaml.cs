@@ -213,7 +213,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            Clipboard.SetText(lastTrustedUrl);
+            var current = Website.Source;
+            Clipboard.SetText(ready && NavigationPolicy.IsTrusted(current)
+                ? current!.AbsoluteUri : lastTrustedUrl);
             StatusText.Text = "Link copiato. Puoi condividerlo.";
         }
         catch (Exception)

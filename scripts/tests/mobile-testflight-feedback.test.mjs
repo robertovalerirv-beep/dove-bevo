@@ -132,6 +132,44 @@ test("rejects foreign pagination and image hosts before contacting them", async 
   });
 });
 
+test("reports only bounded stage and HTTP status when Apple's list request fails", async () => {
+  await withOutput(async (file) => {
+    const states = [];
+    await assert.rejects(
+      auditFeedback(
+        {},
+        file,
+        async () => new globalThis.Response("private response must not be logged", { status: 403 }),
+        () => "ephemeral-token",
+        undefined,
+        (stage, status) => states.push({ stage, status }),
+      ),
+      /Feedback read unavailable/,
+    );
+    assert.deepEqual(states.at(-1), { stage: "list_response", status: 403 });
+    assert.ok(
+      states.every(({ stage, status }) => /^[a-z_]+$/.test(stage) && Number.isInteger(status)),
+    );
+    await assert.rejects(access(file));
+  });
+  await withOutput(async (file) => {
+    const states = [];
+    await assert.rejects(
+      auditFeedback(
+        {},
+        file,
+        async () => json({ data: [{ unexpected: true }] }),
+        () => "ephemeral-token",
+        undefined,
+        (stage, status) => states.push({ stage, status }),
+      ),
+      /Unexpected feedback record/,
+    );
+    assert.deepEqual(states.at(-1), { stage: "list_decode", status: 200 });
+    await assert.rejects(access(file));
+  });
+});
+
 test("refuses plaintext inside a Git worktree and validates images before writing", async () => {
   const projectLike = resolve("OneDrive", "Dove Bevo", ".task-tmp", "feedback-output");
   const payload = {

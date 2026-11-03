@@ -64,7 +64,9 @@ export function MapContributeActions({
         class="btn mobile-map-actions__toggle"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          setOpen((value) => !value);
+        }}
       >
         <span class="mobile-map-actions__plus" aria-hidden="true">
           ＋

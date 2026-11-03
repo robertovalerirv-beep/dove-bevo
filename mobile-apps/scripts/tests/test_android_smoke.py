@@ -382,7 +382,7 @@ class AndroidSmokeTests(unittest.TestCase):
             self.assertIn(text, source)
 
     def test_registered_source_inventory_is_exact_and_checked_before_emulator_start(self):
-        self.assertEqual(m.OWNED_TEST_COUNT, 53)
+        self.assertEqual(m.OWNED_TEST_COUNT, 54)
         m.verify_owned_test_sources()
         directory = self.base / 'registered-tests'
         directory.mkdir()

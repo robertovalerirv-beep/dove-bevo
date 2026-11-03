@@ -158,8 +158,10 @@ final class PriceShareTests: XCTestCase {
         let data = Data(html.utf8)
         XCTAssertNotNil(web.loadSimulatedRequest(URLRequest(url: document),
             response: URLResponse(url: document, mimeType: "text/html", expectedContentLength: data.count, textEncodingName: "UTF-8"), responseData: data))
-        let navigationResult = XCTWaiter.wait(for: [loaded], timeout: 15)
-        XCTAssertEqual(navigationResult, .completed, "The mounted owned WebKit fixture must finish before reading its DOM")
+        // The hosted iOS 27 runner has taken 31 seconds to start WebContent.
+        // Keep the real navigation and DOM assertions, with a bounded startup wait.
+        let navigationResult = XCTWaiter.wait(for: [loaded], timeout: 45)
+        XCTAssertEqual(navigationResult, .completed, "The mounted owned WebKit fixture must finish before reading its DOM; loading=\(web.isLoading) progress=\(web.estimatedProgress) mounted=\(web.window === mounted.window) delegateError=\(delegate.error != nil)")
         guard navigationResult == .completed else {
             throw NSError(domain: "OwnedShareFixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mounted WebKit navigation did not finish"])
         }

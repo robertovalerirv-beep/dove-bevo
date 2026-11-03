@@ -36,13 +36,25 @@ import XCTest
 
     func layout() { window.layoutIfNeeded(); host.view.layoutIfNeeded(); root.view.layoutIfNeeded() }
 
+    private func mountState() -> String {
+        "rootInOwnedWindow=\(root.view.window === window) rootBounds=\(root.view.bounds) windowBounds=\(window.bounds) windowHidden=\(window.isHidden) windowKey=\(window.isKeyWindow) sceneState=\(String(describing: window.windowScene?.activationState))"
+    }
+
     func attach(to test: XCTestCase, name: String) {
         layout()
+        let firstState = mountState()
+        // A hosted simulator can transfer key status after presentation. Restore
+        // this test-owned window before checking its real mounted geometry.
+        if window.windowScene?.activationState == .foregroundActive &&
+            (window.isHidden || !window.isKeyWindow) {
+            window.makeKeyAndVisible(); layout()
+        }
         let mounted = XCTNSPredicateExpectation(predicate: NSPredicate { [self] _, _ in
             layout()
             return root.view.window === window && root.view.bounds.size == window.bounds.size && !window.isHidden
         }, object: nil)
-        let result = XCTWaiter.wait(for: [mounted], timeout: 5)
+        let result = XCTWaiter.wait(for: [mounted], timeout: 15)
+        let finalState = mountState()
         let records = descendants(window).map { view -> String in
             let frame = view.convert(view.bounds, to: window)
             let label = view as? UILabel
@@ -50,7 +62,9 @@ import XCTest
         }
         let details = XCTAttachment(string: ([
             "PRIVATE OWNED UIKIT FIXTURE — no live venue/price claim, no public contribution, no physical-device/store proof.",
-            "windowPoints=\(window.bounds) actualCategory=\(root.traitCollection.preferredContentSizeCategory.rawValue) requestedCategory=\(traits.preferredContentSizeCategory.rawValue) mounted=\(result.rawValue)"
+            "windowPoints=\(window.bounds) actualCategory=\(root.traitCollection.preferredContentSizeCategory.rawValue) requestedCategory=\(traits.preferredContentSizeCategory.rawValue) mounted=\(result.rawValue)",
+            "initialMountState=\(firstState)",
+            "finalMountState=\(finalState)"
         ] + records).joined(separator: "\n"))
         details.name = "DoveBevo-PRIVATE-FIXTURE-\(name)-402x800-geometry"; details.lifetime = .keepAlways
         test.add(details)

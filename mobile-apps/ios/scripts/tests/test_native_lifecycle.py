@@ -172,7 +172,7 @@ class ShellCleanupTests(unittest.TestCase):
         script = Path(__file__).resolve().parents[1] / "test-simulator.sh"
         source = script.read_text()
         prefix = source.split('\nIOS_ROOT=', 1)[0]
-        invocation = '\nxcodebuild \\\n' + source.split('\nxcodebuild \\\n', 1)[1].split('\nTEST_STATUS=', 1)[0]
+        invocation = '\nxcodebuild \\\n' + source.rsplit('\nxcodebuild \\\n', 1)[1].split('\nTEST_STATUS=', 1)[0]
         root = script.parent.parent / ".build" / "native-lifecycle-tests"
         root.mkdir(parents=True, exist_ok=True)
         for arguments, expected in [([], []), (["--unit-only"], ['-only-testing:DoveBevoTests']),

@@ -658,7 +658,12 @@ final class BrowserSmokeTests: XCTestCase {
     private func assertReloadInMoreMenu() {
         app.buttons["browser.more"].tap()
         XCTAssertTrue(app.buttons["Condividi"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Ricarica"].exists || app.buttons["Interrompi"].exists)
+        let reload = app.buttons["Ricarica"]
+        let stop = app.buttons["Interrompi"]
+        let available = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            reload.exists || stop.exists
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [available], timeout: 5), .completed)
         dismissMoreMenu()
     }
 

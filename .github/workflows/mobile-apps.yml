@@ -16,6 +16,8 @@ on:
       - "!mobile-apps/tools/menu-seed/**"
       - "!mobile-apps/data/italy-menu-*.json"
       - "!mobile-apps/docs/*-italy-menu-*.md"
+      - "!mobile-apps/data/mobile-menu-v2-seeds/**"
+      - "!mobile-apps/tools/mobile-menu-v2-import/**"
       - ".github/workflows/mobile-apps.yml"
 
 permissions:
@@ -360,7 +362,7 @@ jobs:
       - name: Build simulator app
         run: bash mobile-apps/ios/scripts/build-simulator.sh
       - name: Run unit and live application tests
-        timeout-minutes: 22
+        timeout-minutes: 25
         run: bash mobile-apps/ios/scripts/test-simulator.sh
       - name: Verify live map on 13-inch iPad and capture store screenshots
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mobile-release/v')

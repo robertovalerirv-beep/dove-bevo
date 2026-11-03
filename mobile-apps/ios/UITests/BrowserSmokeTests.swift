@@ -707,7 +707,8 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertFalse(app.otherElements["ShareSheet.RemoteContainerView"].exists, "Menu dismissal must never activate Share")
         XCTAssertFalse(app.otherElements["ActivityListView"].exists)
         XCTAssertFalse(app.otherElements["UIActivityContentView"].exists)
-        XCTAssertFalse(app.sheets.firstMatch.exists)
+        let map = app.buttons["tab.map"]
+        XCTAssertTrue(map.exists && map.isHittable && map.isSelected, "The native map must be usable after dismissing More without a blocking share sheet")
     }
 
     private func citySearchPredicate(city: String? = nil) -> NSPredicate {

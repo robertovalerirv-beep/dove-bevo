@@ -124,7 +124,7 @@ final class PriceShareTests: XCTestCase {
         mounted.attach(to: self, name: "Share-poster-GBP-HH")
     }
 
-    @MainActor func testActualIsolatedWebKitReaderRequiresCurrentVisibleVenueAndSinglePriceMarker() throws {
+    @MainActor func testActualIsolatedWebKitReaderRequiresCurrentVisibleVenueAndSinglePriceMarker() async throws {
         let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 700), configuration: WKWebViewConfiguration())
         let host = UIViewController()
         web.translatesAutoresizingMaskIntoConstraints = false
@@ -160,30 +160,37 @@ final class PriceShareTests: XCTestCase {
             response: URLResponse(url: document, mimeType: "text/html", expectedContentLength: data.count, textEncodingName: "UTF-8"), responseData: data))
         // The hosted iOS 27 runner has taken 31 seconds to start WebContent.
         // Keep the real navigation and DOM assertions, with a bounded startup wait.
-        let navigationResult = XCTWaiter.wait(for: [loaded], timeout: 45)
+        let navigationResult = await XCTWaiter().fulfillment(of: [loaded], timeout: 45)
         XCTAssertEqual(navigationResult, .completed, "The mounted owned WebKit fixture must finish before reading its DOM; loading=\(web.isLoading) progress=\(web.estimatedProgress) mounted=\(web.window === mounted.window) delegateError=\(delegate.error != nil)")
         guard navigationResult == .completed else {
             throw NSError(domain: "OwnedShareFixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "Mounted WebKit navigation did not finish"])
         }
         if let error = delegate.error { throw error }
         XCTAssertEqual(web.url, document)
-        let initial = try evaluate(web, PriceShareReader.script)
+        let initial = try await evaluate(web, PriceShareReader.script)
         XCTAssertEqual(PriceShareSnapshot.parse(initial, currentURL: document)?.amount, "6,50 £")
-        _ = try evaluate(web, "document.querySelector('#price').style.display='none';true")
-        XCTAssertTrue(try evaluate(web, "(\(PriceShareReader.script))===null") as? Bool == true)
-        _ = try evaluate(web, "document.querySelector('#price').style.display='block';document.querySelector('#price').setAttribute('data-venue','n124');true")
-        XCTAssertTrue(try evaluate(web, "(\(PriceShareReader.script))===null") as? Bool == true)
-        _ = try evaluate(web, "document.querySelector('#price').setAttribute('data-venue','n123');document.querySelector('#price').after(document.querySelector('#price').cloneNode(true));true")
-        XCTAssertTrue(try evaluate(web, "(\(PriceShareReader.script))===null") as? Bool == true)
-        _ = try evaluate(web, "document.querySelectorAll('#price')[1].remove();const unrelated=document.createElement('dialog');unrelated.textContent='Owned unrelated modal';document.body.append(unrelated);unrelated.showModal();true")
-        XCTAssertTrue(try evaluate(web, "(\(PriceShareReader.script))===null") as? Bool == true, "The underlying venue is implicitly inert behind any other modal")
+        _ = try await evaluate(web, "document.querySelector('#price').style.display='none';true")
+        let hidden = try await evaluate(web, "(\(PriceShareReader.script))===null")
+        XCTAssertTrue(hidden as? Bool == true)
+        _ = try await evaluate(web, "document.querySelector('#price').style.display='block';document.querySelector('#price').setAttribute('data-venue','n124');true")
+        let wrongVenue = try await evaluate(web, "(\(PriceShareReader.script))===null")
+        XCTAssertTrue(wrongVenue as? Bool == true)
+        _ = try await evaluate(web, "document.querySelector('#price').setAttribute('data-venue','n123');document.querySelector('#price').after(document.querySelector('#price').cloneNode(true));true")
+        let duplicate = try await evaluate(web, "(\(PriceShareReader.script))===null")
+        XCTAssertTrue(duplicate as? Bool == true)
+        _ = try await evaluate(web, "document.querySelectorAll('#price')[1].remove();const unrelated=document.createElement('dialog');unrelated.textContent='Owned unrelated modal';document.body.append(unrelated);unrelated.showModal();true")
+        let background = try await evaluate(web, "(\(PriceShareReader.script))===null")
+        XCTAssertTrue(background as? Bool == true, "The underlying venue is implicitly inert behind any other modal")
     }
 
-    @MainActor private func evaluate(_ web: WKWebView, _ script: String) throws -> Any {
+    @MainActor private func evaluate(_ web: WKWebView, _ script: String) async throws -> Any {
         let done = expectation(description: "Read owned current-price DOM")
         var result: Result<Any, Error>?
         web.evaluateJavaScript(script, in: nil, in: .defaultClient) { result = $0; done.fulfill() }
-        wait(for: [done], timeout: 5)
+        let evaluationResult = await XCTWaiter().fulfillment(of: [done], timeout: 5)
+        guard evaluationResult == .completed else {
+            throw NSError(domain: "OwnedShareFixture", code: 3, userInfo: [NSLocalizedDescriptionKey: "Owned WebKit DOM read did not finish"])
+        }
         return try XCTUnwrap(result).get()
     }
     @MainActor private func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }

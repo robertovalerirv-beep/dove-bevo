@@ -49,11 +49,18 @@ import XCTest
             (window.isHidden || !window.isKeyWindow) {
             window.makeKeyAndVisible(); layout()
         }
-        let mounted = XCTNSPredicateExpectation(predicate: NSPredicate { [self] _, _ in
+        let isMounted: () -> Bool = { [self] in
             layout()
             return root.view.window === window && root.view.bounds.size == window.bounds.size && !window.isHidden
-        }, object: nil)
-        let result = XCTWaiter.wait(for: [mounted], timeout: 15)
+        }
+        let result: XCTWaiter.Result
+        if isMounted() {
+            result = .completed
+        } else {
+            let mounted = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in isMounted() }, object: nil)
+            result = XCTWaiter.wait(for: [mounted], timeout: 15)
+        }
+        let finalMounted = isMounted()
         let finalState = mountState()
         let records = descendants(window).map { view -> String in
             let frame = view.convert(view.bounds, to: window)
@@ -72,7 +79,7 @@ import XCTest
         let attachment = XCTAttachment(image: image)
         attachment.name = "DoveBevo-PRIVATE-FIXTURE-\(name)-402x800-actual-UIKit-window"
         attachment.lifetime = .keepAlways; test.add(attachment)
-        XCTAssertEqual(result, .completed)
+        XCTAssertTrue(finalMounted, "The actual owned UIKit window must remain mounted at capture")
         XCTAssertEqual(root.traitCollection.preferredContentSizeCategory, traits.preferredContentSizeCategory)
     }
 

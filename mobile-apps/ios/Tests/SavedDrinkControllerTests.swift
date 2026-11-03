@@ -131,12 +131,20 @@ final class SavedDrinkControllerTests: XCTestCase {
         window.rootViewController = UINavigationController(rootViewController: root)
         window.makeKeyAndVisible(); window.layoutIfNeeded(); root.view.layoutIfNeeded()
         defer { window.isHidden = true; window.rootViewController = nil; previous?.makeKey() }
-        waitUntil("Actual foreground fixture window must be mounted") { root.view.window === window && window.isKeyWindow && !root.view.bounds.isEmpty }
+        guard waitUntil("Actual foreground fixture window must be mounted", {
+            root.view.window === window && window.isKeyWindow && !root.view.bounds.isEmpty
+        }) else {
+            throw NSError(domain: "OwnedSavedDrinkFixture", code: 1, userInfo: [NSLocalizedDescriptionKey: "Fixture window did not mount"])
+        }
         try body(window)
     }
-    @MainActor private func waitUntil(_ label: String, _ predicate: @escaping () -> Bool) {
+    @MainActor @discardableResult private func waitUntil(_ label: String, _ predicate: @escaping () -> Bool) -> Bool {
+        if predicate() { return true }
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in predicate() }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [ready], timeout: 15), .completed, label)
+        let result = XCTWaiter.wait(for: [ready], timeout: 15)
+        let mounted = result == .completed || predicate()
+        XCTAssertTrue(mounted, label)
+        return mounted
     }
     private func withStores(_ body: (SavedVenueStore, SavedDrinkStore) throws -> Void) throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

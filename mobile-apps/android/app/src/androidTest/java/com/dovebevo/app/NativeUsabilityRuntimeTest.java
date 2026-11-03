@@ -625,6 +625,24 @@ public final class NativeUsabilityRuntimeTest {
         await(()->{web.evaluateJavascript("document.body.dataset.searchOpen === '1'",result->opened.set("true".equals(result)));return opened.get();});
     }
 
+    @Test public void missingNativeThemeKeepsOriginalSearchClearOfTopOverflow() throws Exception {
+        presentationMode=6;
+        navigate(BrowserPolicy.HOME);
+        float density=activity.getResources().getDisplayMetrics().density;
+        await(()->((FrameLayout.LayoutParams)web.getLayoutParams()).topMargin==Math.round(48*density));
+        onMain(()->{
+            int[] menu=new int[2],page=new int[2];
+            activity.findViewById(R.id.more).getLocationOnScreen(menu);
+            web.getLocationOnScreen(page);
+            assertTrue("Fallback website search starts below the native menu",
+                    menu[1]+activity.findViewById(R.id.more).getHeight()<=page[1]);
+            assertNotNull(browserMenu().getMenu().findItem(R.id.refresh));
+        });
+        presentationMode=5;
+        navigate(BrowserPolicy.HOME);
+        await(()->((FrameLayout.LayoutParams)web.getLayoutParams()).topMargin==0);
+    }
+
     @Test public void topOverflowRemainsReachableWithoutBrowserTitleAtNarrowWidth() {
         onMain(()->{
             if(Build.VERSION.SDK_INT>=26) assertTrue("Light system navigation must request dark controls",
@@ -1069,11 +1087,11 @@ public final class NativeUsabilityRuntimeTest {
                         .replace("OWNED_MOBILE_ATTRIBUTE", markerMode == 1 ? "data-dovebevo-mobile-shell=\"1\""
                                 : markerMode == 2 ? "data-dovebevo-mobile-shell=\"false\"" : "")
                         .replace("OWNED_VENUE_KEY", key == null ? "" : key).getBytes(StandardCharsets.UTF_8);
-                if(presentationMode==5) {
+                if(presentationMode==5 || presentationMode==6) {
                     String html="<!doctype html><html data-dovebevo-mobile-shell=\"1\"><head><meta charset=\"utf-8\">"
                             +"<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
                             +"<meta name=\"owned-response\" content=\""+responseToken+"\">"
-                            +"<script nonce=\"fixtureThemeNonce20261029\">document.addEventListener('DOMContentLoaded',()=>document.querySelector('[data-dovebevo-search]').addEventListener('click',()=>document.body.dataset.searchOpen='1'));</script>"
+                            +"<script"+(presentationMode==6?"":" nonce=\"fixtureThemeNonce20261029\"")+">document.addEventListener('DOMContentLoaded',()=>document.querySelector('[data-dovebevo-search]').addEventListener('click',()=>document.body.dataset.searchOpen='1'));</script>"
                             +"</head><body><div id=\"app\"><div class=\"app\"><header class=\"top\"><div class=\"top__row\">"
                             +"<button class=\"search-field\" data-dovebevo-search=\"1\">Cerca città o bar</button></div></header>"
                             +"<main class=\"main\"><section class=\"map\"></section></main></div></div></body></html>";

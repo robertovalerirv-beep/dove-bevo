@@ -25,7 +25,7 @@ public final class DiscoveryRuntimeTest {
     private static final String STATIC="{\"c\":[[1,\"Milano\"]],\"v\":[[\"n123\",\"Locale uno\",1,45.4642,9.19,\"Via A\",0],[\"w9\",\"Locale due\",1,45.4643,9.1901,\"Via B\",0]]}";
     private static final String PRICES="{\"p\":[[\"n123\",\"spritz\",0,800,\"2026-10-28\",2,0],[\"n123\",\"spritz\",1,500,\"2026-10-27\",1,0],[\"w9\",\"spritz\",0,600,\"2026-06-01\",0,0]],\"u\":[],\"pend\":[],\"h\":[],\"g\":[]}";
     private final Instrumentation instrumentation=InstrumentationRegistry.getInstrumentation();
-    private final AtomicBoolean active=new AtomicBoolean(true);private final AtomicInteger requests=new AtomicInteger();private final AtomicReference<String> opened=new AtomicReference<>();
+    private final AtomicBoolean active=new AtomicBoolean(true);private final AtomicInteger requests=new AtomicInteger(),areas=new AtomicInteger();private final AtomicReference<String> opened=new AtomicReference<>();
     private MainActivity activity;private DiscoveryScreen screen;private SharedPreferences rules;private String previous;private boolean hadPrevious;private boolean partialOne;
     @Before public void setUp(){
         rules=instrumentation.getTargetContext().getSharedPreferences("dovebevo_rules",0);hadPrevious=rules.contains("accepted_rules_version");previous=rules.getString("accepted_rules_version",null);assertTrue(rules.edit().remove("accepted_rules_version").commit());
@@ -88,9 +88,27 @@ public final class DiscoveryRuntimeTest {
             });
         }finally{onMain(()->resources.updateConfiguration(saved,resources.getDisplayMetrics()));}
     }
+    @Test public void compactOverflowLeavesWideDiscoveryAreaActionReachable() {
+        show(true,null);
+        for(int width:new int[]{348,430,768})onMain(()->{
+            float density=activity.getResources().getDisplayMetrics().density;
+            int pixels=Math.round(width*density);View root=screen.view();
+            root.measure(View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(Math.round(700*density),View.MeasureSpec.EXACTLY));
+            root.layout(0,0,pixels,Math.round(700*density));
+            LinearLayout header=root.findViewWithTag("discovery.header");
+            View title=header.getChildAt(0),controls=header.getChildAt(1);
+            assertEquals("Area controls must stay below the native overflow",LinearLayout.VERTICAL,header.getOrientation());
+            assertTrue("First row reserves the 56dp native overflow",title.getPaddingRight()>=Math.round(56*density));
+            assertTrue("Zona starts below the 48dp native overflow",controls.getTop()>=Math.round(48*density));
+            assertTrue("Area controls remain inside the header",controls.getRight()<=header.getWidth());
+            int before=areas.get();activity.findViewById(R.id.discovery_choose_area).performClick();
+            assertEquals("Zona stays actionable at "+width+"dp",before+1,areas.get());
+        });
+    }
     private void show(boolean unavailable,DiscoveryArea area){onMain(()->{
         FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{requests.incrementAndGet();if(unavailable||partialOne&&url.contains("/api/prices/")&&!url.contains("u0nd9"))throw new IOException("Owned offline response");String body=url.endsWith("health")?"{\"status\":\"ok\",\"data_version\":\"20261030\"}":url.contains("u0nd9")?(url.endsWith(".json")?STATIC:PRICES):url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}";return body.getBytes(StandardCharsets.UTF_8);},()->"2026-11-01");
-        screen=new DiscoveryScreen(activity,opened::set,()->{},active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));assertEquals("beer_draft",screen.selectedDrink());screen.restoreSelection("spritz",0);activity.setContentView(screen.view());screen.show(area);
+        screen=new DiscoveryScreen(activity,opened::set,areas::incrementAndGet,active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));assertEquals("beer_draft",screen.selectedDrink());screen.restoreSelection("spritz",0);activity.setContentView(screen.view());screen.show(area);
     });}
     private void awaitLoaded()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(!status().contains("Caricamento")&&(rows().getChildCount()==0||rows().getChildAt(0).getHeight()>0)));if(loaded.get())return;Thread.sleep(10);}fail("Owned discovery did not complete");}
     private LinearLayout rows(){return activity.findViewById(R.id.discovery_rows);}private String status(){return((TextView)activity.findViewById(R.id.discovery_status)).getText().toString();}

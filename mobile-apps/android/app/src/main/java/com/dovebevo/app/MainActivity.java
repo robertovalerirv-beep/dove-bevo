@@ -286,6 +286,14 @@ public final class MainActivity extends ComponentActivity {
         topActions.addView(more, new LinearLayout.LayoutParams(dp(48), dp(48)));
         return topActions;
     }
+    private void setWebMenuClearance(boolean needed) {
+        if (website == null || !(website.getLayoutParams() instanceof FrameLayout.LayoutParams)) return;
+        FrameLayout.LayoutParams layout = (FrameLayout.LayoutParams) website.getLayoutParams();
+        int top = needed ? dp(48) : 0;
+        if (layout.topMargin == top) return;
+        layout.topMargin = top;
+        website.setLayoutParams(layout);
+    }
     private LinearLayout createBottomNavigation() {
         BottomNavigationBar bottom = new BottomNavigationBar(this, this::goHome, this::openMapSearch,
                 this::showMap, this::showFavorites, this::saveCurrentVenue, this::showRecommendations);
@@ -901,9 +909,22 @@ public final class MainActivity extends ComponentActivity {
             if (mobileThemeScript == null) {
                 mobileThemeScript = MobilePresentation.load(this);
             }
-            view.evaluateJavascript(mobileThemeScript, null);
+            long generation = documentCheckGeneration;
+            view.evaluateJavascript(mobileThemeScript, result -> {
+                if (destroyed || view != website || generation != documentCheckGeneration
+                        || !finishedUrl.equals(view.getUrl())) return;
+                if (!MobileEntry.isDocument(finishedUrl) || !"true".equals(result)) {
+                    setWebMenuClearance(true);
+                    return;
+                }
+                view.evaluateJavascript("document.documentElement.getAttribute('data-dovebevo-app-theme')==='1' && document.documentElement.getAttribute('data-dovebevo-mobile-shell')==='1'", marker -> {
+                    if (!destroyed && view == website && generation == documentCheckGeneration
+                            && finishedUrl.equals(view.getUrl())) setWebMenuClearance(!"true".equals(marker));
+                });
+            });
         } catch (IOException unavailable) {
             // A missing or invalid bundled skin preserves the original website and its normal security policy.
+            setWebMenuClearance(true);
         }
     }
 
@@ -934,6 +955,7 @@ public final class MainActivity extends ComponentActivity {
             lastTrustedUrl = url;
             preparedNavigationUrl = null;
             awaitingDocumentStart = false;
+            setWebMenuClearance(!MobileEntry.isDocument(url));
             setLoading(!failed);
         }
         @Override public void onPageFinished(WebView view, String url) {

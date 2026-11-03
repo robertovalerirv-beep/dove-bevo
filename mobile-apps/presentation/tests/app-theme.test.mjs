@@ -198,7 +198,7 @@ test("light theme is enforced and theme notifications terminate without recursio
   assert.equal(page.listeners.has("themechange"), false);
 });
 
-test("adapter exposes original checkbox group and expands real price actions", () => {
+test("adapter leaves original checkbox dropdown closed and expands real price actions", () => {
   const page = fixture();
   const attrs = new Map([["hidden", ""]]);
   const list = { hasAttribute: (k) => attrs.has(k), removeAttribute: (k) => attrs.delete(k) };
@@ -226,7 +226,7 @@ test("adapter exposes original checkbox group and expands real price actions", (
     child = v;
   };
   assert.equal(page.run(), true);
-  assert.equal(attrs.has("hidden"), false);
+  assert.equal(attrs.has("hidden"), true);
   assert.equal(rowAttrs.get("data-dovebevo-collapsed"), "1");
   assert.equal(child.getAttribute("aria-expanded"), "false");
   child.click();

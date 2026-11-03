@@ -74,6 +74,12 @@ describe("migration 0014: static Italian customer observations", () => {
     expect(venueForeignKeys.results).toEqual([
       { table: "mobile_menu_v2_offers", from: "offer_id" },
     ]);
+    for (const child of ["mobile_menu_v2_customer_reports", "mobile_menu_v2_customer_decisions"]) {
+      const references = await env.DB.prepare(
+        `SELECT "table" FROM pragma_foreign_key_list('${child}')`,
+      ).all<{ table: string }>();
+      expect(references.results).toEqual([{ table: "mobile_menu_v2_customer_entries" }]);
+    }
     const schema = await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE name LIKE 'mobile_menu_v2_customer_%'" +
         " OR name='mobile_menu_v2_one_pending_new_drink' ORDER BY name",

@@ -1,0 +1,55 @@
+package com.dovebevo.app;
+
+import static org.junit.Assert.*;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import org.junit.Test;
+
+public final class MenuV2PricesTest {
+    private static final String VENUE="https://www.dovebevo.com/bar/n123?c=u0nd9";
+    private static byte[] bytes(String value){return value.getBytes(StandardCharsets.UTF_8);}
+    private static String source(){return "{\"id\":\"s1\",\"url\":\"https://bar.example/menu\",\"text_sha256\":\""+"a".repeat(64)+"\",\"checked_on\":\"2026-11-02\"}";}
+    private static String offer(String id,String kind,int amount){return "{\"id\":\""+id+"\",\"name\":\"Spritz della casa\",\"category\":\"spritz\",\"serving\":{\"label\":\"Calice\",\"ml\":200},\"amount_minor\":"+amount+",\"currency\":\"GBP\",\"currency_exponent\":2,\"context\":{\"kind\":\""+kind+"\",\"condition\":null},\"source\":"+source()+"}";}
+    private static String menu(String offers,int count,String next){return "{\"schema_version\":2,\"coverage\":{\"complete\":false,\"basis\":\"verified_source_items_only\"},\"price_scope\":\"menu_item_only\",\"venue\":{\"key\":\"n123\",\"cell\":\"u0nd9\",\"name\":\"Current venue\"},\"stored_offer_count\":"+count+",\"offers\":["+offers+"],\"next_after\":"+(next==null?"null":"\""+next+"\"")+",\"fees\":[],\"fee_coverage\":{\"status\":\"unknown\",\"source\":null}}";}
+    private static String customer(int ml){return "{\"schema_version\":1,\"price_scope\":\"customer_reported_drink_item\",\"venue\":{\"key\":\"n123\",\"cell\":\"u0nd9\",\"name\":\"Current venue\",\"country\":\"GB\"},\"rows\":[{\"revision\":4,\"item_key\":\"c"+"b".repeat(64)+"\",\"kind\":\"menu_offer\",\"offer_id\":\"a2\",\"name\":\"Spritz della casa\",\"category\":\"spritz\",\"serving\":{\"label\":\"Calice\",\"ml\":"+ml+"},\"amount_minor\":650,\"currency\":\"GBP\",\"currency_exponent\":2,\"observed_on\":\"2026-11-03\",\"source_kind\":\"customer\",\"observation_kind\":\"customer_reported_price\",\"price_scope\":\"drink_item\"}],\"next_after\":null}";}
+    private static FavoritePricesClient.Call call(){return new FavoritePricesClient.Call(System.nanoTime()+TimeUnit.SECONDS.toNanos(5));}
+    @Test public void paginatedOwnerMenuAndCustomerReportsStayDistinctInOneSavedDrink()throws Exception {
+        SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Saved actual name");
+        MenuV2Prices client=new MenuV2Prices((url,max,call)->{
+            if(url.contains("customer-prices"))return bytes(customer(200));
+            if(url.contains("&after=a1"))return bytes(menu(offer("a2","regular",550),2,null));
+            return bytes(menu(offer("a1","conditional",450),2,"a1"));
+        });
+        MenuV2Prices.Venue loaded=client.load(venue,call());assertEquals(3,loaded.prices.size());
+        assertEquals(2,loaded.selected(RecommendationDrink.SPRITZ,0).size());
+        assertEquals("5,50 \u00a3",loaded.prices.get(1).amount());
+        assertEquals("Calice · 200 ml",loaded.prices.get(1).serving());
+        assertFalse(loaded.prices.get(1).customer);assertTrue(loaded.prices.get(2).customer);
+        assertTrue(loaded.prices.get(1).evidence().contains("menu online"));assertTrue(loaded.prices.get(2).evidence().contains("cliente"));
+        assertTrue(loaded.feeNotice.contains("spese non verificate"));
+        SavedDrinkTest.Memory disk=new SavedDrinkTest.Memory();SavedDrinkStore saved=new SavedDrinkStore(disk);
+        assertEquals(SavedDrinkStore.Result.SAVED,saved.save(VENUE,"Saved actual name",RecommendationDrink.SPRITZ,0));byte[] before=disk.bytes.clone();
+        List<SavedDrinkComparison.Row> rows=SavedDrinkComparison.rows(saved.load(),Collections.emptyMap(),Map.of(VENUE,loaded));
+        assertEquals(2,rows.size());assertEquals(550,rows.get(0).menuPrice.amountMinor);assertEquals(650,rows.get(1).menuPrice.amountMinor);
+        assertArrayEquals(before,disk.bytes);
+    }
+    @Test public void mismatchedServingCannotBorrowSourceBandAndCursorMustMatchActualLastOffer()throws Exception {
+        SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Saved actual name");
+        MenuV2Prices client=new MenuV2Prices((url,max,call)->url.contains("customer-prices")?bytes(customer(300)):bytes(menu(offer("a2","regular",550),1,null)));
+        assertEquals(1,client.load(venue,call()).prices.size());
+        MenuV2Prices broken=new MenuV2Prices((url,max,call)->bytes(menu(offer("a1","regular",550),2,"wrong")));
+        assertThrows(IOException.class,()->broken.load(venue,call()));
+    }
+    @Test public void v2TransportOnlyAllowsExactPinnedPublicGetRoutes()throws Exception {
+        String valid=MenuV2Prices.endpoint(true,"m"+"0".repeat(24),"u0nd9",null);
+        assertTrue(MenuV2Prices.allowed(valid));assertTrue(FavoritePricesClient.allowed(valid));
+        for(String invalid:new String[]{valid.replace("https://","http://"),valid.replace("m"+"0".repeat(24),"m"+"A".repeat(24)),
+                valid.replace("limit=100","limit=1000"),valid+"&x=1",valid.replace("www.dovebevo.com","www.dovebevo.com.evil.example")})
+            assertFalse(invalid,MenuV2Prices.allowed(invalid));
+        assertThrows(IOException.class,()->MenuV2Prices.endpoint(false,"n123","u0nd9","not-a-customer-cursor"));
+    }
+}

@@ -16,7 +16,7 @@ final class BottomNavigationBar extends LinearLayout {
         super(context);
         setId(R.id.bottom_navigation);
         setOrientation(VERTICAL);
-        setBackgroundColor(context.getColor(R.color.surface));
+        setBackgroundColor(context.getColor(R.color.chrome));
         setPadding(dp(6), dp(6), dp(6), dp(6));
         controls = new Button[]{
             control(R.id.home, R.string.home, R.string.home, R.drawable.native_home, home),

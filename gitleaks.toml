@@ -10,5 +10,5 @@ description = "Dambo public owner venue identifier in its pinned menu manifest"
 targetRules = ["generic-api-key"]
 condition = "AND"
 regexTarget = "secret"
-paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/351634d027e740a1f8840697fb58187e1b4aa3ef6d09f8bf7ee2badfc6bd163c5\.json$''']
+paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/c0fb0a3789aaa10bf0d8090c9448201e1d93a7cc606151fc2dbbdc4c6a8b220a\.json$''']
 regexes = ['''^m4900240db731f0b53e2b7bf6$''']

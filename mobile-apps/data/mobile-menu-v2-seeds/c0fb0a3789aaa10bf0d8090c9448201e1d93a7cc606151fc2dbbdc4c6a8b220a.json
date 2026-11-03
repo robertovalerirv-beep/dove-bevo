@@ -1520,7 +1520,7 @@
     },
     {
       "amount_minor": 600,
-      "category": "alcohol_free",
+      "category": null,
       "cell": "sr60k",
       "condition_text": null,
       "currency": "EUR",

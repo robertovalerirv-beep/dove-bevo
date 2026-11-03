@@ -5,12 +5,8 @@ import { describe, expect, it } from "vitest";
 const { TEST_MIGRATIONS } = env as unknown as {
   TEST_MIGRATIONS: D1Migration[];
 };
-const oldMigration = TEST_MIGRATIONS.find((migration) =>
-  migration.name.startsWith("0013"),
-);
-const newMigration = TEST_MIGRATIONS.find((migration) =>
-  migration.name.startsWith("0014"),
-);
+const oldMigration = TEST_MIGRATIONS.find((migration) => migration.name.startsWith("0013"));
+const newMigration = TEST_MIGRATIONS.find((migration) => migration.name.startsWith("0014"));
 
 describe("migration 0014: static Italian customer observations", () => {
   it("preserves existing entry, report, decision, sequence, indexes and offer FK", async () => {
@@ -23,9 +19,7 @@ describe("migration 0014: static Italian customer observations", () => {
       env.DB.prepare("DROP TABLE mobile_menu_v2_customer_decisions"),
       env.DB.prepare("DROP TABLE mobile_menu_v2_customer_entries"),
     ]);
-    await env.DB.batch(
-      (oldMigration?.queries ?? []).map((sql) => env.DB.prepare(sql)),
-    );
+    await env.DB.batch((oldMigration?.queries ?? []).map((sql) => env.DB.prepare(sql)));
 
     const venue = "n910000001";
     const entry = crypto.randomUUID();
@@ -64,9 +58,7 @@ describe("migration 0014: static Italian customer observations", () => {
         " JOIN mobile_menu_v2_customer_decisions d ON d.entry_id=e.id",
     ).all();
 
-    await env.DB.batch(
-      (newMigration?.queries ?? []).map((sql) => env.DB.prepare(sql)),
-    );
+    await env.DB.batch((newMigration?.queries ?? []).map((sql) => env.DB.prepare(sql)));
 
     const after = await env.DB.prepare(
       "SELECT e.seq,e.id,e.venue_key,e.amount_minor,r.reason,d.decision" +
@@ -75,9 +67,7 @@ describe("migration 0014: static Italian customer observations", () => {
         " JOIN mobile_menu_v2_customer_decisions d ON d.entry_id=e.id",
     ).all();
     expect(after.results).toEqual(before.results);
-    expect(
-      (await env.DB.prepare("PRAGMA foreign_key_check").all()).results,
-    ).toEqual([]);
+    expect((await env.DB.prepare("PRAGMA foreign_key_check").all()).results).toEqual([]);
     const venueForeignKeys = await env.DB.prepare(
       'SELECT "table","from" FROM pragma_foreign_key_list(\'mobile_menu_v2_customer_entries\')',
     ).all<{ table: string; from: string }>();
@@ -98,9 +88,7 @@ describe("migration 0014: static Italian customer observations", () => {
       expect(schema.results.map((row) => row.name)).toContain(name);
 
     await expect(
-      env.DB.prepare(
-        "UPDATE mobile_menu_v2_customer_entries SET amount_minor=600 WHERE id=?1",
-      )
+      env.DB.prepare("UPDATE mobile_menu_v2_customer_entries SET amount_minor=600 WHERE id=?1")
         .bind(entry)
         .run(),
     ).rejects.toThrow();
@@ -119,9 +107,7 @@ describe("migration 0014: static Italian customer observations", () => {
     )
       .bind(staticEntry)
       .first<{ seq: number }>();
-    expect(nextSeq?.seq).toBeGreaterThan(
-      (before.results[0] as { seq: number }).seq,
-    );
+    expect(nextSeq?.seq).toBeGreaterThan((before.results[0] as { seq: number }).seq);
     await expect(
       env.DB.prepare(
         "INSERT INTO mobile_menu_v2_customer_entries" +
@@ -130,12 +116,7 @@ describe("migration 0014: static Italian customer observations", () => {
           " VALUES (?1,'n2420779240','u0nd9',?2,'menu_offer','missing-offer'," +
           " 'Fixture beer','beer_draft','glass',NULL,500,'EUR',2,?3,'active',?4)",
       )
-        .bind(
-          crypto.randomUUID(),
-          "o" + "c".repeat(64),
-          day,
-          day + "T12:03:00Z",
-        )
+        .bind(crypto.randomUUID(), "o" + "c".repeat(64), day, day + "T12:03:00Z")
         .run(),
     ).rejects.toThrow();
   });

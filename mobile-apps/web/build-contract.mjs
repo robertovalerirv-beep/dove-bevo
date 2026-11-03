@@ -58,6 +58,16 @@ export function transformApp(source) {
   );
   result = once(
     result,
+    "const status = picture && rawStatus === it.map.zoomIn ? null : rawStatus;",
+    "const status = picture && rawStatus === it.map.zoomIn ? null : rawStatus === it.map.zoomIn ? mobileZoomHint() : rawStatus;",
+  );
+  result = once(
+    result,
+    '<p class="map__status" data-testid="map-status" role="status">',
+    '<p class="map__status" data-testid="map-status" data-mobile-zoom-hint={rawStatus === it.map.zoomIn ? "1" : undefined} role="status">',
+  );
+  result = once(
+    result,
     "              {status}\n            </p>",
     '              {status}\n              {!pinning && inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n                <span class="mobile-menu-map-note">{drinks.length ? "M+ = prezzo del drink da menu; coperto e supplementi esclusi" : "Numeri sulla mappa = voci di menu verificate o prezzi segnalati; non sono prezzi medi"}</span>\n              )}\n            </p>',
   );
@@ -154,7 +164,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { if (route.name === "bar") { history.replaceState(null, "", mobileURL("/")); setRoute(parseRoute()); } setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, mobileCoverageText, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
+    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, mobileCoverageText, mobileZoomHint, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }

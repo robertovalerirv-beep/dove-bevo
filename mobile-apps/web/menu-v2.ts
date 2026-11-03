@@ -416,6 +416,11 @@ export function mobileCoverageText(withPrice: number, total: number): string {
     : `${String(withPrice)}/${String(total)} con prezzo`;
 }
 
+/** Keep the map-start hint between the language and venue-list controls. */
+export function mobileZoomHint(): string {
+  return currentLang() === "en" ? "Zoom or search city" : "Avvicinati o cerca città";
+}
+
 export function invalidateMobileCell(cell: string): void {
   mobileIdentityCache.delete(cell);
   for (const key of mobileCellCache.keys())

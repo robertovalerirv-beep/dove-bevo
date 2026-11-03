@@ -208,6 +208,21 @@ html[data-dovebevo-mobile-shell="1"] .map__status {
 html[data-dovebevo-mobile-shell="1"] .map__status .meter {
   display: none;
 }
+html[data-dovebevo-mobile-shell="1"] .map__status[data-mobile-zoom-hint="1"] {
+  top: 12px;
+  right: 72px;
+  left: 72px;
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  padding: 6px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 html[data-dovebevo-mobile-shell="1"] .map__status .mobile-menu-map-note {
   display: block;
   margin-top: 4px;

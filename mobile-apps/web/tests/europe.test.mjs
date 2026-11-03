@@ -789,6 +789,28 @@ test("legacy Italian search opens real app catalogue coordinates without synthet
   }
 });
 
+test("European map coverage remains one line at phone widths", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f, false);
+    for (const width of [320, 390]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const coverage = f.page.locator(".europe-coverage");
+      assert.equal(
+        await coverage.evaluate((element) => getComputedStyle(element).whiteSpace),
+        "nowrap",
+      );
+      assert.ok((await coverage.boundingBox()).height <= 48);
+      if (width === 320)
+        await f.page.screenshot({ path: path.join(output, "europe-coverage-320-fixture.png") });
+    }
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("Cerca closes a London venue to the same city map before opening the picker", async () => {
   const f = await fixture();
   try {

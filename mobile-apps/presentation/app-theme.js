@@ -66,6 +66,9 @@ html[data-dovebevo-app-theme="1"] .top {
 html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .top__row > .search-field {
   display: none !important;
 }
+html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .europe-search-row {
+  display: none !important;
+}
 html[data-dovebevo-app-theme="1"] .btn,
 html[data-dovebevo-app-theme="1"] .chip,
 html[data-dovebevo-app-theme="1"] .drink {
@@ -432,8 +435,12 @@ html[data-dovebevo-app-theme="1"] .dovebevo-drink-art {
       !/^(?:\/|\/mobile\/|\/bar\/[nwru][1-9][0-9]{0,14})$/.test(url.pathname)
     )
       return false;
-    if (!document.querySelector("#app > .app .top") || !document.querySelector("#app > .app .main"))
-      return false;
+    const legacyShell =
+      !!document.querySelector("#app > .app .top") && !!document.querySelector("#app > .app .main");
+    const europeShell =
+      !!document.querySelector("#app > .europe-app .europe-top") &&
+      !!document.querySelector("#app > .europe-app .europe-map");
+    if (!legacyShell && !europeShell) return false;
     root = document.documentElement;
     const existing = document.getElementById(id);
     if (
@@ -460,7 +467,7 @@ html[data-dovebevo-app-theme="1"] .dovebevo-drink-art {
     if (!existing) document.head.appendChild(style);
     root.setAttribute(marker, "1");
     if (getComputedStyle(root).getPropertyValue("--dovebevo-app-theme").trim() === "1") {
-      if (url.pathname !== "/mobile/") installAdapter(root);
+      if (url.pathname !== "/mobile/" && legacyShell) installAdapter(root);
       return true;
     }
   } catch {

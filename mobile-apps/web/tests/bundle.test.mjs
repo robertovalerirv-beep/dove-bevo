@@ -525,6 +525,33 @@ test("visible price-pin head and geographic tip both open the correct venue", as
   }
 });
 
+test("zoom hint fits between the map language and venue-list controls", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/");
+    const status = f.page.getByTestId("map-status");
+    await status.getByText("Avvicinati o cerca città").waitFor();
+    assert.equal(await status.getAttribute("data-mobile-zoom-hint"), "1");
+    for (const width of [320, 390]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const hint = await status.boundingBox();
+      const language = await f.page.locator(".map__lang").boundingBox();
+      const list = await f.page.locator(".map__list").boundingBox();
+      assert.ok(hint && language && list);
+      assert.ok(language.x + language.width <= hint.x);
+      assert.ok(hint.x + hint.width <= list.x);
+      assert.ok(Math.abs(hint.y - language.y) <= 4);
+      assert.ok(hint.height <= 48);
+      if (width === 320)
+        await f.page.screenshot({ path: path.join(output, "map-zoom-hint-320-fixture.png") });
+    }
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("a dense priced dot opens its own venue and retains the exact viewed price after closing", async () => {
   const f = await fixture({ width: 393, height: 852 }, { densePrices: true });
   try {

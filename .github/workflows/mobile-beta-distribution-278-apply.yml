@@ -1,0 +1,54 @@
+name: Distribute audited Dove Bevo build 278 to existing testers
+
+on:
+  push:
+    tags:
+      - "mobile-beta-distribution-apply/20261103-build278-v1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dove-bevo-testflight-6827324444
+  cancel-in-progress: false
+
+jobs:
+  distribute-beta-278:
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/tags/mobile-beta-distribution-apply/20261103-build278-v1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify release boundaries without credentials
+        run: node --test scripts/tests/mobile-store-status.test.mjs scripts/tests/mobile-beta-distribution.test.mjs
+      - name: Validate the independently reviewed canonical plan before credentials
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          import { validatePlan } from './scripts/mobile-beta-distribution.mjs';
+          validatePlan(await readFile('docs/mobile-releases/beta-distribution-20261103-build278-plan.json'), 'f9c7dd76a1fa5e6445eea12033ab3fb80f6fc1e5dd2b9a6a23f53d780a867eed', '278');
+          NODE
+      - name: Link only the existing groups and submit this exact build for beta review if needed
+        timeout-minutes: 18
+        run: >-
+          node scripts/mobile-beta-distribution.mjs "$OUTPUT_PATH" --apply
+          --plan docs/mobile-releases/beta-distribution-20261103-build278-plan.json
+          --approved-plan-sha f9c7dd76a1fa5e6445eea12033ab3fb80f6fc1e5dd2b9a6a23f53d780a867eed
+          --build-number 278
+        env:
+          OUTPUT_PATH: ${{ runner.temp }}/dove-bevo-beta-278-apply.json
+          DOVEBEVO_ASC_PRIVATE_KEY: ${{ secrets.DOVEBEVO_ASC_PRIVATE_KEY }}
+          DOVEBEVO_ASC_KEY_ID: ${{ secrets.DOVEBEVO_ASC_KEY_ID }}
+          DOVEBEVO_ASC_ISSUER_ID: ${{ secrets.DOVEBEVO_ASC_ISSUER_ID }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dove-bevo-beta-278-apply
+          path: ${{ runner.temp }}/dove-bevo-beta-278-apply.json
+          if-no-files-found: warn
+          retention-days: 14

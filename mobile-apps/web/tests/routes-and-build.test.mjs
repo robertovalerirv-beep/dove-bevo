@@ -180,6 +180,8 @@ test("happy-hour and longer amounts retain separate readable price and HH cues",
   assert.deepEqual(mobilePinLabel("6,00 € HH"), { amount: "6,00", detail: "HH" });
   assert.deepEqual(mobilePinLabel("125,00 €"), { amount: "125,00", detail: "" });
   assert.deepEqual(mobilePinLabel("7,50 € MENU"), { amount: "7,50", detail: "M+" });
+  assert.deepEqual(mobilePinLabel("30 VOCI"), { amount: "30", detail: "MENU" });
+  assert.deepEqual(mobilePinLabel("2 PREZZI"), { amount: "2", detail: "PREZZI" });
   assert.deepEqual(mobilePinLabel("£7.50"), { amount: "7.50", detail: "£" });
   assert.deepEqual(mobilePinLabel("7,50 £ HH"), { amount: "7,50", detail: "£ HH" });
 });

@@ -112,8 +112,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
       };
       const offer = {
         id: "offer-1",
-        name: "Spritz speciale",
-        category: "spritz",
+        name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
+        category: options.uncategorized ? null : "spritz",
         serving: { label: "Calice", ml: null },
         amount_minor: 750,
         currency: "EUR",
@@ -133,8 +133,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         country: "IT",
         identity_url: "https://official.fixture.test/",
         identity_kind: "owner_verified",
-        matching_offer_count: categories.length ? 1 : 1,
-        sample_offers: categories.includes("spritz") ? [offer] : [],
+        matching_offer_count: 1,
+        sample_offers: !options.uncategorized && categories.includes("spritz") ? [offer] : [],
         fee_coverage: { status: "unknown", source: null },
       };
       return route.fulfill({
@@ -146,7 +146,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
           category: null,
           categories: categories.length ? categories : null,
           venues:
-            cell === "u0nd9" && (!categories.length || categories.includes("spritz"))
+            cell === "u0nd9" &&
+            (!categories.length || (!options.uncategorized && categories.includes("spritz")))
               ? [venue]
               : [],
           next_after: null,
@@ -182,8 +183,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
           offers: [
             {
               id: "offer-1",
-              name: "Spritz speciale",
-              category: "spritz",
+              name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
+              category: options.uncategorized ? null : "spritz",
               serving: { label: "Calice", ml: null },
               amount_minor: 750,
               currency: "EUR",
@@ -500,6 +501,57 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
       /Spritz speciale[\s\S]*7,50\s€[\s\S]*costi aggiuntivi non sono stati verificati/,
     );
     assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("Tutti reveals uncategorized verified menus without inventing a drink price", async () => {
+  const options = { menu: true, uncategorized: true, cellRequests: [] };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const all = f.page.getByRole("button", { name: "Tutti", exact: true });
+    await all.click();
+    assert.equal(await all.getAttribute("aria-pressed"), "true");
+    await f.page.waitForFunction(
+      () =>
+        document
+          .querySelector("section.map")
+          ?.getAttribute("data-prices-shown")
+          ?.includes("1 VOCE"),
+      { timeout: 30000 },
+    );
+    assert.match(
+      await f.page.getByTestId("map-status").innerText(),
+      /3 bar su 4 qui hanno un prezzo/,
+    );
+    assert.match(
+      await f.page.locator(".mobile-menu-map-note").innerText(),
+      /voci di menu verificate/,
+    );
+    await f.page.locator(".map__list").click();
+    const row = f.page.getByRole("link", { name: /Locale da menu/ });
+    await row.waitFor();
+    assert.match(await row.innerText(), /1 voce menu[\s\S]*Dal menu del locale/);
+    await row.click();
+    const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
+    await menu.waitFor();
+    assert.match(await menu.innerText(), /Signature senza categoria[\s\S]*7,50\s*€/);
+    assert.ok(await menu.locator('a[href="https://official.fixture.test/menu"]').count());
+    await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
+    await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    await f.page.waitForFunction(
+      () =>
+        !document
+          .querySelector("section.map")
+          ?.getAttribute("data-prices-shown")
+          ?.includes("1 VOCE"),
+      { timeout: 30000 },
+    );
+    assert.ok(options.cellRequests.some((request) => request.categories.join(",") === "spritz"));
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
   } finally {

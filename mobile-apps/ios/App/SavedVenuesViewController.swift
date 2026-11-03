@@ -4,6 +4,8 @@ import UIKit
 final class SavedVenuesViewController: UITableViewController {
     private let store: SavedVenueStore
     private let drinkStore: SavedDrinkStore
+    private let unifiedDrinks: Bool
+    private var savedDrinkFilter: DrinkCategory?
     private let client: FavouriteComparisonServing
     private let activityCheck: (() -> Bool)?
     private let onOpen: (URL) -> Void
@@ -13,7 +15,7 @@ final class SavedVenuesViewController: UITableViewController {
     private var drinkRows: [SavedDrinkRow] = []
     private var drinksFailed = false
     private let kindControl = UISegmentedControl(items: ["Locali", "Drink"])
-    private var showingDrinks: Bool { kindControl.selectedSegmentIndex == 1 }
+    private var showingDrinks: Bool { unifiedDrinks || kindControl.selectedSegmentIndex == 1 }
     private var snapshot: FavouriteComparisonSnapshot?
     private var request: RecommendationRequest?
     private var generation = UUID()
@@ -30,9 +32,10 @@ final class SavedVenuesViewController: UITableViewController {
     private let statusLabel = UILabel()
     private lazy var refreshButton = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
 
-    init(store: SavedVenueStore, drinkStore: SavedDrinkStore = SavedDrinkStore(), client: FavouriteComparisonServing = FavouriteComparisonClient(),
+    init(store: SavedVenueStore, drinkStore: SavedDrinkStore? = nil, client: FavouriteComparisonServing = FavouriteComparisonClient(),
          activityCheck: (() -> Bool)? = nil, onOpen: @escaping (URL) -> Void) {
-        self.store = store; self.drinkStore = drinkStore; self.client = client; self.activityCheck = activityCheck; self.onOpen = onOpen
+        self.store = store; self.drinkStore = drinkStore ?? SavedDrinkStore(); self.unifiedDrinks = drinkStore != nil
+        self.client = client; self.activityCheck = activityCheck; self.onOpen = onOpen
         super.init(style: .insetGrouped)
         let center = NotificationCenter.default
         for name in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
@@ -61,7 +64,8 @@ final class SavedVenuesViewController: UITableViewController {
         editButtonItem.title = "Rimuovi"
         editButtonItem.accessibilityLabel = "Rimuovi preferiti"
         editButtonItem.accessibilityIdentifier = "savedVenues.edit"
-        kindControl.selectedSegmentIndex = 0
+        kindControl.selectedSegmentIndex = unifiedDrinks ? 1 : 0
+        kindControl.isHidden = unifiedDrinks
         kindControl.accessibilityIdentifier = "favorites.kind"
         kindControl.addTarget(self, action: #selector(kindChanged), for: .valueChanged)
         kindControl.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
@@ -89,7 +93,7 @@ final class SavedVenuesViewController: UITableViewController {
         heading.adjustsFontForContentSizeCategory = true
         heading.accessibilityTraits = .header
         let introduction = UILabel()
-        introduction.text = "Locali e drink salvati solo in questa app. I prezzi si aggiornano da internet."
+        introduction.text = unifiedDrinks ? "Salva un drink in un locale. Confronta i prezzi tra i preferiti; i dati restano su questo dispositivo." : "Locali e drink salvati solo in questa app. I prezzi si aggiornano da internet."
         introduction.font = .preferredFont(forTextStyle: .subheadline)
         introduction.textColor = NativeAppearance.muted
         introduction.numberOfLines = 0
@@ -188,24 +192,25 @@ final class SavedVenuesViewController: UITableViewController {
         guard isViewLoaded else { return }
         rows = FavouriteComparisonRow.sorted(saved: venues, snapshot: snapshot, drink: drink.code, band: band)
         drinkRows = SavedDrinkRow.rows(drinks, snapshot: snapshot)
-        drinkButton.isHidden = showingDrinks; bandControl.isHidden = showingDrinks
+        if unifiedDrinks, let savedDrinkFilter { drinkRows.removeAll { $0.saved.drink != savedDrinkFilter.code } }
+        drinkButton.isHidden = showingDrinks && !unifiedDrinks; bandControl.isHidden = showingDrinks
         var picker = NativeAppearance.button(traits: traitCollection)
         picker.baseBackgroundColor = NativeAppearance.surface
         picker.background.strokeColor = NativeAppearance.line
         picker.background.strokeWidth = 1
-        picker.title = "Confronta: \(drink.name)"
+        picker.title = unifiedDrinks ? "Confronta: \(savedDrinkFilter?.name ?? "Tutti i drink")" : "Confronta: \(drink.name)"
         picker.image = UIImage(systemName: "chevron.down")
         picker.imagePlacement = .trailing; picker.imagePadding = 8
         picker.titleLineBreakMode = .byWordWrapping
         drinkButton.configuration = picker
         drinkButton.titleLabel?.numberOfLines = 0
         drinkButton.titleLabel?.adjustsFontForContentSizeCategory = true
-        drinkButton.accessibilityLabel = "Drink da confrontare: \(drink.name)"
-        drinkButton.menu = UIMenu(children: DrinkCategory.all.map { category in
-            UIAction(title: category.name, state: category.code == drink.code ? .on : .off) { [weak self] _ in
-                self?.selectDrink(category.code)
-            }
-        })
+        drinkButton.accessibilityLabel = "Drink da confrontare: \(unifiedDrinks ? savedDrinkFilter?.name ?? "Tutti i drink" : drink.name)"
+        let allAction = UIAction(title: "Tutti i drink", state: savedDrinkFilter == nil ? .on : .off) { [weak self] _ in self?.selectDrink("all") }
+        let categories = DrinkCategory.all.map { category in
+            UIAction(title: category.name, state: (unifiedDrinks ? savedDrinkFilter?.code : drink.code) == category.code ? .on : .off) { [weak self] _ in self?.selectDrink(category.code) }
+        }
+        drinkButton.menu = UIMenu(children: unifiedDrinks ? [allAction] + categories : categories)
         let failed = showingDrinks ? drinksFailed : storeFailed
         let empty = showingDrinks ? drinks.isEmpty : venues.isEmpty
         editButtonItem.isEnabled = !empty && !failed
@@ -217,7 +222,7 @@ final class SavedVenuesViewController: UITableViewController {
             statusLabel.text = "Non riesco a leggere i preferiti. I dati non sono stati modificati. Riprova."
             statusLabel.accessibilityIdentifier = "favorites.unavailable"
         } else if empty {
-            statusLabel.text = showingDrinks ? "Non hai ancora drink salvati. Apri un locale con un prezzo visibile e scegli Salva drink dalla barra in basso." : "Non hai ancora preferiti. Apri un locale nella mappa e tocca Salva nei preferiti."
+            statusLabel.text = showingDrinks ? "Non hai ancora drink salvati. Apri un locale sulla mappa e scegli un drink con Salva nei preferiti." : "Non hai ancora preferiti. Apri un locale nella mappa e tocca Salva nei preferiti."
             statusLabel.accessibilityIdentifier = "favorites.empty"
         } else if busy {
             statusLabel.text = "Caricamento dei prezzi segnalati…"
@@ -233,12 +238,18 @@ final class SavedVenuesViewController: UITableViewController {
     }
 
     func selectDrink(_ code: String) {
-        guard let category = DrinkCategory.all.first(where: { $0.code == code }) else { return }
-        drink = category; render()
+        if unifiedDrinks {
+            guard code == "all" || DrinkCategory.all.contains(where: { $0.code == code }) else { return }
+            savedDrinkFilter = DrinkCategory.all.first { $0.code == code }
+        } else {
+            guard let category = DrinkCategory.all.first(where: { $0.code == code }) else { return }
+            drink = category
+        }
+        render()
     }
 
     func selectSavedDrinks(_ selected: Bool) {
-        guard showingDrinks != selected else { return }
+        guard !unifiedDrinks, showingDrinks != selected else { return }
         kindControl.selectedSegmentIndex = selected ? 1 : 0
         setEditing(false, animated: false)
         retire(); reloadVenues(); refresh()

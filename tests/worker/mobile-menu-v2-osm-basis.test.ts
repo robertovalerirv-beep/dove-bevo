@@ -1,8 +1,5 @@
-import { createHash } from "node:crypto";
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-
-const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 
 describe("migration 0012: app venue OSM evidence", () => {
   it("preserves the registry indexes and accepts only the stable OSM node basis", async () => {
@@ -14,7 +11,7 @@ describe("migration 0012: app venue OSM evidence", () => {
       "mobile_menu_v2_venues_cell",
     ]);
 
-    const fingerprint = digest("migration-0012-owner-fixture");
+    const fingerprint = "a".repeat(64);
     const insert = env.DB.prepare(
       `INSERT INTO mobile_menu_v2_venues
        (venue_key, cell, name, kind, lat, lon, address, city, country,
@@ -35,9 +32,9 @@ describe("migration 0012: app venue OSM evidence", () => {
       "IT",
       "owner_verified",
       "https://example.org/location",
-      digest("owner-page-fixture"),
+      "b".repeat(64),
       "https://www.openstreetmap.org/node/1",
-      digest("osm-node-fixture"),
+      "c".repeat(64),
       "osm_node_v1",
       fingerprint,
       "2026-11-03",
@@ -50,7 +47,7 @@ describe("migration 0012: app venue OSM evidence", () => {
     expect(stored?.identity_geo_hash_basis).toBe("osm_node_v1");
 
     const invalid = [...values];
-    const invalidFingerprint = digest("migration-0012-invalid-fixture");
+    const invalidFingerprint = "d".repeat(64);
     invalid[0] = `m${invalidFingerprint.slice(0, 24)}`;
     invalid[14] = "unreviewed_basis";
     invalid[15] = invalidFingerprint;

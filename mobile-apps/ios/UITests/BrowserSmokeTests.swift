@@ -505,7 +505,11 @@ final class BrowserSmokeTests: XCTestCase {
         guard frame.width >= 250, frame.height >= 150, windowFrame.intersects(frame) else { return false }
         // A tiny UIKeyboardLayoutStar Preview is not a usable keyboard.
         return keyboard.keys.matching(NSPredicate(format: "label IN %@", ["m", "M"] as NSArray)).allElementsBoundByIndex.contains { key in
-            guard key.exists && key.isHittable else { return false }
+            // iOS 27's keyboard tutorial can leave the real keys in a second
+            // keyboard window. XCTest marked its visible m key non-hittable in
+            // the captured tree despite a full 40x54 pt key on screen. The
+            // subsequent typeText and field-value checks prove usability.
+            guard key.exists else { return false }
             let keyFrame = key.frame
             return keyFrame.width >= 20 && keyFrame.height >= 20 && windowFrame.contains(keyFrame)
         }

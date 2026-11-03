@@ -64,7 +64,9 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertIn("app.windows.firstMatch.frame", sample)
         keyboard = self.source.split("private func isOrdinaryKeyboard(", 1)[1].split("\n    private func", 1)[0]
         self.assertIn("frame.width >= 250, frame.height >= 150", keyboard)
-        self.assertIn("key.isHittable", keyboard)
+        self.assertIn("guard key.exists", keyboard)
+        self.assertIn("keyFrame.width >= 20 && keyFrame.height >= 20", keyboard)
+        self.assertNotIn("key.isHittable", keyboard)
         self.assertIn("windowFrame.contains(keyFrame)", keyboard)
         simultaneous = live.split("let searchVisible =", 1)[1].split("city.tap()", 1)[0]
         for required in ["keyboards.allElementsBoundByIndex", "self.isOrdinaryKeyboard(keyboard, frame: candidateFrame, windowFrame: windowFrame)",

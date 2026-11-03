@@ -624,6 +624,20 @@ test("owner-verified Italian venue shows menu without unsupported public contrib
   }
 });
 
+test("legacy add-price search excludes m venues while existing n venues remain selectable", async () => {
+  const f = await fixture();
+  try {
+    await f.page.evaluate(() => window.sheetFixture.price(null, false));
+    const search = f.page.locator('input[type="search"]');
+    await search.fill("Locale solo app");
+    assert.equal(await f.page.getByRole("button", { name: /Locale solo app/ }).count(), 0);
+    await search.fill("Locale di prova");
+    await f.page.getByRole("button", { name: /Locale di prova <strong>/ }).waitFor();
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
 test("legacy venue opens while v2 menu hangs, but an m venue times out to retry", async () => {
   const f = await fixture({ menuHang: true });
   try {

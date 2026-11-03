@@ -183,7 +183,7 @@
     },
     {
       "amount_minor": 700,
-      "category": null,
+      "category": "negroni",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -567,7 +567,7 @@
     },
     {
       "amount_minor": 900,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -583,7 +583,7 @@
     },
     {
       "amount_minor": 900,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -599,7 +599,7 @@
     },
     {
       "amount_minor": 650,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -615,7 +615,7 @@
     },
     {
       "amount_minor": 850,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -631,7 +631,7 @@
     },
     {
       "amount_minor": 850,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -647,7 +647,7 @@
     },
     {
       "amount_minor": 900,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -663,7 +663,7 @@
     },
     {
       "amount_minor": 900,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -679,7 +679,7 @@
     },
     {
       "amount_minor": 1100,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -695,7 +695,7 @@
     },
     {
       "amount_minor": 850,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -711,7 +711,7 @@
     },
     {
       "amount_minor": 900,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -727,7 +727,7 @@
     },
     {
       "amount_minor": 900,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -743,7 +743,7 @@
     },
     {
       "amount_minor": 950,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -759,7 +759,7 @@
     },
     {
       "amount_minor": 850,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -775,7 +775,7 @@
     },
     {
       "amount_minor": 900,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -791,7 +791,7 @@
     },
     {
       "amount_minor": 950,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -807,7 +807,7 @@
     },
     {
       "amount_minor": 1000,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -823,7 +823,7 @@
     },
     {
       "amount_minor": 900,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -839,7 +839,7 @@
     },
     {
       "amount_minor": 1000,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",
@@ -855,7 +855,7 @@
     },
     {
       "amount_minor": 950,
-      "category": null,
+      "category": "gin_tonic",
       "cell": "u0pf9",
       "condition_text": null,
       "currency": "EUR",

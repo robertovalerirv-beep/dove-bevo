@@ -5,7 +5,7 @@ namespace DoveBevo.Windows;
 
 internal sealed record Bookmark(string VenueKey, string VenueName, string DrinkName, string Url)
 {
-    public string Display => $"{DrinkName} · {VenueName}";
+    public string Display => $"{DrinkName}{(Url.EndsWith("&hh=1", StringComparison.Ordinal) ? " · Happy hour" : "")} · {VenueName}";
 }
 
 internal sealed class BookmarkStore
@@ -14,11 +14,11 @@ internal sealed class BookmarkStore
     private List<Bookmark> items = [];
     private bool writable = true;
 
-    public BookmarkStore()
+    public BookmarkStore(string? fileOverride = null)
     {
         var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "DoveBevo", "Windows");
-        file = Path.Combine(root, "favourite-drinks-v1.json");
+        file = fileOverride ?? Path.Combine(root, "favourite-drinks-v1.json");
         if (!File.Exists(file)) return;
         try
         {
@@ -35,8 +35,7 @@ internal sealed class BookmarkStore
     public bool Add(Bookmark item)
     {
         if (!writable || !IsValid(item) || items.Count >= 200
-            || items.Any(existing => existing.VenueKey == item.VenueKey
-                && existing.DrinkName == item.DrinkName))
+            || items.Any(existing => existing.Url == item.Url))
             return false;
         var next = new List<Bookmark>(items) { item };
         Persist(next);

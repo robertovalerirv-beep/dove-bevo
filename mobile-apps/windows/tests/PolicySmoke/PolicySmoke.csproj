@@ -8,5 +8,6 @@
   <ItemGroup>
     <Compile Include="../../NavigationPolicy.cs" Link="NavigationPolicy.cs" />
     <Compile Include="../../RecommendationClient.cs" Link="RecommendationClient.cs" />
+    <Compile Include="../../BookmarkStore.cs" Link="BookmarkStore.cs" />
   </ItemGroup>
 </Project>

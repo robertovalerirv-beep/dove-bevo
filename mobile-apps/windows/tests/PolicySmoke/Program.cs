@@ -61,6 +61,27 @@ Require(!NavigationPolicy.TryFocusedVenue(
     "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", "spritz", 2, out _),
     "invalid favourite hour accepted");
 
+var storeFile = Path.Combine("mobile-apps", "windows", "out", $"bookmark-smoke-{Guid.NewGuid():N}.json");
+try
+{
+    var store = new BookmarkStore(storeFile);
+    var regular = new Bookmark("n123", "Test Bar", "Spritz", focusedItalian!.AbsoluteUri);
+    Require(NavigationPolicy.TryFocusedVenue(
+        "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", "spritz", 1, out var focusedHappyHour),
+        "happy hour link was not created");
+    var happyHour = new Bookmark("n123", "Test Bar", "Spritz", focusedHappyHour!.AbsoluteUri);
+    Require(store.Add(regular) && store.Add(happyHour) && !store.Add(regular),
+        "favourites must separate regular and happy-hour offers without duplicating either");
+    var reopened = new BookmarkStore(storeFile);
+    Require(reopened.Items.Count == 2 && reopened.Items.Any(item => item.Display.Contains("Happy hour")),
+        "favourite offers were not retained distinctly");
+}
+finally
+{
+    if (File.Exists(storeFile)) File.Delete(storeFile);
+    if (File.Exists(storeFile + ".new")) File.Delete(storeFile + ".new");
+}
+
 var emailLinks = new[]
 {
     ("mailto:dovebevo@gmail.com", true),
@@ -88,7 +109,7 @@ ExpectInvalid(() => RecommendationClient.Parse(
     Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { venue_key = "n123", drinks = duplicate })), "n123"));
 ExpectInvalid(() => RecommendationClient.Parse(payload, "n124"));
 
-Console.WriteLine("Windows policy: 18 origin/venue/endpoint, 4 focus, 6 email, and 3 vote-schema cases passed.");
+Console.WriteLine("Windows policy: 18 origin/venue/endpoint, 4 focus, 1 bookmark persistence, 6 email, and 3 vote-schema cases passed.");
 
 static void Require(bool condition, string message)
 {

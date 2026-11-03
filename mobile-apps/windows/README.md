@@ -8,7 +8,8 @@ support email handoff to the default mail app,
 Scopri access to the app-only Europe map, shared drink recommendations for
 supported Italian venues, and private favourite drinks saved with the venue's
 existing name. A favourite stores a validated app link that reopens the venue
-with that drink and time band selected. It stays in this PC's local application
+with that drink and time band selected. Regular and happy-hour offers can both
+be kept for the same drink and venue. Each favourite stays in this PC's local application
 data and requires internet to see current prices. Saving a price for everyone remains the site's
 orange contribution action; saving a private favourite does not publish a
 price.
@@ -34,7 +35,7 @@ node --check mobile-apps/windows/VenueCapture.js
 node --test mobile-apps/windows/tests/search-click.test.mjs
 node --test mobile-apps/windows/tests/venue-capture.test.mjs
 dotnet build mobile-apps/windows/DoveBevo.Windows.csproj -c Release
-& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.0.7'
+& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.0.8'
 ```
 
 The example uses the reserved Partner Center product **9P6XDNNQJ74N**, with

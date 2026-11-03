@@ -134,8 +134,7 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         identity_url: "https://official.fixture.test/",
         identity_kind: "owner_verified",
         matching_offer_count: categories.length ? 1 : 1,
-        sample_offers:
-          !options.uncategorized && categories.includes("spritz") ? [offer] : [],
+        sample_offers: !options.uncategorized && categories.includes("spritz") ? [offer] : [],
         fee_coverage: { status: "unknown", source: null },
       };
       return route.fulfill({
@@ -518,10 +517,17 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     await all.click();
     assert.equal(await all.getAttribute("aria-pressed"), "true");
     await f.page.waitForFunction(
-      () => document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
+      () =>
+        document
+          .querySelector("section.map")
+          ?.getAttribute("data-prices-shown")
+          ?.includes("1 VOCE"),
       { timeout: 30000 },
     );
-    assert.match(await f.page.locator(".mobile-menu-map-note").innerText(), /voci di menu verificate/);
+    assert.match(
+      await f.page.locator(".mobile-menu-map-note").innerText(),
+      /voci di menu verificate/,
+    );
     await f.page.locator(".map__list").click();
     const row = f.page.getByRole("link", { name: /Locale da menu/ });
     await row.waitFor();
@@ -534,7 +540,11 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     await f.page.waitForFunction(
-      () => !document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
+      () =>
+        !document
+          .querySelector("section.map")
+          ?.getAttribute("data-prices-shown")
+          ?.includes("1 VOCE"),
       { timeout: 30000 },
     );
     assert.ok(options.cellRequests.some((request) => request.categories.join(",") === "spritz"));

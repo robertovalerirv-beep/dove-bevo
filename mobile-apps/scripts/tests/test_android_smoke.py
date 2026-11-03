@@ -48,6 +48,14 @@ class Clock:
 
 class AndroidSmokeTests(unittest.TestCase):
 
+    def test_city_result_uses_exact_row_bounds_not_venue_or_clickable_list(self):
+        ui = m.ET.fromstring('''<hierarchy><node class="android.widget.ListView" clickable="true" bounds="[42,695][1042,2133]">
+            <node class="android.view.View" text="Milano Città · 682 bar" clickable="false" bounds="[42,695][1042,878]"/>
+            <node class="android.view.View" text="Milano Londra 69 Bar · Seregno" clickable="false" bounds="[42,1411][1042,1595]"/>
+        </node></hierarchy>''')
+        self.assertEqual(m.city_result(ui, 'Milano').get('bounds'), '[42,695][1042,878]')
+        self.assertIsNone(m.city_result(ui, 'Torino'))
+
     def setUp(self):
         base.mkdir(parents=True, exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory(dir=base)

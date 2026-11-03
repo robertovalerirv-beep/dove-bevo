@@ -510,16 +510,15 @@ def map_ready(ui=None):
 
 
 def city_result(ui, name):
-    candidates = []
+    # WebView exposes the containing result list as clickable, while each
+    # actual row has its own bounds but clickable=false. Match the city's row
+    # itself so a venue with the city in its name cannot receive the tap.
+    city = re.compile(rf"^{re.escape(name)}\s+Città\s*·\s*[1-9][0-9]*\s+bar$", re.I)
     for node in ui.iter("node"):
-        descendants = list(node.iter("node"))
-        if node.get("clickable") != "true" or any(n.get("class") == "android.widget.EditText" for n in descendants):
-            continue
-        labels = " ".join(value for n in descendants
-                          for value in (n.get("text", ""), n.get("content-desc", ""))).casefold()
-        if name.casefold() in labels and "città ·" in labels:
-            candidates.append((len(descendants), node))
-    return min(candidates, key=lambda entry: entry[0])[1] if candidates else None
+        if any(city.fullmatch(value.strip()) for value in
+               (node.get("text", ""), node.get("content-desc", ""))):
+            return node
+    return None
 
 
 def menu_venue_row(ui):

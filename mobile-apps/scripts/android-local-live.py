@@ -120,8 +120,10 @@ def run(adb_binary, apk_sha, apk_path):
             if node.get("class") == "android.widget.EditText" and node.get("enabled") == "true"), None), 20)
         smoke.tap(edit)
         adb("shell", "input", "text", "Milano")
-        smoke.tap(smoke.wait_for("actual Milano city result",
-             lambda: smoke.city_result(tree(), "Milano"), 30))
+        city = smoke.wait_for("actual Milano city result",
+             lambda: smoke.city_result(tree(), "Milano"), 30)
+        smoke.screenshot("02-search-results.png")
+        smoke.tap(city)
         stage = "map"
         smoke.wait_for("live Milano map", smoke.map_ready, 45)
         smoke.screenshot("02-milano-map.png")

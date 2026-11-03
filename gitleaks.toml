@@ -3,12 +3,16 @@ title = "Dove Bevo secret scanning"
 [extend]
 useDefault = true
 
-# The owner-verified venue key is a public SHA-derived venue identifier, not a credential.
-# Scope this exception to its exact value and manifest, and retain every default rule.
+# The m-key is a public SHA-derived venue identifier, not a credential.
+# Historical manifest paths remain in the PR commit range and must be exact.
 [[allowlists]]
-description = "Dambo public owner venue identifier in its pinned menu manifest"
+description = "Dambo public owner venue identifier in pinned manifests"
 targetRules = ["generic-api-key"]
 condition = "AND"
 regexTarget = "secret"
-paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/c0fb0a3789aaa10bf0d8090c9448201e1d93a7cc606151fc2dbbdc4c6a8b220a\.json$''']
+paths = [
+  '''^mobile-apps/data/mobile-menu-v2-seeds/351634d027e740a1f8840697fb58187e1b4aa3ef6d09f8bf7e2badfc6bd163c5\.json$''',
+  '''^mobile-apps/data/mobile-menu-v2-seeds/c0fb0a3789aaa10bf0d8090c9448201e1d93a7cc606151fc2dbbdc4c6a8b220a\.json$''',
+  '''^mobile-apps/data/mobile-menu-v2-seeds/820ad99547035db65d951401cc4a87d6db319488febaeb3df0e54f51571dd4a8\.json$'''
+]
 regexes = ['''^m4900240db731f0b53e2b7bf6$''']

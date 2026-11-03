@@ -6,7 +6,7 @@ final class PrivacyViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "Privacy"
-        view.backgroundColor = NativeAppearance.surface
+        view.backgroundColor = NativeAppearance.canvas
         view.tintColor = NativeAppearance.ink
         NativeAppearance.configure(navigationController)
 

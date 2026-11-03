@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Venue } from "@site/app/lib/data";
+import { bestPrice, loadCell, type Venue } from "@site/app/lib/data";
 
 const Key = z.string().regex(/^(?:[nwru][1-9]\d{0,14}|m[0-9a-f]{24})$/);
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
@@ -175,4 +175,157 @@ export function menuMoney(amount: number, currency: string, exponent: number): s
   } catch {
     return `${value.toFixed(exponent)} ${currency}`;
   }
+}
+
+const Category = z.string().regex(/^[a-z_]{2,32}$/);
+const CellVenue = VenueSchema.extend({
+  identity_url: Https,
+  identity_kind: z.enum(["osm", "owner_verified"]),
+  matching_offer_count: z.number().int().min(0),
+  sample_offers: z.array(Offer).max(100),
+  fee_coverage: FeeCoverage,
+});
+const CellPageSchema = z.object({
+  schema_version: z.literal(2),
+  coverage: z.object({
+    complete: z.literal(false),
+    basis: z.literal("verified_source_items_only"),
+  }),
+  price_scope: z.literal("menu_item_only"),
+  cell: Cell,
+  category: Category.nullable(),
+  categories: z.array(Category).max(9),
+  venues: z.array(CellVenue).max(50),
+  next_after: Key.nullable(),
+  unresolved_venues: z.number().int().min(0),
+});
+type CellVenue = z.infer<typeof CellVenue>;
+type WithMenu = Venue & { mobileMenuSamples?: MenuOffer[] };
+
+async function cellPage(
+  cell: string,
+  categories: readonly string[],
+  after: string | null,
+  signal: AbortSignal,
+): Promise<z.infer<typeof CellPageSchema> | null> {
+  const params = new URLSearchParams();
+  if (categories.length) params.set("categories", categories.join(","));
+  if (after) params.set("after", after);
+  const response = await fetch(`/api/mobile/v2/menu/cells/${cell}?${params}`, {
+    cache: "no-store",
+    signal,
+  });
+  if (response.status === 404) return null;
+  const page = CellPageSchema.parse(await json(response));
+  if (
+    page.cell !== cell ||
+    page.categories.join(",") !== categories.join(",") ||
+    (page.next_after !== null &&
+      (page.next_after === after || (after !== null && page.next_after <= after)))
+  )
+    throw new Error("Menu cell identity mismatch");
+  if (
+    page.venues.some(
+      (venue) =>
+        venue.cell !== cell ||
+        venue.sample_offers.some((offer) => !categories.includes(offer.category ?? "")),
+    )
+  )
+    throw new Error("Menu cell offers mismatch");
+  return page;
+}
+
+async function menuCellVenues(
+  cell: string,
+  categories: readonly string[],
+): Promise<CellVenue[] | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const venues = new Map<string, CellVenue>();
+    let after: string | null = null;
+    for (let pageNumber = 0; pageNumber < 20; pageNumber++) {
+      const page = await cellPage(cell, categories, after, controller.signal);
+      if (!page) return null;
+      for (const venue of page.venues) {
+        if (venues.has(venue.key)) throw new Error("Duplicate menu venue");
+        venues.set(venue.key, venue);
+      }
+      if (!page.next_after) return [...venues.values()];
+      after = page.next_after;
+    }
+    throw new Error("Menu cell pagination limit");
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
+}
+
+const mobileCellCache = new Map<string, Promise<Venue[]>>();
+/** App map adapter: keeps source-backed menu samples separate from customer PriceRows. */
+export function loadMobileCell(cell: string, selectedDrinks: readonly string[]): Promise<Venue[]> {
+  if (!Cell.safeParse(cell).success) return Promise.reject(new Error("Invalid cell"));
+  const categories = [...new Set(selectedDrinks)].sort();
+  if (categories.length > 9 || categories.some((code) => !Category.safeParse(code).success))
+    return Promise.reject(new Error("Invalid selected drinks"));
+  const cacheKey = `${cell}|${categories.join(",")}`;
+  let request = mobileCellCache.get(cacheKey);
+  if (!request) {
+    request = (async () => {
+      const [legacy, identity, sampled] = await Promise.allSettled([
+        loadCell(cell),
+        menuCellVenues(cell, []),
+        menuCellVenues(cell, categories),
+      ]);
+      if (legacy.status === "rejected") throw legacy.reason;
+      if (identity.status === "rejected") throw identity.reason;
+      if (sampled.status === "rejected") throw sampled.reason;
+      const all = identity.value ?? [];
+      const filtered = sampled.value ?? [];
+      const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
+      const merged = new Map<string, Venue>(legacy.value.map((venue) => [venue.key, { ...venue }]));
+      for (const row of [
+        ...new Map([...all, ...filtered].map((venue) => [venue.key, venue])).values(),
+      ]) {
+        if (row.country !== "IT") continue;
+        const known = merged.get(row.key);
+        if (!known && (row.identity_kind !== "owner_verified" || !row.key.startsWith("m")))
+          continue;
+        const venue = known ?? mobileMenuVenue(row);
+        merged.set(row.key, {
+          ...venue,
+          mobileMenuSamples: samples.get(row.key) ?? [],
+        } as WithMenu);
+      }
+      return [...merged.values()];
+    })();
+    request.catch(() => mobileCellCache.delete(cacheKey));
+    mobileCellCache.set(cacheKey, request);
+  }
+  return request;
+}
+
+export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string | null {
+  const samples = (venue as WithMenu).mobileMenuSamples ?? [];
+  for (const category of drinks) {
+    const regular = samples.find(
+      (offer) => offer.category === category && offer.context.kind === "regular",
+    );
+    if (regular)
+      return `${menuMoney(regular.amount_minor, regular.currency, regular.currency_exponent)} MENU`;
+  }
+  return null;
+}
+
+export function mobileCoverage(venues: Venue[], drinks: readonly string[]) {
+  return {
+    withPrice: venues.filter((venue) => bestPrice(venue, drinks) || mobileMenuPin(venue, drinks))
+      .length,
+    total: venues.length,
+  };
+}
+
+export function invalidateMobileCell(cell: string): void {
+  for (const key of mobileCellCache.keys())
+    if (key.startsWith(`${cell}|`)) mobileCellCache.delete(key);
 }

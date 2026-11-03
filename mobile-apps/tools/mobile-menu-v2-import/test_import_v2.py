@@ -414,5 +414,24 @@ class ImportTests(unittest.TestCase):
         self.assertFalse(blocked["complete"])
         self.assertEqual(blocked["errors"][0]["code"],"possible duplicate static venue")
 
+    def test_owner_address_visible_accepts_only_comma_before_same_civic(self):
+        address="Via Alfonso Bonafous 2"
+        self.assertTrue(core.owner_address_visible(address,"via alfonso bonafous 2, 10123 torino"))
+        self.assertTrue(core.owner_address_visible(address,"via alfonso bonafous, 2, 10123 torino"))
+        for wrong in (
+            "via alfonso bonafous, 20, 10123 torino",
+            "via alfonso bonafous 20, 10123 torino",
+            "via alfonso bonafous 2/a, 10123 torino",
+            "via alfonso bonafous 2-4, 10123 torino",
+            "via alfonso bonafous 2 - 4, 10123 torino",
+            "via alfonso bonafous, 2/a, 10123 torino",
+            "via alfonso bonafusi, 2, 10123 torino",
+            "via alfonso bonafous. 2, 10123 torino",
+        ):
+            self.assertFalse(core.owner_address_visible(address,wrong),wrong)
+        # The m-key and exact OSM address normalization remain unchanged.
+        self.assertEqual(core.normalized_address(address),"via alfonso bonafous 2")
+        self.assertNotEqual(core.normalized_address(address),core.normalized_address("Via Alfonso Bonafous, 2"))
+
 if __name__=="__main__":
     unittest.main()

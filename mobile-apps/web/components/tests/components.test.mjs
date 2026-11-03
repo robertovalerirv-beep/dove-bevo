@@ -579,8 +579,8 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
     const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
     await menu.getByText("Spritz <script>").waitFor();
     assert.equal(await menu.locator("script").count(), 0);
-    assert.match(await menu.innerText(), /7,50 €[\s\S]*Solo con: dopo le 18/);
-    assert.match(await menu.innerText(), /Coperto[\s\S]*1,00 € a persona[\s\S]*solo al tavolo/);
+    assert.match(await menu.innerText(), /7,50\s€[\s\S]*Solo con: dopo le 18/);
+    assert.match(await menu.innerText(), /Coperto[\s\S]*1,00\s€ a persona[\s\S]*solo al tavolo/);
     assert.match(
       await menu.innerText(),
       /prezzi del drink indicati nel menu, non il totale pagato/i,

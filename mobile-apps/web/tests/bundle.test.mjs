@@ -126,8 +126,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         cell: "u0nd9",
         name: "Locale da menu",
         kind: 0,
-        lat: 45.4648,
-        lon: 9.191,
+        lat: 45.4695,
+        lon: 9.188,
         address: "Via nuova 1",
         city: "Milano",
         country: "IT",
@@ -172,8 +172,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
             cell: "u0nd9",
             name: "Locale da menu",
             kind: 0,
-            lat: 45.4648,
-            lon: 9.191,
+            lat: 45.4695,
+            lon: 9.188,
             address: "Via nuova 1",
             city: "Milano",
             country: "IT",
@@ -483,6 +483,7 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
   const f = await fixture({ width: 390, height: 844 }, { menu: true });
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.locator(".mobile-menu-map-note").waitFor();
     await f.page.waitForFunction(
       () =>
         document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
@@ -526,6 +527,7 @@ test("v2 outage preserves legacy map and retries the original filter after recov
       exact: true,
     });
     await acqua.check({ force: true });
+    await f.page.locator(".mobile-menu-map-note").waitFor();
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
     );

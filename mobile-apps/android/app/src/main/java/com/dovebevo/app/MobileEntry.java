@@ -22,10 +22,11 @@ final class MobileEntry {
             Map<String,String> query = new HashMap<>();
             for (String part : uri.getRawQuery().split("&", -1)) {
                 String[] pair = part.split("=", -1);
-                if (pair.length != 2 || !(pair[0].equals("path") || pair[0].equals("c") || pair[0].equals("drink") || pair[0].equals("hh"))
+                if (pair.length != 2 || !(pair[0].equals("path") || pair[0].equals("c") || pair[0].equals("drink") || pair[0].equals("hh") || pair[0].equals("offer"))
                         || query.put(pair[0], pair[1]) != null) return null;
             }
-            if (!(query.size() == 2 && query.containsKey("path") && query.containsKey("c")) &&
+            boolean offerFocus = query.size() == 3 && uri.getRawQuery().matches("path=%2Fbar%2F(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})&c=[0-9b-hjkmnp-z]{5}&offer=[A-Za-z0-9._:-]{1,128}");
+            if (!offerFocus && !(query.size() == 2 && query.containsKey("path") && query.containsKey("c")) &&
                     !(query.size() == 4 && query.containsKey("path") && query.containsKey("c") &&
                     RecommendationDrink.from(query.get("drink")) != null && ("0".equals(query.get("hh")) || "1".equals(query.get("hh"))))) return null;
             String path = URLDecoder.decode(query.get("path"), StandardCharsets.UTF_8.name());
@@ -72,8 +73,16 @@ final class MobileEntry {
                 if (part.startsWith("hh=")) band = part.substring(3);
             }
             if (drink != null && band != null) result += "&drink=" + drink + "&hh=" + band;
+            String offer = query.substring(query.lastIndexOf("offer=") + 6);
+            if (query.contains("&offer=") && offer.matches("[A-Za-z0-9._:-]{1,128}")) result += "&offer=" + offer;
         }
         return result;
+    }
+
+    static String offerDocument(String venueUrl,String offerId) {
+        String identity=SavedVenueUrl.canonicalize(venueUrl);
+        if(identity==null||offerId==null||!offerId.matches("[A-Za-z0-9._:-]{1,128}"))return null;
+        return venueDocument(identity)+"&offer="+offerId;
     }
 
     static String drinkDocument(String venueUrl, RecommendationDrink drink, int band) {

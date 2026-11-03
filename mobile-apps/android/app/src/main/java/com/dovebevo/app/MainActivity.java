@@ -64,6 +64,11 @@ public final class MainActivity extends ComponentActivity {
     private Button forwardButton;
     private SavedVenuesUi savedVenues;
     private SavedDrinkUi savedDrinks;
+    private SavedMenuOfferStore offerStore;
+    private MenuV2Loader offerVerifier;
+    private MenuV2Loader.Batch offerVerifyBatch;
+    private AlertDialog offerSaveDialog;
+    private long offerSaveGeneration;
     private long drinkCapture;
     private FavoritesScreen favorites;
     private boolean favoritesVisible;
@@ -235,8 +240,10 @@ public final class MainActivity extends ComponentActivity {
         savedVenues = new SavedVenuesUi(this, savedStore,
                 this::eligibleSavedVenue, this::readSavedVenue, this::navigate);
         SavedDrinkStore drinkStore=new SavedDrinkStore(new SavedVenueFile(getFilesDir(),"saved-drinks-v1"));
+        offerStore=new SavedMenuOfferStore(new SavedVenueFile(getFilesDir(),"saved-owner-offers-v1"));
+        offerVerifier=new MenuV2Loader(new MenuV2Prices(),task->new android.os.Handler(android.os.Looper.getMainLooper()).post(task));
         savedDrinks=new SavedDrinkUi(this,drinkStore,this::eligibleSavedVenue,this::readSavedVenue,()->venueCaptureEpoch);
-        favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore);
+        favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore,offerStore);
         content.addView(favorites.view(),new FrameLayout.LayoutParams(-1,-1));favorites.view().setVisibility(View.GONE);
         discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},this::showMap,()->foreground&&!destroyed);
         content.addView(discovery.view(),new FrameLayout.LayoutParams(-1,-1));discovery.view().setVisibility(View.GONE);
@@ -512,7 +519,7 @@ public final class MainActivity extends ComponentActivity {
         venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
         cancelLocation();disposePopup();
         if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
-        favoritesVisible=true;
+        retireOfferSave();favoritesVisible=true;
         if(website!=null){website.setVisibility(View.GONE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
         errorPanel.setVisibility(View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         progress.setVisibility(View.GONE);favorites.view().setVisibility(View.VISIBLE);favorites.view().bringToFront();favorites.show();updateToolbar();
@@ -557,7 +564,7 @@ public final class MainActivity extends ComponentActivity {
         if(!foreground||destroyed||discovery==null)return;
         discoveryCapture++;venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
         cancelLocation();disposePopup();if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
-        if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}favoritesVisible=false;discoveryVisible=true;
+        retireOfferSave();if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}favoritesVisible=false;discoveryVisible=true;
         if(website!=null){website.setVisibility(View.GONE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
         errorPanel.setVisibility(View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);progress.setVisibility(View.GONE);
         discovery.view().setVisibility(View.VISIBLE);discovery.view().bringToFront();discovery.show(area);updateToolbar();
@@ -618,6 +625,37 @@ public final class MainActivity extends ComponentActivity {
             createWebsite();
             return false;
         }
+    }
+
+    private void beginOfferSave(String raw) {
+        String active=eligibleSavedVenue(),id=OfferSaveCommand.offerId(raw,active);
+        if(active==null||id==null||offerVerifier==null||offerStore==null||offerSaveDialog!=null)return;
+        SavedVenueStore.Venue provisional=SavedVenueStore.reference(active,"Locale "+java.net.URI.create(active).getPath().substring(5));
+        if(provisional==null)return;
+        retireOfferSave();long token=offerSaveGeneration;
+        try{offerVerifyBatch=offerVerifier.load(java.util.Collections.singletonList(provisional),values->{
+            if(token!=offerSaveGeneration||!foreground||destroyed||!active.equals(eligibleSavedVenue()))return;
+            offerVerifyBatch=null;
+            MenuV2Prices.Venue menu=values.get(active);MenuV2Prices.Price verified=null;
+            if(menu!=null)for(MenuV2Prices.Price item:menu.prices)if(id.equals(item.id)&&!item.customer){verified=item;break;}
+            SavedVenueStore.Venue venue=menu==null?null:SavedVenueStore.reference(active,menu.name);
+            SavedMenuOfferStore.Entry saved=SavedMenuOfferStore.verified(venue,verified);
+            if(saved==null){Toast.makeText(this,"Questo drink non e piu disponibile nel menu verificato. Nessun preferito salvato.",Toast.LENGTH_LONG).show();return;}
+            AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Salva nei Preferiti?")
+                .setMessage(saved.name+" - "+saved.venue.label+". Il prezzo si aggiorna online e non viene salvato sul telefono.")
+                .setNegativeButton("Annulla",(d,w)->{}).setPositiveButton("Salva",(d,w)->{
+                    if(token!=offerSaveGeneration||!foreground||destroyed||!active.equals(eligibleSavedVenue()))return;
+                    SavedMenuOfferStore.Result result=offerStore.save(saved);
+                    Toast.makeText(this,result==SavedMenuOfferStore.Result.SAVED?"Drink salvato nei Preferiti.":"Drink non salvato. I preferiti precedenti sono stati mantenuti.",Toast.LENGTH_LONG).show();
+                }).create();
+            offerSaveDialog=dialog;dialog.setOnDismissListener(ignored->{if(offerSaveDialog==dialog)offerSaveDialog=null;});dialog.show();
+        });}
+        catch(IOException unavailable){Toast.makeText(this,"Menu non disponibile. Riprova quando sei online.",Toast.LENGTH_LONG).show();}
+    }
+    private void retireOfferSave(){
+        offerSaveGeneration++;
+        if(offerVerifyBatch!=null){offerVerifyBatch.cancel();offerVerifyBatch=null;}
+        if(offerSaveDialog!=null){AlertDialog old=offerSaveDialog;offerSaveDialog=null;old.dismiss();}
     }
 
     private boolean handleNavigation(String url) {
@@ -834,12 +872,16 @@ public final class MainActivity extends ComponentActivity {
         WebsiteClient(TestLabPolicy policy) { super(policy); }
         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             // Challenge iframes remain browser content; only top-level links open apps.
-            return request.isForMainFrame() && handleNavigation(request.getUrl().toString());
+            if(!request.isForMainFrame())return false;
+            String url=request.getUrl().toString();
+            if(url.contains("save_offer=")){beginOfferSave(url);return true;}
+            return handleNavigation(url);
         }
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
             if (view != website || destroyed) return;
             documentCheckGeneration++;
             venueCaptureEpoch++;
+            retireOfferSave();
             if (url.equals(stoppedUrl)) { view.stopLoading(); return; }
             cancelLocation();
             if (BrowserPolicy.target(url) != BrowserPolicy.Target.INTERNAL) {
@@ -867,6 +909,7 @@ public final class MainActivity extends ComponentActivity {
                     documentCheckGeneration++;
                     if (!"true".equals(result)) { showFailure(); return; }
                     hasUsablePage = true;
+                    view.evaluateJavascript("window.DoveBevoNativeOfferSave=true;window.dispatchEvent(new Event('dovebevo-native-ready'));",null);
                     setLoading(false);
                     errorPanel.setVisibility(View.GONE);
                     view.setVisibility(nativeDestinationVisible()?View.GONE:View.VISIBLE);
@@ -1051,6 +1094,7 @@ public final class MainActivity extends ComponentActivity {
         shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}if(informationDialog!=null){informationDialog.dismiss();informationDialog=null;}
         discoveryCapture++;
         venueCaptureEpoch++;
+        retireOfferSave();
         foreground = false;
         recommendationCapture++; recommendationCapturing = false;
         if (recommendations != null) recommendations.pause();
@@ -1090,6 +1134,7 @@ public final class MainActivity extends ComponentActivity {
         discoveryCapture++;
         venueCaptureEpoch++;
         destroyed = true;
+        retireOfferSave();if(offerVerifier!=null)offerVerifier.close();
         recommendationCapture++; recommendationCapturing = false;
         if (recommendations != null) recommendations.close();
         if(favorites!=null)favorites.close();

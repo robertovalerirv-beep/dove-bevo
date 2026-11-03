@@ -180,7 +180,7 @@ async function fixture(options = {}) {
       const offer = (id, name, amount, context = { kind: "regular", condition: null }) => ({
         id,
         name,
-        category: "spritz",
+        category: options.menuCategory === undefined ? "spritz" : options.menuCategory,
         serving: { label: "Calice", ml: null },
         amount_minor: amount,
         currency: "EUR",
@@ -209,11 +209,20 @@ async function fixture(options = {}) {
           offers: after
             ? [offer("third", "Analcolico", 450)]
             : [
-                offer("first", "Spritz <script>", 750),
-                offer("second", "Spritz serale", 550, {
-                  kind: "conditional",
-                  condition: "dopo le 18",
-                }),
+                offer(
+                  "first",
+                  options.menuCategory === null ? "Cocktail della casa" : "Spritz <script>",
+                  750,
+                ),
+                offer(
+                  "second",
+                  options.menuCategory === null ? "Cocktail serale" : "Spritz serale",
+                  550,
+                  {
+                    kind: "conditional",
+                    condition: "dopo le 18",
+                  },
+                ),
               ],
           next_after: after ? null : "second",
           fees: [
@@ -680,6 +689,51 @@ test("saved owner menu drink matches regular context but never conditional or an
   }
 });
 
+test("exact named favorite reloads its menu page and native save link uses only the live offer id", async () => {
+  const key = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  const f = await fixture({
+    url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&offer=third`,
+  });
+  try {
+    await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    const saved = f.page.getByTestId("saved-exact-offer");
+    await saved.waitFor();
+    assert.match(await saved.innerText(), /Analcolico[\s\S]*Questo drink è nei tuoi preferiti/);
+    assert.equal(await f.page.getByTestId("saved-offer-unavailable").count(), 0);
+    assert.equal(await f.page.getByTestId("saved-menu-offer").count(), 0);
+    assert.equal(await f.page.getByRole("link", { name: "Salva questo drink" }).count(), 0);
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeOfferSave = true;
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
+    });
+    const links = f.page.getByRole("link", { name: "Salva questo drink" });
+    await links.first().waitFor();
+    assert.equal(await links.count(), 3);
+    assert.equal(
+      await saved.getByRole("link", { name: "Salva questo drink" }).getAttribute("href"),
+      `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=third`,
+    );
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("retired exact named favorite shows unavailable without featuring another offer", async () => {
+  const key = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  const f = await fixture({
+    url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&offer=retired`,
+  });
+  try {
+    await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await f.page.getByTestId("saved-offer-unavailable").waitFor();
+    assert.equal(await f.page.getByTestId("saved-exact-offer").count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("source-backed drink menu keeps original item, condition, fee and page boundary visible", async () => {
   const f = await fixture();
   try {
@@ -705,6 +759,31 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
   }
 });
 
+test("uncategorized sourced drinks use neutral venue art and menu prices do not look like deals", async () => {
+  const f = await fixture({ menuCategory: null });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByText("Cocktail della casa").waitFor();
+    const hero = f.page.locator(".mobile-venue__hero--neutral");
+    await hero.waitFor();
+    assert.equal(await hero.locator('img[src="/brand/simbolo.svg"]').count(), 1);
+    assert.equal(await f.page.locator(".mobile-venue__hero figcaption").count(), 0);
+    const first = f.page.locator(".mobile-menu-v2__offer").first();
+    assert.match(
+      await first.innerText(),
+      /Cocktail della casa[\s\S]*Prezzo da menu[\s\S]*7,50\s*€/,
+    );
+    assert.equal(
+      await first
+        .locator(".mobile-menu-v2__amount")
+        .evaluate((element) => getComputedStyle(element).color),
+      "rgb(16, 24, 32)",
+    );
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
 test("owner-verified venue separates cited menu and customer price, and submits an update to the fixture only", async () => {
   const f = await fixture();
   try {
@@ -813,6 +892,40 @@ test("menu loading failure can retry while legacy customer prices remain", async
     assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
     await f.page.getByRole("button", { name: "Riprova menu" }).click();
     await f.page.getByText("Spritz <script>").waitFor();
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("iPhone 16 Plus width keeps venue price actions and footer reachable by scrolling", async () => {
+  const f = await fixture();
+  try {
+    // The embedded web viewport is shorter than the physical display after native chrome.
+    await f.page.setViewportSize({ width: 430, height: 700 });
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const body = f.page.locator(".sheet__body");
+    await f.page.locator("h2.scontrino__name").waitFor();
+    const dimensions = await body.evaluate((element) => ({
+      height: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      scrollWidth: element.scrollWidth,
+      width: element.clientWidth,
+    }));
+    assert.ok(dimensions.scrollHeight > dimensions.height, JSON.stringify(dimensions));
+    assert.ok(dimensions.scrollWidth <= dimensions.width, JSON.stringify(dimensions));
+    await body.hover();
+    await f.page.mouse.wheel(0, 600);
+    await f.page.waitForFunction(() => document.querySelector(".sheet__body")?.scrollTop > 0);
+    const privacy = f.page.getByRole("link", { name: "Privacy", exact: true });
+    await privacy.scrollIntoViewIfNeeded();
+    const footerBox = await privacy.boundingBox();
+    const bodyBox = await body.boundingBox();
+    assert.ok(footerBox && bodyBox && footerBox.y + footerBox.height <= bodyBox.y + bodyBox.height);
+    const addPrice = f.page.getByRole("button", { name: "Aggiungi un prezzo qui", exact: true });
+    await addPrice.scrollIntoViewIfNeeded();
+    const priceBox = await addPrice.boundingBox();
+    assert.ok(priceBox && bodyBox && priceBox.y + priceBox.height <= bodyBox.y + bodyBox.height);
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

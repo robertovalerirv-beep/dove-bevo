@@ -481,11 +481,11 @@ test("orange mobile controls retain readable selected, unselected and focused dr
       assert.ok(contrastRatio(colors.outline, colors.background) >= 4.5, JSON.stringify(colors));
       assert.ok(contrastRatio(colors.outline, "rgb(255, 255, 255)") >= 4.5, JSON.stringify(colors));
     }
-    const primary = await f.page.locator(".bottom .btn--primary").evaluate((button) => ({
+    const primary = await f.page.locator(".mobile-map-actions__toggle").evaluate((button) => ({
       background: getComputedStyle(button).backgroundColor,
       text: getComputedStyle(button).color,
     }));
-    assert.equal(primary.background, "rgb(255, 90, 31)");
+    assert.equal(primary.background, "rgb(16, 24, 32)");
     assert.ok(contrastRatio(primary.text, primary.background) >= 4.5);
     await f.page.screenshot({ path: path.join(output, "orange-map-controls-fixture.png") });
     assert.deepEqual(f.writes, []);
@@ -625,6 +625,94 @@ test("m-key detail outage offers retry instead of saying the venue does not exis
     options.detailUnavailable = false;
     await f.page.getByRole("button", { name: "Riprova", exact: true }).click();
     await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("app map actions reclaim the footer and retain both contribution routes", async () => {
+  const f = await fixture({ width: 430, height: 700 });
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const actions = f.page.getByTestId("mobile-map-actions");
+    const toggle = actions.getByRole("button", { name: "Aggiungi", exact: true });
+    await toggle.waitFor();
+    assert.equal(await f.page.locator(".bottom").isVisible(), false);
+    const map = await f.page.locator("section.map").boundingBox();
+    assert.ok(map && map.height >= 500, JSON.stringify(map));
+    await f.page.getByTestId("map-status").waitFor();
+    const status = await f.page.getByTestId("map-status").boundingBox();
+    const actionBox = await toggle.boundingBox();
+    const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
+    assert.ok(status && actionBox && locate);
+    assert.ok(actionBox.y + actionBox.height <= status.y, "Add must clear coverage card");
+    assert.ok(locate.y + locate.height <= actionBox.y, "Add must clear locate control");
+    await toggle.click();
+    await f.page.screenshot({
+      path: path.join(output, "app-map-actions-iphone16plus-fixture.png"),
+    });
+    const choices = actions.getByRole("group", { name: "Aggiungi" });
+    assert.equal(await choices.getByRole("button").count(), 2);
+    for (const width of [320, 390, 430]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const addVenue = await choices
+        .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+        .boundingBox();
+      const locateButton = await f.page.locator(".top__row > .icon-btn").boundingBox();
+      assert.ok(addVenue && locateButton);
+      assert.ok(
+        addVenue.x + addVenue.width <= locateButton.x,
+        `Expanded Add menu must clear locate control at ${width}px`,
+      );
+      const hit = await f.page.evaluate(
+        ({ x, y }) =>
+          document.elementFromPoint(x, y)?.closest(".mobile-map-actions__menu > .btn")?.textContent,
+        { x: addVenue.x + addVenue.width - 8, y: addVenue.y + addVenue.height / 2 },
+      );
+      assert.match(hit ?? "", /Aggiungi locale mancante/);
+    }
+    await f.page.setViewportSize({ width: 430, height: 700 });
+    await f.page.keyboard.press("Escape");
+    assert.equal(await toggle.getAttribute("aria-expanded"), "false");
+    assert.equal(await toggle.evaluate((element) => element === document.activeElement), true);
+    await f.page.keyboard.press("Enter");
+    assert.equal(await toggle.getAttribute("aria-expanded"), "true");
+    await f.page.keyboard.press("Tab");
+    assert.equal(
+      await choices
+        .getByRole("button", { name: "Aggiungi prezzo", exact: true })
+        .evaluate((element) => element === document.activeElement),
+      true,
+    );
+    await f.page.keyboard.press("Tab");
+    assert.equal(
+      await choices
+        .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+        .evaluate((element) => element === document.activeElement),
+      true,
+    );
+    await f.page.keyboard.press("Escape");
+    assert.equal(await toggle.evaluate((element) => element === document.activeElement), true);
+    await toggle.click();
+    await choices.getByRole("button", { name: "Aggiungi prezzo", exact: true }).click();
+    const priceDialog = f.page.getByRole("dialog");
+    await priceDialog.waitFor();
+    assert.equal(await toggle.getAttribute("aria-expanded"), "false");
+    await f.page.setViewportSize({ width: 430, height: 420 });
+    const keyboardBox = await priceDialog.boundingBox();
+    assert.ok(keyboardBox && keyboardBox.y >= 0 && keyboardBox.y + keyboardBox.height <= 420);
+    await f.page.setViewportSize({ width: 430, height: 700 });
+
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const again = f.page.getByTestId("mobile-map-actions");
+    await again.getByRole("button", { name: "Aggiungi", exact: true }).click();
+    await again
+      .getByRole("group", { name: "Aggiungi" })
+      .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+      .click();
+    await f.page.getByRole("dialog").waitFor();
+    assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {
     await f.close();

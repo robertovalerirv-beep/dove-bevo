@@ -10,6 +10,7 @@ export interface DrinkFocus {
   drink: string;
   hh: 0 | 1;
 }
+export const mobileOfferIdPattern = /^[A-Za-z0-9._:-]{1,128}$/;
 
 function focusPair(params: URLSearchParams): DrinkFocus | null {
   const drink = params.get("drink"),
@@ -25,6 +26,11 @@ function focusPair(params: URLSearchParams): DrinkFocus | null {
   return { drink, hh: hh === "1" ? 1 : 0 };
 }
 
+function offerId(params: URLSearchParams): string | null {
+  const id = params.get("offer");
+  return params.getAll("offer").length === 1 && id && mobileOfferIdPattern.test(id) ? id : null;
+}
+
 export function mobilePath(value: MobileLocation): string {
   if (value.pathname !== ENTRY && value.pathname !== `${ENTRY}index.html`) return "/";
   if (value.hash) return "/";
@@ -38,13 +44,20 @@ export function mobilePath(value: MobileLocation): string {
     .split("&")
     .map((part) => part.split("=")[0]);
   const focused = params.has("drink") || params.has("hh");
-  const allowed = focused ? ["path", "c", "drink", "hh"] : ["path", "c"];
+  const offerFocused = params.has("offer");
+  if (focused && offerFocused) return "/";
+  const allowed = focused
+    ? ["path", "c", "drink", "hh"]
+    : offerFocused
+      ? ["path", "c", "offer"]
+      : ["path", "c"];
   if (
     keys.length !== allowed.length ||
     rawKeys.length !== allowed.length ||
     rawKeys.some((key) => !allowed.includes(key ?? "")) ||
     keys.some((key) => !allowed.includes(key)) ||
-    (focused && !focusPair(params))
+    (focused && !focusPair(params)) ||
+    (offerFocused && !offerId(params))
   )
     return "/";
   return isBar(path) && CELL_PATTERN.test(params.get("c") ?? "") ? path : "/";
@@ -52,6 +65,21 @@ export function mobilePath(value: MobileLocation): string {
 
 export function mobileFocus(value: MobileLocation): DrinkFocus | null {
   return mobilePath(value) === "/" ? null : focusPair(new URLSearchParams(value.search));
+}
+
+export function mobileOfferFocus(value: MobileLocation): string | null {
+  return mobilePath(value) === "/" ? null : offerId(new URLSearchParams(value.search));
+}
+
+/** Native-only command. The app re-fetches the live offer and confirms before saving. */
+export function mobileOfferSaveURL(key: string, cell: string, id: string): string {
+  if (
+    !mobileVenueKeyPattern.test(key) ||
+    !CELL_PATTERN.test(cell) ||
+    !mobileOfferIdPattern.test(id)
+  )
+    throw new TypeError("Invalid offer save identity");
+  return `${ENTRY}?${new URLSearchParams({ path: `/bar/${key}`, c: cell, save_offer: id })}`;
 }
 
 export function mobileURL(path: string, origin = location.origin): string {
@@ -75,7 +103,25 @@ export function mobileURL(path: string, origin = location.origin): string {
   if (value.pathname !== "/") {
     params.set("path", value.pathname);
     params.set("c", cell);
-    if (value.searchParams.has("drink") || value.searchParams.has("hh")) {
+    if (value.searchParams.has("save_offer"))
+      throw new TypeError("Offer save command requires native validation");
+    if (value.searchParams.has("offer")) {
+      if (value.searchParams.has("drink") || value.searchParams.has("hh"))
+        throw new TypeError("Conflicting saved drink focus");
+      const rawKeys = value.search
+        .replace(/^\?/, "")
+        .split("&")
+        .map((part) => part.split("=")[0]);
+      if (
+        rawKeys.length !== 2 ||
+        new Set(rawKeys).size !== 2 ||
+        rawKeys.some((key) => !["c", "offer"].includes(key ?? ""))
+      )
+        throw new TypeError("Invalid app offer focus");
+      const id = offerId(value.searchParams);
+      if (!id) throw new TypeError("Invalid app offer focus");
+      params.set("offer", id);
+    } else if (value.searchParams.has("drink") || value.searchParams.has("hh")) {
       const rawKeys = value.search
         .replace(/^\?/, "")
         .split("&")
@@ -92,8 +138,13 @@ export function mobileURL(path: string, origin = location.origin): string {
       params.set("hh", String(focus.hh));
     }
   } else {
-    if (value.searchParams.has("drink") || value.searchParams.has("hh"))
-      throw new TypeError("Drink focus requires a venue");
+    if (
+      value.searchParams.has("drink") ||
+      value.searchParams.has("hh") ||
+      value.searchParams.has("offer") ||
+      value.searchParams.has("save_offer")
+    )
+      throw new TypeError("Saved drink focus requires a venue");
     if (value.searchParams.has("at")) params.set("at", value.searchParams.get("at") ?? "");
   }
   const query = params.toString();

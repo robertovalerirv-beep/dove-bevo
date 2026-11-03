@@ -11,11 +11,23 @@ import {
   type CustomerSubmission,
 } from "../customer-prices-v2";
 import { menuMoney, type MenuOffer, type MenuPage } from "../menu-v2";
-import { menuOfferMatchesFocus, type DrinkFocus } from "../routes";
+import {
+  menuOfferMatchesFocus,
+  mobileOfferIdPattern,
+  mobileOfferSaveURL,
+  type DrinkFocus,
+} from "../routes";
 
 type Editor =
   { kind: "menu_offer"; offer: MenuOffer } | { kind: "new_drink"; row: CustomerRow | null };
 type LoadState = "loading" | "ready" | "missing" | "failed";
+
+function nativeOfferSaveEnabled(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    (window as Window & { DoveBevoNativeOfferSave?: boolean }).DoveBevoNativeOfferSave === true
+  );
+}
 
 const CATEGORY_OPTIONS = [
   ["", "Non specificata"],
@@ -50,9 +62,18 @@ function customerDate(row: CustomerRow): string {
 }
 
 /** App-only source menu plus separate, public customer observations. */
-export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: DrinkFocus | null }) {
+export function CustomerPricesV2({
+  menu,
+  focus,
+  offerFocus,
+}: {
+  menu: MenuPage;
+  focus: DrinkFocus | null;
+  offerFocus: string | null;
+}) {
   const { key, cell, country } = menu.venue;
   const [rows, setRows] = useState<CustomerRow[]>([]);
+  const [nativeOfferSave, setNativeOfferSave] = useState(nativeOfferSaveEnabled);
   const [nextAfter, setNextAfter] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [moreBusy, setMoreBusy] = useState(false);
@@ -74,6 +95,17 @@ export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: Drink
   const formId = useId();
   const host = useRef<HTMLDivElement>(null);
   const abort = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const updateNative = () => {
+      setNativeOfferSave(nativeOfferSaveEnabled());
+    };
+    window.addEventListener("dovebevo-native-ready", updateNative);
+    updateNative();
+    return () => {
+      window.removeEventListener("dovebevo-native-ready", updateNative);
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -276,11 +308,14 @@ export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: Drink
     }
   }
 
-  const orderedOffers = focus
-    ? [...menu.offers].sort(
-        (a, b) => Number(menuOfferMatchesFocus(b, focus)) - Number(menuOfferMatchesFocus(a, focus)),
-      )
-    : menu.offers;
+  const orderedOffers = offerFocus
+    ? [...menu.offers].sort((a, b) => Number(b.id === offerFocus) - Number(a.id === offerFocus))
+    : focus
+      ? [...menu.offers].sort(
+          (a, b) =>
+            Number(menuOfferMatchesFocus(b, focus)) - Number(menuOfferMatchesFocus(a, focus)),
+        )
+      : menu.offers;
   const observations = new Map(
     rows
       .filter((row) => row.kind === "menu_offer" && row.offer_id)
@@ -437,20 +472,27 @@ export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: Drink
       <ul class="mobile-menu-v2__offers">
         {orderedOffers.map((offer) => {
           const customer = observations.get(offer.id);
+          const exactSaved = offerFocus === offer.id;
+          const categorySaved = focus !== null && menuOfferMatchesFocus(offer, focus);
           return (
             <li
               key={offer.id}
-              class={`mobile-menu-v2__offer${focus && menuOfferMatchesFocus(offer, focus) ? " mobile-menu-v2__offer--focused" : ""}`}
+              class={`mobile-menu-v2__offer${exactSaved || categorySaved ? " mobile-menu-v2__offer--focused" : ""}`}
               data-testid={
-                focus && menuOfferMatchesFocus(offer, focus) ? "saved-menu-offer" : undefined
+                exactSaved ? "saved-exact-offer" : categorySaved ? "saved-menu-offer" : undefined
               }
             >
               <span class="mobile-menu-v2__name">
                 {offer.name}
-                {focus && menuOfferMatchesFocus(offer, focus) && (
-                  <small class="mobile-menu-v2__saved">
-                    Stesso tipo di drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
-                  </small>
+                <small class="mobile-menu-v2__provenance">Prezzo da menu</small>
+                {exactSaved ? (
+                  <small class="mobile-menu-v2__saved">Questo drink è nei tuoi preferiti</small>
+                ) : (
+                  categorySaved && (
+                    <small class="mobile-menu-v2__saved">
+                      Stesso tipo di drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
+                    </small>
+                  )
                 )}
               </span>
               <strong class="mobile-menu-v2__amount">
@@ -478,6 +520,14 @@ export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: Drink
               >
                 Menu verificato il {offer.source.checked_on}
               </a>
+              {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
+                <a
+                  href={mobileOfferSaveURL(key, cell, offer.id)}
+                  class="btn btn--secondary mobile-menu-v2__save"
+                >
+                  Salva questo drink
+                </a>
+              )}
               {customer && observation(customer)}
               {loadState === "ready" && (
                 <button

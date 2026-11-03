@@ -14,7 +14,7 @@ import { sharePresentation } from "../share-presentation";
 import { DrinkHero } from "./DrinkHero";
 import { loadMenuPage, menuMoney, mobileMenuVenue, type MenuPage, type MenuFee } from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
-import { menuOfferMatchesFocus, mobileFocus, mobilePath } from "../routes";
+import { menuOfferMatchesFocus, mobileFocus, mobileOfferFocus, mobilePath } from "../routes";
 import "./sheets.css";
 
 export interface BarActions {
@@ -270,8 +270,16 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     new URLSearchParams(location.search).get("c") === cell
       ? mobileFocus(location)
       : null;
+  const savedOfferFocus =
+    typeof location !== "undefined" &&
+    mobilePath(location) === "/bar/" + venueKey &&
+    new URLSearchParams(location.search).get("c") === cell
+      ? mobileOfferFocus(location)
+      : null;
   const matchesMenu = (offer: MenuPage["offers"][number]) =>
-    savedFocus !== null && menuOfferMatchesFocus(offer, savedFocus);
+    savedOfferFocus !== null
+      ? offer.id === savedOfferFocus
+      : savedFocus !== null && menuOfferMatchesFocus(offer, savedFocus);
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -369,7 +377,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   // Search all bounded menu pages before declaring a saved drink unavailable.
   useEffect(() => {
     if (
-      !savedFocus ||
+      (!savedFocus && !savedOfferFocus) ||
       !menu?.next_after ||
       menuMoreBusy ||
       menuFailed ||
@@ -377,7 +385,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     )
       return;
     void loadMoreMenu();
-  }, [menu, menuMoreBusy, menuFailed, savedFocus?.drink, savedFocus?.hh]);
+  }, [menu, menuMoreBusy, menuFailed, savedFocus?.drink, savedFocus?.hh, savedOfferFocus]);
 
   if (venue === undefined) {
     return (
@@ -429,13 +437,29 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     !menuFailed &&
     !menu?.next_after &&
     (venueKey.startsWith("m") || prices !== null);
+  const savedOfferMissing =
+    savedOfferFocus !== null && !menuLoading && !menuFailed && !menuFound && !menu?.next_after;
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
   const venueKind = venueKey.startsWith("m") && venue.kind === 0 ? "Locale" : it.kinds[venue.kind];
+  const heroOffer = menu?.offers.find(matchesMenu);
+  const heroDrink =
+    savedOfferFocus !== null
+      ? (heroOffer?.category ?? null)
+      : savedFocus !== null
+        ? savedFound || heroOffer
+          ? savedFocus.drink
+          : null
+        : (active.find(isFocus)?.[1] ??
+          menu?.offers.find((offer) => offer.category && focus.includes(offer.category))
+            ?.category ??
+          active[0]?.[1] ??
+          menu?.offers.find((offer) => offer.category)?.category ??
+          null);
   return (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
-        <DrinkHero drink={savedFocus?.drink ?? active[0]?.[1] ?? focus[0] ?? "spritz"} />
+        <DrinkHero drink={heroDrink} />
         <div class="scontrino__paper">
           <p class="bar__kind">{[venueKind, venue.city].filter(Boolean).join(" · ")}</p>
           <h2 class="scontrino__name" tabIndex={-1}>
@@ -462,6 +486,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             <p class="hint" role="status" data-testid="saved-drink-unavailable">
               Il prezzo salvato per questo drink e orario non è più disponibile. Gli altri prezzi
               del locale sono qui sotto.
+            </p>
+          )}
+          {savedOfferMissing && (
+            <p class="hint" role="status" data-testid="saved-offer-unavailable">
+              Questo drink salvato non è più disponibile nel menu verificato. Gli altri prezzi del
+              locale sono qui sotto.
             </p>
           )}
           <ul class="prices">
@@ -515,7 +545,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 Prezzi del drink indicati nel menu, non il totale pagato. Le condizioni e i
                 supplementi sono separati.
               </p>
-              <CustomerPricesV2 key={`${venueKey}:${cell}`} menu={menu} focus={savedFocus} />
+              <CustomerPricesV2
+                key={`${venueKey}:${cell}`}
+                menu={menu}
+                focus={savedFocus}
+                offerFocus={savedOfferFocus}
+              />
               {menu.next_after && (
                 <button
                   type="button"
@@ -606,6 +641,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           <>
             <h3 class="section-title">{it.bar.inReview}</h3>
             <p class="hint">{it.bar.inReviewHelp}</p>
+            {savedOfferMissing && (
+              <p class="hint" role="status" data-testid="saved-offer-unavailable">
+                Questo drink salvato non è più disponibile nel menu verificato. Gli altri prezzi del
+                locale sono qui sotto.
+              </p>
+            )}
             <ul class="prices">
               {review.map((row) => (
                 <PriceItem

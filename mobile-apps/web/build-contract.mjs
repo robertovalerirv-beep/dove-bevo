@@ -74,6 +74,16 @@ export function transformApp(source) {
     '  function openAdd(prefill: Prefill | null) {\n    if (prefill?.venue.key.startsWith("m")) {\n      navigate(`/bar/${prefill.venue.key}?c=${prefill.venue.cell}`);\n      return;\n    }',
   );
   result = once(result, "venues={everyVenue}", "venues={legacyPriceVenues(everyVenue)}");
+  result = once(
+    result,
+    'document.querySelector<HTMLElement>(".bottom__primary")?.focus();',
+    'document.querySelector<HTMLElement>(".mobile-map-actions__toggle")?.focus();',
+  );
+  result = once(
+    result,
+    'layer === document.body\n          ? document.querySelector<HTMLElement>(".bottom__primary")',
+    'layer === document.body\n          ? document.querySelector<HTMLElement>(".mobile-map-actions__toggle")',
+  );
   result = once(result, "() => coverage(inView, drinks)", "() => mobileCoverage(inView, drinks)");
   result = once(result, "VENUE_KEY_PATTERN.test(match[1])", "mobileVenueKeyPattern.test(match[1])");
   result = once(
@@ -94,7 +104,7 @@ export function transformApp(source) {
   result = once(
     result,
     "          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}",
-    '          {inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n            <p class="mobile-menu-map-note">{drinks.length ? "M+ = prezzo del drink da menu; coperto e supplementi esclusi" : "Numeri sulla mappa = voci di menu verificate o prezzi segnalati; non sono prezzi medi"}</p>\n          )}\n          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}',
+    '          {!pinning && <MobileMapActions onAddPrice={() => openAdd(null)} onAddVenue={() => startProposal()} />}\n          {!pinning && inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n            <p class="mobile-menu-map-note">{drinks.length ? "M+ = prezzo del drink da menu; coperto e supplementi esclusi" : "Numeri sulla mappa = voci di menu verificate o prezzi segnalati; non sono prezzi medi"}</p>\n          )}\n          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}',
   );
   const tree = ts.createSourceFile(
     "app.tsx",
@@ -125,7 +135,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
+    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }

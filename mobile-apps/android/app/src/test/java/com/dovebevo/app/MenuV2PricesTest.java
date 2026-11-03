@@ -22,13 +22,15 @@ public final class MenuV2PricesTest {
         MenuV2Prices client=new MenuV2Prices((url,max,call)->{
             if(url.contains("customer-prices"))return bytes(customer(200));
             if(url.contains("&after=a1"))return bytes(menu(offer("a2","regular",550),2,null));
-            return bytes(menu(offer("a1","conditional",450),2,"a1"));
+            return bytes(menu(offer("a1","conditional",450).replace("\"condition\":null","\"condition\":\"Solo dopo le 18\""),2,"a1"));
         });
         MenuV2Prices.Venue loaded=client.load(venue,call());assertEquals(3,loaded.prices.size());
         assertEquals(2,loaded.selected(RecommendationDrink.SPRITZ,0).size());
         assertEquals("5,50 \u00a3",loaded.prices.get(1).amount());
         assertEquals("Calice · 200 ml",loaded.prices.get(1).serving());
         assertFalse(loaded.prices.get(1).customer);assertTrue(loaded.prices.get(2).customer);
+        assertEquals("Solo dopo le 18",loaded.prices.get(0).condition);
+        assertEquals(1,loaded.linkedReports.size());assertEquals("a2",loaded.linkedReports.get(0).linkedOfferId);
         assertTrue(loaded.prices.get(1).evidence().contains("menu online"));assertTrue(loaded.prices.get(2).evidence().contains("cliente"));
         assertTrue(loaded.feeNotice.contains("spese non verificate"));
         SavedDrinkTest.Memory disk=new SavedDrinkTest.Memory();SavedDrinkStore saved=new SavedDrinkStore(disk);
@@ -37,10 +39,29 @@ public final class MenuV2PricesTest {
         assertEquals(2,rows.size());assertEquals(550,rows.get(0).menuPrice.amountMinor);assertEquals(650,rows.get(1).menuPrice.amountMinor);
         assertArrayEquals(before,disk.bytes);
     }
+    @Test public void lastOfferAfter149RowsCanBeVerifiedForExactFavourite()throws Exception {
+        SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Saved actual name");
+        StringBuilder first=new StringBuilder(),last=new StringBuilder();
+        for(int i=1;i<=149;i++){
+            StringBuilder page=i<=100?first:last;if(page.length()>0)page.append(',');
+            page.append(offer("a"+i,"regular",i==149?650:550));
+        }
+        MenuV2Prices client=new MenuV2Prices((url,max,call)->{
+            if(url.contains("customer-prices"))throw new IOException("Owned customer fixture absent");
+            return bytes(url.contains("&after=a100")?menu(last.toString(),149,null):menu(first.toString(),149,"a100"));
+        });
+        MenuV2Prices.Venue result=client.load(venue,call());assertEquals(149,result.prices.size());
+        MenuV2Prices.Price exact=result.prices.stream().filter(price->price.id.equals("a149")).findFirst().orElseThrow();
+        assertEquals(650,exact.amountMinor);
+        assertEquals("a149",SavedMenuOfferStore.verified(venue,exact).id);
+    }
     @Test public void mismatchedServingCannotBorrowSourceBandAndCursorMustMatchActualLastOffer()throws Exception {
         SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Saved actual name");
         MenuV2Prices client=new MenuV2Prices((url,max,call)->url.contains("customer-prices")?bytes(customer(300)):bytes(menu(offer("a2","regular",550),1,null)));
-        assertEquals(1,client.load(venue,call()).prices.size());
+        MenuV2Prices.Venue differentServing=client.load(venue,call());
+        assertEquals(1,differentServing.prices.size());
+        assertEquals(1,differentServing.linkedReports.size());
+        assertEquals(Integer.valueOf(300),differentServing.linkedReports.get(0).servingML);
         String incomplete=customer(200).replace("\"next_after\":null", "\"next_after\":\"c"+"b".repeat(64)+"\"");
         MenuV2Prices interrupted=new MenuV2Prices((url,max,call)->{
             if(url.contains("customer-prices")&&url.contains("&after="))throw new IOException("Owned second page unavailable");

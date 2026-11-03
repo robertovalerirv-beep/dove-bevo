@@ -15,6 +15,8 @@ struct MenuV2Price: Equatable {
     let servingML: Int?
     let origin: Origin
     let feeNotice: String
+    var linkedOfferID: String? = nil
+    var condition: String? = nil
 
     var group: String { "\(currency)|\(exponent)|\(servingLabel?.lowercased() ?? "")|\(servingML ?? 0)" }
     var amount: String {
@@ -41,6 +43,12 @@ struct MenuV2Venue: Equatable {
     let name: String
     let offers: [MenuV2Price]
     let feeNotice: String
+    let linkedReports: [MenuV2Price]
+    init(key: String, cell: String, name: String, offers: [MenuV2Price], feeNotice: String,
+         linkedReports: [MenuV2Price] = []) {
+        self.key = key; self.cell = cell; self.name = name; self.offers = offers
+        self.feeNotice = feeNotice; self.linkedReports = linkedReports
+    }
 }
 struct MenuV2Snapshot {
     let venues: [URL: MenuV2Venue]
@@ -169,11 +177,15 @@ enum MenuV2JSON {
                   let evidence = source(item["source"]) else { return nil }
             let category = item["category"] as? String ?? ""
             if !(item["category"] is NSNull) && !DrinkCategory.all.contains(where: { $0.code == category }) { return nil }
+            let condition = context["condition"] is NSNull ? nil : text(context["condition"], maximum: 500)
+            if !(context["condition"] is NSNull) && condition == nil { return nil }
             let band: ComparisonBand? = kind == "regular" ? .normal : kind == "happy_hour" ? .happyHour : nil
-            offers.append(MenuV2Price(id: id, venueName: name, itemName: itemName, category: category,
-                                      band: band, amountMinor: amount.0, currency: amount.1, exponent: amount.2,
-                                      servingLabel: serving.0, servingML: serving.1,
-                                      origin: .ownerMenu(evidence.0, evidence.1), feeNotice: fee))
+            var offer = MenuV2Price(id: id, venueName: name, itemName: itemName, category: category,
+                                    band: band, amountMinor: amount.0, currency: amount.1, exponent: amount.2,
+                                    servingLabel: serving.0, servingML: serving.1,
+                                    origin: .ownerMenu(evidence.0, evidence.1), feeNotice: fee)
+            offer.condition = kind == "conditional" ? condition : nil
+            offers.append(offer)
         }
         if let after = next, after != offers.last?.id { return nil }
         return MenuV2Page(name: name, count: count, offers: offers, next: next, feeNotice: fee)

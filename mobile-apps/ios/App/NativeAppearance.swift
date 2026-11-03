@@ -13,7 +13,7 @@ import UIKit
     static let accent = UIColor(red: 255 / 255, green: 90 / 255, blue: 31 / 255, alpha: 1)
     static let onAccent = UIColor(red: 27 / 255, green: 22 / 255, blue: 17 / 255, alpha: 1)
     static let accentText = UIColor(red: 185 / 255, green: 58 / 255, blue: 11 / 255, alpha: 1)
-    static let disabled = UIColor(red: 148 / 255, green: 155 / 255, blue: 163 / 255, alpha: 1)
+    static let disabled = muted
     static let radius: CGFloat = 16
 
     static func configure(_ navigation: UINavigationController?) {

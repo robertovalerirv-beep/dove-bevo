@@ -323,21 +323,30 @@ function staticVenue(
     identity_kind: "osm",
   };
 }
-async function venue(env: Env, key: string, cell: string): Promise<Venue> {
+async function registeredVenue(env: Env, key: string, cell: string): Promise<Venue | null> {
   const registry = await env.DB.prepare(
     "SELECT venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind,identity_url,identity_fingerprint,identity_text_sha256,identity_geo_url,identity_geo_text_sha256,identity_geo_hash_basis" +
       " FROM mobile_menu_v2_venues WHERE venue_key=?1 AND cell=?2",
   )
     .bind(key, cell)
     .first<Registry>();
-  if (registry) {
-    const place = registryVenue(registry);
-    await assertOwnerUnconflicted(env, place);
-    return place;
-  }
+  if (!registry) return null;
+  const place = registryVenue(registry);
+  await assertOwnerUnconflicted(env, place);
+  return place;
+}
+async function venue(env: Env, key: string, cell: string): Promise<Venue> {
+  const registered = await registeredVenue(env, key, cell);
+  if (registered) return registered;
   const original = staticVenue(await cellFile(env, cell), key, cell);
   if (!original) throw new ApiError("not_found");
   return original;
+}
+/** Public contribution guard: only vetted registry venues, never Italian legacy static keys. */
+export async function resolveRegisteredMenuVenue(env: Env, key: string, cell: string): Promise<Venue> {
+  const place = await registeredVenue(env, key, cell);
+  if (!place || await blocked(env.DB, key)) throw new ApiError("not_found");
+  return place;
 }
 async function blocked(db: D1Database, key: string): Promise<boolean> {
   const row = await db

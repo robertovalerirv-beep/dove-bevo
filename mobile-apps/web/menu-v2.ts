@@ -373,7 +373,7 @@ export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string |
         : found.count === 1
           ? "PREZZO"
           : "PREZZI";
-    return `${found.count} ${word}`;
+    return `${String(found.count)} ${word}`;
   }
   const samples = (venue as WithMenu).mobileMenuSamples ?? [];
   for (const category of drinks) {

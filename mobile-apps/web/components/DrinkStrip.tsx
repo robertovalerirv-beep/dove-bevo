@@ -14,7 +14,9 @@ export function DrinkMenu({ selected, onChange }: Props) {
         type="button"
         class="mobile-drink-all"
         aria-pressed={selected.length === 0}
-        onClick={() => onChange([])}
+        onClick={() => {
+          onChange([]);
+        }}
       >
         Tutti
       </button>

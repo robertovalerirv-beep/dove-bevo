@@ -301,9 +301,12 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
   if (!request) {
     const identityRequest = menuIdentityVenues(cell);
     const sampleRequest = categories.length ? menuCellVenues(cell, categories) : identityRequest;
+    // Attach rejection handlers before the legacy cell read can resolve. A fast
+    // v2 503 must never surface as an unhandled browser error.
+    const menuRequest = Promise.allSettled([identityRequest, sampleRequest]);
     request = loadCell(cell).then(
       (legacy) => {
-        void Promise.allSettled([identityRequest, sampleRequest]).then(([identity, sampled]) => {
+        void menuRequest.then(([identity, sampled]) => {
           if (mobileCellCache.get(cacheKey) !== request) return;
           // A temporary v2 failure does not hold or erase legacy venues. Evict the
           // selection so a later map view retries the bounded menu request.

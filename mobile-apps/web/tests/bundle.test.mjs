@@ -94,7 +94,7 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
               v: [
                 ["n123", "Locale di prova", 1, 45.4642, 9.19, "Via di prova 1", 0],
                 ["n456", "Altro locale di prova", 1, 45.4652, 9.195, "Via di prova 2", 0],
-                ["n789", "Unpriced overlap fixture", 1, 45.4647, 9.19, "Via di prova 3", 0],
+                ["n789", "Unpriced overlap fixture", 0, 45.4647, 9.19, "Via di prova 3", 0],
               ],
             }
           : { c: [], v: [] },
@@ -551,6 +551,9 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     const row = f.page.getByRole("link", { name: /Locale da menu/ });
     await row.waitFor();
     assert.match(await row.innerText(), /1 voce menu[\s\S]*Dal menu del locale/);
+    assert.match(await row.locator(".row__meta").innerText(), /^Locale · Dal menu del locale/);
+    const staticCafe = f.page.getByRole("link", { name: /Unpriced overlap fixture/ });
+    assert.match(await staticCafe.locator(".row__meta").innerText(), /^Caffè(?: ·|$)/);
     await row.click();
     const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
     await menu.waitFor();

@@ -28,6 +28,14 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+      - name: Install and verify PDF text extractor
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends poppler-utils
+          command -v pdftotext
+          pdftotext -v
       - name: Verify pinned importer and schema behavior
         shell: bash
         run: |
@@ -101,6 +109,14 @@ jobs:
               .event == "push" and .conclusion == "success"' >/dev/null
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$audit_run/jobs?per_page=100" |
             jq -e 'any(.jobs[]; .name == "reviewed-import" and .conclusion == "success")' >/dev/null
+      - name: Install and verify PDF text extractor
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends poppler-utils
+          command -v pdftotext
+          pdftotext -v
       - name: Audit or seed reviewed v2 rows
         shell: bash
         env:

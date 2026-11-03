@@ -527,6 +527,37 @@ describe("app-only named menu v2", () => {
     expect(ids[0]).toBe("item-0000");
     expect(ids.at(-1)).toBe("item-0500");
   });
+  it("rejects unpageable offer IDs and can continue after every stored boundary ID", async () => {
+    await registerForeign();
+    const sourceId = await addSource(FOREIGN.key, FOREIGN.cell);
+    for (const unsafe of ["A bad", "A/bad", "A?bad", "Aébad"]) {
+      await expect(addOffer(unsafe, FOREIGN.key, FOREIGN.cell, sourceId).run()).rejects.toThrow();
+    }
+    await env.DB.batch([
+      addOffer("A.-_:0", FOREIGN.key, FOREIGN.cell, sourceId),
+      addOffer("Z-2", FOREIGN.key, FOREIGN.cell, sourceId),
+    ]);
+    const firstResponse = await get(
+      "/api/mobile/v2/menu/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell + "&limit=1",
+    );
+    expect(firstResponse.status, await firstResponse.clone().text()).toBe(200);
+    const first = await firstResponse.json<Detail>();
+    expect(first.offers.map((offer) => offer.id)).toEqual(["A.-_:0"]);
+    expect(first.next_after).toBe("A.-_:0");
+    const secondResponse = await get(
+      "/api/mobile/v2/menu/venues/" +
+        FOREIGN.key +
+        "?cell=" +
+        FOREIGN.cell +
+        "&limit=1&after=" +
+        encodeURIComponent(first.next_after ?? ""),
+    );
+    expect(secondResponse.status, await secondResponse.clone().text()).toBe(200);
+    const second = await secondResponse.json<Detail>();
+    expect(second.offers.map((offer) => offer.id)).toEqual(["Z-2"]);
+    expect(second.next_after).toBeNull();
+  });
+
   it("shows an owner-verified Italian branch absent the static map, then hides a duplicate proposal", async () => {
     const key = await ownerRow();
     const sourceId = await addSource(key, ITALY.cell);

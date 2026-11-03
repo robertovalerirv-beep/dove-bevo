@@ -231,8 +231,7 @@ enum MenuV2JSON {
             guard let sampleData = try? JSONSerialization.data(withJSONObject: sampleEnvelope),
                   let decoded = menuPage(sampleData, key: key, cell: cell),
                   decoded.offers.count == samples.count,
-                  decoded.offers.allSatisfy({ categories.contains($0.category) &&
-                      $0.currency == (country == "GB" ? "GBP" : "EUR") && $0.exponent == 2 }) else { return nil }
+                  decoded.offers.allSatisfy({ categories.contains($0.category) }) else { return nil }
             venues.append(MenuV2CellVenue(key: key, cell: cell, name: name,
                                           latitude: latitude, longitude: longitude,
                                           address: address, city: city,

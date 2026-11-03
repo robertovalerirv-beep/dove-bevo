@@ -39,7 +39,7 @@ final class MenuV2ComparisonTests: XCTestCase {
         ] as [String: Any])
     }
 
-    private func cellPage(_ sample: [String: Any], unresolved: Int = 0) throws -> Data {
+    private func cellPage(_ sample: [String: Any], extraSamples: [[String: Any]] = [], unresolved: Int = 0) throws -> Data {
         let categories = DrinkCategory.all.map(\.code)
         return try JSONSerialization.data(withJSONObject: [
             "schema_version": 2, "coverage": ["complete": false, "basis": "verified_source_items_only"],
@@ -47,7 +47,7 @@ final class MenuV2ComparisonTests: XCTestCase {
             "venues": [["key": "n123", "cell": cell, "name": "Current venue", "kind": 1,
                         "lat": 45.4642, "lon": 9.19, "address": "Via reale 1", "city": "Milano", "country": "IT",
                         "identity_url": "https://www.openstreetmap.org/node/123", "identity_kind": "osm",
-                        "matching_offer_count": 1, "sample_offers": [sample],
+                        "matching_offer_count": 1 + extraSamples.count, "sample_offers": [sample] + extraSamples,
                         "fee_coverage": ["status": "unknown", "source": NSNull()]]],
             "next_after": NSNull(), "unresolved_venues": unresolved
         ] as [String: Any])
@@ -71,12 +71,23 @@ final class MenuV2ComparisonTests: XCTestCase {
                        "https://www.dovebevo.com/api/mobile/v2/menu/cells/u0nd9?categories=\(categories.joined(separator: ","))")
     }
 
-    func testCellSamplesRejectWrongCurrencySourceAndIdentity() throws {
+    func testCellSamplesPreserveMixedCurrencyAndExponentWithoutRejectingTheCell() throws {
         var sample = offer("spritz-1", context: "regular", cents: 550)
         let categories = DrinkCategory.all.map(\.code)
-        XCTAssertNil(MenuV2JSON.cellPage(try cellPage(sample), cell: cell, categories: categories, after: nil),
-                     "A GBP amount cannot silently become EUR in an Italian cell")
+        var euro = offer("spritz-2", context: "regular", cents: 550)
+        euro["currency"] = "EUR"
+        sample["amount_minor"] = 6
+        sample["currency_exponent"] = 0
+        let page = try XCTUnwrap(MenuV2JSON.cellPage(try cellPage(sample, extraSamples: [euro]),
+                                                    cell: cell, categories: categories, after: nil))
+        XCTAssertEqual(page.venues.first?.samples.map(\.amount), ["6 £", "5,50 €"])
+        XCTAssertNotEqual(page.venues.first?.samples[0].group, page.venues.first?.samples[1].group)
+    }
+
+    func testCellSamplesRejectInvalidSourceAndIdentity() throws {
+        var sample = offer("spritz-1", context: "regular", cents: 550)
         sample["currency"] = "EUR"
+        let categories = DrinkCategory.all.map(\.code)
         var invalidSource = sample
         var source = self.source(); source["url"] = "http://bar.example/menu"
         invalidSource["source"] = source

@@ -323,6 +323,16 @@ function staticVenue(
     identity_kind: "osm",
   };
 }
+/** Resolve an Italian OSM identity only from the current published static cell. */
+export async function currentStaticMenuVenue(
+  env: Env,
+  key: string,
+  cell: string,
+): Promise<Venue | null> {
+  const place = staticVenue(await cellFile(env, cell), key, cell);
+  return place && encodeGeohash(place.lat, place.lon, 5) === cell ? place : null;
+}
+
 async function registeredVenue(env: Env, key: string, cell: string): Promise<Venue | null> {
   const registry = await env.DB.prepare(
     "SELECT venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind,identity_url,identity_fingerprint,identity_text_sha256,identity_geo_url,identity_geo_text_sha256,identity_geo_hash_basis" +
@@ -342,14 +352,29 @@ async function venue(env: Env, key: string, cell: string): Promise<Venue> {
   if (!original) throw new ApiError("not_found");
   return original;
 }
-/** Public contribution guard: only vetted registry venues, never Italian legacy static keys. */
-export async function resolveRegisteredMenuVenue(
+/** Customer observations require a vetted registry or a currently published Italian
+ * static OSM venue with an approved, active named-menu offer at the exact key/cell.
+ * Static identity alone never enables v2 contributions.
+ */
+export async function resolveContributableMenuVenue(
   env: Env,
   key: string,
   cell: string,
 ): Promise<Venue> {
-  const place = await registeredVenue(env, key, cell);
+  const registered = await registeredVenue(env, key, cell);
+  const place = registered ?? (await currentStaticMenuVenue(env, key, cell));
   if (!place || (await blocked(env.DB, key))) throw new ApiError("not_found");
+  if (!registered) {
+    const approved = await env.DB.prepare(
+      "SELECT 1 AS present FROM mobile_menu_v2_offers o" +
+        " JOIN mobile_menu_v2_sources s ON s.id=o.source_id" +
+        " AND s.venue_key=o.venue_key AND s.cell=o.cell AND s.use_review_status='approved'" +
+        " WHERE o.venue_key=?1 AND o.cell=?2 AND o.status='active' LIMIT 1",
+    )
+      .bind(key, cell)
+      .first<{ present: number }>();
+    if (!approved) throw new ApiError("not_found");
+  }
   return place;
 }
 async function blocked(db: D1Database, key: string): Promise<boolean> {

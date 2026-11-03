@@ -30,6 +30,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.test.platform.app.InstrumentationRegistry;
 import java.io.ByteArrayInputStream;
@@ -179,43 +180,42 @@ public final class NativeUsabilityRuntimeTest {
         }
     }
 
-    @Test public void oneActionBookmarkUsesActualHeadingWithoutAFormAndPersistsOpensAndRemoves() throws Exception {
+    @Test public void bottomSaveRequiresExplicitDrinkAndUsesActualHeadingWithoutWritingOldVenueFile() throws Exception {
         navigate(ONE);
         WebView original = web;
-        onMain(() -> activity.findViewById(R.id.save_venue).performClick());
-        await(() -> "Locale di prova".equals(savedLabel()));
+        SavedDrinkStore ownedDrinks = new SavedDrinkStore(new SavedVenueFile(fixtureDirectory, "saved-drinks-v1"));
+        SavedDrinkUi ownedUi = new SavedDrinkUi(activity, ownedDrinks,
+                () -> (String) invoke("eligibleSavedVenue"),
+                callback -> invoke("readSavedVenue", new Class<?>[]{Consumer.class}, callback),
+                () -> (Long) get("venueCaptureEpoch"));
         onMain(() -> {
-            assertNull(currentDialog());
+            set("savedDrinks", ownedUi);
+            activity.findViewById(R.id.save_venue).performClick();
+        });
+        await(() -> savedDrinkDialog(ownedUi) != null);
+        onMain(() -> {
+            AlertDialog dialog = savedDrinkDialog(ownedUi);
+            assertNotNull(dialog);
+            assertTrue(((TextView) ((LinearLayout) dialog.findViewById(android.R.id.content)).getChildAt(0)).getText().toString().contains("Locale di prova"));
+            assertTrue(ownedDrinks.load().isEmpty());
+            Spinner choice = (Spinner) dialog.getWindow().getDecorView().findViewWithTag("save_choice_drink");
+            assertNotNull(choice);
+            choice.setSelection(RecommendationDrink.SPRITZ.ordinal() + 1);
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        });
+        await(() -> savedDrinkCount(ownedDrinks) == 1);
+        SavedDrinkStore.Entry saved = ownedDrinks.load().get(0);
+        assertEquals("n123/spritz/0", saved.key());
+        assertEquals("Locale di prova", saved.venue.label);
+        assertEquals(ONE, saved.venue.url);
+        assertTrue("No venue-only bookmark was created", store.load().isEmpty());
+        onMain(() -> {
             assertSame(original, get("website"));
             assertFalse((Boolean) get("favoritesVisible"));
             assertEquals(APP_ONE, web.getUrl());
             assertTrue(activity.findViewById(R.id.map_destination).isSelected());
             assertFalse(activity.findViewById(R.id.save_venue).isSelected());
         });
-        assertEquals("Locale di prova", new SavedVenueStore(new SavedVenueFile(fixtureDirectory)).load().get(0).label);
-        assertEquals(ONE, store.load().get(0).url);
-        // A second explicit bookmark refreshes the actual name without a form.
-        onMain(() -> savedUi.saveCurrent());
-        instrumentation.waitForIdleSync();
-        assertEquals(1, store.load().size());
-        navigate(BrowserPolicy.HOME);
-        onMain(() -> savedUi.showList());
-        instrumentation.waitForIdleSync();
-        onMain(() -> currentDialog().getListView().performItemClick(null, 0, 0));
-        instrumentation.waitForIdleSync();
-        onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick());
-        await(() -> APP_ONE.equals(web.getUrl()) && (Boolean) get("hasUsablePage") && !(Boolean) get("loading"));
-        assertOwnedDocument(1);
-        onMain(() -> {
-            assertSame(original, get("website"));
-            savedUi.showList();
-        });
-        instrumentation.waitForIdleSync();
-        onMain(() -> currentDialog().getListView().performItemClick(null, 0, 0));
-        instrumentation.waitForIdleSync();
-        onMain(() -> currentDialog().getButton(AlertDialog.BUTTON_NEUTRAL).performClick());
-        instrumentation.waitForIdleSync();
-        assertTrue(store.load().isEmpty());
     }
 
     @Test public void mobileDocumentSharesItsRealAppVenueWithoutOpeningAChooser() throws Exception {
@@ -1021,6 +1021,15 @@ public final class NativeUsabilityRuntimeTest {
     }
 
     private void record(String event) { if (events.size() < 100) events.add(event); }
+
+    private AlertDialog savedDrinkDialog(SavedDrinkUi ui) {
+        try { Field field = SavedDrinkUi.class.getDeclaredField("dialog"); field.setAccessible(true); return (AlertDialog) field.get(ui); }
+        catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+    }
+    private int savedDrinkCount(SavedDrinkStore drinks) {
+        try { return drinks.load().size(); }
+        catch (IOException error) { throw new AssertionError(error); }
+    }
 
     private String savedLabel() {
         try { return store.load().isEmpty() ? null : store.load().get(0).label; }

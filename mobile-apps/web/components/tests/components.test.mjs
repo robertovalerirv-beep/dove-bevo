@@ -661,7 +661,7 @@ test("saved owner menu drink matches regular context but never conditional or an
     await regular.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
     const saved = regular.page.getByTestId("saved-menu-offer");
     await saved.waitFor();
-    assert.match(await saved.innerText(), /Spritz <script>[\s\S]*7,50 €/);
+    assert.match(await saved.innerText(), /Spritz <script>[\s\S]*7,50\s*€/);
     assert.equal(await regular.page.getByTestId("saved-drink-unavailable").count(), 0);
     assert.deepEqual(regular.writes, []);
   } finally {

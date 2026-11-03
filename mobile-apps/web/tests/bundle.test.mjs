@@ -509,6 +509,42 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
   }
 });
 
+test("Tutti reveals uncategorized verified menus without inventing a drink price", async () => {
+  const options = { menu: true, uncategorized: true, cellRequests: [] };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const all = f.page.getByRole("button", { name: "Tutti", exact: true });
+    await all.click();
+    assert.equal(await all.getAttribute("aria-pressed"), "true");
+    await f.page.waitForFunction(
+      () => document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
+      { timeout: 30000 },
+    );
+    assert.match(await f.page.locator(".mobile-menu-map-note").innerText(), /voci di menu verificate/);
+    await f.page.locator(".map__list").click();
+    const row = f.page.getByRole("link", { name: /Locale da menu/ });
+    await row.waitFor();
+    assert.match(await row.innerText(), /1 voce menu[\s\S]*Dal menu del locale/);
+    await row.click();
+    const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
+    await menu.waitFor();
+    assert.match(await menu.innerText(), /Signature senza categoria[\s\S]*7,50\s*€/);
+    assert.ok(await menu.locator('a[href="https://official.fixture.test/menu"]').count());
+    await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
+    await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    await f.page.waitForFunction(
+      () => !document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
+      { timeout: 30000 },
+    );
+    assert.ok(options.cellRequests.some((request) => request.categories.join(",") === "spritz"));
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("v2 outage preserves legacy map and retries the original filter after recovery", async () => {
   const options = { menu: true, menuUnavailable: true, cellRequests: [] };
   const f = await fixture({ width: 390, height: 844 }, options);

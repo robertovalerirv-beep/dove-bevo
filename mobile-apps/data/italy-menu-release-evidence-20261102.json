@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-11-02T22:45:34.886964+00:00",
+  "checked_at": "2026-11-02T23:31:57.040326+00:00",
   "scope": "new rows imported and currently publicly verified by this expansion; not historical whole-database coverage",
-  "new_prices": 190,
-  "venues": 57,
+  "new_prices": 199,
+  "venues": 60,
   "cities": 24,
-  "public_cells_checked": 28,
+  "public_cells_checked": 31,
   "city_new_price_counts": {
     "Milano": 31,
-    "Roma": 11,
+    "Roma": 16,
     "Torino": 33,
     "Napoli": 14,
     "Palermo": 5,
-    "Genova": 4,
+    "Genova": 5,
     "Padova": 6,
     "Trieste": 9,
-    "Firenze": 9,
+    "Firenze": 12,
     "Venezia": 9,
     "Bologna": 8,
     "Parma": 4,
@@ -33,14 +33,14 @@
     "Casteddu/Cagliari": 3
   },
   "drink_new_price_counts": {
-    "alcohol_free": 29,
+    "alcohol_free": 31,
     "beer_draft": 18,
-    "gin_lemon": 10,
-    "gin_tonic": 20,
-    "negroni": 32,
+    "gin_lemon": 11,
+    "gin_tonic": 22,
+    "negroni": 33,
     "sbagliato": 13,
-    "spritz": 31,
-    "water": 15,
+    "spritz": 33,
+    "water": 16,
     "wine_glass": 22
   },
   "operations": [
@@ -139,6 +139,18 @@
       "artifact_sha256": "af098427dc26ebcf1fc50459aa657480cb821980f448ba4a5c81c68f4ad00ec4",
       "inserted": 7,
       "audit_run_id": 41538935310
+    },
+    {
+      "batch": "m",
+      "run_id": 41545855885,
+      "head_sha": "420c2cb4532f48d2c2e07adf594f5f25b7696277",
+      "overall_conclusion": "success",
+      "artifact_id": 13187699162,
+      "artifact_sha256": "eff7d5529042cd6bd8a473de7f85138fe710f83de11aae0147ee100a8a9dc834",
+      "inserted": 9,
+      "audit_run_id": 41545237180,
+      "audit_artifact_id": 13189330366,
+      "audit_artifact_sha256": "3f17ad7cf013654b3eebee2913ed57bc8e714677d17e85979a2d9fe6c1c3c73a"
     }
   ],
   "manifest_sha256": {
@@ -150,12 +162,15 @@
     "i": "d93e71ca7a105c47651d5e845026c25d58d2545ae97ab810361d88133a7b3f0d",
     "j": "0ec141814249b653723f8c70cfa192310aabd9e7925a90bbcdbb2568a4756faf",
     "k": "17ccdcda17618ea4c31232673dbc2360ad38522918a3da9fb199b8280dd2a197",
-    "l": "0a5d9a8767253595eaefc579b189427ddee83c6df3ca8ab3a3694c8a1ea57a04"
+    "l": "0a5d9a8767253595eaefc579b189427ddee83c6df3ca8ab3a3694c8a1ea57a04",
+    "m": "862c3ca170b3d7229191e9ec52eca4dffbf98b647a2ced93ce5999832140535b"
   },
   "held": {
     "tonic": 4,
     "birrlandina": 3,
-    "birrodromo_mandatory_fee": 5
+    "birrodromo_mandatory_fee": 5,
+    "torino_source_digest_unstable": 2,
+    "roma_serving_specific_v2": 2
   },
   "limits": [
     "Italy-wide and major-city completeness is not established",

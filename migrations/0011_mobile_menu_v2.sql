@@ -77,7 +77,9 @@ BEGIN SELECT RAISE(ABORT, 'v2 source snapshots are immutable'); END;
 -- One stable ID per named menu offer, independent of category or serving size.
 -- No observation date or confirmation is fabricated from an online menu check.
 CREATE TABLE mobile_menu_v2_offers (
-  id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 128),
+  id TEXT PRIMARY KEY CHECK (
+    length(id) BETWEEN 1 AND 128 AND id NOT GLOB '*[^A-Za-z0-9._:-]*'
+  ),
   venue_key TEXT NOT NULL,
   cell TEXT NOT NULL CHECK (length(cell) = 5),
   name TEXT NOT NULL CHECK (length(name) BETWEEN 1 AND 512),

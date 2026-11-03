@@ -111,6 +111,7 @@ public final class MainActivity extends ComponentActivity {
     private long shareCapture;
     private TestLabPolicy testLabPolicy;
     private String mobileThemeScript;
+    private long presentationRequest;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -916,22 +917,50 @@ public final class MainActivity extends ComponentActivity {
                 mobileThemeScript = MobilePresentation.load(this);
             }
             long generation = documentCheckGeneration;
-            view.evaluateJavascript(mobileThemeScript, result -> {
-                if (destroyed || view != website || generation != documentCheckGeneration
-                        || !finishedUrl.equals(view.getUrl())) return;
-                if (!MobileEntry.isDocument(finishedUrl) || !"true".equals(result)) {
-                    setWebMenuClearance(true);
-                    return;
-                }
-                view.evaluateJavascript("document.documentElement.getAttribute('data-dovebevo-app-theme')==='1' && document.documentElement.getAttribute('data-dovebevo-mobile-shell')==='1'", marker -> {
-                    if (!destroyed && view == website && generation == documentCheckGeneration
-                            && finishedUrl.equals(view.getUrl())) setWebMenuClearance(!"true".equals(marker));
-                });
-            });
+            long request = ++presentationRequest;
+            long deadline = android.os.SystemClock.uptimeMillis() + 8000;
+            retryMobilePresentation(view, finishedUrl, generation, request, 16, deadline);
         } catch (IOException unavailable) {
             // A missing or invalid bundled skin preserves the original website and its normal security policy.
             setWebMenuClearance(true);
         }
+    }
+
+    private boolean currentPresentation(WebView view, String url, long generation, long request) {
+        return !destroyed && !failed && foreground && view == website
+                && generation == documentCheckGeneration && request == presentationRequest
+                && MobilePresentation.allows(url, view.getUrl());
+    }
+
+    private void retryMobilePresentation(WebView view, String url, long generation, long request,
+                                         int attemptsLeft, long deadline) {
+        if (!currentPresentation(view, url, generation, request)) return;
+        view.evaluateJavascript(mobileThemeScript, result -> {
+            if (!currentPresentation(view, url, generation, request)) return;
+            if (!MobileEntry.isDocument(url) || !"true".equals(result)) {
+                setWebMenuClearance(true);
+                schedulePresentationRetry(view, url, generation, request, attemptsLeft, deadline);
+                return;
+            }
+            view.evaluateJavascript("document.documentElement.getAttribute('data-dovebevo-app-theme')==='1' && document.documentElement.getAttribute('data-dovebevo-mobile-shell')==='1'", marker -> {
+                if (!currentPresentation(view, url, generation, request)) return;
+                if ("true".equals(marker)) setWebMenuClearance(false);
+                else {
+                    setWebMenuClearance(true);
+                    schedulePresentationRetry(view, url, generation, request, attemptsLeft, deadline);
+                }
+            });
+        });
+    }
+
+    private void schedulePresentationRetry(WebView view, String url, long generation, long request,
+                                           int attemptsLeft, long deadline) {
+        // The verified visitor shell can mount after onPageFinished. Keep the
+        // original search clear of native More until that same document mounts.
+        if (!MobileEntry.isDocument(url) || attemptsLeft <= 1
+                || android.os.SystemClock.uptimeMillis() >= deadline) return;
+        view.postDelayed(() -> retryMobilePresentation(view, url, generation, request,
+                attemptsLeft - 1, deadline), 350);
     }
 
     private final class WebsiteClient extends TestLabClient {
@@ -945,6 +974,7 @@ public final class MainActivity extends ComponentActivity {
         }
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
             if (view != website || destroyed) return;
+            presentationRequest++;
             searchOpening=false;searchCallbackGeneration++;
             if (!MobileEntry.isDocument(url)) searchPending = false;
             documentCheckGeneration++;
@@ -1158,6 +1188,7 @@ public final class MainActivity extends ComponentActivity {
         super.onResume();
         foreground = true;
         if (website != null) website.onResume();
+        if (website != null && hasUsablePage) installMobilePresentation(website, website.getUrl());
         if (recommendations != null) recommendations.resume();
         if(favorites!=null)favorites.resume();
         if(discovery!=null)discovery.resume();
@@ -1166,6 +1197,7 @@ public final class MainActivity extends ComponentActivity {
         resolveLocationResult();
     }
     @Override protected void onPause() {
+        presentationRequest++;
         searchPending=false;searchOpening=false;searchCallbackGeneration++;
         shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}if(informationDialog!=null){informationDialog.dismiss();informationDialog=null;}
         discoveryCapture++;
@@ -1206,6 +1238,7 @@ public final class MainActivity extends ComponentActivity {
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
+        presentationRequest++;
         shareCapture++;if(shareDialog!=null)shareDialog.dismiss();if(informationDialog!=null)informationDialog.dismiss();
         discoveryCapture++;
         venueCaptureEpoch++;

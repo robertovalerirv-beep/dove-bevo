@@ -637,6 +637,31 @@ public final class NativeUsabilityRuntimeTest {
         await(()->{web.evaluateJavascript("document.body.dataset.searchOpen === '1'",result->opened.set("true".equals(result)));return opened.get();});
     }
 
+    @Test public void lateMobileMountEventuallyHidesWebLensWithoutAnEmptyTopRail() throws Exception {
+        presentationMode=7;
+        navigate(BrowserPolicy.HOME);
+        float density=activity.getResources().getDisplayMetrics().density;
+        await(()->((FrameLayout.LayoutParams)web.getLayoutParams()).topMargin==Math.round(48*density));
+        AtomicReference<String> before=new AtomicReference<>();
+        await(()->{web.evaluateJavascript("document.querySelectorAll('#dovebevo-native-theme-v1').length",before::set);
+            return "0".equals(before.get());});
+        fixtureJavascript("const root=document.getElementById('app');"
+                +"root.innerHTML='<div class=\"app\"><header class=\"top\"><div class=\"top__row\">"
+                +"<button class=\"search-field\" data-dovebevo-search=\"1\">Cerca città o bar</button>"
+                +"</div></header><main class=\"main\"><section class=\"map\"></section></main></div>';"
+                +"document.querySelector('[data-dovebevo-search]').addEventListener('click',"
+                +"()=>document.body.dataset.searchOpen='1');");
+        AtomicReference<String> after=new AtomicReference<>();
+        await(()->{web.evaluateJavascript("[document.documentElement.getAttribute('data-dovebevo-app-theme'),"
+                +"document.querySelectorAll('#dovebevo-native-theme-v1').length,"
+                +"getComputedStyle(document.querySelector('.top__row > .search-field')).display]",after::set);
+            return "[\"1\",1,\"none\"]".equals(after.get())
+                    && ((FrameLayout.LayoutParams)web.getLayoutParams()).topMargin==0;});
+        onMain(()->activity.findViewById(R.id.search_destination).performClick());
+        AtomicBoolean opened=new AtomicBoolean();
+        await(()->{web.evaluateJavascript("document.body.dataset.searchOpen === '1'",result->opened.set("true".equals(result)));return opened.get();});
+    }
+
     @Test public void missingNativeThemeKeepsOriginalSearchClearOfTopOverflow() throws Exception {
         presentationMode=6;
         navigate(BrowserPolicy.HOME);
@@ -1099,14 +1124,17 @@ public final class NativeUsabilityRuntimeTest {
                         .replace("OWNED_MOBILE_ATTRIBUTE", markerMode == 1 ? "data-dovebevo-mobile-shell=\"1\""
                                 : markerMode == 2 ? "data-dovebevo-mobile-shell=\"false\"" : "")
                         .replace("OWNED_VENUE_KEY", key == null ? "" : key).getBytes(StandardCharsets.UTF_8);
-                if(presentationMode==5 || presentationMode==6) {
+                if(presentationMode==5 || presentationMode==6 || presentationMode==7) {
                     String html="<!doctype html><html data-dovebevo-mobile-shell=\"1\"><head><meta charset=\"utf-8\">"
                             +"<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
                             +"<meta name=\"owned-response\" content=\""+responseToken+"\">"
-                            +"<script"+(presentationMode==6?"":" nonce=\"fixtureThemeNonce20261029\"")+">document.addEventListener('DOMContentLoaded',()=>document.querySelector('[data-dovebevo-search]').addEventListener('click',()=>document.body.dataset.searchOpen='1'));</script>"
-                            +"</head><body><div id=\"app\"><div class=\"app\"><header class=\"top\"><div class=\"top__row\">"
+                            +(presentationMode==7?"<script nonce=\"fixtureThemeNonce20261029\"></script>"
+                                    :"<script"+(presentationMode==6?"":" nonce=\"fixtureThemeNonce20261029\"")+">document.addEventListener('DOMContentLoaded',()=>document.querySelector('[data-dovebevo-search]').addEventListener('click',()=>document.body.dataset.searchOpen='1'));</script>")
+                            +"</head><body><div id=\"app\">"
+                            +(presentationMode==7?"":"<div class=\"app\"><header class=\"top\"><div class=\"top__row\">"
                             +"<button class=\"search-field\" data-dovebevo-search=\"1\">Cerca città o bar</button></div></header>"
-                            +"<main class=\"main\"><section class=\"map\"></section></main></div></div></body></html>";
+                            +"<main class=\"main\"><section class=\"map\"></section></main></div>")
+                            +"</div></body></html>";
                     bytes=html.getBytes(StandardCharsets.UTF_8);
                 } else if(presentationMode!=0) {
                     String nonce=presentationMode==2?"":" nonce=\"fixtureThemeNonce20261029\"";

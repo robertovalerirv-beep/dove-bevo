@@ -151,7 +151,7 @@ describe("app-only customer prices on vetted named menu venues", () => {
     expect(page.rows[0]?.revision).toBe(revision);
     expect(page.next_after).toBeTypeOf("number");
     const nextPage = await request("/api/admin/mobile/v2/customer-prices/pending?limit=1&after=" +
-      page.next_after, undefined, undefined, jwt);
+      String(page.next_after), undefined, undefined, jwt);
     expect((await nextPage.json<{ rows: { revision: string }[] }>()).rows).toHaveLength(1);
 
     const decision = await request(

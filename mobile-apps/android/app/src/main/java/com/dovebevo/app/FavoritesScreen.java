@@ -49,7 +49,7 @@ final class FavoritesScreen {
         localContent=new LinearLayout(activity);localContent.setOrientation(LinearLayout.VERTICAL);body.addView(localContent);
         if(drinkStore==null)drinkStore=new SavedDrinkStore(new SavedVenueFile(activity.getFilesDir(),"saved-drinks-v1"));
         if(drinkLoader==null)drinkLoader=new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task));
-        drinkPane=new SavedDrinkScreen(activity,drinkStore,drinkLoader,navigate,foreground);body.addView(drinkPane.view());drinkPane.view().setVisibility(unifiedDrinks?View.VISIBLE:View.GONE);
+        drinkPane=new SavedDrinkScreen(activity,drinkStore,drinkLoader,navigate,foreground,unifiedDrinks?store:null);body.addView(drinkPane.view());drinkPane.view().setVisibility(unifiedDrinks?View.VISIBLE:View.GONE);
         if(unifiedDrinks){drinksVisible=true;localContent.setVisibility(View.GONE);}
         localTab.setOnClickListener(v->{if(usable())selectPane(false);});drinkTab.setOnClickListener(v->{if(usable())selectPane(true);});body=localContent;
         LinearLayout filters=new ComparisonFilters(activity);NativeAppearance.card(filters);body.addView(filters,new LinearLayout.LayoutParams(-1,-2));

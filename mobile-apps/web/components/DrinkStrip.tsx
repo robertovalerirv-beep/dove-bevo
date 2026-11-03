@@ -10,6 +10,14 @@ interface Props {
 export function DrinkMenu({ selected, onChange }: Props) {
   return (
     <div class="mobile-drink-strip" role="group" aria-label={it.map.drinks}>
+      <button
+        type="button"
+        class="mobile-drink-all"
+        aria-pressed={selected.length === 0}
+        onClick={() => onChange([])}
+      >
+        Tutti
+      </button>
       {CATALOG.map((drink) => {
         const checked = selected.includes(drink.code),
           last = checked && selected.length === 1;

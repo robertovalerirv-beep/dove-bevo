@@ -301,7 +301,7 @@ class ImportTests(unittest.TestCase):
             def open(self,request,timeout):
                 self.timeout=timeout
                 raise TimeoutError()
-        transport=core.legacy.Transport("unused-account","unused-token")
+        transport=core.legacy.Transport("0"*32,"unused-token")
         transport.opener=TimedOpener()
         with self.assertRaisesRegex(core.legacy.Error,"^public source timeout$"):
             transport.fetch("https://example.org/menu")

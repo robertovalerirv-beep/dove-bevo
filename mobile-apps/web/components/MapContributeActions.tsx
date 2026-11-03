@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "preact/hooks";
+import { useId, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { currentLang, it } from "@site/app/i18n/lang";
 
 /** App map actions live above the native tabs instead of occupying a second footer. */
@@ -14,7 +14,7 @@ export function MapContributeActions({
   const menuId = useId();
   const label = currentLang() === "en" ? "Add" : "Aggiungi";
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     const outside = (event: PointerEvent) => {
       if (root.current && !root.current.contains(event.target as Node)) setOpen(false);

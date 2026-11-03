@@ -334,7 +334,7 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertEqual(web.backForwardList.currentItem?.url, venueURL)
         XCTAssertEqual(web.backForwardList.backList.count, 1)
         XCTAssertTrue(web.backForwardList.forwardList.isEmpty)
-        browser.goBack()
+        _ = browser.perform(NSSelectorFromString("goBack"))
         waitUntil("Back returns to owned home") {
             web.url == homeURL && web.canGoForward && (try? self.share(browser).attributes.contains(.disabled)) == false
         }

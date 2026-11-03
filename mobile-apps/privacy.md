@@ -1,6 +1,6 @@
 # Privacy delle app Dove bevo
 
-Aggiornamento: 28 ottobre 2026
+Aggiornamento: 3 novembre 2026
 
 Questa informativa riguarda le app Dove bevo per Android e iOS, identificate da com.dovebevo.app, e il servizio www.dovebevo.com usato nelle app. Il titolare del servizio e del trattamento è Roberto Valeri. Per assistenza, richieste sui dati e segnalazioni di contenuti: dovebevo@gmail.com.
 
@@ -18,7 +18,7 @@ La ricerca scarica elenchi usando brevi prefissi del testo. Il testo completo e 
 
 ## Prezzi, locali e segnalazioni
 
-Se scegli di contribuire, il servizio riceve il locale, il drink, il prezzo, la fascia e i dati necessari alla conferma. Una proposta di locale comprende nome, tipo e posizione del locale che confermi. Una segnalazione comprende il locale o il prezzo e il motivo scelto. I contributi approvati sono destinati alla consultazione pubblica. Non inserire informazioni personali o prezzi inventati.
+Se scegli di contribuire, il servizio riceve il locale, il drink, il prezzo, la fascia e i dati necessari alla conferma. Per un drink mancante puoi anche inserire un nome e, se disponibili, categoria e formato; il nuovo drink viene sottoposto a verifica prima della pubblicazione. Una proposta di locale comprende nome, tipo e posizione del locale che confermi. Una segnalazione comprende il locale o il prezzo e il motivo scelto. I contributi approvati sono destinati alla consultazione pubblica. Non inserire informazioni personali o prezzi inventati.
 
 Non è richiesto un profilo con nome, email o password. L'assenza di un account non significa assenza di trattamento di dati tecnici.
 
@@ -38,9 +38,9 @@ Il browser integrato conserva anche dati del sito, come la data del primo utiliz
 
 Prima di aprire il servizio online, l'app mostra le regole d'uso per maggiorenni. Se le accetti, salva solo la versione accettata sul dispositivo. Non invia questa conferma al servizio e non la usa come identificatore. Leggere regole e Privacy o rifiutare non apre il sito. L'accettazione delle regole non concede il permesso di posizione.
 
-Se salvi un locale nei preferiti, l'app conserva nella propria memoria locale il collegamento pubblico del locale e il nome associato. Non salva automaticamente la cronologia, i prezzi o la posizione GPS nei preferiti. Puoi consultare i nomi senza connessione e rimuovere le voci. Questa funzione non crea un account o una sincronizzazione tra telefoni; cancellare i dati dell'app può eliminare i preferiti. Su iOS l'archivio scritto dall'app è escluso dal backup di sistema; su Android l'app disabilita il backup, mentre eventuali trasferimenti tra dispositivi dipendono anche dal sistema.
+Quando salvi un preferito, l'app conserva nella propria memoria locale il collegamento pubblico del locale e il suo nome. Per un tipo di drink salva anche la categoria e la fascia normale o happy hour. Se scegli un drink preciso dal menu del locale, salva l'identificativo e il nome di quel drink e, quando presenti, categoria, descrizione del formato e volume in millilitri. I vecchi preferiti che contengono soltanto il locale restano nell'archivio locale. Non salva nei preferiti prezzi, date di pagamento, conferme, cronologia di navigazione o posizione GPS. Puoi consultare i nomi salvati senza connessione e rimuovere le voci. Questa funzione non crea un account o una sincronizzazione tra telefoni; cancellare i dati dell'app può eliminare i preferiti. Su iOS l'archivio scritto dall'app è escluso dal backup di sistema; su Android l'app disabilita il backup, mentre eventuali trasferimenti tra dispositivi dipendono anche dal sistema.
 
-Quando apri Preferiti o aggiorni il confronto, l'app richiede al servizio i dati pubblici delle celle geografiche dei locali salvati e i relativi prezzi. Non carica un unico elenco dei preferiti, ma queste richieste e l'indirizzo IP possono rivelare le zone dei locali che confronti. Per queste letture non invia cookie del browser, l'identificatore usato per i consigli o la posizione GPS del telefono. I risultati del confronto restano temporaneamente nella memoria dell'app; non sono una copia offline dei prezzi. Se manca una connessione o il servizio non risponde, i nomi salvati restano disponibili ma l'app indica che i prezzi non sono disponibili. Riaprire un locale richiede le normali richieste del browser descritte sopra. Il salvataggio non rende disponibili offline mappa e prezzi.
+Quando apri Preferiti o aggiorni il confronto, l'app richiede al servizio i dati pubblici delle celle geografiche dei locali salvati, i drink dei menu disponibili e i relativi prezzi. Non carica un unico elenco dei preferiti, ma queste richieste e l'indirizzo IP possono rivelare le zone dei locali che confronti. Per queste letture non invia cookie del browser, l'identificatore usato per i consigli o la posizione GPS del telefono. I risultati del confronto restano temporaneamente nella memoria dell'app; non sono una copia offline dei prezzi. Se manca una connessione o il servizio non risponde, i nomi salvati restano disponibili ma l'app indica che i prezzi non sono disponibili. Riaprire un locale richiede le normali richieste del browser descritte sopra. Il salvataggio non rende disponibili offline mappa e prezzi.
 
 ## Conteggi e sponsorizzazioni
 

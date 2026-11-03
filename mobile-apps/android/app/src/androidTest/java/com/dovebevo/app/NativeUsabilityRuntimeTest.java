@@ -80,9 +80,9 @@ public final class NativeUsabilityRuntimeTest {
               content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'">
             <meta name="owned-response" content="OWNED_RESPONSE">
             <title>Owned native fixture</title><p>Local browser fixture</p>
-            <button data-dovebevo-search="1" onclick="document.body.dataset.searchOpen='1'">Cerca città o bar</button>
+            <button data-dovebevo-search="1" onclick="history.replaceState({inApp:true},'', '/mobile/');document.body.dataset.searchOpen='1'">Cerca città o bar</button>
             <button id="open-venue" style="min-height:64px;width:240px"
-              onclick="document.querySelector('section.map').setAttribute('data-selected','n123');history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')">Open owned venue fixture</button>
+              onclick="document.body.dataset.searchOpen='0';document.querySelector('section.map').setAttribute('data-selected','n123');history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')">Open owned venue fixture</button>
             <section class="map" data-selected="OWNED_VENUE_KEY"></section>
             <dialog class="sheet sheet--bare" open aria-label="Locale di prova">
               <div class="sheet__body"><div class="scontrino"><div class="scontrino__paper">
@@ -132,7 +132,12 @@ public final class NativeUsabilityRuntimeTest {
                 ServiceWorkerController.getInstance().getServiceWorkerWebSettings().setBlockNetworkLoads(true);
                 LinearLayout layout = new LinearLayout(activity);
                 layout.setOrientation(LinearLayout.VERTICAL);
-                layout.addView((View) invoke("createBrowserTools"));
+                // Production keeps history actions for Android Back and the bottom
+                // overflow, but no longer mounts a duplicate browser header.
+                set("backButton", invoke("button", new Class<?>[]{int.class, int.class, Runnable.class},
+                        R.id.back, R.string.back, (Runnable) () -> invoke("goBack")));
+                set("forwardButton", invoke("button", new Class<?>[]{int.class, int.class, Runnable.class},
+                        R.id.forward, R.string.forward, (Runnable) () -> invoke("goForward")));
                 ProgressBar progress = new ProgressBar(activity);
                 set("progress", progress); layout.addView(progress);
                 FrameLayout content = new FrameLayout(activity);
@@ -389,12 +394,23 @@ public final class NativeUsabilityRuntimeTest {
         AtomicBoolean searchOpened = new AtomicBoolean();
         await(()->{
             web.evaluateJavascript("document.body.dataset.searchOpen === '1'", result -> searchOpened.set("true".equals(result)));
-            return searchOpened.get();
+            return searchOpened.get() && APP_HOME.equals(web.getUrl());
         });
         onMain(()->{
             assertFalse((Boolean)get("discoveryVisible"));
             assertFalse(activity.findViewById(R.id.home).isSelected());assertTrue(activity.findViewById(R.id.map_destination).isSelected());
-            assertEquals(APP_ONE,web.getUrl());assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertEquals("Cerca must leave the old venue for the plain map",APP_HOME,web.getUrl());
+            assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+        });
+        tapOwnedVenueButton();
+        AtomicBoolean searchClosed = new AtomicBoolean();
+        await(()->{
+            web.evaluateJavascript("document.body.dataset.searchOpen === '0'", result -> searchClosed.set("true".equals(result)));
+            return searchClosed.get() && APP_ONE.equals(web.getUrl()) && activity.findViewById(R.id.save_venue).isEnabled()
+                && activity.findViewById(R.id.recommendation_entry).isEnabled();
+        });
+        onMain(()->{
+            assertEquals("A newly selected venue restores contextual actions",APP_ONE,web.getUrl());
             assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.discover_action,0));
         });
         await(()->(Boolean)get("discoveryVisible"));
@@ -439,6 +455,14 @@ public final class NativeUsabilityRuntimeTest {
             set("foreground", false);
             assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, currentVenue));
             set("foreground", true);
+            set("searchPending", true);
+            set("searchOpening", true);
+            invoke("onPause");
+            assertFalse("Backgrounding must cancel the queued search", (Boolean) get("searchPending"));
+            assertFalse((Boolean) get("searchOpening"));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, currentVenue));
+            invoke("onResume");
+            assertFalse("Resume must require a fresh Cerca tap", (Boolean) get("searchPending"));
         });
     }
 
@@ -710,7 +734,9 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> {
             assertFalse(((Button) get("forwardButton")).isEnabled());
             assertEquals(ONE, invoke("eligibleSavedVenue"));
-            ((Button) get("backButton")).performClick();
+            android.widget.PopupMenu menu = browserMenu();
+            assertTrue("Back must be available in the real bottom overflow", menu.getMenu().findItem(R.id.back).isEnabled());
+            assertTrue(menu.getMenu().performIdentifierAction(R.id.back, 0));
         });
         await(() -> APP_HOME.equals(web.getUrl()) && ((Button) get("forwardButton")).isEnabled());
         assertOwnedDocument(1);
@@ -729,7 +755,9 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> {
             assertFalse(((Button) get("backButton")).isEnabled());
             assertTrue(((Button) get("forwardButton")).isEnabled());
-            ((Button) get("forwardButton")).performClick();
+            android.widget.PopupMenu menu = browserMenu();
+            assertTrue("Forward must be available in the real bottom overflow", menu.getMenu().findItem(R.id.forward).isEnabled());
+            assertTrue(menu.getMenu().performIdentifierAction(R.id.forward, 0));
         });
         await(() -> APP_ONE.equals(web.getUrl()) && ((Button) get("backButton")).isEnabled());
         // WebView exposes a restored history URL before its main document is ready.

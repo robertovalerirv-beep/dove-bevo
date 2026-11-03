@@ -6,7 +6,7 @@ import { before, after, test } from "node:test";
 import { chromium } from "@playwright/test";
 import { contrastRatio } from "./contrast.mjs";
 import { pageCsp } from "../../../src/worker/lib/security-headers.ts";
-/* global document, structuredClone, getComputedStyle */
+/* global document, structuredClone, getComputedStyle, history, location */
 
 // Synthetic records exist only inside intercepted requests. No public read/write is used.
 const client = path.resolve(fileURLToPath(new URL("../../../dist/client/", import.meta.url)));
@@ -782,6 +782,45 @@ test("legacy Italian search opens real app catalogue coordinates without synthet
     assert.equal(url.pathname, "/mobile/");
     assert.equal(url.searchParams.get("at"), "51.50790,-0.12780");
     assert.equal(url.searchParams.has("place"), false);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("Cerca closes a London venue to the same city map before opening the picker", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f);
+    const historyLength = await f.page.evaluate(() => history.length);
+    const map = f.page.locator(".map");
+    await f.page.waitForFunction(() =>
+      Boolean(document.querySelector(".map")?.getAttribute("data-center")),
+    );
+    const afterClick = await f.page.evaluate(() => {
+      document.querySelector('.europe-app button[data-dovebevo-search="1"]').click();
+      return location.href;
+    });
+    const route = new URL(afterClick);
+    assert.equal(route.pathname, "/mobile/");
+    assert.equal(route.searchParams.get("at"), "51.50790,-0.12780");
+    assert.equal(route.searchParams.has("path"), false);
+    assert.equal(await f.page.evaluate(() => history.length), historyLength);
+    const picker = f.page.getByRole("dialog");
+    await picker.getByRole("textbox", { name: "Cerca una città o un bar" }).waitFor();
+    assert.equal(await map.getAttribute("data-selected"), "");
+    await picker.getByRole("button", { name: "Chiudi", exact: true }).click();
+    await picker.waitFor({ state: "hidden" });
+    assert.equal(await map.getAttribute("data-center"), "51.50790,-0.12780");
+    assert.equal(await map.count(), 1);
+    await f.page.getByRole("button", { name: "Elenco locali", exact: true }).click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("button", { name: /^Fixture/ })
+      .click();
+    await f.page.locator("h2.scontrino__name").waitFor();
+    assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n1001");
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {

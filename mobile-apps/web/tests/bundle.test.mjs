@@ -6,7 +6,7 @@ import { before, after, test } from "node:test";
 import { chromium } from "@playwright/test";
 import { contrastRatio } from "./contrast.mjs";
 import { pageCsp } from "../../../src/worker/lib/security-headers.ts";
-/* global document, getComputedStyle, history */
+/* global document, getComputedStyle, history, location */
 
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 const client = path.join(root, "dist/client");
@@ -637,6 +637,45 @@ test("Italian city search in the production mobile entry links the approved app 
     );
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("Cerca closes the selected Italian venue before search and Cancel leaves the loaded map", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+    await f.page.locator("h2.scontrino__name").waitFor();
+    const historyLength = await f.page.evaluate(() => history.length);
+    const map = f.page.locator("section.map");
+    await f.page.waitForFunction(() =>
+      Boolean(document.querySelector("section.map")?.getAttribute("data-center")),
+    );
+    const center = await map.getAttribute("data-center");
+    const afterClick = await f.page.evaluate(() => {
+      document.querySelector('button[data-dovebevo-search="1"]').click();
+      return location.href;
+    });
+    assert.equal(new URL(afterClick).pathname, "/mobile/");
+    assert.equal(new URL(afterClick).searchParams.has("path"), false);
+    assert.equal(await f.page.evaluate(() => history.length), historyLength);
+    const search = f.page.getByRole("dialog");
+    await search.getByRole("combobox").waitFor();
+    assert.equal(await map.getAttribute("data-selected"), "");
+    await f.page.keyboard.press("Escape");
+    await search.waitFor({ state: "hidden" });
+    assert.equal(await map.getAttribute("data-center"), center);
+    assert.equal(await map.count(), 1, "Cancel keeps the existing map instance");
+    await f.page.locator(".map__list").click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("link", { name: /^Locale di prova/ })
+      .click();
+    await f.page.locator("h2.scontrino__name").waitFor();
+    assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n123");
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
   }

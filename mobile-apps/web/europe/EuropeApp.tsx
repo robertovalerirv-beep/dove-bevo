@@ -513,6 +513,11 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
             data-dovebevo-search="1"
             aria-label={it.search.open}
             onClick={() => {
+              if (venueKey !== null) {
+                history.replaceState(null, "", cityURL(city));
+                setVenueKey(null);
+                setSavedFocus(null);
+              }
               setPicker(true);
               setQuery("");
             }}

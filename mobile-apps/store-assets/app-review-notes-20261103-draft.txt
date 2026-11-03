@@ -1,0 +1,19 @@
+INTERNAL DRAFT: Match these notes to the selected App Store build and review a launch-first recording made on a physical iPhone before submission. Neither check is complete here.
+
+1. Purpose and audience
+Dove Bevo is an informational app for adults aged 18 or older to find drinking venues, compare stated drink prices and serving sizes, save a drink at a venue privately, and see aggregate recommendations. It does not sell, order, deliver or take payment for alcohol.
+
+2. Access and demonstration
+No account, sign-in, demo credentials or account-deletion flow is required. On first launch, read the Rules and Privacy information and confirm age 18+. Location permission is optional: deny it, use Cerca to search for Milano, then open a venue. Menu-sourced prices are labelled separately from customer-reported prices. Save a drink at that venue using Salva or Salva questo drink, then open Preferiti; Consigliati shows public category thumbs-up totals. Mappa and Altro provide the map, Scopri, Privacy and support. Price-entry, venue-proposal and reporting forms may be inspected and cancelled without posting. Maps and current prices require internet.
+
+3. Contributions and safety
+Customers can contribute numeric prices and confirmations, a name for a missing drink, venue proposals, and category thumbs-up votes. New drink names and venue proposals first enter an operator review queue; input lengths and characters are constrained. Visible price and venue reports include incorrect or offensive content, and operators can review, hide or remove entries. Reports do not promise immediate removal. There are no public author profiles, direct messages, reviews or photo uploads. There is no consumer control to block an abusive contributor; we do not claim one. Contact for content complaints: dovebevo@gmail.com.
+
+4. External services
+The app uses the first-party HTTPS service at www.dovebevo.com, hosted on Cloudflare with its API and database. Cloudflare Turnstile protects contribution sessions. OpenFreeMap supplies map tiles and OpenStreetMap supplies attributed venue/map data. City and venue search uses first-party catalogue files and approved-venue data, not an external geocoding service. Menu prices show a source link and check date; following a link opens that venue's site. Directions open Apple Maps after the user's action; sharing and email use system interfaces on request. There is no live AI, in-app payment, native advertising or tracking SDK.
+
+5. Regional differences
+Coverage is curated and uneven across Italy and selected European cities. Prices retain the stated serving and original currency: GBP for covered UK venues and EUR for covered euro-area venues, without conversion. Source-checked menu prices are distinguished from customer observations. Missing prices remain unavailable rather than estimated. Core consumer controls are the same across supported regions; venue and price availability varies.
+
+6. Business model and regulated material
+Consumer features are free, with no in-app purchases or subscriptions. Any venue sponsorship or manager agreement is arranged outside the app and does not buy a customer price. The app is an adult information directory, not an alcohol retailer or a regulated medical, financial or gambling service. OpenStreetMap attribution and links to the originating venue menus are displayed; the app does not present full third-party menu artwork as its own. Operator: Roberto Valeri; support: dovebevo@gmail.com.

@@ -93,6 +93,7 @@ public final class MainActivity extends ComponentActivity {
     private boolean loading;
     private boolean hasUsablePage;
     private boolean searchPending;
+    private boolean searchOpening;
     private long searchCallbackGeneration;
     private boolean documentHasHttpError;
     private boolean awaitingDocumentStart;
@@ -493,7 +494,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void showFavorites(){
         if(!foreground||destroyed||favorites==null||favoritesVisible)return;
-        searchPending=false;
+        searchPending=false;searchOpening=false;searchCallbackGeneration++;
         discoveryCapture++;if(discovery!=null){discovery.hide();discovery.view().setVisibility(View.GONE);}discoveryVisible=false;
         venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
         cancelLocation();disposePopup();
@@ -517,9 +518,11 @@ public final class MainActivity extends ComponentActivity {
         if(!foreground||destroyed)return;
         retireSharePresentation();
         if(recommendations!=null)recommendations.dismiss();
-        showMap();
         searchCallbackGeneration++;
         searchPending=true;
+        searchOpening=true;
+        venueCaptureEpoch++;
+        showMap();
         if(website==null||!MobileEntry.isDocument(website.getUrl())){navigate(MobileEntry.HOME);return;}
         dispatchPendingSearch();
     }
@@ -531,6 +534,10 @@ public final class MainActivity extends ComponentActivity {
         WebView source=website;String captured=source.getUrl();
         long searchGeneration=searchCallbackGeneration,documentGeneration=documentCheckGeneration,venueGeneration=venueCaptureEpoch;
         source.evaluateJavascript(MobileEntry.SEARCH_SCRIPT,result->{
+            if(searchGeneration!=searchCallbackGeneration||source!=website||!foreground||destroyed||
+                    nativeDestinationVisible()||!hasUsablePage||failed||loading||awaitingDocumentStart||documentHasHttpError)return;
+            searchOpening=false;
+            updateToolbar();
             if(!"true".equals(result)&&searchFailureIsCurrent(source,captured,searchGeneration,documentGeneration,venueGeneration))
                 Toast.makeText(this,"Cerca non disponibile. Riprova quando la mappa è pronta.",Toast.LENGTH_SHORT).show();
         });
@@ -550,7 +557,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void goHome(){
         if(!foreground||destroyed)return;
-        searchPending=false;
+        searchPending=false;searchOpening=false;searchCallbackGeneration++;
         if(discoveryVisible){discovery.refresh();return;}
         venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
         if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
@@ -599,7 +606,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private String eligibleSavedVenue() {
-        if (destroyed || nativeDestinationVisible() || website == null || failed || loading || awaitingDocumentStart || !hasUsablePage
+        if (destroyed || searchOpening || nativeDestinationVisible() || website == null || failed || loading || awaitingDocumentStart || !hasUsablePage
                 || documentHasHttpError || stoppedUrl != null) return null;
         return SavedVenueUrl.canonicalize(website.getUrl());
     }
@@ -850,6 +857,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void showFailure(int title, int message) {
         if (destroyed) return;
+        searchOpening=false;searchCallbackGeneration++;
         venueCaptureEpoch++;
         failed = true;
         cancelLocation();
@@ -894,6 +902,7 @@ public final class MainActivity extends ComponentActivity {
         }
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
             if (view != website || destroyed) return;
+            searchOpening=false;searchCallbackGeneration++;
             if (!MobileEntry.isDocument(url)) searchPending = false;
             documentCheckGeneration++;
             venueCaptureEpoch++;
@@ -1108,6 +1117,7 @@ public final class MainActivity extends ComponentActivity {
         resolveLocationResult();
     }
     @Override protected void onPause() {
+        searchPending=false;searchOpening=false;searchCallbackGeneration++;
         shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}if(informationDialog!=null){informationDialog.dismiss();informationDialog=null;}
         discoveryCapture++;
         venueCaptureEpoch++;

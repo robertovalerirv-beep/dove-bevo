@@ -62,8 +62,24 @@ public final class DrinkFavoritesRuntimeTest {
         assertEquals(URL+"&drink=spritz&hh=1",opened.get());
     }
     @Test public void oldPlaceConversionKeepsOldRecordUntilDrinkWriteSucceeds()throws Exception {
-        venues.save(URL,"Old saved place");showScreen(new AtomicReference<>(),false);awaitRows("Old saved place");
-        onMain(()->{View action=screen.view().findViewWithTag("drink_favourite_migrate_"+URL);assertNotNull(action);action.performClick();assertNotNull(dialogFromScreen());choiceFromScreen("migration_drink").setSelection(RecommendationDrink.SPRITZ.ordinal()+1);failDrinkWrites=true;dialogFromScreen().getButton(AlertDialog.BUTTON_POSITIVE).performClick();});
+        assertEquals(SavedVenueStore.Result.SAVED,venues.save(URL,"Old saved place"));
+        String savedUrl=venues.load().get(0).url;
+        assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",savedUrl);
+        showScreen(new AtomicReference<>(),false);awaitRows("Old saved place");
+        onMain(()->{
+            View action=screen.view().findViewWithTag("drink_favourite_migrate_"+savedUrl);
+            assertNotNull("The old venue must offer an explicit drink conversion",action);
+            assertTrue("The old venue conversion control must accept a tap",action.performClick());
+            AlertDialog dialog=dialogFromScreen();
+            assertNotNull("Tapping the old venue must open the conversion dialog",dialog);
+            Spinner choice=choiceFromScreen("migration_drink");
+            assertNotNull("Conversion must require a drink choice",choice);
+            choice.setSelection(RecommendationDrink.SPRITZ.ordinal()+1);
+            failDrinkWrites=true;
+            Button confirm=dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            assertNotNull("Conversion must present an explicit save action",confirm);
+            confirm.performClick();
+        });
         assertTrue(drinks.load().isEmpty());assertEquals(1,venues.load().size());
         onMain(()->{failDrinkWrites=false;dialogFromScreen().getButton(AlertDialog.BUTTON_POSITIVE).performClick();});
         assertEquals(1,drinks.load().size());assertTrue(venues.load().isEmpty());

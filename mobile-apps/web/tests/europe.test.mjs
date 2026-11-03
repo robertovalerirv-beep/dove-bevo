@@ -379,6 +379,23 @@ test("European venue preserves identity, explicit pounds and source-check proven
   }
 });
 
+test("European saved drink links feature only the requested category and band", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto(origin + "/mobile/?path=%2Fbar%2Fn1001&c=gcpvj&drink=spritz&hh=0");
+    await f.page.locator("h2.scontrino__name").waitFor();
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /7,50/);
+    assert.equal(await f.page.getByTestId("saved-drink-unavailable").count(), 0);
+
+    await f.page.goto(origin + "/mobile/?path=%2Fbar%2Fn1001&c=gcpvj&drink=spritz&hh=1");
+    await f.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.equal(await f.page.locator(".mobile-price--featured").count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("all nine price categories load genuine artwork and keep the small-screen Save action reachable", async () => {
   const f = await fixture({ viewport: { width: 402, height: 600 } });
   try {

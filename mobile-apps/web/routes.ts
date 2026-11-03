@@ -5,14 +5,53 @@ export const mobileVenueKeyPattern = /^(?:[nwru][1-9]\d{0,14}|m[0-9a-f]{24})$/;
 const isBar = (path: string) =>
   path.startsWith("/bar/") && mobileVenueKeyPattern.test(path.slice(5));
 const ENTRY = "/mobile/";
+type MobileLocation = Pick<Location, "pathname" | "search"> & { hash?: string };
+export interface DrinkFocus {
+  drink: string;
+  hh: 0 | 1;
+}
 
-export function mobilePath(value: Pick<Location, "pathname" | "search">): string {
+function focusPair(params: URLSearchParams): DrinkFocus | null {
+  const drink = params.get("drink"),
+    hh = params.get("hh");
+  if (
+    params.getAll("drink").length !== 1 ||
+    params.getAll("hh").length !== 1 ||
+    drink === null ||
+    !CATALOG.some((value) => value.code === drink) ||
+    (hh !== "0" && hh !== "1")
+  )
+    return null;
+  return { drink, hh: hh === "1" ? 1 : 0 };
+}
+
+export function mobilePath(value: MobileLocation): string {
   if (value.pathname !== ENTRY && value.pathname !== `${ENTRY}index.html`) return "/";
+  if (value.hash) return "/";
   const params = new URLSearchParams(value.search);
   if (params.getAll("path").length > 1 || params.getAll("c").length > 1) return "/";
   const path = params.get("path") ?? "/";
   if (path === "/") return "/";
+  const keys = [...params.keys()];
+  const rawKeys = value.search
+    .replace(/^\?/, "")
+    .split("&")
+    .map((part) => part.split("=")[0]);
+  const focused = params.has("drink") || params.has("hh");
+  const allowed = focused ? ["path", "c", "drink", "hh"] : ["path", "c"];
+  if (
+    keys.length !== allowed.length ||
+    rawKeys.length !== allowed.length ||
+    rawKeys.some((key) => !allowed.includes(key ?? "")) ||
+    keys.some((key) => !allowed.includes(key)) ||
+    (focused && !focusPair(params))
+  )
+    return "/";
   return isBar(path) && CELL_PATTERN.test(params.get("c") ?? "") ? path : "/";
+}
+
+export function mobileFocus(value: MobileLocation): DrinkFocus | null {
+  return mobilePath(value) === "/" ? null : focusPair(new URLSearchParams(value.search));
 }
 
 export function mobileURL(path: string, origin = location.origin): string {
@@ -36,13 +75,47 @@ export function mobileURL(path: string, origin = location.origin): string {
   if (value.pathname !== "/") {
     params.set("path", value.pathname);
     params.set("c", cell);
-  } else if (value.searchParams.has("at")) {
-    params.set("at", value.searchParams.get("at") ?? "");
+    if (value.searchParams.has("drink") || value.searchParams.has("hh")) {
+      const rawKeys = value.search
+        .replace(/^\?/, "")
+        .split("&")
+        .map((part) => part.split("=")[0]);
+      if (
+        rawKeys.length !== 3 ||
+        new Set(rawKeys).size !== 3 ||
+        rawKeys.some((key) => !["c", "drink", "hh"].includes(key ?? ""))
+      )
+        throw new TypeError("Invalid app drink focus");
+      const focus = focusPair(value.searchParams);
+      if (!focus) throw new TypeError("Invalid app drink focus");
+      params.set("drink", focus.drink);
+      params.set("hh", String(focus.hh));
+    }
+  } else {
+    if (value.searchParams.has("drink") || value.searchParams.has("hh"))
+      throw new TypeError("Drink focus requires a venue");
+    if (value.searchParams.has("at")) params.set("at", value.searchParams.get("at") ?? "");
   }
   const query = params.toString();
   return ENTRY + (query ? `?${query}` : "");
 }
 
-export function mobileDefaultDrink(websiteDefault: string): string {
-  return CATALOG.some((drink) => drink.code === "spritz") ? "spritz" : websiteDefault;
+/** A saved regular or happy-hour drink never resolves to a conditional offer. */
+export function menuOfferMatchesFocus(
+  offer: { category: string | null; context: { kind: string } },
+  focus: DrinkFocus,
+): boolean {
+  return (
+    offer.category === focus.drink && offer.context.kind === (focus.hh ? "happy_hour" : "regular")
+  );
+}
+
+export function mobileDefaultDrink(
+  websiteDefault: string,
+  value: MobileLocation | undefined = typeof location === "undefined" ? undefined : location,
+): string {
+  return (
+    (value && mobileFocus(value)?.drink) ||
+    (CATALOG.some((drink) => drink.code === "spritz") ? "spritz" : websiteDefault)
+  );
 }

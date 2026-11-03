@@ -832,6 +832,17 @@
   background: #fff;
   overflow-wrap: anywhere;
 }
+.mobile-menu-v2__offer--focused {
+  border-color: #1b6e38;
+  background: #f4fbf5;
+}
+.mobile-menu-v2__saved {
+  display: block;
+  margin-top: 2px;
+  color: #1b6e38;
+  font-size: 12px;
+  font-weight: 600;
+}
 .mobile-menu-v2__name {
   font-size: 15px;
   font-weight: 680;

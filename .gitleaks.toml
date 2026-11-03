@@ -5,9 +5,9 @@ useDefault = true
 
 # The m-key is a public SHA-derived venue identifier, not a credential.
 # Historical manifest paths remain in the PR commit range and must be exact.
-[[allowlists]]
+# Gitleaks 8.24.3 reads the singular global allowlist; AND keeps scope to one public value.
+[allowlist]
 description = "Dambo public owner venue identifier in pinned manifests"
-targetRules = ["generic-api-key"]
 condition = "AND"
 regexTarget = "secret"
 paths = [

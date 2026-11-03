@@ -326,7 +326,14 @@ export function CustomerPricesV2({
       .filter((row) => row.kind === "menu_offer" && row.offer_id)
       .map((row) => [row.offer_id, row]),
   );
-  const additional = rows.filter((row) => row.kind === "new_drink");
+  const loadedOfferIds = new Set(offers.map((offer) => offer.id));
+  // A customer observation must remain visible even when its linked owner
+  // menu is absent or a later menu page has not loaded. It has no safe offer
+  // update path until that menu offer is available again.
+  const additional = rows.filter(
+    (row) => row.kind === "new_drink" || !row.offer_id || !loadedOfferIds.has(row.offer_id),
+  );
+  const compactNoMenu = offers.length === 0 && rows.length === 0;
   const newCurrency = customerCurrency(country, offers);
   const chosenCurrency =
     editor?.kind === "menu_offer"
@@ -556,12 +563,20 @@ export function CustomerPricesV2({
           })}
         </ul>
       )}
-      <section class="mobile-customer-v2" aria-label="Prezzi segnalati dai clienti">
-        <h4>Prezzi segnalati dai clienti</h4>
-        <p>
-          Prezzi pagati e condivisi dalle persone. Restano distinti dai prezzi documentati nel menu
-          del locale e non li sostituiscono.
-        </p>
+      <section
+        class={`mobile-customer-v2${compactNoMenu ? " mobile-customer-v2--compact" : ""}`}
+        aria-label="Prezzi segnalati dai clienti"
+      >
+        {!compactNoMenu && (
+          <>
+            <h4>Prezzi segnalati dai clienti</h4>
+            <p>
+              Prezzi pagati e condivisi dalle persone.
+              {offers.length > 0 &&
+                " Restano distinti dai prezzi documentati nel menu del locale e non li sostituiscono."}
+            </p>
+          </>
+        )}
         {loadState === "loading" && (
           <p class="hint" role="status">
             Caricamento segnalazioni…
@@ -586,20 +601,16 @@ export function CustomerPricesV2({
         )}
         {loadState === "ready" && (
           <>
-            {rows.length === 0 && (
+            {rows.length === 0 && offers.length > 0 && (
               <p class="hint">
                 {hasLegacyPrices
-                  ? offers.length === 0
-                    ? "Nessun altro prezzo segnalato."
-                    : "Nessun altro prezzo segnalato per i drink del menu."
-                  : offers.length === 0
-                    ? "Nessun prezzo segnalato ancora."
-                    : "Nessun prezzo segnalato per i drink del menu."}
+                  ? "Nessun altro prezzo segnalato per i drink del menu."
+                  : "Nessun prezzo segnalato per i drink del menu."}
               </p>
             )}
             {additional.length > 0 && (
               <>
-                <h5>Altri drink segnalati</h5>
+                <h5>{offers.length > 0 ? "Altri drink segnalati" : "Drink segnalati"}</h5>
                 <ul class="mobile-customer-v2__additional">
                   {additional.map((row) => (
                     <li key={row.item_key}>
@@ -610,15 +621,17 @@ export function CustomerPricesV2({
                           .join(" · ")}
                       </small>
                       {observation(row)}
-                      <button
-                        type="button"
-                        class="btn btn--secondary mobile-customer-v2__update"
-                        onClick={() => {
-                          beginNew(row);
-                        }}
-                      >
-                        Prezzo diverso? Aggiorna
-                      </button>
+                      {row.kind === "new_drink" && (
+                        <button
+                          type="button"
+                          class="btn btn--secondary mobile-customer-v2__update"
+                          onClick={() => {
+                            beginNew(row);
+                          }}
+                        >
+                          Prezzo diverso? Aggiorna
+                        </button>
+                      )}
                       {editor?.kind === "new_drink" &&
                         editor.row?.item_key === row.item_key &&
                         priceForm}

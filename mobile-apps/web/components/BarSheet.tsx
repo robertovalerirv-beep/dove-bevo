@@ -560,7 +560,11 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   disabled={menuMoreBusy}
                   onClick={() => void loadMoreMenu()}
                 >
-                  {menuMoreBusy ? "Caricamento…" : "Vedi altri drink"}
+                  {menuMoreBusy
+                    ? "Caricamento…"
+                    : menuFailed
+                      ? "Riprova altri drink"
+                      : "Vedi altri drink"}
                 </button>
               )}
               <div class="mobile-menu-v2__fees">
@@ -615,21 +619,6 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               offerFocus={savedOfferFocus}
               hasLegacyPrices={active.length > 0}
             />
-          )}
-          {menuFailed && venueKey.startsWith("m") && (
-            <div class="mobile-menu-v2__error" role="alert">
-              <p>Menu online non disponibile. Riprova tra poco.</p>
-              <button
-                type="button"
-                class="btn btn--secondary"
-                onClick={() => {
-                  if (menu?.next_after) void loadMoreMenu();
-                  else setMenuAttempt((value) => value + 1);
-                }}
-              >
-                Riprova menu
-              </button>
-            </div>
           )}
         </div>
         <div class="bar__actions">

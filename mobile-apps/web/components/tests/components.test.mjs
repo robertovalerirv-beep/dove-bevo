@@ -63,6 +63,7 @@ const priceRows = [
 ];
 async function fixture(options = {}) {
   let menuFailures = options.menuFailOnce ? 1 : 0;
+  let menuPageFailures = options.menuPageFailOnce ? 1 : 0;
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await context.newPage();
   const writes = [];
@@ -138,44 +139,46 @@ async function fixture(options = {}) {
             country: "IT",
           },
           price_scope: "customer_reported_drink_item",
-          rows: [
-            {
-              revision: "22222222-2222-4222-8222-222222222222",
-              item_key: "o" + "a".repeat(64),
-              kind: "menu_offer",
-              offer_id: "first",
-              name: "Spritz <script>",
-              category: "spritz",
-              serving: { label: "Calice", ml: null },
-              amount_minor: 650,
-              currency: "EUR",
-              currency_exponent: 2,
-              observed_on: "2026-11-02",
-              source_kind: "customer",
-              observation_kind: "customer_reported_price",
-              price_scope: "drink_item",
-            },
-            ...(options.customerNewDrink
-              ? [
-                  {
-                    revision: "33333333-3333-4333-8333-333333333333",
-                    item_key: "c" + "b".repeat(64),
-                    kind: "new_drink",
-                    offer_id: null,
-                    name: "Negroni segnalato",
-                    category: "negroni",
-                    serving: { label: "Bicchiere", ml: null },
-                    amount_minor: 900,
-                    currency: "EUR",
-                    currency_exponent: 2,
-                    observed_on: "2026-11-02",
-                    source_kind: "customer",
-                    observation_kind: "customer_reported_price",
-                    price_scope: "drink_item",
-                  },
-                ]
-              : []),
-          ],
+          rows: options.customerEmpty
+            ? []
+            : [
+                {
+                  revision: "22222222-2222-4222-8222-222222222222",
+                  item_key: "o" + "a".repeat(64),
+                  kind: "menu_offer",
+                  offer_id: "first",
+                  name: "Spritz <script>",
+                  category: "spritz",
+                  serving: { label: "Calice", ml: null },
+                  amount_minor: 650,
+                  currency: "EUR",
+                  currency_exponent: 2,
+                  observed_on: "2026-11-02",
+                  source_kind: "customer",
+                  observation_kind: "customer_reported_price",
+                  price_scope: "drink_item",
+                },
+                ...(options.customerNewDrink
+                  ? [
+                      {
+                        revision: "33333333-3333-4333-8333-333333333333",
+                        item_key: "c" + "b".repeat(64),
+                        kind: "new_drink",
+                        offer_id: null,
+                        name: "Negroni segnalato",
+                        category: "negroni",
+                        serving: { label: "Bicchiere", ml: null },
+                        amount_minor: 900,
+                        currency: "EUR",
+                        currency_exponent: 2,
+                        observed_on: "2026-11-02",
+                        source_kind: "customer",
+                        observation_kind: "customer_reported_price",
+                        price_scope: "drink_item",
+                      },
+                    ]
+                  : []),
+              ],
           next_after: null,
         },
       });
@@ -210,6 +213,10 @@ async function fixture(options = {}) {
         source,
       });
       const after = new URL(request.url()).searchParams.get("after");
+      if (after && menuPageFailures > 0) {
+        menuPageFailures--;
+        return route.fulfill({ status: 503, body: "Try again" });
+      }
       return route.fulfill({
         json: {
           schema_version: 2,
@@ -935,6 +942,85 @@ test("an empty owner menu has no owner section while customer price entry remain
       await f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" }).count(),
       1,
     );
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("an empty menu and empty customer feed keep one contribution action without an empty card", async () => {
+  const f = await fixture({ menuEmpty: true, customerEmpty: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.locator(".mobile-price--featured").waitFor();
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    await customer.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    assert.equal(await f.page.getByRole("heading", { name: "Dal menu del locale" }).count(), 0);
+    assert.equal(await customer.getByRole("heading").count(), 0);
+    assert.equal(await customer.getByText(/Nessun.*prezzo segnalato/).count(), 0);
+    assert.equal(
+      await customer.evaluate((element) => getComputedStyle(element).borderTopWidth),
+      "0px",
+    );
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a menu-only venue with no prices still exposes its own price contribution flow", async () => {
+  const f = await fixture({ menuEmpty: true, customerEmpty: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("heading", { name: "Locale nuovo" }).waitFor();
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    await customer.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    assert.equal(await f.page.getByRole("heading", { name: "Dal menu del locale" }).count(), 0);
+    assert.equal(await customer.getByRole("heading").count(), 0);
+    assert.equal(
+      await f.page.getByText("Menu online non disponibile. Riprova tra poco.").count(),
+      0,
+    );
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a linked customer price remains visible when its owner menu is unavailable", async () => {
+  const f = await fixture({ menuAbsent: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    await f.page.locator(".mobile-price--featured").waitFor();
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    await customer.getByText("Spritz <script>").waitFor();
+    assert.match(await customer.innerText(), /Spritz <script>[\s\S]*6,50\s*€/);
+    assert.equal(await customer.getByRole("button", { name: "Segnala prezzo errato" }).count(), 1);
+    assert.equal(
+      await customer.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).count(),
+      0,
+    );
+    assert.equal(await f.page.getByRole("heading", { name: "Dal menu del locale" }).count(), 0);
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /6,00 €/);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a failed extra menu page offers a compact retry without the unavailable-menu notice", async () => {
+  const f = await fixture({ menuPageFailOnce: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.getByRole("button", { name: "Vedi altri drink" }).click();
+    await f.page.getByRole("button", { name: "Riprova altri drink" }).waitFor();
+    assert.equal(
+      await f.page.getByText("Menu online non disponibile. Riprova tra poco.").count(),
+      0,
+    );
+    await f.page.getByRole("button", { name: "Riprova altri drink" }).click();
+    await f.page.getByText("Analcolico").waitFor();
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

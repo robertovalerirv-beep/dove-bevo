@@ -169,7 +169,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
       };
     } else {
       const cleanName = selected.row?.name ?? name.trim();
-      const cleanServing = selected.row?.serving.label ?? servingLabel.trim() || null;
+      const cleanServing = selected.row ? selected.row.serving.label : (servingLabel.trim() || null);
       const ml = selected.row?.serving.ml ??
         (servingMl.trim() ? Number(servingMl) : null);
       if (
@@ -185,7 +185,7 @@ export function CustomerPricesV2({ menu }: { menu: MenuPage }) {
         venue_key: key,
         cell,
         name: cleanName,
-        category: selected.row?.category ?? category || null,
+        category: selected.row ? selected.row.category : (category || null),
         serving_label: cleanServing,
         serving_ml: ml,
         amount_minor: amountMinor,

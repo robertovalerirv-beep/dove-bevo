@@ -105,7 +105,7 @@ final class SavedDrinkScreen {
             if(named==null&&price.state==FavoriteComparison.State.UNAVAILABLE)card.addView(text("Nome salvato sul dispositivo",14));
             Button open=button("Apri "+NativePricePresentation.category(item.drink),()->{if(usable()&&contains(item.key()))navigate.accept(item.focusedUrl());});open.setTag("drink_favourite_open");NativeAppearance.button(open,true);card.addView(open);
             Button remove=button("Rimuovi questo drink",()->{if(!usable()||!contains(item.key()))return;retire();SavedDrinkStore.Result result=store.remove(item);if(result==SavedDrinkStore.Result.REMOVED||result==SavedDrinkStore.Result.NOT_FOUND)refresh();else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});remove.setTag("drink_favourite_remove");card.addView(remove);
-            String context=NativePricePresentation.category(item.drink)+" · "+price.name+" · "+(item.band==1?"Happy hour":"Prezzo normale");open.setContentDescription("Apri "+context);remove.setContentDescription("Rimuovi dai preferiti "+context+", tutti i formati");
+            String context=NativePricePresentation.category(item.drink)+" · "+venueName+" · "+(item.band==1?"Happy hour":"Prezzo normale");open.setContentDescription("Apri "+context);remove.setContentDescription("Rimuovi dai preferiti "+context+", tutti i formati");
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
         }
         if(legacyFailed)rows.addView(text("Vecchi locali non disponibili. Riprova piu tardi; nessun dato e stato modificato.",15));

@@ -449,7 +449,7 @@ export function CustomerPricesV2({ menu, focus }: { menu: MenuPage; focus: Drink
                 {offer.name}
                 {focus && menuOfferMatchesFocus(offer, focus) && (
                   <small class="mobile-menu-v2__saved">
-                    Drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
+                    Stesso tipo di drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
                   </small>
                 )}
               </span>

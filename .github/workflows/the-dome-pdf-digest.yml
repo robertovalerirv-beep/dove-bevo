@@ -1,0 +1,34 @@
+name: Pinned The Dome PDF digest
+on:
+  push:
+    branches:
+      - codex/the-dome-pdf-digest-20261103
+permissions:
+  contents: read
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify first-party PDF and compute importer text hash
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, os, pathlib, re, subprocess
+          url='https://www.thedomemilano.com/wp-content/uploads/2026/01/MENU-Cocktail-The-Dome-2026-EN.pdf'
+          raw=subprocess.run(['curl','-fLsS','--max-time','60',url],capture_output=True,check=True).stdout
+          source_sha=hashlib.sha256(raw).hexdigest()
+          assert source_sha=='2273860c6c3df262b4ef3ece2ad86b0e5510484debfbd790af06d85ffc6ed31a',source_sha
+          proc=subprocess.run(['pdftotext','-layout','-enc','UTF-8','-','-'],input=raw,capture_output=True,check=True,timeout=30)
+          canonical=re.sub(r'\s+',' ',proc.stdout.decode('utf-8')).strip().encode()
+          assert 10<=len(canonical)<=2*1024*1024
+          print('SOURCE_SHA',source_sha)
+          print('TEXT_SHA',hashlib.sha256(canonical).hexdigest())
+          print('TEXT_BYTES',len(canonical))
+          pathlib.Path(os.environ['RUNNER_TEMP'],'the-dome-canonical.txt').write_bytes(canonical)
+          PY
+      - name: Preserve extracted public menu text for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: the-dome-canonical-menu-text
+          path: ${{ runner.temp }}/the-dome-canonical.txt
+          retention-days: 7

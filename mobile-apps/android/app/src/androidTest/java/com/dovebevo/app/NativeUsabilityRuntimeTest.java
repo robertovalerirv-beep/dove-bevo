@@ -383,13 +383,16 @@ public final class NativeUsabilityRuntimeTest {
             assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
             assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
             assertFalse(browserMenu().getMenu().findItem(R.id.share).isEnabled());
-            assertFalse(browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
+            assertNull("Preferiti has no duplicate body reload",activity.findViewById(R.id.favorites_refresh));
+            assertNull("Drink prices reload through the same menu",activity.findViewById(android.R.id.content).findViewWithTag("drink_favourites_refresh"));
+            assertTrue("Preferiti refresh is in the top overflow",browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
+            assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.refresh,0));
             activity.findViewById(R.id.map_destination).performClick();
             assertSame(original, get("website")); assertEquals(index, web.copyBackForwardList().getCurrentIndex());
             assertEquals(APP_ONE, web.getUrl()); assertFalse((Boolean)get("favoritesVisible"));
             DiscoveryScreen home=new DiscoveryScreen(activity,
                     url->{invoke("showMap");invoke("navigate",new Class<?>[]{String.class},url);},
-                    ()->invoke("showMap"),()->(Boolean)get("foreground"),
+                    ()->(Boolean)get("foreground"),
                     new DiscoveryLoader(new FavoritePricesClient((url,max,call)->{throw new IOException("Unready owned map must not fetch");},()->"2026-11-01"),task->activity.runOnUiThread(task)));
             set("discovery",home);((FrameLayout)get("content")).addView(home.view());home.view().setVisibility(View.GONE);
             activity.findViewById(R.id.favorites_destination).performClick();
@@ -423,6 +426,15 @@ public final class NativeUsabilityRuntimeTest {
         onMain(()->{
             assertTrue(activity.findViewById(R.id.home).isSelected());
             assertTrue(((TextView)activity.findViewById(R.id.discovery_status)).getText().toString().contains("Apri una città"));
+            assertNull("Scopri has no duplicate top map action",activity.findViewById(R.id.discovery_choose_area));
+            assertNull("Scopri reload stays in overflow",activity.findViewById(R.id.discovery_refresh));
+            assertFalse("No captured area cannot be refreshed",browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
+            try { ((DiscoveryScreen)get("discovery")).show(new DiscoveryArea(45.4642,9.19,14)); }
+            catch(IOException invalid){throw new AssertionError(invalid);}
+        });
+        await(()->browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
+        onMain(()->{
+            assertTrue("A captured area can reload from the top overflow",browserMenu().getMenu().performIdentifierAction(R.id.refresh,0));
             activity.findViewById(R.id.map_destination).performClick();assertFalse((Boolean)get("discoveryVisible"));assertEquals(APP_ONE,web.getUrl());assertSame(original,get("website"));
         });
         assertOwnedDocument(1);

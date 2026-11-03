@@ -251,7 +251,7 @@ public final class MainActivity extends ComponentActivity {
         savedDrinks=new SavedDrinkUi(this,drinkStore,this::eligibleSavedVenue,this::readSavedVenue,()->venueCaptureEpoch);
         favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore,offerStore);
         content.addView(favorites.view(),new FrameLayout.LayoutParams(-1,-1));favorites.view().setVisibility(View.GONE);
-        discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},this::showMap,()->foreground&&!destroyed);
+        discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},()->foreground&&!destroyed);
         content.addView(discovery.view(),new FrameLayout.LayoutParams(-1,-1));discovery.view().setVisibility(View.GONE);
         topActions = createTopActions();
         content.addView(topActions, new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.END));
@@ -774,9 +774,12 @@ public final class MainActivity extends ComponentActivity {
     private PopupMenu createBrowserMenu(View anchor) {
         PopupMenu menu = new PopupMenu(this, anchor);
         boolean mapActive=foreground&&!destroyed&&!nativeDestinationVisible()&&website!=null;
+        boolean nativeRefresh=discoveryVisible&&discovery!=null&&discovery.canRefresh()
+                ||favoritesVisible&&favorites!=null&&favorites.canRefresh();
         menu.getMenu().add(Menu.NONE, R.id.share, Menu.NONE, R.string.share)
                 .setEnabled(mapActive&&hasUsablePage&&!failed&&!loading&&!awaitingDocumentStart);
-        menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, loading?R.string.stop_loading:R.string.refresh).setEnabled(mapActive);
+        menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, mapActive&&loading?R.string.stop_loading:R.string.refresh)
+                .setEnabled(mapActive||nativeRefresh);
         menu.getMenu().add(Menu.NONE, R.id.back, Menu.NONE, R.string.back)
                 .setEnabled(foreground && (nativeDestinationVisible() || website != null && website.canGoBack()));
         menu.getMenu().add(Menu.NONE, R.id.forward, Menu.NONE, R.string.forward)
@@ -793,7 +796,10 @@ public final class MainActivity extends ComponentActivity {
                 return true;
             }
             if (item.getItemId() == R.id.refresh) {
-                if(!nativeDestinationVisible()&&website!=null)refresh();return true;
+                if(discoveryVisible&&discovery!=null&&discovery.canRefresh())discovery.refresh();
+                else if(favoritesVisible&&favorites!=null&&favorites.canRefresh())favorites.refresh();
+                else if(!nativeDestinationVisible()&&website!=null)refresh();
+                return true;
             }
             if (item.getItemId() == R.id.back) { goBack(); return true; }
             if (item.getItemId() == R.id.forward) {

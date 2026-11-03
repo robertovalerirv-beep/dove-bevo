@@ -50,6 +50,11 @@ export function transformApp(source) {
   result = once(result, "}, [view, attempt]);", "}, [view, attempt, drinks]);");
   result = once(
     result,
+    "const onPop = () => {\n      setRoute(parseRoute());",
+    "const onPop = () => {\n      const restoredDrink = mobileFocus(location);\n      if (restoredDrink) setDrinks([restoredDrink.drink]);\n      setRoute(parseRoute());",
+  );
+  result = once(
+    result,
     '  // A "Vicino a me" message belongs to the view it was shown on: moving the map clears it.',
     `  useEffect(() => {
     const refresh = (event: Event) => {
@@ -120,7 +125,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileDefaultDrink, mobileVenueKeyPattern } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
+    'import { mobilePath, mobileURL, mobileDefaultDrink, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }

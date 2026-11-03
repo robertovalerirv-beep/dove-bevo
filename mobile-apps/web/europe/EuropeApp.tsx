@@ -19,7 +19,7 @@ import { sharePresentation } from "../share-presentation";
 import type * as MapModule from "@site/app/lib/maplibre-map";
 import type { VenueMap, MapView } from "@site/app/lib/maplibre-map";
 import { drinkImage } from "../drink-images";
-import { mobilePath } from "../routes";
+import { mobileFocus, mobilePath, type DrinkFocus } from "../routes";
 import {
   loadCity,
   submitPrice,
@@ -72,8 +72,10 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
   const groups = useMemo(() => cities(catalog), [catalog]);
   const [city, setCity] = useState(initialCity),
     [venueKey, setVenueKey] = useState<string | null>(initialVenue?.key ?? null);
-  const [drink, setDrink] = useState("spritz"),
-    [band, setBand] = useState<0 | 1>(0),
+  const initialFocus = initialVenue ? mobileFocus(location) : null;
+  const [savedFocus, setSavedFocus] = useState<DrinkFocus | null>(initialFocus);
+  const [drink, setDrink] = useState(initialFocus?.drink ?? "spritz"),
+    [band, setBand] = useState<0 | 1>(initialFocus?.hh ?? 0),
     [serveChoice, setServeChoice] = useState("");
   const [loaded, setLoaded] = useState<{ scope: string; snapshot: Snapshot } | null>(null),
     [loadError, setLoadError] = useState(false),
@@ -171,6 +173,13 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
       cell = new URLSearchParams(location.search).get("c");
     const selected = catalog.venues.find((v) => path === `/bar/${v.key}` && cell === v.cell);
     if (selected) {
+      const restoredFocus = mobileFocus(location);
+      setSavedFocus(restoredFocus);
+      if (restoredFocus) {
+        setDrink(restoredFocus.drink);
+        setBand(restoredFocus.hh);
+        setServeChoice("");
+      }
       if (selected.country === "IT") {
         location.replace(location.href);
         return;
@@ -217,6 +226,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
     }
     history.pushState({ inApp: true, europe: true }, "", venueURL(target));
     setVenueKey(target.key);
+    setSavedFocus(null);
     setList(false);
     setPicker(false);
   }
@@ -237,6 +247,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
     history.pushState({ inApp: true, europe: true }, "", cityURL(target));
     setCity(target);
     setVenueKey(null);
+    setSavedFocus(null);
     setPicker(false);
     setServeChoice("");
     if (!pending.current && !busy) setNotice("");
@@ -249,6 +260,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
     }
     history.replaceState(null, "", cityURL(city));
     setVenueKey(null);
+    setSavedFocus(null);
   }
   useEffect(() => {
     let retired = false;
@@ -471,16 +483,27 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
   const matchingVenues = catalog.venues
     .filter((v) => `${v.name} ${v.city}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
     .slice(0, 30);
+  const selectedFocus =
+    venue &&
+    savedFocus &&
+    mobilePath(location) === "/bar/" + venue.key &&
+    new URLSearchParams(location.search).get("c") === venue.cell
+      ? savedFocus
+      : null;
+  const matchesSaved = (row: Price) =>
+    selectedFocus !== null && row.drink === selectedFocus.drink && row.hh === selectedFocus.hh;
   const venueRows = venue
     ? rows
         .filter((r) => r.venue === venue.key)
         .sort(
           (a, b) =>
+            Number(matchesSaved(b)) - Number(matchesSaved(a)) ||
             Number(b.drink === drink) - Number(a.drink === drink) ||
             a.drink.localeCompare(b.drink) ||
             a.hh - b.hh,
         )
     : [];
+  const savedFound = venueRows.some(matchesSaved);
   return (
     <div class="app europe-app" ref={root}>
       <header class="europe-top">
@@ -509,6 +532,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
               key={d.code}
               onClick={() => {
                 setDrink(d.code);
+                setSavedFocus(null);
                 setServeChoice("");
               }}
             >
@@ -546,6 +570,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
               checked={band === 1}
               onChange={() => {
                 setBand(band ? 0 : 1);
+                setSavedFocus(null);
               }}
             />
             Happy hour
@@ -796,7 +821,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
       {selectedVenue && !picker && !list && (
         <Sheet title={selectedVenue.name} bare onClose={closeVenue}>
           <div class="scontrino mobile-venue europe-venue">
-            <DrinkHero drink={venueRows[0]?.drink ?? drink} />
+            <DrinkHero drink={selectedFocus?.drink ?? venueRows[0]?.drink ?? drink} />
             <div class="scontrino__paper">
               <p class="bar__kind">
                 {it.kinds[selectedVenue.kind]} · {selectedVenue.city} · {selectedVenue.country}
@@ -810,13 +835,19 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
               </p>
               <h3 class="section-title">{it.bar.prices}</h3>
               {venueRows.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
+              {selectedFocus && !savedFound && (
+                <p class="hint" role="status" data-testid="saved-drink-unavailable">
+                  Il prezzo salvato per questo drink e orario non è più disponibile. Gli altri
+                  prezzi del locale sono qui sotto.
+                </p>
+              )}
               <ul class="prices">
                 {venueRows.map((row, index) => (
                   <PriceItem
                     key={row.revision}
                     row={row}
                     venue={selectedVenue}
-                    featured={index === 0}
+                    featured={index === 0 && (!selectedFocus || savedFound)}
                     tier={priceTier(row, rows)}
                     busy={busy || queued}
                     onConfirm={() => {

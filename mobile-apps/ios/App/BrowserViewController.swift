@@ -24,6 +24,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var navigationState = BrowserNavigationState()
     private let savedVenues: SavedVenueStore
     private let savedDrinks: SavedDrinkStore
+    private let savedMenuOffers: SavedMenuOfferStore
+    private let menuClient: MenuV2Serving
+    private var offerSaveRequest: RecommendationRequest?
+    private var offerSaveIntent = UUID()
+    private var offerSaveAlert: UIAlertController?
     private let favouriteSave = FavouriteSaveCapture()
     private var favouriteSaveTimeout: DispatchWorkItem?
     private var pageLoading = false
@@ -52,10 +57,13 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
 
     init(savedVenues: SavedVenueStore = SavedVenueStore(), bookmarkCapture: VenueBookmarkCapture = VenueBookmarkCapture(),
          savedDrinks: SavedDrinkStore = SavedDrinkStore(),
+         savedMenuOffers: SavedMenuOfferStore = SavedMenuOfferStore(), menuClient: MenuV2Serving = MenuV2Client(),
          recommendationClient: RecommendationServing = RecommendationClient(),
          websiteLoader: ((WKWebView, URLRequest) -> WKNavigation?)? = nil) {
         self.savedVenues = savedVenues
         self.savedDrinks = savedDrinks
+        self.savedMenuOffers = savedMenuOffers
+        self.menuClient = menuClient
         self.bookmarkCapture = bookmarkCapture
         self.recommendationClient = recommendationClient
         self.websiteLoader = websiteLoader
@@ -223,6 +231,9 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         configuration.websiteDataStore = .default()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         AppPresentationTheme.install(in: configuration)
+        configuration.userContentController.addUserScript(WKUserScript(
+            source: "if (location.origin === 'https://www.dovebevo.com' && location.pathname === '/mobile/') { window.DoveBevoNativeOfferSave = true; window.dispatchEvent(new Event('dovebevo-native-ready')); }",
+            injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
         webView.uiDelegate = self
@@ -609,6 +620,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func invalidateBookmarkCapture() {
+        invalidateOfferSave()
         invalidateFavouriteSave()
         invalidateShareCapture()
         invalidateMapAreaCapture()
@@ -633,7 +645,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         invalidateBookmarkCapture()
         if let onShowFavourites { onShowFavourites(); return }
         navigationItem.backButtonTitle = "Torna alla mappa"
-        let list = SavedVenuesViewController(store: savedVenues, drinkStore: savedDrinks) { [weak self] url in
+        let list = SavedVenuesViewController(store: savedVenues, drinkStore: savedDrinks, offerStore: savedMenuOffers, menuClient: menuClient) { [weak self] url in
             guard let self, let canonical = SavedVenuePolicy.canonicalURL(url) else { return }
             self.navigationController?.popToViewController(self, animated: false)
             self.loadWebsite(MobileEntry.venueDocument(url) ?? canonical)
@@ -774,6 +786,14 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         let userLink = navigationAction.navigationType == .linkActivated
         let trustedSource = navigationAction.sourceFrame.isMainFrame
             && navigationAction.sourceFrame.request.url.map(URLPolicy.isWebsite) == true
+        if mainFrame && URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { $0.name == "save_offer" }) == true {
+            decisionHandler(.cancel)
+            if userLink && trustedSource, let active = usableVenueURL,
+               let offerID = OfferSaveCommand.offerID(from: url, currentVenue: active) {
+                beginOfferSave(venueURL: active, offerID: offerID)
+            }
+            return
+        }
         switch URLPolicy.destination(
             for: url, isMainFrame: mainFrame,
             isUserActivatedLink: userLink, isFromWebsite: trustedSource
@@ -797,6 +817,56 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             if mainFrame && userLink && trustedSource {
                 showAlert(title: "Collegamento non supportato", message: "Questo tipo di collegamento non può essere aperto dall'app.")
             }
+        }
+    }
+
+    private func beginOfferSave(venueURL: URL, offerID: String) {
+        guard isBookmarkInteractionActive, presentedViewController == nil,
+              let provisional = try? SavedVenuePolicy.venue(url: venueURL, label: "Locale \(venueURL.lastPathComponent)") else { return }
+        invalidateOfferSave()
+        let token = UUID(); offerSaveIntent = token
+        let handle = menuClient.load([provisional]) { [weak self] snapshot in
+            guard let self, self.offerSaveIntent == token else { return }
+            self.offerSaveRequest = nil
+            guard self.usableVenueURL == venueURL, self.isBookmarkInteractionActive,
+                  self.presentedViewController == nil,
+                  let menu = snapshot.venues[venueURL],
+                  let offer = menu.offers.first(where: { price in
+                      guard price.id == offerID else { return false }
+                      if case .ownerMenu = price.origin { return true }
+                      return false
+                  }),
+                  let verifiedVenue = try? SavedVenuePolicy.venue(url: venueURL, label: menu.name),
+                  let saved = SavedMenuOffer.verified(venue: verifiedVenue, price: offer) else {
+                self.showBookmarkError("Questo drink non e piu disponibile nel menu verificato. Nessun preferito e stato salvato.")
+                return
+            }
+            let alert = UIAlertController(title: "Salva nei Preferiti?",
+                message: "\(saved.name) � \(saved.venue.label). Il prezzo si aggiorna online e non viene salvato sul telefono.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Annulla", style: .cancel) { [weak self] _ in self?.offerSaveAlert = nil })
+            alert.addAction(UIAlertAction(title: "Salva", style: .default) { [weak self] _ in
+                guard let self, self.offerSaveIntent == token, self.usableVenueURL == venueURL,
+                      self.isBookmarkInteractionActive else { return }
+                self.offerSaveAlert = nil
+                do {
+                    try self.savedMenuOffers.save(saved)
+                    self.showVenueReadError(title: "Preferito salvato", message: "\(saved.name) � \(saved.venue.label) e nei Preferiti.")
+                } catch {
+                    self.showBookmarkError("Non riesco a salvare. Potresti aver raggiunto il limite di 50 drink del menu. I preferiti precedenti sono stati mantenuti.")
+                }
+            })
+            self.offerSaveAlert = alert
+            self.present(alert, animated: true)
+        }
+        if offerSaveIntent == token { offerSaveRequest = handle } else { handle.cancel() }
+    }
+
+    private func invalidateOfferSave() {
+        offerSaveIntent = UUID()
+        offerSaveRequest?.cancel(); offerSaveRequest = nil
+        if let alert = offerSaveAlert {
+            offerSaveAlert = nil
+            if presentedViewController === alert { alert.dismiss(animated: false) }
         }
     }
 

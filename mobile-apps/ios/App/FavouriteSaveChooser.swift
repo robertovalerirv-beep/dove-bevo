@@ -6,7 +6,7 @@ final class FavouriteSaveChooser: UITableViewController {
     var onChoose: ((String, ComparisonBand) -> Void)?
     var onCancel: (() -> Void)?
     private var chosenDrink: DrinkCategory?
-    private let bandControl = UISegmentedControl(items: ["Normale", "Happy hour"])
+    let bandControl = UISegmentedControl(items: ["Normale", "Happy hour"])
 
     init(venue: SavedVenue) {
         self.venue = venue
@@ -68,7 +68,7 @@ final class FavouriteSaveChooser: UITableViewController {
         tableView.reloadData()
     }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? { nil }
-    @objc private func save() {
+    @objc func save() {
         guard let chosenDrink else {
             let alert = UIAlertController(title: "Scegli un drink", message: "Seleziona il drink da salvare in questo locale.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default))

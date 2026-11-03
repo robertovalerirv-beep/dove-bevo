@@ -4,32 +4,24 @@ import XCTest
 @testable import DoveBevo
 
 final class SavedDrinkControllerTests: XCTestCase {
-    @MainActor func testActualNativeChooserUsesAutomaticNamesBandAndKeepsNoPriceVenueChoice() throws {
+    @MainActor func testNativeChooserSavesOneExplicitDrinkAndBandWithoutAPrice() throws {
         let venue = try SavedVenuePolicy.venue(url: URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!, label: "Actual venue")
-        let document = try XCTUnwrap(MobileEntry.venueDocument(venue.url))
-        let price = try XCTUnwrap(PriceShareSnapshot.parse(fields(document), currentURL: document))
-        let controller = FavouriteSaveChooser(venue: venue, price: price)
-        var selected: FavouriteSaveChooser.Choice?
-        controller.onChoose = { selected = $0 }
+        let controller = FavouriteSaveChooser(venue: venue)
+        var selected: (String, ComparisonBand)?
+        controller.onChoose = { selected = ($0, $1) }
         try withMounted(controller) { window in
+            XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), DrinkCategory.all.count)
             let index = IndexPath(row: 1, section: 0)
             let row = try XCTUnwrap(controller.tableView.cellForRow(at: index))
             XCTAssertTrue(row.window === window)
-            XCTAssertTrue(row.isUserInteractionEnabled)
-            for label in ["Spritz", "Happy hour", "Actual venue"] { XCTAssertTrue(row.accessibilityLabel?.contains(label) == true) }
+            XCTAssertEqual(row.accessibilityIdentifier, "favorites.saveDrink.spritz")
+            XCTAssertTrue(controller.tableView(controller.tableView, titleForHeaderInSection: 0)?.contains("Actual venue") == true)
             controller.tableView(controller.tableView, didSelectRowAt: index)
-            guard case .drink? = selected else { return XCTFail("Actual drink row must deliver only the drink choice") }
+            controller.bandControl.selectedSegmentIndex = 1
+            controller.save()
+            XCTAssertEqual(selected?.0, "spritz")
+            XCTAssertEqual(selected?.1, .happyHour)
         }
-        let unavailable = FavouriteSaveChooser(venue: venue, price: nil)
-        unavailable.onChoose = { _ in XCTFail("Unavailable drink must not produce a save") }
-        unavailable.loadViewIfNeeded()
-        let disabled = unavailable.tableView(unavailable.tableView, cellForRowAt: IndexPath(row: 1, section: 0))
-        XCTAssertFalse(disabled.isUserInteractionEnabled)
-        unavailable.tableView(unavailable.tableView, didSelectRowAt: IndexPath(row: 1, section: 0))
-        var venueChosen = false
-        unavailable.onChoose = { if case .venue = $0 { venueChosen = true } }
-        unavailable.tableView(unavailable.tableView, didSelectRowAt: IndexPath(row: 0, section: 0))
-        XCTAssertTrue(venueChosen)
     }
 
     func testFocusedDrinkAndBandMustMatchTheActualVisiblePrice() throws {
@@ -54,7 +46,7 @@ final class SavedDrinkControllerTests: XCTestCase {
             var opened: URL?
             let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore, client: client, activityCheck: { true }) { opened = $0 }
             try withMounted(controller) { _ in
-                controller.selectSavedDrinks(true)
+                XCTAssertTrue(controller.tableView.value(forKey: "tableHeaderView") != nil)
                 waitUntil("Visible Drink pane must start its actual refresh") { client.last != nil }
                 XCTAssertEqual(client.last?.map(\.url), [url], "Read one real venue once for its two saved bands")
                 let current = CurrentFavouriteVenue(key: "n123", name: "Current automatic name", prices: [
@@ -74,7 +66,10 @@ final class SavedDrinkControllerTests: XCTestCase {
                 controller.tableView(controller.tableView, commit: .delete, forRowAt: index)
                 XCTAssertEqual(try drinkStore.load(), [normal])
                 XCTAssertEqual(try Data(contentsOf: venueStore.fileURL), bytes)
-                controller.selectSavedDrinks(false)
+                controller.selectDrink("negroni")
+                XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 0)
+                controller.selectDrink("all")
+                XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 1)
                 XCTAssertEqual(try venueStore.load().count, 1)
             }
         }
@@ -94,8 +89,9 @@ final class SavedDrinkControllerTests: XCTestCase {
                 browser.saveCurrentVenue()
                 waitUntil("Actual native save chooser") { (browser.presentedViewController as? UINavigationController)?.topViewController is FavouriteSaveChooser }
                 let chooser = try XCTUnwrap((browser.presentedViewController as? UINavigationController)?.topViewController as? FavouriteSaveChooser)
-                XCTAssertEqual(chooser.price?.drink, "spritz"); XCTAssertEqual(chooser.price?.happyHour, true)
                 chooser.tableView(chooser.tableView, didSelectRowAt: IndexPath(row: 1, section: 0))
+                chooser.bandControl.selectedSegmentIndex = 1
+                chooser.save()
                 let saved = try XCTUnwrap(drinkStore.load().first)
                 XCTAssertEqual(saved.drink, "spritz"); XCTAssertEqual(saved.band, .happyHour)
                 XCTAssertEqual(saved.venue.label, "Actual venue"); XCTAssertTrue(try venueStore.load().isEmpty)

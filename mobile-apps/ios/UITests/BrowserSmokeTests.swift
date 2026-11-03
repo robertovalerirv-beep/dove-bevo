@@ -290,7 +290,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 10))
         let initialSavedTable = app.tables["savedVenues.list"]
         let emptyMessage = initialSavedTable.descendants(matching: .any).matching(
-            NSPredicate(format: "label BEGINSWITH[c] %@", "Non hai ancora preferiti.")
+            NSPredicate(format: "label BEGINSWITH[c] %@", "Non hai ancora drink salvati.")
         ).firstMatch
         guard initialSavedTable.waitForExistence(timeout: 5), initialSavedTable.cells.count == 0,
               emptyMessage.waitForExistence(timeout: 5), !app.buttons["savedVenues.retry"].exists else {
@@ -338,14 +338,14 @@ final class BrowserSmokeTests: XCTestCase {
         verifyLiveVenueHistoryReadOnly(venueName: publicName)
         verifyLiveVenueAndPriceFormReadOnly(venueName: publicName)
         verifyLiveRecommendationsReadOnly(venueName: publicName)
-        saveCurrentVenueInOneTap()
+        saveCurrentDrinkAtVenue()
         app.buttons["tab.favorites"].tap()
         let savedTable = app.tables["savedVenues.list"]
-        let savedRow = savedTable.cells.matching(NSPredicate(format: "label == %@", publicName)).firstMatch
-        XCTAssertTrue(savedRow.waitForExistence(timeout: 10), "One menu action must save the existing name without a naming form")
+        let savedRow = savedTable.cells.matching(NSPredicate(format: "label CONTAINS %@", publicName)).firstMatch
+        XCTAssertTrue(savedRow.waitForExistence(timeout: 10), "One explicit drink must be saved under the actual venue name")
         XCTAssertEqual(savedTable.cells.count, 1)
         XCTAssertFalse(app.textFields["savedVenue.name"].exists)
-        XCTAssertTrue(savedRow.identifier.hasPrefix("savedVenue."))
+        XCTAssertTrue(savedRow.identifier.hasPrefix("savedDrink."))
         let savedIdentity = savedRow.identifier
         verifyLiveFavouriteComparisonReadOnly()
         attachScreen(named: "DoveBevo-live-native-saved-venue")
@@ -362,7 +362,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Preferiti"].waitForExistence(timeout: 10))
         let reopenRow = app.tables["savedVenues.list"].cells[savedIdentity]
         XCTAssertTrue(reopenRow.waitForExistence(timeout: 10))
-        XCTAssertEqual(reopenRow.label, publicName)
+        XCTAssertTrue(reopenRow.label.contains(publicName))
         reopenRow.tap()
         XCTAssertTrue(app.navigationBars["Dove bevo"].waitForExistence(timeout: 10))
         XCTAssertTrue(website.links["Indicazioni"].waitForExistence(timeout: 45))
@@ -375,7 +375,7 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 1)
         let qaRow = app.tables["savedVenues.list"].cells[savedIdentity]
         XCTAssertTrue(qaRow.waitForExistence(timeout: 10))
-        XCTAssertEqual(qaRow.label, publicName)
+        XCTAssertTrue(qaRow.label.contains(publicName))
         qaRow.swipeLeft()
         let remove = app.buttons["Rimuovi"]
         XCTAssertTrue(remove.waitForExistence(timeout: 5))
@@ -403,25 +403,21 @@ final class BrowserSmokeTests: XCTestCase {
 
     private func verifyLiveFavouriteComparisonReadOnly() {
         XCTAssertTrue(app.buttons["tab.favorites"].isSelected)
-        XCTAssertTrue(app.staticTexts["favorites.loaded"].waitForExistence(timeout: 60), "The favourite must resolve using actual public metadata and prices")
+        XCTAssertTrue(app.staticTexts["favorites.loaded"].waitForExistence(timeout: 60), "Saved drink prices must resolve from public data")
         let selector = app.buttons["favorites.drink"]
         XCTAssertTrue(selector.exists)
         selector.tap()
-        for name in ["Birra media", "Spritz", "Negroni", "Sbagliato", "Gin tonic", "Gin lemon", "Calice di vino", "Analcolico", "Acqua"] {
+        for name in ["Tutti i drink", "Birra media", "Spritz", "Negroni", "Sbagliato", "Gin tonic", "Gin lemon", "Calice di vino", "Analcolico", "Acqua"] {
             XCTAssertTrue(app.buttons[name].exists, name)
         }
         app.buttons["Spritz"].tap()
         XCTAssertTrue(selector.label.contains("Spritz"))
-        let happyHour = app.buttons["favorites.band.happyHour"]
-        XCTAssertTrue(happyHour.exists)
-        happyHour.tap()
-        XCTAssertTrue(happyHour.isSelected)
-        XCTAssertTrue(app.staticTexts["favorites.loaded"].exists, "Selectors must reuse the loaded snapshot")
-        app.buttons["favorites.band.normal"].tap()
+        XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 0)
         selector.tap(); app.buttons["Birra media"].tap()
         XCTAssertTrue(selector.label.contains("Birra media"))
+        XCTAssertEqual(app.tables["savedVenues.list"].cells.count, 1)
+        XCTAssertFalse(app.segmentedControls["favorites.kind"].exists)
         XCTAssertTrue(app.buttons["favorites.refresh"].exists)
-        // No price, recommendation or venue is written by this flow.
     }
 
     private func verifyLiveVenueHistoryReadOnly(venueName: String) {
@@ -631,15 +627,19 @@ final class BrowserSmokeTests: XCTestCase {
         assertShareAndReloadAvailable()
     }
 
-    private func saveCurrentVenueInOneTap() {
+    private func saveCurrentDrinkAtVenue() {
         let save = app.buttons["browser.saveVenue"]
         let enabled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in save.exists && save.isEnabled }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed, "The actual current website venue must be eligible for native saving")
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed)
         save.tap()
+        let chooser = app.tables["favorites.saveChooser"]
+        XCTAssertTrue(chooser.waitForExistence(timeout: 10))
+        chooser.cells["favorites.saveDrink.beer_draft"].tap()
+        app.buttons["favorites.saveDrink"].tap()
         let confirmation = app.alerts["Preferito salvato"]
         XCTAssertTrue(confirmation.waitForExistence(timeout: 10))
         confirmation.buttons["Chiudi"].tap()
-        XCTAssertTrue(app.navigationBars["Dove bevo"].exists, "Saving stays on the existing venue")
+        XCTAssertTrue(app.navigationBars["Dove bevo"].exists)
         XCTAssertTrue(app.buttons["tab.map"].isSelected)
         XCTAssertTrue(app.webViews["browser.website"].links["Indicazioni"].exists)
         XCTAssertFalse(app.textFields["savedVenue.name"].exists)

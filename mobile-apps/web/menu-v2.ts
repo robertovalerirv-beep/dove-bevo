@@ -3,13 +3,16 @@ import type { Venue } from "@site/app/lib/data";
 
 const Key = z.string().regex(/^(?:[nwru][1-9]\d{0,14}|m[0-9a-f]{24})$/);
 const Cell = z.string().regex(/^[0-9b-hjkmnp-z]{5}$/);
-const Id = z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/);
+const Id = z.string().min(1).max(128);
+const Cursor = z.string().regex(/^[A-Za-z0-9._:-]{1,128}$/);
 const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const Currency = z.string().regex(/^[A-Z]{3}$/);
 const Https = z
   .string()
   .max(2048)
   .refine((value) => {
+    for (const char of value)
+      if (char.charCodeAt(0) <= 32 || char.charCodeAt(0) === 127) return false;
     try {
       const url = new URL(value);
       return url.protocol === "https:" && !url.username && !url.password && !url.port && !url.hash;
@@ -27,7 +30,7 @@ const VenueSchema = z.object({
   key: Key,
   cell: Cell,
   name: z.string().min(2).max(512),
-  kind: z.number().int().min(1).max(4),
+  kind: z.number().int().min(0).max(4),
   lat: z.number().min(-90).max(90),
   lon: z.number().min(-180).max(180),
   address: z.string().max(512).nullable(),
@@ -43,7 +46,7 @@ const Offer = z.object({
     .nullable(),
   serving: z.object({
     label: z.string().min(1).max(256).nullable(),
-    ml: z.number().int().min(1).max(10000).nullable(),
+    ml: z.number().int().min(1).max(100000).nullable(),
   }),
   amount_minor: z.number().int().min(1).max(100000000),
   currency: Currency,
@@ -93,7 +96,7 @@ const MenuPageSchema = z.object({
   venue: VenueSchema,
   stored_offer_count: z.number().int().min(0),
   offers: z.array(Offer).max(100),
-  next_after: Id.nullable(),
+  next_after: Cursor.nullable(),
   fees: z.array(Fee).max(100),
   fee_coverage: FeeCoverage,
 });
@@ -120,7 +123,7 @@ export async function loadMenuPage(
   if (
     !Key.safeParse(key).success ||
     !Cell.safeParse(cell).success ||
-    (after && !Id.safeParse(after).success)
+    (after && !Cursor.safeParse(after).success)
   )
     throw new Error("Invalid menu identity");
   const params = new URLSearchParams({ cell, limit: "100" });

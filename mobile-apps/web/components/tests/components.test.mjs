@@ -148,7 +148,7 @@ async function fixture(options = {}) {
             key,
             cell: "u0nd9",
             name: owner ? "Locale nuovo" : "Locale di prova <strong>",
-            kind: 1,
+            kind: owner ? 0 : 1,
             lat: 45.4642,
             lon: 9.19,
             address: "Via di prova 1",
@@ -611,6 +611,9 @@ test("owner-verified Italian venue shows menu without unsupported public contrib
       await f.page.locator(".mobile-venue").innerText(),
       /segnalazioni dei clienti.*disponibili presto/i,
     );
+    const support = f.page.getByRole("link", { name: "Segnala un problema con il locale" });
+    assert.match(await support.getAttribute("href"), /^mailto:dovebevo@gmail\.com\?/);
+    assert.equal(await f.page.locator(".scontrino__paper [role=alert]").count(), 0);
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

@@ -306,13 +306,14 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
       setVenue(selected);
       if (selected) onVenue(selected);
     });
-    void loadVenuePrices(venueKey)
-      .then((value) => {
-        if (active) setPrices(value);
-      })
-      .catch(() => {
-        if (active) setPricesFailed(true);
-      });
+    if (!venueKey.startsWith("m"))
+      void loadVenuePrices(venueKey)
+        .then((value) => {
+          if (active) setPrices(value);
+        })
+        .catch(() => {
+          if (active) setPricesFailed(true);
+        });
     return () => {
       active = false;
       controller.abort();
@@ -329,7 +330,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
       const page = await loadMenuPage(venueKey, cell, after, controller.signal);
       if (!page) throw new Error("Menu vanished");
       if (controller.signal.aborted) return;
-      const existing = new Set(menu?.offers.map((offer) => offer.id) ?? []);
+      const existing = new Set(menu.offers.map((offer) => offer.id));
       if (page.offers.some((offer) => existing.has(offer.id)))
         throw new Error("Duplicate menu page");
       setMenu((previous) =>
@@ -452,7 +453,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                     </strong>
                     <span class="mobile-menu-v2__meta">
                       {[
-                        offer.serving.label ?? (offer.serving.ml ? `${offer.serving.ml} ml` : ""),
+                        offer.serving.label ??
+                          (offer.serving.ml ? `${String(offer.serving.ml)} ml` : ""),
                         menuOfferContext(offer),
                       ]
                         .filter(Boolean)
@@ -585,6 +587,14 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           >
             {it.actions.reportBar}
           </button>
+        )}
+        {venue.key.startsWith("m") && (
+          <a
+            class="btn btn--ghost"
+            href={`mailto:dovebevo@gmail.com?subject=${encodeURIComponent(`Segnalazione locale ${venue.key}`)}&body=${encodeURIComponent(`${venue.name} · ${venue.city} · ${venue.key}`)}`}
+          >
+            Segnala un problema con il locale
+          </a>
         )}
         <AppLegalLinks />
       </div>

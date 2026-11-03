@@ -81,7 +81,10 @@ export function transformApp(source) {
   );
   result = once(
     result,
-    
+    'layer === document.body\n          ? document.querySelector<HTMLElement>(".bottom__primary")',
+    'layer === document.body\n          ? document.querySelector<HTMLElement>(".mobile-map-actions__toggle")',
+  );
+  result = once(result, "() => coverage(inView, drinks)", "() => mobileCoverage(inView, drinks)");
   result = once(result, "VENUE_KEY_PATTERN.test(match[1])", "mobileVenueKeyPattern.test(match[1])");
   result = once(
     result,

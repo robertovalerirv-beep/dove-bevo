@@ -651,6 +651,63 @@ test("m-key detail outage offers retry instead of saying the venue does not exis
   }
 });
 
+test("selected drink venue keeps a selectable dot below price-label zoom", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await openDrinks(f.page);
+    await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    await f.page.locator(".mobile-drink-menu__button").click();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    );
+    const map = f.page.locator("section.map");
+    const box = await map.boundingBox();
+    assert.ok(box);
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await f.page.mouse.move(x, y);
+    await f.page.mouse.wheel(0, 650);
+    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) < 14);
+    await f.page.screenshot({ path: path.join(output, "selected-drink-low-zoom-dot-fixture.png") });
+    await f.page.mouse.click(x, y);
+    await f.page.locator("h2.scontrino__name").waitFor();
+    assert.equal(await f.page.locator("h2.scontrino__name").textContent(), "Locale di prova");
+    await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
+    await f.page.mouse.move(x, y);
+    await f.page.mouse.wheel(0, -650);
+    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14);
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("receipt actions remain in one row at 320, 390 and 430 pixels", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+    const actions = f.page.locator(".scontrino .price__actions").first().getByRole("button");
+    await actions.first().waitFor();
+    assert.equal(await actions.count(), 3);
+    for (const width of [320, 390, 430]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const boxes = await Promise.all([0, 1, 2].map((i) => actions.nth(i).boundingBox()));
+      assert.ok(boxes.every(Boolean), JSON.stringify(boxes));
+      assert.ok(boxes.every((box) => Math.abs(box.y - boxes[0].y) < 2), JSON.stringify(boxes));
+      assert.ok(boxes[2].x + boxes[2].width <= width + 1, JSON.stringify(boxes));
+    }
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("Italy preview remains visible while one map loads eagerly and can retry failed tiles", async () => {
   const options = { mapUnavailable: true, mapStyleRequests: [] };
   const f = await fixture({ width: 390, height: 844 }, options);

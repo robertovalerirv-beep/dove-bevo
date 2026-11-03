@@ -35,3 +35,10 @@ condition = "AND"
 regexTarget = "secret"
 paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/e6f7a4f76eeee6e178fb7621d61277d615540d7c7b218a889efb33ce51890d5d\.json$''']
 regexes = ['''^m1354096fc013d6e5d045b2ed$''']
+# Exact public owner venue identifier for CasaCinema Napoli source manifest.
+[[rules.allowlists]]
+description = "CasaCinema Napoli public owner venue identifier"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''^mobile-apps/data/mobile-menu-v2-seeds/c4c8eed8b90a39df4c0217b0fcae4293d87158b173fb2ee4eb6c6c85fe0fd10b\.json$''']
+regexes = ['''^m31771b8f0063bacd3dfb2f37$''']

@@ -8,7 +8,7 @@ import import_v2 as core
 
 ROOT = Path(__file__).resolve().parents[3]
 MANIFEST = (ROOT / "mobile-apps" / "data" / "mobile-menu-v2-seeds"
-            / "f6ed6aa5bef8372c25b1fca99b20b71b7d4f9100f20b94ef5ef515e0e4641f63.json")
+            / "820976b6d1df7d30434f5a2cd1f9841c2551716e5277eeb31d4252e2ad7a0d1e.json")
 
 
 class MargoTorinoManifestTests(unittest.TestCase):
@@ -22,7 +22,7 @@ class MargoTorinoManifestTests(unittest.TestCase):
         self.assertEqual(doc["sources"][0]["source_url"],
                          "https://margotorino.com/menu-2/")
         self.assertEqual(doc["sources"][0]["use_review_status"], "approved")
-        self.assertEqual(len(doc["offers"]), 114)
+        self.assertEqual(len(doc["offers"]), 115)
         self.assertEqual(doc["fees"], [])
         self.assertEqual(doc["fee_coverage"], [])
         expected = {
@@ -38,6 +38,13 @@ class MargoTorinoManifestTests(unittest.TestCase):
         self.assertEqual(actual, expected)
         zero = next(o for o in doc["offers"] if o["name"] == "Negroni zero")
         self.assertEqual(zero["category"], "alcohol_free")
+        cocktail = next(o for o in doc["offers"] if o["id"] == "margo-torino-20261103-065")
+        hot = next(o for o in doc["offers"] if o["id"] == "margo-torino-20261103-083")
+        self.assertEqual((cocktail["name"], cocktail["amount_minor"], cocktail["serving_label"]),
+                         ("GINGER POWER", 500, None))
+        self.assertEqual((hot["name"], hot["amount_minor"], hot["serving_label"]),
+                         ("ginger power", 500, "Caldo"))
+        self.assertEqual(hot["evidence_ref"], "Owner Margò menu item 83: ginger power 5€; I Caldoni")
         self.assertTrue(all(o["serving_ml"] is None for o in doc["offers"]))
 
 

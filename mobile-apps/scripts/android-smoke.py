@@ -505,6 +505,7 @@ def map_ready(ui=None):
               for value in (node.get("text", ""), node.get("content-desc", ""))]
     return ("Mappa interattiva dei bar" in labels
             and "Esplora la mappa" not in labels
+            and "Riprova mappa" not in labels
             and not any("La mappa non si carica" in value for value in labels))
 
 

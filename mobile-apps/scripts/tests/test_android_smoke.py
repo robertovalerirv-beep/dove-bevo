@@ -409,6 +409,8 @@ class AndroidSmokeTests(unittest.TestCase):
             self.assertIsNone(m.menu_detail_state(m.ET.fromstring(invalid), wrong_name))
         map_ui = m.ET.fromstring('<hierarchy><node text="Mappa interattiva dei bar"/></hierarchy>')
         self.assertTrue(m.map_after_venue_back(map_ui))
+        self.assertFalse(m.map_ready(m.ET.fromstring(
+            '<hierarchy><node text="Mappa interattiva dei bar"/><node text="Riprova mappa"/></hierarchy>')))
         self.assertFalse(m.map_after_venue_back(m.ET.fromstring(
             '<hierarchy><node text="Mappa interattiva dei bar"/><node text="Prezzo da menu"/></hierarchy>')))
         self.assertFalse(m.map_after_venue_back(m.ET.fromstring(

@@ -86,7 +86,7 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
                 )}
                 <span class="row__meta">
                   {[
-                    it.kinds[venue.kind],
+                    venue.key.startsWith("m") && venue.kind === 0 ? "Locale" : it.kinds[venue.kind],
                     price && drinks.length > 1 ? it.drinks[price[1]] : "",
                     price && isStale(price[4], today) ? it.bar.toConfirm : "",
                     menuPrice || count?.kind === "menu" ? "Dal menu del locale" : "",

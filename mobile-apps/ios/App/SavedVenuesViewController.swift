@@ -237,8 +237,8 @@ final class SavedVenuesViewController: UITableViewController {
         drinkButton.isHidden = showingDrinks && !unifiedDrinks; bandControl.isHidden = showingDrinks
         var picker = NativeAppearance.button(traits: traitCollection)
         picker.baseBackgroundColor = NativeAppearance.surface
-        picker.background.strokeColor = NativeAppearance.line
-        picker.background.strokeWidth = 1
+        picker.background.strokeColor = NativeAppearance.ink
+        picker.background.strokeWidth = 2
         picker.title = unifiedDrinks ? "Confronta: \(savedDrinkFilter?.name ?? "Tutti i drink")" : "Confronta: \(drink.name)"
         picker.image = UIImage(systemName: "chevron.down")
         picker.imagePlacement = .trailing; picker.imagePadding = 8

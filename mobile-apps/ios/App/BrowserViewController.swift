@@ -114,7 +114,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private func configureChrome() {
         // Keep the browser header independent of the enclosing Mappa tab item.
         navigationItem.title = "Dove bevo"
-        view.backgroundColor = NativeAppearance.surface
+        view.backgroundColor = NativeAppearance.canvas
         navigationController?.navigationBar.prefersLargeTitles = false
         NativeAppearance.configure(navigationController)
 
@@ -239,8 +239,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         webView.uiDelegate = self
         webView.allowsBackForwardNavigationGestures = true
         webView.isOpaque = false
-        webView.backgroundColor = NativeAppearance.surface
-        webView.scrollView.backgroundColor = NativeAppearance.surface
+        webView.backgroundColor = NativeAppearance.canvas
+        webView.scrollView.backgroundColor = NativeAppearance.canvas
         webView.accessibilityIdentifier = "browser.website"
         // Preserve WebKit's standard user agent and secure origin handling.
         // On supported iOS versions WebKit requests website geolocation normally
@@ -253,7 +253,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         offlineLabel.adjustsFontForContentSizeCategory = true
         offlineLabel.numberOfLines = 0
         offlineLabel.textAlignment = .center
-        offlineLabel.backgroundColor = NativeAppearance.accent.withAlphaComponent(0.18)
+        offlineLabel.backgroundColor = NativeAppearance.secondary
         offlineLabel.textColor = NativeAppearance.ink
         offlineLabel.accessibilityIdentifier = "browser.offline"
         offlineLabel.isHidden = true
@@ -322,7 +322,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         // The entire visibility owner stays inside the real web viewport.
         // Larger text can scroll instead of covering navigation or the bar.
         loadingView.translatesAutoresizingMaskIntoConstraints = false
-        loadingView.backgroundColor = NativeAppearance.surface
+        loadingView.backgroundColor = NativeAppearance.canvas
         loadingView.contentInsetAdjustmentBehavior = .never
         loadingView.clipsToBounds = true
         let content = UIView()
@@ -371,7 +371,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         // Keep recovery controls reachable in landscape and at the largest
         // accessibility text sizes, without covering the native navigation.
         errorView.translatesAutoresizingMaskIntoConstraints = false
-        errorView.backgroundColor = .systemBackground
+        errorView.backgroundColor = NativeAppearance.canvas
         let content = UIView()
         content.translatesAutoresizingMaskIntoConstraints = false
         errorView.addSubview(content)

@@ -61,7 +61,7 @@ struct DiscoveryCategorySummary: Equatable {
         text.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
         count.font = .preferredFont(forTextStyle: .caption2); count.adjustsFontForContentSizeCategory = true
         count.numberOfLines = 0; count.textAlignment = .center; count.textColor = NativeAppearance.ink
-        let badge = UIView(); badge.backgroundColor = .white; badge.layer.cornerRadius = 6
+        let badge = UIView(); badge.backgroundColor = NativeAppearance.surface; badge.layer.cornerRadius = 6
         badge.translatesAutoresizingMaskIntoConstraints = false; count.translatesAutoresizingMaskIntoConstraints = false
         badge.addSubview(count); photo.addSubview(badge)
         NSLayoutConstraint.activate([
@@ -93,8 +93,8 @@ struct DiscoveryCategorySummary: Equatable {
         photoHeight?.constant = UIFontMetrics(forTextStyle: .caption1).scaledValue(for: 60, compatibleWith: traitCollection)
         isSelected = selected
         layer.borderWidth = selected ? 2 : 1
-        layer.borderColor = (selected ? NativeAppearance.accent : NativeAppearance.line).cgColor
-        backgroundColor = selected ? NativeAppearance.accent.withAlphaComponent(0.07) : NativeAppearance.surface
+        layer.borderColor = NativeAppearance.ink.cgColor
+        backgroundColor = selected ? NativeAppearance.secondary : NativeAppearance.surface
         accessibilityValue = "\(value.headline). \(value.detail). \(value.countText ?? ""). Immagine illustrativa del drink"
         accessibilityTraits = selected ? [.button, .selected] : [.button]
     }

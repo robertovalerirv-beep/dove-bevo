@@ -340,8 +340,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     if (!after || !controller || menuMoreBusy) return;
     setMenuMoreBusy(true);
     setMenuFailed(false);
+    const pageController = new AbortController();
+    const cancelPage = () => { pageController.abort(); };
+    controller.signal.addEventListener("abort", cancelPage, { once: true });
+    const timeout = setTimeout(cancelPage, 6000);
     try {
-      const page = await loadMenuPage(venueKey, cell, after, controller.signal);
+      const page = await loadMenuPage(venueKey, cell, after, pageController.signal);
       if (!page) throw new Error("Menu vanished");
       if (controller.signal.aborted) return;
       const existing = new Set(menu.offers.map((offer) => offer.id));
@@ -355,6 +359,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     } catch {
       if (!controller.signal.aborted) setMenuFailed(true);
     } finally {
+      clearTimeout(timeout);
+      controller.signal.removeEventListener("abort", cancelPage);
       if (!controller.signal.aborted) setMenuMoreBusy(false);
     }
   }

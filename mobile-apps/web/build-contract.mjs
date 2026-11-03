@@ -79,7 +79,9 @@ export function transformApp(source) {
     'document.querySelector<HTMLElement>(".bottom__primary")?.focus();',
     'document.querySelector<HTMLElement>(".mobile-map-actions__toggle")?.focus();',
   );
-  result = once(result, "() => coverage(inView, drinks)", "() => mobileCoverage(inView, drinks)");
+  result = once(
+    result,
+    
   result = once(result, "VENUE_KEY_PATTERN.test(match[1])", "mobileVenueKeyPattern.test(match[1])");
   result = once(
     result,

@@ -154,6 +154,14 @@ test("compile-time seams preserve original source and reject upstream drift", ()
     transformApp(app),
     /querySelector<HTMLElement>\("\.mobile-map-actions__toggle"\)\?\.focus/,
   );
+  assert.match(
+    transformApp(app),
+    /layer === document\.body\s+\? document\.querySelector<HTMLElement>\("\.mobile-map-actions__toggle"\)/,
+  );
+  assert.doesNotMatch(
+    transformApp(app),
+    /querySelector<HTMLElement>\("\.bottom__primary"\)/,
+  );
   assert.match(transformApp(app), /MapContributeActions/);
   assert.match(transformApp(app), /dovebevo:menu-cell-ready/);
   assert.match(transformApp(app), /venues=\{legacyPriceVenues\(everyVenue\)\}/);

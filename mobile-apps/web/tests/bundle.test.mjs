@@ -654,6 +654,25 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     });
     const choices = actions.getByRole("group", { name: "Aggiungi" });
     assert.equal(await choices.getByRole("button").count(), 2);
+    for (const width of [320, 390, 430]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const addVenue = await choices
+        .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+        .boundingBox();
+      const locateButton = await f.page.locator(".top__row > .icon-btn").boundingBox();
+      assert.ok(addVenue && locateButton);
+      assert.ok(
+        addVenue.x + addVenue.width <= locateButton.x,
+        `Expanded Add menu must clear locate control at ${width}px`,
+      );
+      const hit = await f.page.evaluate(
+        ({ x, y }) =>
+          document.elementFromPoint(x, y)?.closest(".mobile-map-actions__menu > .btn")?.textContent,
+        { x: addVenue.x + addVenue.width - 8, y: addVenue.y + addVenue.height / 2 },
+      );
+      assert.match(hit ?? "", /Aggiungi locale mancante/);
+    }
+    await f.page.setViewportSize({ width: 430, height: 700 });
     await f.page.keyboard.press("Escape");
     assert.equal(await toggle.getAttribute("aria-expanded"), "false");
     assert.equal(await toggle.evaluate((element) => element === document.activeElement), true);

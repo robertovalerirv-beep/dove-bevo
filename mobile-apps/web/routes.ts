@@ -90,6 +90,14 @@ export function mobileURL(path: string, origin = location.origin): string {
   return ENTRY + (query ? `?${query}` : "");
 }
 
+/** A saved regular or happy-hour drink never resolves to a conditional offer. */
+export function menuOfferMatchesFocus(
+  offer: { category: string | null; context: { kind: string } },
+  focus: DrinkFocus,
+): boolean {
+  return offer.category === focus.drink && offer.context.kind === (focus.hh ? "happy_hour" : "regular");
+}
+
 export function mobileDefaultDrink(
   websiteDefault: string,
   value: MobileLocation | undefined = typeof location === "undefined" ? undefined : location,

@@ -20,7 +20,10 @@ import { venues } from "./routes/venues";
 import { mobileRecommendations } from "./routes/mobile-recommendations";
 import { mobilePrices } from "./routes/mobile-prices";
 import { mobileMenuV2 } from "./routes/mobile-menu-v2";
-import { mobileMenuV2CustomerPrices, mobileMenuV2CustomerAdmin } from "./routes/mobile-menu-v2-contributions";
+import {
+  mobileMenuV2CustomerPrices,
+  mobileMenuV2CustomerAdmin,
+} from "./routes/mobile-menu-v2-contributions";
 import type { AppEnv } from "./types";
 
 const app = new Hono<AppEnv>();

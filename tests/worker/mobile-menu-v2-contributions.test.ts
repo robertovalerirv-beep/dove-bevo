@@ -14,23 +14,30 @@ let address = 0;
 const ip = () => "198.19.1." + String(++address);
 const cookie = async () => "__Host-sid=" + (await createSession("test-session-hmac-key")).token;
 async function request(path: string, body?: unknown, session?: string, jwt?: string) {
-  return worker.fetch(new Request(ORIGIN + path, {
-    method: body === undefined ? "GET" : "POST",
-    headers: {
-      Origin: ORIGIN, "Content-Type": "application/json",
-      "CF-Connecting-IP": ip(),
-      ...(session ? { Cookie: session } : {}),
-      ...(jwt ? { "Cf-Access-Jwt-Assertion": jwt } : {}),
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  }), env, createExecutionContext());
+  return worker.fetch(
+    new Request(ORIGIN + path, {
+      method: body === undefined ? "GET" : "POST",
+      headers: {
+        Origin: ORIGIN,
+        "Content-Type": "application/json",
+        "CF-Connecting-IP": ip(),
+        ...(session ? { Cookie: session } : {}),
+        ...(jwt ? { "Cf-Access-Jwt-Assertion": jwt } : {}),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    }),
+    env,
+    createExecutionContext(),
+  );
 }
 async function foreign() {
   await env.DB.prepare(
     "INSERT INTO mobile_menu_v2_venues" +
-    " (venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind,identity_url,identity_checked_on)" +
-    " VALUES (?1,?2,'Fixture London Bar',1,51.5074,-0.1278,NULL,'London','GB','osm',?3,?4)",
-  ).bind(FOREIGN.key, FOREIGN.cell, "https://www.openstreetmap.org/node/910000001", TODAY).run();
+      " (venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind,identity_url,identity_checked_on)" +
+      " VALUES (?1,?2,'Fixture London Bar',1,51.5074,-0.1278,NULL,'London','GB','osm',?3,?4)",
+  )
+    .bind(FOREIGN.key, FOREIGN.cell, "https://www.openstreetmap.org/node/910000001", TODAY)
+    .run();
 }
 async function owner(): Promise<{ key: string; cell: string }> {
   const cell = "u0nd9";
@@ -38,49 +45,94 @@ async function owner(): Promise<{ key: string; cell: string }> {
   const address = "Via Esempio 12, Milano";
   const payload = "dovebevo-v2-owner-it\n" + url + "\n" + address.normalize("NFKC").toLowerCase();
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
-  const fingerprint = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const fingerprint = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
   const key = "m" + fingerprint.slice(0, 24);
   await env.DB.prepare(
     "INSERT INTO mobile_menu_v2_venues" +
-    " (venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind,identity_url," +
-    " identity_text_sha256,identity_geo_url,identity_geo_text_sha256,identity_geo_hash_basis," +
-    " identity_fingerprint,identity_checked_on)" +
-    " VALUES (?1,?2,'Fixture New Owner Bar',1,45.4464,9.2284,?3,'Milano','IT'," +
-    " 'owner_verified',?4,?5,?6,?7,'raw_utf8',?8,?9)",
-  ).bind(key, cell, address, url, "b".repeat(64),
-    "https://www.openstreetmap.org/node/999000111", "c".repeat(64), fingerprint, TODAY).run();
+      " (venue_key,cell,name,kind,lat,lon,address,city,country,identity_kind,identity_url," +
+      " identity_text_sha256,identity_geo_url,identity_geo_text_sha256,identity_geo_hash_basis," +
+      " identity_fingerprint,identity_checked_on)" +
+      " VALUES (?1,?2,'Fixture New Owner Bar',1,45.4464,9.2284,?3,'Milano','IT'," +
+      " 'owner_verified',?4,?5,?6,?7,'raw_utf8',?8,?9)",
+  )
+    .bind(
+      key,
+      cell,
+      address,
+      url,
+      "b".repeat(64),
+      "https://www.openstreetmap.org/node/999000111",
+      "c".repeat(64),
+      fingerprint,
+      TODAY,
+    )
+    .run();
   return { key, cell };
 }
 async function offer(venue: { key: string; cell: string }, currency: string) {
   const source = crypto.randomUUID();
   await env.DB.prepare(
     "INSERT INTO mobile_menu_v2_sources" +
-    " (id,venue_key,cell,source_url,source_text_sha256,source_checked_on," +
-    " use_review_status,use_review_basis,use_review_reference,use_reviewed_on)" +
-    " VALUES (?1,?2,?3,'https://official.example/menu',?4,?5,'approved'," +
-    " 'Fixture approved source','https://official.example/review',?5)",
-  ).bind(source, venue.key, venue.cell, "a".repeat(64), TODAY).run();
+      " (id,venue_key,cell,source_url,source_text_sha256,source_checked_on," +
+      " use_review_status,use_review_basis,use_review_reference,use_reviewed_on)" +
+      " VALUES (?1,?2,?3,'https://official.example/menu',?4,?5,'approved'," +
+      " 'Fixture approved source','https://official.example/review',?5)",
+  )
+    .bind(source, venue.key, venue.cell, "a".repeat(64), TODAY)
+    .run();
   const id = "fixture-" + crypto.randomUUID();
   await env.DB.prepare(
     "INSERT INTO mobile_menu_v2_offers" +
-    " (id,venue_key,cell,name,category,serving_label,serving_ml,amount_minor,currency," +
-    " currency_exponent,price_context,condition_text,status,source_id)" +
-    " VALUES (?1,?2,?3,'Fixture spritz','spritz','glass',NULL,550,?4,2," +
-    " 'regular',NULL,'active',?5)",
-  ).bind(id, venue.key, venue.cell, currency, source).run();
+      " (id,venue_key,cell,name,category,serving_label,serving_ml,amount_minor,currency," +
+      " currency_exponent,price_context,condition_text,status,source_id)" +
+      " VALUES (?1,?2,?3,'Fixture spritz','spritz','glass',NULL,550,?4,2," +
+      " 'regular',NULL,'active',?5)",
+  )
+    .bind(id, venue.key, venue.cell, currency, source)
+    .run();
   return id;
 }
-const offerBody = (venue: { key: string; cell: string }, id: string, currency: string, extra: object = {}) => ({
-  kind: "menu_offer", venue_key: venue.key, cell: venue.cell, offer_id: id,
-  amount_minor: 625, currency, currency_exponent: 2, expected_revision: null, ...extra,
+const offerBody = (
+  venue: { key: string; cell: string },
+  id: string,
+  currency: string,
+  extra: object = {},
+) => ({
+  kind: "menu_offer",
+  venue_key: venue.key,
+  cell: venue.cell,
+  offer_id: id,
+  amount_minor: 625,
+  currency,
+  currency_exponent: 2,
+  expected_revision: null,
+  ...extra,
 });
 const newBody = (venue: { key: string; cell: string }, extra: object = {}) => ({
-  kind: "new_drink", venue_key: venue.key, cell: venue.cell,
-  name: "House negroni", category: "negroni", serving_label: "glass", serving_ml: null,
-  amount_minor: 950, currency: "EUR", currency_exponent: 2, expected_revision: null, ...extra,
+  kind: "new_drink",
+  venue_key: venue.key,
+  cell: venue.cell,
+  name: "House negroni",
+  category: "negroni",
+  serving_label: "glass",
+  serving_ml: null,
+  amount_minor: 950,
+  currency: "EUR",
+  currency_exponent: 2,
+  expected_revision: null,
+  ...extra,
 });
-type PublicRows = { rows: { revision: string; amount_minor: number; currency: string;
-  source_kind: string; name: string }[] };
+type PublicRows = {
+  rows: {
+    revision: string;
+    amount_minor: number;
+    currency: string;
+    source_kind: string;
+    name: string;
+  }[];
+};
 beforeEach(async () => {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM mobile_menu_v2_customer_reports"),
@@ -100,33 +152,79 @@ describe("app-only customer prices on vetted named menu venues", () => {
     await foreign();
     const id = await offer(FOREIGN, "GBP");
     const signed = await cookie();
-    const submitted = await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP"), signed);
+    const submitted = await request(
+      "/api/mobile/v2/customer-prices",
+      offerBody(FOREIGN, id, "GBP"),
+      signed,
+    );
     expect(submitted.status, await submitted.clone().text()).toBe(201);
     const revision = (await submitted.json<{ revision: string }>()).revision;
-    const publicRead = await request("/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell);
+    const publicRead = await request(
+      "/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell,
+    );
     expect(publicRead.status).toBe(200);
     expect(await publicRead.json<PublicRows>()).toMatchObject({
       rows: [{ revision, amount_minor: 625, currency: "GBP", source_kind: "customer" }],
     });
-    expect(await env.DB.prepare("SELECT amount_minor FROM mobile_menu_v2_offers WHERE id=?1")
-      .bind(id).first("amount_minor")).toBe(550);
+    expect(
+      await env.DB.prepare("SELECT amount_minor FROM mobile_menu_v2_offers WHERE id=?1")
+        .bind(id)
+        .first("amount_minor"),
+    ).toBe(550);
     for (const table of ["prices_current", "mobile_prices_current"]) {
-      expect(await env.DB.prepare("SELECT COUNT(*) FROM " + table + " WHERE venue_key=?1")
-        .bind(FOREIGN.key).first("COUNT(*)")).toBe(0);
+      expect(
+        await env.DB.prepare("SELECT COUNT(*) FROM " + table + " WHERE venue_key=?1")
+          .bind(FOREIGN.key)
+          .first("COUNT(*)"),
+      ).toBe(0);
     }
-    expect((await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "EUR"), signed)).status)
-      .toBe(400);
-    expect((await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
-      { amount_minor: 0 }), signed)).status).toBe(400);
-    expect((await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
-      { currency_exponent: 1 }), signed)).status).toBe(400);
-    expect((await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
-      { amount_minor: 700, expected_revision: crypto.randomUUID() }), signed)).status).toBe(409);
-    const updated = await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
-      { amount_minor: 700, expected_revision: revision }), signed);
+    expect(
+      (await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "EUR"), signed))
+        .status,
+    ).toBe(400);
+    expect(
+      (
+        await request(
+          "/api/mobile/v2/customer-prices",
+          offerBody(FOREIGN, id, "GBP", { amount_minor: 0 }),
+          signed,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request(
+          "/api/mobile/v2/customer-prices",
+          offerBody(FOREIGN, id, "GBP", { currency_exponent: 1 }),
+          signed,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request(
+          "/api/mobile/v2/customer-prices",
+          offerBody(FOREIGN, id, "GBP", {
+            amount_minor: 700,
+            expected_revision: crypto.randomUUID(),
+          }),
+          signed,
+        )
+      ).status,
+    ).toBe(409);
+    const updated = await request(
+      "/api/mobile/v2/customer-prices",
+      offerBody(FOREIGN, id, "GBP", { amount_minor: 700, expected_revision: revision }),
+      signed,
+    );
     expect(updated.status, await updated.clone().text()).toBe(201);
-    expect((await request("/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell)
-      .then((r) => r.json<PublicRows>())).rows[0]?.amount_minor).toBe(700);
+    expect(
+      (
+        await request(
+          "/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell,
+        ).then((r) => r.json<PublicRows>())
+      ).rows[0]?.amount_minor,
+    ).toBe(700);
   });
 
   it("holds a new named drink pending until admin moderation, with a usable owner-verified venue", async () => {
@@ -137,33 +235,61 @@ describe("app-only customer prices on vetted named menu venues", () => {
     const revision = (await submission.json<{ revision: string }>()).revision;
     const path = "/api/mobile/v2/customer-prices/venues/" + venue.key + "?cell=" + venue.cell;
     expect((await (await request(path)).json<PublicRows>()).rows).toEqual([]);
-    expect((await request("/api/mobile/v2/customer-prices", newBody(venue), signed)).status).toBe(409);
-    expect((await request("/api/mobile/v2/customer-prices", newBody(venue,
-      { currency_exponent: 1 }), signed)).status).toBe(400);
-    const second = await request("/api/mobile/v2/customer-prices",
-      newBody(venue, { name: "Second house negroni" }), signed);
+    expect((await request("/api/mobile/v2/customer-prices", newBody(venue), signed)).status).toBe(
+      409,
+    );
+    expect(
+      (
+        await request(
+          "/api/mobile/v2/customer-prices",
+          newBody(venue, { currency_exponent: 1 }),
+          signed,
+        )
+      ).status,
+    ).toBe(400);
+    const second = await request(
+      "/api/mobile/v2/customer-prices",
+      newBody(venue, { name: "Second house negroni" }),
+      signed,
+    );
     expect(second.status).toBe(202);
     const jwt = await accessJwt();
-    const firstPage = await request("/api/admin/mobile/v2/customer-prices/pending?limit=1",
-      undefined, undefined, jwt);
-    const page = await firstPage.json<{ rows: { revision: string }[]; next_after: number | null }>();
+    const firstPage = await request(
+      "/api/admin/mobile/v2/customer-prices/pending?limit=1",
+      undefined,
+      undefined,
+      jwt,
+    );
+    const page = await firstPage.json<{
+      rows: { revision: string }[];
+      next_after: number | null;
+    }>();
     expect(page.rows).toHaveLength(1);
     expect(page.rows[0]?.revision).toBe(revision);
     expect(page.next_after).toBeTypeOf("number");
-    const nextPage = await request("/api/admin/mobile/v2/customer-prices/pending?limit=1&after=" +
-      String(page.next_after), undefined, undefined, jwt);
+    const nextPage = await request(
+      "/api/admin/mobile/v2/customer-prices/pending?limit=1&after=" + String(page.next_after),
+      undefined,
+      undefined,
+      jwt,
+    );
     expect((await nextPage.json<{ rows: { revision: string }[] }>()).rows).toHaveLength(1);
 
     const decision = await request(
       "/api/admin/mobile/v2/customer-prices/entries/" + revision + "/decision",
-      { decision: "approve" }, undefined, jwt,
+      { decision: "approve" },
+      undefined,
+      jwt,
     );
     expect(decision.status, await decision.clone().text()).toBe(200);
     expect((await (await request(path)).json<PublicRows>()).rows).toMatchObject([
       { revision, name: "House negroni", amount_minor: 950, currency: "EUR" },
     ]);
-    expect(await env.DB.prepare("SELECT COUNT(*) FROM mobile_menu_v2_customer_decisions")
-      .first("COUNT(*)")).toBe(1);
+    expect(
+      await env.DB.prepare("SELECT COUNT(*) FROM mobile_menu_v2_customer_decisions").first(
+        "COUNT(*)",
+      ),
+    ).toBe(1);
   });
 
   it("rejects bogus, hidden and moderated venues and unauthenticated writes", async () => {
@@ -172,16 +298,34 @@ describe("app-only customer prices on vetted named menu venues", () => {
     const body = offerBody(FOREIGN, id, "GBP");
     expect((await request("/api/mobile/v2/customer-prices", body)).status).toBe(401);
     const signed = await cookie();
-    expect((await request("/api/mobile/v2/customer-prices", { ...body, venue_key: "m" + "0".repeat(24) }, signed)).status)
-      .toBe(404);
-    await env.DB.prepare("INSERT INTO venues_hidden(venue_key,cell,name,day) VALUES (?1,?2,'fixture',?3)")
-      .bind(FOREIGN.key, FOREIGN.cell, TODAY).run();
+    expect(
+      (
+        await request(
+          "/api/mobile/v2/customer-prices",
+          { ...body, venue_key: "m" + "0".repeat(24) },
+          signed,
+        )
+      ).status,
+    ).toBe(404);
+    await env.DB.prepare(
+      "INSERT INTO venues_hidden(venue_key,cell,name,day) VALUES (?1,?2,'fixture',?3)",
+    )
+      .bind(FOREIGN.key, FOREIGN.cell, TODAY)
+      .run();
     expect((await request("/api/mobile/v2/customer-prices", body, signed)).status).toBe(404);
-    expect((await request("/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell)).status)
-      .toBe(404);
+    expect(
+      (
+        await request(
+          "/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell,
+        )
+      ).status,
+    ).toBe(404);
     await env.DB.prepare("DELETE FROM venues_hidden").run();
-    await env.DB.prepare("INSERT INTO mobile_venues_moderation(venue_key,status,reason) VALUES (?1,'hidden','fixture')")
-      .bind(FOREIGN.key).run();
+    await env.DB.prepare(
+      "INSERT INTO mobile_venues_moderation(venue_key,status,reason) VALUES (?1,'hidden','fixture')",
+    )
+      .bind(FOREIGN.key)
+      .run();
     expect((await request("/api/mobile/v2/customer-prices", body, signed)).status).toBe(404);
   });
 
@@ -189,27 +333,45 @@ describe("app-only customer prices on vetted named menu venues", () => {
     await foreign();
     const id = await offer(FOREIGN, "GBP");
     const signed = await cookie();
-    const first = await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP"), signed);
+    const first = await request(
+      "/api/mobile/v2/customer-prices",
+      offerBody(FOREIGN, id, "GBP"),
+      signed,
+    );
     expect(first.status).toBe(201);
     const oldRevision = (await first.json<{ revision: string }>()).revision;
     const jwt = await accessJwt();
     const remove = await request(
       "/api/admin/mobile/v2/customer-prices/entries/" + oldRevision + "/decision",
-      { decision: "remove" }, undefined, jwt,
+      { decision: "remove" },
+      undefined,
+      jwt,
     );
     expect(remove.status, await remove.clone().text()).toBe(200);
     const path = "/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell;
     expect((await (await request(path)).json<PublicRows>()).rows).toEqual([]);
-    expect((await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
-      { amount_minor: 700, expected_revision: oldRevision }), signed)).status).toBe(409);
-    const replacement = await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP",
-      { amount_minor: 700 }), signed);
+    expect(
+      (
+        await request(
+          "/api/mobile/v2/customer-prices",
+          offerBody(FOREIGN, id, "GBP", { amount_minor: 700, expected_revision: oldRevision }),
+          signed,
+        )
+      ).status,
+    ).toBe(409);
+    const replacement = await request(
+      "/api/mobile/v2/customer-prices",
+      offerBody(FOREIGN, id, "GBP", { amount_minor: 700 }),
+      signed,
+    );
     expect(replacement.status, await replacement.clone().text()).toBe(202);
     expect((await (await request(path)).json<PublicRows>()).rows).toEqual([]);
     const revision = (await replacement.json<{ revision: string }>()).revision;
     const approve = await request(
       "/api/admin/mobile/v2/customer-prices/entries/" + revision + "/decision",
-      { decision: "approve" }, undefined, jwt,
+      { decision: "approve" },
+      undefined,
+      jwt,
     );
     expect(approve.status, await approve.clone().text()).toBe(200);
     expect((await (await request(path)).json<PublicRows>()).rows).toMatchObject([
@@ -224,26 +386,47 @@ describe("app-only customer prices on vetted named menu venues", () => {
     const day = romeDay();
     const mark = await hmacHex(env.HASH_KEY, [day, "price", "sid", session.id]);
     await env.DB.prepare("INSERT INTO counters(k,day,n) VALUES (?1,?2,30)").bind(mark, day).run();
-    const response = await request("/api/mobile/v2/customer-prices",
-      offerBody(FOREIGN, id, "GBP"), "__Host-sid=" + session.token);
+    const response = await request(
+      "/api/mobile/v2/customer-prices",
+      offerBody(FOREIGN, id, "GBP"),
+      "__Host-sid=" + session.token,
+    );
     expect(response.status).toBe(429);
-    expect((await (await request("/api/mobile/v2/customer-prices/venues/" +
-      FOREIGN.key + "?cell=" + FOREIGN.cell)).json<PublicRows>()).rows).toEqual([]);
+    expect(
+      (
+        await (
+          await request(
+            "/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell,
+          )
+        ).json<PublicRows>()
+      ).rows,
+    ).toEqual([]);
   });
 
   it("reports an active observation and suppresses it after the moderation threshold", async () => {
     await foreign();
     const id = await offer(FOREIGN, "GBP");
     const signed = await cookie();
-    const submission = await request("/api/mobile/v2/customer-prices", offerBody(FOREIGN, id, "GBP"), signed);
+    const submission = await request(
+      "/api/mobile/v2/customer-prices",
+      offerBody(FOREIGN, id, "GBP"),
+      signed,
+    );
     expect(submission.status).toBe(201);
     const revision = (await submission.json<{ revision: string }>()).revision;
-    const report = { venue_key: FOREIGN.key, cell: FOREIGN.cell, entry_id: revision, reason: "wrong_price" };
+    const report = {
+      venue_key: FOREIGN.key,
+      cell: FOREIGN.cell,
+      entry_id: revision,
+      reason: "wrong_price",
+    };
     for (let i = 0; i <= 3; i++) {
       const result = await request("/api/mobile/v2/customer-prices/report", report, await cookie());
       expect(result.status, await result.clone().text()).toBe(200);
     }
-    const rows = await request("/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell);
+    const rows = await request(
+      "/api/mobile/v2/customer-prices/venues/" + FOREIGN.key + "?cell=" + FOREIGN.cell,
+    );
     expect((await rows.json<PublicRows>()).rows).toEqual([]);
   });
 });

@@ -343,9 +343,13 @@ async function venue(env: Env, key: string, cell: string): Promise<Venue> {
   return original;
 }
 /** Public contribution guard: only vetted registry venues, never Italian legacy static keys. */
-export async function resolveRegisteredMenuVenue(env: Env, key: string, cell: string): Promise<Venue> {
+export async function resolveRegisteredMenuVenue(
+  env: Env,
+  key: string,
+  cell: string,
+): Promise<Venue> {
   const place = await registeredVenue(env, key, cell);
-  if (!place || await blocked(env.DB, key)) throw new ApiError("not_found");
+  if (!place || (await blocked(env.DB, key))) throw new ApiError("not_found");
   return place;
 }
 async function blocked(db: D1Database, key: string): Promise<boolean> {

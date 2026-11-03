@@ -63,6 +63,7 @@ final class SavedDrinkScreen {
         catch(IOException unavailable){busy=false;status.setText("Prezzi non disponibili. I drink salvati restano sul dispositivo.");render();}
     }
     private void render(){
+        if(rows==null||refresh==null)return;
         refresh.setEnabled(usable()&&!busy);rows.removeAllViews();
         List<SavedDrinkComparison.Row> values;
         try{values=SavedDrinkComparison.rows(saved,cells);}catch(IOException invalid){status.setText("Prezzi non disponibili");return;}

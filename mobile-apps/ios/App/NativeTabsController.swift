@@ -79,9 +79,9 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = NativeAppearance.surface
+        view.backgroundColor = NativeAppearance.canvas
         view.tintColor = NativeAppearance.ink
-        bottomBackground.backgroundColor = NativeAppearance.surface
+        bottomBackground.backgroundColor = NativeAppearance.chrome
         NativeAppearance.configure(mapNavigation)
         NativeAppearance.configure(favouritesNavigation)
         NativeAppearance.configure(discoveryNavigation)

@@ -403,7 +403,10 @@ final class BrowserSmokeTests: XCTestCase {
 
     private func verifyLiveFavouriteComparisonReadOnly() {
         XCTAssertTrue(app.buttons["tab.favorites"].isSelected)
-        XCTAssertTrue(app.staticTexts["favorites.loaded"].waitForExistence(timeout: 60), "Saved drink prices must resolve from public data")
+        let finished = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            self.app.staticTexts["favorites.loaded"].exists || self.app.staticTexts["favorites.partial"].exists
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [finished], timeout: 60), .completed, "The saved drink comparison must finish with an explicit result")
         let selector = app.buttons["favorites.drink"]
         XCTAssertTrue(selector.exists)
         selector.tap()

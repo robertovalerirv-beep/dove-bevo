@@ -31,8 +31,11 @@ DIAGNOSTIC_ERRORS = []
 DIAGNOSTIC_LIMIT = 16_384
 SERIAL = "emulator-5554"
 LAUNCH_STAGES = ("initial", "after_decline", "resume", "after_restart")
-OWNED_CLASSES = {"NativeUsabilityRuntimeTest": 21, "RecommendationsRuntimeTest": 6,
-                 "FavoritesRuntimeTest": 5, "DiscoveryRuntimeTest": 4, "EuropePricesRuntimeTest": 1, "PriceShareRuntimeTest": 8}
+OWNED_CLASSES = {"NativeUsabilityRuntimeTest": 22, "RecommendationsRuntimeTest": 6,
+                 "FavoritesRuntimeTest": 5, "DiscoveryRuntimeTest": 4, "EuropePricesRuntimeTest": 1,
+                 "PriceShareRuntimeTest": 8, "DrinkFavoritesRuntimeTest": 4}
+OWNED_TEST_COUNT = sum(OWNED_CLASSES.values())
+OWNED_TEST_SOURCE = Path(__file__).resolve().parents[1] / "android/app/src/androidTest/java/com/dovebevo/app"
 PUBLIC_STAGES = ("home", "search", "map", "resume", "restart")
 PUBLIC_STAGE = None
 OWNED_PASS = False
@@ -44,10 +47,27 @@ class PublicProbeBlocked(RuntimeError):
         self.stage, self.evidence = stage, evidence
 
 
+def verify_owned_test_sources(source_dir=None):
+    """Fail before emulator startup when the exact registered Java suites drift."""
+    directory = source_dir if source_dir is not None else OWNED_TEST_SOURCE
+    methods = re.compile(r"(?m)^[ \t]*@Test(?:[ \t]*\([^()\r\n]*\))?[ \t]*(?:\r?\n[ \t]*)*"
+                         r"(?:public[ \t]+)?void[ \t]+([A-Za-z_$][\w$]*)[ \t]*\(")
+    for name, expected in OWNED_CLASSES.items():
+        try:
+            source = (directory / (name + ".java")).read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as error:
+            raise RuntimeError("Owned Android test source unavailable: " + name) from error
+        names = methods.findall(source)
+        markers = re.findall(r"(?m)^[ \t]*@Test\b", source)
+        if (len(source) > 1_000_000 or not re.search(r"\bclass[ \t]+" + re.escape(name) + r"\b", source)
+                or len(markers) != expected or len(names) != expected or len(set(names)) != expected):
+            raise RuntimeError("Owned Android test source inventory mismatch: " + name)
+
+
 def owned_instrumentation(output):
     text = output.decode("utf-8", "strict")
-    if len(output) > 2_000_000 or not re.search(r"^OK \(45 tests\)\s*$", text, re.M) or not re.search(r"^INSTRUMENTATION_CODE: -1\s*$", text, re.M):
-        raise RuntimeError("Owned instrumentation missing explicit 45-case PASS")
+    if len(output) > 2_000_000 or not re.search(rf"^OK \({OWNED_TEST_COUNT} tests\)\s*$", text, re.M) or not re.search(r"^INSTRUMENTATION_CODE: -1\s*$", text, re.M):
+        raise RuntimeError(f"Owned instrumentation missing explicit {OWNED_TEST_COUNT}-case PASS")
     if re.search(r"FAILURES|INSTRUMENTATION_FAILED|INSTRUMENTATION_ABORTED|shortMsg=", text):
         raise RuntimeError("Owned instrumentation failed")
     cases, started, fields = [], set(), {}
@@ -58,7 +78,7 @@ def owned_instrumentation(output):
         elif line.startswith("INSTRUMENTATION_STATUS_CODE: "):
             code = int(line.split(": ", 1)[1])
             identity = (fields.get("class"), fields.get("test"))
-            if (code not in (0, 1) or fields.get("numtests") != "45" or not identity[1]
+            if (code not in (0, 1) or fields.get("numtests") != str(OWNED_TEST_COUNT) or not identity[1]
                     or identity[0] not in {"com.dovebevo.app." + name for name in OWNED_CLASSES}):
                 raise RuntimeError("Owned instrumentation failure, skip or invalid case")
             if code == 1:
@@ -68,9 +88,9 @@ def owned_instrumentation(output):
                 if identity not in started or identity in cases: raise RuntimeError("Missing or duplicate owned test result")
                 cases.append(identity)
             fields = {}
-    if len(cases) != 45 or set(cases) != started or Counter(c.rsplit(".", 1)[1] for c, _ in cases) != Counter(OWNED_CLASSES):
+    if len(cases) != OWNED_TEST_COUNT or set(cases) != started or Counter(c.rsplit(".", 1)[1] for c, _ in cases) != Counter(OWNED_CLASSES):
         raise RuntimeError("Owned instrumentation incomplete case set")
-    return {"result": "passed", "tests": 45, "cases": [list(case) for case in cases]}
+    return {"result": "passed", "tests": OWNED_TEST_COUNT, "cases": [list(case) for case in cases]}
 
 
 def run_owned_instrumentation():
@@ -170,9 +190,9 @@ def valid_pr_block_receipt():
     proof = result.get("public_probe", {})
     cases = owned.get("cases", [])
     return (result.get("result") == "blocked" and result.get("blocker") == "cloudflare_challenge"
-            and result.get("owned") == owned and owned.get("result") == "passed" and owned.get("tests") == 45
-            and len(cases) == 45 and all(isinstance(c, list) and len(c) == 2 and all(isinstance(v, str) for v in c) for c in cases)
-            and len(set(map(tuple, cases))) == 45
+            and result.get("owned") == owned and owned.get("result") == "passed" and owned.get("tests") == OWNED_TEST_COUNT
+            and len(cases) == OWNED_TEST_COUNT and all(isinstance(c, list) and len(c) == 2 and all(isinstance(v, str) for v in c) for c in cases)
+            and len(set(map(tuple, cases))) == OWNED_TEST_COUNT
             and Counter(c[0] for c in cases) == Counter({"com.dovebevo.app." + name: count for name, count in OWNED_CLASSES.items()})
             and result.get("cleanup") == {"result": "passed", "errors": []}
             and not result.get("diagnostic_write_error") and proof.get("stage") in PUBLIC_STAGES
@@ -529,6 +549,7 @@ def main():
     emulator = failure = None
     captures = []
     try:
+        verify_owned_test_sources()
         prepare_runtime()
         if any(port_open(port) for port in (5041, 5554, 5555)):
             raise RuntimeError("Private runtime ports are already occupied")

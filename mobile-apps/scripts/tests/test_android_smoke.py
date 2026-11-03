@@ -381,15 +381,43 @@ class AndroidSmokeTests(unittest.TestCase):
         for text in ['native adult usage rules', 'live website city-search control', 'clickable Milano city result', 'live map initialized after city selection', 'accepted app restarts into live service']:
             self.assertIn(text, source)
 
-    def owned_output(self):
-        lines = []
+    def test_registered_source_inventory_is_exact_and_checked_before_emulator_start(self):
+        self.assertEqual(m.OWNED_TEST_COUNT, 50)
+        m.verify_owned_test_sources()
+        directory = self.base / 'registered-tests'
+        directory.mkdir()
         for name, count in m.OWNED_CLASSES.items():
+            cases = ''.join(f'@Test public void case{i}(){{}}\n' for i in range(count))
+            (directory / (name + '.java')).write_text(f'public class {name} {{\n{cases}}}\n')
+        m.verify_owned_test_sources(directory)
+        native = directory / 'NativeUsabilityRuntimeTest.java'
+        native.write_text(native.read_text() + '@Test public void addedCase(){}\n')
+        with self.assertRaisesRegex(RuntimeError, 'NativeUsabilityRuntimeTest'):
+            m.verify_owned_test_sources(directory)
+        native.write_text(native.read_text().replace('@Test public void addedCase(){}\n', ''))
+        (directory / 'DrinkFavoritesRuntimeTest.java').unlink()
+        with self.assertRaisesRegex(RuntimeError, 'DrinkFavoritesRuntimeTest'):
+            m.verify_owned_test_sources(directory)
+        with mock.patch.object(m, 'verify_owned_test_sources', side_effect=RuntimeError('source inventory mismatch')), \
+             mock.patch.object(m, 'prepare_runtime') as prepare, \
+             mock.patch.object(m, 'cleanup_runtime', return_value=[]), \
+             mock.patch.object(m.subprocess, 'Popen') as popen:
+            with self.assertRaisesRegex(RuntimeError, 'source inventory mismatch'):
+                m.main()
+        prepare.assert_not_called()
+        popen.assert_not_called()
+
+    def owned_output(self, counts=None):
+        counts = m.OWNED_CLASSES if counts is None else counts
+        total = sum(counts.values())
+        lines = []
+        for name, count in counts.items():
             for number in range(count):
                 for code in (1, 0):
                     lines.extend([f'INSTRUMENTATION_STATUS: class=com.dovebevo.app.{name}',
                                   f'INSTRUMENTATION_STATUS: test=case{number}',
-                                  'INSTRUMENTATION_STATUS: numtests=45', f'INSTRUMENTATION_STATUS_CODE: {code}'])
-        return ('\n'.join(lines) + '\nOK (45 tests)\nINSTRUMENTATION_CODE: -1\n').encode()
+                                  f'INSTRUMENTATION_STATUS: numtests={total}', f'INSTRUMENTATION_STATUS_CODE: {code}'])
+        return ('\n'.join(lines) + f'\nOK ({total} tests)\nINSTRUMENTATION_CODE: -1\n').encode()
 
     def challenge_xml(self):
         return b'<hierarchy><node class="android.webkit.WebView" package="com.dovebevo.app"><node text="www.dovebevo.com"/><node text="Performing security verification"/><node class="android.widget.CheckBox" text="Verify you are human"/><node text="Cloudflare"/></node></hierarchy>'
@@ -408,8 +436,13 @@ class AndroidSmokeTests(unittest.TestCase):
 
     def test_owned_instrumentation_requires_every_explicit_unskipped_case(self):
         good = self.owned_output()
-        self.assertEqual(m.owned_instrumentation(good)['tests'], 45)
-        for bad in [b'', good.replace(b'OK (45 tests)', b''), good.replace(b'INSTRUMENTATION_CODE: -1', b''),
+        self.assertEqual(m.owned_instrumentation(good)['tests'], m.OWNED_TEST_COUNT)
+        old_46 = {name: count for name, count in m.OWNED_CLASSES.items() if name != 'DrinkFavoritesRuntimeTest'}
+        old_45 = {**old_46, 'NativeUsabilityRuntimeTest': 21}
+        for bad in [b'', self.owned_output(old_45), self.owned_output(old_46),
+                    good.replace(f'OK ({m.OWNED_TEST_COUNT} tests)'.encode(), b''),
+                    good.replace(b'INSTRUMENTATION_STATUS: numtests=50', b'INSTRUMENTATION_STATUS: numtests=46', 1),
+                    good.replace(b'INSTRUMENTATION_CODE: -1', b''),
                     good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -2', 1),
                     good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -3', 1),
                     good.replace(b'STATUS_CODE: 0', b'STATUS_CODE: -4', 1),
@@ -422,7 +455,7 @@ class AndroidSmokeTests(unittest.TestCase):
         with mock.patch.object(m.subprocess, 'run',
                                return_value=subprocess.CompletedProcess([], 0, self.owned_output(), b'')) as run:
             result = m.run_owned_instrumentation()
-        self.assertEqual(result['tests'], 45)
+        self.assertEqual(result['tests'], m.OWNED_TEST_COUNT)
         self.assertEqual(run.call_count, 2, 'One instrument invocation and final force-stop; no retries')
         instrument, stop = run.call_args_list
         self.assertEqual(instrument.args[0][7:14], ('shell', 'am', 'instrument', '-w', '-r', '-e', 'class'))
@@ -451,12 +484,12 @@ class AndroidSmokeTests(unittest.TestCase):
             self.assertLessEqual(len(retained['stderr']['head'].encode()), m.DIAGNOSTIC_LIMIT)
             self.assertLessEqual(len(retained['stderr']['tail'].encode()), m.DIAGNOSTIC_LIMIT)
             self.assertEqual(retained['stderr']['truncated_bytes'], max(0, retained['stderr']['sanitized_bytes'] - 2 * m.DIAGNOSTIC_LIMIT))
-            self.assertIn('OK (45 tests)', retained['stdout']['tail'])
+            self.assertIn(f'OK ({m.OWNED_TEST_COUNT} tests)', retained['stdout']['tail'])
             self.assertIs(raw, original)
             return actual_parser(raw)
         with mock.patch.object(m, 'owned_instrumentation', side_effect=parse), \
              mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, original, stderr)) as adb:
-            self.assertEqual(m.run_owned_instrumentation()['tests'], 45)
+            self.assertEqual(m.run_owned_instrumentation()['tests'], m.OWNED_TEST_COUNT)
         self.assertEqual(adb.call_count, 2)
         self.assertFalse(any(call.args[0] == 'logcat' for call in adb.call_args_list))
         self.assertNotIn('failure_logcat', m.STARTUP['owned_instrumentation'])
@@ -483,7 +516,7 @@ class AndroidSmokeTests(unittest.TestCase):
         responses = [subprocess.CompletedProcess([], 0, b'INSTRUMENTATION_ABORTED: runner crashed', b'runner stderr'),
                      subprocess.CompletedProcess([], 0, b'AndroidRuntime: useful fixture stack\nAuthorization: FABRICATED_SECRET', b'')]
         with mock.patch.object(m, 'adb', side_effect=responses) as adb:
-            with self.assertRaisesRegex(RuntimeError, 'missing explicit 45-case PASS'):
+            with self.assertRaisesRegex(RuntimeError, f'missing explicit {m.OWNED_TEST_COUNT}-case PASS'):
                 m.run_owned_instrumentation()
         log_args = adb.call_args_list[1]
         self.assertEqual(log_args.args, ('logcat', '-d', '-t', '300', '-v', 'brief', 'AndroidRuntime:E',
@@ -513,7 +546,7 @@ class AndroidSmokeTests(unittest.TestCase):
             m.ADB_OWNER = Proc(code=None)
             with mock.patch.object(pathlib.Path, 'write_text', side_effect=OSError('diagnostic disk failure')), \
                  mock.patch.object(m, 'owned_instrumentation', side_effect=None if otherwise_passed else original,
-                                   return_value={'result': 'passed', 'tests': 45}), \
+                                   return_value={'result': 'passed', 'tests': m.OWNED_TEST_COUNT}), \
                  mock.patch.object(m, 'adb', return_value=subprocess.CompletedProcess([], 0, b'fixture', b'')) as adb:
                 with self.assertRaises(RuntimeError) as caught: m.run_owned_instrumentation()
             if otherwise_passed:
@@ -570,9 +603,18 @@ class AndroidSmokeTests(unittest.TestCase):
 
     def test_invalid_receipt_owned_cleanup_or_artifacts_are_always_fatal(self):
         env = {'GITHUB_EVENT_NAME': 'pull_request', 'GITHUB_REPOSITORY': 'robertovalerirv-beep/dove-bevo'}
-        for change in ['owned', 'missing-owned-cases', 'cleanup', 'receipt', 'evidence', 'stage']:
+        for change in ['owned', 'old-45-receipt', 'old-46-receipt',
+                       'missing-owned-cases', 'cleanup', 'receipt', 'evidence', 'stage']:
             result, blocked = self.blocked_receipt()
             if change == 'owned': result['owned'] = {'result': 'failed', 'tests': 34}
+            if change in ('old-45-receipt', 'old-46-receipt'):
+                counts = {name: count for name, count in m.OWNED_CLASSES.items()
+                          if name != 'DrinkFavoritesRuntimeTest'}
+                if change == 'old-45-receipt': counts['NativeUsabilityRuntimeTest'] = 21
+                cases = [[f'com.dovebevo.app.{name}', f'case{i}']
+                         for name, count in counts.items() for i in range(count)]
+                result['owned'] = {'result': 'passed', 'tests': len(cases), 'cases': cases}
+                (m.EVIDENCE / 'owned-instrumentation.json').write_text(json.dumps(result['owned']))
             if change == 'missing-owned-cases':
                 result['owned']['cases'] = []
                 (m.EVIDENCE / 'owned-instrumentation.json').write_text(json.dumps(result['owned']))

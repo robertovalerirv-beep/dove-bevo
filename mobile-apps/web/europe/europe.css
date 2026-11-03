@@ -3,15 +3,15 @@
   flex-direction: column;
   height: 100dvh;
   min-height: 0;
-  background: #fff;
-  color: #101820;
+  background: var(--bg, #fff4e4);
+  color: var(--ink, #1b1611);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 .europe-top {
   flex: none;
   padding: 5px 12px 9px;
-  background: #fff;
-  border-bottom: 1px solid #e7eaed;
+  background: var(--bg, #fff4e4);
+  border-bottom: 1px solid var(--line-soft, #e2d3be);
   z-index: 2;
 }
 .europe-search-row {
@@ -30,8 +30,8 @@
   min-height: 48px;
   padding: 8px 4px;
   border: 0;
-  background: #fff;
-  color: #101820;
+  background: var(--surface, #fffbf4);
+  color: var(--ink, #1b1611);
   font: inherit;
   font-size: 18px;
   font-weight: 700;
@@ -49,8 +49,8 @@
   margin: 0;
   padding: 5px 8px;
   border-radius: 8px;
-  background: #f0f3f5;
-  color: #35424d;
+  background: var(--surface-2, #f6e9d6);
+  color: var(--ink-muted, #5e554b);
   font-size: 13px;
   font-weight: 650;
   white-space: nowrap;
@@ -67,16 +67,16 @@
   min-width: 48px;
   min-height: 48px;
   padding: 0 14px;
-  border: 1px solid transparent;
+  border: 1px solid var(--ink, #1b1611);
   border-radius: 24px;
-  background: #f2f3f4;
-  color: #101820;
+  background: var(--surface-2, #f6e9d6);
+  color: var(--ink, #1b1611);
   font-size: 14px;
   font-weight: 600;
 }
 .europe-drinks button.selected {
-  background: #101820;
-  color: #fff;
+  background: var(--spritz, #ff5a1f);
+  color: var(--on-spritz, #1b1611);
 }
 .europe-filter-row {
   display: flex;
@@ -94,10 +94,10 @@
   max-width: 100%;
   min-height: 48px;
   padding: 4px 6px;
-  border: 1px solid #d7dde2;
+  border: 1px solid var(--ink, #1b1611);
   border-radius: 9px;
-  background: #fff;
-  color: #101820;
+  background: var(--surface, #fffbf4);
+  color: var(--ink, #1b1611);
   font-size: 16px;
 }
 .europe-band {
@@ -110,14 +110,14 @@
 .europe-band input {
   width: 22px;
   height: 22px;
-  accent-color: #101820;
+  accent-color: var(--ink, #1b1611);
 }
 .europe-map {
   position: relative;
   flex: 1;
   min-height: 160px;
   overflow: hidden;
-  background: #f3f5f3;
+  background: var(--surface-2, #f6e9d6);
 }
 .europe-map .map__canvas {
   position: absolute;
@@ -132,11 +132,11 @@
   place-items: center;
   width: 48px;
   height: 48px;
-  border: 1px solid #e0e5e9;
+  border: 1px solid var(--ink, #1b1611);
   border-radius: 50%;
-  background: #fff;
-  color: #243747;
-  box-shadow: 0 2px 8px #10182020;
+  background: var(--surface, #fffbf4);
+  color: var(--ink, #1b1611);
+  box-shadow: 0 2px 8px rgb(27 22 17 / 13%);
 }
 .europe-coverage {
   position: absolute;
@@ -146,10 +146,10 @@
   bottom: 26px;
   min-height: 48px;
   padding: 10px 12px;
-  border: 1px solid #e2e6e9;
+  border: 1px solid var(--line-soft, #e2d3be);
   border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 1px 7px #10182010;
+  background: var(--surface, #fffbf4);
+  box-shadow: 0 1px 7px rgb(27 22 17 / 6%);
   font-size: 13px;
   line-height: 1.4;
 }
@@ -161,7 +161,7 @@
   right: 0;
   max-width: 100%;
   padding: 2px 4px;
-  background: #ffffffed;
+  background: rgb(255 251 244 / 93%);
   font-size: 10px;
   text-align: right;
 }
@@ -172,9 +172,9 @@
   left: 12px;
   right: 12px;
   padding: 14px;
-  border: 1px solid #d4dbe0;
+  border: 1px solid var(--line-soft, #e2d3be);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface, #fffbf4);
   font-size: 14px;
 }
 .europe-bottom {
@@ -183,8 +183,8 @@
   grid-template-columns: 1fr 1fr;
   padding: 8px 12px;
   gap: 8px;
-  border-top: 1px solid #e7eaed;
-  background: #fff;
+  border-top: 1px solid var(--line-soft, #e2d3be);
+  background: var(--bg, #fff4e4);
 }
 .europe-bottom .btn {
   min-height: 48px;
@@ -213,10 +213,10 @@
   margin: 0;
   pointer-events: auto;
   padding: 12px;
-  border: 1px solid #d6e1e8;
+  border: 1px solid var(--line-soft, #e2d3be);
   border-radius: 12px;
-  background: #edf5fa;
-  color: #182c3a;
+  background: var(--surface-2, #f6e9d6);
+  color: var(--ink, #1b1611);
   font-size: 14px;
   line-height: 1.4;
 }
@@ -225,17 +225,17 @@
   min-height: 48px;
   min-width: 64px;
   padding: 6px 9px;
-  background: #fff;
+  background: var(--surface, #fffbf4);
 }
 .europe-serving {
   display: block;
-  color: #5d6670;
+  color: var(--ink-muted, #5e554b);
   font-size: 12px;
   font-weight: 400;
   margin-top: 3px;
 }
 .europe-venue .price__meta a {
-  color: #315c72;
+  color: var(--spritz-text, #b93a0b);
   text-underline-offset: 3px;
 }
 .europe-venue .price__meta {
@@ -255,7 +255,7 @@
   flex-direction: column;
   gap: 7px;
   margin: 12px 0;
-  color: #101820;
+  color: var(--ink, #1b1611);
   font-size: 14px;
   font-weight: 600;
 }
@@ -287,7 +287,7 @@
 .europe-radio input {
   width: 22px;
   height: 22px;
-  accent-color: #101820;
+  accent-color: var(--ink, #1b1611);
 }
 .europe-report .btn {
   min-height: 48px;

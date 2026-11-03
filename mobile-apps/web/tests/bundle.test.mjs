@@ -75,7 +75,9 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     if (
       process.env.DOVEBEVO_LIVE_MAP_STYLE !== "1" &&
       /^\/assets\/mobile\/mobile-map-.*\.json$/.test(url.pathname)
-    )
+    ) {
+      options.mapStyleRequests?.push(url.pathname);
+      if (options.mapUnavailable) return route.fulfill({ status: 503, body: "Map unavailable" });
       return route.fulfill({
         json: {
           version: 8,
@@ -85,6 +87,12 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
             { id: "background", type: "background", paint: { "background-color": "#f5f6f3" } },
           ],
         },
+      });
+    }
+    if (/^\/map-italia-(?:light|dark)\.webp$/.test(url.pathname))
+      return route.fulfill({
+        contentType: "image/webp",
+        body: readFileSync(path.join(client, url.pathname.slice(1))),
       });
     if (/^\/data\/fixture\/v\/[0-9a-z]{5}\.json$/.test(url.pathname))
       return route.fulfill({
@@ -229,6 +237,12 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
   return { context, page, writes, errors, close: () => context.close() };
 }
 
+async function openDrinks(page) {
+  const toggle = page.locator(".mobile-drink-menu__button");
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  return page.locator(".mobile-drink-strip");
+}
+
 test("production mobile entry renders chips and preserves venue route across reload and close", async () => {
   const f = await fixture();
   try {
@@ -263,7 +277,7 @@ test("production mobile entry renders chips and preserves venue route across rel
     await f.page.waitForFunction(() => document.querySelectorAll("dialog[open]").length === 0);
     assert.equal(new URL(f.page.url()).pathname, "/mobile/");
     assert.equal(new URL(f.page.url()).searchParams.has("path"), false);
-    const chips = f.page.locator(".mobile-drink-strip");
+    const chips = await openDrinks(f.page);
     assert.equal(await chips.getByRole("checkbox").count(), 9);
     assert.equal(
       await chips.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
@@ -288,7 +302,7 @@ test("production mobile entry renders chips and preserves venue route across rel
       bg: getComputedStyle(el).backgroundColor,
       text: getComputedStyle(el).color,
     }));
-    assert.deepEqual(selected, { bg: "rgb(255, 90, 31)", text: "rgb(16, 24, 32)" });
+    assert.deepEqual(selected, { bg: "rgb(255, 90, 31)", text: "rgb(27, 22, 17)" });
     await chips.getByRole("checkbox", { name: "Spritz", exact: true }).focus();
     await f.page.keyboard.press("Space");
     assert.equal(
@@ -320,6 +334,7 @@ test("drink checkboxes stay inside the narrow scrolling strip and viewport", asy
   f.page.setDefaultTimeout(5000);
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await openDrinks(f.page);
     await f.page.locator(".mobile-drink-strip input").last().waitFor({ state: "attached" });
     const geometry = await f.page.evaluate(() => ({
       width: document.documentElement.clientWidth,
@@ -373,7 +388,9 @@ test("visible price-pin head and geographic tip both open the correct venue", as
   const f = await fixture();
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await openDrinks(f.page);
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    await f.page.locator(".mobile-drink-menu__button").click();
     await f.page.waitForFunction(
       () =>
         document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
@@ -453,7 +470,7 @@ test("orange mobile controls retain readable selected, unselected and focused dr
   const f = await fixture();
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/");
-    const strip = f.page.locator(".mobile-drink-strip");
+    const strip = await openDrinks(f.page);
     await strip.waitFor();
     assert.equal(
       await f.page.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
@@ -479,13 +496,13 @@ test("orange mobile controls retain readable selected, unselected and focused dr
       assert.ok(contrastRatio(colors.text, colors.background) >= 4.5, JSON.stringify(colors));
       assert.equal(colors.outlineStyle, "solid");
       assert.ok(contrastRatio(colors.outline, colors.background) >= 4.5, JSON.stringify(colors));
-      assert.ok(contrastRatio(colors.outline, "rgb(255, 255, 255)") >= 4.5, JSON.stringify(colors));
+      assert.ok(contrastRatio(colors.outline, "rgb(255, 244, 228)") >= 4.5, JSON.stringify(colors));
     }
     const primary = await f.page.locator(".mobile-map-actions__toggle").evaluate((button) => ({
       background: getComputedStyle(button).backgroundColor,
       text: getComputedStyle(button).color,
     }));
-    assert.equal(primary.background, "rgb(16, 24, 32)");
+    assert.equal(primary.background, "rgb(255, 90, 31)");
     assert.ok(contrastRatio(primary.text, primary.background) >= 4.5);
     await f.page.screenshot({ path: path.join(output, "orange-map-controls-fixture.png") });
     assert.deepEqual(f.writes, []);
@@ -499,6 +516,7 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
   const f = await fixture({ width: 390, height: 844 }, { menu: true });
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await openDrinks(f.page);
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     await f.page.locator(".mobile-menu-map-note").waitFor();
     await f.page.waitForFunction(
@@ -529,7 +547,7 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
   const f = await fixture({ width: 390, height: 844 }, options);
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
-    const all = f.page.getByRole("button", { name: "Tutti", exact: true });
+    const all = (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true });
     assert.equal(await all.getAttribute("aria-pressed"), "true");
     await f.page.waitForFunction(
       () =>
@@ -547,6 +565,7 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
       await f.page.locator(".mobile-menu-map-note").innerText(),
       /voci di menu verificate/,
     );
+    await f.page.locator(".mobile-drink-menu__button").click();
     await f.page.locator(".map__list").click();
     const row = f.page.getByRole("link", { name: /Locale da menu/ });
     await row.waitFor();
@@ -560,6 +579,7 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     assert.match(await menu.innerText(), /Signature senza categoria[\s\S]*7,50\s*€/);
     assert.ok(await menu.locator('a[href="https://official.fixture.test/menu"]').count());
     await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
+    await openDrinks(f.page);
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     await f.page.waitForFunction(
       () =>
@@ -582,7 +602,7 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
   const f = await fixture({ width: 390, height: 844 }, options);
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
-    const all = f.page.getByRole("button", { name: "Tutti", exact: true });
+    const all = (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true });
     assert.equal(await all.getAttribute("aria-pressed"), "true");
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
@@ -603,7 +623,7 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
     );
-    assert.equal(await all.getAttribute("aria-pressed"), "true");
+    assert.equal(await f.page.locator(".mobile-drink-all").getAttribute("aria-pressed"), "true");
     assert.ok(
       options.cellRequests.filter(
         (request) => request.cell === "u0nd9" && request.categories.length === 0,
@@ -629,6 +649,107 @@ test("m-key detail outage offers retry instead of saying the venue does not exis
     await f.page.getByRole("button", { name: "Riprova", exact: true }).click();
     await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
     assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("selected drink venue keeps a selectable dot below price-label zoom", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await openDrinks(f.page);
+    await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    await f.page.locator(".mobile-drink-menu__button").click();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    );
+    const map = f.page.locator("section.map");
+    const box = await map.boundingBox();
+    assert.ok(box);
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await f.page.mouse.move(x, y);
+    await f.page.mouse.wheel(0, 650);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) < 14,
+    );
+    await f.page.screenshot({ path: path.join(output, "selected-drink-low-zoom-dot-fixture.png") });
+    await f.page.mouse.click(x, y);
+    await f.page.locator("h2.scontrino__name").waitFor();
+    assert.equal(await f.page.locator("h2.scontrino__name").textContent(), "Locale di prova");
+    await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
+    await f.page.mouse.move(x, y);
+    await f.page.mouse.wheel(0, -650);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14,
+    );
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("receipt actions remain in one row at 320, 390 and 430 pixels", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+    const actions = f.page.locator(".scontrino .price__actions").first().getByRole("button");
+    await actions.first().waitFor();
+    assert.equal(await actions.count(), 3);
+    for (const width of [320, 390, 430]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const boxes = await Promise.all([0, 1, 2].map((i) => actions.nth(i).boundingBox()));
+      assert.ok(boxes.every(Boolean), JSON.stringify(boxes));
+      assert.ok(
+        boxes.every((box) => Math.abs(box.y - boxes[0].y) < 2),
+        JSON.stringify(boxes),
+      );
+      assert.ok(boxes[2].x + boxes[2].width <= width + 1, JSON.stringify(boxes));
+    }
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("Italy preview remains visible while one map loads eagerly and can retry failed tiles", async () => {
+  const options = { mapUnavailable: true, mapStyleRequests: [] };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/");
+    const preview = f.page.locator(".map__preview img");
+    await preview.waitFor();
+    assert.equal(await preview.evaluate((img) => img.complete && img.naturalWidth > 0), true);
+    assert.equal(await preview.evaluate((img) => getComputedStyle(img).visibility), "visible");
+    await f.page.getByRole("button", { name: "Riprova mappa" }).waitFor();
+    assert.equal(
+      options.mapStyleRequests.length,
+      3,
+      "Map starts without a tap and uses its bounded fetch retries",
+    );
+    assert.equal(await f.page.locator(".map__preview").isVisible(), true);
+    options.mapUnavailable = false;
+    await f.page.getByRole("button", { name: "Riprova mappa" }).click();
+    await f.page.waitForFunction(
+      () => document.querySelector("section.map")?.getAttribute("data-ready") === "true",
+    );
+    assert.equal(
+      options.mapStyleRequests.length,
+      4,
+      "Manual retry fetches the recovered style once",
+    );
+    assert.equal(
+      await f.page.locator(".maplibregl-canvas").count(),
+      1,
+      "Only one replacement map remains",
+    );
+    assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
   }

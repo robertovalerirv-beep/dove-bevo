@@ -501,7 +501,7 @@ public final class NativeUsabilityRuntimeTest {
         JSONArray styled=presentationState();
         assertEquals("1",styled.getString(0));
         assertEquals(1,styled.getInt(1));
-        assertEquals("rgb(255, 255, 255)",styled.getString(2));
+        assertEquals("rgb(255, 244, 228)",styled.getString(2));
         AtomicInteger history=new AtomicInteger();
         onMain(()->{history.set(web.copyBackForwardList().getSize());actualClient.onPageFinished(web,ONE);});
         assertEquals("Repeated finish must not duplicate the bundled style",1,presentationState().getInt(1));

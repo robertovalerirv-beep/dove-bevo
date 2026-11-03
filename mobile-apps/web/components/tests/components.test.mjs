@@ -777,7 +777,7 @@ test("uncategorized sourced drinks use neutral venue art and menu prices do not 
       await first
         .locator(".mobile-menu-v2__amount")
         .evaluate((element) => getComputedStyle(element).color),
-      "rgb(16, 24, 32)",
+      "rgb(27, 22, 17)",
     );
     assert.deepEqual(f.writes, []);
   } finally {

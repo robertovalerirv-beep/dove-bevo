@@ -207,6 +207,16 @@ test("compile-time seams preserve original source and reject upstream drift", ()
   assert.match(transformApp(app), /if \(restoredDrink\) setDrinks\(\[restoredDrink\.drink\]\)/);
   assert.doesNotMatch(app, /loadMobileCell|mobileMenuPin/);
   assert.match(transformMap(map, '"/assets/mobile/test.json"'), /"icon-anchor": "bottom"/);
+  assert.match(
+    transformMap(map, '"/assets/mobile/test.json"'),
+    /id: "priced-dot"[\s\S]*?source: "prices"/,
+  );
+  assert.match(
+    transformMap(map, '"/assets/mobile/test.json"'),
+    /id: "venue-price"[\s\S]*?minzoom: 14/,
+  );
+  assert.match(transformApp(app), /useState\(true\)/);
+  assert.match(transformApp(app), /mapAttempt/);
   assert.match(transformMap(map, '"/assets/mobile/test.json"'), /\[0, -25\]/);
   assert.throws(() => transformApp(app + "\n"), /Review updated website/);
   assert.throws(() => transformMap(map + "\n", '"unused"'), /Review updated website/);
@@ -214,7 +224,7 @@ test("compile-time seams preserve original source and reject upstream drift", ()
   assert.equal(read("app/lib/maplibre-map.ts"), map);
 });
 
-test("map restyling retains licensed source and attribution identity", () => {
+test("mobile map preserves the licensed website style and palette exactly", () => {
   const original = {
     sources: { world: { attribution: "OSM", url: "https://tiles.openfreemap.org/planet" } },
     sprite: "same",
@@ -223,7 +233,7 @@ test("map restyling retains licensed source and attribution identity", () => {
   const result = mobileMapStyle(original);
   assert.deepEqual(result.sources, original.sources);
   assert.equal(result.sprite, original.sprite);
-  assert.equal(result.layers[0].paint["fill-color"], "#b9dfed");
+  assert.deepEqual(result, original);
   assert.equal(original.layers[0].paint["fill-color"], "red");
 });
 

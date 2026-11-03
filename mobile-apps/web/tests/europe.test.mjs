@@ -825,7 +825,7 @@ test("European price actions and orange drink choices remain readable on small p
       assert.ok(contrastRatio(colors.text, colors.background) >= 4.5, JSON.stringify(colors));
       assert.equal(colors.outlineStyle, "solid");
       assert.ok(contrastRatio(colors.outline, colors.background) >= 4.5, JSON.stringify(colors));
-      assert.ok(contrastRatio(colors.outline, "rgb(255, 255, 255)") >= 4.5, JSON.stringify(colors));
+      assert.ok(contrastRatio(colors.outline, "rgb(255, 244, 228)") >= 4.5, JSON.stringify(colors));
     }
     await openLondon(f);
     const buttons = f.page.locator(".mobile-price--featured .price__actions .btn");

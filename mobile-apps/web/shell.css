@@ -1,23 +1,23 @@
 :root[data-dovebevo-mobile-shell="1"] {
   color-scheme: light;
-  --bg: #fff;
-  --surface: #fff;
-  --surface-2: #f3f5f6;
-  --ink: #101820;
-  --ink-muted: #5d6670;
-  --line-soft: #e7eaed;
+  --bg: #fff4e4;
+  --surface: #fffbf4;
+  --surface-2: #f6e9d6;
+  --ink: #1b1611;
+  --ink-muted: #5e554b;
+  --line-soft: #e2d3be;
   --spritz: #ff5a1f;
-  --on-spritz: #101820;
+  --on-spritz: #1b1611;
   --spritz-text: #b93a0b;
-  --affare: #e1f3e3;
-  --on-affare: #226332;
-  --giusto: #fff0cb;
-  --on-giusto: #715014;
-  --salato: #fbe5e7;
-  --on-salato: #9b2938;
-  --map-pill-bg: #fff;
-  --map-pill-text: #101820;
-  --map-pill-border: #dce2e5;
+  --affare: #c5f23e;
+  --on-affare: #1b1611;
+  --giusto: #fffbf4;
+  --on-giusto: #1b1611;
+  --salato: #6e1a4e;
+  --on-salato: #fffbf4;
+  --map-pill-bg: #fffbf4;
+  --map-pill-text: #1b1611;
+  --map-pill-border: #1b1611;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --type-title: 700 26px/1.15 var(--font-sans);
@@ -35,11 +35,11 @@
   --shadow-stampa: none;
   --shadow-premuto: none;
   --press: 0px;
-  --shadow-sheet: 0 -4px 24px rgb(16 24 32 / 12%);
+  --shadow-sheet: 0 -4px 24px rgb(27 22 17 / 12%);
 }
 html[data-dovebevo-mobile-shell="1"] .top {
   padding: 4px 12px 7px;
-  background: #fff;
+  background: var(--bg);
 }
 html[data-dovebevo-mobile-shell="1"] .top__row {
   gap: 8px;
@@ -57,7 +57,7 @@ html[data-dovebevo-mobile-shell="1"] .search-field {
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   font: 650 17px/1.3 var(--font-sans);
   justify-content: space-between;
@@ -83,58 +83,95 @@ html[data-dovebevo-mobile-shell="1"] .top__row > .icon-btn {
   padding: 12px;
   border: 1px solid var(--line-soft);
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 2px 10px rgb(16 24 32 / 12%);
+  background: var(--surface);
+  box-shadow: 0 2px 10px rgb(27 22 17 / 12%);
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu {
+  position: relative;
+  z-index: 8;
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 54px;
+  padding: 8px 14px;
+  border: 1px solid var(--ink);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  text-align: left;
+  font: 650 15px/1.25 var(--font-sans);
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__copy {
+  display: grid;
+  min-width: 0;
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__summary {
+  overflow: hidden;
+  color: var(--ink-muted);
+  font: 500 13px/1.25 var(--font-sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__chevron {
+  font-size: 24px;
+  line-height: 1;
+  transform: rotate(0);
+}
+html[data-dovebevo-mobile-shell="1"]
+  .mobile-drink-menu__button[aria-expanded="true"]
+  .mobile-drink-menu__chevron {
+  transform: rotate(180deg);
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-strip {
-  display: flex;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
-  overflow-x: auto;
-  padding: 0;
-  scrollbar-width: none;
+  max-height: min(65dvh, 420px);
+  overflow-y: auto;
+  padding: 8px;
+  border: 1px solid var(--ink);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 8px 20px rgb(27 22 17 / 16%);
 }
-html[data-dovebevo-mobile-shell="1"] .drink-option {
-  /* Keep absolutely positioned accessible inputs inside the scrolling strip. */
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-strip[hidden] {
+  display: none;
+}
+html[data-dovebevo-mobile-shell="1"] .drink-option,
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-all {
   position: relative;
-  flex: none;
+  display: flex;
+  align-items: center;
+  min-width: 0;
   min-height: 48px;
-  min-width: 48px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  border-radius: 24px;
-  background: #f2f3f4;
+  padding: 6px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--surface-2);
   color: var(--ink);
   box-shadow: none;
-  font: 500 14px/1.2 var(--font-sans);
+  font: 600 13px/1.2 var(--font-sans);
+  text-align: left;
 }
-html[data-dovebevo-mobile-shell="1"] .drink-option:has(input:checked) {
-  background: var(--spritz);
-  color: var(--on-spritz);
-  border-color: var(--ink);
-  font-weight: 700;
-  box-shadow: inset 0 0 0 1px var(--ink);
-}
-html[data-dovebevo-mobile-shell="1"] .mobile-drink-all {
-  flex: none;
-  min-height: 48px;
-  min-width: 48px;
-  padding: 0 14px;
-  border: 1px solid transparent;
-  border-radius: 24px;
-  background: #f2f3f4;
-  color: var(--ink);
-  font: 500 14px/1.2 var(--font-sans);
-}
+html[data-dovebevo-mobile-shell="1"] .drink-option:has(input:checked),
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-all[aria-pressed="true"] {
   border-color: var(--ink);
   background: var(--spritz);
   color: var(--on-spritz);
   font-weight: 700;
-  box-shadow: inset 0 0 0 1px var(--ink);
 }
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__button:focus-visible,
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-all:focus-visible,
-html[data-dovebevo-mobile-shell="1"] .drink-option:focus-within,
-html[data-dovebevo-mobile-shell="1"] .drink-option:has(input:focus-visible) {
+html[data-dovebevo-mobile-shell="1"] .drink-option:focus-within {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -146,15 +183,12 @@ html[data-dovebevo-mobile-shell="1"] .btn--primary {
   border-color: var(--ink);
 }
 html[data-dovebevo-mobile-shell="1"] .map__preview {
-  background: #f3f5f4;
-}
-html[data-dovebevo-mobile-shell="1"] .map__preview > img {
-  visibility: hidden;
+  background: var(--surface-2);
 }
 html[data-dovebevo-mobile-shell="1"] .map__lang,
 html[data-dovebevo-mobile-shell="1"] .map__list {
   border-radius: 50%;
-  box-shadow: 0 1px 7px rgb(16 24 32 / 8%);
+  box-shadow: 0 1px 7px rgb(27 22 17 / 8%);
 }
 html[data-dovebevo-mobile-shell="1"] .map__status {
   top: auto;
@@ -166,8 +200,8 @@ html[data-dovebevo-mobile-shell="1"] .map__status {
   padding: 10px 14px;
   border-radius: 12px;
   border: 1px solid var(--line-soft);
-  background: #fff;
-  box-shadow: 0 2px 12px rgb(16 24 32 / 8%);
+  background: var(--surface);
+  box-shadow: 0 2px 12px rgb(27 22 17 / 8%);
   font: 500 14px/1.35 var(--font-sans);
 }
 html[data-dovebevo-mobile-shell="1"] .map__status .meter {
@@ -199,8 +233,8 @@ html[data-dovebevo-mobile-shell="1"] .legend {
   border: 1px solid var(--line-soft);
   border-radius: 12px;
   padding: 5px 8px;
-  background: #fff;
-  box-shadow: 0 1px 6px rgb(16 24 32 / 6%);
+  background: var(--surface);
+  box-shadow: 0 1px 6px rgb(27 22 17 / 6%);
 }
 html[data-dovebevo-mobile-shell="1"] .legend__item {
   font: 500 12px/1.3 var(--font-sans);
@@ -232,9 +266,10 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__toggle {
   padding: 0 16px;
   border: 0;
   border-radius: 24px;
-  background: #101820;
-  color: #fff;
-  box-shadow: 0 3px 12px rgb(16 24 32 / 20%);
+  background: var(--spritz);
+  color: var(--on-spritz);
+  border: 1px solid var(--ink);
+  box-shadow: 0 3px 12px rgb(27 22 17 / 20%);
   font: 650 14px/1.2 var(--font-sans);
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__plus {
@@ -255,8 +290,8 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu {
   padding: 8px;
   border: 1px solid var(--line-soft);
   border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 6px 24px rgb(16 24 32 / 18%);
+  background: var(--surface);
+  box-shadow: 0 6px 24px rgb(27 22 17 / 18%);
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu > .btn {
   width: 100%;
@@ -267,18 +302,18 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu > .btn {
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__toggle:focus-visible,
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu > .btn:focus-visible {
-  outline: 3px solid #f78f52;
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 html[data-dovebevo-mobile-shell="1"] .map__attribution {
-  background: rgb(255 255 255 / 90%);
+  background: rgb(255 251 244 / 90%);
 }
 html[data-dovebevo-mobile-shell="1"] .sheet {
   max-height: 95dvh;
   border-top: 0;
 }
 html[data-dovebevo-mobile-shell="1"] .sheet__grip > span {
-  background: #cbd1d7;
+  background: var(--ink-muted);
   height: 4px;
   width: 36px;
 }
@@ -286,9 +321,9 @@ html[data-dovebevo-mobile-shell="1"] .sheet__body {
   padding: 14px 16px 24px;
 }
 html[data-dovebevo-mobile-shell="1"] .field {
-  border: 1px solid #c9d0d7;
+  border: 1px solid var(--ink);
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
 }
 html[data-dovebevo-mobile-shell="1"] .chip {
   border-color: var(--line-soft);
@@ -309,4 +344,22 @@ html[data-dovebevo-mobile-shell="1"] .europe-drinks button.selected {
 html[data-dovebevo-mobile-shell="1"] .europe-drinks button:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
+}
+
+/* Roberto's one-row receipt actions, including a narrow iPhone with large text. */
+html[data-dovebevo-mobile-shell="1"] .scontrino .price__actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 6em), 1fr));
+  gap: 4px;
+  width: 100%;
+  font-size: 0.8125rem;
+}
+html[data-dovebevo-mobile-shell="1"] .scontrino .price__actions .btn {
+  min-width: 0;
+  padding: 7px 3px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  font: 650 1em/1.15 var(--font-sans);
+  text-align: center;
+  white-space: normal;
 }

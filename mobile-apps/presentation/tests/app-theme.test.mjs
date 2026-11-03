@@ -96,6 +96,7 @@ function fixture(options = {}) {
 
 for (const url of [
   "https://www.dovebevo.com/",
+  "https://www.dovebevo.com/mobile/",
   "https://dovebevo.com:443/",
   "https://www.dovebevo.com/bar/n4170005990?c=u0nd9h",
 ])
@@ -105,6 +106,8 @@ for (const url of [
     assert.equal(page.nodes.size, 1);
     assert.equal(page.rootAttributes.get("data-dovebevo-app-theme"), "1");
     assert.match(page.nodes.values().next().value.textContent, /\.price-input input/);
+    assert.match(page.nodes.values().next().value.textContent, /--bg: #fff4e4/);
+    assert.match(page.nodes.values().next().value.textContent, /--spritz: #ff5a1f/);
   });
 
 for (const url of [
@@ -195,7 +198,7 @@ test("light theme is enforced and theme notifications terminate without recursio
   assert.equal(page.listeners.has("themechange"), false);
 });
 
-test("adapter exposes original checkbox group and expands real price actions", () => {
+test("adapter leaves original checkbox dropdown closed and expands real price actions", () => {
   const page = fixture();
   const attrs = new Map([["hidden", ""]]);
   const list = { hasAttribute: (k) => attrs.has(k), removeAttribute: (k) => attrs.delete(k) };
@@ -223,7 +226,7 @@ test("adapter exposes original checkbox group and expands real price actions", (
     child = v;
   };
   assert.equal(page.run(), true);
-  assert.equal(attrs.has("hidden"), false);
+  assert.equal(attrs.has("hidden"), true);
   assert.equal(rowAttrs.get("data-dovebevo-collapsed"), "1");
   assert.equal(child.getAttribute("aria-expanded"), "false");
   child.click();

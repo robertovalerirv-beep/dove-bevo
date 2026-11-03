@@ -200,7 +200,7 @@ const CellPageSchema = z.object({
   unresolved_venues: z.number().int().min(0),
 });
 type CellVenue = z.infer<typeof CellVenue>;
-type WithMenu = Venue & { mobileMenuSamples?: MenuOffer[] };
+type WithMenu = Venue & { mobileMenuSamples?: MenuOffer[]; mobileMenuCount?: number };
 
 async function cellPage(
   cell: string,
@@ -321,6 +321,7 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
           }
           const all = identity.value;
           const filtered = sampled.value;
+          const counts = new Map(all.map((venue) => [venue.key, venue.matching_offer_count]));
           const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
           const merged = new Map<string, Venue>(legacy.map((venue) => [venue.key, { ...venue }]));
           for (const row of [
@@ -334,6 +335,7 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
             merged.set(row.key, {
               ...venue,
               mobileMenuSamples: samples.get(row.key) ?? [],
+              mobileMenuCount: counts.get(row.key) ?? 0,
             } as WithMenu);
           }
           mobileCellCache.set(cacheKey, Promise.resolve([...merged.values()]));
@@ -351,7 +353,30 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
   }
   return request;
 }
+/** The unfiltered view counts real entries; a menu count is never a drink price. */
+export function mobileAllCount(
+  venue: Venue,
+): { count: number; kind: "menu" | "reported" } | null {
+  const menuCount = (venue as WithMenu).mobileMenuCount ?? 0;
+  if (menuCount > 0) return { count: menuCount, kind: "menu" };
+  const reportedCount = venue.prices.filter((row) => row[6] === 0).length;
+  return reportedCount > 0 ? { count: reportedCount, kind: "reported" } : null;
+}
+
 export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string | null {
+  if (drinks.length === 0) {
+    const found = mobileAllCount(venue);
+    if (!found) return null;
+    const word =
+      found.kind === "menu"
+        ? found.count === 1
+          ? "VOCE"
+          : "VOCI"
+        : found.count === 1
+          ? "PREZZO"
+          : "PREZZI";
+    return `${found.count} ${word}`;
+  }
   const samples = (venue as WithMenu).mobileMenuSamples ?? [];
   for (const category of drinks) {
     const regular = samples.find(

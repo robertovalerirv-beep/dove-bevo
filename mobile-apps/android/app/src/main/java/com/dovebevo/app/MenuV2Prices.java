@@ -99,7 +99,7 @@ final class MenuV2Prices {
             for(CellVenue venue:value.venues)if(!keys.add(venue.key))throw NativeJson.invalid();else venues.add(venue);
             if(venues.size()>1000)throw NativeJson.invalid();
             if(value.next==null)return new Cell(venues,partial);
-            if(value.venues.isEmpty()||page==19)throw NativeJson.invalid();
+            if(page==19)throw NativeJson.invalid();
             after=value.next;
         }
         throw NativeJson.invalid();
@@ -216,7 +216,6 @@ final class MenuV2Prices {
             }
             venues.add(new CellVenue(key,cell,name,address,city,lat,lon,prices));
         }
-        if(next!=null&&raw.isEmpty())throw NativeJson.invalid();
         return new CellPage(venues,next,partial);
     }
     private static String httpsURL(Object value)throws IOException{

@@ -78,7 +78,8 @@ final class DiscoveryScreen {
         status.setText(activity.getString(R.string.discovery_status_format,
                 values.isEmpty()?activity.getString(R.string.discovery_empty):Math.min(values.size(),DiscoveryData.MAX_ROWS)+" prezzi · valuta e formato separati",
                 snapshot.partial?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_partial)):"",
-                values.size()>DiscoveryData.MAX_ROWS?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_limit)):""));
+                (snapshot.menuSamples?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_menu_samples)):"")+
+                        (values.size()>DiscoveryData.MAX_ROWS?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_limit)):"")));
         int count=0,rank=0;String group=null;
         for(DiscoveryData.Row row:values){if(count++==DiscoveryData.MAX_ROWS)break;
             if(!row.group().equals(group)){group=row.group();rank=0;}rank++;
@@ -124,8 +125,8 @@ final class DiscoveryScreen {
                 catch(IOException unavailable){offers=null;}
                 if(offers==null){headline="Prezzi non caricati";detail="Ricarica";}
                 else if(offers.isEmpty()){
-                    headline=snapshot.partial?"Nessun prezzo nei dati caricati":"Nessun prezzo";
-                    detail=snapshot.partial?"Zona parziale · Ricarica":"Prova un altro drink";
+                    headline=snapshot.partial?"Nessun prezzo nei dati caricati":snapshot.menuSamples?"Nessun prezzo nell'anteprima":"Nessun prezzo";
+                    detail=snapshot.partial?"Zona parziale · Ricarica":snapshot.menuSamples?"Apri il locale per altri drink":"Prova un altro drink";
                 }
                 else{
                     String firstGroup=offers.get(0).group();boolean comparable=true;

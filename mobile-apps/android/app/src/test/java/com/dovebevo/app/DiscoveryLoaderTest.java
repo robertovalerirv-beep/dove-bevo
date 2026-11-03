@@ -36,6 +36,26 @@ public final class DiscoveryLoaderTest {
             assertEquals(3,DiscoveryData.rows(result.get().cells,new DiscoveryArea(45.4642,9.19,14),RecommendationDrink.SPRITZ,0).size());}
         finally{loader.close();}
     }
+    @Test public void stalledMenuAtDeadlineRetainsAlreadyLoadedCustomerPrices()throws Exception {
+        CountDownLatch menuStarted=new CountDownLatch(1),done=new CountDownLatch(1);
+        AtomicReference<DiscoveryLoader.Result> result=new AtomicReference<>();
+        FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{
+            if(url.endsWith("health"))return DiscoveryTest.bytes("{\"status\":\"ok\",\"data_version\":\"20261030\"}");
+            if(url.contains("/api/mobile/v2/menu/cells/u0nd9")){
+                menuStarted.countDown();
+                while(true){call.check();try{Thread.sleep(5);}catch(InterruptedException cancelled){throw new IOException("Cancelled");}}
+            }
+            if(url.contains("/api/mobile/v2/menu/cells/"))return DiscoveryTest.bytes(DiscoveryMenuV2Test.empty(url.substring(url.indexOf("/cells/")+7,url.indexOf("/cells/")+12)));
+            if(url.contains("u0nd9"))return DiscoveryTest.bytes(url.endsWith(".json")?DiscoveryTest.STATIC:DiscoveryTest.PRICES);
+            return DiscoveryTest.bytes(url.endsWith(".json")?"{\"c\":[],\"v\":[]}":"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[]}");
+        },()->"2026-11-03");
+        DiscoveryLoader loader=new DiscoveryLoader(client,Runnable::run,Executors.newFixedThreadPool(3),Executors.newSingleThreadScheduledExecutor(),1200);
+        try{loader.load(new DiscoveryArea(45.4642,9.19,14),r->{result.set(r);done.countDown();});
+            assertTrue(menuStarted.await(2,TimeUnit.SECONDS));assertTrue(done.await(3,TimeUnit.SECONDS));
+            assertTrue(result.get().partial);assertTrue(result.get().cells.containsKey("u0nd9"));
+            assertEquals(3,DiscoveryData.rows(result.get().cells,new DiscoveryArea(45.4642,9.19,14),RecommendationDrink.SPRITZ,0).size());
+        }finally{loader.close();}
+    }
     @Test public void globalDeadlineBoundsConcurrencyAndReturnsExplicitPartialResult()throws Exception {
         AtomicInteger active=new AtomicInteger(),peak=new AtomicInteger(),reads=new AtomicInteger();FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{
             if(url.endsWith("health"))return DiscoveryTest.bytes("{\"status\":\"ok\",\"data_version\":\"20261030\"}");

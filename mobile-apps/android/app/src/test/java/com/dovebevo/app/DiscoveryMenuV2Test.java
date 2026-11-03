@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 
 /** Real v2 cell shape: sampled named drinks remain separate from customer observations. */
@@ -28,6 +29,17 @@ public final class DiscoveryMenuV2Test {
         MenuV2Prices client=new MenuV2Prices((url,max,call)->DiscoveryTest.bytes(payload));
         return client.loadCell("u0nd9",new FavoritePricesClient.Call(System.nanoTime()+5_000_000_000L));
     }
+    @Test public void unresolvedEmptyPageCanAdvanceToLaterVerifiedVenue()throws Exception {
+        AtomicInteger calls=new AtomicInteger();
+        String first=empty("u0nd9").replace("\"next_after\":null","\"next_after\":\"n122\"")
+                .replace("\"unresolved_venues\":0","\"unresolved_venues\":50");
+        MenuV2Prices client=new MenuV2Prices((url,max,call)->{
+            calls.incrementAndGet();return DiscoveryTest.bytes(url.endsWith("after=n122")?one():first);
+        });
+        MenuV2Prices.Cell result=client.loadCell("u0nd9",new FavoritePricesClient.Call(System.nanoTime()+5_000_000_000L));
+        assertEquals(2,calls.get());assertEquals(1,result.venues.size());assertEquals("n123",result.venues.get(0).key);
+        assertTrue("Unresolved candidates still mean the area is partial",result.partial);
+    }
     @Test public void strictPublicRouteAndOwnerSamplePreserveCurrencyServingSourceAndLegacyPrice()throws Exception {
         assertTrue(MenuV2Prices.allowed(MenuV2Prices.cellEndpoint("u0nd9",null)));
         assertFalse(MenuV2Prices.allowed("https://other.example/api/mobile/v2/menu/cells/u0nd9?categories="+MenuV2Prices.DISCOVERY_CATEGORIES));
@@ -42,6 +54,14 @@ public final class DiscoveryMenuV2Test {
         assertEquals("https://source.example/menu",sourced.menuPrice.sourceUrl);
         assertTrue(sourced.context().contains("Fonte verificata il 2026-11-03"));
         assertTrue(rows.stream().anyMatch(r->r.menuPrice==null&&r.venue.key.equals("n123")&&r.price.cents==800));
+        assertTrue(new DiscoveryLoader.Result(Collections.singletonMap("u0nd9",combined),1).menuSamples);
+    }
+    @Test public void extraNamedOffersAreExplicitlyMarkedAsSamples()throws Exception {
+        MenuV2Prices.Cell menu=load(one().replace("\"matching_offer_count\":1","\"matching_offer_count\":3"));
+        DiscoveryData.Cell legacy=DiscoveryData.parse(DiscoveryTest.bytes(DiscoveryTest.STATIC),DiscoveryTest.bytes(DiscoveryTest.PRICES),"u0nd9","2026-11-03");
+        DiscoveryLoader.Result result=new DiscoveryLoader.Result(Collections.singletonMap("u0nd9",DiscoveryData.withMenu(legacy,menu)),1);
+        assertFalse(result.partial);assertTrue(result.menuSamples);
+        assertEquals(1,result.cells.get("u0nd9").menu.get("n123").size());
     }
     @Test public void wrongIdentityOrSourceIsExcludedWhileLegacyCanRemain()throws Exception {
         assertThrows(IOException.class,()->load(one().replace("\"country\":\"IT\"","\"country\":\"FR\"")));

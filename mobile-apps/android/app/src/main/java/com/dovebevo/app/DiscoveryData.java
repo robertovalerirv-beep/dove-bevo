@@ -20,11 +20,14 @@ final class DiscoveryData {
     }
     static final class Cell {
         final Map<String,Venue> venues;final FavoriteComparison.Cell approved;final Map<String,List<MenuV2Prices.Price>> menu;
-        final boolean menuAvailable;
+        final boolean menuAvailable,menuSamples;
         Cell(Map<String,Venue> venues,FavoriteComparison.Cell approved){this(venues,approved,Collections.emptyMap(),true);}
         Cell(Map<String,Venue> venues,FavoriteComparison.Cell approved,Map<String,List<MenuV2Prices.Price>> menu,boolean menuAvailable){
+            this(venues,approved,menu,menuAvailable,false);
+        }
+        Cell(Map<String,Venue> venues,FavoriteComparison.Cell approved,Map<String,List<MenuV2Prices.Price>> menu,boolean menuAvailable,boolean menuSamples){
             this.venues=Collections.unmodifiableMap(new LinkedHashMap<>(venues));this.approved=approved;
-            this.menu=Collections.unmodifiableMap(new LinkedHashMap<>(menu));this.menuAvailable=menuAvailable;
+            this.menu=Collections.unmodifiableMap(new LinkedHashMap<>(menu));this.menuAvailable=menuAvailable;this.menuSamples=menuSamples;
         }
     }
     static final class Row {
@@ -66,7 +69,7 @@ final class DiscoveryData {
             if(known==null)venues.put(item.key,new Venue(item.key,item.name,item.cell,item.address,item.city,item.lat,item.lon));
             prices.put(item.key,item.samples);
         }
-        return new Cell(venues,approved,prices,!menu.partial&&!ambiguous);
+        return new Cell(venues,approved,prices,!menu.partial&&!ambiguous,true);
     }
     static Cell withoutMenu(Cell legacy){return new Cell(legacy.venues,legacy.approved,legacy.menu,false);}
     static Cell withEurope(Cell legacy,EuropePrices.Cell mobile){

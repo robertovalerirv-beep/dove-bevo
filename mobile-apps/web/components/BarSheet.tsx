@@ -363,7 +363,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             <button
               type="button"
               class="btn btn--secondary"
-              onClick={() => setMenuAttempt((value) => value + 1)}
+              onClick={() => {
+                setMenuAttempt((value) => value + 1);
+              }}
             >
               Riprova
             </button>

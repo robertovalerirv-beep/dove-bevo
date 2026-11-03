@@ -268,7 +268,7 @@ public final class MainActivity extends ComponentActivity {
         LinearLayout tools = new LinearLayout(this);
         tools.setId(R.id.browser_tools);
         tools.setGravity(Gravity.CENTER_VERTICAL);
-        tools.setBackgroundColor(getColor(R.color.chrome));
+        tools.setBackgroundColor(getColor(R.color.shell_background));
         tools.setPadding(dp(8), 0, dp(8), 0);
         backButton = button(R.id.back, R.string.back, this::goBack);
         forwardButton = button(R.id.forward, R.string.forward, this::goForward);

@@ -78,7 +78,7 @@ final class NativeAppearance {
         button.setElevation(0);
         button.setBackgroundTintList(null);
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x221B1611),
-                shape(context, selected ? R.color.colorPrimary : R.color.chrome, 12, selected), null));
+                shape(context, selected ? R.color.colorPrimary : R.color.shell_background, 12, selected), null));
         for (android.graphics.drawable.Drawable icon : button.getCompoundDrawables()) {
             if (icon != null) icon.mutate().setTint(selected ? ink : context.getColor(R.color.muted_text));
         }

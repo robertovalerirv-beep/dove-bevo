@@ -38,7 +38,7 @@ final class AppInformationViewController: UITableViewController {
         banner.isLayoutMarginsRelativeArrangement = true
         banner.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
         banner.layer.cornerRadius = NativeAppearance.radius
-        banner.backgroundColor = NativeAppearance.chrome
+        banner.backgroundColor = NativeAppearance.secondary
         banner.translatesAutoresizingMaskIntoConstraints = false
         let footer = UIView(); footer.addSubview(banner)
         NSLayoutConstraint.activate([

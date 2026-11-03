@@ -6,7 +6,8 @@ import UIKit
     // Match the current website's Bancone light tokens (docs/brand/tokens.json).
     static let canvas = UIColor(red: 255 / 255, green: 244 / 255, blue: 228 / 255, alpha: 1)
     static let surface = UIColor(red: 255 / 255, green: 251 / 255, blue: 244 / 255, alpha: 1)
-    static let chrome = UIColor(red: 246 / 255, green: 233 / 255, blue: 214 / 255, alpha: 1)
+    static let chrome = canvas
+    static let secondary = UIColor(red: 246 / 255, green: 233 / 255, blue: 214 / 255, alpha: 1)
     static let ink = UIColor(red: 27 / 255, green: 22 / 255, blue: 17 / 255, alpha: 1)
     static let muted = UIColor(red: 94 / 255, green: 85 / 255, blue: 75 / 255, alpha: 1)
     static let line = UIColor(red: 226 / 255, green: 211 / 255, blue: 190 / 255, alpha: 1)
@@ -33,7 +34,7 @@ import UIKit
 
     static func button(primary: Bool = false, selected: Bool = false, traits: UITraitCollection? = nil) -> UIButton.Configuration {
         var configuration = UIButton.Configuration.filled()
-        configuration.baseBackgroundColor = primary || selected ? accent : chrome
+        configuration.baseBackgroundColor = primary || selected ? accent : secondary
         configuration.baseForegroundColor = primary || selected ? onAccent : ink
         configuration.background.cornerRadius = radius
         configuration.background.strokeColor = ink

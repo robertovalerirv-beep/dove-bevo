@@ -9,6 +9,8 @@ final class NativeAppearanceTests: XCTestCase {
         bar.update(destination: 0, venueActionsEnabled: false)
         let map = bar.button(for: .map)
         XCTAssertTrue(map.isSelected)
+        XCTAssertEqual(NativeAppearance.chrome, NativeAppearance.canvas)
+        XCTAssertNotEqual(NativeAppearance.secondary, NativeAppearance.canvas)
         XCTAssertEqual(map.configuration?.baseBackgroundColor, NativeAppearance.accent)
         XCTAssertEqual(map.configuration?.background.backgroundColor, NativeAppearance.accent)
         XCTAssertEqual(map.configuration?.baseForegroundColor, NativeAppearance.onAccent)

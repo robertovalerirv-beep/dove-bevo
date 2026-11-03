@@ -253,7 +253,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         offlineLabel.adjustsFontForContentSizeCategory = true
         offlineLabel.numberOfLines = 0
         offlineLabel.textAlignment = .center
-        offlineLabel.backgroundColor = NativeAppearance.chrome
+        offlineLabel.backgroundColor = NativeAppearance.secondary
         offlineLabel.textColor = NativeAppearance.ink
         offlineLabel.accessibilityIdentifier = "browser.offline"
         offlineLabel.isHidden = true

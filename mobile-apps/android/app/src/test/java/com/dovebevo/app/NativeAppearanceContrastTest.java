@@ -32,7 +32,7 @@ public final class NativeAppearanceContrastTest {
         assertTrue("White on the bright brand orange is not an accessible substitute", contrast(color("surface"), fill) < 4.5);
     }
 
-    @Test public void selectedOrangeTextAndIconsRemainLegibleOnBothNativeSurfaces() throws Exception {
+    @Test public void websiteOrangeAndNativeInkRemainLegibleOnAllAppSurfaces() throws Exception {
         int selected = color("brand_text");
         assertTrue((selected >> 16 & 255) > (selected >> 8 & 255));
         assertTrue((selected >> 8 & 255) > (selected & 255));
@@ -41,6 +41,9 @@ public final class NativeAppearanceContrastTest {
             assertTrue("Selected icons on " + background, contrast(selected, color(background)) >= 3);
             assertTrue("Unselected labels on " + background, contrast(color("muted_text"), color(background)) >= 4.5);
         }
+        assertTrue(contrast(color("on_brand"), color("colorPrimary")) >= 4.5);
+        assertTrue(contrast(color("muted_text"), color("chrome")) >= 4.5);
+        assertTrue(contrast(color("shell_text"), color("chrome")) >= 4.5);
         assertTrue("Recommendation semantic green stays accessible", contrast(color("positive_text"), color("positive_surface")) >= 4.5);
     }
 

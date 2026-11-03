@@ -43,6 +43,24 @@ Require(!NavigationPolicy.TryRecommendationEndpoint(
     "https://www.dovebevo.com/bar/m" + new string('a', 24) + "?c=u0nd9",
     "m" + new string('a', 24), out _), "unsupported catalogue vote accepted");
 
+Require(NavigationPolicy.TryFocusedVenue(
+    "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", "spritz", 0, out var focusedItalian)
+    && focusedItalian?.AbsoluteUri ==
+    "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=spritz&hh=0",
+    "Italian favourite did not focus its drink");
+var europeKey = "m" + new string('a', 24);
+Require(NavigationPolicy.TryFocusedVenue(
+    $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{europeKey}&c=u0nd9",
+    europeKey, "negroni", 1, out var focusedEurope)
+    && focusedEurope?.AbsoluteUri.EndsWith($"path=%2Fbar%2F{europeKey}&c=u0nd9&drink=negroni&hh=1") == true,
+    "Europe favourite did not focus its drink and happy hour");
+Require(!NavigationPolicy.TryFocusedVenue(
+    "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", "invalid", 0, out _),
+    "invalid favourite drink accepted");
+Require(!NavigationPolicy.TryFocusedVenue(
+    "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", "spritz", 2, out _),
+    "invalid favourite hour accepted");
+
 var emailLinks = new[]
 {
     ("mailto:dovebevo@gmail.com", true),
@@ -70,7 +88,7 @@ ExpectInvalid(() => RecommendationClient.Parse(
     Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { venue_key = "n123", drinks = duplicate })), "n123"));
 ExpectInvalid(() => RecommendationClient.Parse(payload, "n124"));
 
-Console.WriteLine("Windows policy: 18 origin/venue/endpoint, 6 email, and 3 vote-schema cases passed.");
+Console.WriteLine("Windows policy: 18 origin/venue/endpoint, 4 focus, 6 email, and 3 vote-schema cases passed.");
 
 static void Require(bool condition, string message)
 {

@@ -7,15 +7,16 @@ consent, an external-link handoff, sharing by copying the current link,
 support email handoff to the default mail app,
 Scopri access to the app-only Europe map, shared drink recommendations for
 supported Italian venues, and private favourite drinks saved with the venue's
-existing name. A favourite
-stays in this PC's local application data and requires internet to reopen the
-venue and see current prices. Saving a price for everyone remains the site's
+existing name. A favourite stores a validated app link that reopens the venue
+with that drink and time band selected. It stays in this PC's local application
+data and requires internet to see current prices. Saving a price for everyone remains the site's
 orange contribution action; saving a private favourite does not publish a
 price.
 
 The website origin and venue route are validated before a native favourite is
 saved or reopened. The read-only venue capture requires a visible venue sheet
-and exactly one selected drink. It never accepts a name typed into the app.
+and exactly one selected drink; it supports the existing Italian check boxes
+and the app-only Europe drink selector. It never accepts a name typed into the app.
 Browser cookies and favourites stay under Windows LocalAppData, outside source
 and OneDrive. Recommendations use a separate random installation voter ID in
 LocalAppData, without sharing WebView2 cookies or login credentials with the
@@ -31,8 +32,9 @@ and Microsoft Edge WebView2 Runtime for running the app.
 dotnet run --project mobile-apps/windows/tests/PolicySmoke/PolicySmoke.csproj -c Release
 node --check mobile-apps/windows/VenueCapture.js
 node --test mobile-apps/windows/tests/search-click.test.mjs
+node --test mobile-apps/windows/tests/venue-capture.test.mjs
 dotnet build mobile-apps/windows/DoveBevo.Windows.csproj -c Release
-& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.0.6'
+& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.0.7'
 ```
 
 The example uses the reserved Partner Center product **9P6XDNNQJ74N**, with

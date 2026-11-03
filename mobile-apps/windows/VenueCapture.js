@@ -30,18 +30,57 @@
     return { status: "no_venue" };
   const list = document.querySelector(".mobile-drink-strip, .drink-menu__list");
   const chosen = [...(list?.querySelectorAll("input[type=checkbox]:checked") || [])];
-  const drink =
+  const legacyDrink =
     chosen.length === 1
       ? chosen[0]
           .closest(".drink-option")
           ?.querySelector(".drink-option__name, span")
           ?.textContent?.trim()
       : null;
+  const legacyCodes = {
+    "Birra media": "beer_draft",
+    "Medium beer": "beer_draft",
+    Spritz: "spritz",
+    Negroni: "negroni",
+    Sbagliato: "sbagliato",
+    "Gin tonic": "gin_tonic",
+    "Gin and tonic": "gin_tonic",
+    "Gin lemon": "gin_lemon",
+    "Calice di vino": "wine_glass",
+    "Glass of wine": "wine_glass",
+    Analcolico: "alcohol_free",
+    "Non-alcoholic": "alcohol_free",
+    Acqua: "water",
+    Water: "water",
+  };
+  const europeSelects = document.querySelectorAll(".europe-app .europe-drinks select");
+  const europeSelect = europeSelects.length === 1 ? europeSelects[0] : null;
+  const europeOption =
+    europeSelect?.selectedOptions?.length === 1 ? europeSelect.selectedOptions[0] : null;
+  const europeCode =
+    europeSelect?.getClientRects().length && europeOption?.value === europeSelect.value
+      ? europeOption.value
+      : null;
+  const drinkCode = list
+    ? legacyDrink && Object.hasOwn(legacyCodes, legacyDrink)
+      ? legacyCodes[legacyDrink]
+      : null
+    : /^(?:beer_draft|spritz|negroni|sbagliato|gin_tonic|gin_lemon|wine_glass|alcohol_free|water)$/.test(
+          europeCode || "",
+        )
+      ? europeCode
+      : null;
+  const drink = list ? legacyDrink : europeOption?.textContent?.trim();
+  const band = document.querySelectorAll(".europe-app .europe-band input[type=checkbox]");
+  const hh =
+    band.length === 1 ? (band[0].checked ? 1 : 0) : url.searchParams.get("hh") === "1" ? 1 : 0;
   return {
     status: "ready",
     href: location.href,
     key,
     name,
     drink: drink && drink.length <= 80 ? drink : null,
+    drinkCode,
+    hh,
   };
 })();

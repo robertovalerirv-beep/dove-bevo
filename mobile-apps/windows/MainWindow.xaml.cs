@@ -254,13 +254,19 @@ public partial class MainWindow : Window
                 StatusText.Text = "Apri un locale e attendi che la sua scheda sia visibile.";
                 return;
             }
-            if (venue.Value.Drink is null)
+            if (venue.Value.Drink is null || venue.Value.DrinkCode is null)
             {
                 StatusText.Text = "Seleziona un solo drink in «Scegli cosa bere», poi riprova.";
                 return;
             }
+            if (!NavigationPolicy.TryFocusedVenue(venue.Value.Href, venue.Value.Key,
+                    venue.Value.DrinkCode, venue.Value.HappyHour, out var focused) || focused is null)
+            {
+                StatusText.Text = "Non riesco a creare il link del drink. Riprova.";
+                return;
+            }
             StatusText.Text = bookmarks.Add(new Bookmark(venue.Value.Key, venue.Value.Name,
-                    venue.Value.Drink, venue.Value.Href))
+                    venue.Value.Drink, focused.AbsoluteUri))
                 ? $"{venue.Value.Drink} da {venue.Value.Name} salvato nei Preferiti."
                 : "Già salvato, oppure l'archivio dei Preferiti è pieno.";
         }
@@ -270,7 +276,8 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<(string Href, string Key, string Name, string? Drink)?> CaptureVenue()
+    private async Task<(string Href, string Key, string Name, string? Drink,
+        string? DrinkCode, int HappyHour)?> CaptureVenue()
     {
         if (!ready || !Uri.TryCreate(Website.Source?.AbsoluteUri, UriKind.Absolute, out var current)
             || !NavigationPolicy.IsTrusted(current)) return null;
@@ -284,11 +291,14 @@ public partial class MainWindow : Window
         var key = root.GetProperty("key").GetString();
         var name = root.GetProperty("name").GetString();
         var drink = root.GetProperty("drink").GetString();
+        var drinkCode = root.GetProperty("drinkCode").GetString();
+        var happyHour = root.GetProperty("hh").GetInt32();
         if (href is null || key is null || name is null || name.Length is < 1 or > 120
             || !NavigationPolicy.TryVenue(href, key, out _)
-            || (drink is not null && (drink.Length is < 1 or > 80 || drink.Any(char.IsControl))))
+            || (drink is not null && (drink.Length is < 1 or > 80 || drink.Any(char.IsControl)))
+            || (happyHour != 0 && happyHour != 1))
             return null;
-        return (href, key, name, drink);
+        return (href, key, name, drink, drinkCode, happyHour);
     }
 
     private async void Recommendations_Click(object sender, RoutedEventArgs e)

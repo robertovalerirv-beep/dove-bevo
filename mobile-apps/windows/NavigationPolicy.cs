@@ -68,6 +68,23 @@ internal static partial class NavigationPolicy
         return true;
     }
 
+    internal static bool TryFocusedVenue(
+        string? address, string? key, string? drinkCode, int happyHour, out Uri? focused)
+    {
+        focused = null;
+        if (key is null || drinkCode is null || !DrinkCode().IsMatch(drinkCode)
+            || (happyHour != 0 && happyHour != 1)
+            || !TryVenue(address, key, out var venue) || venue is null)
+            return false;
+        var query = ParseQuery(venue.Query);
+        if (query is null || !query.TryGetValue("c", out var cell) || !Cell().IsMatch(cell))
+            return false;
+        var target = new Uri($"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{key}&c={cell}&drink={drinkCode}&hh={happyHour}");
+        if (!TryVenue(target.AbsoluteUri, key, out _)) return false;
+        focused = target;
+        return true;
+    }
+
     internal static bool TrySupportEmail(string? address, out Uri? target)
     {
         target = null;

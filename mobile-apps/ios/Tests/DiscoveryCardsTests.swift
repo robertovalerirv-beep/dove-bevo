@@ -75,14 +75,14 @@ final class DiscoveryCardsTests: XCTestCase {
             DiscoveryPresentedRow(key: "n124", name: "Second", url: url,
                 latitude: 45.46, longitude: 9.19, location: "Milano", price: .menuV2(menu))
         ]
-        XCTAssertEqual(rows[0].price.group, rows[1].price.group)
+        XCTAssertEqual(rows[0].price.discoveryGroup, rows[1].price.discoveryGroup)
         XCTAssertEqual(DiscoveryCategorySummary(rows: rows, loading: false, today: "2026-11-03").headline, "Da 5,50 €")
         let different = MenuV2Price(id: "other", venueName: "Another venue", itemName: "Spritz",
             category: "spritz", band: .normal, amountMinor: 5, currency: "GBP", exponent: 0,
             servingLabel: "Calice", servingML: 300,
             origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu")), "2026-11-02"),
             feeNotice: "Altre spese non verificate.")
-        XCTAssertNotEqual(rows[0].price.group, NativeComparablePrice.menuV2(different).group)
+        XCTAssertNotEqual(rows[0].price.discoveryGroup, NativeComparablePrice.menuV2(different).discoveryGroup)
     }
 
     @MainActor func testDrinkDropdownKeepsAllNineRealCategoriesAndSelectedIdentity() throws {

@@ -70,7 +70,10 @@ struct EuropeSnapshot {
 enum NativeComparablePrice {
     case legacy(FavouritePrice), europe(EuropePrice), menuV2(MenuV2Price)
     var amountMinor: Int { switch self { case .legacy(let p): return p.cents; case .europe(let p): return p.amountMinor; case .menuV2(let p): return p.amountMinor } }
-    var group: String {
+    var group: String { switch self { case .legacy: return "EUR|legacy-unknown"; case .europe(let p): return p.group; case .menuV2(let p): return "menu|\(p.group)" } }
+    /// Discovery can compare matching glass servings from the two mobile feeds;
+    /// saved-drink grouping keeps its existing stable representation.
+    var discoveryGroup: String {
         switch self {
         case .legacy: return "EUR|legacy-unknown"
         case .europe(let p):

@@ -82,7 +82,7 @@ struct DiscoverySnapshot {
             }
         }
         return (original + added + ownerMenus).sorted {
-            if $0.price.group != $1.price.group { return $0.price.group < $1.price.group }
+            if $0.price.discoveryGroup != $1.price.discoveryGroup { return $0.price.discoveryGroup < $1.price.discoveryGroup }
             if $0.price.amountMinor != $1.price.amountMinor { return $0.price.amountMinor < $1.price.amountMinor }
             let order = $0.name.localizedCaseInsensitiveCompare($1.name)
             return order == .orderedSame ? $0.key < $1.key : order == .orderedAscending

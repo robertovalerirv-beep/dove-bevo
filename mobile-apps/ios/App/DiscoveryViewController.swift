@@ -290,7 +290,7 @@ final class DiscoveryViewController: UITableViewController {
         let row = rows[indexPath.row]
         let metres = snapshot?.area.distance(latitude: row.latitude, longitude: row.longitude) ?? 0
         let distance = metres < 1000 ? "\(Int(metres.rounded())) m" : String(format: "%.1f km", metres / 1000)
-        let rank = rows.prefix(indexPath.row + 1).filter { $0.price.group == row.price.group }.count
+        let rank = rows.prefix(indexPath.row + 1).filter { $0.price.discoveryGroup == row.price.discoveryGroup }.count
         cell.configure(row: row, category: drink, band: band, rank: rank, distance: distance,
                        today: ComparisonJSON.today(), traits: traitCollection)
         cell.accessibilityIdentifier = "discovery.venue.\(row.key)"

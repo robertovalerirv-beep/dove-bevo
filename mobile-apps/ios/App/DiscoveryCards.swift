@@ -28,7 +28,7 @@ struct DiscoveryCategorySummary: Equatable {
         }
         let count = rows.count == 1 ? "1 prezzo" : "\(rows.count) prezzi"
         countText = count
-        if Set(rows.map { $0.price.group }).count == 1,
+        if Set(rows.map { $0.price.discoveryGroup }).count == 1,
            let lowest = rows.min(by: { $0.price.amountMinor < $1.price.amountMinor }) {
             let source: String
             let old: Bool

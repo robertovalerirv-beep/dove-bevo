@@ -76,6 +76,16 @@ export function mobileURL(path: string, origin = location.origin): string {
     params.set("path", value.pathname);
     params.set("c", cell);
     if (value.searchParams.has("drink") || value.searchParams.has("hh")) {
+      const rawKeys = value.search
+        .replace(/^\?/, "")
+        .split("&")
+        .map((part) => part.split("=")[0]);
+      if (
+        rawKeys.length !== 3 ||
+        new Set(rawKeys).size !== 3 ||
+        rawKeys.some((key) => !["c", "drink", "hh"].includes(key ?? ""))
+      )
+        throw new TypeError("Invalid app drink focus");
       const focus = focusPair(value.searchParams);
       if (!focus) throw new TypeError("Invalid app drink focus");
       params.set("drink", focus.drink);

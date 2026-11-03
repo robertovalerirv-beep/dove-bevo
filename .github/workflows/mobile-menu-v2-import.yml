@@ -1,0 +1,127 @@
+name: Reviewed mobile menu v2 import
+on:
+  pull_request:
+    paths:
+      - "mobile-apps/tools/mobile-menu-v2-import/**"
+      - "mobile-apps/data/mobile-menu-v2-seeds/**"
+      - "migrations/0011_mobile_menu_v2.sql"
+      - ".github/workflows/mobile-menu-v2-import.yml"
+  push:
+    tags:
+      - "mobile-menu-v2-audit/*"
+      - "mobile-menu-v2-seed/*"
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  IMPORTER_SHA256: cbeea8c2ada13f767ff41bf005a6cd792ea8cb1e1e4b8002a3ec64a4056eee96d
+  TRANSPORT_SHA256: a6ee8ea2f8277584beb83f22baae7787448b83db417fa80716b61e8f431fad78
+jobs:
+  preservation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify pinned importer and schema behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' "$IMPORTER_SHA256" mobile-apps/tools/mobile-menu-v2-import/import_v2.py | sha256sum --check --strict
+          printf '%s  %s\n' "$TRANSPORT_SHA256" mobile-apps/tools/menu-seed/live_import.py | sha256sum --check --strict
+          python3 -B -m unittest discover -s mobile-apps/tools/mobile-menu-v2-import -p 'test_*.py' -v
+  reviewed-import:
+    needs: preservation
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      (startsWith(github.ref, 'refs/tags/mobile-menu-v2-audit/') ||
+       startsWith(github.ref, 'refs/tags/mobile-menu-v2-seed/'))
+    concurrency:
+      group: dovebevo-one-off-menu-import
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify reviewed main ancestry and pinned manifest
+        id: pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          if [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-audit/([0-9a-f]{64})$ ]]; then
+            mode=audit
+            manifest_sha="${{ github.ref_name }}"
+            manifest_sha="$(printf '%s' "$manifest_sha" | cut -d/ -f2)"
+          elif [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-seed/([0-9a-f]{64})-([1-9][0-9]*)$ ]]; then
+            mode=seed
+            manifest_sha="$(printf '%s' "$GITHUB_REF_NAME" | cut -d/ -f2 | cut -d- -f1)"
+            audit_run="$(printf '%s' "$GITHUB_REF_NAME" | cut -d- -f2)"
+            printf '%s\n' "$audit_run" > "$RUNNER_TEMP/audit-run-id"
+          else
+            exit 2
+          fi
+          manifest="mobile-apps/data/mobile-menu-v2-seeds/$manifest_sha.json"
+          test -f "$manifest"
+          printf '%s  %s\n' "$manifest_sha" "$manifest" | sha256sum --check --strict
+          printf '%s  %s\n' "$IMPORTER_SHA256" mobile-apps/tools/mobile-menu-v2-import/import_v2.py | sha256sum --check --strict
+          printf '%s  %s\n' "$TRANSPORT_SHA256" mobile-apps/tools/menu-seed/live_import.py | sha256sum --check --strict
+          printf 'mode=%s\nmanifest_sha=%s\nmanifest=%s\n' "$mode" "$manifest_sha" "$manifest" >> "$GITHUB_OUTPUT"
+      - name: Verify successful pinned protected audit before seed
+        if: steps.pin.outputs.mode == 'seed'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          audit_run="$(cat "$RUNNER_TEMP/audit-run-id")"
+          audit_tag="mobile-menu-v2-audit/${{ steps.pin.outputs.manifest_sha }}"
+          audit_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$audit_tag" --jq '.object.sha')"
+          test "$audit_ref" = "$GITHUB_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$audit_run" |
+            jq -e --arg sha "$GITHUB_SHA" --arg tag "$audit_tag" '
+              .name == "Reviewed mobile menu v2 import" and
+              .path == ".github/workflows/mobile-menu-v2-import.yml" and
+              .head_sha == $sha and .head_branch == $tag and
+              .event == "push" and .conclusion == "success"' >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$audit_run/jobs?per_page=100" |
+            jq -e 'any(.jobs[]; .name == "reviewed-import" and .conclusion == "success")' >/dev/null
+      - name: Audit or seed reviewed v2 rows
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/mobile-menu-v2-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.json"
+          if test "${{ steps.pin.outputs.mode }}" = seed; then
+            python3 -I -S -B mobile-apps/tools/mobile-menu-v2-import/import_v2.py \
+              --manifest "${{ steps.pin.outputs.manifest }}" --receipt "$receipt" \
+              --apply --approved-sha256 "${{ steps.pin.outputs.manifest_sha }}"
+          else
+            python3 -I -S -B mobile-apps/tools/mobile-menu-v2-import/import_v2.py \
+              --manifest "${{ steps.pin.outputs.manifest }}" --receipt "$receipt"
+          fi
+          python3 - "$receipt" "${{ steps.pin.outputs.mode }}" "${{ steps.pin.outputs.manifest_sha }}" <<'PY'
+          import json,sys
+          receipt=json.load(open(sys.argv[1],encoding="utf-8"))
+          assert receipt["complete"] and receipt["mode"] == ("apply" if sys.argv[2]=="seed" else "dry_run")
+          assert receipt["manifest_sha256"] == sys.argv[3] and not receipt["legacy_prices_modified"]
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: mobile-menu-v2-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/mobile-menu-v2-*.json
+          retention-days: 30
+          if-no-files-found: warn

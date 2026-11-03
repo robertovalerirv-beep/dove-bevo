@@ -441,24 +441,34 @@ mobileMenuV2CustomerAdmin.get("/pending", async (c) => {
   const result = await c.env.DB.prepare(
     "SELECT e.*,v.name AS venue_name,v.country AS venue_country" +
       " FROM mobile_menu_v2_customer_entries e" +
-      " JOIN mobile_menu_v2_venues v ON v.venue_key=e.venue_key AND v.cell=e.cell" +
+      " LEFT JOIN mobile_menu_v2_venues v ON v.venue_key=e.venue_key AND v.cell=e.cell" +
       " WHERE e.status IN ('pending','review') AND e.seq>?1 ORDER BY e.seq LIMIT ?2",
   )
     .bind(after, limit + 1)
-    .all<Entry & { venue_name: string; venue_country: string }>();
+    .all<Entry & { venue_name: string | null; venue_country: string | null }>();
   const rows = result.results.slice(0, limit);
-  return c.json(
-    {
-      rows: rows.map((row) => ({
+  const staticPlaces = new Map<string, ReturnType<typeof currentStaticMenuVenue>>();
+  const publicRows = await Promise.all(
+    rows.map(async (row) => {
+      const identity = row.cell + ":" + row.venue_key;
+      if (!row.venue_name && !staticPlaces.has(identity))
+        staticPlaces.set(identity, currentStaticMenuVenue(c.env, row.venue_key, row.cell));
+      const staticPlace = row.venue_name ? null : await staticPlaces.get(identity);
+      return {
         ...publicEntry(row),
         venue: {
           key: row.venue_key,
           cell: row.cell,
-          name: row.venue_name,
-          country: row.venue_country,
+          name: row.venue_name ?? staticPlace?.name ?? row.venue_key,
+          country: row.venue_country ?? staticPlace?.country ?? null,
         },
         status: row.status,
-      })),
+      };
+    }),
+  );
+  return c.json(
+    {
+      rows: publicRows,
       next_after: result.results.length > limit ? (rows.at(-1)?.seq ?? null) : null,
     },
     200,
@@ -471,6 +481,17 @@ mobileMenuV2CustomerAdmin.post("/entries/:id/decision", async (c) => {
   if (!id.success) throw new ApiError("bad_request");
   const body = await readJson(c, Decision);
   const nextStatus = body.decision === "approve" ? "active" : "removed";
+  let staticItalian = 0;
+  if (nextStatus === "active") {
+    const entry = await c.env.DB.prepare(
+      "SELECT venue_key,cell FROM mobile_menu_v2_customer_entries WHERE id=?1",
+    )
+      .bind(id.data)
+      .first<Pick<Entry, "venue_key" | "cell">>();
+    if (!entry) throw new ApiError("conflict");
+    const place = await resolveContributableMenuVenue(c.env, entry.venue_key, entry.cell);
+    staticItalian = place.identity_kind === "osm" && place.country === "IT" ? 1 : 0;
+  }
   const result = await c.env.DB.prepare(
     "UPDATE mobile_menu_v2_customer_entries SET status=?2,moderated_at=?3" +
       " WHERE id=?1 AND status IN ('pending','review','active') AND status<>?2" +
@@ -480,9 +501,14 @@ mobileMenuV2CustomerAdmin.post("/entries/:id/decision", async (c) => {
       " AND (item_kind='new_drink' OR EXISTS (SELECT 1 FROM mobile_menu_v2_offers o" +
       " JOIN mobile_menu_v2_sources s ON s.id=o.source_id AND s.venue_key=o.venue_key" +
       " AND s.cell=o.cell AND s.use_review_status='approved'" +
-      " WHERE o.id=mobile_menu_v2_customer_entries.offer_id AND o.status='active'))))",
+      " WHERE o.id=mobile_menu_v2_customer_entries.offer_id AND o.status='active'))" +
+      " AND (?4=0 OR EXISTS (SELECT 1 FROM mobile_menu_v2_offers o" +
+      " JOIN mobile_menu_v2_sources s ON s.id=o.source_id AND s.venue_key=o.venue_key" +
+      " AND s.cell=o.cell AND s.use_review_status='approved'" +
+      " WHERE o.venue_key=mobile_menu_v2_customer_entries.venue_key" +
+      " AND o.cell=mobile_menu_v2_customer_entries.cell AND o.status='active'))))",
   )
-    .bind(id.data, nextStatus, new Date().toISOString())
+    .bind(id.data, nextStatus, new Date().toISOString(), staticItalian)
     .run();
   if (!result.meta.changes) throw new ApiError("conflict");
   return c.json({ status: nextStatus, revision: id.data });

@@ -12,6 +12,7 @@ import math
 import os
 from pathlib import Path
 import re
+import socket
 import subprocess
 import sys
 import unicodedata
@@ -119,6 +120,29 @@ def https(value,source=False):
     if host in ("localhost","localdomain") or host.endswith((".local",".internal")):
         raise Error("private source hostname")
     return value
+
+def public_fetch(transport,address,maximum,content_kind=None,resolver=None):
+    https(address)
+    host=urlsplit(address).hostname
+    if resolver is not None or isinstance(transport,legacy.Transport):
+        try:
+            answers=(resolver or socket.getaddrinfo)(host,443,type=socket.SOCK_STREAM)
+            ips=[answer[4][0] for answer in answers]
+            if not ips or any(not ipaddress.ip_address(ip).is_global for ip in ips):
+                raise Error("source resolves to non-public address")
+        except (OSError,ValueError,IndexError,TypeError) as exc:
+            raise Error("source DNS validation failed") from exc
+    raw=transport.fetch(address,maximum)  # v1 Transport uses a no-redirect opener.
+    if type(raw) is not bytes or not 1<=len(raw)<=maximum:
+        raise Error("invalid public response size")
+    header=raw[:8192].lower().lstrip()
+    if content_kind=="html" and b"<html" not in header and b"<!doctype html" not in header:
+        raise Error("unexpected HTML source content")
+    if content_kind=="pdf" and not raw.startswith(b"%PDF-"):
+        raise Error("unexpected PDF source content")
+    if content_kind=="xml" and b"<osm" not in header:
+        raise Error("unexpected OSM XML content")
+    return raw
 
 def canonical_owner_url(value):
     https(value)
@@ -333,7 +357,7 @@ def distance_m(lat1,lon1,lat2,lon2):
 
 def static_cell(transport,version,code,cache):
     if code not in cache:
-        data=legacy.strict_json(transport.fetch(f"{SITE}/data/{version}/v/{code}.json",2*1024*1024))
+        data=legacy.strict_json(public_fetch(transport,f"{SITE}/data/{version}/v/{code}.json",2*1024*1024))
         if not isinstance(data,dict) or not isinstance(data.get("v"),list) or not isinstance(data.get("c"),list):
             raise Error("invalid published catalogue")
         cache[code]=data
@@ -367,7 +391,7 @@ def public_identity(row,transport,version,cells):
         if {legacy.geo(row["lat"]+a,row["lon"]+b)
             for a in (-0.0006,0,0.0006) for b in (-0.0008,0,0.0008)}!={row["cell"]}:
             raise Error("owner venue near cell boundary needs multi-cell review")
-        page=transport.fetch(row["identity_url"],MAX_SOURCE)
+        page=public_fetch(transport,row["identity_url"],MAX_SOURCE,"html")
         if legacy.source_digest(page,"html_text_v1")!=row["owner_page_sha256"]:
             raise Error("owner location source hash mismatch")
         parser=legacy.HTMLTextV1()
@@ -380,7 +404,7 @@ def public_identity(row,transport,version,cells):
             raise Error("owner location name/address absent")
         import xml.etree.ElementTree as ET
         node_id=row["geo_reference_url"].rsplit("/",1)[1]
-        xml=transport.fetch(f"https://api.openstreetmap.org/api/0.6/node/{node_id}",65536)
+        xml=public_fetch(transport,f"https://api.openstreetmap.org/api/0.6/node/{node_id}",65536,"xml")
         if hashlib.sha256(xml).hexdigest()!=row["geo_reference_sha256"]:
             raise Error("OSM address reference changed")
         try:
@@ -401,7 +425,7 @@ def public_identity(row,transport,version,cells):
         return
     # Foreign registry entries use exact OSM node identity, not invented Google counts.
     import xml.etree.ElementTree as ET
-    xml=transport.fetch(f"https://api.openstreetmap.org/api/0.6/node/{key[1:]}",65536)
+    xml=public_fetch(transport,f"https://api.openstreetmap.org/api/0.6/node/{key[1:]}",65536,"xml")
     try:
         node=ET.fromstring(xml).find("node")
         tags={t.attrib["k"]:t.attrib["v"] for t in node.findall("tag")}
@@ -416,7 +440,8 @@ def source_identity(row,transport,cache):
     if row["use_review_status"]=="held": return "held"
     key=(row["source_url"],row["source_format"])
     if key not in cache:
-        cache[key]=source_digests(transport.fetch(row["source_url"],MAX_SOURCE),row["source_format"])
+        cache[key]=source_digests(public_fetch(transport,row["source_url"],MAX_SOURCE,
+                   "html" if row["source_format"]=="html_text_v1" else "pdf"),row["source_format"])
     if cache[key]!=(row["source_sha256"],row["source_text_sha256"]):
         raise Error("source hash mismatch")
     return "verified"
@@ -537,7 +562,7 @@ def execute(raw,transport,apply=False,approved_sha256=None):
         if any(s["use_review_status"]!="approved" for s in doc["sources"]):
             raise Error("held source is unseedable")
         phase="public_site"
-        health=legacy.strict_json(transport.fetch(SITE+"/api/health",65536))
+        health=legacy.strict_json(public_fetch(transport,SITE+"/api/health",65536))
         if not isinstance(health,dict) or health.get("status")!="ok" or health.get("data_version")!=doc["data_version"]:
             raise Error("public catalogue version mismatch")
         cells={}

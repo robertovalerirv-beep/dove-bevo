@@ -121,6 +121,8 @@ class ImportTests(unittest.TestCase):
         with self.assertRaises(core.Error):core.validate(raw(doc))
         doc=manifest();doc["sources"][0]["source_url"]="https://127.0.0.1/menu"
         with self.assertRaises(core.Error):core.validate(raw(doc))
+        doc=manifest();doc["offers"][0]["id"]="unsafe/id"
+        with self.assertRaises(core.Error):core.validate(raw(doc))
         doc=manifest();doc["offers"][0]["currency"]="GBP"
         self.assertEqual(core.validate(raw(doc))["offers"][0]["currency"],"GBP")
         doc["offers"][0]["currency"]="EURO"
@@ -146,6 +148,18 @@ class ImportTests(unittest.TestCase):
                          "documented_partial")
         doc["fee_coverage"][0]["status"]="explicit_no_fee"
         with self.assertRaises(core.Error):core.validate(raw(doc))
+
+    def test_private_dns_redirect_and_unexpected_html_fail_closed(self):
+        fake=Fake()
+        def private_answers(host,port,type=None):
+            return [(None,None,None,None,("127.0.0.1",443))]
+        with self.assertRaises(core.Error):
+            core.public_fetch(fake,"https://example.org/menu",core.MAX_SOURCE,"html",private_answers)
+        fake.public["https://example.org/menu"]=b'{"price":"7.50"}'
+        with self.assertRaises(core.Error):
+            core.public_fetch(fake,"https://example.org/menu",core.MAX_SOURCE,"html")
+        self.assertIsNone(core.legacy.NoRedirect().redirect_request(
+            None,None,302,"Found",{},"https://127.0.0.1/private"))
 
     def test_conflicting_existing_offer_is_not_replaced(self):
         doc=manifest();payload=raw(doc);transport=Fake()

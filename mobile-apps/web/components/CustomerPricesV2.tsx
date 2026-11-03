@@ -97,10 +97,14 @@ export function CustomerPricesV2({
   const abort = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    const updateNative = () => setNativeOfferSave(nativeOfferSaveEnabled());
+    const updateNative = () => {
+      setNativeOfferSave(nativeOfferSaveEnabled());
+    };
     window.addEventListener("dovebevo-native-ready", updateNative);
     updateNative();
-    return () => window.removeEventListener("dovebevo-native-ready", updateNative);
+    return () => {
+      window.removeEventListener("dovebevo-native-ready", updateNative);
+    };
   }, []);
 
   useEffect(() => {
@@ -485,7 +489,7 @@ export function CustomerPricesV2({
                 ) : (
                   categorySaved && (
                     <small class="mobile-menu-v2__saved">
-                      Stesso tipo di drink salvato · {focus?.hh ? "Happy hour" : "Prezzo normale"}
+                      Stesso tipo di drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
                     </small>
                   )
                 )}

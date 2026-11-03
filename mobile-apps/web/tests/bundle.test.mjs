@@ -111,6 +111,13 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
       const cell = url.pathname.split("/").at(-1);
       const categories = (url.searchParams.get("categories") ?? "").split(",").filter(Boolean);
       options.cellRequests?.push({ cell, categories: [...categories] });
+      if (options.holdFirstIdentity && cell === "u0nd9" && categories.length === 0) {
+        options.holdFirstIdentity = false;
+        await new Promise((resolve) => {
+          options.releaseOldIdentity = resolve;
+        });
+        return route.fulfill({ status: 503, body: "Old identity request failed" });
+      }
       if (options.menuUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
       const source = {
         id: "source-1",
@@ -727,6 +734,60 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
   } finally {
+    await f.close();
+  }
+});
+
+test("a stale identity failure cannot discard a successful new selected drink", async () => {
+  const options = { menu: true, holdFirstIdentity: true, cellRequests: [] };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
+    );
+    assert.equal(typeof options.releaseOldIdentity, "function");
+    const sampled = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9?categories=spritz") &&
+        response.status() === 200,
+      { timeout: 8000 },
+    );
+    const drinks = await openDrinks(f.page);
+    await drinks.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    await sampled.catch((error) => {
+      throw new Error(`Fresh Spritz response missing: ${JSON.stringify(options.cellRequests)}`, {
+        cause: error,
+      });
+    });
+    await f.page.locator('[data-mobile-selection="Spritz"]').waitFor();
+    options.releaseOldIdentity();
+    await f.page
+      .waitForFunction(
+        () =>
+          document
+            .querySelector("section.map")
+            ?.getAttribute("data-prices-shown")
+            ?.includes("7,50"),
+        null,
+        { timeout: 8000 },
+      )
+      .catch((error) => {
+        throw new Error(`Selected price did not recover: ${JSON.stringify(options.cellRequests)}`, {
+          cause: error,
+        });
+      });
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+      "The selected drink must recover with exactly one fresh identity read",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    options.releaseOldIdentity?.();
     await f.close();
   }
 });

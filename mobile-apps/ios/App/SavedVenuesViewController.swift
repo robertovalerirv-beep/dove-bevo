@@ -7,6 +7,7 @@ final class SavedVenuesViewController: UITableViewController {
     private let unifiedDrinks: Bool
     private var savedDrinkFilter: DrinkCategory?
     private let client: FavouriteComparisonServing
+    private let menuClient: MenuV2Serving?
     private let activityCheck: (() -> Bool)?
     private let onOpen: (URL) -> Void
     private var venues: [SavedVenue] = []
@@ -17,7 +18,10 @@ final class SavedVenuesViewController: UITableViewController {
     private let kindControl = UISegmentedControl(items: ["Locali", "Drink"])
     private var showingDrinks: Bool { unifiedDrinks || kindControl.selectedSegmentIndex == 1 }
     private var snapshot: FavouriteComparisonSnapshot?
+    private var menuSnapshot: MenuV2Snapshot?
     private var request: RecommendationRequest?
+    private var menuRequest: RecommendationRequest?
+    private var menuBusy = false
     private var generation = UUID()
     private var visible = false
     private var lifecycleActive = true
@@ -33,9 +37,9 @@ final class SavedVenuesViewController: UITableViewController {
     private lazy var refreshButton = UIBarButtonItem(title: "Ricarica", style: .plain, target: self, action: #selector(refresh))
 
     init(store: SavedVenueStore, drinkStore: SavedDrinkStore? = nil, client: FavouriteComparisonServing = FavouriteComparisonClient(),
-         activityCheck: (() -> Bool)? = nil, onOpen: @escaping (URL) -> Void) {
+         menuClient: MenuV2Serving? = nil, activityCheck: (() -> Bool)? = nil, onOpen: @escaping (URL) -> Void) {
         self.store = store; self.drinkStore = drinkStore ?? SavedDrinkStore(); self.unifiedDrinks = drinkStore != nil
-        self.client = client; self.activityCheck = activityCheck; self.onOpen = onOpen
+        self.client = client; self.menuClient = menuClient; self.activityCheck = activityCheck; self.onOpen = onOpen
         super.init(style: .insetGrouped)
         let center = NotificationCenter.default
         for name in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
@@ -49,7 +53,7 @@ final class SavedVenuesViewController: UITableViewController {
     }
 
     required init?(coder: NSCoder) { return nil }
-    deinit { request?.cancel(); NotificationCenter.default.removeObserver(self) }
+    deinit { request?.cancel(); menuRequest?.cancel(); NotificationCenter.default.removeObserver(self) }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -181,17 +185,28 @@ final class SavedVenuesViewController: UITableViewController {
             self.render()
         }
         if generation == token && busy { request = handle } else { handle.cancel() }
+        if showingDrinks, let menuClient {
+            menuBusy = true; render()
+            let menuHandle = menuClient.load(requested) { [weak self] value in
+                guard let self, self.generation == token, self.menuBusy else { return }
+                guard self.canRead else { self.retire(); return }
+                self.menuRequest = nil; self.menuBusy = false; self.menuSnapshot = value
+                self.render()
+            }
+            if generation == token && menuBusy { menuRequest = menuHandle } else { menuHandle.cancel() }
+        }
     }
 
     private func retire() {
-        generation = UUID(); request?.cancel(); request = nil; busy = false; snapshot = nil
+        generation = UUID(); request?.cancel(); menuRequest?.cancel()
+        request = nil; menuRequest = nil; busy = false; menuBusy = false; snapshot = nil; menuSnapshot = nil
         if isViewLoaded { render() }
     }
 
     private func render() {
         guard isViewLoaded else { return }
         rows = FavouriteComparisonRow.sorted(saved: venues, snapshot: snapshot, drink: drink.code, band: band)
-        drinkRows = SavedDrinkRow.rows(drinks, snapshot: snapshot)
+        drinkRows = SavedDrinkRow.rows(drinks, snapshot: snapshot, menuSnapshot: menuSnapshot)
         if unifiedDrinks, let savedDrinkFilter { drinkRows.removeAll { $0.saved.drink != savedDrinkFilter.code } }
         drinkButton.isHidden = showingDrinks && !unifiedDrinks; bandControl.isHidden = showingDrinks
         var picker = NativeAppearance.button(traits: traitCollection)
@@ -214,7 +229,7 @@ final class SavedVenuesViewController: UITableViewController {
         let failed = showingDrinks ? drinksFailed : storeFailed
         let empty = showingDrinks ? drinks.isEmpty && (!unifiedDrinks || venues.isEmpty) : venues.isEmpty
         editButtonItem.isEnabled = !empty && !failed
-        refreshButton.isEnabled = canRead && !busy
+        refreshButton.isEnabled = canRead && !busy && !menuBusy
         refreshButton.title = failed ? "Riprova" : "Ricarica"
         refreshButton.accessibilityIdentifier = failed ? "savedVenues.retry" : "favorites.refresh"
         navigationItem.rightBarButtonItems = failed ? [refreshButton] : [editButtonItem, refreshButton]
@@ -227,7 +242,7 @@ final class SavedVenuesViewController: UITableViewController {
         } else if unifiedDrinks && drinks.isEmpty && !venues.isEmpty {
             statusLabel.text = "Hai locali salvati in precedenza. Scegline uno qui sotto e seleziona un drink per conservarlo nei Preferiti."
             statusLabel.accessibilityIdentifier = "favorites.migration"
-        } else if busy {
+        } else if busy || menuBusy {
             statusLabel.text = "Caricamento dei prezzi segnalati…"
             statusLabel.accessibilityIdentifier = "favorites.loading"
         } else if let snapshot {
@@ -331,6 +346,25 @@ final class SavedVenuesViewController: UITableViewController {
             cell.accessoryType = .disclosureIndicator
             cell.accessibilityIdentifier = "favorites.migrate.\(venue.url.lastPathComponent)"
             cell.accessibilityHint = "Apre la scelta del drink"
+            return cell
+        }
+        if showingDrinks, let menuPrice = drinkRows[indexPath.row].menuPrice {
+            let saved = drinkRows[indexPath.row].saved
+            var content = cell.defaultContentConfiguration()
+            content.text = menuPrice.venueName
+            content.secondaryText = "\(saved.category.name) · \(saved.band.name)\n\(menuPrice.itemName) · \(menuPrice.serving)\n\(menuPrice.amount)\n\(menuPrice.evidence)"
+            content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
+            content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
+            content.secondaryTextProperties.numberOfLines = 0
+            content.textToSecondaryTextVerticalPadding = 8
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 12)
+            cell.contentConfiguration = content
+            cell.backgroundConfiguration = NativeAppearance.card()
+            cell.accessoryType = .disclosureIndicator
+            cell.accessibilityIdentifier = "savedDrink.\(saved.identity).menu.\(menuPrice.id)"
+            cell.accessibilityLabel = "\(saved.category.name), \(saved.band.name), \(menuPrice.itemName), \(menuPrice.venueName)"
+            cell.accessibilityValue = "\(menuPrice.amount), \(menuPrice.serving), \(menuPrice.evidence)"
+            cell.accessibilityHint = "Apre il locale nella mappa"
             return cell
         }
         let savedDrink = showingDrinks ? drinkRows[indexPath.row].saved : nil

@@ -22,20 +22,30 @@ struct SavedDrink: Equatable {
 struct SavedDrinkRow {
     let saved: SavedDrink
     let comparison: FavouriteComparisonRow
-    static func rows(_ saved: [SavedDrink], snapshot: FavouriteComparisonSnapshot?) -> [SavedDrinkRow] {
-        saved.flatMap { entry in
-            FavouriteComparisonRow.sorted(saved: [entry.venue], snapshot: snapshot, drink: entry.drink, band: entry.band)
-                .map { SavedDrinkRow(saved: entry, comparison: $0) }
+    let menuPrice: MenuV2Price?
+    static func rows(_ saved: [SavedDrink], snapshot: FavouriteComparisonSnapshot?, menuSnapshot: MenuV2Snapshot? = nil) -> [SavedDrinkRow] {
+        saved.flatMap { entry -> [SavedDrinkRow] in
+            let base = FavouriteComparisonRow.sorted(saved: [entry.venue], snapshot: snapshot, drink: entry.drink, band: entry.band)
+            let menu = menuSnapshot?.venues[entry.venue.url]?.offers.filter { $0.category == entry.drink && $0.band == entry.band } ?? []
+            let baseToShow = menu.isEmpty ? base : base.filter { $0.displayPrice != nil }
+            let fallback = base.first!
+            return menu.map { SavedDrinkRow(saved: entry, comparison: fallback, menuPrice: $0) }
+                + baseToShow.map { SavedDrinkRow(saved: entry, comparison: $0, menuPrice: nil) }
         }.sorted { left, right in
             if left.saved.drink != right.saved.drink { return left.saved.drink < right.saved.drink }
             if left.saved.band != right.saved.band { return left.saved.band.rawValue < right.saved.band.rawValue }
-            let a = left.comparison.displayPrice, b = right.comparison.displayPrice
-            if (a != nil) != (b != nil) { return a != nil }
-            if let a, let b {
-                if a.group != b.group { return a.group < b.group }
-                if a.amountMinor != b.amountMinor { return a.amountMinor < b.amountMinor }
+            let leftGroup = left.menuPrice?.group ?? left.comparison.displayPrice?.group
+            let rightGroup = right.menuPrice?.group ?? right.comparison.displayPrice?.group
+            if (leftGroup != nil) != (rightGroup != nil) { return leftGroup != nil }
+            if let leftGroup, let rightGroup {
+                if leftGroup != rightGroup { return leftGroup < rightGroup }
+                let a = left.menuPrice?.amountMinor ?? left.comparison.displayPrice?.amountMinor ?? 0
+                let b = right.menuPrice?.amountMinor ?? right.comparison.displayPrice?.amountMinor ?? 0
+                if a != b { return a < b }
             }
-            let order = left.comparison.name.localizedCaseInsensitiveCompare(right.comparison.name)
+            let leftName = left.menuPrice?.venueName ?? left.comparison.name
+            let rightName = right.menuPrice?.venueName ?? right.comparison.name
+            let order = leftName.localizedCaseInsensitiveCompare(rightName)
             return order == .orderedSame ? left.saved.identity < right.saved.identity : order == .orderedAscending
         }
     }

@@ -184,8 +184,10 @@ class Transport:
         self.account, self.token = account, token
         self.opener = build_opener(NoRedirect())
     def fetch(self, address, maximum=MAX_SOURCE_BYTES):
+        self.last_fetch_content_type = None
         try:
             with self.opener.open(Request(address, headers={"User-Agent": "DoveBevoMenuAudit/1"}), timeout=45) as response:
+                self.last_fetch_content_type = response.headers.get("Content-Type")
                 raw = response.read(maximum + 1)
             if len(raw) > maximum: raise Error("response exceeds limit")
             return raw

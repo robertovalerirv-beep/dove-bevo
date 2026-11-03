@@ -582,7 +582,7 @@ def public_identity(row,transport,version,cells):
         or abs(row["lat"]-lat)>0.0000001 or abs(row["lon"]-lon)>0.0000001):
         raise Error("foreign OSM node mismatch")
 
-def source_identity(row,transport,cache,offers):
+def source_identity(row,transport,cache,offers,diagnostics=None):
     if row["use_review_status"]=="held": return "held"
     key=(row["source_url"],row["source_format"])
     if key not in cache:
@@ -596,9 +596,32 @@ def source_identity(row,transport,cache,offers):
             except Error as exc:
                 if str(exc)!="public source timeout" or attempt:
                     raise
-        cache[key]=(source_digests(source_raw,row["source_format"]),source_raw)
-    hashes,source_raw=cache[key]
+        content_type=getattr(transport,"last_fetch_content_type",None)
+        cache[key]=(source_digests(source_raw,row["source_format"]),
+                    source_raw,content_type)
+    hashes,source_raw,content_type=cache[key]
     if hashes!=(row["source_sha256"],row["source_text_sha256"]):
+        if diagnostics is not None and row["source_format"]=="pdf_text_v1":
+            media_type=(content_type or "").split(";",1)[0].strip().lower()
+            if not re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+",media_type):
+                media_type=None
+            version=None
+            try:
+                proc=subprocess.run(["pdftotext","-v"],capture_output=True,
+                                    timeout=5,check=False)
+                match=re.search(rb"pdftotext version ([0-9]+(?:\.[0-9]+){1,3})",
+                                proc.stdout+proc.stderr)
+                if match: version=match.group(1).decode("ascii")
+            except (OSError,subprocess.SubprocessError):
+                pass
+            diagnostics.append({
+                "source_id":row["id"],"bytes":len(source_raw),
+                "content_type":media_type,
+                "raw_sha256":hashes[0],"pdf_magic":source_raw.startswith(b"%PDF-"),
+                "extractor_version":version,"text_sha256":hashes[1],
+                "raw_matches_manifest":hashes[0]==row["source_sha256"],
+                "text_matches_manifest":hashes[1]==row["source_text_sha256"],
+            })
         raise Error("source hash mismatch")
     if row["source_format"]=="json_menu_v1":
         renderer=public_fetch(transport,CARICO_RENDERER_URL,MAX_SOURCE)
@@ -623,6 +646,16 @@ def require_owner_geo_schema(transport):
     schema=one(transport,"SELECT sql FROM sqlite_master WHERE type='table' AND name=?",["mobile_menu_v2_venues"]).get("sql")
     if not isinstance(schema,str) or "osm_node_v1" not in schema:
         raise Error("OSM node hash basis migration absent")
+
+def customer_price_digest(transport,key):
+    # Legacy table has no personal columns; keep only a count and digest in receipts.
+    rows=transport.query("SELECT * FROM prices_current WHERE venue_key=?",[key])
+    if not isinstance(rows,list) or any(not isinstance(row,dict) for row in rows):
+        raise Error("invalid customer price digest rows")
+    canonical="\n".join(sorted(json.dumps(row,sort_keys=True,separators=(",",":"),
+                                          ensure_ascii=False) for row in rows))
+    return {"count":len(rows),
+            "sha256":hashlib.sha256(canonical.encode("utf-8")).hexdigest()}
 
 def presence(transport,key):
     return one(transport,
@@ -718,8 +751,8 @@ def execute(raw,transport,apply=False,approved_sha256=None):
     receipt={"schema_version":1,"batch_id":None,
              "manifest_sha256":hashlib.sha256(raw).hexdigest() if isinstance(raw,bytes) else None,
              "mode":"apply" if apply else "dry_run","complete":False,
-             "binding_attestation":None,"sources":[],"venues":[],"rows":[],
-             "customer_presence":{},"errors":[],"legacy_prices_modified":False,
+             "binding_attestation":None,"sources":[],"source_diagnostics":[],"venues":[],"rows":[],
+             "customer_presence":{},"customer_price_digests":{},"errors":[],"legacy_prices_modified":False,
              "public_data_version":None}
     phase="manifest"
     try:
@@ -751,7 +784,7 @@ def execute(raw,transport,apply=False,approved_sha256=None):
         phase="source"
         cache={}
         for source in doc["sources"]:
-            status=source_identity(source,transport,cache,doc["offers"])
+            status=source_identity(source,transport,cache,doc["offers"],receipt["source_diagnostics"])
             receipt["sources"].append({"id":source["id"],"venue_key":source["venue_key"],
                                        "status":status})
         phase="binding"
@@ -772,6 +805,11 @@ def execute(raw,transport,apply=False,approved_sha256=None):
             receipt["customer_presence"][key]=state
             if any(state.get(flag,0) for flag in ("hidden","moderated","reports")):
                 raise Error("reported or hidden venue")
+            if state["customer_current"]:
+                digest=customer_price_digest(transport,key)
+                if digest["count"]!=state["customer_current"]:
+                    raise Error("customer price digest count mismatch")
+                receipt["customer_price_digests"][key]=digest
         rows=rows_for_import(doc)
         for kind,row in rows:
             found=existing(transport,kind,row)
@@ -796,6 +834,12 @@ def execute(raw,transport,apply=False,approved_sha256=None):
             if not same(existing(transport,kind,row),kind,row):
                 raise Error("guarded or incomplete v2 insert")
             result["outcome"]="inserted"
+        for key,before in receipt["customer_price_digests"].items():
+            if customer_price_digest(transport,key)!=before:
+                # A concurrent customer update is possible; fail without attribution
+                # or automatic retry because the v2 apply is not transactional.
+                receipt["legacy_prices_modified"]=True
+                raise Error("customer price digest changed")
         receipt["complete"]=True
     except Error as exc:
         receipt["errors"].append({"phase":phase,"code":str(exc)})

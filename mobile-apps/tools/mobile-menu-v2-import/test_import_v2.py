@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import sqlite3
 import unittest
+from unittest import mock
 
 import import_v2 as core
 
@@ -99,12 +100,15 @@ class ImportTests(unittest.TestCase):
         self.assertTrue(audit["complete"],audit["errors"])
         self.assertEqual([r["outcome"] for r in audit["rows"]],["eligible_at_read"]*2)
         self.assertEqual(audit["customer_presence"][VENUE["venue_key"]]["customer_current"],1)
+        self.assertEqual(audit["customer_price_digests"][VENUE["venue_key"]]["count"],1)
+        self.assertRegex(audit["customer_price_digests"][VENUE["venue_key"]]["sha256"],r"^[0-9a-f]{64}$")
         self.assertEqual(transport.db.execute("SELECT COUNT(*) FROM mobile_menu_v2_offers").fetchone()[0],0)
         approved=hashlib.sha256(payload).hexdigest()
         done=core.execute(payload,transport,True,approved)
         self.assertTrue(done["complete"],done["errors"])
         self.assertEqual([r["outcome"] for r in done["rows"]],["inserted","inserted"])
         self.assertEqual(transport.db.execute("SELECT * FROM prices_current").fetchall(),before)
+        self.assertEqual(done["customer_price_digests"],audit["customer_price_digests"])
         repeated=core.execute(payload,transport,True,approved)
         self.assertTrue(repeated["complete"],repeated["errors"])
         self.assertEqual([r["outcome"] for r in repeated["rows"]],["existing_identical"]*2)
@@ -213,6 +217,68 @@ class ImportTests(unittest.TestCase):
         stale=core.execute(payload,changed)
         self.assertFalse(stale["complete"])
         self.assertEqual(stale["errors"][0]["code"],"source hash mismatch")
+
+    def test_customer_price_digest_detects_changed_value_after_v2_apply(self):
+        class ChangedCustomer(Fake):
+            changed=False
+            def query(self,sql,params):
+                result=super().query(sql,params)
+                if sql.startswith("INSERT INTO mobile_menu_v2_") and not self.changed:
+                    self.db.execute("UPDATE prices_current SET price_cents=951 "
+                                    "WHERE venue_key=?",(VENUE["venue_key"],))
+                    self.changed=True
+                return result
+        transport=ChangedCustomer()
+        transport.db.execute("INSERT INTO prices_current VALUES (?,?)",
+                             (VENUE["venue_key"],900))
+        payload=raw(manifest())
+        receipt=core.execute(payload,transport,True,hashlib.sha256(payload).hexdigest())
+        self.assertFalse(receipt["complete"])
+        self.assertEqual(receipt["errors"],[
+            {"phase":"write","code":"customer price digest changed"}])
+        self.assertTrue(receipt["legacy_prices_modified"])
+        self.assertEqual(receipt["customer_price_digests"][VENUE["venue_key"]]["count"],1)
+        self.assertEqual(transport.db.execute(
+            "SELECT price_cents FROM prices_current").fetchone()[0],951)
+
+    def test_pdf_hash_mismatch_reports_only_bounded_evidence_and_no_writes(self):
+        doc=manifest()
+        doc["sources"][0]["source_format"]="pdf_text_v1"
+        doc["sources"][0]["source_sha256"]="a"*64
+        doc["sources"][0]["source_text_sha256"]="b"*64
+        payload=raw(doc)
+        transport=Fake()
+        transport.public["https://example.org/menu"]=b"%PDF-synthetic"
+        transport.last_fetch_content_type="application/pdf; charset=binary"
+        with mock.patch.object(core,"source_digests",return_value=("a"*64,"c"*64)), \
+             mock.patch.object(core.subprocess,"run",return_value=subprocess.CompletedProcess(
+                 ["pdftotext","-v"],0,b"",b"pdftotext version 24.02.0\n")):
+            receipt=core.execute(payload,transport)
+        self.assertFalse(receipt["complete"])
+        self.assertEqual(receipt["errors"],[{"phase":"source","code":"source hash mismatch"}])
+        self.assertEqual(receipt["rows"],[])
+        self.assertEqual(receipt["source_diagnostics"],[{
+            "source_id":"src-test-1","bytes":len(b"%PDF-synthetic"),
+            "content_type":"application/pdf","raw_sha256":"a"*64,
+            "pdf_magic":True,"extractor_version":"24.02.0",
+            "text_sha256":"c"*64,"raw_matches_manifest":True,
+            "text_matches_manifest":False,
+        }])
+        self.assertEqual(transport.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_sources").fetchone()[0],0)
+
+    def test_transport_captures_content_type_without_response_body(self):
+        class Response:
+            headers={"Content-Type":"application/pdf"}
+            def __enter__(self): return self
+            def __exit__(self,*args): return False
+            def read(self,limit): return b"%PDF-small"
+        class Opener:
+            def open(self,request,timeout): return Response()
+        transport=core.legacy.Transport("0"*32,"unused-token")
+        transport.opener=Opener()
+        self.assertEqual(transport.fetch("https://example.org/menu"),b"%PDF-small")
+        self.assertEqual(transport.last_fetch_content_type,"application/pdf")
 
     def test_manifest_source_use_currency_and_fee_guards(self):
         doc=manifest()

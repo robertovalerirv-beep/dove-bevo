@@ -69,12 +69,14 @@ export function CustomerPricesV2({
   venue,
   focus,
   offerFocus,
+  mapFocus,
   hasLegacyPrices,
 }: {
   menu: MenuPage | null;
   venue: { key: string; cell: string; country: string };
   focus: DrinkFocus | null;
   offerFocus: string | null;
+  mapFocus: readonly string[];
   hasLegacyPrices: boolean;
 }) {
   const { key, cell, country } = menu?.venue ?? venue;
@@ -315,14 +317,28 @@ export function CustomerPricesV2({
     }
   }
 
-  const orderedOffers = offerFocus
-    ? [...offers].sort((a, b) => Number(b.id === offerFocus) - Number(a.id === offerFocus))
-    : focus
-      ? [...offers].sort(
-          (a, b) =>
-            Number(menuOfferMatchesFocus(b, focus)) - Number(menuOfferMatchesFocus(a, focus)),
-        )
-      : offers;
+  const mapCategoryIndex = (offer: MenuOffer) =>
+    offer.category && offer.context.kind === "regular" ? mapFocus.indexOf(offer.category) : -1;
+  const offerPriority = (offer: MenuOffer) =>
+    offerFocus === offer.id
+      ? 0
+      : focus && menuOfferMatchesFocus(offer, focus)
+        ? 1
+        : !offerFocus && !focus && mapCategoryIndex(offer) !== -1
+          ? 2
+          : 3;
+  const orderedOffers = [...offers].sort((a, b) => {
+    const priority = offerPriority(a) - offerPriority(b);
+    if (priority) return priority;
+    if (offerPriority(a) !== 2) return 0;
+    return (
+      mapCategoryIndex(a) - mapCategoryIndex(b) ||
+      a.currency.localeCompare(b.currency) ||
+      a.currency_exponent - b.currency_exponent ||
+      a.amount_minor - b.amount_minor ||
+      a.id.localeCompare(b.id)
+    );
+  });
   const compactMenu = orderedOffers.length > 6;
   const observations = new Map(
     rows
@@ -547,11 +563,23 @@ export function CustomerPricesV2({
     const customer = observations.get(offer.id);
     const exactSaved = offerFocus === offer.id;
     const categorySaved = focus !== null && menuOfferMatchesFocus(offer, focus);
+    const mapSelected =
+      !exactSaved &&
+      !categorySaved &&
+      !offerFocus &&
+      !focus &&
+      orderedOffers[0]?.id === offer.id &&
+      mapCategoryIndex(offer) !== -1;
     const summary = (
       <>
         <span class="mobile-menu-v2__name">
           {offer.name}
           <small class="mobile-menu-v2__provenance">Prezzo da menu</small>
+          {mapSelected && (
+            <small class="mobile-menu-v2__saved">
+              {english ? "Selected on the map" : "Drink scelto sulla mappa"}
+            </small>
+          )}
           {exactSaved ? (
             <small class="mobile-menu-v2__saved">Questo drink è nei tuoi preferiti</small>
           ) : (
@@ -618,9 +646,15 @@ export function CustomerPricesV2({
     return (
       <li
         key={offer.id}
-        class={`mobile-menu-v2__offer${compact ? " mobile-menu-v2__offer--compact" : ""}${exactSaved || categorySaved ? " mobile-menu-v2__offer--focused" : ""}`}
+        class={`mobile-menu-v2__offer${compact ? " mobile-menu-v2__offer--compact" : ""}${exactSaved || categorySaved || mapSelected ? " mobile-menu-v2__offer--focused" : ""}`}
         data-testid={
-          exactSaved ? "saved-exact-offer" : categorySaved ? "saved-menu-offer" : undefined
+          exactSaved
+            ? "saved-exact-offer"
+            : categorySaved
+              ? "saved-menu-offer"
+              : mapSelected
+                ? "map-selected-menu-offer"
+                : undefined
         }
       >
         {compact ? (

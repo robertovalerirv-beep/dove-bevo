@@ -280,6 +280,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     savedOfferFocus !== null
       ? offer.id === savedOfferFocus
       : savedFocus !== null && menuOfferMatchesFocus(offer, savedFocus);
+  const matchesMapMenu = (offer: MenuPage["offers"][number]) =>
+    offer.category !== null && offer.context.kind === "regular" && focus.includes(offer.category);
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -374,18 +376,20 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     }
   }
 
-  // Search all bounded menu pages before declaring a saved drink unavailable.
+  // A map/list menu price or saved drink can be on a later bounded menu page.
   useEffect(() => {
+    const lookingForSaved = savedFocus !== null || savedOfferFocus !== null;
+    const lookingForMap = !lookingForSaved && focus.length > 0;
     if (
-      (!savedFocus && !savedOfferFocus) ||
+      (!lookingForSaved && !lookingForMap) ||
       !menu?.next_after ||
       menuMoreBusy ||
       menuFailed ||
-      menu.offers.some(matchesMenu)
+      (lookingForSaved ? menu.offers.some(matchesMenu) : menu.offers.some(matchesMapMenu))
     )
       return;
     void loadMoreMenu();
-  }, [menu, menuMoreBusy, menuFailed, savedFocus?.drink, savedFocus?.hh, savedOfferFocus]);
+  }, [menu, menuMoreBusy, menuFailed, savedFocus?.drink, savedFocus?.hh, savedOfferFocus, focus]);
 
   if (venue === undefined) {
     return (
@@ -429,6 +433,15 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   );
   const savedFound = active.some(matchesSaved);
   const menuFound = menu?.offers.some(matchesMenu) ?? false;
+  const mapMenuFound = menu?.offers.some(matchesMapMenu) ?? false;
+  const menuFirst =
+    (savedOfferFocus !== null && menuFound) ||
+    (savedFocus !== null && !savedFound && menuFound) ||
+    (savedOfferFocus === null &&
+      savedFocus === null &&
+      focus.length > 0 &&
+      !active.some(isFocus) &&
+      mapMenuFound);
   const savedMissing =
     savedFocus &&
     !savedFound &&
@@ -456,6 +469,71 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           active[0]?.[1] ??
           menu?.offers.find((offer) => offer.category)?.category ??
           null);
+  const menuSection =
+    menu && menu.stored_offer_count > 0 && menu.offers.length > 0 ? (
+      <section class="mobile-menu-v2" aria-label="Prezzi dal menu online">
+        <div class="mobile-menu-v2__heading">
+          <h3>Dal menu del locale</h3>
+          <span>{menu.stored_offer_count} prezzi</span>
+        </div>
+        <p class="mobile-menu-v2__disclaimer">
+          Prezzi del drink indicati nel menu, non il totale pagato. Le condizioni e i supplementi
+          sono separati.
+        </p>
+        <CustomerPricesV2
+          key={`${venueKey}:${cell}`}
+          menu={menu}
+          venue={{ key: venueKey, cell, country: "IT" }}
+          focus={savedFocus}
+          offerFocus={savedOfferFocus}
+          mapFocus={focus}
+          hasLegacyPrices={active.length > 0}
+        />
+        {menu.next_after && (
+          <button
+            type="button"
+            class="btn btn--secondary mobile-menu-v2__more"
+            disabled={menuMoreBusy}
+            onClick={() => void loadMoreMenu()}
+          >
+            {menuMoreBusy
+              ? "Caricamento…"
+              : menuFailed
+                ? "Riprova altri drink"
+                : "Vedi altri drink"}
+          </button>
+        )}
+        <div class="mobile-menu-v2__fees">
+          <h4>Coperto e supplementi</h4>
+          {menu.fees.length > 0 && (
+            <ul>
+              {menu.fees.map((fee) => (
+                <li key={fee.id}>
+                  <span>{fee.label}</span>
+                  <strong>{menuFeeAmount(fee)}</strong>
+                  {fee.applicability === "conditional" && fee.condition && (
+                    <small>Solo se: {fee.condition}</small>
+                  )}
+                  {fee.applicability === "unknown" && <small>Applicazione da verificare</small>}
+                  <a href={fee.source.url} target="_blank" rel="noopener noreferrer">
+                    Fonte verificata il {fee.source.checked_on}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+          {menu.fee_coverage.status === "unknown" && (
+            <p>Eventuali costi aggiuntivi non sono stati verificati.</p>
+          )}
+          {menu.fee_coverage.status === "documented_partial" && (
+            <p>Questi supplementi sono documentati; potrebbero essercene altri.</p>
+          )}
+          {menu.fee_coverage.status === "explicit_no_fee" && (
+            <p>Il menu consultato dichiara che non ci sono supplementi.</p>
+          )}
+        </div>
+      </section>
+    ) : null;
   return (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
@@ -475,7 +553,16 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             {/* The hours of a verified bar come before the prices (SPEC 7.2, D-34). */}
             {venue.verified && prices?.o && <HoursList hours={prices.o} />}
           </header>
-          {active.length > 0 && <h3 class="section-title">{it.bar.prices}</h3>}
+          {menuFirst && menuSection}
+          {active.length > 0 && (
+            <h3 class="section-title">
+              {menuFirst
+                ? currentLang() === "en"
+                  ? "Prices reported by customers"
+                  : "Prezzi segnalati dai clienti"
+                : it.bar.prices}
+            </h3>
+          )}
           {pricesFailed && (
             <p class="hint" role="alert">
               {it.bar.pricesError}
@@ -537,71 +624,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               Caricamento menu online…
             </p>
           )}
-          {menu && menu.stored_offer_count > 0 && menu.offers.length > 0 && (
-            <section class="mobile-menu-v2" aria-label="Prezzi dal menu online">
-              <div class="mobile-menu-v2__heading">
-                <h3>Dal menu del locale</h3>
-                <span>{menu.stored_offer_count} prezzi</span>
-              </div>
-              <p class="mobile-menu-v2__disclaimer">
-                Prezzi del drink indicati nel menu, non il totale pagato. Le condizioni e i
-                supplementi sono separati.
-              </p>
-              <CustomerPricesV2
-                key={`${venueKey}:${cell}`}
-                menu={menu}
-                venue={{ key: venueKey, cell, country: "IT" }}
-                focus={savedFocus}
-                offerFocus={savedOfferFocus}
-                hasLegacyPrices={active.length > 0}
-              />
-              {menu.next_after && (
-                <button
-                  type="button"
-                  class="btn btn--secondary mobile-menu-v2__more"
-                  disabled={menuMoreBusy}
-                  onClick={() => void loadMoreMenu()}
-                >
-                  {menuMoreBusy
-                    ? "Caricamento…"
-                    : menuFailed
-                      ? "Riprova altri drink"
-                      : "Vedi altri drink"}
-                </button>
-              )}
-              <div class="mobile-menu-v2__fees">
-                <h4>Coperto e supplementi</h4>
-                {menu.fees.length > 0 && (
-                  <ul>
-                    {menu.fees.map((fee) => (
-                      <li key={fee.id}>
-                        <span>{fee.label}</span>
-                        <strong>{menuFeeAmount(fee)}</strong>
-                        {fee.applicability === "conditional" && fee.condition && (
-                          <small>Solo se: {fee.condition}</small>
-                        )}
-                        {fee.applicability === "unknown" && (
-                          <small>Applicazione da verificare</small>
-                        )}
-                        <a href={fee.source.url} target="_blank" rel="noopener noreferrer">
-                          Fonte verificata il {fee.source.checked_on}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {menu.fee_coverage.status === "unknown" && (
-                  <p>Eventuali costi aggiuntivi non sono stati verificati.</p>
-                )}
-                {menu.fee_coverage.status === "documented_partial" && (
-                  <p>Questi supplementi sono documentati; potrebbero essercene altri.</p>
-                )}
-                {menu.fee_coverage.status === "explicit_no_fee" && (
-                  <p>Il menu consultato dichiara che non ci sono supplementi.</p>
-                )}
-              </div>
-            </section>
-          )}
+          {!menuFirst && menuSection}
           {menu && (menu.stored_offer_count === 0 || menu.offers.length === 0) && (
             <CustomerPricesV2
               key={`${venueKey}:${cell}`}
@@ -609,6 +632,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               venue={{ key: venueKey, cell, country: "IT" }}
               focus={savedFocus}
               offerFocus={savedOfferFocus}
+              mapFocus={focus}
               hasLegacyPrices={active.length > 0}
             />
           )}
@@ -619,6 +643,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               venue={{ key: venueKey, cell, country: "IT" }}
               focus={savedFocus}
               offerFocus={savedOfferFocus}
+              mapFocus={focus}
               hasLegacyPrices={active.length > 0}
             />
           )}

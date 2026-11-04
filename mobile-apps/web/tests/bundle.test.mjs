@@ -178,6 +178,12 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         sample_offers: !options.uncategorized && categories.includes("spritz") ? [offer] : [],
         fee_coverage: { status: "unknown", source: null },
       };
+      const staticVenue = {
+        ...venue,
+        key: "n123",
+        name: "Locale di prova",
+        matching_offer_count: options.staticMenuMixed ? 9 : 1,
+      };
       return route.fulfill({
         json: {
           schema_version: 2,
@@ -189,7 +195,9 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
           venues:
             cell === "u0nd9" &&
             (!categories.length || (!options.uncategorized && categories.includes("spritz")))
-              ? [venue]
+              ? options.staticMenuMixed
+                ? [venue, staticVenue]
+                : [venue]
               : [],
           next_after: null,
           unresolved_venues: 0,
@@ -225,20 +233,68 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
             city: "Milano",
             country: "IT",
           },
-          stored_offer_count: 1,
-          offers: [
-            {
-              id: "offer-1",
-              name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
-              category: options.uncategorized ? null : "spritz",
-              serving: { label: "Calice", ml: null },
-              amount_minor: 750,
-              currency: "EUR",
-              currency_exponent: 2,
-              context: { kind: "regular", condition: null },
-              source,
-            },
-          ],
+          stored_offer_count: options.staticMenuMixed && staticVenue ? 9 : 1,
+          offers:
+            options.staticMenuMixed && staticVenue
+              ? [
+                  {
+                    id: "offer-water-first",
+                    name: "Still water 75cl",
+                    category: "water",
+                    serving: { label: "75 cl", ml: 750 },
+                    amount_minor: 400,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  },
+                  {
+                    id: "offer-spritz-high",
+                    name: "The Dome Spritz",
+                    category: "spritz",
+                    serving: { label: "Calice", ml: null },
+                    amount_minor: 1200,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  },
+                  {
+                    id: "offer-1",
+                    name: "Spritz speciale",
+                    category: "spritz",
+                    serving: { label: "Calice", ml: null },
+                    amount_minor: 750,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  },
+                  ...Array.from({ length: 6 }, (_, index) => ({
+                    id: `offer-water-${index}`,
+                    name: `Acqua ${index}`,
+                    category: "water",
+                    serving: { label: "75 cl", ml: 750 },
+                    amount_minor: 400 + index,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  })),
+                ]
+              : [
+                  {
+                    id: "offer-1",
+                    name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
+                    category: options.uncategorized ? null : "spritz",
+                    serving: { label: "Calice", ml: null },
+                    amount_minor: 750,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  },
+                ],
           next_after: null,
           fees: [],
           fee_coverage: { status: "unknown", source: null },
@@ -275,7 +331,9 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
             : url.pathname.endsWith("u0nd9")
               ? options.densePrices
                 ? [...rows, ["n456", "spritz", 0, 600, "2026-11-01", 0, 0]]
-                : rows
+                : options.noSpritzLegacy
+                  ? rows.filter((row) => !(row[0] === "n123" && row[1] === "spritz"))
+                  : rows
               : [],
           u: [],
           pend: [],
@@ -284,7 +342,12 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         },
       });
     if (/^\/api\/venues\/n123\/prices$/.test(url.pathname))
-      return route.fulfill({ json: { p: rows.filter((r) => r[0] === "n123"), h: [] } });
+      return route.fulfill({
+        json: {
+          p: rows.filter((r) => r[0] === "n123" && !(options.noSpritzLegacy && r[1] === "spritz")),
+          h: [],
+        },
+      });
     if (/^\/assets\/mobile\/|^\/fonts\/|^\/brand\//.test(url.pathname)) {
       const file = path.resolve(client, url.pathname.slice(1));
       assert.ok(file.startsWith(client + path.sep));
@@ -1024,6 +1087,78 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
     assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("the selected map menu price leads venue detail ahead of unrelated customer prices", async () => {
+  for (const width of [390, 320]) {
+    const f = await fixture(
+      { width, height: 844 },
+      {
+        menu: true,
+        staticMenu: true,
+        staticMenuMixed: true,
+        noSpritzLegacy: true,
+        customerEmpty: true,
+      },
+    );
+    try {
+      await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+      await selectOnlyDrink(f.page, "Spritz");
+      await f.page.locator(".map__list").click();
+      const listRow = f.page.getByRole("dialog").getByRole("link", { name: /^Locale di prova/ });
+      await listRow.waitFor();
+      assert.match(await listRow.innerText(), /7,50\s*€[\s\S]*Dal menu del locale/);
+      await listRow.click();
+      await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
+      const selected = f.page.getByTestId("map-selected-menu-offer");
+      await selected.waitFor();
+      assert.match(
+        await selected.innerText(),
+        /Spritz speciale[\s\S]*Prezzo da menu[\s\S]*Drink scelto sulla mappa[\s\S]*7,50\s*€/,
+      );
+      assert.equal(
+        await f.page.evaluate(() => {
+          const selected = document.querySelector('[data-testid="map-selected-menu-offer"]');
+          const customer = document.querySelector(".prices .price");
+          return Boolean(selected && customer && selected.compareDocumentPosition(customer) & 4);
+        }),
+        true,
+        "The selected menu price must precede the unrelated legacy beer price",
+      );
+      assert.match(await f.page.locator(".prices .price").first().innerText(), /Birra media/);
+      await selected.scrollIntoViewIfNeeded();
+      const box = await selected.boundingBox();
+      assert.ok(box && box.x >= -1 && box.x + box.width <= width + 1);
+      assert.deepEqual(f.writes, []);
+      assert.deepEqual(f.errors, []);
+    } finally {
+      await f.close();
+    }
+  }
+});
+
+test("an exact saved offer stays ahead of map drink ordering", async () => {
+  const f = await fixture(
+    { width: 390, height: 844 },
+    { menu: true, staticMenu: true, staticMenuMixed: true, customerEmpty: true },
+  );
+  try {
+    await f.page.goto(
+      "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&offer=offer-water-first",
+    );
+    const saved = f.page.getByTestId("saved-exact-offer");
+    await saved.waitFor();
+    assert.match(await saved.innerText(), /Still water 75cl[\s\S]*4,00\s*€/);
+    assert.equal(
+      await f.page.locator(".mobile-menu-v2__offers > li").first().getAttribute("data-testid"),
+      "saved-exact-offer",
+    );
+    assert.equal(await f.page.getByTestId("map-selected-menu-offer").count(), 0);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
   } finally {
     await f.close();
   }

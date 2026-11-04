@@ -25,27 +25,25 @@ venue, change customer observations, or alter Roberto's website.
   Three separate source fetches had this digest. The root `robots.txt`
   allows the page, and no express extraction prohibition appeared on the
   menu. Only factual names, displayed servings, and EUR amounts are stored.
-- Manifest: `96fa773b5ca1f41c623db9c78d190058baa047609f5823361a87d2baf8bf7ad0.json`.
+- Manifest: `59f8cf3bfdab745819b88a50ad3cc2438cda701129b3de4e44481414512be817.json`.
   The filename is the SHA-256 of its exact UTF-8 bytes.
-- The manifest has **73 priced drink rows**: 10 draft-beer serving options,
-  53 packaged beers, 6 water/soft drinks, and 4 cocktails. Examples directly
-  paired on the owner page include Bohemian Pilsner 25cl Draft €4.00 and
-  40cl Draft €6.00; PiQuad 25cl Draft €4.50 and 40cl Draft €7.00;
-  Lille Lørdag (2021) 44cl Can €7.50; Acqua Liscia cl.75 €2.50;
-  Aperol Spritz €7.50; and Negroni €7.50. The Gin Tonic €7.50 row is
-  conditional on the menu's **con Tanquerai** wording. The manifest
-  preserves every packaged-beer serving label exactly as printed; it does
-  not infer millilitres from centilitres.
+- The manifest has **10 priced drink rows** from the directly printed
+  `BEVANDE` and `COCKTAILS` sections: Acqua Liscia cl.75 €2.50, Acqua
+  Frizzante cl.75 €2.50, Coca Cola In Vetro cl.33 €3.00, Coca Zero in
+  Vetro cl.33 €3.00, Tonica cl.20 €3.00, Lemon cl.20 €3.00, Aperol Spritz
+  €7.50, Campari Spritz €7.50, Gin Tonic €7.50, and Negroni €7.50.
+  The Gin Tonic amount is conditional on the menu's **con Tanquerai**
+  wording. Serving labels are copied as printed; no millilitres are
+  inferred from centilitres.
 - The beer section is an Untappd menu embedded on the venue's own page. It
   displays update dates of **Nov 13** and **Nov 17** without a year. Those
-  dates do not establish recent stock or a 2026 update. An independent
-  reviewer must confirm these beer rows remain suitable before seeding.
-  The owner page does not establish a complete fee policy, so fee coverage
-  remains unknown rather than fee-free.
+  dates cannot establish current stock. **All beer rows have been excluded**
+  from this seed. The owner page does not establish a complete fee policy,
+  so fee coverage remains unknown rather than fee-free.
 
 ## Verification and release boundary
 
-The local strict manifest validator accepted all 73 offers, the filename
+The local strict manifest validator accepted all 10 offers, the filename
 matched its byte hash, and no `(name, serving, amount)` triple was repeated.
 Before import, independently review the current owner menu and the Joker/Jokr
 identity, then run the protected source and public-identity audit from an

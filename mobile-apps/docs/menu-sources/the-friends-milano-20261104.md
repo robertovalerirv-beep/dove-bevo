@@ -1,0 +1,15 @@
+# The Friends, Milano: owner drink menu review
+
+This is a source-only proposal for existing static venue `n4449004403`, `u0nd9`, The Friends, Via Monte Santo 12, Milano (`45.48019, 9.19340`). The live mobile v2 route reported zero stored offers before this proposal. The [owner's beer page](https://www.thefriendspubmilano.it/le-birre/) still links the [four-page drink PDF](https://www.thefriendspubmilano.it/wp-content/doc/thefriendspub-drinks.pdf) and gives the venue as Viale Monte Santo 12; the static catalogue abbreviates the street prefix as Via. The name, number, coordinates and owner website establish the same venue. The OSM identity is [node 4449004403](https://www.openstreetmap.org/node/4449004403).
+
+Checked 2026-11-04. The image-only PDF has no extractable text. Its exact SHA-256 was `53e8eacb72d71f0042a72fc7923d055babf4d3f0fe77aa91a0d19821e41cd8c2` on two separate downloads; `pdfinfo` reports four pages. I rendered and visually inspected pages 2–4, then transcribed one short name, printed serving and EUR price line for every offer. The importer binds that evidence and the PDF hash to source review digest `0487f023187827e0d4e840b4011a6ed0feea03daff88fcd7a22fd11fe11150fa`. An independent reviewer must inspect the same exact PDF before any protected seed; machine validation alone does not prove transcription.
+
+Review candidate manifest: `mobile-apps/data/mobile-menu-v2-seeds/7a8eda88d90bf59549d2ca55ad0686a3e2cf02434226f6daf8d8e24e963e1805.json`. Its filename is its exact full-file SHA-256 after the serving-label correction.
+
+| PDF page | Reviewed items | Included | Treatment |
+| --- | ---: | ---: | --- |
+| 2 | 10 named draught beers plus a rotating beer of the month | 10 | The PDF prints sizes such as `0,50 cl`, an implausible unit/value combination. Evidence retains the literal text, but app serving labels are unknown; no litres or millilitres are inferred. The unnamed rotating beer's EUR 7–8 range is excluded. |
+| 3 | 12 named gin and tonic combinations plus a rotating gin of the month | 12 | Prices include the stated Schweppes base tonic. Optional recommended premium tonic `+€1` is excluded because image-only imports admit regular offers only; the rotating EUR 9–16 range is excluded. |
+| 4 | 14 named bottled beers plus one cider | 15 | Printed `CL` labels retained literally where plausible. `LOST IN MOSAIC` prints `0,44 CL`, an implausible unit/value combination; its app serving label is unknown while `evidence_ref` retains the literal. No inferred millilitres or bottle-size conversion. |
+
+Total: **37 exact regular drink offers**, all from this owner PDF. No food, descriptions, images, reviews, rotating ranges, optional tonic surcharges, customer contributions or fees are imported. The source contains no effective price date. Its cover says 24 years since the pub's 2000 opening and the PDF response's Last-Modified header was 20 March 2025; the owner nevertheless links it today. These are **owner-published menu prices observed on 4 November 2026**, not confirmed current paid prices. Keep the source/date visible and allow customers to update them.

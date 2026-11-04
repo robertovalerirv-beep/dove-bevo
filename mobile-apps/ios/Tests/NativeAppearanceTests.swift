@@ -6,13 +6,14 @@ final class NativeAppearanceTests: XCTestCase {
     @MainActor
     func testBottomBarUsesOneRowOnCommonPhonesAndTwoForNarrowOrLargeText() {
         // The bar reserves four points on each side of its safe area.
-        XCTAssertEqual(NativeBottomBar.columns(for: 320, fontScale: 1), 3)
-        XCTAssertEqual(NativeBottomBar.columns(for: 360, fontScale: 1), 6)
-        XCTAssertEqual(NativeBottomBar.columns(for: 375, fontScale: 1), 6)
-        XCTAssertEqual(NativeBottomBar.columns(for: 390, fontScale: 1), 6)
+        XCTAssertEqual(NativeBottomBar.columns(for: 280, fontScale: 1), 3)
+        XCTAssertEqual(NativeBottomBar.columns(for: 320, fontScale: 1), 5)
+        XCTAssertEqual(NativeBottomBar.columns(for: 360, fontScale: 1), 5)
+        XCTAssertEqual(NativeBottomBar.columns(for: 375, fontScale: 1), 5)
+        XCTAssertEqual(NativeBottomBar.columns(for: 390, fontScale: 1), 5)
         XCTAssertEqual(NativeBottomBar.columns(for: 360, fontScale: 1.5), 3)
         XCTAssertEqual(NativeBottomBar.columns(for: 390, fontScale: 1.5), 3)
-        XCTAssertEqual(NativeBottomBar.columns(for: 640, fontScale: 1.5), 6)
+        XCTAssertEqual(NativeBottomBar.columns(for: 640, fontScale: 1.5), 5)
     }
 
     @MainActor
@@ -30,12 +31,13 @@ final class NativeAppearanceTests: XCTestCase {
         XCTAssertEqual(map.configuration?.background.strokeWidth, 2)
         XCTAssertTrue(map.accessibilityTraits.contains(.selected))
         XCTAssertGreaterThanOrEqual(try contrast(try XCTUnwrap(map.configuration?.baseForegroundColor), try XCTUnwrap(map.configuration?.baseBackgroundColor)), 4.5)
-        XCTAssertFalse(bar.button(for: .save).isEnabled)
-        XCTAssertTrue(bar.button(for: .save).accessibilityTraits.contains(.notEnabled))
+        XCTAssertEqual(bar.buttons.count, 5)
+        XCTAssertTrue(bar.button(for: .recommendations).isEnabled)
+        XCTAssertFalse(bar.button(for: .recommendations).accessibilityTraits.contains(.notEnabled))
         bar.update(destination: 1, venueActionsEnabled: true)
         XCTAssertFalse(map.isSelected)
         XCTAssertTrue(bar.button(for: .favourites).isSelected)
-        XCTAssertTrue(bar.button(for: .save).isEnabled)
+        XCTAssertTrue(bar.button(for: .recommendations).isEnabled)
         XCTAssertFalse(map.accessibilityTraits.contains(.selected))
         XCTAssertTrue(bar.button(for: .favourites).accessibilityTraits.contains(.selected))
         for button in bar.buttons where button.isEnabled {

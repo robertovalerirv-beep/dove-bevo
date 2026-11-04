@@ -5,7 +5,7 @@ import XCTest
 
 final class BottomNavigationControllerTests: XCTestCase {
     @MainActor
-    func testSixActualBottomControlsFitNarrowWidthAndAccessibilityTextWithoutBlankDestinations() throws {
+    func testFiveActualBottomControlsFitNarrowWidthAndAccessibilityTextWithoutBlankDestinations() throws {
         let traits = UITraitCollection(preferredContentSizeCategory: .accessibilityExtraExtraExtraLarge)
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first {
             $0.activationState == .foregroundActive
@@ -67,12 +67,13 @@ final class BottomNavigationControllerTests: XCTestCase {
             XCTAssertTrue(bar.window === window, "Measure the actual mounted native controls")
             XCTAssertEqual(tabs.traitCollection.preferredContentSizeCategory, .accessibilityExtraExtraExtraLarge)
             XCTAssertEqual(bar.bounds.width, 320, accuracy: 0.5)
-            XCTAssertEqual(bar.buttons.map { $0.configuration?.title }, ["Home", "Cerca", "Mappa", "Preferiti", "Salva", "Consigliati"])
-            XCTAssertEqual(bar.buttons.compactMap(\.accessibilityLabel), ["Home", "Cerca", "Mappa", "Preferiti", "Salva nei preferiti", "Drink consigliati"])
+            XCTAssertEqual(bar.buttons.map { $0.configuration?.title }, ["Home", "Cerca", "Mappa", "Preferiti", "Consigliati"])
+            XCTAssertEqual(bar.buttons.compactMap(\.accessibilityLabel), ["Home", "Cerca", "Mappa", "Preferiti", "Consigliati in questa zona"])
             XCTAssertTrue(tabs.children.contains { $0 === tabs.mapNavigation })
             XCTAssertTrue(tabs.children.contains { $0 === tabs.favouritesNavigation })
             XCTAssertTrue(tabs.children.contains { $0 === tabs.discoveryNavigation })
-            XCTAssertEqual(tabs.children.count, 3, "Home/Discover remains retained; venue actions must not create empty destinations")
+            XCTAssertTrue(tabs.children.contains { $0 === tabs.areaVotesNavigation })
+            XCTAssertEqual(tabs.children.count, 4, "Map, favourites, Discover and area recommendations remain retained")
             let topMore = tabs.topMoreButton.convert(tabs.topMoreButton.bounds, to: tabs.view)
             let mapContent = tabs.mapNavigation.view.convert(tabs.mapNavigation.view.bounds, to: tabs.view)
             XCTAssertGreaterThanOrEqual(topMore.width, 48)
@@ -91,7 +92,7 @@ final class BottomNavigationControllerTests: XCTestCase {
             let controls = descendants(bar).compactMap { $0 as? UIControl }
             let frames = controls.map { $0.convert($0.bounds, to: bar) }
             let hierarchy = descendants(bar).map { "\(type(of: $0)): \($0.frame)" }.joined(separator: "\n")
-            XCTAssertEqual(controls.count, 6, "Measure actual UIKit controls, not a duplicated geometry formula: \(hierarchy)")
+            XCTAssertEqual(controls.count, 5, "Measure actual UIKit controls, not a duplicated geometry formula: \(hierarchy)")
             for (index, frame) in frames.enumerated() {
                 XCTAssertGreaterThanOrEqual(frame.width, 48)
                 XCTAssertGreaterThanOrEqual(frame.height, 48)
@@ -120,12 +121,12 @@ final class BottomNavigationControllerTests: XCTestCase {
             }
             XCTAssertTrue(bar.button(for: .map).isSelected)
             XCTAssertTrue(bar.button(for: .map).accessibilityTraits.contains(.selected))
-            XCTAssertFalse(bar.button(for: .save).isEnabled)
-            XCTAssertTrue(bar.button(for: .save).accessibilityTraits.contains(.notEnabled))
-            XCTAssertFalse(bar.button(for: .recommendations).isEnabled)
-            XCTAssertTrue(bar.button(for: .recommendations).accessibilityTraits.contains(.notEnabled))
-            bar.button(for: .save).sendActions(for: .touchUpInside)
+            XCTAssertTrue(bar.button(for: .recommendations).isEnabled)
+            XCTAssertFalse(bar.buttons.contains { $0.accessibilityIdentifier == "browser.saveVenue" })
             bar.button(for: .recommendations).sendActions(for: .touchUpInside)
+            XCTAssertEqual(tabs.selectedIndex, 3)
+            XCTAssertTrue(bar.button(for: .recommendations).isSelected)
+            bar.button(for: .map).sendActions(for: .touchUpInside)
             XCTAssertEqual(tabs.selectedIndex, 0)
             XCTAssertEqual(tabs.mapNavigation.viewControllers.count, 1)
             XCTAssertNil(browser.presentedViewController)
@@ -161,7 +162,7 @@ final class BottomNavigationControllerTests: XCTestCase {
                 XCTAssertEqual(bar.bounds.width, width, accuracy: 0.5)
                 let compactFrames = bar.buttons.map { $0.convert($0.bounds, to: bar) }
                 XCTAssertEqual(Set(compactFrames.map { Int($0.minY.rounded()) }).count, 1,
-                               "All six native actions fit one row at \(width) points")
+                               "All five native destinations fit one row at \(width) points")
                 for button in bar.buttons {
                     button.layoutIfNeeded()
                     let frame = button.convert(button.bounds, to: bar)
@@ -223,8 +224,8 @@ final class BottomNavigationControllerTests: XCTestCase {
         XCTAssertFalse(bar.button(for: .search).isSelected)
         XCTAssertTrue(tabs.mapNavigation.topViewController === browser)
         XCTAssertTrue(tabs.discoveryNavigation.view.isHidden)
-        XCTAssertFalse(bar.button(for: .save).isEnabled)
-        XCTAssertFalse(bar.button(for: .recommendations).isEnabled)
+        XCTAssertTrue(bar.button(for: .recommendations).isEnabled)
+        XCTAssertFalse(bar.buttons.contains { $0.accessibilityIdentifier == "browser.saveVenue" })
         XCTAssertTrue(browser.view === originalView)
         XCTAssertEqual(requests.last, MobileEntry.homeURL, "Search loads only the validated app map when no document is ready")
         tabs.selectedIndex = 1

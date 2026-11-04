@@ -41,11 +41,29 @@ after(async () => {
   await browser?.close();
 });
 
-async function fixture({ width = 393, failed = false, prefill = true, placeNames, catalog } = {}) {
+async function fixture({
+  width = 393,
+  failed = false,
+  prefill = true,
+  placeNames,
+  catalog,
+  holdPlaces = false,
+  placesUnavailable = false,
+} = {}) {
   const context = await browser.newContext({ viewport: { width, height: 690 } });
   const page = await context.newPage();
   const writes = [],
     errors = [];
+  let releasePlaces = () => {};
+  const placesGate = holdPlaces
+    ? new Promise((resolve) => {
+        releasePlaces = resolve;
+      })
+    : null;
+  let catalogReady;
+  const catalogResponded = new Promise((resolve) => {
+    catalogReady = resolve;
+  });
   page.on("pageerror", (error) => errors.push(String(error)));
   const names = placeNames ?? [
     "Milano",
@@ -79,12 +97,16 @@ async function fixture({ width = 393, failed = false, prefill = true, placeNames
           })
         : route.abort();
     }
-    if (pathname === "/data/fixture/places.json")
-      return route.fulfill({
-        json: names.map((name, index) => [index + 1, name, 45.46, 9.19, 10]),
-      });
+    if (pathname === "/data/fixture/places.json") {
+      if (placesUnavailable) return route.fulfill({ status: 503, json: {} });
+      const respond = () =>
+        route.fulfill({ json: names.map((name, index) => [index + 1, name, 45.46, 9.19, 10]) });
+      return placesGate ? placesGate.then(respond) : respond();
+    }
     if (pathname === "/mobile-data/catalog.json")
-      return catalog ? route.fulfill({ json: catalog }) : route.fulfill({ status: 503, json: {} });
+      return (
+        catalog ? route.fulfill({ json: catalog }) : route.fulfill({ status: 503, json: {} })
+      ).then(catalogReady);
     if (pathname.startsWith("/data/fixture/s/"))
       return route.fulfill({ status: failed ? 503 : 200, json: [] });
     if (pathname.startsWith("/api/")) return route.fulfill({ json: [] });
@@ -96,7 +118,18 @@ async function fixture({ width = 393, failed = false, prefill = true, placeNames
     await input.fill("Milano");
     await page.getByRole("option").nth(7).waitFor();
   }
-  return { page, input, writes, errors, close: () => context.close() };
+  return {
+    page,
+    input,
+    writes,
+    errors,
+    catalogResponded,
+    releasePlaces,
+    close: () => {
+      releasePlaces();
+      return context.close();
+    },
+  };
 }
 
 test("empty search suggests real major Italian cities before European cities", async () => {
@@ -151,8 +184,19 @@ test("empty search suggests real major Italian cities before European cities", a
       },
     ],
   };
-  const f = await fixture({ prefill: false, placeNames, catalog });
+  const f = await fixture({ prefill: false, placeNames, catalog, holdPlaces: true });
   try {
+    await f.catalogResponded;
+    // Let the European catalog render while the Italian places response remains held.
+    await f.page.waitForTimeout(100);
+    await f.page.getByText("Caricamento città italiane…").waitFor();
+    assert.equal(await f.page.getByText("Città europee").count(), 0);
+    await f.input.fill("Paris");
+    await f.page.getByRole("option", { name: /Paris/ }).first().waitFor();
+    assert.equal(await f.page.getByText("Caricamento città italiane…").count(), 0);
+    await f.input.fill("");
+    await f.page.getByText("Caricamento città italiane…").waitFor();
+    f.releasePlaces();
     const sections = f.page.locator(".mobile-search__results > h3.section-title + ul.rows");
     await sections.nth(1).getByText("London").waitFor();
     assert.deepEqual(await sections.nth(0).locator(".row__name").allTextContents(), [
@@ -176,6 +220,42 @@ test("empty search suggests real major Italian cities before European cities", a
     await f.input.fill("Paris");
     assert.equal(await sections.count(), 0, "Typing switches to the broad search results");
     await f.page.getByRole("option", { name: /Paris/ }).first().waitFor();
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("European cities remain available if the Italian places file fails", async () => {
+  const catalog = {
+    schema_version: 1,
+    version: "fixture-europe-v1",
+    venues: [
+      {
+        key: "n1001",
+        name: "Fixture London pub",
+        kind: 1,
+        lat: 51.5074,
+        lon: -0.1278,
+        cell: "gcpvj",
+        city: "London",
+        country: "GB",
+        currency: "GBP",
+        google: {
+          url: "https://www.google.com/maps?cid=1001",
+          review_count: 101,
+          checked_on: "2026-11-01",
+        },
+      },
+    ],
+  };
+  const f = await fixture({ prefill: false, placesUnavailable: true, catalog });
+  try {
+    await f.page.getByRole("alert").waitFor();
+    await f.page.getByText("Città europee").waitFor();
+    assert.equal(await f.page.getByText("Caricamento città italiane…").count(), 0);
+    assert.equal(await f.page.getByText("London", { exact: true }).count(), 1);
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {

@@ -1407,16 +1407,37 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     assert.ok(await menu.locator('a[href="https://official.fixture.test/menu"]').count());
     await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
     await openDrinks(f.page);
+    const spritzRequests = () =>
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.join(",") === "spritz",
+      );
+    const spritzResponse = spritzRequests().length
+      ? null
+      : f.page.waitForResponse(
+          (response) => {
+            const url = new URL(response.url());
+            return (
+              url.pathname === "/api/mobile/v2/menu/cells/u0nd9" &&
+              url.searchParams.get("categories") === "spritz"
+            );
+          },
+          { timeout: 10000 },
+        );
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    if (spritzResponse) assert.equal((await spritzResponse).status(), 200);
     await f.page.waitForFunction(
       () =>
-        !document
+        document
           .querySelector("section.map")
           ?.getAttribute("data-prices-shown")
-          ?.includes("1 VOCE"),
+          ?.includes("5,50"),
       { timeout: 30000 },
     );
-    assert.ok(options.cellRequests.some((request) => request.categories.join(",") === "spritz"));
+    assert.doesNotMatch(
+      await f.page.locator("section.map").getAttribute("data-prices-shown"),
+      /1 VOCE|7,50/,
+    );
+    assert.ok(spritzRequests().length >= 1);
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
   } finally {

@@ -26,7 +26,7 @@ final class VenueHeadingReader {
               if (dialogs.length !== 1) return null;
               const dialog = dialogs[0];
               if (!dialog.matches('dialog.sheet.sheet--bare[open]')) return null;
-              const headings = dialog.querySelectorAll(':scope > .sheet__body > .scontrino > .scontrino__paper > h2.scontrino__name');
+              const headings = dialog.querySelectorAll(':scope > .sheet__body > .scontrino > .scontrino__paper > h2.scontrino__name, :scope > .sheet__body > .scontrino > .scontrino__paper > header.mobile-venue__identity > h2.scontrino__name');
               if (headings.length !== 1) return null;
               const heading = headings[0];
               for (let node = heading; node; node = node.parentElement) {

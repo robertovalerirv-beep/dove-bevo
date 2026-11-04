@@ -25,7 +25,7 @@ test("one venue GET validates exact identity, count and own selected state", asy
   const requests = [];
   globalThis.fetch = async (url, options) => {
     requests.push({ url, options });
-    return new Response(
+    return new globalThis.Response(
       JSON.stringify({
         schema_version: 1,
         venue: { key, cell, name: "Locale" },
@@ -55,7 +55,7 @@ test("toggle request is one exact POST and rejects a mismatched authority respon
   const requests = [];
   globalThis.fetch = async (url, options) => {
     requests.push({ url, options });
-    return new Response(
+    return new globalThis.Response(
       JSON.stringify({
         target: { kind: "legacy", drink: "spritz", band: "normal" },
         count: 2,

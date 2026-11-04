@@ -230,8 +230,8 @@ export function transformMap(source, styleURLExpression) {
     'paint: { "circle-radius": 24, "circle-opacity": 0 },',
     'paint: { "circle-radius": id === "price-hit" ? 32 : 24, "circle-opacity": 0, "circle-translate": id === "price-hit" ? [0, -25] : [0, 0], "circle-translate-anchor": "viewport" },',
   );
-  // Price symbols can collide at city zoom. The same selected-filter source also has a
-  // non-colliding visible dot, so a priced venue never vanishes as the map zooms out.
+  // Show verified price pins at city zoom. The same selected-filter source also has a
+  // non-colliding visible dot when MapLibre hides a pin to avoid label collisions.
   result = once(
     result,
     '    map.addLayer({\n      id: "venue-price",',
@@ -252,7 +252,7 @@ export function transformMap(source, styleURLExpression) {
   result = once(
     result,
     '      id: "venue-price",\n      type: "symbol",',
-    '      id: "venue-price",\n      type: "symbol",\n      minzoom: 14,',
+    '      id: "venue-price",\n      type: "symbol",\n      minzoom: 12,',
   );
   // A dense price label may be hidden by MapLibre collision handling. Keep the
   // last explicitly viewed price in its selected cork after its sheet closes.

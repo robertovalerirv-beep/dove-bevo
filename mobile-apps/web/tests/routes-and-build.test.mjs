@@ -213,7 +213,7 @@ test("compile-time seams preserve original source and reject upstream drift", ()
   );
   assert.match(
     transformMap(map, '"/assets/mobile/test.json"'),
-    /id: "venue-price"[\s\S]*?minzoom: 14/,
+    /id: "venue-price"[\s\S]*?minzoom: 12/,
   );
   assert.match(transformApp(app), /useState\(true\)/);
   assert.match(transformApp(app), /mapAttempt/);

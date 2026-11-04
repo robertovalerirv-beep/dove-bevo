@@ -170,17 +170,24 @@ final class RecommendationTests: XCTestCase {
         let transport = RecordingRecommendationTransport()
         let client = RecommendationClient(voter: InvalidIdentity(), transport: transport)
         let venue = SavedVenue(url: URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!, label: "Bar")
-        let invalidIdentity = expectation(description: "identity rejected")
-        let invalidDrink = expectation(description: "drink rejected")
+        var identityResult: Result<RecommendationSnapshot, RecommendationError>?
+        var drinkResult: Result<RecommendationSnapshot, RecommendationError>?
         _ = client.load(venue: venue) { result in
-            if case .failure(.identityUnavailable) = result {} else { XCTFail("Malformed identity accepted") }
-            invalidIdentity.fulfill()
+            XCTAssertTrue(Thread.isMainThread)
+            identityResult = result
         }
         _ = client.set(venue: venue, drink: "unknown", recommended: true) { result in
-            if case .failure(.invalidContext) = result {} else { XCTFail("Unknown drink accepted") }
-            invalidDrink.fulfill()
+            XCTAssertTrue(Thread.isMainThread)
+            drinkResult = result
         }
-        wait(for: [invalidIdentity, invalidDrink], timeout: 3)
+        XCTAssertTrue(transport.requests.isEmpty)
+        // Validation failures are queued on the main queue. A trailing item
+        // proves both callbacks ran without making simulator timing the test.
+        let callbacksDrained = expectation(description: "validation callbacks drained")
+        DispatchQueue.main.async { callbacksDrained.fulfill() }
+        wait(for: [callbacksDrained], timeout: 10)
+        if case .some(.failure(.identityUnavailable)) = identityResult {} else { XCTFail("Malformed identity accepted") }
+        if case .some(.failure(.invalidContext)) = drinkResult {} else { XCTFail("Unknown drink accepted") }
         XCTAssertTrue(transport.requests.isEmpty)
     }
 

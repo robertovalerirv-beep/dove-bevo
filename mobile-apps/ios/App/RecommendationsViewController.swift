@@ -32,7 +32,7 @@ final class RecommendationsViewController: UITableViewController {
     init(venue: SavedVenue, client: RecommendationServing = RecommendationClient(), activityCheck: (() -> Bool)? = nil,
          focusedCategory: String? = nil) {
         self.venue = venue
-        self.focusedCategory = DrinkCategory.all.first { $0.code == focusedCategory }
+        self.focusedCategory = focusedCategory.flatMap { code in DrinkCategory.all.first { $0.code == code } }
         self.client = client
         self.activityCheck = activityCheck
         super.init(style: .insetGrouped)

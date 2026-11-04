@@ -1,8 +1,15 @@
-/** Apps-only public counts for exact menu items or a legacy category and price band. */
+/** Apps-only public counts for exact menu items and venue drink/serving variants. */
 export type ExactDrinkTarget =
   | { kind: "offer"; id: string }
   | { kind: "customer"; id: string }
-  | { kind: "legacy"; drink: string; band: "normal" | "happy_hour" };
+  | { kind: "legacy"; drink: string; band: "normal" | "happy_hour" }
+  | {
+      kind: "europe";
+      drink: string;
+      band: "normal" | "happy_hour";
+      currency: "EUR" | "GBP";
+      serving: { unit: "drink" | "glass" | "ml"; ml?: number };
+    };
 
 export interface ExactDrinkVote {
   target: ExactDrinkTarget;

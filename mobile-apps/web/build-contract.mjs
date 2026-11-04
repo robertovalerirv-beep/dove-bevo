@@ -291,7 +291,9 @@ export function transformMap(source, styleURLExpression) {
     `{
     this.map.on("click", (event) => {
       const hits = this.map.queryRenderedFeatures(event.point, { layers: ["venue-price", "price-hit", "priced-dot", "venue-hit"] });
-      const target = hits.find((hit) => hit.layer.id === "venue-price") ?? hits.find((hit) => hit.layer.id === "priced-dot") ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
+      const priceLabel = hits.find((hit) => hit.layer.id === "venue-price");
+      const pricedDot = hits.find((hit) => hit.layer.id === "priced-dot");
+      const target = (this.map.getZoom() < 14 ? pricedDot ?? priceLabel : priceLabel ?? pricedDot) ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
       if (target?.properties) listener(String(target.properties.key), String(target.properties.cell));
     });
   }` +

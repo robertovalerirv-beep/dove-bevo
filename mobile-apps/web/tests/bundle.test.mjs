@@ -61,6 +61,17 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         return route.fulfill({ json: { tiles: [] } });
       return route.abort();
     }
+    if (url.pathname.startsWith("/api/mobile/v2/drink-votes/venues/")) {
+      const key = url.pathname.slice("/api/mobile/v2/drink-votes/venues/".length);
+      options.voteGets?.push(key);
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          venue: { key, cell: url.searchParams.get("cell"), name: "Locale di prova" },
+          items: options.voteItems ?? [],
+        },
+      });
+    }
     if (url.pathname === "/mobile/" || url.pathname === "/mobile/index.html") {
       const html = readFileSync(path.join(client, "mobile/index.html"), "utf8").replaceAll(
         "<script ",
@@ -559,6 +570,7 @@ test("production mobile entry renders drink dropdown and preserves venue route a
     await name.waitFor();
     assert.equal(await name.textContent(), "Locale di prova");
     assert.match(await f.page.locator(".mobile-price--featured").innerText(), /Spritz[\s\S]*5,50/);
+    await f.page.locator(".mobile-price--featured .mobile-drink-vote").getByText("0").waitFor();
     assert.match(await f.page.locator(".prices").innerText(), /Birra media[\s\S]*5,00/);
     const photo = f.page.locator(".mobile-price--featured img");
     assert.equal(await photo.evaluate((img) => img.complete && img.naturalWidth > 0), true);

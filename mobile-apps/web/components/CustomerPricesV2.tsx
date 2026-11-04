@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "preact/hooks";
 import { formatDate } from "@site/app/lib/format";
 import { currentLang } from "@site/app/i18n/lang";
 import { drinkImage } from "@mobile/drink-images";
+import { DrinkVoteButton } from "./DrinkVotes";
 import {
   CustomerPriceHttpError,
   customerCurrency,
@@ -19,8 +20,6 @@ import {
   mobileCustomerSaveURL,
   mobileOfferIdPattern,
   mobileOfferSaveURL,
-  mobileRecommendURL,
-  validCategory,
   type DrinkFocus,
 } from "../routes";
 
@@ -39,12 +38,10 @@ function nativeCapabilities() {
   const native = window as Window & {
     DoveBevoNativeOfferSave?: boolean;
     DoveBevoNativeCustomerSave?: boolean;
-    DoveBevoNativeRecommend?: boolean;
   };
   return {
     offer: native.DoveBevoNativeOfferSave === true,
     customer: native.DoveBevoNativeCustomerSave === true,
-    recommend: native.DoveBevoNativeRecommend === true,
   };
 }
 
@@ -103,7 +100,6 @@ export function CustomerPricesV2({
   const [rows, setRows] = useState<CustomerRow[]>([]);
   const [nativeOfferSave, setNativeOfferSave] = useState(nativeOfferSaveEnabled);
   const [nativeCustomerSave, setNativeCustomerSave] = useState(false);
-  const [nativeRecommend, setNativeRecommend] = useState(false);
   const [nextAfter, setNextAfter] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [moreBusy, setMoreBusy] = useState(false);
@@ -131,7 +127,6 @@ export function CustomerPricesV2({
       const capabilities = nativeCapabilities();
       setNativeOfferSave(capabilities.offer);
       setNativeCustomerSave(capabilities.customer);
-      setNativeRecommend(capabilities.recommend);
     };
     window.addEventListener("dovebevo-native-ready", updateNative);
     updateNative();
@@ -568,12 +563,19 @@ export function CustomerPricesV2({
   );
 
   function observation(row: CustomerRow) {
+    const voteTarget =
+      row.kind === "menu_offer" && row.offer_id && mobileOfferIdPattern.test(row.offer_id)
+        ? ({ kind: "offer", id: row.offer_id } as const)
+        : row.kind === "new_drink" && mobileCustomerItemKeyPattern.test(row.item_key)
+          ? ({ kind: "customer", id: row.item_key } as const)
+          : null;
+    const voteVisible = voteTarget !== null && !offers.some((offer) => offer.id === row.offer_id);
     return (
       <div class="mobile-customer-v2__observation">
         <span>Prezzo segnalato da un cliente</span>
         <strong>{menuMoney(row.amount_minor, row.currency, row.currency_exponent)}</strong>
         <small>Pagato il {customerDate(row)} · prezzo del drink, non totale del conto</small>
-        {(nativeCustomerSave || nativeRecommend) && (
+        {(nativeCustomerSave || voteVisible) && (
           <div class="mobile-menu-v2__quick-actions mobile-customer-v2__quick-actions">
             {nativeCustomerSave && mobileCustomerItemKeyPattern.test(row.item_key) && (
               <a
@@ -584,24 +586,12 @@ export function CustomerPricesV2({
                 Salva prezzo segnalato
               </a>
             )}
-            {nativeRecommend &&
-              (validCategory(row.category) ? (
-                <a
-                  href={mobileRecommendURL(key, cell, row.category)}
-                  class="btn btn--secondary mobile-menu-v2__recommend"
-                  aria-label={`Consiglia ${row.name} da ${menu?.venue.name ?? key}`}
-                >
-                  Consiglia
-                </a>
-              ) : (
-                <span
-                  class="btn btn--secondary mobile-menu-v2__recommend"
-                  aria-disabled="true"
-                  title="Categoria del drink non disponibile"
-                >
-                  Consiglia · categoria assente
-                </span>
-              ))}
+            {voteVisible && (
+              <DrinkVoteButton
+                target={voteTarget}
+                name={`${row.name} da ${menu?.venue.name ?? key}`}
+              />
+            )}
           </div>
         )}
         <button
@@ -661,38 +651,25 @@ export function CustomerPricesV2({
         </span>
       </>
     );
-    const quickActions =
-      nativeOfferSave || nativeRecommend ? (
-        <div class="mobile-menu-v2__quick-actions">
-          {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
-            <a
-              href={mobileOfferSaveURL(key, cell, offer.id)}
-              class="btn btn--secondary mobile-menu-v2__save"
-              aria-label={`Salva ${offer.name} da ${menu?.venue.name ?? key} nei preferiti`}
-            >
-              Salva questo drink
-            </a>
-          )}
-          {nativeRecommend &&
-            (validCategory(offer.category) ? (
-              <a
-                href={mobileRecommendURL(key, cell, offer.category)}
-                class="btn btn--secondary mobile-menu-v2__recommend"
-                aria-label={`Consiglia ${offer.name} da ${menu?.venue.name ?? key}`}
-              >
-                Consiglia
-              </a>
-            ) : (
-              <span
-                class="btn btn--secondary mobile-menu-v2__recommend"
-                aria-disabled="true"
-                title="Categoria del drink non disponibile"
-              >
-                Consiglia · categoria assente
-              </span>
-            ))}
-        </div>
-      ) : null;
+    const quickActions = (
+      <div class="mobile-menu-v2__quick-actions">
+        {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
+          <a
+            href={mobileOfferSaveURL(key, cell, offer.id)}
+            class="btn btn--secondary mobile-menu-v2__save"
+            aria-label={`Salva ${offer.name} da ${menu?.venue.name ?? key} nei preferiti`}
+          >
+            Salva questo drink
+          </a>
+        )}
+        {mobileOfferIdPattern.test(offer.id) && (
+          <DrinkVoteButton
+            target={{ kind: "offer", id: offer.id }}
+            name={`${offer.name} da ${menu?.venue.name ?? key}`}
+          />
+        )}
+      </div>
+    );
     const actions = (
       <>
         <a

@@ -83,9 +83,32 @@ async function fixture(options = {}) {
         },
       });
     }
+    if (pathname.startsWith("/api/mobile/v2/drink-votes/venues/") && request.method() === "POST") {
+      const body = request.postDataJSON();
+      options.votePosts?.push(body);
+      return route.fulfill({
+        json: {
+          target: body.target,
+          count: body.recommended ? 4 : 3,
+          recommended: body.recommended,
+        },
+      });
+    }
     if (request.method() !== "GET") {
       writes.push(request.method());
       return route.abort();
+    }
+    if (pathname.startsWith("/api/mobile/v2/drink-votes/venues/")) {
+      const key = pathname.slice("/api/mobile/v2/drink-votes/venues/".length);
+      options.voteGets?.push(key);
+      if (options.voteUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          venue: { key, cell: "u0nd9", name: "Locale di prova" },
+          items: options.voteItems ?? [],
+        },
+      });
     }
     if (pathname === "/" || pathname === "/mobile/")
       return route.fulfill({
@@ -785,30 +808,49 @@ test("exact named favorite reloads its menu page and native save link uses only 
   }
 });
 
-test("new native capabilities expose exact legacy and customer saves beside category recommendations", async () => {
-  const f = await fixture({ customerNewDrink: true });
+test("exact private saves and one public vote read identify each visible drink", async () => {
+  const voteGets = [];
+  const f = await fixture({
+    customerNewDrink: true,
+    voteGets,
+    voteItems: [
+      { target: { kind: "legacy", drink: "spritz", band: "normal" }, count: 3, recommended: true },
+      { target: { kind: "offer", id: "first" }, count: 5, recommended: false },
+      { target: { kind: "customer", id: `c${"b".repeat(64)}` }, count: 2, recommended: false },
+    ],
+  });
   try {
     await f.page.evaluate(() => window.sheetFixture.bar());
     const legacy = f.page.locator(".mobile-price--featured");
     await legacy.waitFor();
-    assert.equal(await legacy.locator(".mobile-menu-v2__quick-actions").count(), 0);
-    assert.equal(await f.page.locator(".mobile-customer-v2__quick-actions").count(), 0);
+    assert.equal(await legacy.locator(".mobile-menu-v2__save").count(), 0);
+    assert.equal(
+      await f.page.locator(".mobile-customer-v2__quick-actions .mobile-menu-v2__save").count(),
+      0,
+    );
     await f.page.evaluate(() => {
       window.DoveBevoNativeDrinkSave = true;
       window.DoveBevoNativeCustomerSave = true;
-      window.DoveBevoNativeRecommend = true;
       window.dispatchEvent(new window.Event("dovebevo-native-ready"));
     });
     const legacyActions = legacy.locator(".mobile-price__quick-actions");
     await legacyActions.waitFor();
+    await legacyActions.locator(".mobile-drink-vote[data-voted='true']").waitFor();
     assert.equal(
       await legacyActions.locator(".mobile-menu-v2__save").getAttribute("href"),
       "/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_drink=spritz&band=normal",
     );
     assert.equal(
-      await legacyActions.locator(".mobile-menu-v2__recommend").getAttribute("href"),
-      "/mobile/?path=%2Fbar%2Fn123&c=u0nd9&recommend_drink=spritz",
+      await legacyActions.locator(".mobile-drink-vote").getAttribute("aria-pressed"),
+      "true",
     );
+    assert.match(await legacyActions.locator(".mobile-drink-vote").innerText(), /3/);
+    const offer = f.page
+      .locator(".mobile-menu-v2__offer")
+      .filter({ hasText: "Spritz <script>" })
+      .first();
+    await offer.locator(".mobile-drink-vote").getByText("5").waitFor();
+    assert.match(await offer.locator(".mobile-drink-vote").innerText(), /5/);
     const customer = f.page.locator(".mobile-customer-v2__observation").first();
     await customer.locator(".mobile-menu-v2__save").waitFor();
     assert.equal(
@@ -816,13 +858,16 @@ test("new native capabilities expose exact legacy and customer saves beside cate
       `/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_customer=o${"a".repeat(64)}`,
     );
     const additional = f.page.locator(".mobile-customer-v2__additional > li");
+    await additional.locator(".mobile-drink-vote").getByText("2").waitFor();
     assert.equal(
       await additional.locator(".mobile-menu-v2__save").getAttribute("href"),
       `/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_customer=c${"b".repeat(64)}`,
     );
+    assert.match(await additional.locator(".mobile-drink-vote").innerText(), /2/);
+    assert.deepEqual(voteGets, ["n123"]);
     for (const width of [320, 390]) {
       await f.page.setViewportSize({ width, height: 700 });
-      for (const action of await legacyActions.locator("a").all())
+      for (const action of await legacyActions.locator("a, button").all())
         assert.ok((await action.boundingBox())?.height >= 44);
       const overflow = await f.page.locator(".sheet__body").evaluate((element) => ({
         width: element.clientWidth,
@@ -838,24 +883,45 @@ test("new native capabilities expose exact legacy and customer saves beside cate
   }
 });
 
-test("uncategorized named menu drink can be saved without pretending to carry a category vote", async () => {
+test("uncategorized named menu drink has its own exact thumb and private save", async () => {
   const f = await fixture({ menuCategory: null, customerEmpty: true });
   try {
     await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
     await f.page.evaluate(() => {
       window.DoveBevoNativeOfferSave = true;
-      window.DoveBevoNativeRecommend = true;
       window.dispatchEvent(new window.Event("dovebevo-native-ready"));
     });
     const offer = f.page
       .locator(".mobile-menu-v2__offer")
       .filter({ hasText: "Cocktail della casa" });
     await offer.locator(".mobile-menu-v2__save").waitFor();
-    assert.equal(
-      await offer.locator(".mobile-menu-v2__recommend[aria-disabled='true']").count(),
-      1,
-    );
-    assert.equal(await offer.locator("a.mobile-menu-v2__recommend").count(), 0);
+    assert.equal(await offer.locator(".mobile-drink-vote").count(), 1);
+    assert.equal(await offer.locator(".mobile-drink-vote").getAttribute("aria-pressed"), "false");
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a thumb tap updates only its exact legacy drink in an intercepted local fixture", async () => {
+  const votePosts = [];
+  const f = await fixture({
+    votePosts,
+    voteItems: [
+      { target: { kind: "legacy", drink: "spritz", band: "normal" }, count: 3, recommended: false },
+    ],
+  });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const thumb = f.page.locator(".mobile-price--featured .mobile-drink-vote");
+    await thumb.getByText("3").waitFor();
+    assert.equal(await thumb.getAttribute("aria-pressed"), "false");
+    await thumb.click();
+    await thumb.getByText("4").waitFor();
+    assert.equal(await thumb.getAttribute("aria-pressed"), "true");
+    assert.deepEqual(votePosts, [
+      { target: { kind: "legacy", drink: "spritz", band: "normal" }, recommended: true },
+    ]);
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

@@ -117,13 +117,6 @@ export function mobileCustomerSaveURL(key: string, cell: string, itemKey: string
   return `${ENTRY}?${params}`;
 }
 
-export function mobileRecommendURL(key: string, cell: string, drink: string): string {
-  const params = nativeVenueQuery(key, cell);
-  if (!validCategory(drink)) throw new TypeError("Invalid recommendation category");
-  params.set("recommend_drink", drink);
-  return `${ENTRY}?${params}`;
-}
-
 export function mobileURL(path: string, origin = location.origin): string {
   if (typeof path !== "string" || path.length > 2048) throw new TypeError("Invalid app route");
   const value = new URL(path, origin);

@@ -526,7 +526,9 @@ public final class NativeUsabilityRuntimeTest {
 
     @Test public void actualBottomLayoutFitsNarrowLargeTextAndLandscapeWithoutClippingOrHiddenActions() {
         onMain(() -> {
-            for (float[] fixture : new float[][]{{390,1f},{320,1.5f},{320,2f},{640,1.5f}}) {
+            for (float[] fixture : new float[][]{
+                    {320,1f},{360,1f},{375,1f},{390,1f},
+                    {360,1.5f},{375,1.5f},{390,1.5f},{320,2f},{640,1.5f}}) {
                 android.content.res.Configuration config = new android.content.res.Configuration(activity.getResources().getConfiguration());
                 config.screenWidthDp = (int)fixture[0]; config.fontScale = fixture[1];
                 android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
@@ -535,11 +537,14 @@ public final class NativeUsabilityRuntimeTest {
                 int width = Math.round(fixture[0] * density);
                 bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 bar.layout(0, 0, width, bar.getMeasuredHeight());
+                assertEquals("Unexpected row count at " + fixture[0] + "dp, font scale " + fixture[1],
+                        fixture[0] >= 360 && fixture[1] == 1f || fixture[0] == 640 ? 1 : 2,
+                        bar.getChildCount());
                 java.util.ArrayList<android.graphics.Rect> boxes = new java.util.ArrayList<>();
                 for (int id : new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
                     Button button = bar.findViewById(id); assertNotNull(button);
                     assertEquals(View.VISIBLE, button.getVisibility());
-                    assertTrue(button.getWidth() >= 48*density); assertTrue(button.getHeight() >= 48*density);
+                    assertTrue(button.getWidth() >= 48*density); assertTrue(button.getHeight() >= 56*density);
                     assertNotNull(button.getLayout());
                     assertTrue(button.getLayout().getHeight() <= button.getHeight()-button.getCompoundPaddingTop()-button.getCompoundPaddingBottom());
                     for(int line=0;line<button.getLineCount();line++) {

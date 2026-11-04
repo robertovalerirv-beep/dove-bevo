@@ -103,13 +103,22 @@ final class NativeBottomBar: UIView {
 
     required init?(coder: NSCoder) { return nil }
 
+    static func columns(for usableWidth: CGFloat, fontScale: CGFloat) -> Int {
+        // Each native target still has at least 56 points of horizontal room.
+        // The stack has four-point insets on both sides of the safe area.
+        usableWidth - 8 >= 6 * 56 * max(1, fontScale) ? 6 : 3
+    }
+
     override func layoutSubviews() {
         if renderedCategory != traitCollection.preferredContentSizeCategory {
             renderedCategory = traitCollection.preferredContentSizeCategory
             update(destination: destination, venueActionsEnabled: venueActionsEnabled)
         }
         let usableWidth = bounds.width - safeAreaInsets.left - safeAreaInsets.right
-        let requiredColumns = usableWidth < 390 || traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 3 : 6
+        let normalFont = UIFont.preferredFont(forTextStyle: .caption2,
+                                              compatibleWith: UITraitCollection(preferredContentSizeCategory: .large))
+        let actualFont = UIFont.preferredFont(forTextStyle: .caption2, compatibleWith: traitCollection)
+        let requiredColumns = Self.columns(for: usableWidth, fontScale: actualFont.pointSize / normalFont.pointSize)
         if bounds.width > 0 && columns != requiredColumns { arrange(columns: requiredColumns) }
         super.layoutSubviews()
         updateContentHeights()

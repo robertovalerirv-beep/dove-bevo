@@ -63,7 +63,9 @@ const priceRows = [
 async function fixture(options = {}) {
   let menuFailures = options.menuFailOnce ? 1 : 0;
   let menuPageFailures = options.menuPageFailOnce ? 1 : 0;
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const context = await browser.newContext({
+    viewport: options.viewport ?? { width: 390, height: 844 },
+  });
   const page = await context.newPage();
   const writes = [];
   await page.route("**/*", (route) => {
@@ -234,7 +236,7 @@ async function fixture(options = {}) {
             city: "Milano",
             country: options.menuCountry ?? "IT",
           },
-          stored_offer_count: options.menuEmpty ? 0 : 3,
+          stored_offer_count: options.menuEmpty ? 0 : options.largeMenu ? 10 : 3,
           offers: options.menuEmpty
             ? []
             : after
@@ -254,8 +256,17 @@ async function fixture(options = {}) {
                       condition: "dopo le 18",
                     },
                   ),
+                  ...(options.largeMenu
+                    ? Array.from({ length: 8 }, (_, index) =>
+                        offer(
+                          `extra-${String(index + 1)}`,
+                          `Cocktail ${String(index + 1)}`,
+                          600 + index * 25,
+                        ),
+                      )
+                    : []),
                 ],
-          next_after: options.menuEmpty || after ? null : "second",
+          next_after: options.menuEmpty || after || options.largeMenu ? null : "second",
           fees: options.menuEmpty
             ? []
             : [
@@ -801,6 +812,112 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
     await menu.getByText("Analcolico").waitFor();
     assert.equal(await menu.locator(".mobile-menu-v2__offer").count(), 3);
     assert.equal(await menu.getByRole("button", { name: "Vedi altri drink" }).count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("long owner menus keep the saved drink prominent and reveal sourced secondary prices on demand", async () => {
+  const key = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  const f = await fixture({
+    largeMenu: true,
+    customerEmpty: true,
+    url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&offer=extra-8`,
+  });
+  try {
+    await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
+    const saved = menu.getByTestId("saved-exact-offer");
+    await saved.waitFor();
+    assert.match(await saved.innerText(), /Cocktail 8[\s\S]*Questo drink è nei tuoi preferiti/);
+    assert.equal(await menu.locator(".mobile-menu-v2__offer").count(), 10);
+    const more = menu.locator(".mobile-menu-v2__more-offers");
+    assert.equal(await more.getAttribute("open"), null);
+    assert.equal(await more.getByText("Altri prezzi dal menu").isVisible(), true);
+    await more.locator(":scope > summary").click();
+    const rows = more.locator(".mobile-menu-v2__offers--compact");
+    assert.equal(await rows.evaluate((element) => getComputedStyle(element).overflowY), "visible");
+    const conditional = rows.locator(".mobile-menu-v2__offer").filter({ hasText: "Spritz serale" });
+    assert.match(
+      await conditional.locator("summary").innerText(),
+      /5,50\s*€[\s\S]*Solo con: dopo le 18/,
+    );
+    assert.equal(await conditional.getByRole("link", { name: /Menu verificato il/ }).count(), 0);
+    await conditional.locator("summary").click();
+    assert.equal(
+      await conditional.getByRole("link", { name: /Menu verificato il/ }).isVisible(),
+      true,
+    );
+    assert.equal(
+      await conditional.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).isVisible(),
+      true,
+    );
+    if (process.env.DOVEBEVO_COMPACT_CAPTURE)
+      await f.page.screenshot({ path: process.env.DOVEBEVO_COMPACT_CAPTURE });
+    assert.match(await menu.innerText(), /Coperto[\s\S]*1,00\s*€ a persona/);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("compact menu rows keep details and lower sheet content reachable at phone widths", async () => {
+  const f = await fixture({
+    largeMenu: true,
+    customerEmpty: true,
+    viewport: { width: 320, height: 700 },
+  });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
+    const more = menu.locator(".mobile-menu-v2__more-offers");
+    await more.locator(":scope > summary").click();
+    const rows = more.locator(".mobile-menu-v2__offers--compact");
+    const row = rows
+      .locator(".mobile-menu-v2__offer--compact")
+      .filter({ hasText: "Spritz serale" });
+    const fee = menu.getByText("Coperto", { exact: true });
+    const customerAction = f.page.getByRole("button", { name: "Aggiungi un drink mancante" });
+    for (const width of [390, 320]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      await f.page.locator(".sheet__body").evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      const layout = await rows.evaluate((element) => ({
+        overflowY: getComputedStyle(element).overflowY,
+        ownHeight: element.clientHeight,
+        contentHeight: element.scrollHeight,
+        right: element.getBoundingClientRect().right,
+        viewportWidth: window.innerWidth,
+      }));
+      assert.equal(layout.overflowY, "visible");
+      assert.ok(layout.contentHeight <= layout.ownHeight + 1, JSON.stringify(layout));
+      assert.ok(layout.right <= layout.viewportWidth, JSON.stringify(layout));
+      assert.match(
+        await row.locator("summary").innerText(),
+        /Spritz serale[\s\S]*5,50\s*€[\s\S]*Solo con: dopo le 18/,
+      );
+      await fee.scrollIntoViewIfNeeded();
+      await customerAction.scrollIntoViewIfNeeded();
+      const reach = await customerAction.evaluate((element) => {
+        const sheet = element.closest(".sheet__body");
+        const actionRect = element.getBoundingClientRect();
+        const sheetRect = sheet.getBoundingClientRect();
+        return {
+          scrollTop: sheet.scrollTop,
+          top: actionRect.top,
+          bottom: actionRect.bottom,
+          visibleTop: sheetRect.top,
+          visibleBottom: sheetRect.bottom,
+        };
+      });
+      assert.ok(reach.scrollTop > 0, JSON.stringify(reach));
+      assert.ok(
+        reach.top >= reach.visibleTop && reach.bottom <= reach.visibleBottom,
+        JSON.stringify(reach),
+      );
+    }
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

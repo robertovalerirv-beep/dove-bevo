@@ -1,0 +1,19 @@
+# Bar Bianco Milano: app-only owner-menu seed for review
+
+Prepared 3 November 2026. **No public price import or customer contribution has been made.** The candidate manifest contains 75 first-party named drink offers and one separately disclosed conditional table-service fee. It touches neither Roberto's website display nor the legacy customer-price tables.
+
+## Identity and source
+
+- Roberto's live mobile catalogue returns existing OSM venue `n1285244654`, cell `u0nd8`, “Bar Bianco,” at Viale Ibsen 4, Milano (45.47355, 9.17753), with **zero** existing v2 menu offers when checked. The [owner homepage](https://www.barbiancomilano.com/) names the same address and links its “Cocktail list” directly to the [owner PDF](https://www.barbiancomilano.com/wp-content/uploads/2026/06/COCKTAIL-LIST-A5-WEB.pdf). The 8-page PDF itself prints Viale E. Ibsen 4 on its cover.
+- A separate catalogue node `n4253568794` is also labelled Bar Bianco but has no address and is around 1.9 km east of the owner address. This candidate deliberately uses the exact-address node `n1285244654` only; the other node needs a separate identity decision and receives no price.
+- The currently linked PDF returned 497,849 bytes on 3 November. Raw SHA-256: `7d521cbca0c8130a89a7c091407c1b20532a411364dbdb7bf273cfe68586a03e`. Importer `pdf_text_v1` normalized-text SHA-256: `d761c37f5b2d33e59e164b16d2f5d8c879dc38e695ba26fe95b95327a753b331`. Both matched an independent live fetch and the private crawler capture. The source path contains `/2026/06/`; this is a source file path, not a customer payment date. Its current owner-homepage link was checked on 3 November; it does not prove that every listed price is currently charged.
+- The PDF has no express restriction on using factual item names, listed amounts and stated servings in the bounded review. Only those facts and the separate fee are transcribed. An independent reviewer must confirm source-use and all price/serving pairings before any public seed.
+
+## What the candidate represents
+
+- The 75 offers cover explicit classic and signature cocktails, spritzes, named ready-to-drink beverages, alcohol-free drinks, two 40 cl draft beers, seven 33 cl bottled beers, 13 named bottle wines and nine explicitly listed wines by the glass. Slash variants are split only where the owner shows one shared price for named alternatives. Unknown cocktail volumes and wine-glass sizes remain null; no serving is guessed.
+- Page 7 states `SERVIZIO AL TAVOLO - PRIMA CONSUMAZIONE : 1€ A PERSONA`. The manifest keeps EUR 1 per person as a **separate conditional fee**, with documented-partial coverage. It is not added to or hidden within a drink's displayed amount. The applicability is table service on the first consumption; other fee coverage is unknown.
+- Food, the unbounded “from €15” premium drink price, generic €150 table bottle groups, the combined alcohol-free cocktail choices and the PDF-extraction-ambiguous Prosecco bottle line are excluded. The currently linked November lunch PDF contains food and the same service-fee statement, but no additional drink offers; it is not imported.
+- All offers are owner-listed **menu** amounts in EUR, not customer-paid observations, price confirmations, reviews or fabricated venue additions. Category is left null whenever the v2 category set cannot faithfully express the item.
+
+The manifest is `mobile-apps/data/mobile-menu-v2-seeds/72dc0547a430bbe5620318e8670236d9006067bbe195c76aa2a7ab91efaef720.json`; its exact UTF-8 SHA-256 is the filename. The v2 schema validator accepted one existing static venue, one owner PDF source, all 75 offers, one fee and one fee-coverage row. The private preparation script checked every selected PDF line and amount against the pinned bytes before writing the manifest. Independent source review and the protected read-only audit must pass before a separate guarded seed on reviewed `main`; no PR commit should be tagged for a production write.

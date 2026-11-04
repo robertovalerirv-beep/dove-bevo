@@ -141,6 +141,14 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         });
         return route.fulfill({ status: 503, body: "Old identity request failed" });
       }
+      if (options.holdRecoveryIdentity && cell === "u0nd9" && categories.length === 0) {
+        options.holdRecoveryIdentity = false;
+        await new Promise((resolve) => {
+          options.releaseRecoveryIdentity = resolve;
+          options.noteRecoveryIdentityHeld();
+        });
+        return route.fulfill({ status: 503, body: "Recovery identity request failed" });
+      }
       if (options.failNextIdentity && cell === "u0nd9" && categories.length === 0) {
         options.failNextIdentity -= 1;
         return route.fulfill({ status: 503, body: "Retry identity request failed" });
@@ -1372,6 +1380,86 @@ test("concurrent drink selections share one failed full-menu recovery read", asy
     assert.deepEqual(f.writes, []);
   } finally {
     options.releaseOldIdentity?.();
+    options.releaseCombinedSample?.();
+    await f.close();
+  }
+});
+
+test("a selection inheriting a pending recovery does not start a second recovery", async () => {
+  const options = {
+    menu: true,
+    holdFirstIdentity: true,
+    holdRecoveryIdentity: true,
+    holdCombinedSample: true,
+    cellRequests: [],
+  };
+  const recoveryHeld = new Promise((resolve) => {
+    options.noteRecoveryIdentityHeld = resolve;
+  });
+  const combinedSampleHeld = new Promise((resolve) => {
+    options.noteCombinedSampleHeld = resolve;
+  });
+  const ginRequested = new Promise((resolve) => {
+    options.noteGinRequest = resolve;
+  });
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true }).click();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
+    );
+    assert.equal(typeof options.releaseOldIdentity, "function");
+    await (
+      await openDrinks(f.page)
+    )
+      .getByRole("checkbox", { name: "Gin tonic", exact: true })
+      .check({ force: true });
+    await ginRequested;
+    options.releaseOldIdentity();
+    await recoveryHeld;
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+      "The first selection has started one held recovery",
+    );
+    await (
+      await openDrinks(f.page)
+    )
+      .getByRole("checkbox", { name: "Spritz", exact: true })
+      .check({ force: true });
+    await combinedSampleHeld;
+    const recoveryFailure = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
+        !new URL(response.url()).searchParams.get("categories") &&
+        response.status() === 503,
+      { timeout: 8000 },
+    );
+    options.releaseRecoveryIdentity();
+    await recoveryFailure;
+    options.releaseCombinedSample();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+    assert.match(
+      await f.page.locator("section.map").getAttribute("data-prices-shown"),
+      /7,50.*MENU/,
+    );
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+      "An inherited recovery failure cannot start another full-menu read",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    options.releaseOldIdentity?.();
+    options.releaseRecoveryIdentity?.();
     options.releaseCombinedSample?.();
     await f.close();
   }

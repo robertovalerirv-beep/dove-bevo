@@ -295,7 +295,10 @@ export function transformMap(source, styleURLExpression) {
       const pricedDot = hits.find((hit) => hit.layer.id === "priced-dot");
       const labelCoordinates = priceLabel?.geometry.type === "Point" ? priceLabel.geometry.coordinates : null;
       const labelAnchor = labelCoordinates ? this.map.project([Number(labelCoordinates[0]), Number(labelCoordinates[1])]) : null;
-      const onVisibleLabelHead = labelAnchor !== null && event.point.y < labelAnchor.y - 12;
+      // The painted 23px price head is centred 33px above its venue anchor.
+      const headX = labelAnchor === null ? 0 : event.point.x - labelAnchor.x;
+      const headY = labelAnchor === null ? 0 : event.point.y - labelAnchor.y + 33;
+      const onVisibleLabelHead = labelAnchor !== null && headX * headX + headY * headY <= 23 * 23;
       const target = (onVisibleLabelHead ? priceLabel : pricedDot ?? priceLabel) ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
       if (target?.properties) listener(String(target.properties.key), String(target.properties.cell));
     });

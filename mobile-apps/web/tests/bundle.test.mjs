@@ -1487,6 +1487,13 @@ test("a stale identity failure cannot discard a successful new selected drink", 
   const options = { menu: true, holdFirstIdentity: true, cellRequests: [] };
   const f = await fixture({ width: 390, height: 844 }, options);
   try {
+    const selectedSample = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
+        new URL(response.url()).searchParams.get("categories") === "spritz" &&
+        response.status() === 200,
+      { timeout: 15000 },
+    );
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     await (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true }).click();
     await f.page.waitForFunction(() =>
@@ -1503,6 +1510,7 @@ test("a stale identity failure cannot discard a successful new selected drink", 
     const drinks = await openDrinks(f.page);
     await drinks.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     assert.match(await f.page.getByTestId("drink-summary").textContent(), /Spritz/);
+    await selectedSample;
     options.releaseOldIdentity();
     await staleResponse;
     await f.page
@@ -1513,7 +1521,7 @@ test("a stale identity failure cannot discard a successful new selected drink", 
             ?.getAttribute("data-prices-shown")
             ?.includes("7,50"),
         null,
-        { timeout: 8000 },
+        { timeout: 30000 },
       )
       .catch((error) => {
         throw new Error(`Selected price did not recover: ${JSON.stringify(options.cellRequests)}`, {

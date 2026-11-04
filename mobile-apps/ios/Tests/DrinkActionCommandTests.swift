@@ -13,8 +13,6 @@ final class DrinkActionCommandTests: XCTestCase {
                        .saveDrink("beer_draft", .happyHour))
         XCTAssertEqual(DrinkActionCommand.parse(URL(string: base + "&save_customer=" + customer)!, currentVenue: venue),
                        .saveCustomer(customer))
-        XCTAssertEqual(DrinkActionCommand.parse(URL(string: base + "&recommend_drink=negroni")!, currentVenue: venue),
-                       .recommend("negroni"))
     }
 
     func testRejectsForeignVenueMalformedIdentityAndExtraQuery() {
@@ -27,11 +25,12 @@ final class DrinkActionCommandTests: XCTestCase {
             base + "&save_drink=%73pritz&band=normal",
             base + "&save_customer=" + customer.uppercased(),
             base + "&save_customer=" + customer + "#x",
+            base + "&recommend_drink=spritz",
             base + "&recommend_drink=unknown",
             base.replacingOccurrences(of: "%2Fbar%2F", with: "%252Fbar%252F") + "&recommend_drink=spritz",
             base.replacingOccurrences(of: "www.dovebevo.com", with: "evil.example") + "&recommend_drink=spritz"
         ]
         invalid.forEach { XCTAssertNil(DrinkActionCommand.parse(URL(string: $0)!, currentVenue: venue), $0) }
-        XCTAssertNil(DrinkActionCommand.parse(URL(string: base + "&recommend_drink=spritz")!, currentVenue: wrong))
+        XCTAssertNil(DrinkActionCommand.parse(URL(string: base + "&save_drink=spritz&band=normal")!, currentVenue: wrong))
     }
 }

@@ -4,7 +4,6 @@ import UIKit
 /// script, navigation or browser session is used by its HTTP client.
 final class RecommendationsViewController: UITableViewController {
     private let venue: SavedVenue
-    private let focusedCategory: DrinkCategory?
     private let client: RecommendationServing
     private let activityCheck: (() -> Bool)?
     private var visible = false
@@ -29,10 +28,8 @@ final class RecommendationsViewController: UITableViewController {
         return UIBarButtonItem(customView: spacer)
     }()
 
-    init(venue: SavedVenue, client: RecommendationServing = RecommendationClient(), activityCheck: (() -> Bool)? = nil,
-         focusedCategory: String? = nil) {
+    init(venue: SavedVenue, client: RecommendationServing = RecommendationClient(), activityCheck: (() -> Bool)? = nil) {
         self.venue = venue
-        self.focusedCategory = focusedCategory.flatMap { code in DrinkCategory.all.first { $0.code == code } }
         self.client = client
         self.activityCheck = activityCheck
         super.init(style: .insetGrouped)
@@ -56,7 +53,7 @@ final class RecommendationsViewController: UITableViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = self.focusedCategory.map { "Consiglia \($0.name)" } ?? "Drink consigliati"
+        title = "Drink consigliati"
         NativeAppearance.configure(navigationController)
         NativeAppearance.configure(tableView)
         tableView.accessibilityIdentifier = "recommendations.list"
@@ -71,9 +68,7 @@ final class RecommendationsViewController: UITableViewController {
         name.accessibilityIdentifier = "recommendations.venueName"
         name.accessibilityTraits = .header
         let introduction = UILabel()
-        introduction.text = self.focusedCategory == nil
-            ? "Consiglia i drink che hai provato qui. I consigli sono pubblici nelle app. Le categorie non indicano ciò che il locale serve."
-            : "Quanti consigliano \(self.focusedCategory!.name) qui. Tocca il pulsante solo se hai provato questo drink. I consigli sono pubblici nelle app."
+        introduction.text = "Consiglia i drink che hai provato qui. I consigli sono pubblici nelle app. Le categorie non indicano ciò che il locale serve."
         introduction.font = .preferredFont(forTextStyle: .subheadline)
         introduction.textColor = NativeAppearance.muted
         for label in [name, introduction] { label.numberOfLines = 0; label.adjustsFontForContentSizeCategory = true }
@@ -260,12 +255,11 @@ final class RecommendationsViewController: UITableViewController {
         onReloadMenuChanged?()
     }
 
-    private var visibleCategories: [DrinkCategory] { focusedCategory.map { [$0] } ?? categories }
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { visibleCategories.count }
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { DrinkCategory.all.count }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "recommendation", for: indexPath) as! RecommendationCell
-        let category = visibleCategories[indexPath.row]
+        let category = categories[indexPath.row]
         cell.configure(category: category, value: snapshot?.value(for: category.code),
                        enabled: canInteract && !busy && snapshot != nil, pending: pendingDrink == category.code) { [weak self] in
             self?.toggle(category.code)

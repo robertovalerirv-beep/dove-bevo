@@ -19,9 +19,6 @@ final class DiscoveryViewController: UITableViewController {
     private var band = ComparisonBand.normal
     private var renderedCategory: UIContentSizeCategory?
     private let drinkSelector = UIButton(type: .system)
-    private let categoryCarousel = UIScrollView()
-    private var categoryButtons: [String: DiscoveryCategoryButton] = [:]
-    private var carouselHeight: NSLayoutConstraint?
     private let bands = ComparisonBandSelector()
     private let statusLabel = UILabel()
     var onReloadMenuChanged: (() -> Void)?
@@ -73,30 +70,6 @@ final class DiscoveryViewController: UITableViewController {
         introduction.textColor = NativeAppearance.muted
         let illustration = label("Immagini illustrative dei drink, non foto dei locali", style: .caption2)
         illustration.textColor = NativeAppearance.muted
-        categoryCarousel.accessibilityIdentifier = "discovery.categoryCarousel"
-        categoryCarousel.showsHorizontalScrollIndicator = false
-        categoryCarousel.alwaysBounceHorizontal = true
-        let categoryRow = UIStackView()
-        categoryRow.axis = .horizontal; categoryRow.spacing = 8
-        categoryRow.translatesAutoresizingMaskIntoConstraints = false
-        for (index, category) in DrinkCategory.all.enumerated() {
-            let button = DiscoveryCategoryButton(category: category)
-            button.tag = index
-            button.accessibilityIdentifier = "discovery.category.\(category.code)"
-            button.addTarget(self, action: #selector(categoryTapped(_:)), for: .touchUpInside)
-            categoryButtons[category.code] = button
-            categoryRow.addArrangedSubview(button)
-        }
-        categoryCarousel.addSubview(categoryRow)
-        let carouselHeight = categoryCarousel.heightAnchor.constraint(equalToConstant: 144)
-        self.carouselHeight = carouselHeight
-        NSLayoutConstraint.activate([
-            categoryRow.leadingAnchor.constraint(equalTo: categoryCarousel.contentLayoutGuide.leadingAnchor),
-            categoryRow.trailingAnchor.constraint(equalTo: categoryCarousel.contentLayoutGuide.trailingAnchor),
-            categoryRow.topAnchor.constraint(equalTo: categoryCarousel.contentLayoutGuide.topAnchor),
-            categoryRow.bottomAnchor.constraint(equalTo: categoryCarousel.contentLayoutGuide.bottomAnchor),
-            carouselHeight
-        ])
         drinkSelector.accessibilityIdentifier = "discovery.drinkSelector"
         drinkSelector.accessibilityLabel = "Scegli cosa bere"
         drinkSelector.accessibilityHint = "Apre l'elenco dei drink disponibili"
@@ -117,7 +90,7 @@ final class DiscoveryViewController: UITableViewController {
         statusLabel.textColor = NativeAppearance.muted
         statusLabel.adjustsFontForContentSizeCategory = true
         let header = UIView()
-        let stack = UIStackView(arrangedSubviews: [heading, introduction, categoryCarousel, illustration,
+        let stack = UIStackView(arrangedSubviews: [heading, introduction, illustration,
                                                    drinkSelector, bands, statusLabel])
         stack.axis = .vertical; stack.spacing = 8; stack.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(stack)
@@ -201,22 +174,6 @@ final class DiscoveryViewController: UITableViewController {
         guard isViewLoaded else { return }
         let allRows = snapshot?.displayRows(drink: drink.code, band: band) ?? []
         rows = Array(allRows.prefix(200))
-        let available = area != nil && snapshot != nil && !(
-            snapshot?.unavailableCells.count == snapshot?.area.cells.count &&
-            snapshot?.venues.isEmpty == true && snapshot?.europe?.venues.isEmpty != false &&
-            snapshot?.menu.isEmpty == true)
-        var tallestCard: CGFloat = 0
-        for category in DrinkCategory.all {
-            guard let button = categoryButtons[category.code] else { continue }
-            let categoryRows = snapshot?.displayRows(drink: category.code, band: band) ?? []
-            button.update(summary: DiscoveryCategorySummary(rows: categoryRows, loading: busy, available: available,
-                                                            partial: !(snapshot?.partialCells.isEmpty ?? true)),
-                          selected: category == drink)
-            tallestCard = max(tallestCard, button.systemLayoutSizeFitting(
-                CGSize(width: 132, height: UIView.layoutFittingCompressedSize.height),
-                withHorizontalFittingPriority: .required, verticalFittingPriority: .fittingSizeLevel).height)
-        }
-        carouselHeight?.constant = max(144, ceil(tallestCard))
         var selectorConfiguration = drinkSelector.configuration ?? .bordered()
         selectorConfiguration.title = drink.name
         drinkSelector.configuration = selectorConfiguration
@@ -259,10 +216,6 @@ final class DiscoveryViewController: UITableViewController {
     func selectDrink(_ code: String) {
         guard let category = DrinkCategory.all.first(where: { $0.code == code }) else { return }
         drink = category; render()
-    }
-    @objc private func categoryTapped(_ sender: DiscoveryCategoryButton) {
-        guard DrinkCategory.all.indices.contains(sender.tag) else { return }
-        selectDrink(DrinkCategory.all[sender.tag].code)
     }
     @objc private func bandChanged() { band = bands.selectedBand; render() }
     @objc private func showMap() { onMap() }

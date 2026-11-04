@@ -1,7 +1,7 @@
 import UIKit
 
 enum BottomNavigationAction: Int, CaseIterable {
-    case home, search, map, favourites, save, recommendations
+    case home, search, map, favourites, recommendations
 
     var title: String {
         switch self {
@@ -9,14 +9,12 @@ enum BottomNavigationAction: Int, CaseIterable {
         case .search: return "Cerca"
         case .map: return "Mappa"
         case .favourites: return "Preferiti"
-        case .save: return "Salva"
         case .recommendations: return "Consigliati"
         }
     }
     var label: String {
         switch self {
-        case .save: return "Salva nei preferiti"
-        case .recommendations: return "Drink consigliati"
+        case .recommendations: return "Consigliati in questa zona"
         default: return title
         }
     }
@@ -26,8 +24,7 @@ enum BottomNavigationAction: Int, CaseIterable {
         case .search: return "tab.search"
         case .map: return "tab.map"
         case .favourites: return "tab.favorites"
-        case .save: return "browser.saveVenue"
-        case .recommendations: return "browser.recommendations"
+        case .recommendations: return "tab.recommendations"
         }
     }
     var symbol: String {
@@ -36,7 +33,6 @@ enum BottomNavigationAction: Int, CaseIterable {
         case .search: return "magnifyingglass"
         case .map: return "map"
         case .favourites: return "bookmark"
-        case .save: return "bookmark"
         case .recommendations: return "hand.thumbsup"
         }
     }
@@ -97,7 +93,7 @@ final class NativeBottomBar: UIView {
             button.addTarget(self, action: #selector(selectAction), for: .touchUpInside)
             buttons.append(button)
         }
-        arrange(columns: 6)
+        arrange(columns: 5)
         update(destination: 0, venueActionsEnabled: false)
     }
 
@@ -106,7 +102,7 @@ final class NativeBottomBar: UIView {
     static func columns(for usableWidth: CGFloat, fontScale: CGFloat) -> Int {
         // Each native target still has at least 56 points of horizontal room.
         // The stack has four-point insets on both sides of the safe area.
-        usableWidth - 8 >= 6 * 56 * max(1, fontScale) ? 6 : 3
+        usableWidth - 8 >= 5 * 56 * max(1, fontScale) ? 5 : 3
     }
 
     override func layoutSubviews() {
@@ -163,8 +159,8 @@ final class NativeBottomBar: UIView {
         self.venueActionsEnabled = venueActionsEnabled
         for action in BottomNavigationAction.allCases {
             let button = button(for: action)
-            let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .home && destination == 2)
-            let enabled = action != .save && action != .recommendations || venueActionsEnabled
+            let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .home && destination == 2) || (action == .recommendations && destination == 3)
+            let enabled = true
             var configuration = UIButton.Configuration.plain()
             let fill = selected ? NativeAppearance.accent : NativeAppearance.chrome
             configuration.baseBackgroundColor = fill
@@ -178,7 +174,7 @@ final class NativeBottomBar: UIView {
                 attributes.font = titleFont
                 return attributes
             }
-            let symbol = selected && (action == .map || action == .favourites || action == .home) ? "\(action.symbol).fill" : action.symbol
+            let symbol = selected && (action == .map || action == .favourites || action == .home || action == .recommendations) ? "\(action.symbol).fill" : action.symbol
             configuration.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 20))
             configuration.imagePlacement = .top
             configuration.imagePadding = 4
@@ -201,8 +197,7 @@ final class NativeBottomBar: UIView {
             if !enabled { traits.insert(.notEnabled) }
             button.accessibilityTraits = traits
         }
-        button(for: .save).accessibilityHint = "Salva un drink di questo locale nei preferiti privati di questo dispositivo"
-        button(for: .recommendations).accessibilityHint = "Mostra i consigli sui drink condivisi da tutti"
+        button(for: .recommendations).accessibilityHint = "Mostra i drink consigliati da tutti in questa zona"
     }
 
     private func arrange(columns: Int) {
@@ -224,8 +219,7 @@ final class NativeBottomBar: UIView {
     }
 
     @objc private func selectAction(_ sender: UIButton) {
-        guard sender.isEnabled, let action = BottomNavigationAction(rawValue: sender.tag),
-              (action != .save && action != .recommendations) || venueActionsEnabled else { return }
+        guard sender.isEnabled, let action = BottomNavigationAction(rawValue: sender.tag) else { return }
         onSelect?(action)
     }
 }

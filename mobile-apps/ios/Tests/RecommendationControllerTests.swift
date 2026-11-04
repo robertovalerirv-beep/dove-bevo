@@ -145,23 +145,6 @@ final class RecommendationControllerTests: XCTestCase {
     }
 
     @MainActor
-    func testFocusedDrinkShowsOnlyTappedCategoryWithoutAutomaticVote() throws {
-        defer { retainedCells.removeAll() }
-        let client = DelayedRecommendationClient()
-        let controller = RecommendationsViewController(venue: venue, client: client,
-                                                       activityCheck: { true }, focusedCategory: "spritz")
-        prepare(controller)
-        XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 1)
-        XCTAssertEqual(client.calls.count, 1)
-        XCTAssertNil(client.calls[0].drink)
-        try client.complete(0, .success(snapshot(counts: ["spritz": 8])))
-        let action = try button(controller, row: 0)
-        XCTAssertEqual(action.accessibilityIdentifier, "recommendations.toggle.spritz")
-        XCTAssertTrue(action.accessibilityLabel?.contains("8 consigli") == true)
-        XCTAssertTrue(client.calls.allSatisfy { $0.drink == nil })
-    }
-
-    @MainActor
     func testInactiveControllerCannotIssueGETOrVote() throws {
         defer { retainedCells.removeAll() }
         let client = DelayedRecommendationClient()

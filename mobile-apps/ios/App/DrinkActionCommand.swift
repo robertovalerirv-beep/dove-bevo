@@ -4,7 +4,6 @@ import Foundation
 enum DrinkActionCommand: Equatable {
     case saveDrink(String, ComparisonBand)
     case saveCustomer(String)
-    case recommend(String)
 
     private static let venue = #"(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})"#
     private static let cell = #"[0-9b-hjkmnp-z]{5}"#
@@ -32,11 +31,6 @@ enum DrinkActionCommand: Equatable {
            raw.range(of: "^\(prefix)save_customer=[oc][0-9a-f]{64}$", options: .regularExpression) != nil,
            let key = items[2].value {
             return .saveCustomer(key)
-        }
-        if items.count == 3, items.map(\.name) == ["path", "c", "recommend_drink"],
-           raw.range(of: "^\(prefix)recommend_drink=[a-z_]+$", options: .regularExpression) != nil,
-           let code = items[2].value, DrinkCategory.all.contains(where: { $0.code == code }) {
-            return .recommend(code)
         }
         return nil
     }

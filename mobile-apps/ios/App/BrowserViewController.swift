@@ -248,7 +248,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         AppPresentationTheme.install(in: configuration)
         configuration.userContentController.addUserScript(WKUserScript(
-            source: "if (location.origin === 'https://www.dovebevo.com' && location.pathname === '/mobile/') { window.DoveBevoNativeOfferSave = true; window.DoveBevoNativeDrinkSave = true; window.DoveBevoNativeCustomerSave = true; window.DoveBevoNativeRecommend = true; window.dispatchEvent(new Event('dovebevo-native-ready')); }",
+            source: "if (location.origin === 'https://www.dovebevo.com' && location.pathname === '/mobile/') { window.DoveBevoNativeOfferSave = true; window.DoveBevoNativeDrinkSave = true; window.DoveBevoNativeCustomerSave = true; window.dispatchEvent(new Event('dovebevo-native-ready')); }",
             injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
@@ -879,7 +879,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         let userLink = navigationAction.navigationType == .linkActivated
         let trustedSource = navigationAction.sourceFrame.isMainFrame
             && navigationAction.sourceFrame.request.url.map(URLPolicy.isWebsite) == true
-        let drinkActionNames: Set<String> = ["save_offer", "save_drink", "save_customer", "recommend_drink"]
+        let drinkActionNames: Set<String> = ["save_offer", "save_drink", "save_customer"]
         if mainFrame && URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.contains(where: { drinkActionNames.contains($0.name) }) == true {
             decisionHandler(.cancel)
             if userLink && trustedSource, let active = usableVenueURL {
@@ -889,7 +889,6 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                     switch command {
                     case .saveDrink(let code, let band): beginLegacyDrinkSave(venueURL: active, code: code, band: band)
                     case .saveCustomer(let key): beginCustomerSave(venueURL: active, itemKey: key)
-                    case .recommend(let code): openFocusedRecommendations(venueURL: active, code: code)
                     }
                 }
             }
@@ -1030,18 +1029,6 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         })
         offerSaveAlert = alert
         present(alert, animated: true)
-    }
-
-    private func openFocusedRecommendations(venueURL: URL, code: String) {
-        guard presentedViewController == nil else { return }
-        readCurrentVenue(failureTitle: "Consigli non disponibili") { [weak self] venue in
-            guard let self, self.usableVenueURL == venueURL, venue.url == venueURL else { return }
-            self.invalidateBookmarkCapture()
-            self.navigationItem.backButtonTitle = "Torna al locale"
-            self.navigationController?.pushViewController(
-                RecommendationsViewController(venue: venue, client: self.recommendationClient, focusedCategory: code),
-                animated: true)
-        }
     }
 
     private func invalidateOfferSave() {

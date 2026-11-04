@@ -295,6 +295,10 @@ public final class NativeUsabilityRuntimeTest {
         onMain(() -> {
             Button entry=activity.findViewById(R.id.recommendation_entry);
             assertEquals(View.VISIBLE,entry.getVisibility());assertTrue(entry.isEnabled());entry.performClick();
+        });
+        await(()->(Boolean)get("areaVisible"));
+        onMain(() -> {
+            Button entry=activity.findViewById(R.id.recommendation_entry);
             assertTrue((Boolean)get("areaVisible"));
             assertTrue(((TextView)activity.findViewById(R.id.recommendation_area_status)).getText().toString().contains("Apri una città"));
             assertEquals(View.VISIBLE,activity.findViewById(R.id.recommendation_area_choose).getVisibility());

@@ -1,0 +1,16 @@
+# Gascoigne Pub Palermo owner-menu candidate, 4 November 2026
+
+This is an **app-only, unimported candidate** for an existing Roberto venue. No customer price, confirmation, vote, legacy website record or public v2 offer was written. An independent line-by-line review and the protected audit remain necessary before any public seed.
+
+## Venue identity
+
+- Roberto's [live static cell](https://www.dovebevo.com/data/20261102/v/sqc8b.json) contains `n3396245907`, named **Gascoigne Pub**, kind `1`, at `38.11448, 13.36504`, address **Piazza Teatro Santa Cecilia 1**, Palermo, city ID `67253662`. The [live v2 venue route](https://www.dovebevo.com/api/mobile/v2/menu/venues/n3396245907?cell=sqc8b) reported `stored_offer_count: 0` when checked on 4 November.
+- [OSM node 3396245907](https://www.openstreetmap.org/node/3396245907) is a Palermo bar with the same exact name and address at `38.1144796, 13.3650404`. OSM does not include a website tag. The owner-branded digital menu names **Pub Gascoigne di Adriana Ferrara**; a [current business listing](https://restaurantguru.it/Gascoigne-Palermo) links that same Vercel site to Gascoigne Pub at the same civic address. The missing direct OSM website link is disclosed for reviewer scrutiny.
+
+## Source and scope
+
+- The venue's [digital beer menu](https://gascoigne-pub.vercel.app/en-US) links the [Draft Beers](https://gascoigne-pub.vercel.app/en-US/birre/spina) and [Commercial Beers](https://gascoigne-pub.vercel.app/en-US/birre/commerciali) pages. Both returned HTTP 200 without redirect on 4 November, and their `html_text_v1` normalized SHA-256 values stayed unchanged across two fetches: draft `1b2420747e581f8037aa7ccf4192d274f54bf945240de232d2b40b30b7c2d715`; commercial `e82bca2bc660a6d7cd93393b27d82c4256f50cef512da7a66e2777906fa4000c`. The latter page has 30 visible named beers with EUR prices; the former has three named draft beers with two explicit size/price columns each.
+- The exact UTF-8 manifest is `mobile-apps/data/mobile-menu-v2-seeds/74bffbcb1dae64ac815348bcad2e6fc16e6a135cea4b187227e338f3cd3d954d.json`, whose filename is its SHA-256. It contains **36 EUR offers**: six draft size variants at `0,20 L` and `0,40 L`, plus 30 commercial beers. Only the commercial item printed as **Beck's 50cl** has an asserted serving size; no other bottle/glass serving is inferred. The source spelling **Franiskaner Dunkel** is retained rather than silently corrected.
+- Both pages display a 2024 copyright footer but no menu revision or effective date. The 4 November check date records a live source fetch, **not** proof of in-venue price freshness. No food, descriptions, images, inferred fee, Google review count or customer observation is copied into the manifest. Empty `fees` and `fee_coverage` mean fee applicability is **unknown**, not zero.
+
+The source is a draft for independent review. A green PR and local manifest validation do not publish prices. Before any public seed, confirm the digital menu is still used by this venue, inspect every amount and size against the exact source snapshot, merge a reviewed PR, run the protected `mobile-menu-v2-audit/<manifest-sha>` dry run at main, inspect its receipt, then authorize a distinct guarded seed tag at that same reviewed main commit and read back the public v2 route.

@@ -17,7 +17,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 env:
-  IMPORTER_SHA256: 943dba948f6786a8378073a494a1fb173c880e066091e559a40cb2fd4736aad3
+  IMPORTER_SHA256: 3c2d7aebdf542561187f0711e49815a1e8e3eb3b92a107f43044c27619ba5a0e
   TRANSPORT_SHA256: 147a6051c66dd8523ec0d634ab18976e4a0ccf33efec5873d2d921bc6a300239
 jobs:
   preservation:
@@ -28,13 +28,14 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Install and verify PDF text extractor
+      - name: Install and verify PDF inspection tools
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends poppler-utils
           command -v pdftotext
+          command -v pdfinfo
           pdftotext -v
       - name: Verify pinned importer and schema behavior
         shell: bash
@@ -109,13 +110,14 @@ jobs:
               .event == "push" and .conclusion == "success"' >/dev/null
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$audit_run/jobs?per_page=100" |
             jq -e 'any(.jobs[]; .name == "reviewed-import" and .conclusion == "success")' >/dev/null
-      - name: Install and verify PDF text extractor
+      - name: Install and verify PDF inspection tools
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq --no-install-recommends poppler-utils
           command -v pdftotext
+          command -v pdfinfo
           pdftotext -v
       - name: Audit or seed reviewed v2 rows
         shell: bash

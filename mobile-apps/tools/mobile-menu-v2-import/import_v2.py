@@ -42,6 +42,7 @@ TABLES = ("mobile_menu_v2_venues","mobile_menu_v2_sources","mobile_menu_v2_offer
           "venues_user")
 MAX_MANIFEST = 2*1024*1024
 MAX_SOURCE = 8*1024*1024
+MAX_IMAGE_PAGES = 100
 
 class Error(Exception):
     pass
@@ -224,18 +225,45 @@ def validate_venue(row,checked):
         elif row["identity_kind"]!="osm_external" or row["static_city_id"] is not None or key[0]!="n":
             raise Error("foreign registry requires OSM node")
 
+def image_review_digest(raw_pdf_sha256,entries):
+    """Bind exact PDF bytes and reviewed page evidence to one stored digest."""
+    digest(raw_pdf_sha256)
+    if not isinstance(entries,list) or not 1<=len(entries)<=1000:
+        raise Error("invalid image PDF evidence")
+    seen=set()
+    for entry in entries:
+        fields(entry,("offer_id","page","line"))
+        offer_id=identifier(entry["offer_id"])
+        integer(entry["page"],1,MAX_IMAGE_PAGES)
+        text(entry["line"],3,220)
+        if offer_id in seen: raise Error("duplicate image PDF evidence")
+        seen.add(offer_id)
+    canonical=json.dumps({"pdf_sha256":raw_pdf_sha256,
+                          "evidence":sorted(entries,key=lambda entry:entry["offer_id"])},
+                         ensure_ascii=False,sort_keys=True,separators=(",",":")).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
 def validate_source(row,venues,checked):
-    fields(row,("id","venue_key","cell","source_url","source_format","source_sha256",
-                "source_text_sha256","source_checked_on","use_review_status",
-                "use_review_basis","use_review_reference","use_reviewed_on"))
+    required=("id","venue_key","cell","source_url","source_format","source_sha256",
+              "source_text_sha256","source_checked_on","use_review_status",
+              "use_review_basis","use_review_reference","use_reviewed_on")
+    if isinstance(row,dict) and row.get("source_format")=="pdf_image_v1":
+        required+=("page_count","image_evidence")
+    fields(row,required)
     identifier(row["id"])
     key=venue_key(row["venue_key"])
     if key not in venues or cell(row["cell"])!=venues[key]["cell"]:
         raise Error("source venue mismatch")
     https(row["source_url"],True)
-    if row["source_format"] not in ("html_text_v1","pdf_text_v1","json_menu_v1"):
+    if row["source_format"] not in ("html_text_v1","pdf_text_v1","pdf_image_v1","json_menu_v1"):
         raise Error("unsupported source format")
     digest(row["source_sha256"]);digest(row["source_text_sha256"])
+    if row["source_format"]=="pdf_image_v1":
+        integer(row["page_count"],1,MAX_IMAGE_PAGES)
+        reviewed_hash=image_review_digest(row["source_sha256"],row["image_evidence"])
+        if (any(entry["page"]>row["page_count"] for entry in row["image_evidence"])
+            or reviewed_hash!=row["source_text_sha256"]):
+            raise Error("image PDF review hash or page mismatch")
     if row["source_format"]=="json_menu_v1" and (row["source_url"]!="https://www.carico.io/api/menu"
         or row["use_review_reference"]!=CARICO_RENDERER_URL):
         raise Error("unreviewed JSON menu endpoint or renderer")
@@ -307,6 +335,38 @@ def validate_coverage(row,venues,sources,fees):
     if (row["status"]=="explicit_no_fee" and own) or (row["status"]=="documented_partial" and not own):
         raise Error("fee coverage contradicts fee rows")
 
+def verify_image_pdf_offers(source,offers,fees,coverage):
+    """Bind each approved offer to one reviewed PDF page and normalized line."""
+    source_id=source["id"]
+    if any(row["source_id"]==source_id for row in fees+coverage):
+        raise Error("image PDF fees need separate reviewed source format")
+    own=[row for row in offers if row["source_id"]==source_id]
+    entries={entry["offer_id"]:entry for entry in source["image_evidence"]}
+    if {row["id"] for row in own}!=set(entries):
+        raise Error("image PDF offer evidence coverage mismatch")
+    for row in own:
+        if row["price_context"]!="regular":
+            raise Error("image PDF conditional prices need separate review")
+        entry=entries[row["id"]]
+        line=entry["line"]
+        if row["evidence_ref"]!=f'PDF page {entry["page"]}: {line}':
+            raise Error("image PDF offer page reference mismatch")
+        normalized=lambda value: re.sub(r"\s+"," ",unicodedata.normalize("NFKC",value)).casefold()
+        if normalized(row["name"]) not in normalized(line):
+            raise Error("image PDF offer name absent from reviewed line")
+        if row["serving_label"] is not None and normalized(row["serving_label"]) not in normalized(line):
+            raise Error("image PDF serving absent from reviewed line")
+        if row["serving_ml"] is not None and not re.search(
+            r"(?<![0-9])"+str(row["serving_ml"])+r"\s*ml(?![a-z])",normalized(line)):
+            raise Error("image PDF serving ml absent from reviewed line")
+        divisor=10**row["currency_exponent"]
+        whole,remainder=divmod(row["amount_minor"],divisor)
+        numeric=(str(whole) if row["currency_exponent"]==0 else
+                 f'{whole}.{remainder:0{row["currency_exponent"]}d}')
+        amount=f'{row["currency"]} {numeric}'
+        if not re.search(r"(?<![A-Za-z0-9])"+re.escape(amount)+r"(?![A-Za-z0-9.,])",line):
+            raise Error("image PDF amount absent from reviewed line")
+
 def validate(raw):
     if not isinstance(raw,bytes) or not 1<=len(raw)<=MAX_MANIFEST: raise Error("manifest size")
     try: doc=json.loads(raw.decode("utf-8"),object_pairs_hook=pairs,parse_constant=constant)
@@ -349,13 +409,28 @@ def validate(raw):
         if row["venue_key"] in seen: raise Error("duplicate fee coverage")
         seen.add(row["venue_key"])
     for src in sources.values():
+        if src["source_format"]=="pdf_image_v1":
+            verify_image_pdf_offers(src,doc["offers"],doc["fees"],doc["fee_coverage"])
+    for src in sources.values():
         if src["use_review_status"]=="approved" and not any(
             row["source_id"]==src["id"]
             for attr in ("offers","fees","fee_coverage") for row in doc[attr]):
             raise Error("approved source without evidence row")
     return doc
 
-def source_digests(raw,fmt):
+def pdf_page_count(raw):
+    try:
+        proc=subprocess.run(["pdfinfo","-"],input=raw,capture_output=True,
+                            timeout=30,check=True)
+        info=proc.stdout.decode("utf-8")
+    except (OSError,subprocess.SubprocessError,UnicodeError) as exc:
+        raise Error("PDF page inspection failed") from exc
+    match=re.search(r"(?m)^Pages:\s*([1-9][0-9]{0,2})\s*$",info)
+    if not match or int(match.group(1))>MAX_IMAGE_PAGES:
+        raise Error("invalid image PDF page count")
+    return int(match.group(1))
+
+def source_digests(raw,fmt,image_evidence=None,page_count=None):
     if len(raw)>MAX_SOURCE: raise Error("source too large")
     if fmt=="html_text_v1":
         result=legacy.source_digest(raw,"html_text_v1")
@@ -364,13 +439,20 @@ def source_digests(raw,fmt):
         json_menu_entries(raw)
         result=hashlib.sha256(raw).hexdigest()
         return result,result
-    if fmt!="pdf_text_v1" or not raw.startswith(b"%PDF-"): raise Error("invalid PDF")
+    if fmt not in ("pdf_text_v1","pdf_image_v1") or not raw.startswith(b"%PDF-"):
+        raise Error("invalid PDF")
     try:
         proc=subprocess.run(["pdftotext","-layout","-enc","UTF-8","-","-"],
                             input=raw,capture_output=True,timeout=30,check=True)
         canonical=re.sub(r"\s+"," ",proc.stdout.decode("utf-8")).strip().encode()
     except (OSError,subprocess.SubprocessError,UnicodeError) as exc:
         raise Error("PDF text extraction failed") from exc
+    if fmt=="pdf_image_v1":
+        if canonical: raise Error("image PDF has extractable text; use pdf_text_v1")
+        if image_evidence is None or pdf_page_count(raw)!=page_count:
+            raise Error("image PDF page count mismatch")
+        raw_hash=hashlib.sha256(raw).hexdigest()
+        return raw_hash,image_review_digest(raw_hash,image_evidence)
     if not 10<=len(canonical)<=2*1024*1024: raise Error("PDF text unavailable")
     return hashlib.sha256(raw).hexdigest(),hashlib.sha256(canonical).hexdigest()
 
@@ -584,9 +666,10 @@ def public_identity(row,transport,version,cells):
 
 def source_identity(row,transport,cache,offers,diagnostics=None):
     if row["use_review_status"]=="held": return "held"
-    key=(row["source_url"],row["source_format"])
+    key=(row["source_url"],row["source_format"],row.get("source_text_sha256"))
     if key not in cache:
-        content_kind={"html_text_v1":"html","pdf_text_v1":"pdf","json_menu_v1":"json"}[row["source_format"]]
+        content_kind={"html_text_v1":"html","pdf_text_v1":"pdf",
+                      "pdf_image_v1":"pdf","json_menu_v1":"json"}[row["source_format"]]
         # Re-resolve the public address on one bounded retry of a transport timeout.
         # Redirects, HTTP errors, and changed content are never retried or accepted.
         for attempt in range(2):
@@ -597,7 +680,8 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
                 if str(exc)!="public source timeout" or attempt:
                     raise
         content_type=getattr(transport,"last_fetch_content_type",None)
-        cache[key]=(source_digests(source_raw,row["source_format"]),
+        cache[key]=(source_digests(source_raw,row["source_format"],
+                                   row.get("image_evidence"),row.get("page_count")),
                     source_raw,content_type)
     hashes,source_raw,content_type=cache[key]
     if hashes!=(row["source_sha256"],row["source_text_sha256"]):

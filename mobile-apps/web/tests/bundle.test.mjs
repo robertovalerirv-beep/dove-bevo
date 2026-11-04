@@ -316,6 +316,74 @@ async function selectOnlyDrink(page, name) {
   await page.locator(".mobile-drink-menu__button").click();
 }
 
+test("compact map chips switch exact drink filters and retain the full accessible picker", async () => {
+  const f = await fixture({ width: 393, height: 852 });
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const row = f.page.getByRole("group", { name: "Filtra la mappa per drink" });
+    const birra = row.getByRole("button", { name: "Birra", exact: true });
+    assert.equal(await birra.getAttribute("aria-pressed"), "true");
+    const geometry = await row.evaluate((element) => {
+      const scroller = element.querySelector(".mobile-drink-quick__scroller");
+      return {
+        height: element.getBoundingClientRect().height,
+        rowWidth: scroller.clientWidth,
+        contentWidth: scroller.scrollWidth,
+        moreVisible:
+          element.querySelector(".mobile-drink-menu__button").getBoundingClientRect().right <=
+          document.documentElement.clientWidth,
+        viewportWidth: document.documentElement.clientWidth,
+        pageWidth: document.documentElement.scrollWidth,
+      };
+    });
+    assert.ok(geometry.height < 54, JSON.stringify(geometry));
+    assert.ok(geometry.contentWidth > geometry.rowWidth, JSON.stringify(geometry));
+    assert.equal(geometry.moreVisible, true);
+    assert.equal(geometry.pageWidth, geometry.viewportWidth);
+    await f.page.screenshot({ path: path.join(output, "map-quick-chips-fixture.png") });
+    await row.getByRole("button", { name: "Gin", exact: true }).click();
+    assert.equal(
+      await row.getByRole("button", { name: "Gin", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    const full = await openDrinks(f.page);
+    assert.equal(
+      await full.getByRole("checkbox", { name: "Gin tonic", exact: true }).isChecked(),
+      true,
+    );
+    assert.equal(
+      await full.getByRole("checkbox", { name: "Gin lemon", exact: true }).isChecked(),
+      true,
+    );
+    assert.equal(
+      await full.getByRole("checkbox", { name: "Birra media", exact: true }).isChecked(),
+      false,
+    );
+    await f.page.keyboard.press("Escape");
+    assert.equal(await full.isVisible(), false);
+    await row.getByRole("button", { name: "Vino", exact: true }).click();
+    assert.equal(
+      await row.getByRole("button", { name: "Vino", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    const wineMenu = await openDrinks(f.page);
+    assert.equal(
+      await wineMenu.getByRole("checkbox", { name: "Calice di vino", exact: true }).isChecked(),
+      true,
+    );
+    await f.page.keyboard.press("Escape");
+    await row.getByRole("button", { name: "Tutti", exact: true }).click();
+    assert.equal(
+      await row.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("production mobile entry renders chips and preserves venue route across reload and close", async () => {
   const f = await fixture();
   try {
@@ -785,7 +853,7 @@ test("orange mobile controls retain readable selected, unselected and focused dr
     const strip = await openDrinks(f.page);
     await strip.waitFor();
     assert.equal(
-      await f.page.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
+      await strip.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
       "false",
     );
     await strip.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
@@ -1069,7 +1137,7 @@ test("a stale identity failure cannot discard a successful new selected drink", 
         cause: error,
       });
     });
-    await f.page.getByTestId("drink-summary").getByText("Spritz").waitFor();
+    assert.match(await f.page.getByTestId("drink-summary").textContent(), /Spritz/);
     options.releaseOldIdentity();
     await f.page
       .waitForFunction(

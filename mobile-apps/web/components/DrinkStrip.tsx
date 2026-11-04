@@ -7,6 +7,18 @@ interface Props {
   onChange: (next: string[]) => void;
 }
 
+const quickDrinks = [
+  { label: "Tutti", codes: [] },
+  { label: "Birra", codes: ["beer_draft"] },
+  { label: "Spritz", codes: ["spritz"] },
+  { label: "Gin", codes: ["gin_tonic", "gin_lemon"] },
+  { label: "Vino", codes: ["wine_glass"] },
+] as const;
+
+function sameDrinks(selected: readonly string[], codes: readonly string[]): boolean {
+  return selected.length === codes.length && codes.every((code) => selected.includes(code));
+}
+
 /** App-only disclosure. Zero selected categories means Tutti; named categories remain multi-select. */
 export function DrinkMenu({ selected, onChange }: Props) {
   const [open, setOpen] = useState(false);
@@ -18,6 +30,7 @@ export function DrinkMenu({ selected, onChange }: Props) {
         .map((drink) => it.drinks[drink.code] ?? drink.code)
         .join(", ")
     : "Tutti";
+  const customSelection = !quickDrinks.some((drink) => sameDrinks(selected, drink.codes));
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -47,26 +60,44 @@ export function DrinkMenu({ selected, onChange }: Props) {
         }
       }}
     >
-      <button
-        type="button"
-        ref={toggle}
-        class="mobile-drink-menu__button"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => {
-          setOpen(!open);
-        }}
-      >
-        <span class="mobile-drink-menu__copy">
-          <span class="mobile-drink-menu__title">{it.map.pickDrinks}</span>
-          <span class="mobile-drink-menu__summary" data-testid="drink-summary">
+      <div class="mobile-drink-quick" role="group" aria-label="Filtra la mappa per drink">
+        <div class="mobile-drink-quick__scroller">
+          {quickDrinks.map((drink) => (
+            <button
+              key={drink.label}
+              type="button"
+              class="mobile-drink-quick__chip"
+              aria-pressed={sameDrinks(selected, drink.codes)}
+              onClick={() => {
+                onChange([...drink.codes]);
+                setOpen(false);
+              }}
+            >
+              {drink.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          ref={toggle}
+          class="mobile-drink-menu__button"
+          data-selected={customSelection ? "true" : undefined}
+          aria-label={`Altri drink. Selezione: ${summary}`}
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => {
+            setOpen(!open);
+          }}
+        >
+          Altro
+          <span class="mobile-drink-menu__chevron" aria-hidden="true">
+            ⌄
+          </span>
+          <span class="sr-only" data-testid="drink-summary">
             {summary}
           </span>
-        </span>
-        <span class="mobile-drink-menu__chevron" aria-hidden="true">
-          ⌄
-        </span>
-      </button>
+        </button>
+      </div>
       <div
         id={id}
         class="mobile-drink-strip"

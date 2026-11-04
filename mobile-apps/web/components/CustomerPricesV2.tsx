@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from "preact/hooks";
 import { formatDate } from "@site/app/lib/format";
+import { currentLang } from "@site/app/i18n/lang";
+import { drinkImage } from "@mobile/drink-images";
 import {
   CustomerPriceHttpError,
   customerCurrency,
@@ -346,21 +348,64 @@ export function CustomerPricesV2({
     editor?.kind !== "new_drink" ||
     editor.row !== null ||
     (name.trim().length >= 2 && name.trim().length <= 80);
+  const selectedOffer = editor?.kind === "menu_offer" ? editor.offer : null;
+  const offerArtwork = selectedOffer?.category
+    ? drinkImage(selectedOffer.category, "product")
+    : undefined;
+  const offerServing = selectedOffer
+    ? (selectedOffer.serving.label ??
+      (selectedOffer.serving.ml ? `${String(selectedOffer.serving.ml)} ml` : ""))
+    : "";
+  const english = currentLang() === "en";
+  const currencyMark =
+    chosenCurrency?.currency === "EUR"
+      ? "€"
+      : chosenCurrency?.currency === "GBP"
+        ? "£"
+        : chosenCurrency?.currency;
   const priceForm = editor && chosenCurrency && (
     <form
-      class="mobile-customer-v2__form"
+      class={`mobile-customer-v2__form${selectedOffer ? " mobile-customer-v2__form--menu" : ""}`}
       onSubmit={(event) => {
         event.preventDefault();
         void save();
       }}
     >
-      <strong>
-        {editor.kind === "menu_offer"
-          ? `Prezzo pagato per ${editor.offer.name}`
-          : editor.row
-            ? `Aggiorna ${editor.row.name}`
-            : "Aggiungi un drink mancante"}
-      </strong>
+      {selectedOffer ? (
+        <>
+          <div class="mobile-customer-v2__form-heading">
+            <span>{english ? "Add a price" : "Aggiungi un prezzo"}</span>
+            <strong>{menu?.venue.name ?? (english ? "This venue" : "Questo locale")}</strong>
+          </div>
+          {offerArtwork && (
+            <div
+              class={`mobile-customer-v2__form-art${selectedOffer.category === "spritz" ? " mobile-customer-v2__form-art--product" : ""}`}
+            >
+              <img src={offerArtwork} alt="" decoding="async" />
+              <small>{english ? "Illustrative image" : "Immagine illustrativa"}</small>
+            </div>
+          )}
+          <div class="mobile-customer-v2__form-drink">
+            <strong>{selectedOffer.name}</strong>
+            {offerServing && <span>{offerServing}</span>}
+            <small>
+              {english ? "Menu price" : "Prezzo da menu"}:{" "}
+              {menuMoney(
+                selectedOffer.amount_minor,
+                selectedOffer.currency,
+                selectedOffer.currency_exponent,
+              )}
+            </small>
+          </div>
+          <p class="mobile-customer-v2__form-prompt">
+            {english
+              ? "Paid a different price? Share the price of this drink and serving."
+              : "Hai pagato un prezzo diverso? Condividi il prezzo del drink indicato."}
+          </p>
+        </>
+      ) : editor.kind === "new_drink" ? (
+        <strong>{editor.row ? `Aggiorna ${editor.row.name}` : "Aggiungi un drink mancante"}</strong>
+      ) : null}
       {editor.kind === "new_drink" && (
         <>
           <label htmlFor={`${formId}-name`}>Nome del drink</label>
@@ -415,23 +460,31 @@ export function CustomerPricesV2({
           />
         </>
       )}
-      <label htmlFor={`${formId}-amount`}>Importo pagato ({chosenCurrency.currency})</label>
-      <input
-        id={`${formId}-amount`}
-        type="text"
-        inputMode="decimal"
-        autoComplete="off"
-        value={amount}
-        required
-        maxLength={9}
-        onInput={(event) => {
-          setAmount(event.currentTarget.value);
-        }}
-        placeholder={chosenCurrency.exponent === 2 ? "0,00" : "0"}
-      />
+      <label htmlFor={`${formId}-amount`}>
+        {english ? "Price paid" : "Importo pagato"} ({chosenCurrency.currency})
+      </label>
+      <div class="mobile-customer-v2__amount-input">
+        <input
+          id={`${formId}-amount`}
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          value={amount}
+          required
+          maxLength={9}
+          aria-invalid={submitError ? "true" : undefined}
+          onInput={(event) => {
+            setAmount(event.currentTarget.value);
+            setSubmitError("");
+          }}
+          placeholder={chosenCurrency.exponent === 2 ? "0,00" : "0"}
+        />
+        <span aria-hidden="true">{currencyMark}</span>
+      </div>
       <small>
-        Prezzo del drink e della porzione indicata, nella valuta originale. Eventuali supplementi
-        restano separati.
+        {english
+          ? "Price for this drink and serving in its original currency. Any extra charges are separate."
+          : "Prezzo del drink e della porzione indicata, nella valuta originale. Eventuali supplementi restano separati."}
       </small>
       <div class="mobile-customer-v2__form-actions">
         <button
@@ -443,14 +496,24 @@ export function CustomerPricesV2({
             setSubmitError("");
           }}
         >
-          Annulla
+          {english ? "Cancel" : "Annulla"}
         </button>
         <button
           type="submit"
           class="btn btn--primary"
           disabled={saving || resolvingOffer !== null || validAmount === null || !validNewName}
         >
-          {saving ? "Invio…" : resolvingOffer ? "Caricamento…" : "Condividi prezzo"}
+          {saving
+            ? english
+              ? "Sending…"
+              : "Invio…"
+            : resolvingOffer
+              ? english
+                ? "Loading…"
+                : "Caricamento…"
+              : english
+                ? "Share price"
+                : "Condividi prezzo"}
         </button>
       </div>
       {submitError && (

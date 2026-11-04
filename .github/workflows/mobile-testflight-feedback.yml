@@ -3,7 +3,7 @@ name: Read-only TestFlight screenshot feedback
 on:
   push:
     tags:
-      - "mobile-testflight-feedback-audit/20261103-v2"
+      - "mobile-testflight-feedback-audit/20261104-v3"
 
 permissions:
   contents: read
@@ -13,7 +13,7 @@ jobs:
     if: >-
       github.repository == 'robertovalerirv-beep/dove-bevo' &&
       github.event_name == 'push' &&
-      github.ref == 'refs/tags/mobile-testflight-feedback-audit/20261103-v2'
+      github.ref == 'refs/tags/mobile-testflight-feedback-audit/20261104-v3'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

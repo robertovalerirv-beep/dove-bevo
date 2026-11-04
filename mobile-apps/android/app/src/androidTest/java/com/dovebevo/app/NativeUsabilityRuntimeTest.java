@@ -191,7 +191,7 @@ public final class NativeUsabilityRuntimeTest {
         }
     }
 
-    @Test public void bottomSaveRequiresExplicitDrinkAndUsesActualHeadingWithoutWritingOldVenueFile() throws Exception {
+    @Test public void exactDrinkSaveUsesActualHeadingWithoutWritingOldVenueFile() throws Exception {
         navigate(ONE);
         WebView original = web;
         SavedDrinkStore ownedDrinks = new SavedDrinkStore(new SavedVenueFile(fixtureDirectory, "saved-drinks-v1"));
@@ -201,7 +201,8 @@ public final class NativeUsabilityRuntimeTest {
                 () -> (Long) get("venueCaptureEpoch"));
         onMain(() -> {
             set("savedDrinks", ownedUi);
-            activity.findViewById(R.id.save_venue).performClick();
+            assertNull("Save belongs beside a drink, not in bottom navigation",activity.findViewById(R.id.save_venue));
+            ownedUi.showExact(RecommendationDrink.SPRITZ,0);
         });
         await(() -> savedDrinkDialog(ownedUi) != null);
         assertTrue(ownedDrinks.load().isEmpty());
@@ -209,9 +210,7 @@ public final class NativeUsabilityRuntimeTest {
             AlertDialog dialog = savedDrinkDialog(ownedUi);
             assertNotNull(dialog);
             assertTrue(dialogText(dialog.getWindow().getDecorView()).contains("Locale di prova"));
-            Spinner choice = (Spinner) dialog.getWindow().getDecorView().findViewWithTag("save_choice_drink");
-            assertNotNull(choice);
-            choice.setSelection(RecommendationDrink.SPRITZ.ordinal() + 1);
+            assertTrue(dialogText(dialog.getWindow().getDecorView()).contains("Spritz"));
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
         });
         await(() -> savedDrinkCount(ownedDrinks) == 1);
@@ -225,7 +224,7 @@ public final class NativeUsabilityRuntimeTest {
             assertFalse((Boolean) get("favoritesVisible"));
             assertEquals(APP_ONE, web.getUrl());
             assertTrue(activity.findViewById(R.id.map_destination).isSelected());
-            assertFalse(activity.findViewById(R.id.save_venue).isSelected());
+            assertNull(activity.findViewById(R.id.save_venue));
         });
     }
 
@@ -272,8 +271,8 @@ public final class NativeUsabilityRuntimeTest {
                 assertEquals(APP_ONE, web.getUrl());
                 assertFalse((Boolean) get("hasUsablePage"));
                 assertNull(invoke("eligibleSavedVenue"));
-                assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
-                assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+                assertNull(activity.findViewById(R.id.save_venue));
+                assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
                 assertEquals(View.VISIBLE, ((View) get("errorPanel")).getVisibility());
                 assertEquals(View.GONE, web.getVisibility());
             });
@@ -292,61 +291,32 @@ public final class NativeUsabilityRuntimeTest {
         }
     }
 
-    @Test public void visibleRecommendationEntryUsesActualVenueReaderAndOnlyInjectedApi() throws Exception {
-        AtomicReference<String> requested = new AtomicReference<>();
-        AtomicReference<RecommendationsUi> nativeUi = new AtomicReference<>();
-        AtomicInteger posts = new AtomicInteger();
+    @Test public void communityDestinationWithoutMapAreaShowsChooseCityAndNoVoteControls() throws Exception {
         onMain(() -> {
-            RecommendationsUi.Api api = new RecommendationsUi.Api() {
-                public DrinkRecommendations get(String canonical, RecommendationsClient.Cancellation cancellation) throws IOException {
-                    cancellation.check(); requested.set(canonical); return RecommendationsRuntimeTest.fixtureSnapshot(false);
-                }
-                public DrinkRecommendations set(String canonical, RecommendationDrink drink, boolean selected, RecommendationsClient.Cancellation cancellation) throws IOException {
-                    posts.incrementAndGet(); return RecommendationsRuntimeTest.fixtureSnapshot(selected);
-                }
-            };
-            RecommendationsUi ui = new RecommendationsUi(activity, api, TestLabPolicy.detect(() -> null), () -> (String) invoke("eligibleSavedVenue"));
-            nativeUi.set(ui); set("recommendations", ui);
-            Button entry = activity.findViewById(R.id.recommendation_entry);
-            invoke("updateToolbar");
-            assertEquals(View.VISIBLE, entry.getVisibility()); assertFalse(entry.isEnabled());
+            Button entry=activity.findViewById(R.id.recommendation_entry);
+            assertEquals(View.VISIBLE,entry.getVisibility());assertTrue(entry.isEnabled());entry.performClick();
+            assertTrue((Boolean)get("areaVisible"));
+            assertTrue(((TextView)activity.findViewById(R.id.recommendation_area_status)).getText().toString().contains("Apri una città"));
+            assertEquals(View.VISIBLE,activity.findViewById(R.id.recommendation_area_choose).getVisibility());
+            assertNull(activity.findViewById(R.id.recommendation_row));
+            assertEquals(View.GONE,web.getVisibility());
+            assertTrue(entry.isSelected());
+            activity.findViewById(R.id.map_destination).performClick();
+            assertFalse((Boolean)get("areaVisible"));assertSame(web,get("website"));
         });
-        navigate(ONE);
-        onMain(() -> {
-            Button entry = activity.findViewById(R.id.recommendation_entry);
-            assertEquals(View.VISIBLE, entry.getVisibility()); assertTrue(entry.isEnabled()); entry.performClick();
-        });
-        await(() -> ONE.equals(requested.get()));
-        onMain(() -> {
-            try {
-                Field field = RecommendationsUi.class.getDeclaredField("dialog"); field.setAccessible(true);
-                AlertDialog dialog = (AlertDialog) field.get(nativeUi.get());
-                assertNotNull(dialog); assertTrue(dialog.isShowing());
-                ArrayList<View> names = new ArrayList<>(); dialog.getWindow().getDecorView().findViewsWithText(names, "Locale di prova", View.FIND_VIEWS_WITH_TEXT);
-                assertEquals(1, names.size());
-                assertSame(web, get("website"));
-                nativeUi.get().dismiss();
-            } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
-        });
-        navigate(BrowserPolicy.HOME);
-        onMain(() -> {
-            assertEquals(View.VISIBLE, activity.findViewById(R.id.recommendation_entry).getVisibility());
-            assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
-        });
-        assertEquals("Entry/GET must not publish a recommendation", 0, posts.get());
     }
 
-    @Test public void sixBottomControlsAndTopOverflowHaveNoDestinationDuplicates() throws Exception {
+    @Test public void fiveBottomControlsAndTopOverflowHaveNoDestinationDuplicates() throws Exception {
         onMain(() -> {
             android.view.ViewGroup bottom = activity.findViewById(R.id.bottom_navigation);
             assertNotNull(bottom);
             for (int id : new int[]{R.id.home, R.id.search_destination, R.id.map_destination,
-                    R.id.favorites_destination, R.id.save_venue, R.id.recommendation_entry}) {
+                    R.id.favorites_destination, R.id.recommendation_entry}) {
                 View control = bottom.findViewById(id);
                 assertNotNull(control); assertEquals(View.VISIBLE, control.getVisibility());
             }
-            assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
-            assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertNull(bottom.findViewById(R.id.save_venue));
+            assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
             assertNull("The map has no duplicate browser header", activity.findViewById(R.id.browser_tools));
             assertNull("Back remains in Android system navigation and overflow", bottom.findViewById(R.id.back));
             assertNull("Overflow belongs only at the top", bottom.findViewById(R.id.more));
@@ -365,7 +335,7 @@ public final class NativeUsabilityRuntimeTest {
         navigate(ONE);
         WebView original = web;
         onMain(() -> {
-            assertTrue(activity.findViewById(R.id.save_venue).isEnabled());
+            assertNull(activity.findViewById(R.id.save_venue));
             assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
             FavoritePricesClient client = new FavoritePricesClient((url,max,call) -> {
                 throw new IOException("Empty owned favourites must not fetch");
@@ -380,8 +350,8 @@ public final class NativeUsabilityRuntimeTest {
             activity.findViewById(R.id.favorites_destination).performClick();
             assertSame(screen, get("favorites")); assertTrue((Boolean)get("favoritesVisible"));
             assertTrue(activity.findViewById(R.id.favorites_destination).isSelected());
-            assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
-            assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertNull(activity.findViewById(R.id.save_venue));
+            assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
             assertFalse(browserMenu().getMenu().findItem(R.id.share).isEnabled());
             assertNull("Preferiti has no duplicate body reload",activity.findViewById(R.id.favorites_refresh));
             assertNull("Drink prices reload through the same menu",activity.findViewById(android.R.id.content).findViewWithTag("drink_favourites_refresh"));
@@ -409,13 +379,13 @@ public final class NativeUsabilityRuntimeTest {
             assertFalse((Boolean)get("discoveryVisible"));
             assertFalse(activity.findViewById(R.id.home).isSelected());assertTrue(activity.findViewById(R.id.map_destination).isSelected());
             assertEquals("Cerca must leave the old venue for the plain map",APP_HOME,web.getUrl());
-            assertFalse(activity.findViewById(R.id.save_venue).isEnabled());assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertNull(activity.findViewById(R.id.save_venue));assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
         });
         tapOwnedVenueButton();
         AtomicBoolean searchClosed = new AtomicBoolean();
         await(()->{
             web.evaluateJavascript("document.body.dataset.searchOpen === '0'", result -> searchClosed.set("true".equals(result)));
-            return searchClosed.get() && APP_ONE.equals(web.getUrl()) && activity.findViewById(R.id.save_venue).isEnabled()
+            return searchClosed.get() && APP_ONE.equals(web.getUrl())
                 && activity.findViewById(R.id.recommendation_entry).isEnabled();
         });
         onMain(()->{
@@ -513,8 +483,8 @@ public final class NativeUsabilityRuntimeTest {
             assertEquals(View.VISIBLE,screen.view().getVisibility());
             assertEquals(View.GONE,web.getVisibility());
             assertTrue(activity.findViewById(R.id.favorites_destination).isSelected());
-            assertFalse(activity.findViewById(R.id.save_venue).isEnabled());
-            assertFalse(activity.findViewById(R.id.recommendation_entry).isEnabled());
+            assertNull(activity.findViewById(R.id.save_venue));
+            assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
             activity.findViewById(R.id.map_destination).performClick();
             assertSame(retained,get("website"));
             assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
@@ -532,16 +502,16 @@ public final class NativeUsabilityRuntimeTest {
                 android.content.res.Configuration config = new android.content.res.Configuration(activity.getResources().getConfiguration());
                 config.screenWidthDp = (int)fixture[0]; config.fontScale = fixture[1];
                 android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
-                BottomNavigationBar bar = new BottomNavigationBar(context, () -> {}, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
+                BottomNavigationBar bar = new BottomNavigationBar(context, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
                 float density = context.getResources().getDisplayMetrics().density;
                 int width = Math.round(fixture[0] * density);
                 bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 bar.layout(0, 0, width, bar.getMeasuredHeight());
                 assertEquals("Unexpected row count at " + fixture[0] + "dp, font scale " + fixture[1],
-                        fixture[0] >= 360 && fixture[1] == 1f || fixture[0] == 640 ? 1 : 2,
+                        BottomNavigationLayout.columns((int)fixture[0]-12,fixture[1])==5 ? 1 : 2,
                         bar.getChildCount());
                 java.util.ArrayList<android.graphics.Rect> boxes = new java.util.ArrayList<>();
-                for (int id : new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
+                for (int id : new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.recommendation_entry}) {
                     Button button = bar.findViewById(id); assertNotNull(button);
                     assertEquals(View.VISIBLE, button.getVisibility());
                     assertTrue(button.getWidth() >= 48*density); assertTrue(button.getHeight() >= 56*density);
@@ -567,7 +537,7 @@ public final class NativeUsabilityRuntimeTest {
             config.screenWidthDp = 640; config.fontScale = 1.5f;
             android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
             AtomicInteger taps = new AtomicInteger();
-            BottomNavigationBar bar = new BottomNavigationBar(context, taps::incrementAndGet, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
+            BottomNavigationBar bar = new BottomNavigationBar(context, taps::incrementAndGet, () -> {}, () -> {}, () -> {}, () -> {});
             View originalHome = bar.findViewById(R.id.home);
             float density = context.getResources().getDisplayMetrics().density;
             for (int widthDp : new int[]{640,320,640,360,640}) {
@@ -576,7 +546,7 @@ public final class NativeUsabilityRuntimeTest {
                 bar.layout(0,0,width,bar.getMeasuredHeight());
                 assertEquals(widthDp==640?1:2,bar.getChildCount());
                 assertSame(originalHome,bar.findViewById(R.id.home));
-                for(int id:new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.save_venue,R.id.recommendation_entry}) {
+                for(int id:new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.recommendation_entry}) {
                     Button button=bar.findViewById(id);
                     assertTrue(button.getWidth()>=48*density); assertTrue(button.getHeight()>=48*density);
                     assertNotNull(button.getLayout());

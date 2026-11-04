@@ -160,7 +160,6 @@ final class NativeBottomBar: UIView {
         for action in BottomNavigationAction.allCases {
             let button = button(for: action)
             let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .home && destination == 2) || (action == .recommendations && destination == 3)
-            let enabled = true
             var configuration = UIButton.Configuration.plain()
             let fill = selected ? NativeAppearance.accent : NativeAppearance.chrome
             configuration.baseBackgroundColor = fill
@@ -179,7 +178,7 @@ final class NativeBottomBar: UIView {
             configuration.imagePlacement = .top
             configuration.imagePadding = 4
             configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 4, bottom: 6, trailing: 4)
-            configuration.baseForegroundColor = enabled ? (selected ? NativeAppearance.onAccent : NativeAppearance.muted) : NativeAppearance.disabled
+            configuration.baseForegroundColor = selected ? NativeAppearance.onAccent : NativeAppearance.muted
             configuration.background.cornerRadius = NativeAppearance.radius
             configuration.background.strokeColor = NativeAppearance.ink
             configuration.background.strokeWidth = selected ? 2 : 0
@@ -191,10 +190,9 @@ final class NativeBottomBar: UIView {
             button.titleLabel?.isAccessibilityElement = false
             button.imageView?.isAccessibilityElement = false
             button.isSelected = selected
-            button.isEnabled = enabled
+            button.isEnabled = true
             var traits: UIAccessibilityTraits = .button
             if selected { traits.insert(.selected) }
-            if !enabled { traits.insert(.notEnabled) }
             button.accessibilityTraits = traits
         }
         button(for: .recommendations).accessibilityHint = "Mostra i drink consigliati da tutti in questa zona"

@@ -47,7 +47,7 @@ node --test mobile-apps/windows/tests/venue-capture.test.mjs
 node --test mobile-apps/windows/tests/map-area-reader.test.mjs
 & mobile-apps/windows/tests/PackageVersionSmoke.ps1
 dotnet build mobile-apps/windows/DoveBevo.Windows.csproj -c Release
-& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.9.0'
+& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.11.0'
 ```
 
 The example uses the reserved Partner Center product **9P6XDNNQJ74N**, with

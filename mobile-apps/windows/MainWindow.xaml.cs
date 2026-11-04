@@ -46,7 +46,7 @@ public partial class MainWindow : Window
             core.PermissionRequested += Browser_PermissionRequested;
             core.ProcessFailed += Browser_ProcessFailed;
             ready = true;
-            Website.Visibility = Visibility.Visible;
+            ShowWebsiteIfNoOverlay();
             core.Navigate(lastTrustedUrl);
             StatusText.Text = "Caricamento della mappa…";
             UpdateButtons();
@@ -79,7 +79,7 @@ public partial class MainWindow : Window
         if (e.IsSuccess)
         {
             ErrorPanel.Visibility = Visibility.Collapsed;
-            Website.Visibility = Visibility.Visible;
+            ShowWebsiteIfNoOverlay();
             StatusText.Text = "Prezzi e locali aggiornati online.";
         }
         else if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
@@ -160,12 +160,24 @@ public partial class MainWindow : Window
         ForwardButton.IsEnabled = ready && Website.CoreWebView2?.CanGoForward == true;
     }
 
+    // WPF WebView2 is an HWND and paints above WPF siblings. Hide it whenever
+    // a native panel is open; otherwise the panel is interactive but invisible.
+    private void ShowWebsiteIfNoOverlay()
+    {
+        Website.Visibility = ready && ErrorPanel.Visibility != Visibility.Visible &&
+            DiscoveryPanel.Visibility != Visibility.Visible &&
+            FavouritesPanel.Visibility != Visibility.Visible &&
+            RecommendationsPanel.Visibility != Visibility.Visible
+            ? Visibility.Visible : Visibility.Hidden;
+    }
+
     private void Navigate(string address)
     {
         CloseDiscovery();
         FavouritesPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ErrorPanel.Visibility = Visibility.Collapsed;
+        ShowWebsiteIfNoOverlay();
         if (!Uri.TryCreate(address, UriKind.Absolute, out var uri)
             || !NavigationPolicy.IsTrusted(uri)) return;
         lastTrustedUrl = uri.AbsoluteUri;
@@ -201,6 +213,7 @@ public partial class MainWindow : Window
         DiscoveryDrink.ItemsSource = DiscoveryClient.Categories;
         DiscoveryDrink.SelectedIndex = 1;
         DiscoveryPanel.Visibility = Visibility.Visible;
+        ShowWebsiteIfNoOverlay();
         UpdateButtons();
         await LoadDiscovery();
     }
@@ -211,6 +224,7 @@ public partial class MainWindow : Window
         CloseDiscovery();
         FavouritesPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
+        ShowWebsiteIfNoOverlay();
         if (!ready) { Navigate(NavigationPolicy.Home); return; }
         try
         {
@@ -236,11 +250,15 @@ public partial class MainWindow : Window
         if (FavouritesPanel.Visibility == Visibility.Visible)
         {
             FavouritesPanel.Visibility = Visibility.Collapsed;
+            ShowWebsiteIfNoOverlay();
+            UpdateButtons();
             return;
         }
         if (RecommendationsPanel.Visibility == Visibility.Visible)
         {
             RecommendationsPanel.Visibility = Visibility.Collapsed;
+            ShowWebsiteIfNoOverlay();
+            UpdateButtons();
             return;
         }
         if (ready && Website.CoreWebView2.CanGoBack) Website.CoreWebView2.GoBack();
@@ -282,6 +300,8 @@ public partial class MainWindow : Window
         ErrorPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         FavouritesPanel.Visibility = Visibility.Visible;
+        ShowWebsiteIfNoOverlay();
+        UpdateButtons();
         StatusText.Text = bookmarks.Items.Count == 0 ? "Nessun drink salvato." : "Drink preferiti su questo PC.";
     }
 
@@ -373,6 +393,8 @@ public partial class MainWindow : Window
                 FavouritesPanel.Visibility = Visibility.Collapsed;
                 ErrorPanel.Visibility = Visibility.Collapsed;
                 RecommendationsPanel.Visibility = Visibility.Visible;
+                ShowWebsiteIfNoOverlay();
+                UpdateButtons();
             }
             catch (Exception)
             {
@@ -411,7 +433,11 @@ public partial class MainWindow : Window
     }
 
     private void CloseRecommendations_Click(object sender, RoutedEventArgs e)
-        => RecommendationsPanel.Visibility = Visibility.Collapsed;
+    {
+        RecommendationsPanel.Visibility = Visibility.Collapsed;
+        ShowWebsiteIfNoOverlay();
+        UpdateButtons();
+    }
 
     private void OpenFavourite_Click(object sender, RoutedEventArgs e)
     {
@@ -465,7 +491,7 @@ public partial class MainWindow : Window
                 ? $"{snapshot.Rows.Count} prezzi trovati; {snapshot.UnavailableCells} zone non disponibili. Riprova Aggiorna."
                 : snapshot.Rows.Count == 0
                     ? "Nessun prezzo verificato per questo drink qui vicino. Prova un altro drink o sposta la mappa."
-                    : $"{snapshot.Rows.Count} prezzi verificati vicino al centro della mappa.";
+                    : $"{snapshot.Rows.Count} prezzi verificati nella zona selezionata.";
         }
         catch (OperationCanceledException) { }
         catch (Exception)
@@ -481,6 +507,7 @@ public partial class MainWindow : Window
         discoveryCancellation = null;
         DiscoveryPanel.Visibility = Visibility.Collapsed;
         discoveryArea = null;
+        ShowWebsiteIfNoOverlay();
         UpdateButtons();
     }
 

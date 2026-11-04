@@ -989,10 +989,6 @@
   border-bottom: 1px solid var(--line-soft, #e2d3be);
 }
 .mobile-menu-v2__offers--compact {
-  max-height: min(50vh, 420px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
   padding: 0 12px 8px;
 }
 .mobile-menu-v2__offer--compact {

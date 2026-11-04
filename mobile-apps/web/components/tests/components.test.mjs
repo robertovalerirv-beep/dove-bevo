@@ -837,10 +837,7 @@ test("long owner menus keep the saved drink prominent and reveal sourced seconda
     assert.equal(await more.getByText("Altri prezzi dal menu").isVisible(), true);
     await more.locator(":scope > summary").click();
     const rows = more.locator(".mobile-menu-v2__offers--compact");
-    assert.equal(
-      await rows.evaluate((element) => element.scrollHeight > element.clientHeight),
-      true,
-    );
+    assert.equal(await rows.evaluate((element) => getComputedStyle(element).overflowY), "visible");
     const conditional = rows.locator(".mobile-menu-v2__offer").filter({ hasText: "Spritz serale" });
     assert.match(
       await conditional.locator("summary").innerText(),
@@ -865,7 +862,7 @@ test("long owner menus keep the saved drink prominent and reveal sourced seconda
   }
 });
 
-test("compact menu rows keep names, prices and disclosure controls inside a narrow phone", async () => {
+test("compact menu rows keep details and lower sheet content reachable at phone widths", async () => {
   const f = await fixture({
     largeMenu: true,
     customerEmpty: true,
@@ -876,18 +873,51 @@ test("compact menu rows keep names, prices and disclosure controls inside a narr
     const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
     const more = menu.locator(".mobile-menu-v2__more-offers");
     await more.locator(":scope > summary").click();
-    const row = more
+    const rows = more.locator(".mobile-menu-v2__offers--compact");
+    const row = rows
       .locator(".mobile-menu-v2__offer--compact")
       .filter({ hasText: "Spritz serale" });
-    assert.equal(await row.locator("summary").isVisible(), true);
-    assert.equal(
-      await row.evaluate((element) => element.getBoundingClientRect().right <= window.innerWidth),
-      true,
-    );
-    assert.match(
-      await row.locator("summary").innerText(),
-      /Spritz serale[\s\S]*5,50\s*€[\s\S]*Solo con: dopo le 18/,
-    );
+    const fee = menu.getByText("Coperto", { exact: true });
+    const customerAction = f.page.getByRole("button", { name: "Aggiungi un drink mancante" });
+    for (const width of [390, 320]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      await f.page.locator(".sheet__body").evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      const layout = await rows.evaluate((element) => ({
+        overflowY: getComputedStyle(element).overflowY,
+        ownHeight: element.clientHeight,
+        contentHeight: element.scrollHeight,
+        right: element.getBoundingClientRect().right,
+        viewportWidth: window.innerWidth,
+      }));
+      assert.equal(layout.overflowY, "visible");
+      assert.ok(layout.contentHeight <= layout.ownHeight + 1, JSON.stringify(layout));
+      assert.ok(layout.right <= layout.viewportWidth, JSON.stringify(layout));
+      assert.match(
+        await row.locator("summary").innerText(),
+        /Spritz serale[\s\S]*5,50\s*€[\s\S]*Solo con: dopo le 18/,
+      );
+      await fee.scrollIntoViewIfNeeded();
+      await customerAction.scrollIntoViewIfNeeded();
+      const reach = await customerAction.evaluate((element) => {
+        const sheet = element.closest(".sheet__body");
+        const actionRect = element.getBoundingClientRect();
+        const sheetRect = sheet.getBoundingClientRect();
+        return {
+          scrollTop: sheet.scrollTop,
+          top: actionRect.top,
+          bottom: actionRect.bottom,
+          visibleTop: sheetRect.top,
+          visibleBottom: sheetRect.bottom,
+        };
+      });
+      assert.ok(reach.scrollTop > 0, JSON.stringify(reach));
+      assert.ok(
+        reach.top >= reach.visibleTop && reach.bottom <= reach.visibleBottom,
+        JSON.stringify(reach),
+      );
+    }
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

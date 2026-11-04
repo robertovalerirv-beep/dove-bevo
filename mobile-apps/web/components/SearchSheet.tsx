@@ -101,7 +101,7 @@ export function SearchSheet({
 }: Props) {
   const [query, setQuery] = useState("");
   const [places, setPlaces] = useState<Place[]>([]);
-  const [placesFailed, setPlacesFailed] = useState(false);
+  const [placesStatus, setPlacesStatus] = useState<"loading" | "ready" | "failed">("loading");
   const [bars, setBars] = useState<Hit[]>([]);
   const [barsState, setBarsState] = useState<"idle" | "loading" | "failed">("idle");
   const [active, setActive] = useState(-1);
@@ -124,13 +124,17 @@ export function SearchSheet({
   }, []);
   useEffect(() => {
     loadPlaces()
-      .then(setPlaces)
+      .then((found) => {
+        setPlaces(found);
+        setPlacesStatus("ready");
+      })
       .catch(() => {
-        setPlacesFailed(true);
+        setPlacesStatus("failed");
       });
   }, []);
 
   const key = searchKey(query);
+  const placesFailed = placesStatus === "failed";
   const typed = useMemo(() => searchWords(query), [query]);
   useEffect(() => {
     if (key.length < MIN_CHARS || leadWord(query) === null) {
@@ -365,6 +369,11 @@ export function SearchSheet({
               )}
             </div>
           )}
+          {!key && placesStatus === "loading" && (
+            <p class="hint" role="status">
+              Caricamento città italiane…
+            </p>
+          )}
           {!key && (featuredItalianPlaces.length > 0 || italianCatalogCities.length > 0) && (
             <>
               <h3 class="section-title">Città italiane</h3>
@@ -398,7 +407,7 @@ export function SearchSheet({
               </ul>
             </>
           )}
-          {!key && otherEuropeanCities.length > 0 && (
+          {!key && placesStatus !== "loading" && otherEuropeanCities.length > 0 && (
             <>
               <h3 class="section-title">Città europee</h3>
               <ul class="rows">

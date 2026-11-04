@@ -31,14 +31,15 @@ final class MobileEntryBrowserTests: XCTestCase {
         waitUntil("Missing app marker must show native retry") { !error.isHidden }
         XCTAssertEqual(loads, [MobileEntry.homeURL])
         XCTAssertTrue(try share(tabs).attributes.contains(.disabled))
-        XCTAssertFalse(tabs.bottomBar.button(for: .save).isEnabled, "Home has no venue to save while the app document is unverified")
+        XCTAssertEqual(tabs.bottomBar.buttons.count, 5, "Saving is attached to each drink, not the bottom navigation")
+        XCTAssertTrue(tabs.bottomBar.button(for: .recommendations).isEnabled, "Area recommendations remain reachable without a selected venue")
         XCTAssertTrue(try XCTUnwrap(ownedWeb).accessibilityElementsHidden)
         marked = true
         retry.sendActions(for: .touchUpInside)
         waitUntil("Retry must finish the actual marked document") { error.isHidden && (try? self.share(tabs).attributes.contains(.disabled)) == false }
         XCTAssertEqual(loads, [MobileEntry.homeURL, MobileEntry.homeURL])
         XCTAssertFalse(try XCTUnwrap(ownedWeb).accessibilityElementsHidden)
-        XCTAssertFalse(tabs.bottomBar.button(for: .save).isEnabled, "A verified Home document still cannot create a venue bookmark")
+        XCTAssertTrue(tabs.bottomBar.button(for: .favourites).isEnabled, "Saved drinks remain reachable from Home")
     }
 
     @MainActor

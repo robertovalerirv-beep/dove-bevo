@@ -13,6 +13,28 @@ import worker from "../../src/worker/index";
 const ORIGIN = "https://dovebevo.example";
 const ITALY = { key: "n2420779240", cell: "u0nd9" };
 const LONDON = { key: "n910000001", cell: "gcpvj" };
+const TODAY = new Date().toISOString().slice(0, 10);
+const EUROPE_CATALOG = {
+  schema_version: 1,
+  version: "test-exact-europe-v1",
+  venues: [
+    {
+      ...LONDON,
+      name: "Fixture European Bar",
+      kind: 1,
+      lat: 51.5074,
+      lon: -0.1278,
+      city: "London",
+      country: "GB",
+      currency: "GBP",
+      google: {
+        url: "https://www.google.com/maps/place/Fixture",
+        review_count: 101,
+        checked_on: TODAY,
+      },
+    },
+  ],
+};
 const VOTER = "719576dd-2184-49e9-831d-bc2de0c5f542";
 let address = 0;
 const target = (drink = "spritz", band: "normal" | "happy_hour" = "normal") =>
@@ -21,12 +43,53 @@ const path = (venue: { key: string; cell: string }) =>
   `/api/mobile/v2/drink-votes/venues/${venue.key}?cell=${venue.cell}`;
 const area = (cells = ITALY.cell, suffix = "") =>
   `/api/mobile/v2/drink-votes/area?cells=${cells}${suffix}`;
+function europeanEnv(): Env {
+  return {
+    ...env,
+    ASSETS: {
+      fetch: async (input: RequestInfo | URL) => {
+        const request = new Request(input);
+        if (new URL(request.url).pathname === "/mobile-data/catalog.json")
+          return Response.json(EUROPE_CATALOG);
+        return env.ASSETS.fetch(request);
+      },
+    } as unknown as Env["ASSETS"],
+  };
+}
+const europeTarget = (ml: number) =>
+  ({
+    kind: "europe",
+    drink: "beer_draft",
+    band: "normal",
+    currency: "GBP",
+    serving: { unit: "ml", ml },
+  }) as const;
+async function europePrice(ml: number, status = "active") {
+  await env.DB.prepare(
+    "INSERT INTO mobile_prices_current (venue_key,drink,hh,currency,serving_key,cell," +
+      " amount_minor,observed_on,confirmed_on,confirmations,status,source_kind,source_id," +
+      " revision,changed_at) VALUES (?1,'beer_draft',0,'GBP',?2,?3,?4,?5,NULL,0,?6," +
+      " 'customer',NULL,?7,?8)",
+  )
+    .bind(
+      LONDON.key,
+      `ml:${String(ml)}`,
+      LONDON.cell,
+      ml === 500 ? 650 : 400,
+      TODAY,
+      status,
+      crypto.randomUUID(),
+      `${TODAY}T00:00:00Z`,
+    )
+    .run();
+}
 
 async function request(
   route: string,
   body?: { target: ExactDrinkTarget; recommended: boolean },
   voter: string | null = VOTER,
   method = body ? "POST" : "GET",
+  bindings: Env = env,
 ) {
   return worker.fetch(
     new Request(ORIGIN + route, {
@@ -39,7 +102,7 @@ async function request(
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     }),
-    env,
+    bindings,
     createExecutionContext(),
   );
 }
@@ -96,7 +159,9 @@ async function customerDrink(itemKey: string) {
 
 beforeEach(async () => {
   await env.DB.batch([
+    env.DB.prepare("DELETE FROM mobile_europe_drink_votes"),
     env.DB.prepare("DELETE FROM mobile_exact_drink_votes"),
+    env.DB.prepare("DELETE FROM mobile_prices_current"),
     env.DB.prepare("DELETE FROM mobile_menu_v2_customer_reports"),
     env.DB.prepare("DELETE FROM mobile_menu_v2_customer_decisions"),
     env.DB.prepare("DELETE FROM mobile_menu_v2_customer_entries"),
@@ -317,5 +382,179 @@ describe("apps-only exact drink recommendation counts", () => {
       area(Array(13).fill(ITALY.cell).join(",")),
     ])
       expect((await request(route, undefined, null)).status).toBe(400);
+  });
+
+  it("keeps different European servings independent and requires explicit read opt-in", async () => {
+    await europePrice(300);
+    await europePrice(500);
+    const configured = europeanEnv();
+    const narrow = europeTarget(300);
+    const pint = europeTarget(500);
+    for (const current of [narrow, pint]) {
+      expect(
+        await json<ExactDrinkVote>(
+          await request(
+            path(LONDON),
+            { target: current, recommended: true },
+            VOTER,
+            "POST",
+            configured,
+          ),
+        ),
+      ).toEqual({ target: current, count: 1, recommended: true });
+    }
+    const stored = await env.DB.prepare(
+      "SELECT serving_key,claim FROM mobile_europe_drink_votes ORDER BY serving_key",
+    ).all<{ serving_key: string; claim: string }>();
+    expect(stored.results.map((row) => row.serving_key)).toEqual(["ml:300", "ml:500"]);
+    expect(stored.results[0]?.claim).toMatch(/^[0-9a-f]{32}$/);
+    expect(stored.results[0]?.claim).not.toBe(stored.results[1]?.claim);
+    expect(JSON.stringify(stored)).not.toContain(VOTER);
+    expect(
+      await json<ExactDrinkVenueVotes>(
+        await request(path(LONDON), undefined, null, "GET", configured),
+      ),
+    ).toMatchObject({ items: [] });
+    expect(
+      await json<ExactDrinkAreaVotes>(
+        await request(area(LONDON.cell), undefined, null, "GET", configured),
+      ),
+    ).toMatchObject({ items: [] });
+    const venue = await json<ExactDrinkVenueVotes>(
+      await request(`${path(LONDON)}&include_europe=1`, undefined, VOTER, "GET", configured),
+    );
+    expect(venue.items).toEqual([
+      { target: narrow, count: 1, recommended: true },
+      { target: pint, count: 1, recommended: true },
+    ]);
+    const feed = await json<ExactDrinkAreaVotes>(
+      await request(area(LONDON.cell, "&include_europe=1"), undefined, null, "GET", configured),
+    );
+    expect(feed.items.map((row) => [row.target, row.drink.serving_label, row.count])).toEqual([
+      [narrow, "300 ml", 1],
+      [pint, "500 ml", 1],
+    ]);
+    expect(JSON.stringify(feed)).not.toMatch(/amount_minor|source_url|claim/);
+    const first = await json<ExactDrinkAreaVotes>(
+      await request(
+        area(LONDON.cell, "&include_europe=1&limit=1"),
+        undefined,
+        null,
+        "GET",
+        configured,
+      ),
+    );
+    expect(first.next_after).toMatch(/^[A-Za-z0-9_-]+$/);
+    if (!first.next_after) throw new Error("Expected a cursor for the next European serving");
+    expect(
+      (
+        await request(
+          area(LONDON.cell, `&limit=1&after=${first.next_after}`),
+          undefined,
+          null,
+          "GET",
+          configured,
+        )
+      ).status,
+    ).toBe(400);
+    const second = await json<ExactDrinkAreaVotes>(
+      await request(
+        area(LONDON.cell, `&include_europe=1&limit=1&after=${first.next_after}`),
+        undefined,
+        null,
+        "GET",
+        configured,
+      ),
+    );
+    expect(second.items).toHaveLength(1);
+    expect(second.next_after).toBeNull();
+  });
+
+  it("hides moderated European prices and venues while retaining claims for audit", async () => {
+    await europePrice(500);
+    const configured = europeanEnv();
+    const vote = { target: europeTarget(500), recommended: true };
+    await json<ExactDrinkVote>(await request(path(LONDON), vote, VOTER, "POST", configured));
+    await env.DB.prepare("UPDATE mobile_prices_current SET status='review' WHERE venue_key=?1")
+      .bind(LONDON.key)
+      .run();
+    expect(
+      (
+        await json<ExactDrinkVenueVotes>(
+          await request(`${path(LONDON)}&include_europe=1`, undefined, null, "GET", configured),
+        )
+      ).items,
+    ).toEqual([]);
+    expect(
+      (
+        await json<ExactDrinkAreaVotes>(
+          await request(area(LONDON.cell, "&include_europe=1"), undefined, null, "GET", configured),
+        )
+      ).items,
+    ).toEqual([]);
+    expect((await request(path(LONDON), vote, VOTER, "POST", configured)).status).toBe(404);
+    await env.DB.prepare("UPDATE mobile_prices_current SET status='active' WHERE venue_key=?1")
+      .bind(LONDON.key)
+      .run();
+    await env.DB.prepare("INSERT INTO mobile_venues_moderation VALUES (?1,'hidden','fixture')")
+      .bind(LONDON.key)
+      .run();
+    expect(
+      (await request(`${path(LONDON)}&include_europe=1`, undefined, null, "GET", configured))
+        .status,
+    ).toBe(404);
+    expect(
+      (
+        await json<ExactDrinkAreaVotes>(
+          await request(area(LONDON.cell, "&include_europe=1"), undefined, null, "GET", configured),
+        )
+      ).items,
+    ).toEqual([]);
+    expect((await request(path(LONDON), vote, VOTER, "POST", configured)).status).toBe(404);
+    expect(
+      await env.DB.prepare("SELECT COUNT(*) AS n FROM mobile_europe_drink_votes").first("n"),
+    ).toBe(1);
+  });
+
+  it("rejects invalid European serving, currency and legacy collisions", async () => {
+    await europePrice(500);
+    const configured = europeanEnv();
+    for (const candidate of [
+      { ...europeTarget(500), currency: "EUR" },
+      { ...europeTarget(500), serving: { unit: "drink" } },
+      { ...europeTarget(500), serving: { unit: "ml", ml: 0 } },
+    ]) {
+      expect(
+        (
+          await request(
+            path(LONDON),
+            { target: candidate as ExactDrinkTarget, recommended: true },
+            VOTER,
+            "POST",
+            configured,
+          )
+        ).status,
+      ).toBeGreaterThanOrEqual(400);
+    }
+    await env.DB.prepare(
+      "INSERT INTO prices_current (venue_key,drink,hh,cell,city,price_cents,observed_on," +
+        " confirmations,status,source) VALUES (?1,'spritz',0,?2,1,650,?3,0,'active','manual')",
+    )
+      .bind(LONDON.key, LONDON.cell, TODAY)
+      .run();
+    expect(
+      (
+        await request(
+          path(LONDON),
+          { target: europeTarget(500), recommended: true },
+          VOTER,
+          "POST",
+          configured,
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      await env.DB.prepare("SELECT COUNT(*) AS n FROM mobile_europe_drink_votes").first("n"),
+    ).toBe(0);
   });
 });

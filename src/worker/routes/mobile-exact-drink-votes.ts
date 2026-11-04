@@ -17,7 +17,17 @@ import { clientIp } from "../lib/quota";
 import { publicVenueName } from "../lib/venues";
 import type { AppEnv } from "../types";
 import { currentStaticMenuVenue, resolveContributableMenuVenue } from "./mobile-menu-v2";
-import { MobileCell } from "./mobile-price-catalog";
+import {
+  MobileCell,
+  MobileCurrency,
+  MobileDrink,
+  Serving,
+  resolveMobileVenue,
+  servingFromKey,
+  servingKey,
+  validServing,
+} from "./mobile-price-catalog";
+import { SELECT_PUBLIC, publicMobilePrice, type MobilePriceDb } from "./mobile-price-store";
 
 const Key = z.string().regex(/^(?:m[0-9a-f]{24}|[nwru][1-9][0-9]{0,14})$/);
 const Voter = z
@@ -38,29 +48,43 @@ const Target = z.discriminatedUnion("kind", [
     drink: Drink,
     band: z.enum(["normal", "happy_hour"]),
   }),
+  z.strictObject({
+    kind: z.literal("europe"),
+    drink: MobileDrink,
+    band: z.enum(["normal", "happy_hour"]),
+    currency: MobileCurrency,
+    serving: Serving,
+  }),
 ]);
 const Vote = z.strictObject({ target: Target, recommended: z.boolean() });
 const CursorTuple = z.tuple([
   z.number().int().min(1),
   Key,
-  z.enum(["offer", "customer", "legacy"]),
+  z.enum(["offer", "customer", "legacy", "europe"]),
   z.string().min(1).max(128),
-  z.string().min(5).max(71),
+  z.string().min(5).max(78),
 ]);
 const BASE32 = /^[0123456789bcdefghjkmnpqrstuvwxyz]{5}$/;
 const MAX_CELLS = 12;
 const MAX_AREA_ROWS = 50;
 const MAX_VENUE_ROWS = 1000;
 
-type StoredTarget = { kind: "offer" | "customer" | "legacy"; id: string };
+type StoredTarget = { kind: "offer" | "customer" | "legacy" | "europe"; id: string };
 type CountRow = {
   venue_key: string;
   cell: string;
   target_kind: StoredTarget["kind"];
   target_id: string;
   count: number;
+  currency: string | null;
 };
-type PublicVenue = { key: string; cell: string; name: string; city: string | null };
+type PublicVenue = {
+  key: string;
+  cell: string;
+  name: string;
+  city: string | null;
+  currency: "EUR" | "GBP" | null;
+};
 type DrinkDetail = { name: string; category: string | null; serving_label: string | null };
 type Cursor = {
   count: number;
@@ -72,12 +96,29 @@ type Cursor = {
 
 /** The customer row for an owner offer uses the offer ID, so both displays share one count. */
 function storedTarget(value: ExactDrinkTarget): StoredTarget {
-  return value.kind === "legacy"
-    ? { kind: "legacy", id: `${value.drink}:${value.band}` }
-    : { kind: value.kind, id: value.id };
+  if (value.kind === "legacy") return { kind: "legacy", id: `${value.drink}:${value.band}` };
+  if (value.kind === "europe") {
+    if (!validServing(value.drink, value.serving)) throw new ApiError("bad_request");
+    return {
+      kind: "europe",
+      id: `${value.drink}:${value.band}:${value.currency}:${servingKey(value.serving)}`,
+    };
+  }
+  return { kind: value.kind, id: value.id };
 }
 
 function publicTarget(kind: StoredTarget["kind"], id: string): ExactDrinkTarget {
+  if (kind === "europe") {
+    const [drink, band, currency, unit, ml, extra] = id.split(":");
+    if (extra !== undefined || !drink || !band || !currency || !unit || ml === undefined)
+      throw new ApiError("internal");
+    const serving = Serving.safeParse({ unit, ...(ml ? { ml: Number(ml) } : {}) });
+    if (!serving.success) throw new ApiError("internal");
+    const parsed = Target.safeParse({ kind, drink, band, currency, serving: serving.data });
+    if (!parsed.success || !validServing(drink, serving.data)) throw new ApiError("internal");
+    if (storedTarget(parsed.data).id !== id) throw new ApiError("internal");
+    return parsed.data;
+  }
   if (kind === "legacy") {
     const [drink, band, extra] = id.split(":");
     if (extra !== undefined || !drink || !band) throw new ApiError("internal");
@@ -95,24 +136,43 @@ function safeCount(value: number): number {
   return value;
 }
 
-function queryCell(url: string): string {
+/** European rows are opt-in so older beta clients keep their original result set. */
+function queryCell(url: string, allowEurope: boolean): { cell: string; includeEurope: boolean } {
   const query = new URL(url).searchParams;
   const values = query.getAll("cell");
+  const include = query.getAll("include_europe");
   const cell = MobileCell.safeParse(values.length === 1 ? values[0] : undefined);
-  if (!cell.success || query.size !== 1) throw new ApiError("bad_request");
-  return cell.data;
+  if (
+    !cell.success ||
+    include.length > 1 ||
+    (include.length === 1 && (!allowEurope || include[0] !== "1")) ||
+    [...query.keys()].some((key) => key !== "cell" && key !== "include_europe")
+  )
+    throw new ApiError("bad_request");
+  return { cell: cell.data, includeEurope: include.length === 1 };
 }
 
-function queryArea(url: string): { cells: string[]; limit: number; after: Cursor | null } {
+function cursorScope(cells: string[], includeEurope: boolean): string {
+  return cells.join(",") + (includeEurope ? "|europe" : "");
+}
+function queryArea(url: string): {
+  cells: string[];
+  limit: number;
+  after: Cursor | null;
+  includeEurope: boolean;
+} {
   const query = new URL(url).searchParams;
   const rawCells = query.getAll("cells");
   const rawLimit = query.getAll("limit");
   const rawAfter = query.getAll("after");
+  const rawInclude = query.getAll("include_europe");
   if (
     rawCells.length !== 1 ||
     rawLimit.length > 1 ||
     rawAfter.length > 1 ||
-    [...query.keys()].some((key) => !["cells", "limit", "after"].includes(key))
+    rawInclude.length > 1 ||
+    (rawInclude.length === 1 && rawInclude[0] !== "1") ||
+    [...query.keys()].some((key) => !["cells", "limit", "after", "include_europe"].includes(key))
   )
     throw new ApiError("bad_request");
   const split = rawCells[0]?.split(",") ?? [];
@@ -127,10 +187,18 @@ function queryArea(url: string): { cells: string[]; limit: number; after: Cursor
     (String(limit) !== rawLimit[0] && rawLimit.length > 0)
   )
     throw new ApiError("bad_request");
-  return { cells, limit, after: rawAfter.length ? parseCursor(rawAfter[0] ?? "", cells) : null };
+  const includeEurope = rawInclude.length === 1;
+  return {
+    cells,
+    limit,
+    includeEurope,
+    after: rawAfter.length
+      ? parseCursor(rawAfter[0] ?? "", cursorScope(cells, includeEurope))
+      : null,
+  };
 }
 
-function parseCursor(raw: string, cells: string[]): Cursor {
+function parseCursor(raw: string, expectedScope: string): Cursor {
   if (!/^[A-Za-z0-9_-]{1,512}$/.test(raw)) throw new ApiError("bad_request");
   let value: unknown;
   try {
@@ -141,7 +209,8 @@ function parseCursor(raw: string, cells: string[]): Cursor {
   const parsed = CursorTuple.safeParse(value);
   if (!parsed.success) throw new ApiError("bad_request");
   const [count, venue, kind, id, scope] = parsed.data;
-  if (scope !== cells.join(",")) throw new ApiError("bad_request");
+  if (scope !== expectedScope) throw new ApiError("bad_request");
+  if (kind === "europe" && !expectedScope.endsWith("|europe")) throw new ApiError("bad_request");
   try {
     publicTarget(kind, id);
   } catch {
@@ -177,10 +246,23 @@ async function publicVenue(env: Env, key: string, cell: string): Promise<PublicV
   const legacyName = await publicVenueName(env, key, cell);
   if (legacyName !== null) {
     const original = key.startsWith("u") ? null : await currentStaticMenuVenue(env, key, cell);
-    return { key, cell, name: legacyName, city: original?.city ?? null };
+    return { key, cell, name: legacyName, city: original?.city ?? null, currency: null };
   }
-  const venue = await resolveContributableMenuVenue(env, key, cell);
-  return { key, cell, name: venue.name, city: venue.city };
+  try {
+    const venue = await resolveContributableMenuVenue(env, key, cell);
+    return { key, cell, name: venue.name, city: venue.city, currency: null };
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.code !== "not_found") throw error;
+  }
+  // The separately curated European catalogue is apps-only and excludes legacy
+  // Italian venues. Resolve its identity from the trusted deployed asset.
+  try {
+    const { venue } = await resolveMobileVenue(env, key, cell);
+    return { key, cell, name: venue.name, city: venue.city, currency: venue.currency };
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "conflict") throw new ApiError("not_found");
+    throw error;
+  }
 }
 
 async function drinkDetail(
@@ -210,6 +292,42 @@ async function drinkDetail(
     )
       .bind(key, cell, target.id)
       .first<DrinkDetail>();
+  }
+  if (target.kind === "europe") {
+    const parsed = publicTarget(target.kind, target.id);
+    if (parsed.kind !== "europe") throw new ApiError("internal");
+    const { venue } = await resolveMobileVenue(env, key, cell);
+    if (venue.currency !== parsed.currency) return null;
+    const row = await env.DB.prepare(
+      SELECT_PUBLIC +
+        " WHERE p.venue_key=?1 AND p.cell=?2 AND p.drink=?3 AND p.hh=?4" +
+        " AND p.currency=?5 AND p.serving_key=?6 AND p.status IN ('active','quarantined')" +
+        " AND NOT EXISTS (SELECT 1 FROM prices_current WHERE venue_key=?1)" +
+        " AND NOT EXISTS (SELECT 1 FROM price_obs WHERE venue_key=?1)",
+    )
+      .bind(
+        key,
+        cell,
+        parsed.drink,
+        parsed.band === "happy_hour" ? 1 : 0,
+        parsed.currency,
+        servingKey(parsed.serving),
+      )
+      .first<MobilePriceDb>();
+    if (!row) return null;
+    const price = publicMobilePrice(row);
+    const serving = servingFromKey(row.serving_key);
+    const label =
+      serving.unit === "ml"
+        ? `${String(serving.ml)} ml`
+        : serving.unit === "glass"
+          ? `Calice${serving.ml ? ` · ${String(serving.ml)} ml` : ""}`
+          : "Drink singolo";
+    return {
+      name: it.drinks[price.drink] ?? price.drink,
+      category: price.drink,
+      serving_label: price.hh === 1 ? `Happy hour · ${label}` : label,
+    };
   }
   const [drink, band] = target.id.split(":");
   if (!drink || !band || !findDrink(drink) || !["normal", "happy_hour"].includes(band)) return null;
@@ -272,11 +390,30 @@ const VALID_TARGET = `(
    SELECT 1 FROM prices_current p WHERE p.venue_key=t.venue_key AND p.cell=t.cell
      AND p.drink || ':' || CASE WHEN p.hh=1 THEN 'happy_hour' ELSE 'normal' END=t.target_id
      AND p.status IN ('active','quarantined')))
+  OR (t.target_kind='europe' AND EXISTS (
+    SELECT 1 FROM mobile_prices_current p WHERE p.venue_key=t.venue_key AND p.cell=t.cell
+      AND p.drink=t.drink AND p.hh=t.hh AND p.currency=t.currency
+      AND p.serving_key=t.serving_key AND p.status IN ('active','quarantined')
+      AND NOT EXISTS (SELECT 1 FROM prices_current WHERE venue_key=t.venue_key)
+      AND NOT EXISTS (SELECT 1 FROM price_obs WHERE venue_key=t.venue_key)))
 )`;
 
-const TOTALS =
-  "WITH totals AS (SELECT venue_key,cell,target_kind,target_id,COUNT(*) AS count" +
-  " FROM mobile_exact_drink_votes";
+const EUROPE_ID =
+  "e.drink || ':' || CASE WHEN e.hh=1 THEN 'happy_hour' ELSE 'normal' END" +
+  " || ':' || e.currency || ':' || e.serving_key";
+const TOTALS = (includeEurope: boolean) =>
+  "WITH votes AS (SELECT venue_key,cell,target_kind,target_id,claim," +
+  " NULL AS drink,NULL AS hh,NULL AS currency,NULL AS serving_key" +
+  " FROM mobile_exact_drink_votes" +
+  (includeEurope
+    ? " UNION ALL SELECT e.venue_key,e.cell,'europe' AS target_kind," +
+      EUROPE_ID +
+      ",e.claim,e.drink,e.hh,e.currency,e.serving_key FROM mobile_europe_drink_votes e"
+    : "") +
+  "), totals AS (SELECT venue_key,cell,target_kind,target_id,drink,hh,currency,serving_key," +
+  " COUNT(*) AS count FROM votes";
+const TOTALS_GROUP =
+  " GROUP BY venue_key,cell,target_kind,target_id,drink,hh,currency,serving_key)";
 
 export const mobileExactDrinkVotes = new Hono<AppEnv>();
 mobileExactDrinkVotes.use("*", async (c, next) => {
@@ -287,12 +424,13 @@ mobileExactDrinkVotes.use("*", async (c, next) => {
 mobileExactDrinkVotes.get("/venues/:key", async (c) => {
   const key = Key.safeParse(c.req.param("key"));
   if (!key.success) throw new ApiError("bad_request");
-  const cell = queryCell(c.req.url);
+  const { cell, includeEurope } = queryCell(c.req.url, true);
   const voter = voterHeader(c.req.header("X-DoveBevo-Voter"), false);
   const venue = await publicVenue(c.env, key.data, cell);
   const result = await c.env.DB.prepare(
-    TOTALS +
-      " WHERE venue_key=?1 AND cell=?2 GROUP BY venue_key,cell,target_kind,target_id)" +
+    TOTALS(includeEurope) +
+      " WHERE venue_key=?1 AND cell=?2" +
+      TOTALS_GROUP +
       " SELECT t.* FROM totals t WHERE " +
       VALID_TARGET +
       " ORDER BY t.target_kind,t.target_id LIMIT ?3",
@@ -300,21 +438,32 @@ mobileExactDrinkVotes.get("/venues/:key", async (c) => {
     .bind(key.data, cell, MAX_VENUE_ROWS + 1)
     .all<CountRow>();
   if (result.results.length > MAX_VENUE_ROWS) throw new ApiError("busy");
+  const visible = result.results.filter(
+    (row) => row.target_kind !== "europe" || row.currency === venue.currency,
+  );
   const own = new Set<string>();
-  if (voter && result.results.length) {
+  if (voter && visible.length) {
     const claims = await Promise.all(
-      result.results.map((row) =>
+      visible.map((row) =>
         claim(c.env, voter, key.data, cell, { kind: row.target_kind, id: row.target_id }),
       ),
     );
     for (let offset = 0; offset < claims.length; offset += 100) {
       const chunk = claims.slice(offset, offset + 100);
-      const marks = chunk.map(() => "?").join(",");
+      const marks = chunk.map((_, index) => `?${String(index + 3)}`).join(",");
       const selected = await c.env.DB.prepare(
         "SELECT target_kind,target_id FROM mobile_exact_drink_votes WHERE venue_key=?1" +
           " AND cell=?2 AND claim IN (" +
           marks +
-          ")",
+          ")" +
+          (includeEurope
+            ? " UNION ALL SELECT 'europe' AS target_kind," +
+              EUROPE_ID +
+              " AS target_id FROM mobile_europe_drink_votes e" +
+              " WHERE e.venue_key=?1 AND e.cell=?2 AND e.claim IN (" +
+              marks +
+              ")"
+            : ""),
       )
         .bind(key.data, cell, ...chunk)
         .all<{ target_kind: string; target_id: string }>();
@@ -324,7 +473,7 @@ mobileExactDrinkVotes.get("/venues/:key", async (c) => {
   const body: ExactDrinkVenueVotes = {
     schema_version: 1,
     venue: { key: venue.key, cell: venue.cell, name: venue.name },
-    items: result.results.map((row) => voteRow(row, own)),
+    items: visible.map((row) => voteRow(row, own)),
   };
   return c.json(body);
 });
@@ -332,7 +481,7 @@ mobileExactDrinkVotes.get("/venues/:key", async (c) => {
 mobileExactDrinkVotes.post("/venues/:key", async (c) => {
   const key = Key.safeParse(c.req.param("key"));
   if (!key.success) throw new ApiError("bad_request");
-  const cell = queryCell(c.req.url);
+  const { cell } = queryCell(c.req.url, false);
   const voter = voterHeader(c.req.header("X-DoveBevo-Voter"), true);
   if (voter === null) throw new ApiError("bad_request");
   const body = await readJson(c, Vote);
@@ -341,23 +490,62 @@ mobileExactDrinkVotes.post("/venues/:key", async (c) => {
   if (!(await drinkDetail(c.env, key.data, cell, target))) throw new ApiError("not_found");
   if (body.recommended) await consumeRecommendationQuota(c.env, voter, clientIp(c.req.raw));
   const voterClaim = await claim(c.env, voter, key.data, cell, target);
-  const mutation = c.env.DB.prepare(
-    body.recommended
-      ? "INSERT OR IGNORE INTO mobile_exact_drink_votes (venue_key,cell,target_kind,target_id,claim)" +
-          " VALUES (?1,?2,?3,?4,?5)"
-      : "DELETE FROM mobile_exact_drink_votes WHERE venue_key=?1 AND cell=?2" +
-          " AND target_kind=?3 AND target_id=?4 AND claim=?5",
-  ).bind(key.data, cell, target.kind, target.id, voterClaim);
-  const [, count, own] = await c.env.DB.batch<{ count?: number; present?: number }>([
-    mutation,
-    c.env.DB.prepare(
+  let mutation: D1PreparedStatement;
+  let countStatement: D1PreparedStatement;
+  let ownStatement: D1PreparedStatement;
+  if (body.target.kind === "europe") {
+    const values = [
+      key.data,
+      cell,
+      body.target.drink,
+      body.target.band === "happy_hour" ? 1 : 0,
+      body.target.currency,
+      servingKey(body.target.serving),
+    ] as const;
+    mutation = c.env.DB.prepare(
+      body.recommended
+        ? "INSERT OR IGNORE INTO mobile_europe_drink_votes" +
+            " (venue_key,cell,drink,hh,currency,serving_key,claim)" +
+            " SELECT ?1,?2,?3,?4,?5,?6,?7 WHERE EXISTS" +
+            " (SELECT 1 FROM mobile_prices_current p WHERE p.venue_key=?1 AND p.cell=?2" +
+            " AND p.drink=?3 AND p.hh=?4 AND p.currency=?5 AND p.serving_key=?6" +
+            " AND p.status IN ('active','quarantined'))" +
+            " AND NOT EXISTS (SELECT 1 FROM venues_hidden WHERE venue_key=?1)" +
+            " AND NOT EXISTS (SELECT 1 FROM mobile_venues_moderation WHERE venue_key=?1)" +
+            " AND NOT EXISTS (SELECT 1 FROM prices_current WHERE venue_key=?1)" +
+            " AND NOT EXISTS (SELECT 1 FROM price_obs WHERE venue_key=?1)"
+        : "DELETE FROM mobile_europe_drink_votes WHERE venue_key=?1 AND cell=?2" +
+            " AND drink=?3 AND hh=?4 AND currency=?5 AND serving_key=?6 AND claim=?7",
+    ).bind(...values, voterClaim);
+    countStatement = c.env.DB.prepare(
+      "SELECT COUNT(*) AS count FROM mobile_europe_drink_votes WHERE venue_key=?1" +
+        " AND cell=?2 AND drink=?3 AND hh=?4 AND currency=?5 AND serving_key=?6",
+    ).bind(...values);
+    ownStatement = c.env.DB.prepare(
+      "SELECT 1 AS present FROM mobile_europe_drink_votes WHERE venue_key=?1" +
+        " AND cell=?2 AND drink=?3 AND hh=?4 AND currency=?5 AND serving_key=?6 AND claim=?7",
+    ).bind(...values, voterClaim);
+  } else {
+    mutation = c.env.DB.prepare(
+      body.recommended
+        ? "INSERT OR IGNORE INTO mobile_exact_drink_votes (venue_key,cell,target_kind,target_id,claim)" +
+            " VALUES (?1,?2,?3,?4,?5)"
+        : "DELETE FROM mobile_exact_drink_votes WHERE venue_key=?1 AND cell=?2" +
+            " AND target_kind=?3 AND target_id=?4 AND claim=?5",
+    ).bind(key.data, cell, target.kind, target.id, voterClaim);
+    countStatement = c.env.DB.prepare(
       "SELECT COUNT(*) AS count FROM mobile_exact_drink_votes" +
         " WHERE venue_key=?1 AND cell=?2 AND target_kind=?3 AND target_id=?4",
-    ).bind(key.data, cell, target.kind, target.id),
-    c.env.DB.prepare(
+    ).bind(key.data, cell, target.kind, target.id);
+    ownStatement = c.env.DB.prepare(
       "SELECT 1 AS present FROM mobile_exact_drink_votes" +
         " WHERE venue_key=?1 AND cell=?2 AND target_kind=?3 AND target_id=?4 AND claim=?5",
-    ).bind(key.data, cell, target.kind, target.id, voterClaim),
+    ).bind(key.data, cell, target.kind, target.id, voterClaim);
+  }
+  const [, count, own] = await c.env.DB.batch<{ count?: number; present?: number }>([
+    mutation,
+    countStatement,
+    ownStatement,
   ]);
   const result: ExactDrinkVote = {
     target: body.target,
@@ -368,7 +556,7 @@ mobileExactDrinkVotes.post("/venues/:key", async (c) => {
 });
 
 mobileExactDrinkVotes.get("/area", async (c) => {
-  const { cells, limit, after } = queryArea(c.req.url);
+  const { cells, limit, after, includeEurope } = queryArea(c.req.url);
   const marks = cells.map(() => "?").join(",");
   const filter = after
     ? ` AND (t.count<? OR (t.count=? AND t.venue_key>?)
@@ -390,8 +578,9 @@ mobileExactDrinkVotes.get("/area", async (c) => {
       ]
     : [];
   const result = await c.env.DB.prepare(
-    TOTALS +
-      ` WHERE cell IN (${marks}) GROUP BY venue_key,cell,target_kind,target_id)` +
+    TOTALS(includeEurope) +
+      ` WHERE cell IN (${marks})` +
+      TOTALS_GROUP +
       " SELECT t.* FROM totals t WHERE " +
       VALID_TARGET +
       " AND NOT EXISTS (SELECT 1 FROM venues_hidden h WHERE h.venue_key=t.venue_key)" +
@@ -419,7 +608,7 @@ mobileExactDrinkVotes.get("/area", async (c) => {
       ]);
       if (drink)
         rows.push({
-          venue: place,
+          venue: { key: place.key, cell: place.cell, name: place.name, city: place.city },
           target: publicTarget(target.kind, target.id),
           drink,
           count: safeCount(row.count),
@@ -440,7 +629,7 @@ mobileExactDrinkVotes.get("/area", async (c) => {
             venue: last.venue_key,
             kind: last.target_kind,
             id: last.target_id,
-            scope: cells.join(","),
+            scope: cursorScope(cells, includeEurope),
           })
         : null,
   };

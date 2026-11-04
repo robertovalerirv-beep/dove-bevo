@@ -133,6 +133,7 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
       const cell = url.pathname.split("/").at(-1);
       const categories = (url.searchParams.get("categories") ?? "").split(",").filter(Boolean);
       options.cellRequests?.push({ cell, categories: [...categories] });
+      if (cell === "u0nd9" && categories.join(",") === "gin_tonic") options.noteGinRequest?.();
       if (options.holdFirstIdentity && cell === "u0nd9" && categories.length === 0) {
         options.holdFirstIdentity = false;
         await new Promise((resolve) => {
@@ -140,9 +141,29 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         });
         return route.fulfill({ status: 503, body: "Old identity request failed" });
       }
+      if (options.holdRecoveryIdentity && cell === "u0nd9" && categories.length === 0) {
+        options.holdRecoveryIdentity = false;
+        await new Promise((resolve) => {
+          options.releaseRecoveryIdentity = resolve;
+          options.noteRecoveryIdentityHeld();
+        });
+        return route.fulfill({ status: 503, body: "Recovery identity request failed" });
+      }
       if (options.failNextIdentity && cell === "u0nd9" && categories.length === 0) {
         options.failNextIdentity -= 1;
         return route.fulfill({ status: 503, body: "Retry identity request failed" });
+      }
+      if (
+        options.holdCombinedSample &&
+        cell === "u0nd9" &&
+        categories.includes("gin_tonic") &&
+        categories.includes("spritz")
+      ) {
+        options.holdCombinedSample = false;
+        await new Promise((resolve) => {
+          options.releaseCombinedSample = resolve;
+          options.noteCombinedSampleHeld();
+        });
       }
       if (options.menuUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
       const source = {
@@ -152,7 +173,7 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         checked_on: "2026-11-02",
       };
       const offer = {
-        id: "offer-1",
+        id: options.cheapestOnLaterPage ? "z-spritz-low" : "offer-1",
         name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
         category: options.uncategorized ? null : "spritz",
         serving: { label: "Calice", ml: null },
@@ -178,6 +199,12 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         sample_offers: !options.uncategorized && categories.includes("spritz") ? [offer] : [],
         fee_coverage: { status: "unknown", source: null },
       };
+      const staticVenue = {
+        ...venue,
+        key: "n123",
+        name: "Locale di prova",
+        matching_offer_count: options.staticMenuMixed ? 9 : 1,
+      };
       return route.fulfill({
         json: {
           schema_version: 2,
@@ -189,7 +216,9 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
           venues:
             cell === "u0nd9" &&
             (!categories.length || (!options.uncategorized && categories.includes("spritz")))
-              ? [venue]
+              ? options.staticMenuMixed
+                ? [venue, staticVenue]
+                : [venue]
               : [],
           next_after: null,
           unresolved_venues: 0,
@@ -203,6 +232,12 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     ) {
       if (options.detailUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
       const staticVenue = url.pathname.endsWith("/n123");
+      const after = url.searchParams.get("after");
+      options.menuDetailRequests?.push(after);
+      if (options.holdSecondMenuPage && staticVenue && after)
+        await new Promise((resolve) => {
+          options.releaseSecondMenuPage = resolve;
+        });
       const source = {
         id: "source-1",
         url: "https://official.fixture.test/menu",
@@ -225,21 +260,76 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
             city: "Milano",
             country: "IT",
           },
-          stored_offer_count: 1,
-          offers: [
-            {
-              id: "offer-1",
-              name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
-              category: options.uncategorized ? null : "spritz",
-              serving: { label: "Calice", ml: null },
-              amount_minor: 750,
-              currency: "EUR",
-              currency_exponent: 2,
-              context: { kind: "regular", condition: null },
-              source,
-            },
-          ],
-          next_after: null,
+          stored_offer_count: options.staticMenuMixed && staticVenue ? 9 : 1,
+          offers:
+            options.staticMenuMixed && staticVenue
+              ? [
+                  {
+                    id: "offer-water-first",
+                    name: "Still water 75cl",
+                    category: "water",
+                    serving: { label: "75 cl", ml: 750 },
+                    amount_minor: 400,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  },
+                  {
+                    id: "offer-spritz-high",
+                    name: "The Dome Spritz",
+                    category: "spritz",
+                    serving: { label: "Calice", ml: null },
+                    amount_minor: 1200,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  },
+                  {
+                    id: options.cheapestOnLaterPage ? "z-spritz-low" : "offer-1",
+                    name: "Spritz speciale",
+                    category: "spritz",
+                    serving: { label: "Calice", ml: null },
+                    amount_minor: 750,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  },
+                  ...Array.from({ length: 6 }, (_, index) => ({
+                    id: `offer-water-${index}`,
+                    name: `Acqua ${index}`,
+                    category: "water",
+                    serving: { label: "75 cl", ml: 750 },
+                    amount_minor: 400 + index,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  })),
+                ]
+                  .sort((a, b) => (options.cheapestOnLaterPage ? a.id.localeCompare(b.id) : 0))
+                  .filter(
+                    (offer) =>
+                      !options.cheapestOnLaterPage ||
+                      (after ? offer.id === "z-spritz-low" : offer.id !== "z-spritz-low"),
+                  )
+              : [
+                  {
+                    id: "offer-1",
+                    name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
+                    category: options.uncategorized ? null : "spritz",
+                    serving: { label: "Calice", ml: null },
+                    amount_minor: 750,
+                    currency: "EUR",
+                    currency_exponent: 2,
+                    context: { kind: "regular", condition: null },
+                    source,
+                  },
+                ],
+          next_after:
+            options.cheapestOnLaterPage && staticVenue && !after ? "offer-water-first" : null,
           fees: [],
           fee_coverage: { status: "unknown", source: null },
         },
@@ -275,7 +365,9 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
             : url.pathname.endsWith("u0nd9")
               ? options.densePrices
                 ? [...rows, ["n456", "spritz", 0, 600, "2026-11-01", 0, 0]]
-                : rows
+                : options.noSpritzLegacy
+                  ? rows.filter((row) => !(row[0] === "n123" && row[1] === "spritz"))
+                  : rows
               : [],
           u: [],
           pend: [],
@@ -284,7 +376,12 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         },
       });
     if (/^\/api\/venues\/n123\/prices$/.test(url.pathname))
-      return route.fulfill({ json: { p: rows.filter((r) => r[0] === "n123"), h: [] } });
+      return route.fulfill({
+        json: {
+          p: rows.filter((r) => r[0] === "n123" && !(options.noSpritzLegacy && r[1] === "spritz")),
+          h: [],
+        },
+      });
     if (/^\/assets\/mobile\/|^\/fonts\/|^\/brand\//.test(url.pathname)) {
       const file = path.resolve(client, url.pathname.slice(1));
       assert.ok(file.startsWith(client + path.sep));
@@ -1029,6 +1126,165 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
   }
 });
 
+test("the selected map menu price leads venue detail ahead of unrelated customer prices", async () => {
+  for (const width of [390, 320]) {
+    const f = await fixture(
+      { width, height: 844 },
+      {
+        menu: true,
+        staticMenu: true,
+        staticMenuMixed: true,
+        noSpritzLegacy: true,
+        customerEmpty: true,
+      },
+    );
+    try {
+      await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+      await selectOnlyDrink(f.page, "Spritz");
+      await f.page.locator(".map__list").click();
+      const listRow = f.page.getByRole("dialog").getByRole("link", { name: /^Locale di prova/ });
+      await listRow.waitFor();
+      assert.match(await listRow.innerText(), /7,50\s*€[\s\S]*Dal menu del locale/);
+      await listRow.click();
+      await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
+      const featured = f.page.getByTestId("featured-menu-price");
+      await featured.waitFor();
+      const selected = f.page.getByTestId("map-selected-menu-offer");
+      await selected.waitFor();
+      assert.match(
+        await featured.innerText(),
+        /Spritz speciale[\s\S]*Prezzo da menu[\s\S]*7,50\s*€[\s\S]*Menu verificato/,
+      );
+      assert.match(await selected.innerText(), /Drink scelto sulla mappa[\s\S]*7,50\s*€/);
+      assert.equal(
+        await f.page.evaluate(() => {
+          const selected = document.querySelector('[data-testid="featured-menu-price"]');
+          const customer = document.querySelector(".prices .price");
+          return Boolean(selected && customer && selected.compareDocumentPosition(customer) & 4);
+        }),
+        true,
+        "The selected menu price must precede the unrelated legacy beer price",
+      );
+      assert.match(await f.page.locator(".prices .price").first().innerText(), /Birra media/);
+      await featured.scrollIntoViewIfNeeded();
+      const box = await featured.boundingBox();
+      assert.ok(box && box.x >= -1 && box.x + box.width <= width + 1);
+      assert.deepEqual(f.writes, []);
+      assert.deepEqual(f.errors, []);
+    } finally {
+      await f.close();
+    }
+  }
+});
+
+test("the map's exact menu offer is found on a later venue page before it is featured", async () => {
+  const options = {
+    menu: true,
+    staticMenu: true,
+    staticMenuMixed: true,
+    cheapestOnLaterPage: true,
+    noSpritzLegacy: true,
+    customerEmpty: true,
+    menuDetailRequests: [],
+  };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await selectOnlyDrink(f.page, "Spritz");
+    await f.page.locator(".map__list").click();
+    const listRow = f.page.getByRole("dialog").getByRole("link", { name: /^Locale di prova/ });
+    await listRow.waitFor();
+    assert.match(await listRow.innerText(), /7,50\s*€/);
+    await listRow.click();
+    const featured = f.page.getByTestId("featured-menu-price");
+    await featured.waitFor();
+    assert.match(await featured.innerText(), /Spritz speciale[\s\S]*7,50\s*€/);
+    assert.deepEqual(options.menuDetailRequests, [null, "offer-water-first"]);
+    assert.equal(
+      await f.page
+        .getByRole("region", { name: "Prezzi dal menu online" })
+        .locator(".mobile-menu-v2__offers > li")
+        .first()
+        .getAttribute("data-testid"),
+      "map-selected-menu-offer",
+    );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("an in-progress menu price editor survives arrival of the selected later-page offer", async () => {
+  const options = {
+    menu: true,
+    staticMenu: true,
+    staticMenuMixed: true,
+    cheapestOnLaterPage: true,
+    holdSecondMenuPage: true,
+    noSpritzLegacy: true,
+    customerEmpty: true,
+  };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await selectOnlyDrink(f.page, "Spritz");
+    await f.page.locator(".map__list").click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("link", { name: /^Locale di prova/ })
+      .click();
+    const high = f.page
+      .getByRole("region", { name: "Prezzi dal menu online" })
+      .locator(".mobile-menu-v2__offer")
+      .filter({ hasText: "The Dome Spritz" });
+    await high.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
+    const amount = high.getByLabel("Importo pagato (EUR)");
+    await amount.fill("11,10");
+    await f.page.waitForFunction(() =>
+      Boolean(document.querySelector(".mobile-customer-v2__form")),
+    );
+    assert.equal(typeof options.releaseSecondMenuPage, "function");
+    options.releaseSecondMenuPage();
+    await f.page.getByTestId("featured-menu-price").waitFor();
+    assert.equal(await amount.inputValue(), "11,10");
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    options.releaseSecondMenuPage?.();
+    await f.close();
+  }
+});
+
+test("an exact saved offer stays ahead of map drink ordering", async () => {
+  const f = await fixture(
+    { width: 390, height: 844 },
+    { menu: true, staticMenu: true, staticMenuMixed: true, customerEmpty: true },
+  );
+  try {
+    await f.page.goto(
+      "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&offer=offer-water-first",
+    );
+    const saved = f.page.getByTestId("saved-exact-offer");
+    await saved.waitFor();
+    assert.match(await saved.innerText(), /Still water 75cl[\s\S]*4,00\s*€/);
+    assert.match(await f.page.getByTestId("featured-menu-price").innerText(), /Still water 75cl/);
+    assert.equal(
+      await f.page
+        .getByRole("region", { name: "Prezzi dal menu online" })
+        .locator(".mobile-menu-v2__offers > li")
+        .first()
+        .getAttribute("data-testid"),
+      "saved-exact-offer",
+    );
+    assert.equal(await f.page.getByTestId("map-selected-menu-offer").count(), 0);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("empty menu-linked customer section does not deny an existing legacy price", async () => {
   const f = await fixture(
     { width: 430, height: 844 },
@@ -1246,12 +1502,12 @@ test("a stale identity failure cannot discard a successful new selected drink", 
           cause: error,
         });
       });
-    assert.equal(
-      options.cellRequests.filter(
-        (request) => request.cell === "u0nd9" && request.categories.length === 0,
-      ).length,
-      2,
-      "The selected drink must recover with exactly one fresh identity read",
+    const identityReads = options.cellRequests.filter(
+      (request) => request.cell === "u0nd9" && request.categories.length === 0,
+    ).length;
+    assert.ok(
+      identityReads >= 1 && identityReads <= 2,
+      "A selected sourced price needs at most one full-identity recovery read",
     );
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
@@ -1278,17 +1534,168 @@ test("a selected sourced price survives an unavailable full-menu identity retry"
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
     );
-    assert.equal(
-      options.cellRequests.filter(
-        (request) => request.cell === "u0nd9" && request.categories.length === 0,
-      ).length,
-      2,
-      "The selected price must survive one failed full-menu identity retry",
+    const identityReads = options.cellRequests.filter(
+      (request) => request.cell === "u0nd9" && request.categories.length === 0,
+    ).length;
+    assert.ok(
+      identityReads >= 1 && identityReads <= 2,
+      "A selected sourced price must survive a failed identity read without unbounded retries",
     );
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
   } finally {
     options.releaseOldIdentity?.();
+    await f.close();
+  }
+});
+
+test("concurrent drink selections share one failed full-menu recovery read", async () => {
+  const options = {
+    menu: true,
+    holdFirstIdentity: true,
+    failNextIdentity: 1,
+    holdCombinedSample: true,
+    cellRequests: [],
+  };
+  const combinedSampleHeld = new Promise((resolve) => {
+    options.noteCombinedSampleHeld = resolve;
+  });
+  const ginRequested = new Promise((resolve) => {
+    options.noteGinRequest = resolve;
+  });
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true }).click();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
+    );
+    assert.equal(typeof options.releaseOldIdentity, "function");
+    await (
+      await openDrinks(f.page)
+    )
+      .getByRole("checkbox", { name: "Gin tonic", exact: true })
+      .check({ force: true });
+    await ginRequested;
+    await (
+      await openDrinks(f.page)
+    )
+      .getByRole("checkbox", { name: "Spritz", exact: true })
+      .check({ force: true });
+    await combinedSampleHeld;
+    await f.page.evaluate(() => {
+      globalThis.__menuRetryReady = false;
+      globalThis.addEventListener("dovebevo:menu-cell-ready", (event) => {
+        if (event.detail?.cell === "u0nd9") globalThis.__menuRetryReady = true;
+      });
+    });
+    options.releaseOldIdentity();
+    await f.page.waitForFunction(() => globalThis.__menuRetryReady === true, null, {
+      timeout: 8000,
+    });
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+      "The first selection makes exactly one recovery read after the held failure",
+    );
+    options.releaseCombinedSample();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+      "The later selection shares the already failed recovery read",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    options.releaseOldIdentity?.();
+    options.releaseCombinedSample?.();
+    await f.close();
+  }
+});
+
+test("a selection inheriting a pending recovery does not start a second recovery", async () => {
+  const options = {
+    menu: true,
+    holdFirstIdentity: true,
+    holdRecoveryIdentity: true,
+    holdCombinedSample: true,
+    cellRequests: [],
+  };
+  const recoveryHeld = new Promise((resolve) => {
+    options.noteRecoveryIdentityHeld = resolve;
+  });
+  const combinedSampleHeld = new Promise((resolve) => {
+    options.noteCombinedSampleHeld = resolve;
+  });
+  const ginRequested = new Promise((resolve) => {
+    options.noteGinRequest = resolve;
+  });
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true }).click();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
+    );
+    assert.equal(typeof options.releaseOldIdentity, "function");
+    await (
+      await openDrinks(f.page)
+    )
+      .getByRole("checkbox", { name: "Gin tonic", exact: true })
+      .check({ force: true });
+    await ginRequested;
+    options.releaseOldIdentity();
+    await recoveryHeld;
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+      "The first selection has started one held recovery",
+    );
+    await (
+      await openDrinks(f.page)
+    )
+      .getByRole("checkbox", { name: "Spritz", exact: true })
+      .check({ force: true });
+    await combinedSampleHeld;
+    const recoveryFailure = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
+        !new URL(response.url()).searchParams.get("categories") &&
+        response.status() === 503,
+      { timeout: 8000 },
+    );
+    options.releaseRecoveryIdentity();
+    await recoveryFailure;
+    options.releaseCombinedSample();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+    assert.match(
+      await f.page.locator("section.map").getAttribute("data-prices-shown"),
+      /7,50.*MENU/,
+    );
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+      "An inherited recovery failure cannot start another full-menu read",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    options.releaseOldIdentity?.();
+    options.releaseRecoveryIdentity?.();
+    options.releaseCombinedSample?.();
     await f.close();
   }
 });

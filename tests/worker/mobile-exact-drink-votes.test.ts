@@ -243,6 +243,7 @@ describe("apps-only exact drink recommendation counts", () => {
     expect(first.next_after).toMatch(/^[A-Za-z0-9_-]+$/);
     const cursor = first.next_after;
     if (!cursor) throw new Error("Expected a cursor for the next page");
+    expect((await request(area(LONDON.cell, `&limit=1&after=${cursor}`))).status).toBe(400);
     const second = await json<ExactDrinkAreaVotes>(
       await request(area(ITALY.cell, `&limit=1&after=${cursor}`), undefined, null),
     );

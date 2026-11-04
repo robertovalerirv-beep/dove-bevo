@@ -45,6 +45,7 @@ const CursorTuple = z.tuple([
   Key,
   z.enum(["offer", "customer", "legacy"]),
   z.string().min(1).max(128),
+  z.string().min(5).max(71),
 ]);
 const BASE32 = /^[0123456789bcdefghjkmnpqrstuvwxyz]{5}$/;
 const MAX_CELLS = 12;
@@ -61,7 +62,13 @@ type CountRow = {
 };
 type PublicVenue = { key: string; cell: string; name: string; city: string | null };
 type DrinkDetail = { name: string; category: string | null; serving_label: string | null };
-type Cursor = { count: number; venue: string; kind: StoredTarget["kind"]; id: string };
+type Cursor = {
+  count: number;
+  venue: string;
+  kind: StoredTarget["kind"];
+  id: string;
+  scope: string;
+};
 
 /** The customer row for an owner offer uses the offer ID, so both displays share one count. */
 function storedTarget(value: ExactDrinkTarget): StoredTarget {
@@ -120,10 +127,10 @@ function queryArea(url: string): { cells: string[]; limit: number; after: Cursor
     (String(limit) !== rawLimit[0] && rawLimit.length > 0)
   )
     throw new ApiError("bad_request");
-  return { cells, limit, after: rawAfter.length ? parseCursor(rawAfter[0] ?? "") : null };
+  return { cells, limit, after: rawAfter.length ? parseCursor(rawAfter[0] ?? "", cells) : null };
 }
 
-function parseCursor(raw: string): Cursor {
+function parseCursor(raw: string, cells: string[]): Cursor {
   if (!/^[A-Za-z0-9_-]{1,512}$/.test(raw)) throw new ApiError("bad_request");
   let value: unknown;
   try {
@@ -133,19 +140,20 @@ function parseCursor(raw: string): Cursor {
   }
   const parsed = CursorTuple.safeParse(value);
   if (!parsed.success) throw new ApiError("bad_request");
-  const [count, venue, kind, id] = parsed.data;
+  const [count, venue, kind, id, scope] = parsed.data;
+  if (scope !== cells.join(",")) throw new ApiError("bad_request");
   try {
     publicTarget(kind, id);
   } catch {
     throw new ApiError("bad_request");
   }
-  const cursor: Cursor = { count, venue, kind, id };
+  const cursor: Cursor = { count, venue, kind, id, scope };
   if (encodeCursor(cursor) !== raw) throw new ApiError("bad_request");
   return cursor;
 }
 
 function encodeCursor(value: Cursor): string {
-  return btoa(JSON.stringify([value.count, value.venue, value.kind, value.id]))
+  return btoa(JSON.stringify([value.count, value.venue, value.kind, value.id, value.scope]))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
@@ -419,6 +427,7 @@ mobileExactDrinkVotes.get("/area", async (c) => {
             venue: last.venue_key,
             kind: last.target_kind,
             id: last.target_id,
+            scope: cells.join(","),
           })
         : null,
   };

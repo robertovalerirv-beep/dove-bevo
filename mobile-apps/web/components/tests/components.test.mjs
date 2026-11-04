@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync, mkdirSync, mkdtempSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, URL } from "node:url";
-import { Buffer } from "node:buffer";
 import { after, before, test } from "node:test";
 import { build } from "vite";
 import preact from "@preact/preset-vite";
@@ -33,7 +32,7 @@ before(async () => {
         },
         load(id) {
           if (id === "\0fixture-drink-images")
-            return 'export const drinkImage = (code) => code === "spritz" ? "/fixture-drink.png" : undefined;';
+            return 'export const drinkImage = (code, presentation = "scene") => code === "spritz" ? (presentation === "product" ? "/fixture-product.jpg" : "/fixture-drink.jpg") : undefined;';
         },
       },
     ],
@@ -101,13 +100,15 @@ async function fixture(options = {}) {
           })
         : route.abort();
     }
-    if (pathname === "/fixture-drink.png")
+    if (pathname === "/fixture-drink.jpg")
       return route.fulfill({
-        contentType: "image/png",
-        body: Buffer.from(
-          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jfQAAAABJRU5ErkJggg==",
-          "base64",
-        ),
+        contentType: "image/jpeg",
+        body: readFileSync(path.join(root, "mobile-apps/web/assets/drinks/spritz-scene.jpg")),
+      });
+    if (pathname === "/fixture-product.jpg")
+      return route.fulfill({
+        contentType: "image/jpeg",
+        body: readFileSync(path.join(root, "mobile-apps/web/assets/drinks/spritz.jpg")),
       });
     if (pathname === "/data/fixture/v/u0nd9.json")
       return route.fulfill({
@@ -494,6 +495,21 @@ test("quick seen price and venue-drink-price navigation retain real callbacks", 
   const f = await fixture();
   try {
     await f.page.evaluate(() => window.sheetFixture.price());
+    await f.page.setViewportSize({ width: 320, height: 568 });
+    const priceLayout = await f.page
+      .locator(".sheet__body")
+      .evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth }));
+    assert.ok(priceLayout.scroll <= priceLayout.width + 1, JSON.stringify(priceLayout));
+    const submit = f.page.locator('.mobile-price-form button[type="submit"]');
+    await submit.scrollIntoViewIfNeeded();
+    assert.ok((await submit.boundingBox())?.height >= 48);
+    await f.page.setViewportSize({ width: 393, height: 700 });
+    await f.page.getByRole("textbox", { name: "Prezzo" }).fill("5,50");
+    assert.equal(await submit.isEnabled(), true);
+    mkdirSync(path.join(here, "../../test-results"), { recursive: true });
+    await f.page.screenshot({
+      path: path.join(here, "../../test-results", "add-price-393-fixture.png"),
+    });
     await f.page.getByRole("switch", { name: "Happy hour" }).click();
     await f.page.getByRole("button", { name: /6,00 €/ }).click();
     assert.deepEqual(

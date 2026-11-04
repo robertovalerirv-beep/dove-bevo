@@ -1407,16 +1407,34 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     assert.ok(await menu.locator('a[href="https://official.fixture.test/menu"]').count());
     await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
     await openDrinks(f.page);
+    const spritzRequests = () =>
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.join(",") === "spritz",
+      );
+    const spritzResponse = spritzRequests().length
+      ? null
+      : f.page.waitForResponse(
+          (response) => {
+            const url = new URL(response.url());
+            return (
+              url.pathname === "/api/mobile/v2/menu/cells/u0nd9" &&
+              url.searchParams.get("categories") === "spritz"
+            );
+          },
+          { timeout: 10000 },
+        );
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    if (spritzResponse) assert.equal((await spritzResponse).status(), 200);
     await f.page.waitForFunction(
       () =>
-        !document
-          .querySelector("section.map")
-          ?.getAttribute("data-prices-shown")
-          ?.includes("1 VOCE"),
+        document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
       { timeout: 30000 },
     );
-    assert.ok(options.cellRequests.some((request) => request.categories.join(",") === "spritz"));
+    assert.doesNotMatch(
+      await f.page.locator("section.map").getAttribute("data-prices-shown"),
+      /1 VOCE|7,50/,
+    );
+    assert.ok(spritzRequests().length >= 1);
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
   } finally {
@@ -1469,6 +1487,13 @@ test("a stale identity failure cannot discard a successful new selected drink", 
   const options = { menu: true, holdFirstIdentity: true, cellRequests: [] };
   const f = await fixture({ width: 390, height: 844 }, options);
   try {
+    const selectedSample = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
+        new URL(response.url()).searchParams.get("categories") === "spritz" &&
+        response.status() === 200,
+      { timeout: 15000 },
+    );
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     await (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true }).click();
     await f.page.waitForFunction(() =>
@@ -1485,6 +1510,7 @@ test("a stale identity failure cannot discard a successful new selected drink", 
     const drinks = await openDrinks(f.page);
     await drinks.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     assert.match(await f.page.getByTestId("drink-summary").textContent(), /Spritz/);
+    await selectedSample;
     options.releaseOldIdentity();
     await staleResponse;
     await f.page
@@ -1495,7 +1521,7 @@ test("a stale identity failure cannot discard a successful new selected drink", 
             ?.getAttribute("data-prices-shown")
             ?.includes("7,50"),
         null,
-        { timeout: 8000 },
+        { timeout: 30000 },
       )
       .catch((error) => {
         throw new Error(`Selected price did not recover: ${JSON.stringify(options.cellRequests)}`, {

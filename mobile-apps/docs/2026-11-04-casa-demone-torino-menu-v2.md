@@ -1,6 +1,6 @@
 # La casa del demone, Torino: guarded owner-menu seed
 
-The immutable manifest `mobile-apps/data/mobile-menu-v2-seeds/94463323bcaa3786e419348ee0589098fbe4653de4ebd4d85b4c51850f615034.json` stages **46 named EUR drink offers** and one separately disclosed cover charge for the existing Torino venue. It creates no venue and changes no website, legacy price, or customer contribution. This source-only draft must pass independent review, a protected read-only audit, and a separate guarded seed before any offer appears publicly.
+The immutable manifest `mobile-apps/data/mobile-menu-v2-seeds/42c058293223837bcb4787d5b3aa19abbff6c70b12aabcfbf645efa0cb492bc3.json` stages **49 named EUR drink offers** and one separately disclosed cover charge for the existing Torino venue. It creates no venue and changes no website, legacy price, or customer contribution. This source-only draft must pass independent review, a protected read-only audit, and a separate guarded seed before any offer appears publicly.
 
 ## Identity and source
 
@@ -10,7 +10,7 @@ The owner homepage directly links its [food and drinks PDF](https://lacasadeldem
 
 ## Included and held
 
-Pages 10-12 were visually checked against the extracted text. The 46 offers comprise six named aperitivi, water with an explicit 0.5 L serving, two wine-by-the-glass labels, five draft beers at both printed `piccola` and `media` prices, Guinness at its sole printed `media` price, one separately priced craft beer, one named passito, two individually priced Chartreuse labels, five named vermouths, eleven named grappas with the section's explicit 5 cl serving, and six named cocktails beneath a shared EUR 10 heading. No `piccola` price is inferred for Guinness; no volume is assigned to `piccola` or `media`.
+Pages 10-12 were visually checked against the extracted text. The 49 offers comprise six named aperitivi, water with an explicit 0.5 L serving, two wine-by-the-glass labels, five draft beers at both printed `piccola` and `media` prices, Guinness at its sole printed `media` price, one separately priced craft beer, one named passito, two individually priced Chartreuse labels, five named vermouths, eleven named grappas with the section's explicit 5 cl serving, six named cocktails beneath a shared EUR 10 heading, and three individually priced Caffè Vergnano variants on page 11. The three coffees are EUR 2, EUR 3 and EUR 2.50 for standard, doppio and corretto respectively, with no inferred serving. No `piccola` price is inferred for Guinness; no volume is assigned to `piccola` or `media`.
 
 The page 3 `COPERTO EUR 2` is recorded as a separate fixed fee with **unknown applicability** and unspecified charging basis. The PDF does not say whether a drinks-only visit incurs it. Fee coverage is partial, not a claim that no other fee exists. Food, generic bibite and amari, the grouped Chartreuse Verte/Jaune variant, the variable grappa list, unpriced menu items, and any price range are held out. Drink descriptions and images were not copied. Original EUR amounts remain in minor units; no reviews, freshness of a customer visit, or confirmation are invented.
 

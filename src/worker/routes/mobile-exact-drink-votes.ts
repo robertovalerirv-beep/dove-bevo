@@ -265,6 +265,21 @@ async function publicVenue(env: Env, key: string, cell: string): Promise<PublicV
   }
 }
 
+/** A catalogue row can later become a legacy Italian venue; old votes then stay private. */
+async function publicEuropeCurrency(
+  env: Env,
+  key: string,
+  cell: string,
+): Promise<"EUR" | "GBP" | null> {
+  try {
+    return (await resolveMobileVenue(env, key, cell)).venue.currency;
+  } catch (error) {
+    if (error instanceof ApiError && (error.code === "not_found" || error.code === "conflict"))
+      return null;
+    throw error;
+  }
+}
+
 async function drinkDetail(
   env: Env,
   key: string,
@@ -296,8 +311,7 @@ async function drinkDetail(
   if (target.kind === "europe") {
     const parsed = publicTarget(target.kind, target.id);
     if (parsed.kind !== "europe") throw new ApiError("internal");
-    const { venue } = await resolveMobileVenue(env, key, cell);
-    if (venue.currency !== parsed.currency) return null;
+    if ((await publicEuropeCurrency(env, key, cell)) !== parsed.currency) return null;
     const row = await env.DB.prepare(
       SELECT_PUBLIC +
         " WHERE p.venue_key=?1 AND p.cell=?2 AND p.drink=?3 AND p.hh=?4" +
@@ -427,6 +441,7 @@ mobileExactDrinkVotes.get("/venues/:key", async (c) => {
   const { cell, includeEurope } = queryCell(c.req.url, true);
   const voter = voterHeader(c.req.header("X-DoveBevo-Voter"), false);
   const venue = await publicVenue(c.env, key.data, cell);
+  const europeCurrency = includeEurope ? await publicEuropeCurrency(c.env, key.data, cell) : null;
   const result = await c.env.DB.prepare(
     TOTALS(includeEurope) +
       " WHERE venue_key=?1 AND cell=?2" +
@@ -439,7 +454,7 @@ mobileExactDrinkVotes.get("/venues/:key", async (c) => {
     .all<CountRow>();
   if (result.results.length > MAX_VENUE_ROWS) throw new ApiError("busy");
   const visible = result.results.filter(
-    (row) => row.target_kind !== "europe" || row.currency === venue.currency,
+    (row) => row.target_kind !== "europe" || row.currency === europeCurrency,
   );
   const own = new Set<string>();
   if (voter && visible.length) {

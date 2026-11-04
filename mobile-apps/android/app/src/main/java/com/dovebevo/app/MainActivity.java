@@ -81,6 +81,8 @@ public final class MainActivity extends ComponentActivity {
     private boolean restoreDiscoveryPending,restoreAreaPending;
     private Button mapDestination,favoritesDestination;
     private ExactVoteAreaScreen areaScreen;
+    private DiscoveryArea selectedArea;
+    private long favoritesAreaCapture;
     private boolean areaVisible,areaCapturing;
     private long areaCapture;
     private Button recommendationButton;
@@ -514,16 +516,44 @@ public final class MainActivity extends ComponentActivity {
     private boolean nativeDestinationVisible(){return favoritesVisible||discoveryVisible||areaVisible;}
 
     private void restoreDestination(Bundle state){
-        if(state!=null){restoreFavoritesPending=state.getBoolean("favorites_visible",false);restoreAreaPending=!restoreFavoritesPending&&state.getBoolean("recommendation_area_visible",false);restoreDiscoveryPending=!restoreFavoritesPending&&!restoreAreaPending&&state.getBoolean("discovery_visible",false);}
+        if(state!=null){
+            if(state.getBoolean("selected_area_valid",false))try{
+                selectedArea=new DiscoveryArea(state.getDouble("selected_area_lat"),state.getDouble("selected_area_lon"),state.getDouble("selected_area_zoom"));
+            }catch(IOException invalid){selectedArea=null;}
+            restoreFavoritesPending=state.getBoolean("favorites_visible",false);
+            restoreAreaPending=!restoreFavoritesPending&&state.getBoolean("recommendation_area_visible",false);
+            restoreDiscoveryPending=!restoreFavoritesPending&&!restoreAreaPending&&state.getBoolean("discovery_visible",false);
+        }
         // onCreate precedes onResume. Keep the destination intent until foreground
         // rather than bypassing the same foreground guard used by user actions.
         if(restoreDiscoveryPending&&foreground&&!destroyed&&discovery!=null){restoreDiscoveryPending=false;goHome();return;}
-        if(restoreAreaPending&&foreground&&!destroyed&&areaScreen!=null){restoreAreaPending=false;showAreaRecommendations(null);return;}
+        if(restoreAreaPending&&foreground&&!destroyed&&areaScreen!=null){restoreAreaPending=false;showAreaRecommendations(selectedArea);return;}
         if(!restoreFavoritesPending||!foreground||destroyed||favorites==null)return;
         restoreFavoritesPending=false;
-        showFavorites();
+        showFavoritesNow();
     }
     private void showFavorites(){
+        if(!foreground||destroyed||favorites==null||favoritesVisible)return;
+        if(discoveryVisible){selectedArea=discovery==null?null:discovery.area();showFavoritesNow();return;}
+        if(areaVisible){showFavoritesNow();return;}
+        // Capture while the active map document is still visible. Hiding the
+        // WebView before the JS callback can suppress its visibility guard.
+        String capturedUrl=website==null?null:website.getUrl();WebView source=website;
+        selectedArea=null;
+        if(!DiscoveryArea.visitor(capturedUrl)||failed||loading||awaitingDocumentStart||!hasUsablePage||documentHasHttpError){showFavoritesNow();return;}
+        long request=++favoritesAreaCapture,epoch=venueCaptureEpoch;
+        source.postDelayed(()->{
+            if(request!=favoritesAreaCapture||epoch!=venueCaptureEpoch||!foreground||destroyed||source!=website)return;
+            favoritesAreaCapture++;showFavoritesNow();
+        },700);
+        try{source.evaluateJavascript(DiscoveryArea.SCRIPT,result->{
+            if(request!=favoritesAreaCapture||epoch!=venueCaptureEpoch||!foreground||destroyed||source!=website)return;
+            favoritesAreaCapture++;
+            selectedArea=DiscoveryArea.decode(result,capturedUrl,source.getUrl(),epoch,venueCaptureEpoch);
+            showFavoritesNow();
+        });}catch(RuntimeException unavailable){if(request==favoritesAreaCapture){favoritesAreaCapture++;showFavoritesNow();}}
+    }
+    private void showFavoritesNow(){
         if(!foreground||destroyed||favorites==null||favoritesVisible)return;
         searchPending=false;searchOpening=false;searchCallbackGeneration++;
         discoveryCapture++;if(discovery!=null){discovery.hide();discovery.view().setVisibility(View.GONE);}discoveryVisible=false;
@@ -537,6 +567,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void showMap(){
         if(!foreground||destroyed)return;
+        favoritesAreaCapture++;
         areaCapture++;areaCapturing=false;hideArea();
         discoveryCapture++;if(discovery!=null){discovery.hide();discovery.view().setVisibility(View.GONE);}discoveryVisible=false;
         if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}
@@ -604,6 +635,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void showDiscovery(DiscoveryArea area){
         if(!foreground||destroyed||discovery==null)return;
+        if(area!=null)selectedArea=area;
         discoveryCapture++;areaCapture++;areaCapturing=false;hideArea();venueCaptureEpoch++;
         cancelLocation();disposePopup();if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();
         retireOfferSave();if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}favoritesVisible=false;discoveryVisible=true;
@@ -614,9 +646,10 @@ public final class MainActivity extends ComponentActivity {
 
     private void openAreaRecommendations(){
         if(!foreground||destroyed||areaScreen==null||areaCapturing)return;
+        favoritesAreaCapture++;
         if(areaVisible){areaScreen.refresh();return;}
         if(discoveryVisible){showAreaRecommendations(discovery==null?null:discovery.area());return;}
-        if(favoritesVisible){showAreaRecommendations(null);return;}
+        if(favoritesVisible){showAreaRecommendations(selectedArea);return;}
         String capturedUrl=website==null?null:website.getUrl();WebView source=website;
         if(!DiscoveryArea.visitor(capturedUrl)||failed||loading||awaitingDocumentStart||!hasUsablePage||documentHasHttpError){showAreaRecommendations(null);return;}
         long request=++areaCapture,epoch=venueCaptureEpoch;areaCapturing=true;updateToolbar();
@@ -632,6 +665,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void showAreaRecommendations(DiscoveryArea area){
         if(!foreground||destroyed||areaScreen==null)return;
+        selectedArea=area;
         areaCapture++;areaCapturing=false;searchPending=false;searchOpening=false;searchCallbackGeneration++;
         discoveryCapture++;if(discovery!=null){discovery.hide();discovery.view().setVisibility(View.GONE);}discoveryVisible=false;
         if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}favoritesVisible=false;
@@ -1276,6 +1310,7 @@ public final class MainActivity extends ComponentActivity {
         state.putBoolean("favorites_visible",favoritesVisible||restoreFavoritesPending);
         state.putBoolean("recommendation_area_visible",areaVisible||restoreAreaPending);
         state.putBoolean("discovery_visible",discoveryVisible||restoreDiscoveryPending);
+        if(selectedArea!=null){state.putBoolean("selected_area_valid",true);state.putDouble("selected_area_lat",selectedArea.lat);state.putDouble("selected_area_lon",selectedArea.lon);state.putDouble("selected_area_zoom",selectedArea.zoom);}
         if(favorites!=null){state.putString("favorite_drink",favorites.selectedDrink());state.putInt("favorite_band",favorites.selectedBand());state.putBoolean("favorite_drinks_visible",favorites.showingDrinks());}
         if(discovery!=null){state.putString("discovery_drink",discovery.selectedDrink());state.putInt("discovery_band",discovery.selectedBand());}
         state.putString("trusted_url", lastTrustedUrl);

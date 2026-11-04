@@ -310,6 +310,91 @@ public final class NativeUsabilityRuntimeTest {
         });
     }
 
+    @Test public void communityDestinationRetainsSelectedAreaAcrossFavouritesAndRestoration() throws Exception {
+        DiscoveryArea selected=new DiscoveryArea(45.4642,9.19,14);
+        onMain(()->{
+            ExactVoteAreaScreen old=(ExactVoteAreaScreen)get("areaScreen");
+            ((FrameLayout)get("content")).removeView(old.view());old.close();
+            ExactVoteAreaScreen owned=new ExactVoteAreaScreen(activity,
+                    new ExactVoteAreaClient((url,max,call)->{throw new IOException("Owned area fixture unavailable");}),
+                    url->{},()->{},()->true,java.util.concurrent.Executors.newSingleThreadExecutor());
+            set("areaScreen",owned);((FrameLayout)get("content")).addView(owned.view(),new FrameLayout.LayoutParams(-1,-1));owned.view().setVisibility(View.GONE);
+            set("selectedArea",selected);
+            invoke("showAreaRecommendations",new Class<?>[]{DiscoveryArea.class},selected);
+            activity.findViewById(R.id.favorites_destination).performClick();
+            assertTrue((Boolean)get("favoritesVisible"));
+            activity.findViewById(R.id.recommendation_entry).performClick();
+            assertTrue((Boolean)get("areaVisible"));
+            assertEquals(View.GONE,activity.findViewById(R.id.recommendation_area_choose).getVisibility());
+            assertEquals(selected.cells(),((ExactVoteAreaScreen)get("areaScreen")).areaCells());
+            Bundle state=new Bundle();invoke("onSaveInstanceState",new Class<?>[]{Bundle.class},state);
+            assertTrue(state.getBoolean("selected_area_valid"));
+            assertEquals(selected.lat,state.getDouble("selected_area_lat"),0);
+            invoke("showMap");set("selectedArea",null);
+            invoke("restoreDestination",new Class<?>[]{Bundle.class},state);
+            assertTrue((Boolean)get("areaVisible"));
+            assertEquals(View.GONE,activity.findViewById(R.id.recommendation_area_choose).getVisibility());
+            assertEquals(selected.cells(),((ExactVoteAreaScreen)get("areaScreen")).areaCells());
+            state.putBoolean("favorites_visible",true);state.putBoolean("recommendation_area_visible",false);
+            invoke("showMap");set("selectedArea",null);
+            invoke("restoreDestination",new Class<?>[]{Bundle.class},state);
+            assertTrue((Boolean)get("favoritesVisible"));
+            assertEquals(selected.cells(),((DiscoveryArea)get("selectedArea")).cells());
+            activity.findViewById(R.id.recommendation_entry).performClick();
+            assertEquals(selected.cells(),((ExactVoteAreaScreen)get("areaScreen")).areaCells());
+        });
+    }
+
+    @Test public void readyMapCenterIsCapturedBeforeFavouritesHidesWebView() throws Exception {
+        navigate(APP_HOME);
+        CountDownLatch ready=new CountDownLatch(1);
+        AtomicReference<String> readyResult=new AtomicReference<>();
+        onMain(()->web.evaluateJavascript("(()=>{const map=document.querySelector('section.map');"
+                +"const root=document.createElement('div');root.id='app';"
+                +"const app=document.createElement('div');app.className='app';"
+                +"map.parentNode.insertBefore(root,map);root.appendChild(app);app.appendChild(map);"
+                +"map.dataset.ready='true';map.dataset.center='45.4642,9.19';map.dataset.zoom='14';"
+                +"return document.visibilityState==='visible'&&document.querySelectorAll('#app > .app section.map').length===1;})()",
+                result->{readyResult.set(result);ready.countDown();}));
+        assertTrue(ready.await(5,TimeUnit.SECONDS));
+        assertEquals("true",readyResult.get());
+        DiscoveryArea expected=new DiscoveryArea(45.4642,9.19,14);
+        onMain(()->{
+            ExactVoteAreaScreen old=(ExactVoteAreaScreen)get("areaScreen");
+            ((FrameLayout)get("content")).removeView(old.view());old.close();
+            ExactVoteAreaScreen owned=new ExactVoteAreaScreen(activity,
+                    new ExactVoteAreaClient((url,max,call)->{throw new IOException("Owned area fixture unavailable");}),
+                    url->{},()->{},()->true,java.util.concurrent.Executors.newSingleThreadExecutor());
+            set("areaScreen",owned);((FrameLayout)get("content")).addView(owned.view(),new FrameLayout.LayoutParams(-1,-1));owned.view().setVisibility(View.GONE);
+            activity.findViewById(R.id.favorites_destination).performClick();
+        });
+        await(()->(Boolean)get("favoritesVisible"));
+        onMain(()->{
+            assertEquals(expected.cells(),((DiscoveryArea)get("selectedArea")).cells());
+            assertEquals(View.GONE,web.getVisibility());
+            activity.findViewById(R.id.recommendation_entry).performClick();
+            assertEquals(expected.cells(),((ExactVoteAreaScreen)get("areaScreen")).areaCells());
+            assertEquals(View.GONE,activity.findViewById(R.id.recommendation_area_choose).getVisibility());
+        });
+    }
+
+    @Test public void failedMapCaptureDoesNotReusePreviousCityVotes() throws Exception {
+        DiscoveryArea oldCity=new DiscoveryArea(45.4642,9.19,14);
+        onMain(()->{
+            set("selectedArea",oldCity);
+            invoke("showMap");
+            set("failed",true);
+            invoke("openAreaRecommendations");
+            assertTrue((Boolean)get("areaVisible"));
+            assertEquals(View.VISIBLE,activity.findViewById(R.id.recommendation_area_choose).getVisibility());
+            assertNull(((ExactVoteAreaScreen)get("areaScreen")).areaCells());
+            assertNull(get("selectedArea"));
+            activity.findViewById(R.id.favorites_destination).performClick();
+            activity.findViewById(R.id.recommendation_entry).performClick();
+            assertEquals(View.VISIBLE,activity.findViewById(R.id.recommendation_area_choose).getVisibility());
+        });
+    }
+
     @Test public void fiveBottomControlsAndTopOverflowHaveNoDestinationDuplicates() throws Exception {
         onMain(() -> {
             android.view.ViewGroup bottom = activity.findViewById(R.id.bottom_navigation);

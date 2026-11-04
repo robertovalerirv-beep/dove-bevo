@@ -42,6 +42,7 @@ final class ExactVoteAreaScreen {
         more=button("Altri consigliati",this::loadMore);more.setId(R.id.recommendation_area_more);body.addView(more);
     }
     View view(){return view;}
+    List<String> areaCells(){return cells;}
     void show(DiscoveryArea area){
         if(closed)return;visible=true;retire();items=Collections.emptyList();next=null;
         cells=area==null?null:area.cells();render();if(cells!=null)load(null);

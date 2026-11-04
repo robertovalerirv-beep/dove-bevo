@@ -105,8 +105,22 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
                   "n456",
                   "Altro locale di prova",
                   1,
-                  options.priceHeadOverlap ? 45.46495 : options.densePrices ? 45.4645 : 45.4652,
-                  options.priceHeadOverlap ? 9.19 : options.densePrices ? 9.1906 : 9.195,
+                  options.priceHeadOverlap
+                    ? 45.46495
+                    : options.cityPriceHeadOverlap
+                      ? 45.46545
+                      : options.cityLowerHeadOverlap
+                        ? 45.46475
+                        : options.densePrices
+                          ? 45.4645
+                          : 45.4652,
+                  options.priceHeadOverlap ||
+                  options.cityPriceHeadOverlap ||
+                  options.cityLowerHeadOverlap
+                    ? 9.19
+                    : options.densePrices
+                      ? 9.1906
+                      : 9.195,
                   "Via di prova 2",
                   0,
                 ],
@@ -636,6 +650,62 @@ test("a visible price label opens its own venue even when another priced dot is 
     const box = await f.page.locator("section.map").boundingBox();
     assert.ok(box);
     await f.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 - 25);
+    await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
+    assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n123");
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a city-zoom price label opens its venue over another priced dot", async () => {
+  const f = await fixture(
+    { width: 393, height: 852 },
+    { densePrices: true, cityPriceHeadOverlap: true },
+  );
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await selectOnlyDrink(f.page, "Spritz");
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    );
+    const box = await f.page.locator("section.map").boundingBox();
+    assert.ok(box);
+    await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await f.page.mouse.wheel(0, 650);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) < 14,
+    );
+    await f.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 - 25);
+    await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
+    assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n123");
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("the lower edge of a city-zoom price head opens its venue over a dot", async () => {
+  const f = await fixture(
+    { width: 393, height: 852 },
+    { densePrices: true, cityLowerHeadOverlap: true },
+  );
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await selectOnlyDrink(f.page, "Spritz");
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
+    );
+    const box = await f.page.locator("section.map").boundingBox();
+    assert.ok(box);
+    await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await f.page.mouse.wheel(0, 650);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) < 14,
+    );
+    await f.page.mouse.click(box.x + box.width / 2, box.y + box.height / 2 - 11);
     await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
     assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n123");
     assert.deepEqual(f.writes, []);

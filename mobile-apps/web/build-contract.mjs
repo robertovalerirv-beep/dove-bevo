@@ -230,8 +230,8 @@ export function transformMap(source, styleURLExpression) {
     'paint: { "circle-radius": 24, "circle-opacity": 0 },',
     'paint: { "circle-radius": id === "price-hit" ? 32 : 24, "circle-opacity": 0, "circle-translate": id === "price-hit" ? [0, -25] : [0, 0], "circle-translate-anchor": "viewport" },',
   );
-  // Price symbols can collide at city zoom. The same selected-filter source also has a
-  // non-colliding visible dot, so a priced venue never vanishes as the map zooms out.
+  // Show verified price pins at city zoom. The same selected-filter source also has a
+  // non-colliding visible dot when MapLibre hides a pin to avoid label collisions.
   result = once(
     result,
     '    map.addLayer({\n      id: "venue-price",',
@@ -252,7 +252,7 @@ export function transformMap(source, styleURLExpression) {
   result = once(
     result,
     '      id: "venue-price",\n      type: "symbol",',
-    '      id: "venue-price",\n      type: "symbol",\n      minzoom: 14,',
+    '      id: "venue-price",\n      type: "symbol",\n      minzoom: 12,',
   );
   // A dense price label may be hidden by MapLibre collision handling. Keep the
   // last explicitly viewed price in its selected cork after its sheet closes.
@@ -291,7 +291,15 @@ export function transformMap(source, styleURLExpression) {
     `{
     this.map.on("click", (event) => {
       const hits = this.map.queryRenderedFeatures(event.point, { layers: ["venue-price", "price-hit", "priced-dot", "venue-hit"] });
-      const target = hits.find((hit) => hit.layer.id === "venue-price") ?? hits.find((hit) => hit.layer.id === "priced-dot") ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
+      const priceLabel = hits.find((hit) => hit.layer.id === "venue-price");
+      const pricedDot = hits.find((hit) => hit.layer.id === "priced-dot");
+      const labelCoordinates = priceLabel?.geometry.type === "Point" ? priceLabel.geometry.coordinates : null;
+      const labelAnchor = labelCoordinates ? this.map.project([Number(labelCoordinates[0]), Number(labelCoordinates[1])]) : null;
+      // The painted 23px price head is centred 33px above its venue anchor.
+      const headX = labelAnchor === null ? 0 : event.point.x - labelAnchor.x;
+      const headY = labelAnchor === null ? 0 : event.point.y - labelAnchor.y + 33;
+      const onVisibleLabelHead = labelAnchor !== null && headX * headX + headY * headY <= 23 * 23;
+      const target = (onVisibleLabelHead ? priceLabel : pricedDot ?? priceLabel) ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
       if (target?.properties) listener(String(target.properties.key), String(target.properties.cell));
     });
   }` +

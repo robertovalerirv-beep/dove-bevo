@@ -88,6 +88,55 @@ final class MobileEntryBrowserTests: XCTestCase {
         withExtendedLifetime(delegate) {}
     }
 
+    @MainActor
+    func testFocusedSavedDrinkReaderAcceptsCurrentItalianReceiptIdentity() throws {
+        // Reopening a saved drink uses four query pairs. The current Italian
+        // receipt places its h2 inside a named identity header, unlike the
+        // older and European receipts covered by the two-pair test above.
+        let url = try XCTUnwrap(URL(string: "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=beer_draft&hh=0"))
+        let web = WKWebView(frame: CGRect(x: 0, y: 0, width: 390, height: 844), configuration: WKWebViewConfiguration())
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first { $0.activationState == .foregroundActive })
+        let previous = scene.windows.first { $0.isKeyWindow }
+        let window = UIWindow(windowScene: scene)
+        window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+        let host = UIViewController()
+        window.rootViewController = host
+        host.view.addSubview(web)
+        web.frame = host.view.bounds
+        web.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        window.makeKeyAndVisible(); window.layoutIfNeeded()
+        defer { window.isHidden = true; window.rootViewController = nil; previous?.makeKey() }
+        let loaded = expectation(description: "Owned focused drink venue")
+        let delegate = OwnedDocumentDelegate(loaded)
+        web.navigationDelegate = delegate
+        let html = """
+        <!doctype html><html data-dovebevo-mobile-shell="1"><head><meta name="viewport" content="width=device-width"></head><body>
+        <section class="map" data-selected="n123"></section>
+        <dialog class="sheet sheet--bare" aria-label="Owned Venue"><div class="sheet__body"><div class="scontrino mobile-venue"><div class="scontrino__paper"><header class="mobile-venue__identity"><h2 class="scontrino__name">Owned Venue</h2></header></div></div></div></dialog>
+        <script>document.querySelector('dialog').showModal()</script></body></html>
+        """
+        let bytes = Data(html.utf8)
+        let request = URLRequest(url: url)
+        let response = URLResponse(url: url, mimeType: "text/html", expectedContentLength: bytes.count, textEncodingName: "UTF-8")
+        web.loadSimulatedRequest(request, response: response, responseData: bytes)
+        wait(for: [loaded], timeout: 10)
+        let captured = expectation(description: "Focused reader result")
+        let capture = VenueBookmarkCapture()
+        let token = try XCTUnwrap(capture.begin(url: url))
+        var venue: SavedVenue?
+        var failure: Error?
+        web.evaluateJavaScript(VenueNameReader.script, in: nil, in: .defaultClient) { result in
+            do { venue = try capture.complete(token, value: result.get(), currentUsableURL: url) }
+            catch { failure = error }
+            captured.fulfill()
+        }
+        wait(for: [captured], timeout: 10)
+        XCTAssertNil(failure, "A visible focused receipt must support both Save and Recommendations")
+        XCTAssertEqual(venue?.label, "Owned Venue")
+        XCTAssertEqual(venue?.url.absoluteString, "https://www.dovebevo.com/bar/n123?c=u0nd9")
+        withExtendedLifetime(delegate) {}
+    }
+
     @MainActor private func share(_ tabs: NativeTabsController) throws -> UIAction {
         try XCTUnwrap(tabs.topMoreButton.menu?.children.compactMap { $0 as? UIAction }.first { $0.identifier.rawValue == "browser.share" })
     }

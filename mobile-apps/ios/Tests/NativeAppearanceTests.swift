@@ -4,6 +4,18 @@ import XCTest
 
 final class NativeAppearanceTests: XCTestCase {
     @MainActor
+    func testBottomBarUsesOneRowOnCommonPhonesAndTwoForNarrowOrLargeText() {
+        // The bar reserves four points on each side of its safe area.
+        XCTAssertEqual(NativeBottomBar.columns(for: 320, fontScale: 1), 3)
+        XCTAssertEqual(NativeBottomBar.columns(for: 360, fontScale: 1), 6)
+        XCTAssertEqual(NativeBottomBar.columns(for: 375, fontScale: 1), 6)
+        XCTAssertEqual(NativeBottomBar.columns(for: 390, fontScale: 1), 6)
+        XCTAssertEqual(NativeBottomBar.columns(for: 360, fontScale: 1.5), 3)
+        XCTAssertEqual(NativeBottomBar.columns(for: 390, fontScale: 1.5), 3)
+        XCTAssertEqual(NativeBottomBar.columns(for: 640, fontScale: 1.5), 6)
+    }
+
+    @MainActor
     func testSelectedDestinationAndNativeTextHaveLegibleContrastOnWebsiteCreamAndOrange() throws {
         let bar = NativeBottomBar()
         bar.update(destination: 0, venueActionsEnabled: false)

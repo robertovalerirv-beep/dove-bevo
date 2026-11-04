@@ -150,6 +150,28 @@ final class BottomNavigationControllerTests: XCTestCase {
                 XCTAssertGreaterThanOrEqual(frame.height, 48)
                 XCTAssertTrue(bar.bounds.contains(frame))
             }
+            window.frame = CGRect(x: 0, y: 0, width: 360, height: 780)
+            host.view.frame = window.bounds
+            window.layoutIfNeeded()
+            bar.setNeedsLayout()
+            bar.layoutIfNeeded()
+            window.layoutIfNeeded()
+            tabs.view.layoutIfNeeded()
+            XCTAssertEqual(bar.bounds.width, 360, accuracy: 0.5)
+            let compactFrames = bar.buttons.map { $0.convert($0.bounds, to: bar) }
+            XCTAssertEqual(Set(compactFrames.map { Int($0.minY.rounded()) }).count, 1,
+                           "All six native actions fit one row at 360 points")
+            for button in bar.buttons {
+                button.layoutIfNeeded()
+                let frame = button.convert(button.bounds, to: bar)
+                XCTAssertGreaterThanOrEqual(frame.width, 56)
+                XCTAssertGreaterThanOrEqual(frame.height, 56)
+                XCTAssertTrue(bar.bounds.contains(frame))
+                if let title = button.titleLabel, let image = button.imageView {
+                    XCTAssertTrue(button.bounds.contains(title.convert(title.bounds, to: button)))
+                    XCTAssertTrue(button.bounds.contains(image.convert(image.bounds, to: button)))
+                } else { XCTFail("Every compact button needs a visible icon and title") }
+            }
             tabs.additionalSafeAreaInsets = UIEdgeInsets(top: 0, left: 40, bottom: 0, right: 40)
             window.frame = CGRect(x: 0, y: 0, width: 844, height: 390)
             host.view.frame = window.bounds

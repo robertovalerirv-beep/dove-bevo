@@ -196,21 +196,23 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
           save();
         }}
       >
-        <p class="mobile-price-flow__venue">{venue.name}</p>
-        {artwork && (
-          <div
-            class={`mobile-price-form__art${drink === "spritz" ? " mobile-price-form__art--product" : ""}`}
-          >
-            <img src={artwork} width="1024" height="1536" alt="" decoding="async" />
-            <span>
-              {currentLang() === "en" ? "Illustrative drink image" : "Immagine illustrativa"}
-            </span>
-          </div>
-        )}
-        <h3 class="context-tag">
-          <Icon name={drinkIcon(drink)} />
-          {drinkName(drink)}
-        </h3>
+        <div class="mobile-price-form__intro">
+          <p class="mobile-price-flow__venue">{venue.name}</p>
+          {artwork && (
+            <div
+              class={`mobile-price-form__art${drink === "spritz" ? " mobile-price-form__art--product" : ""}`}
+            >
+              <img src={artwork} width="1024" height="1536" alt="" decoding="async" />
+              <span>
+                {currentLang() === "en" ? "Illustrative drink image" : "Immagine illustrativa"}
+              </span>
+            </div>
+          )}
+          <h3 class="context-tag">
+            <Icon name={drinkIcon(drink)} />
+            {drinkName(drink)}
+          </h3>
+        </div>
         <label class="question" for="mobile-price-amount">
           {it.add.question}
         </label>

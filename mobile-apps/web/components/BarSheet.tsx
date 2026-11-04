@@ -461,18 +461,20 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
       <div class="scontrino mobile-venue">
         <DrinkHero drink={heroDrink} />
         <div class="scontrino__paper">
-          <p class="bar__kind">{[venueKind, venue.city].filter(Boolean).join(" · ")}</p>
-          <h2 class="scontrino__name" tabIndex={-1}>
-            {venue.name}
-          </h2>
-          {venue.verified && (
-            <p class="bar__verified">
-              <VerifiedBadge />
-            </p>
-          )}
-          {venue.addr && <p class="bar__addr">{venue.addr}</p>}
-          {/* The hours of a verified bar come before the prices (SPEC 7.2, D-34). */}
-          {venue.verified && prices?.o && <HoursList hours={prices.o} />}
+          <header class="mobile-venue__identity">
+            <p class="bar__kind">{[venueKind, venue.city].filter(Boolean).join(" · ")}</p>
+            <h2 class="scontrino__name" tabIndex={-1}>
+              {venue.name}
+            </h2>
+            {venue.verified && (
+              <p class="bar__verified">
+                <VerifiedBadge />
+              </p>
+            )}
+            {venue.addr && <p class="bar__addr">{venue.addr}</p>}
+            {/* The hours of a verified bar come before the prices (SPEC 7.2, D-34). */}
+            {venue.verified && prices?.o && <HoursList hours={prices.o} />}
+          </header>
           {active.length > 0 && <h3 class="section-title">{it.bar.prices}</h3>}
           {pricesFailed && (
             <p class="hint" role="alert">

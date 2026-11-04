@@ -31,7 +31,7 @@ DIAGNOSTIC_ERRORS = []
 DIAGNOSTIC_LIMIT = 16_384
 SERIAL = "emulator-5554"
 LAUNCH_STAGES = ("initial", "after_decline", "resume", "after_restart")
-OWNED_CLASSES = {"NativeUsabilityRuntimeTest": 25, "RecommendationsRuntimeTest": 6,
+OWNED_CLASSES = {"NativeUsabilityRuntimeTest": 28, "RecommendationsRuntimeTest": 6,
                  "FavoritesRuntimeTest": 5, "DiscoveryRuntimeTest": 6, "EuropePricesRuntimeTest": 1,
                  "PriceShareRuntimeTest": 8, "DrinkFavoritesRuntimeTest": 4}
 OWNED_TEST_COUNT = sum(OWNED_CLASSES.values())

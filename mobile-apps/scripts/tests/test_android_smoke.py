@@ -382,7 +382,7 @@ class AndroidSmokeTests(unittest.TestCase):
             self.assertIn(text, source)
 
     def test_registered_source_inventory_is_exact_and_checked_before_emulator_start(self):
-        self.assertEqual(m.OWNED_TEST_COUNT, 55)
+        self.assertEqual(m.OWNED_TEST_COUNT, 58)
         m.verify_owned_test_sources()
         directory = self.base / 'registered-tests'
         directory.mkdir()
@@ -437,9 +437,9 @@ class AndroidSmokeTests(unittest.TestCase):
     def test_owned_instrumentation_requires_every_explicit_unskipped_case(self):
         good = self.owned_output()
         self.assertEqual(m.owned_instrumentation(good)['tests'], m.OWNED_TEST_COUNT)
-        old_47 = {name: count for name, count in m.OWNED_CLASSES.items() if name != 'DrinkFavoritesRuntimeTest'}
-        old_45 = {**old_47, 'NativeUsabilityRuntimeTest': 21}
-        for bad in [b'', self.owned_output(old_45), self.owned_output(old_47),
+        without_drink_favourites = {name: count for name, count in m.OWNED_CLASSES.items() if name != 'DrinkFavoritesRuntimeTest'}
+        old_native_count = {**without_drink_favourites, 'NativeUsabilityRuntimeTest': 21}
+        for bad in [b'', self.owned_output(old_native_count), self.owned_output(without_drink_favourites),
                     good.replace(f'OK ({m.OWNED_TEST_COUNT} tests)'.encode(), b''),
                     good.replace(f'INSTRUMENTATION_STATUS: numtests={m.OWNED_TEST_COUNT}'.encode(), b'INSTRUMENTATION_STATUS: numtests=1', 1),
                     good.replace(b'INSTRUMENTATION_CODE: -1', b''),

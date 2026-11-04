@@ -17,6 +17,7 @@ test("exact vote keys distinguish owner offers, customer drinks and legacy bands
     voteTargetKey({ kind: "legacy", drink: "spritz", band: "happy_hour" }),
   );
   assert.throws(() => voteTargetKey({ kind: "legacy", drink: "unknown", band: "normal" }), Error);
+  assert.throws(() => voteTargetKey({ kind: "customer", id: `o${"a".repeat(64)}` }), Error);
 });
 
 test("one venue GET validates exact identity, count and own selected state", async () => {

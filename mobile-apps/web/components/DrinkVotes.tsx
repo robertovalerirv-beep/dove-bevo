@@ -21,7 +21,7 @@ interface VoteContextValue {
 }
 const VoteContext = createContext<VoteContextValue | null>(null);
 
-/** One authenticated read per opened venue; every row consumes the same exact-item snapshot. */
+/** One pseudonymous voter read per opened venue; every row shares its exact-item snapshot. */
 export function DrinkVotesProvider({
   venueKey,
   cell,
@@ -39,6 +39,9 @@ export function DrinkVotesProvider({
   const [version, setVersion] = useState(0);
   const busyRef = useRef<Set<string>>(new Set());
   const alive = useRef(true);
+  const identity = `${venueKey}:${cell}`;
+  const identityRef = useRef(identity);
+  identityRef.current = identity;
 
   useEffect(() => {
     alive.current = true;
@@ -48,55 +51,62 @@ export function DrinkVotesProvider({
   }, []);
   useEffect(() => {
     const controller = new AbortController();
+    busyRef.current.clear();
+    setBusy(new Set());
+    setItems(new Map());
+    setFailed(new Set());
     setPhase("loading");
     void loadDrinkVotes(venueKey, cell, voter, controller.signal)
       .then((next) => {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || identityRef.current !== identity) return;
         setItems(next);
         setFailed(new Set());
         setPhase("ready");
       })
       .catch(() => {
-        if (!controller.signal.aborted) setPhase("error");
+        if (!controller.signal.aborted && identityRef.current === identity) setPhase("error");
       });
     return () => {
       controller.abort();
     };
-  }, [venueKey, cell, voter, version]);
+  }, [venueKey, cell, voter, version, identity]);
 
   const refresh = () => {
     setVersion((value) => value + 1);
   };
   const toggle = async (target: DrinkVoteTarget) => {
     if (phase !== "ready" || !voter) return;
-    const identity = voteTargetKey(target);
-    if (busyRef.current.has(identity)) return;
-    busyRef.current.add(identity);
+    const operationIdentity = identity;
+    const targetId = voteTargetKey(target);
+    if (busyRef.current.has(targetId)) return;
+    busyRef.current.add(targetId);
     setBusy(new Set(busyRef.current));
     setFailed((previous) => {
       const next = new Set(previous);
-      next.delete(identity);
+      next.delete(targetId);
       return next;
     });
-    const desired = !(items.get(identity)?.recommended ?? false);
+    const desired = !(items.get(targetId)?.recommended ?? false);
     try {
       const updated = await setDrinkVote(venueKey, cell, voter, target, desired);
-      if (alive.current) setItems((previous) => new Map(previous).set(identity, updated));
+      if (alive.current && identityRef.current === operationIdentity)
+        setItems((previous) => new Map(previous).set(targetId, updated));
     } catch {
       // A lost POST response may still represent a committed vote. Read the authority first.
       try {
         const reconciled = await loadDrinkVotes(venueKey, cell, voter);
-        if (alive.current) {
+        if (alive.current && identityRef.current === operationIdentity) {
           setItems(reconciled);
-          if ((reconciled.get(identity)?.recommended ?? false) !== desired)
-            setFailed((previous) => new Set(previous).add(identity));
+          if ((reconciled.get(targetId)?.recommended ?? false) !== desired)
+            setFailed((previous) => new Set(previous).add(targetId));
         }
       } catch {
-        if (alive.current) setPhase("error");
+        if (alive.current && identityRef.current === operationIdentity) setPhase("error");
       }
     } finally {
-      busyRef.current.delete(identity);
-      if (alive.current) setBusy(new Set(busyRef.current));
+      busyRef.current.delete(targetId);
+      if (alive.current && identityRef.current === operationIdentity)
+        setBusy(new Set(busyRef.current));
     }
   };
 

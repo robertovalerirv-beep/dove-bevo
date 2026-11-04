@@ -715,10 +715,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                           Salva questo drink
                         </a>
                       )}
-                      <DrinkVoteButton
-                        target={{ kind: "offer", id: featuredOffer.id }}
-                        name={`${featuredOffer.name} da ${venue.name}`}
-                      />
+                      {mobileOfferIdPattern.test(featuredOffer.id) && (
+                        <DrinkVoteButton
+                          target={{ kind: "offer", id: featuredOffer.id }}
+                          name={`${featuredOffer.name} da ${venue.name}`}
+                        />
+                      )}
                     </div>
                     <a
                       class="mobile-menu-v2__source"

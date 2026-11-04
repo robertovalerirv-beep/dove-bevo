@@ -68,7 +68,7 @@ async function fixture(options = {}) {
   });
   const page = await context.newPage();
   const writes = [];
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     if (pathname === "/api/mobile/v2/customer-prices" && request.method() === "POST") {
@@ -86,6 +86,13 @@ async function fixture(options = {}) {
     if (pathname.startsWith("/api/mobile/v2/drink-votes/venues/") && request.method() === "POST") {
       const body = request.postDataJSON();
       options.votePosts?.push(body);
+      const key = pathname.slice("/api/mobile/v2/drink-votes/venues/".length);
+      if (options.holdVotePostKey === key) {
+        options.votePostHeld?.();
+        await new Promise((resolve) => {
+          options.releaseVotePost = resolve;
+        });
+      }
       return route.fulfill({
         json: {
           target: body.target,
@@ -106,7 +113,7 @@ async function fixture(options = {}) {
         json: {
           schema_version: 1,
           venue: { key, cell: "u0nd9", name: "Locale di prova" },
-          items: options.voteItems ?? [],
+          items: options.voteItemsByKey?.[key] ?? options.voteItems ?? [],
         },
       });
     }
@@ -924,6 +931,51 @@ test("a thumb tap updates only its exact legacy drink in an intercepted local fi
     ]);
     assert.deepEqual(f.writes, []);
   } finally {
+    await f.close();
+  }
+});
+
+test("late vote response from a closed venue cannot change another venue's thumb", async () => {
+  const otherKey = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  let votePostHeld;
+  const held = new Promise((resolve) => {
+    votePostHeld = resolve;
+  });
+  const options = {
+    holdVotePostKey: "n123",
+    votePostHeld,
+    voteItemsByKey: {
+      n123: [
+        {
+          target: { kind: "legacy", drink: "spritz", band: "normal" },
+          count: 3,
+          recommended: false,
+        },
+      ],
+      [otherKey]: [{ target: { kind: "offer", id: "first" }, count: 7, recommended: false }],
+    },
+  };
+  const f = await fixture(options);
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const firstThumb = f.page.locator(".mobile-price--featured .mobile-drink-vote");
+    await firstThumb.getByText("3").waitFor();
+    await firstThumb.click();
+    await held;
+    await f.page.evaluate((key) => window.sheetFixture.bar([], key), otherKey);
+    const otherThumb = f.page.locator(".mobile-menu-v2__offer .mobile-drink-vote").first();
+    await otherThumb.getByText("7").waitFor();
+    const response = f.page.waitForResponse(
+      (value) =>
+        value.url().includes("/drink-votes/venues/n123") && value.request().method() === "POST",
+    );
+    options.releaseVotePost();
+    await response;
+    assert.equal(await otherThumb.getAttribute("aria-pressed"), "false");
+    assert.match(await otherThumb.innerText(), /7/);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    options.releaseVotePost?.();
     await f.close();
   }
 });

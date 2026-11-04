@@ -566,7 +566,7 @@ export function CustomerPricesV2({
     const voteTarget =
       row.kind === "menu_offer" && row.offer_id && mobileOfferIdPattern.test(row.offer_id)
         ? ({ kind: "offer", id: row.offer_id } as const)
-        : row.kind === "new_drink" && mobileCustomerItemKeyPattern.test(row.item_key)
+        : row.kind === "new_drink" && /^c[0-9a-f]{64}$/.test(row.item_key)
           ? ({ kind: "customer", id: row.item_key } as const)
           : null;
     const voteVisible = voteTarget !== null && !offers.some((offer) => offer.id === row.offer_id);

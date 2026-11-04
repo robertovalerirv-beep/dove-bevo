@@ -1,11 +1,6 @@
 import { z } from "zod";
 import { CELL_PATTERN } from "../../src/shared/venue.ts";
-import {
-  mobileCustomerItemKeyPattern,
-  mobileOfferIdPattern,
-  mobileVenueKeyPattern,
-  validCategory,
-} from "./routes.ts";
+import { mobileOfferIdPattern, mobileVenueKeyPattern, validCategory } from "./routes.ts";
 
 const VOTER_KEY = "dovebevo-mobile-drink-voter-v2";
 const VOTER_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -15,7 +10,7 @@ const OfferTarget = z.object({
 });
 const CustomerTarget = z.object({
   kind: z.literal("customer"),
-  id: z.string().regex(mobileCustomerItemKeyPattern),
+  id: z.string().regex(/^c[0-9a-f]{64}$/),
 });
 const LegacyTarget = z.object({
   kind: z.literal("legacy"),

@@ -459,6 +459,12 @@ test("single drink dropdown switches map filters without lateral scroll", async 
     assert.ok(options.cellRequests.some((request) => request.categories.length === 0));
     await f.page.screenshot({ path: path.join(output, "map-all-counts-fixture.png") });
     const beerMenu = await openDrinks(f.page);
+    assert.equal(
+      await beerMenu.evaluate(
+        (element) => getComputedStyle(element).gridTemplateColumns.split(" ").length,
+      ),
+      1,
+    );
     await beerMenu
       .getByRole("checkbox", { name: "Birra media", exact: true })
       .check({ force: true });

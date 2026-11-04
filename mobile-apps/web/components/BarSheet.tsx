@@ -12,6 +12,7 @@ import { HoursList, VerifiedBadge } from "@site/app/components/Verified";
 import { drinkImage } from "@mobile/drink-images";
 import { sharePresentation } from "../share-presentation";
 import { DrinkHero } from "./DrinkHero";
+import { DrinkVoteButton, DrinkVotesProvider } from "./DrinkVotes";
 import {
   loadMenuPage,
   loadMobileCell,
@@ -22,7 +23,16 @@ import {
   type MenuOffer,
 } from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
-import { menuOfferMatchesFocus, mobileFocus, mobileOfferFocus, mobilePath } from "../routes";
+import {
+  menuOfferMatchesFocus,
+  mobileFocus,
+  mobileOfferFocus,
+  mobileOfferIdPattern,
+  mobileOfferSaveURL,
+  mobileDrinkSaveURL,
+  mobilePath,
+  validCategory,
+} from "../routes";
 import "./sheets.css";
 
 export interface BarActions {
@@ -78,6 +88,7 @@ function PriceItem({
   actions,
   inReview,
   tier,
+  nativeDrinkSave,
   featured = false,
 }: {
   row: PriceRow;
@@ -85,6 +96,7 @@ function PriceItem({
   actions: BarActions;
   inReview: boolean;
   tier: Tier;
+  nativeDrinkSave: boolean;
   featured?: boolean;
 }) {
   const [, drink, hh, cents, day, confirmations] = row;
@@ -171,6 +183,23 @@ function PriceItem({
         {formatDate(day)} · {it.bar.confirmations(count)}
         {isStale(day, todayRome()) && <span class="price__stale"> · {it.bar.toConfirm}</span>}
       </span>
+      {!inReview && validCategory(drink) && (
+        <span class="mobile-menu-v2__quick-actions mobile-price__quick-actions">
+          {nativeDrinkSave && (
+            <a
+              class="btn btn--secondary mobile-menu-v2__save"
+              href={mobileDrinkSaveURL(venue.key, venue.cell, drink, hh ? "happy_hour" : "normal")}
+              aria-label={`Salva ${name} da ${venue.name} nei preferiti`}
+            >
+              Salva questo drink
+            </a>
+          )}
+          <DrinkVoteButton
+            target={{ kind: "legacy", drink, band: hh ? "happy_hour" : "normal" }}
+            name={`${name} da ${venue.name}`}
+          />
+        </span>
+      )}
       {featured && tier !== "neutro" && (
         <span class={`mobile-price__tier mobile-price__tier--${tier}`}>{it.map.tiers[tier]}</span>
       )}
@@ -263,6 +292,12 @@ function menuFeeAmount(fee: MenuFee): string {
 
 export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
+  const [nativeOfferSave, setNativeOfferSave] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      (window as Window & { DoveBevoNativeOfferSave?: boolean }).DoveBevoNativeOfferSave === true,
+  );
+  const [nativeDrinkSave, setNativeDrinkSave] = useState(false);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -273,6 +308,21 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const [menuAttempt, setMenuAttempt] = useState(0);
   const [mapSample, setMapSample] = useState<MenuOffer | null>(null);
   const menuAbort = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const updateNative = () => {
+      setNativeOfferSave(
+        (window as Window & { DoveBevoNativeOfferSave?: boolean }).DoveBevoNativeOfferSave === true,
+      );
+      setNativeDrinkSave(
+        (window as Window & { DoveBevoNativeDrinkSave?: boolean }).DoveBevoNativeDrinkSave === true,
+      );
+    };
+    window.addEventListener("dovebevo-native-ready", updateNative);
+    updateNative();
+    return () => {
+      window.removeEventListener("dovebevo-native-ready", updateNative);
+    };
+  }, []);
   const savedFocus =
     typeof location !== "undefined" &&
     mobilePath(location) === "/bar/" + venueKey &&
@@ -592,7 +642,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         </div>
       </section>
     ) : null;
-  return (
+  const sheet = (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
         <DrinkHero drink={heroDrink} />
@@ -655,6 +705,23 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                     <small class="mobile-menu-v2__meta">
                       Prezzo del drink da menu, non totale pagato. Supplementi separati.
                     </small>
+                    <div class="mobile-menu-v2__quick-actions">
+                      {nativeOfferSave && mobileOfferIdPattern.test(featuredOffer.id) && (
+                        <a
+                          href={mobileOfferSaveURL(venueKey, cell, featuredOffer.id)}
+                          class="btn btn--secondary mobile-menu-v2__save"
+                          aria-label={`Salva ${featuredOffer.name} da ${venue.name} nei preferiti`}
+                        >
+                          Salva questo drink
+                        </a>
+                      )}
+                      {mobileOfferIdPattern.test(featuredOffer.id) && (
+                        <DrinkVoteButton
+                          target={{ kind: "offer", id: featuredOffer.id }}
+                          name={`${featuredOffer.name} da ${venue.name}`}
+                        />
+                      )}
+                    </div>
                     <a
                       class="mobile-menu-v2__source"
                       href={featuredOffer.source.url}
@@ -711,6 +778,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 actions={actions}
                 inReview={false}
                 tier={tier(row)}
+                nativeDrinkSave={nativeDrinkSave}
                 featured={index === 0 && (!savedFocus || savedFound)}
               />,
             ])}
@@ -806,6 +874,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   actions={actions}
                   inReview
                   tier="neutro"
+                  nativeDrinkSave={nativeDrinkSave}
                 />
               ))}
             </ul>
@@ -833,5 +902,10 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         <AppLegalLinks />
       </div>
     </Sheet>
+  );
+  return (
+    <DrinkVotesProvider key={`${venueKey}:${cell}`} venueKey={venueKey} cell={cell}>
+      {sheet}
+    </DrinkVotesProvider>
   );
 }

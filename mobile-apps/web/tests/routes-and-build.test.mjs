@@ -10,6 +10,8 @@ import {
   mobileFocus,
   mobileOfferFocus,
   mobileOfferSaveURL,
+  mobileDrinkSaveURL,
+  mobileCustomerSaveURL,
   menuOfferMatchesFocus,
 } from "../routes.ts";
 import { transformApp, transformMap, mobileMapStyle } from "../build-contract.mjs";
@@ -80,6 +82,27 @@ test("exact named offer links preserve identity; save commands never become disp
     assert.equal(mobilePath(new URL(save, origin)), "/");
     assert.throws(() => mobileURL(`/bar/${key}?c=u0nd9&save_offer=source:123`, origin), TypeError);
   }
+});
+
+test("native drink actions use exact identities and remain private commands", () => {
+  const itemKey = `o${"a".repeat(64)}`;
+  const commands = [
+    [
+      mobileDrinkSaveURL("n123", "u0nd9", "spritz", "happy_hour"),
+      "save_drink=spritz&band=happy_hour",
+    ],
+    [mobileCustomerSaveURL("n123", "u0nd9", itemKey), `save_customer=${itemKey}`],
+  ];
+  for (const [link, command] of commands) {
+    assert.equal(link, `/mobile/?path=%2Fbar%2Fn123&c=u0nd9&${command}`);
+    assert.equal(mobilePath(new URL(link, origin)), "/");
+  }
+  for (const bad of [null, "", "unknown", "<script>"]) {
+    assert.throws(() => mobileDrinkSaveURL("n123", "u0nd9", bad, "normal"), TypeError);
+  }
+  for (const bad of ["", "c123", `o${"A".repeat(64)}`])
+    assert.throws(() => mobileCustomerSaveURL("n123", "u0nd9", bad), TypeError);
+  assert.throws(() => mobileDrinkSaveURL("n123", "u0nd9", "spritz", "other"), TypeError);
 });
 
 test("exact named offer focus rejects mixed, duplicate, malformed or private parameters", () => {

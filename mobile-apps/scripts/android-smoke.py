@@ -168,6 +168,50 @@ def owned_failure_logcat():
     persist_owned_diagnostics()  # Best effort on an already failed run; never mask its original exception.
 
 
+def public_failure_diagnostics(stage):
+    """Keep the failing app state before cleanup, without changing probe verdicts."""
+    observed = {"stage": stage}
+    if ADB_OWNER is None or ADB_OWNER.poll() is not None:
+        observed["status"] = "owned_adb_not_running"
+        STARTUP["public_probe_failure"] = observed
+        persist_owned_diagnostics()
+        return
+    for label, command in (
+            ("pid", ("shell", "pidof", "com.dovebevo.app")),
+            ("activity", ("shell", "dumpsys", "activity", "activities")),
+            ("logcat", ("logcat", "-d", "-t", "600", "-v", "brief",
+                        "AndroidRuntime:E", "ActivityTaskManager:W", "ActivityManager:W",
+                        "chromium:E", "libc:F", "DEBUG:F", "*:S"))):
+        try:
+            captured = adb(*command, timeout=15, check=False)
+            output = captured.stdout
+            if label == "activity":
+                output = b"\n".join(line for line in output.splitlines() if re.search(
+                    rb"topResumedActivity|mResumedActivity|ResumedActivity|com\.dovebevo\.app/", line))[:4096]
+            observed[label] = {"returncode": captured.returncode,
+                               "stdout": diagnostic_stream(output),
+                               "stderr": diagnostic_stream(captured.stderr)}
+        except (subprocess.SubprocessError, OSError, RuntimeError) as error:
+            observed[label] = {"error": safe_text(error)}
+    try:
+        adb("shell", "uiautomator", "dump", "/sdcard/dove-public-failure.xml", timeout=20)
+        raw = adb("exec-out", "cat", "/sdcard/dove-public-failure.xml", timeout=15).stdout
+        if 0 < len(raw) <= 1_000_000:
+            ui = ET.fromstring(raw)
+            observed["ui_packages"] = dict(Counter(n.get("package", "") for n in ui.iter("node")))
+            (EVIDENCE / "public-failure-ui.xml").write_bytes(raw)
+            observed["ui_sha256"] = evidence_hash("public-failure-ui.xml")
+    except (subprocess.SubprocessError, ET.ParseError, OSError, RuntimeError) as error:
+        observed["ui_error"] = safe_text(error)
+    try:
+        screenshot("public-failure.png")
+        observed["screenshot_sha256"] = evidence_hash("public-failure.png")
+    except (subprocess.SubprocessError, OSError, RuntimeError) as error:
+        observed["screenshot_error"] = safe_text(error)
+    STARTUP["public_probe_failure"] = observed
+    persist_owned_diagnostics()  # Diagnostics must never replace the original failure.
+
+
 def cloudflare_challenge(ui):
     for web in ui.iter("node"):
         if web.get("class") != "android.webkit.WebView" or web.get("package") != "com.dovebevo.app": continue
@@ -503,6 +547,20 @@ def find(label, exact=True):
     return None
 
 
+def live_map_search_destination():
+    """Require the rendered site map and the app's actual bottom Cerca control."""
+    ui = tree()
+    web = next((node for node in ui.iter("node") if node.get("class") == "android.webkit.WebView"
+                and node.get("package") == "com.dovebevo.app"), None)
+    if web is None or not any("Mappa interattiva dei bar" in (node.get("text", ""), node.get("content-desc", ""))
+                              for node in web.iter("node")):
+        return None
+    return next((node for node in ui.iter("node")
+                 if node.get("resource-id") == "com.dovebevo.app:id/search_destination"
+                 and node.get("class") == "android.widget.Button"
+                 and node.get("text") == "Cerca" and node.get("enabled") == "true"), None)
+
+
 def tap(node):
     numbers = [int(value) for value in re.findall(r"\d+", node.attrib["bounds"])]
     if len(numbers) != 4:
@@ -600,7 +658,7 @@ def main():
         tap(accept_rules)
         result["checks"].append("offline privacy and declined rules retain the gate; explicit acceptance opens service")
         PUBLIC_STAGE = "home"
-        search = wait_for("live website city-search control", lambda: find("Cerca città o bar"), 90)
+        search = wait_for("live map and native city-search control", live_map_search_destination, 90)
         result["checks"].append("live website rendered inside WebView")
         screenshot("01-live-home.png")
         tap(search)
@@ -619,12 +677,12 @@ def main():
         adb("shell", "input", "keyevent", "3")
         launch_app("resume")
         PUBLIC_STAGE = "resume"
-        wait_for("app resumed", lambda: find("Cerca città o bar"))
+        wait_for("app resumed with live map and search", live_map_search_destination)
         result["checks"].append("background and resume")
         adb("shell", "am", "force-stop", "com.dovebevo.app")
         launch_app("after_restart")
         PUBLIC_STAGE = "restart"
-        wait_for("accepted app restarts into live service", lambda: find("Cerca città o bar"), 90)
+        wait_for("accepted app restarts into live service", live_map_search_destination, 90)
         if find("Ho almeno 18 anni e accetto") is not None:
             raise RuntimeError("Explicit rules acceptance did not survive a process restart")
         result["checks"].append("accepted rules survive a process restart")
@@ -632,6 +690,11 @@ def main():
         result["public_probe"] = {"result": "passed"}
     except BaseException as error:
         result["error"] = safe_text(error)
+        if OWNED_PASS and PUBLIC_STAGE in PUBLIC_STAGES and not isinstance(error, PublicProbeBlocked):
+            try:
+                public_failure_diagnostics(PUBLIC_STAGE)
+            except Exception as diagnostic_error:
+                DIAGNOSTIC_ERRORS.append(safe_text(diagnostic_error))
         if isinstance(error, PublicProbeBlocked) and OWNED_PASS and PUBLIC_STAGE in PUBLIC_STAGES and error.stage == PUBLIC_STAGE:
             result.update(result="blocked", blocker="cloudflare_challenge",
                           public_probe={"result": "blocked", "stage": error.stage, "evidence": error.evidence})

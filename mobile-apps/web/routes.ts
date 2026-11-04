@@ -161,10 +161,10 @@ export function menuOfferMatchesFocus(
   );
 }
 
-/** Fresh app entry shows all sourced prices; saved drink links restore their exact filter. */
+/** Fresh app entry highlights a priced category; saved drink links restore their exact filter. */
 export function mobileInitialDrinks(
   value: MobileLocation | undefined = typeof location === "undefined" ? undefined : location,
 ): string[] {
   const saved = value && mobileFocus(value);
-  return saved ? [saved.drink] : [];
+  return saved ? [saved.drink] : ["spritz"];
 }

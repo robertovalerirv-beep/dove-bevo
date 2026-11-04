@@ -26,9 +26,9 @@ test("map and venue routes survive reload as real mobile assets", () => {
   const url = new URL(venue, origin);
   assert.equal(mobilePath(url), "/bar/n123");
   assert.equal(mobileURL("/?at=45.4642,9.19", origin), "/mobile/?at=45.4642%2C9.19");
-  assert.deepEqual(mobileInitialDrinks(), []);
-  assert.deepEqual(mobileInitialDrinks(new URL("/mobile/", origin)), []);
-  assert.deepEqual(mobileInitialDrinks(new URL("/mobile/?at=45.4642,9.19", origin)), []);
+  assert.deepEqual(mobileInitialDrinks(), ["spritz"]);
+  assert.deepEqual(mobileInitialDrinks(new URL("/mobile/", origin)), ["spritz"]);
+  assert.deepEqual(mobileInitialDrinks(new URL("/mobile/?at=45.4642,9.19", origin)), ["spritz"]);
 });
 
 test("mobile owner-verified venue links retain exact m identity", () => {

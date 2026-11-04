@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { CATALOG } from "@site/shared/catalog";
-import { it } from "@site/app/i18n/lang";
+import { currentLang, it } from "@site/app/i18n/lang";
 
 interface Props {
   selected: readonly string[];
@@ -8,12 +8,35 @@ interface Props {
 }
 
 const quickDrinks = [
-  { label: "Tutti", codes: [] },
-  { label: "Birra", codes: ["beer_draft"] },
-  { label: "Spritz", codes: ["spritz"] },
-  { label: "Gin", codes: ["gin_tonic", "gin_lemon"] },
-  { label: "Vino", codes: ["wine_glass"] },
+  { key: "all", codes: [] },
+  { key: "beer", codes: ["beer_draft"] },
+  { key: "spritz", codes: ["spritz"] },
+  { key: "gin", codes: ["gin_tonic", "gin_lemon"] },
+  { key: "wine", codes: ["wine_glass"] },
 ] as const;
+
+const quickCopy = {
+  it: {
+    all: "Tutti",
+    beer: "Birra",
+    spritz: "Spritz",
+    gin: "Gin",
+    wine: "Vino",
+    more: "Altro",
+    group: "Filtra la mappa per drink",
+    moreSelection: "Altri drink. Selezione",
+  },
+  en: {
+    all: "All",
+    beer: "Beer",
+    spritz: "Spritz",
+    gin: "Gin",
+    wine: "Wine",
+    more: "More",
+    group: "Filter map by drink",
+    moreSelection: "More drinks. Selection",
+  },
+} as const;
 
 function sameDrinks(selected: readonly string[], codes: readonly string[]): boolean {
   return selected.length === codes.length && codes.every((code) => selected.includes(code));
@@ -25,11 +48,12 @@ export function DrinkMenu({ selected, onChange }: Props) {
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
+  const copy = quickCopy[currentLang()];
   const summary = selected.length
     ? CATALOG.filter((drink) => selected.includes(drink.code))
         .map((drink) => it.drinks[drink.code] ?? drink.code)
         .join(", ")
-    : "Tutti";
+    : copy.all;
   const customSelection = !quickDrinks.some((drink) => sameDrinks(selected, drink.codes));
 
   useLayoutEffect(() => {
@@ -60,11 +84,11 @@ export function DrinkMenu({ selected, onChange }: Props) {
         }
       }}
     >
-      <div class="mobile-drink-quick" role="group" aria-label="Filtra la mappa per drink">
+      <div class="mobile-drink-quick" role="group" aria-label={copy.group}>
         <div class="mobile-drink-quick__scroller">
           {quickDrinks.map((drink) => (
             <button
-              key={drink.label}
+              key={drink.key}
               type="button"
               class="mobile-drink-quick__chip"
               aria-pressed={sameDrinks(selected, drink.codes)}
@@ -73,7 +97,7 @@ export function DrinkMenu({ selected, onChange }: Props) {
                 setOpen(false);
               }}
             >
-              {drink.label}
+              {copy[drink.key]}
             </button>
           ))}
         </div>
@@ -82,14 +106,14 @@ export function DrinkMenu({ selected, onChange }: Props) {
           ref={toggle}
           class="mobile-drink-menu__button"
           data-selected={customSelection ? "true" : undefined}
-          aria-label={`Altri drink. Selezione: ${summary}`}
+          aria-label={`${copy.moreSelection}: ${summary}`}
           aria-expanded={open}
           aria-controls={id}
           onClick={() => {
             setOpen(!open);
           }}
         >
-          Altro
+          {copy.more}
           <span class="mobile-drink-menu__chevron" aria-hidden="true">
             ⌄
           </span>
@@ -143,7 +167,7 @@ export function DrinkMenu({ selected, onChange }: Props) {
             toggle.current?.focus();
           }}
         >
-          Tutti
+          {copy.all}
         </button>
       </div>
     </div>

@@ -55,6 +55,17 @@ public final class MenuV2PricesTest {
         assertEquals(650,exact.amountMinor);
         assertEquals("a149",SavedMenuOfferStore.verified(venue,exact).id);
     }
+    @Test public void independentCustomerDrinkCanBeSavedByExactItemKeyWithoutBorrowingOwnerPrice()throws Exception {
+        String report=customer(200).replace("\"kind\":\"menu_offer\",\"offer_id\":\"a2\"","\"kind\":\"new_drink\",\"offer_id\":null")
+                .replace("\"category\":\"spritz\"","\"category\":null")
+                .replace("\"name\":\"Spritz della casa\"","\"name\":\"Drink segnalato\"");
+        MenuV2Prices client=new MenuV2Prices((url,max,call)->bytes(url.contains("customer-prices")?report:menu(offer("a2","regular",550),1,null)));
+        MenuV2Prices.Venue loaded=client.load(SavedVenueStore.reference(VENUE,"Saved"),call());
+        assertEquals(1,loaded.prices.size());assertTrue(loaded.linkedReports.isEmpty());assertEquals(1,loaded.customerPrices.size());
+        MenuV2Prices.Price exact=loaded.customerPrices.get(0);
+        assertEquals("c"+"b".repeat(64),exact.id);assertEquals("",exact.category);assertTrue(exact.customer);
+        assertNotNull(SavedMenuOfferStore.verifiedCustomer(SavedVenueStore.reference(VENUE,loaded.name),exact));
+    }
     @Test public void mismatchedServingCannotBorrowSourceBandAndCursorMustMatchActualLastOffer()throws Exception {
         SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Saved actual name");
         MenuV2Prices client=new MenuV2Prices((url,max,call)->url.contains("customer-prices")?bytes(customer(300)):bytes(menu(offer("a2","regular",550),1,null)));
@@ -67,7 +78,9 @@ public final class MenuV2PricesTest {
             if(url.contains("customer-prices")&&url.contains("&after="))throw new IOException("Owned second page unavailable");
             return bytes(url.contains("customer-prices")?incomplete:menu(offer("a2","regular",550),1,null));
         });
-        assertEquals("A partial customer page must never become a claimed complete comparison",1,interrupted.load(venue,call()).prices.size());
+        MenuV2Prices.Venue partialVenue=interrupted.load(venue,call());
+        assertEquals("A partial customer page must never become a claimed complete comparison",1,partialVenue.prices.size());
+        assertTrue("A partial customer page must not verify an exact saved customer item",partialVenue.customerPrices.isEmpty());
         MenuV2Prices broken=new MenuV2Prices((url,max,call)->bytes(menu(offer("a1","regular",550),2,"wrong")));
         assertThrows(IOException.class,()->broken.load(venue,call()));
     }

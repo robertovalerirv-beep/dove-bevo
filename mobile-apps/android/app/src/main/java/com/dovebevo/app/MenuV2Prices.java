@@ -58,14 +58,18 @@ final class MenuV2Prices {
         String evidence(){return (customer?"Segnalato da un cliente il ":"Da menu online · Fonte verificata il ")+day+" · Prezzo del drink. "+feeNotice;}
     }
     static final class Venue {
-        final String key,cell,name,feeNotice;final List<Price> prices,linkedReports;
+        final String key,cell,name,feeNotice;final List<Price> prices,linkedReports,customerPrices;
         Venue(String key,String cell,String name,String feeNotice,List<Price> prices){
             this(key,cell,name,feeNotice,prices,Collections.emptyList());
         }
         Venue(String key,String cell,String name,String feeNotice,List<Price> prices,List<Price> linkedReports){
+            this(key,cell,name,feeNotice,prices,linkedReports,Collections.emptyList());
+        }
+        Venue(String key,String cell,String name,String feeNotice,List<Price> prices,List<Price> linkedReports,List<Price> customerPrices){
             this.key=key;this.cell=cell;this.name=name;this.feeNotice=feeNotice;
             this.prices=Collections.unmodifiableList(new ArrayList<>(prices));
             this.linkedReports=Collections.unmodifiableList(new ArrayList<>(linkedReports));
+            this.customerPrices=Collections.unmodifiableList(new ArrayList<>(customerPrices));
         }
         List<Price> selected(RecommendationDrink drink,int band){List<Price> result=new ArrayList<>();for(Price price:prices)
             if(price.category.equals(drink.code)&&price.band==band)result.add(price);return result;}
@@ -132,7 +136,7 @@ final class MenuV2Prices {
         }
         if(name==null)throw NativeJson.invalid();
         Map<String,Price> byId=new HashMap<>();for(Price price:offers)byId.put(price.id,price);
-        List<Price> all=new ArrayList<>(offers),linked=new ArrayList<>();after=null;Set<String> reportIds=new HashSet<>();List<Customer> reports=new ArrayList<>();
+        List<Price> all=new ArrayList<>(offers),linked=new ArrayList<>(),customerPrices=new ArrayList<>();after=null;Set<String> reportIds=new HashSet<>();List<Customer> reports=new ArrayList<>();
         try{
             for(int page=0;page<10;page++){
                 CustomerPage value=customerPage(get(endpoint(false,key,cell,after),call),key,cell);
@@ -146,17 +150,18 @@ final class MenuV2Prices {
             }
             for(Customer customer:reports){
                 Price source=byId.get(customer.offerId);
-                if(source==null)continue;
-                Price report=new Price(customer.id,name,customer.name,customer.category,source.band,customer.amount,customer.currency,
+                Price report=new Price(customer.id,name,customer.name,customer.category,source==null?0:source.band,customer.amount,customer.currency,
                         customer.exponent,customer.servingLabel,customer.ml,true,customer.day,
                         "Spese del locale secondo il menu: "+feeNotice,customer.offerId,null);
+                customerPrices.add(report);
+                if(source==null)continue;
                 linked.add(report);
                 if(source.band>=0&&source.category.equals(customer.category)&&source.currency.equals(customer.currency)
                         &&source.exponent==customer.exponent&&same(source.servingLabel,customer.servingLabel)&&same(source.servingML,customer.ml))
                     all.add(report);
             }
         }catch(IOException unavailable){/* Owner-menu evidence remains independently valid when customer read fails. */}
-        return new Venue(key,cell,name,feeNotice,all,linked);
+        return new Venue(key,cell,name,feeNotice,all,linked,customerPrices);
     }
     private byte[] get(String url,FavoritePricesClient.Call call)throws IOException{call.check();if(!allowed(url))throw NativeJson.invalid();
         byte[] bytes=transport.get(url,BYTES,call);call.check();if(bytes==null||bytes.length>BYTES)throw NativeJson.invalid();return bytes;}

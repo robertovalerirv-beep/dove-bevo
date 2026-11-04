@@ -21,6 +21,11 @@ final class SavedMenuOfferStore {
         if(offer==null||offer.customer)return null;
         return validated(venue,offer.id,offer.name,offer.category.isEmpty()?null:offer.category,offer.servingLabel,offer.servingML);
     }
+    /** Used only with the separate customer-item file after an exact live item_key match. */
+    static Entry verifiedCustomer(SavedVenueStore.Venue venue,MenuV2Prices.Price report){
+        if(report==null||!report.customer||!report.id.matches("[oc][0-9a-f]{64}"))return null;
+        return validated(venue,report.id,report.name,report.category.isEmpty()?null:report.category,report.servingLabel,report.servingML);
+    }
     static Entry validated(SavedVenueStore.Venue venue,String id,String name,String category,String serving,Integer ml){
         if(venue==null||id==null||!id.matches("[A-Za-z0-9._:-]{1,128}")||!text(name,512)||category!=null&&RecommendationDrink.from(category)==null
                 ||serving!=null&&!text(serving,256)||ml!=null&&(ml<1||ml>100000))return null;

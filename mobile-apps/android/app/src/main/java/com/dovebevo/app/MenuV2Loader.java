@@ -24,7 +24,7 @@ final class MenuV2Loader {
         this.client=client;this.deliver=deliver;this.network=network;this.timer=timer;this.timeoutMs=timeoutMs;
     }
     Batch load(List<SavedVenueStore.Venue> saved,Consumer<Map<String,MenuV2Prices.Venue>> result)throws IOException{
-        if(saved.size()>SavedDrinkStore.MAX_ITEMS+SavedMenuOfferStore.MAX_ITEMS)throw NativeJson.invalid();
+        if(saved.size()>SavedDrinkStore.MAX_ITEMS+2*SavedMenuOfferStore.MAX_ITEMS)throw NativeJson.invalid();
         Map<String,SavedVenueStore.Venue> unique=new LinkedHashMap<>();
         for(SavedVenueStore.Venue venue:saved){String key=FavoriteComparison.key(venue.url),cell=FavoriteComparison.cell(venue.url);
             MenuV2Prices.endpoint(true,key,cell,null);unique.put(venue.url,venue);}

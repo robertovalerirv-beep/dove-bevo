@@ -4,6 +4,8 @@ This is a source-only proposal for existing static venue `n4449004403`, `u0nd9`,
 
 Checked 2026-11-04. The image-only PDF has no extractable text. Its exact SHA-256 was `53e8eacb72d71f0042a72fc7923d055babf4d3f0fe77aa91a0d19821e41cd8c2` on two separate downloads; `pdfinfo` reports four pages. I rendered and visually inspected pages 2–4, then transcribed one short name, printed serving and EUR price line for every offer. The importer binds that evidence and the PDF hash to source review digest `0487f023187827e0d4e840b4011a6ed0feea03daff88fcd7a22fd11fe11150fa`. An independent reviewer must inspect the same exact PDF before any protected seed; machine validation alone does not prove transcription.
 
+Review candidate manifest: `mobile-apps/data/mobile-menu-v2-seeds/7a8eda88d90bf59549d2ca55ad0686a3e2cf02434226f6daf8d8e24e963e1805.json`. Its filename is its exact full-file SHA-256 after the serving-label correction.
+
 | PDF page | Reviewed items | Included | Treatment |
 | --- | ---: | ---: | --- |
 | 2 | 10 named draught beers plus a rotating beer of the month | 10 | The PDF prints sizes such as `0,50 cl`, an implausible unit/value combination. Evidence retains the literal text, but app serving labels are unknown; no litres or millilitres are inferred. The unnamed rotating beer's EUR 7–8 range is excluded. |

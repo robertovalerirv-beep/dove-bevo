@@ -322,6 +322,12 @@ test("compact map chips switch exact drink filters and retain the full accessibl
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     const row = f.page.getByRole("group", { name: "Filtra la mappa per drink" });
     const birra = row.getByRole("button", { name: "Birra", exact: true });
+    assert.equal(
+      await row.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    await f.page.screenshot({ path: path.join(output, "map-default-all-fixture.png") });
+    await birra.click();
     assert.equal(await birra.getAttribute("aria-pressed"), "true");
     const geometry = await row.evaluate((element) => {
       const scroller = element.querySelector(".mobile-drink-quick__scroller");
@@ -391,10 +397,8 @@ test("production mobile entry renders chips and preserves venue route across rel
     const name = f.page.locator("h2.scontrino__name");
     await name.waitFor();
     assert.equal(await name.textContent(), "Locale di prova");
-    assert.match(
-      await f.page.locator(".mobile-price--featured").innerText(),
-      /Birra media[\s\S]*5,00/,
-    );
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /Spritz[\s\S]*5,50/);
+    assert.match(await f.page.locator(".prices").innerText(), /Birra media[\s\S]*5,00/);
     const photo = f.page.locator(".mobile-price--featured img");
     assert.equal(await photo.evaluate((img) => img.complete && img.naturalWidth > 0), true);
     await f.page.reload();
@@ -425,7 +429,7 @@ test("production mobile entry renders chips and preserves venue route across rel
     assert.equal(await chips.getByRole("checkbox").count(), 9);
     assert.equal(
       await chips.getByRole("checkbox", { name: "Birra media", exact: true }).isChecked(),
-      true,
+      false,
     );
     assert.equal(
       await chips
@@ -435,7 +439,17 @@ test("production mobile entry renders chips and preserves venue route across rel
     );
     assert.equal(
       await chips.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
-      "false",
+      "true",
+    );
+    await f.page.locator(".mobile-drink-menu__button").click();
+    await f.page
+      .getByRole("group", { name: "Filtra la mappa per drink" })
+      .getByRole("button", { name: "Birra", exact: true })
+      .click();
+    await openDrinks(f.page);
+    assert.equal(
+      await chips.getByRole("checkbox", { name: "Birra media", exact: true }).isChecked(),
+      true,
     );
     assert.equal(
       await chips.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
@@ -638,6 +652,10 @@ test("a dense priced dot opens its own venue and retains the exact viewed price 
   const f = await fixture({ width: 393, height: 852 }, { densePrices: true });
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page
+      .getByRole("group", { name: "Filtra la mappa per drink" })
+      .getByRole("button", { name: "Birra", exact: true })
+      .click();
     const menu = await openDrinks(f.page);
     await menu.getByText("Spritz", { exact: true }).click();
     await menu.getByText("Birra media", { exact: true }).click();
@@ -854,7 +872,7 @@ test("orange mobile controls retain readable selected, unselected and focused dr
     await strip.waitFor();
     assert.equal(
       await strip.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
-      "false",
+      "true",
     );
     await strip.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     for (const name of ["Spritz", "Birra media"]) {
@@ -930,9 +948,9 @@ test("empty menu-linked customer section does not deny an existing legacy price"
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
     await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
-    await f.page.locator(".prices .price").first().waitFor();
+    await f.page.locator(".prices .price").filter({ hasText: "Birra media" }).first().waitFor();
     assert.match(
-      await f.page.locator(".prices .price").first().innerText(),
+      await f.page.locator(".prices .price").filter({ hasText: "Birra media" }).first().innerText(),
       /Birra media[\s\S]*5,00/,
     );
     const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });

@@ -1,6 +1,6 @@
 /** App-only URLs keep every document navigation on a real HTTPS asset. */
 import { CELL_PATTERN } from "../../src/shared/venue.ts";
-import { CATALOG, DEFAULT_DRINK } from "../../src/shared/catalog.ts";
+import { CATALOG } from "../../src/shared/catalog.ts";
 export const mobileVenueKeyPattern = /^(?:[nwru][1-9]\d{0,14}|m[0-9a-f]{24})$/;
 const isBar = (path: string) =>
   path.startsWith("/bar/") && mobileVenueKeyPattern.test(path.slice(5));
@@ -161,10 +161,10 @@ export function menuOfferMatchesFocus(
   );
 }
 
-/** Fresh app entry starts with the first regular drink; saved links restore their filter. */
+/** Fresh app entry shows all sourced prices; saved drink links restore their exact filter. */
 export function mobileInitialDrinks(
   value: MobileLocation | undefined = typeof location === "undefined" ? undefined : location,
 ): string[] {
   const saved = value && mobileFocus(value);
-  return saved ? [saved.drink] : [DEFAULT_DRINK];
+  return saved ? [saved.drink] : [];
 }

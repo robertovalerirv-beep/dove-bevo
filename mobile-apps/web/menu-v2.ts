@@ -325,13 +325,20 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
               }
               if (mobileCellCache.get(cacheKey) !== request) return;
             }
+            // A selected-category response carries its own validated venue identity.
+            // If the separate all-drinks identity read is still unavailable, show
+            // that sourced selection without claiming a complete menu count.
+            const fullIdentity = all !== null;
+            if (all === null && categories.length > 0 && filtered !== null) all = filtered;
             // A temporary v2 failure does not hold or erase legacy venues. Evict the
             // selection so a later map view retries the bounded menu request.
             if (all === null || filtered === null) {
               mobileCellCache.delete(cacheKey);
               return;
             }
-            const counts = new Map(all.map((venue) => [venue.key, venue.matching_offer_count]));
+            const counts = new Map(
+              (fullIdentity ? all : []).map((venue) => [venue.key, venue.matching_offer_count]),
+            );
             const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
             const merged = new Map<string, Venue>(legacy.map((venue) => [venue.key, { ...venue }]));
             for (const row of [

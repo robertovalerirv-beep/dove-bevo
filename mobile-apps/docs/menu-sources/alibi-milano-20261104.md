@@ -1,0 +1,21 @@
+# Alibi Music & Spirits — first-party drink menu candidate
+
+Checked 4 November 2026. This source-only candidate stages **81 named EUR offers** for one already published venue: 67 individually priced drink cards plus seven wines with separate bottle and glass amounts (14 offers). It changes no public data, website, backend, schema or customer submissions.
+
+## Identity and city-grouping hold point
+
+- The [owner's drinks page](https://www.alibimilano.com/it/drinks) and [owner home page](https://www.alibimilano.com/it) identify `Alibi Music & Spirits` at **Via Aristotele 14, 20128 Milano**. The drink page's footer uses the same business name and address.
+- [OSM node 6293216720](https://www.openstreetmap.org/node/6293216720) has the same name, `pub` type and Via Aristotele 14 address, with `addr:city=Milano` and coordinates `45.5062384, 9.2246976`.
+- Roberto's live static catalogue version `20261102`, cell `u0ndc`, already contains the exact tuple `n6293216720`, `Alibi Music & Spirits`, kind `2`, coordinates `45.50624, 9.2247`, address `Via Aristotele 14`. **Its published nearest-place city tuple is `62514732 / Sesto San Giovanni`, even though the venue owner and OSM give Milano.** The manifest preserves that static city tuple because the protected importer requires an exact match. This candidate must **not be counted as Milano city-search coverage**. Do not silently edit Roberto's city data or relabel the manifest. Independent identity review should assess this mismatch before approving an import.
+- The live app-only v2 route `GET https://www.dovebevo.com/api/mobile/v2/menu/venues/n6293216720?cell=u0ndc` returned `stored_offer_count: 0`, `offers: []` and `fee_coverage.status: unknown` on the check day. There were no same-venue v2 semantic duplicates at that snapshot; recheck just before the protected audit and seed.
+
+## Menu facts and context
+
+- The owner's public [drinks menu](https://www.alibimilano.com/it/drinks) served 246,844 HTML bytes to `DoveBevoMenuAudit/1` and gave stable `html_text_v1` visible-text SHA-256 `f0352add4c65277fa47930b065abe3e196b46c972d9254c244e31f860c62cdda` on repeated fetches. The manifest pins that normalized text digest. Each selected card has an adjacent name and numeric EUR price. The seven wine lines explicitly distinguish `Bottiglia` and `Calice` prices.
+- The owner states: **“Durante gli spettacoli i prezzi subiranno delle maggiorazioni.”** The increase has no published amount. Every staged row therefore has `price_context: conditional` and explains that the listed amount applies outside performances. There is no claimed fixed performance price.
+- The owner offers an optional aperitivo food plate for €4 per person until 21:00. It is not a mandatory drink surcharge and is excluded. The menu does not establish comprehensive mandatory-fee coverage, so `fees` and `fee_coverage` remain empty, meaning **unknown**, not free.
+- Directly printed serving sizes are retained for ten draft beers (`0,4L` or `0,5L`) and three bottled beers (`33Cl`); serving volumes for other drinks and wines are not inferred. The 67 selected card rows exclude generic `Base` Sour and `Classico`/`Dirty` Martini variants, the `Tanquerey 00` alcohol-free variant whose category would be ambiguous, generic `Bibite`, and `Acqua`. These exclusions avoid attaching vague variant names or the wrong drink category. The exact 81 names, servings and amounts are in the pinned manifest; no owner descriptions, photographs, Google review counts, user confirmations or invented observation dates are copied.
+
+## Review and execution gate
+
+The exact UTF-8 manifest is `mobile-apps/data/mobile-menu-v2-seeds/696311cd595ca30830e064e3dca56cac60aa629cda733ce812cf9da63b5cdd6e.json`; its filename equals the full-file SHA-256. Local schema validation and direct source-pair assertions passed. This is a **draft candidate only**. An independent reviewer must verify the owner menu, all selected name/price/serving pairs, performance surcharge context, fee scope, city-grouping issue and current production duplicate state. Only then may a green PR be merged and the separate protected audit and guarded seed gates considered. If the owner source digest changes or identity/scope remains unresolved, hold this batch.

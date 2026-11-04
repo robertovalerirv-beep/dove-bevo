@@ -1,10 +1,45 @@
 import { useId, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { CATALOG } from "@site/shared/catalog";
-import { it } from "@site/app/i18n/lang";
+import { currentLang, it } from "@site/app/i18n/lang";
 
 interface Props {
   selected: readonly string[];
   onChange: (next: string[]) => void;
+}
+
+const quickDrinks = [
+  { key: "all", codes: [] },
+  { key: "beer", codes: ["beer_draft"] },
+  { key: "spritz", codes: ["spritz"] },
+  { key: "gin", codes: ["gin_tonic", "gin_lemon"] },
+  { key: "wine", codes: ["wine_glass"] },
+] as const;
+
+const quickCopy = {
+  it: {
+    all: "Tutti",
+    beer: "Birra",
+    spritz: "Spritz",
+    gin: "Gin",
+    wine: "Vino",
+    more: "Altro",
+    group: "Filtra la mappa per drink",
+    moreSelection: "Altri drink. Selezione",
+  },
+  en: {
+    all: "All",
+    beer: "Beer",
+    spritz: "Spritz",
+    gin: "Gin",
+    wine: "Wine",
+    more: "More",
+    group: "Filter map by drink",
+    moreSelection: "More drinks. Selection",
+  },
+} as const;
+
+function sameDrinks(selected: readonly string[], codes: readonly string[]): boolean {
+  return selected.length === codes.length && codes.every((code) => selected.includes(code));
 }
 
 /** App-only disclosure. Zero selected categories means Tutti; named categories remain multi-select. */
@@ -13,11 +48,13 @@ export function DrinkMenu({ selected, onChange }: Props) {
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
+  const copy = quickCopy[currentLang()];
   const summary = selected.length
     ? CATALOG.filter((drink) => selected.includes(drink.code))
         .map((drink) => it.drinks[drink.code] ?? drink.code)
         .join(", ")
-    : "Tutti";
+    : copy.all;
+  const customSelection = !quickDrinks.some((drink) => sameDrinks(selected, drink.codes));
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -47,26 +84,44 @@ export function DrinkMenu({ selected, onChange }: Props) {
         }
       }}
     >
-      <button
-        type="button"
-        ref={toggle}
-        class="mobile-drink-menu__button"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => {
-          setOpen(!open);
-        }}
-      >
-        <span class="mobile-drink-menu__copy">
-          <span class="mobile-drink-menu__title">{it.map.pickDrinks}</span>
-          <span class="mobile-drink-menu__summary" data-testid="drink-summary">
+      <div class="mobile-drink-quick" role="group" aria-label={copy.group}>
+        <div class="mobile-drink-quick__scroller">
+          {quickDrinks.map((drink) => (
+            <button
+              key={drink.key}
+              type="button"
+              class="mobile-drink-quick__chip"
+              aria-pressed={sameDrinks(selected, drink.codes)}
+              onClick={() => {
+                onChange([...drink.codes]);
+                setOpen(false);
+              }}
+            >
+              {copy[drink.key]}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          ref={toggle}
+          class="mobile-drink-menu__button"
+          data-selected={customSelection ? "true" : undefined}
+          aria-label={`${copy.moreSelection}: ${summary}`}
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => {
+            setOpen(!open);
+          }}
+        >
+          {copy.more}
+          <span class="mobile-drink-menu__chevron" aria-hidden="true">
+            ⌄
+          </span>
+          <span class="sr-only" data-testid="drink-summary">
             {summary}
           </span>
-        </span>
-        <span class="mobile-drink-menu__chevron" aria-hidden="true">
-          ⌄
-        </span>
-      </button>
+        </button>
+      </div>
       <div
         id={id}
         class="mobile-drink-strip"
@@ -112,7 +167,7 @@ export function DrinkMenu({ selected, onChange }: Props) {
             toggle.current?.focus();
           }}
         >
-          Tutti
+          {copy.all}
         </button>
       </div>
     </div>

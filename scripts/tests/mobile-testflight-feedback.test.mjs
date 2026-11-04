@@ -10,7 +10,7 @@ import { decryptFeedback, saveFeedback } from "../mobile-testflight-feedback-dec
 const APP =
   "https://api.appstoreconnect.apple.com/v1/apps/6827324444/betaFeedbackScreenshotSubmissions";
 const image = "https://is1-ssl.mzstatic.com/feedback/sample.png";
-const record = (id, screenshots = []) => ({
+const record = (id, screenshots = [], buildId = "build-72") => ({
   type: "betaFeedbackScreenshotSubmissions",
   id,
   attributes: {
@@ -19,7 +19,7 @@ const record = (id, screenshots = []) => ({
     email: "private@example.com",
     screenshots,
   },
-  relationships: { build: { data: { type: "builds", id: "build-72" } } },
+  relationships: { build: { data: { type: "builds", id: buildId } } },
 });
 const json = (body) =>
   new globalThis.Response(JSON.stringify(body), {
@@ -52,8 +52,8 @@ test("encrypts all pages and images without exporting tester identity or signed 
       if (url.includes("cursor=second"))
         return json({ data: [record("row-2")], included: [], links: {} });
       return json({
-        data: [record("row-1", [{ url: image, width: 100, height: 200 }])],
-        included: [{ type: "builds", id: "build-72", attributes: { version: "72" } }],
+        data: [record("row_1", [{ url: image, width: 100, height: 200 }], "build_72")],
+        included: [{ type: "builds", id: "build_72", attributes: { version: "72" } }],
         links: { next: APP + "?cursor=second" },
       });
     };

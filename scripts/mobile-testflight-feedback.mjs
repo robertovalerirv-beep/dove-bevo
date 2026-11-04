@@ -91,7 +91,7 @@ function feedbackRows(body) {
   for (const item of body.included ?? []) {
     if (
       item?.type === "builds" &&
-      /^[A-Za-z0-9-]{1,100}$/.test(item.id ?? "") &&
+      /^[A-Za-z0-9_-]{1,100}$/.test(item.id ?? "") &&
       /^\d{1,9}$/.test(item.attributes?.version ?? "")
     )
       builds.set(item.id, item.attributes.version);
@@ -99,7 +99,7 @@ function feedbackRows(body) {
   return body.data.map((item) => {
     if (
       item?.type !== "betaFeedbackScreenshotSubmissions" ||
-      !/^[A-Za-z0-9-]{1,100}$/.test(item.id ?? "") ||
+      !/^[A-Za-z0-9_-]{1,100}$/.test(item.id ?? "") ||
       typeof item.attributes?.createdDate !== "string" ||
       !Number.isFinite(Date.parse(item.attributes.createdDate)) ||
       (item.attributes.comment !== null &&

@@ -100,6 +100,33 @@
                              BorderBrush="#E2D3BE" DisplayMemberPath="Display" />
                 </DockPanel>
             </Border>
+            <Border x:Name="DiscoveryPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="24">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock Text="Scopri i prezzi qui vicino" FontSize="26" FontWeight="Bold" />
+                        <TextBlock Text="Prezzi verificati dai menu dei locali vicini al centro della mappa. Prezzi base: eventuali costi di servizio possono aggiungersi."
+                                   TextWrapping="Wrap" Margin="0,5,0,14" Foreground="#5E554B" />
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,14">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Zona" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <ComboBox x:Name="DiscoveryCity" Width="175" MinHeight="38"
+                                      SelectionChanged="DiscoveryCity_SelectionChanged" />
+                            <TextBlock Text="Cosa vuoi bere?" VerticalAlignment="Center" Margin="12,0,10,0" />
+                            <ComboBox x:Name="DiscoveryDrink" Width="210" MinHeight="38"
+                                      SelectionChanged="DiscoveryDrink_SelectionChanged" />
+                            <Button Style="{StaticResource NavButton}" Content="Aggiorna" Margin="12,0,0,0" Click="ReloadDiscovery_Click" />
+                        </StackPanel>
+                        </ScrollViewer>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Style="{StaticResource NavButton}" Content="Apri locale" Click="OpenDiscoveryVenue_Click" />
+                        <Button Style="{StaticResource NavButton}" Content="Torna alla mappa" Click="CloseDiscovery_Click" />
+                    </StackPanel>
+                    <ListBox x:Name="DiscoveryList" FontSize="15" Background="#FFFBF4"
+                             BorderBrush="#E2D3BE" DisplayMemberPath="Display"
+                             MouseDoubleClick="OpenDiscoveryVenue_Click" />
+                </DockPanel>
+            </Border>
         </Grid>
 
         <Border Grid.Row="3" Background="#FFFBF4" BorderBrush="#E2D3BE" BorderThickness="0,1,0,0" Padding="16,5">

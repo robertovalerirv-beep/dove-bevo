@@ -5,7 +5,7 @@ WebView2 at `https://www.dovebevo.com/` with the normal website session. The
 Windows shell adds browser navigation, search access, foreground location
 consent, an external-link handoff, sharing by copying the current link,
 support email handoff to the default mail app,
-Scopri access to the app-only Europe map, shared drink recommendations for
+native Scopri for menu-verified offers by city or the visible map area, shared drink recommendations for
 supported Italian venues, and private favourite drinks saved with the venue's
 existing name. A favourite stores a validated app link that reopens the venue
 with that drink and time band selected. Regular and happy-hour offers can both
@@ -24,6 +24,16 @@ LocalAppData, without sharing WebView2 cookies or login credentials with the
 vote client. No authentication token or page script bridge is copied into
 native storage.
 
+Scopri reads the existing public, read-only `/api/mobile/v2/menu/cells/` route
+for at most nine geohash cells near the selected city or the zoomed-in map
+centre. Pick a drink to see its original menu price, currency, context and
+source-check date. It uses bounded pagination and reports unavailable cells
+instead of claiming that a failed read means there are no prices. Choosing a
+row opens that drink at its venue; Scopri cannot submit or invent menu prices.
+The menu endpoint supplies sample offers, so the venue detail remains the place
+to inspect the full named menu and fee information. The fixed city centres are
+navigation shortcuts, not a claim of complete coverage.
+
 ## Build and checks
 
 Requires Windows 10 version 2004 or newer, .NET SDK 10, Windows SDK MakeAppx,
@@ -34,9 +44,10 @@ dotnet run --project mobile-apps/windows/tests/PolicySmoke/PolicySmoke.csproj -c
 node --check mobile-apps/windows/VenueCapture.js
 node --test mobile-apps/windows/tests/search-click.test.mjs
 node --test mobile-apps/windows/tests/venue-capture.test.mjs
+node --test mobile-apps/windows/tests/map-area-reader.test.mjs
 & mobile-apps/windows/tests/PackageVersionSmoke.ps1
 dotnet build mobile-apps/windows/DoveBevo.Windows.csproj -c Release
-& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.8.0'
+& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.9.0'
 ```
 
 The example uses the reserved Partner Center product **9P6XDNNQJ74N**, with
@@ -62,10 +73,11 @@ reserve the revision component for Store use.
 ## Current limits
 
 This first Windows build reuses the live website for shared prices and venues.
-Private favourites are local to this PC and have no account sync. Scopri opens
-the app-only catalogue and its city/drink filters inside WebView2; the phone's
-separate native ranking screen is not yet replicated. Shared recommendations
+Private favourites are local to this PC and have no account sync. Scopri shows
+verified sample menu offers near the selected city centre or current zoomed-in
+map, with a drink filter. It is a bounded local discovery view, rather than a
+complete city-wide inventory. Shared recommendations
 work for the existing Italian venue route supported by that API; other
-catalogue venues show an unavailable state. The identity-aligned package still
-needs a genuine Desktop screenshot, Store submission, certification and installed-client testing before a
+catalogue venues show an unavailable state. A genuine Desktop screenshot exists for the
+Store draft; the identity-aligned package still needs Store submission, certification and installed-client testing before a
 public release can be claimed.

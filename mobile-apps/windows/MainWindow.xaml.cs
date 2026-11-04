@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
 using Microsoft.Web.WebView2.Core;
 
 namespace DoveBevo.Windows;
@@ -10,6 +11,9 @@ public partial class MainWindow : Window
 {
     private readonly BookmarkStore bookmarks = new();
     private readonly RecommendationClient recommendations = new();
+    private readonly DiscoveryClient discovery = new();
+    private DiscoveryArea? discoveryArea;
+    private CancellationTokenSource? discoveryCancellation;
     private bool starting;
     private bool ready;
     private bool recommendationBusy;
@@ -149,12 +153,16 @@ public partial class MainWindow : Window
 
     private void UpdateButtons()
     {
-        BackButton.IsEnabled = ready && Website.CoreWebView2?.CanGoBack == true;
+        BackButton.IsEnabled = DiscoveryPanel.Visibility == Visibility.Visible ||
+            FavouritesPanel.Visibility == Visibility.Visible ||
+            RecommendationsPanel.Visibility == Visibility.Visible ||
+            ready && Website.CoreWebView2?.CanGoBack == true;
         ForwardButton.IsEnabled = ready && Website.CoreWebView2?.CanGoForward == true;
     }
 
     private void Navigate(string address)
     {
+        CloseDiscovery();
         FavouritesPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ErrorPanel.Visibility = Visibility.Collapsed;
@@ -166,11 +174,41 @@ public partial class MainWindow : Window
     }
 
     private void Home_Click(object sender, RoutedEventArgs e) => Navigate(NavigationPolicy.Home);
-    private void Discover_Click(object sender, RoutedEventArgs e) => Navigate(NavigationPolicy.Discover);
+    private async void Discover_Click(object sender, RoutedEventArgs e)
+    {
+        if (DiscoveryPanel.Visibility == Visibility.Visible) { await LoadDiscovery(); return; }
+        DiscoveryArea? mapArea = null;
+        try
+        {
+            if (ready)
+            {
+                var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "MapAreaReader.js"));
+                mapArea = DiscoveryArea.ParseWebView(
+                    await Website.CoreWebView2.ExecuteScriptAsync(script), Website.Source);
+            }
+        }
+        catch (Exception) { /* The explicit city list remains available when the map is not ready. */ }
+        FavouritesPanel.Visibility = Visibility.Collapsed;
+        RecommendationsPanel.Visibility = Visibility.Collapsed;
+        ErrorPanel.Visibility = Visibility.Collapsed;
+        DiscoveryPanel.Visibility = Visibility.Collapsed;
+        DiscoveryCity.ItemsSource = mapArea is null
+            ? DiscoveryClient.Cities
+            : new[] { new DiscoveryLocation("Zona della mappa", mapArea) }
+                .Concat(DiscoveryClient.Cities).ToArray();
+        DiscoveryCity.SelectedIndex = 0;
+        discoveryArea = ((DiscoveryLocation)DiscoveryCity.SelectedItem).Area;
+        DiscoveryDrink.ItemsSource = DiscoveryClient.Categories;
+        DiscoveryDrink.SelectedIndex = 1;
+        DiscoveryPanel.Visibility = Visibility.Visible;
+        UpdateButtons();
+        await LoadDiscovery();
+    }
     private void Privacy_Click(object sender, RoutedEventArgs e) => Navigate(NavigationPolicy.Privacy);
 
     private async void Search_Click(object sender, RoutedEventArgs e)
     {
+        CloseDiscovery();
         FavouritesPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         if (!ready) { Navigate(NavigationPolicy.Home); return; }
@@ -190,6 +228,11 @@ public partial class MainWindow : Window
 
     private void Back_Click(object sender, RoutedEventArgs e)
     {
+        if (DiscoveryPanel.Visibility == Visibility.Visible)
+        {
+            CloseDiscovery();
+            return;
+        }
         if (FavouritesPanel.Visibility == Visibility.Visible)
         {
             FavouritesPanel.Visibility = Visibility.Collapsed;
@@ -205,11 +248,13 @@ public partial class MainWindow : Window
 
     private void Forward_Click(object sender, RoutedEventArgs e)
     {
+        CloseDiscovery();
         if (ready && Website.CoreWebView2.CanGoForward) Website.CoreWebView2.GoForward();
     }
 
     private async void Reload_Click(object sender, RoutedEventArgs e)
     {
+        if (DiscoveryPanel.Visibility == Visibility.Visible) { await LoadDiscovery(); return; }
         ErrorPanel.Visibility = Visibility.Collapsed;
         if (ready) Website.CoreWebView2.Reload();
         else await StartBrowser();
@@ -232,6 +277,7 @@ public partial class MainWindow : Window
 
     private void Favourites_Click(object sender, RoutedEventArgs e)
     {
+        CloseDiscovery();
         FavouriteList.ItemsSource = bookmarks.Items.ToArray();
         ErrorPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
@@ -241,7 +287,8 @@ public partial class MainWindow : Window
 
     private async void SaveDrink_Click(object sender, RoutedEventArgs e)
     {
-        if (FavouritesPanel.Visibility == Visibility.Visible || RecommendationsPanel.Visibility == Visibility.Visible)
+        if (FavouritesPanel.Visibility == Visibility.Visible || RecommendationsPanel.Visibility == Visibility.Visible ||
+            DiscoveryPanel.Visibility == Visibility.Visible)
         {
             StatusText.Text = "Torna alla scheda del locale per salvare un drink.";
             return;
@@ -304,6 +351,7 @@ public partial class MainWindow : Window
     private async void Recommendations_Click(object sender, RoutedEventArgs e)
     {
         if (recommendationBusy) return;
+        if (DiscoveryPanel.Visibility == Visibility.Visible) CloseDiscovery();
         if (RecommendationsPanel.Visibility != Visibility.Visible)
         {
             try
@@ -383,5 +431,66 @@ public partial class MainWindow : Window
         {
             StatusText.Text = "Non riesco ad aggiornare i Preferiti su questo PC.";
         }
+    }
+
+    private async void DiscoveryDrink_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DiscoveryPanel.Visibility == Visibility.Visible) await LoadDiscovery();
+    }
+
+    private async void DiscoveryCity_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DiscoveryCity.SelectedItem is not DiscoveryLocation location) return;
+        discoveryArea = location.Area;
+        if (DiscoveryPanel.Visibility == Visibility.Visible) await LoadDiscovery();
+    }
+
+    private async void ReloadDiscovery_Click(object sender, RoutedEventArgs e) => await LoadDiscovery();
+
+    private async Task LoadDiscovery()
+    {
+        if (discoveryArea is null || DiscoveryDrink.SelectedItem is not DiscoveryCategory category) return;
+        discoveryCancellation?.Cancel();
+        discoveryCancellation?.Dispose();
+        var request = new CancellationTokenSource();
+        discoveryCancellation = request;
+        DiscoveryList.ItemsSource = Array.Empty<DiscoveryRow>();
+        StatusText.Text = $"Cerco {category.Name.ToLowerInvariant()} nei menu verificati qui vicino…";
+        try
+        {
+            var snapshot = await discovery.LoadAsync(discoveryArea, category.Code, request.Token);
+            if (request.IsCancellationRequested || DiscoveryPanel.Visibility != Visibility.Visible) return;
+            DiscoveryList.ItemsSource = snapshot.Rows.ToArray();
+            StatusText.Text = snapshot.UnavailableCells > 0
+                ? $"{snapshot.Rows.Count} prezzi trovati; {snapshot.UnavailableCells} zone non disponibili. Riprova Aggiorna."
+                : snapshot.Rows.Count == 0
+                    ? "Nessun prezzo verificato per questo drink qui vicino. Prova un altro drink o sposta la mappa."
+                    : $"{snapshot.Rows.Count} prezzi verificati vicino al centro della mappa.";
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            if (!request.IsCancellationRequested) StatusText.Text = "Non riesco a caricare i prezzi. Riprova Aggiorna.";
+        }
+    }
+
+    private void CloseDiscovery()
+    {
+        discoveryCancellation?.Cancel();
+        discoveryCancellation?.Dispose();
+        discoveryCancellation = null;
+        DiscoveryPanel.Visibility = Visibility.Collapsed;
+        discoveryArea = null;
+        UpdateButtons();
+    }
+
+    private void CloseDiscovery_Click(object sender, RoutedEventArgs e) => CloseDiscovery();
+
+    private void OpenDiscoveryVenue_Click(object sender, RoutedEventArgs e)
+    {
+        if (DiscoveryList.SelectedItem is not DiscoveryRow row) return;
+        var target = row.FocusedVenue();
+        if (target is null) { StatusText.Text = "Non riesco ad aprire questo locale."; return; }
+        Navigate(target.AbsoluteUri);
     }
 }

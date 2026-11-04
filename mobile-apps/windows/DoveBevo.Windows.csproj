@@ -14,6 +14,7 @@
     <Content Include="Assets\Logo.png" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="VenueCapture.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="SearchClick.js" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="MapAreaReader.js" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

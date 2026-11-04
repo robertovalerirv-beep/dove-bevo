@@ -5,7 +5,6 @@ namespace DoveBevo.Windows;
 internal static partial class NavigationPolicy
 {
     internal const string Home = "https://www.dovebevo.com/";
-    internal const string Discover = "https://www.dovebevo.com/mobile/";
     internal const string Privacy = "https://www.dovebevo.com/privacy";
 
     internal static bool IsTrusted(Uri? uri)

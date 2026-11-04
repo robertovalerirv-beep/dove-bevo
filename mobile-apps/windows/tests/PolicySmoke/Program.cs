@@ -109,7 +109,60 @@ ExpectInvalid(() => RecommendationClient.Parse(
     Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { venue_key = "n123", drinks = duplicate })), "n123"));
 ExpectInvalid(() => RecommendationClient.Parse(payload, "n124"));
 
-Console.WriteLine("Windows policy: 18 origin/venue/endpoint, 4 focus, 1 bookmark persistence, 6 email, and 3 vote-schema cases passed.");
+Require(DiscoveryArea.Geohash(45.4635, 9.18839) == "u0nd9", "Milano geohash mismatch");
+var area = DiscoveryArea.ParseWebView(
+    "{\"href\":\"https://www.dovebevo.com/\",\"latitude\":45.4635,\"longitude\":9.18839,\"zoom\":15}",
+    new Uri(NavigationPolicy.Home));
+Require(area is not null && area.Cells().Contains("u0nd9") && area.Cells().Count <= 9,
+    "visible map discovery area mismatch");
+Require(DiscoveryArea.ParseWebView(
+    "{\"href\":\"https://evil.example/\",\"latitude\":45.4635,\"longitude\":9.18839,\"zoom\":15}",
+    new Uri(NavigationPolicy.Home)) is null, "foreign map area accepted");
+var menu = new
+{
+    schema_version = 2,
+    coverage = new { complete = false, basis = "verified_source_items_only" },
+    price_scope = "menu_item_only",
+    cell = "u0nd9", category = "spritz", categories = new[] { "spritz" },
+    venues = new[]
+    {
+        new
+        {
+            key = "n10781209907", cell = "u0nd9", name = "The Dome", city = "Milano",
+            matching_offer_count = 1,
+            sample_offers = new[]
+            {
+                new
+                {
+                    name = "Spritz", category = "spritz", amount_minor = 1800,
+                    currency = "EUR", currency_exponent = 2,
+                    context = new { kind = "regular", condition = (string?)null },
+                    source = new { url = "https://menu.example/spritz.pdf", text_sha256 = new string('a', 64), checked_on = "2026-11-03" },
+                },
+            },
+        },
+    },
+    next_after = (string?)null,
+};
+var menuBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(menu));
+var offer = DiscoveryClient.ParsePage(menuBytes, "u0nd9", "spritz").Rows.Single();
+Require(offer.Display.Contains("18,00 EUR") && offer.Display.Contains("menu.example") &&
+    offer.FocusedVenue()?.AbsoluteUri.EndsWith("&drink=spritz&hh=0") == true,
+    "verified discovery offer/focus mismatch");
+ExpectInvalid(() => DiscoveryClient.ParsePage(menuBytes, "u0nd9", "negroni"));
+ExpectInvalid(() => DiscoveryClient.ParsePage(Encoding.UTF8.GetBytes(
+    Encoding.UTF8.GetString(menuBytes).Replace("https://menu.example/", "http://menu.example/")),
+    "u0nd9", "spritz"));
+if (args.Contains("--live-discovery"))
+{
+    var live = await new DiscoveryClient().LoadAsync(new DiscoveryArea(45.4635, 9.18839, 15),
+        "spritz", CancellationToken.None);
+    Require(live.Rows.Any(row => row.Cell == "u0nd9" && row.Venue == "The Dome"),
+        "live Milano menu v2 offer missing");
+    Console.WriteLine($"Live Milano discovery: {live.Rows.Count} offers; {live.UnavailableCells} unavailable cells.");
+}
+
+Console.WriteLine("Windows policy: origin, venue, focus, bookmark, email, vote schema, and 6 discovery cases passed.");
 
 static void Require(bool condition, string message)
 {

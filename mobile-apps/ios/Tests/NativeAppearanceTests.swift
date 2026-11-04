@@ -6,7 +6,8 @@ final class NativeAppearanceTests: XCTestCase {
     @MainActor
     func testBottomBarUsesOneRowOnCommonPhonesAndTwoForNarrowOrLargeText() {
         // The bar reserves four points on each side of its safe area.
-        XCTAssertEqual(NativeBottomBar.columns(for: 320, fontScale: 1), 3)
+        XCTAssertEqual(NativeBottomBar.columns(for: 280, fontScale: 1), 3)
+        XCTAssertEqual(NativeBottomBar.columns(for: 320, fontScale: 1), 5)
         XCTAssertEqual(NativeBottomBar.columns(for: 360, fontScale: 1), 5)
         XCTAssertEqual(NativeBottomBar.columns(for: 375, fontScale: 1), 5)
         XCTAssertEqual(NativeBottomBar.columns(for: 390, fontScale: 1), 5)

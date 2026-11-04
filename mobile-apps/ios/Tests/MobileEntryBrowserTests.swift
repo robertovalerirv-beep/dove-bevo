@@ -28,7 +28,9 @@ final class MobileEntryBrowserTests: XCTestCase {
         window.makeKeyAndVisible(); window.layoutIfNeeded(); browser.view.layoutIfNeeded()
         let error = try XCTUnwrap(descendants(browser.view).first { $0.accessibilityIdentifier == "browser.error" })
         let retry = try XCTUnwrap(descendants(browser.view).first { $0.accessibilityIdentifier == "browser.retry" } as? UIButton)
-        waitUntil("Missing app marker must show native retry") { !error.isHidden }
+        // A cold hosted simulator has taken over 23 seconds to launch WebContent.
+        // Preserve the same marker/error assertion while allowing that startup.
+        waitUntil("Missing app marker must show native retry", timeout: 35) { !error.isHidden }
         XCTAssertEqual(loads, [MobileEntry.homeURL])
         XCTAssertTrue(try share(tabs).attributes.contains(.disabled))
         XCTAssertEqual(tabs.bottomBar.buttons.count, 5, "Saving is attached to each drink, not the bottom navigation")
@@ -142,9 +144,10 @@ final class MobileEntryBrowserTests: XCTestCase {
         try XCTUnwrap(tabs.topMoreButton.menu?.children.compactMap { $0 as? UIAction }.first { $0.identifier.rawValue == "browser.share" })
     }
     @MainActor private func descendants(_ view: UIView) -> [UIView] { view.subviews + view.subviews.flatMap { descendants($0) } }
-    @MainActor private func waitUntil(_ message: String, _ predicate: @escaping () -> Bool) {
+    @MainActor private func waitUntil(_ message: String, timeout: TimeInterval = 10,
+                                      _ predicate: @escaping () -> Bool) {
         let value = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in predicate() }, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [value], timeout: 10), .completed, message)
+        XCTAssertEqual(XCTWaiter.wait(for: [value], timeout: timeout), .completed, message)
     }
 }
 

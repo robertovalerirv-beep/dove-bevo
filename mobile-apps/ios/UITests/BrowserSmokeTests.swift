@@ -768,22 +768,21 @@ final class BrowserSmokeTests: XCTestCase {
         guard website.exists else { return false }
         let websiteFrame = website.frame
         let appFrame = app.frame
-        return website.staticTexts.matching(
+        let element = website.staticTexts.matching(
             NSPredicate(format: "label MATCHES %@", Self.liveCoveragePattern)
-        ).allElementsBoundByIndex.contains { element in
-            guard element.exists else { return false }
-            let frame = element.frame
-            // The read-only status intentionally has pointer-events:none.
-            // Require visible finite geometry rather than a tappable hit point.
-            let frames = [frame, websiteFrame, appFrame]
-            return frames.allSatisfy({ rectangle in
-                !rectangle.isNull && !rectangle.isInfinite &&
-                    rectangle.size.width > 0 && rectangle.size.height > 0 &&
-                    [rectangle.minX, rectangle.minY, rectangle.maxX, rectangle.maxY,
-                     rectangle.width, rectangle.height].allSatisfy { $0.isFinite }
-            }) && websiteFrame.contains(frame) && appFrame.contains(frame) &&
-                Self.hasPositiveCoverage(element.label)
-        }
+        ).firstMatch
+        guard element.exists else { return false }
+        let frame = element.frame
+        // The read-only status intentionally has pointer-events:none.
+        // Require visible finite geometry rather than a tappable hit point.
+        let frames = [frame, websiteFrame, appFrame]
+        return frames.allSatisfy({ rectangle in
+            !rectangle.isNull && !rectangle.isInfinite &&
+                rectangle.size.width > 0 && rectangle.size.height > 0 &&
+                [rectangle.minX, rectangle.minY, rectangle.maxX, rectangle.maxY,
+                 rectangle.width, rectangle.height].allSatisfy { $0.isFinite }
+        }) && websiteFrame.contains(frame) && appFrame.contains(frame) &&
+            Self.hasPositiveCoverage(element.label)
     }
 
     private static func hasPositiveCoverage(_ label: String) -> Bool {

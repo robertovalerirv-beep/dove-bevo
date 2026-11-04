@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "batch_id": "swig-vomero-napoli-net-new-shots-20261104",
+  "checked_on": "2026-11-04",
+  "data_version": "20261102",
+  "venues": [
+    {
+      "venue_key": "n7154744122",
+      "cell": "sr607",
+      "name": "Swig",
+      "kind": 1,
+      "lat": 40.84413,
+      "lon": 14.23328,
+      "address": null,
+      "city": "Napoli",
+      "country": "IT",
+      "identity_kind": "osm_static",
+      "identity_url": "https://www.openstreetmap.org/node/7154744122",
+      "identity_checked_on": "2026-11-04",
+      "identity_fingerprint": null,
+      "owner_page_sha256": null,
+      "geo_reference_url": null,
+      "geo_reference_sha256": null,
+      "geo_reference_hash_basis": null,
+      "static_city_id": 428339558
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-swig-vomero-owner-menu-89ff86c46834",
+      "venue_key": "n7154744122",
+      "cell": "sr607",
+      "source_url": "https://www.swigbar.net/",
+      "source_format": "html_text_v1",
+      "source_sha256": "89ff86c46834d141552e04d2bc202fb6eca329736d02b0e7c9fe2250ea134b0f",
+      "source_text_sha256": "89ff86c46834d141552e04d2bc202fb6eca329736d02b0e7c9fe2250ea134b0f",
+      "source_checked_on": "2026-11-04",
+      "use_review_status": "approved",
+      "use_review_basis": "Swig Bar's live owner-branded menu shows two shot prices absent from the existing app catalogue: ARRAKIS EUR 3 and BRUCIA ANIME's non-promotional SHOT price EUR 4. The menu states Happy Hours every evening 18:30-20:30, with EUR 1 off shots; these amounts are therefore conditional outside that window. The owner-linked venue profile and Roberto's static Swig point identify the Vomero venue. Existing menu-v2 offers are not repeated; no fee-free claim is made.",
+      "use_review_reference": "https://www.swigbar.net/",
+      "use_reviewed_on": "2026-11-04"
+    }
+  ],
+  "offers": [
+    {
+      "id": "swig-vomero-20261104-arrakis",
+      "venue_key": "n7154744122",
+      "cell": "sr607",
+      "source_id": "src-swig-vomero-owner-menu-89ff86c46834",
+      "name": "ARRAKIS",
+      "category": null,
+      "serving_label": null,
+      "serving_ml": null,
+      "amount_minor": 300,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "conditional",
+      "condition_text": "Fuori da Happy Hours (ogni sera 18:30-20:30)",
+      "evidence_ref": "Swig owner menu SHOTS: ARRAKIS EUR 3; Happy Hours discount applies to shots"
+    },
+    {
+      "id": "swig-vomero-20261104-brucia-anime",
+      "venue_key": "n7154744122",
+      "cell": "sr607",
+      "source_id": "src-swig-vomero-owner-menu-89ff86c46834",
+      "name": "BRUCIA ANIME",
+      "category": null,
+      "serving_label": null,
+      "serving_ml": null,
+      "amount_minor": 400,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "conditional",
+      "condition_text": "Fuori da Happy Hours (ogni sera 18:30-20:30)",
+      "evidence_ref": "Swig owner menu SHOTS: BRUCIA ANIME SHOT EUR 4 versus HAPPY HOURS EUR 3"
+    }
+  ],
+  "fees": [],
+  "fee_coverage": []
+}

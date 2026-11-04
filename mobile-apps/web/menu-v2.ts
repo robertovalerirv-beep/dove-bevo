@@ -265,6 +265,13 @@ async function menuCellVenues(
 }
 
 const mobileIdentityCache = new Map<string, Promise<CellVenue[] | null>>();
+// Several selected-drink views can still be waiting on the same failed
+// identity read. They must share its one recovery attempt, including a 503.
+const mobileIdentityRetries = new WeakMap<
+  Promise<CellVenue[] | null>,
+  Promise<CellVenue[] | null>
+>();
+const mobileIdentityRecoveries = new WeakSet<Promise<CellVenue[] | null>>();
 function menuIdentityVenues(cell: string): Promise<CellVenue[] | null> {
   let request = mobileIdentityCache.get(cell);
   if (!request) {
@@ -284,6 +291,22 @@ function menuIdentityVenues(cell: string): Promise<CellVenue[] | null> {
   return request;
 }
 
+function retryMenuIdentityVenues(
+  cell: string,
+  failedRequest: Promise<CellVenue[] | null>,
+): Promise<CellVenue[] | null> {
+  // A later selection may inherit a pending recovery. Its failure is already
+  // the one allowed retry for this identity read, so it must not start another.
+  if (mobileIdentityRecoveries.has(failedRequest)) return failedRequest;
+  const shared = mobileIdentityRetries.get(failedRequest);
+  if (shared) return shared;
+  if (mobileIdentityCache.get(cell) === failedRequest) mobileIdentityCache.delete(cell);
+  const retry = menuIdentityVenues(cell);
+  mobileIdentityRecoveries.add(retry);
+  mobileIdentityRetries.set(failedRequest, retry);
+  return retry;
+}
+
 const mobileCellCache = new Map<string, Promise<Venue[]>>();
 
 /** The legacy EUR price form has no m-key route; those venues use the app-only v2 form. */
@@ -300,6 +323,7 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
   const cacheKey = `${cell}|${categories.join(",")}`;
   let request = mobileCellCache.get(cacheKey);
   if (!request) {
+    const identityWasCached = mobileIdentityCache.has(cell);
     const identityRequest = menuIdentityVenues(cell);
     const sampleRequest = categories.length ? menuCellVenues(cell, categories) : identityRequest;
     // Attach rejection handlers before the legacy cell read can resolve. A fast
@@ -312,14 +336,12 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
             if (mobileCellCache.get(cacheKey) !== request) return;
             let all = identity.status === "fulfilled" ? identity.value : null;
             const filtered = sampled.status === "fulfilled" ? sampled.value : null;
-            // The old unfiltered identity read can fail while a newly selected
-            // drink already has a successful sample. Read identity once more so
-            // that stale failure cannot discard the newer selected price.
-            if (categories.length > 0 && all === null && filtered !== null) {
-              if (mobileIdentityCache.get(cell) === identityRequest)
-                mobileIdentityCache.delete(cell);
+            // A selection can inherit an older pending identity read. Recover
+            // that stale failure once; a request started by this selection or
+            // inherited from another selection's recovery is already fresh.
+            if (categories.length > 0 && all === null && filtered !== null && identityWasCached) {
               try {
-                all = await menuIdentityVenues(cell);
+                all = await retryMenuIdentityVenues(cell, identityRequest);
               } catch {
                 all = null;
               }

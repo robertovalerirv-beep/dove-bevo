@@ -1427,10 +1427,7 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     if (spritzResponse) assert.equal((await spritzResponse).status(), 200);
     await f.page.waitForFunction(
       () =>
-        document
-          .querySelector("section.map")
-          ?.getAttribute("data-prices-shown")
-          ?.includes("5,50"),
+        document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("5,50"),
       { timeout: 30000 },
     );
     assert.doesNotMatch(

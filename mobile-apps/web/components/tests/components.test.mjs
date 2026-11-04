@@ -208,7 +208,7 @@ async function fixture(options = {}) {
         category: options.menuCategory === undefined ? "spritz" : options.menuCategory,
         serving: { label: "Calice", ml: null },
         amount_minor: amount,
-        currency: "EUR",
+        currency: options.menuCurrency ?? "EUR",
         currency_exponent: 2,
         context,
         source,
@@ -232,7 +232,7 @@ async function fixture(options = {}) {
             lon: 9.19,
             address: "Via di prova 1",
             city: "Milano",
-            country: "IT",
+            country: options.menuCountry ?? "IT",
           },
           stored_offer_count: options.menuEmpty ? 0 : 3,
           offers: options.menuEmpty
@@ -860,6 +860,79 @@ test("owner-verified venue separates cited menu and customer price, and submits 
     ]);
     const support = f.page.getByRole("link", { name: "Segnala un problema con il locale" });
     assert.match(await support.getAttribute("href"), /^mailto:dovebevo@gmail\.com\?/);
+  } finally {
+    await f.close();
+  }
+});
+
+test("menu price editor shows the real venue and serving, a large amount, and cancels without a public write", async () => {
+  const f = await fixture({ customerEmpty: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    const owner = f.page.locator(".mobile-menu-v2__offer").first();
+    await owner.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
+    const form = owner.locator(".mobile-customer-v2__form--menu");
+    await form.waitFor();
+    assert.equal(
+      await form.locator(".mobile-customer-v2__form-heading strong").innerText(),
+      "Locale nuovo",
+    );
+    assert.equal(await form.locator(".mobile-customer-v2__form-art img").count(), 1);
+    assert.match(
+      await form.innerText(),
+      /Spritz <script>[\s\S]*Calice[\s\S]*Prezzo da menu: 7,50\s*€/,
+    );
+    const amount = form.getByLabel("Importo pagato (EUR)");
+    assert.equal(await amount.getAttribute("inputmode"), "decimal");
+    assert.equal(await form.locator(".mobile-customer-v2__amount-input > span").innerText(), "€");
+    const geometry = await form.evaluate((element) => ({
+      width: element.getBoundingClientRect().width,
+      right: element.getBoundingClientRect().right,
+      viewport: window.innerWidth,
+      amountFont: getComputedStyle(element.querySelector(".mobile-customer-v2__amount-input input"))
+        .fontSize,
+    }));
+    assert.ok(geometry.width > 240);
+    assert.ok(geometry.right <= geometry.viewport);
+    assert.equal(geometry.amountFont, "29px");
+    await amount.fill("8,20");
+    await form.locator(".mobile-customer-v2__form-art img").evaluate((image) => image.decode());
+    assert.deepEqual(f.writes, []);
+    await form.getByRole("button", { name: "Annulla" }).click();
+    assert.equal(await owner.locator(".mobile-customer-v2__form").count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("menu price editor keeps original GBP currency in display and customer submission", async () => {
+  const f = await fixture({ customerEmpty: true, menuCurrency: "GBP", menuCountry: "GB" });
+  try {
+    await f.page.evaluate(async () => {
+      await window.sheetFixture.setLang("en");
+      window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa");
+    });
+    const owner = f.page.locator(".mobile-menu-v2__offer").first();
+    await owner.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
+    const form = owner.locator(".mobile-customer-v2__form--menu");
+    assert.match(await form.innerText(), /Add a price[\s\S]*Menu price:/i);
+    assert.equal(await form.locator(".mobile-customer-v2__amount-input > span").innerText(), "£");
+    await form.getByLabel("Price paid (GBP)").fill("8,20");
+    await form.getByRole("button", { name: "Share price" }).click();
+    await f.page.getByText("Prezzo salvato e visibile a tutti.").waitFor();
+    assert.deepEqual(f.writes, [
+      {
+        kind: "menu_offer",
+        venue_key: "maaaaaaaaaaaaaaaaaaaaaaaa",
+        cell: "u0nd9",
+        offer_id: "first",
+        amount_minor: 820,
+        currency: "GBP",
+        currency_exponent: 2,
+        expected_revision: null,
+      },
+    ]);
   } finally {
     await f.close();
   }

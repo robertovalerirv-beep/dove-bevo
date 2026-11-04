@@ -91,53 +91,44 @@ html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu {
   z-index: 8;
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-quick {
-  display: flex;
-  align-items: center;
-  gap: 7px;
   width: 100%;
   min-width: 0;
 }
-html[data-dovebevo-mobile-shell="1"] .mobile-drink-quick__scroller {
-  display: flex;
-  align-items: center;
-  flex: 1 1 auto;
-  gap: 7px;
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 2px 0 4px;
-  scrollbar-width: none;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
-}
-html[data-dovebevo-mobile-shell="1"] .mobile-drink-quick__scroller::-webkit-scrollbar {
-  display: none;
-}
-html[data-dovebevo-mobile-shell="1"] .mobile-drink-quick__chip,
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__button {
-  flex: 0 0 auto;
   min-height: 44px;
-  padding: 0 15px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 14px;
   border: 1px solid var(--line-soft);
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--surface);
   color: var(--ink);
   font: 650 14px/1.2 var(--font-sans);
-  white-space: nowrap;
-  scroll-snap-align: start;
 }
-html[data-dovebevo-mobile-shell="1"] .mobile-drink-quick__chip[aria-pressed="true"],
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__button[data-selected="true"] {
   border-color: var(--ink);
-  background: var(--ink);
-  color: var(--surface);
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__button {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 10px;
+  text-align: left;
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__label {
+  flex: 0 0 auto;
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-muted);
+  font-size: 12px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-drink-menu__chevron {
+  flex: 0 0 auto;
   font-size: 18px;
   line-height: 1;
   transform: rotate(0);

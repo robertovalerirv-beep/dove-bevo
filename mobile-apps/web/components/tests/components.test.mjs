@@ -529,13 +529,13 @@ test("quick seen price and venue-drink-price navigation retain real callbacks", 
     );
     await f.page.evaluate(() => window.sheetFixture.price(null));
     await f.page.getByRole("button", { name: /Locale di prova <strong>/ }).click();
-    await f.page.getByRole("button", { name: "Spritz", exact: true }).click();
+    const drinkSelector = f.page.getByRole("combobox", { name: "Che cosa hai preso?" });
+    assert.equal(await drinkSelector.locator("option").count(), 10);
+    assert.equal(await f.page.locator(".mobile-price-flow .drinks").count(), 0);
+    await drinkSelector.selectOption("spritz");
     assert.equal(await f.page.locator(".mobile-price-form .context-tag").innerText(), "Spritz");
     await f.page.getByRole("button", { name: "Indietro", exact: true }).click();
-    assert.equal(
-      await f.page.getByRole("button", { name: "Birra media", exact: true }).isVisible(),
-      true,
-    );
+    assert.equal(await drinkSelector.isVisible(), true);
     await f.page.getByRole("button", { name: "Indietro", exact: true }).click();
     await f.page.getByRole("button", { name: "Non trovi il bar?", exact: true }).click();
     assert.equal(
@@ -760,18 +760,102 @@ test("exact named favorite reloads its menu page and native save link uses only 
     assert.match(await saved.innerText(), /Analcolico[\s\S]*Questo drink è nei tuoi preferiti/);
     assert.equal(await f.page.getByTestId("saved-offer-unavailable").count(), 0);
     assert.equal(await f.page.getByTestId("saved-menu-offer").count(), 0);
-    assert.equal(await f.page.getByRole("link", { name: "Salva questo drink" }).count(), 0);
+    assert.equal(await f.page.locator(".mobile-menu-v2__save").count(), 0);
     await f.page.evaluate(() => {
       window.DoveBevoNativeOfferSave = true;
       window.dispatchEvent(new window.Event("dovebevo-native-ready"));
     });
-    const links = f.page.getByRole("link", { name: "Salva questo drink" });
+    const links = f.page.locator(".mobile-menu-v2__save");
     await links.first().waitFor();
-    assert.equal(await links.count(), 3);
+    assert.equal(await links.count(), 4);
     assert.equal(
-      await saved.getByRole("link", { name: "Salva questo drink" }).getAttribute("href"),
+      await saved.locator(".mobile-menu-v2__save").getAttribute("href"),
       `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=third`,
     );
+    assert.equal(
+      await f.page
+        .getByTestId("featured-menu-price")
+        .locator(".mobile-menu-v2__save")
+        .getAttribute("href"),
+      `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=third`,
+    );
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("new native capabilities expose exact legacy and customer saves beside category recommendations", async () => {
+  const f = await fixture({ customerNewDrink: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const legacy = f.page.locator(".mobile-price--featured");
+    await legacy.waitFor();
+    assert.equal(await legacy.locator(".mobile-menu-v2__quick-actions").count(), 0);
+    assert.equal(await f.page.locator(".mobile-customer-v2__quick-actions").count(), 0);
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeDrinkSave = true;
+      window.DoveBevoNativeCustomerSave = true;
+      window.DoveBevoNativeRecommend = true;
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
+    });
+    const legacyActions = legacy.locator(".mobile-price__quick-actions");
+    await legacyActions.waitFor();
+    assert.equal(
+      await legacyActions.locator(".mobile-menu-v2__save").getAttribute("href"),
+      "/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_drink=spritz&band=normal",
+    );
+    assert.equal(
+      await legacyActions.locator(".mobile-menu-v2__recommend").getAttribute("href"),
+      "/mobile/?path=%2Fbar%2Fn123&c=u0nd9&recommend_drink=spritz",
+    );
+    const customer = f.page.locator(".mobile-customer-v2__observation").first();
+    await customer.locator(".mobile-menu-v2__save").waitFor();
+    assert.equal(
+      await customer.locator(".mobile-menu-v2__save").getAttribute("href"),
+      `/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_customer=o${"a".repeat(64)}`,
+    );
+    const additional = f.page.locator(".mobile-customer-v2__additional > li");
+    assert.equal(
+      await additional.locator(".mobile-menu-v2__save").getAttribute("href"),
+      `/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_customer=c${"b".repeat(64)}`,
+    );
+    for (const width of [320, 390]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      for (const action of await legacyActions.locator("a").all())
+        assert.ok((await action.boundingBox())?.height >= 44);
+      const overflow = await f.page.locator(".sheet__body").evaluate((element) => ({
+        width: element.clientWidth,
+        scroll: element.scrollWidth,
+      }));
+      assert.ok(overflow.scroll <= overflow.width + 1, JSON.stringify({ width, overflow }));
+    }
+    if (process.env.DOVEBEVO_ACTION_CAPTURE)
+      await f.page.screenshot({ path: process.env.DOVEBEVO_ACTION_CAPTURE });
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("uncategorized named menu drink can be saved without pretending to carry a category vote", async () => {
+  const f = await fixture({ menuCategory: null, customerEmpty: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeOfferSave = true;
+      window.DoveBevoNativeRecommend = true;
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
+    });
+    const offer = f.page
+      .locator(".mobile-menu-v2__offer")
+      .filter({ hasText: "Cocktail della casa" });
+    await offer.locator(".mobile-menu-v2__save").waitFor();
+    assert.equal(
+      await offer.locator(".mobile-menu-v2__recommend[aria-disabled='true']").count(),
+      1,
+    );
+    assert.equal(await offer.locator("a.mobile-menu-v2__recommend").count(), 0);
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
@@ -827,6 +911,10 @@ test("long owner menus keep the saved drink prominent and reveal sourced seconda
   });
   try {
     await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeOfferSave = true;
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
+    });
     const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
     const saved = menu.getByTestId("saved-exact-offer");
     await saved.waitFor();
@@ -839,6 +927,16 @@ test("long owner menus keep the saved drink prominent and reveal sourced seconda
     const rows = more.locator(".mobile-menu-v2__offers--compact");
     assert.equal(await rows.evaluate((element) => getComputedStyle(element).overflowY), "visible");
     const conditional = rows.locator(".mobile-menu-v2__offer").filter({ hasText: "Spritz serale" });
+    const save = conditional.locator(".mobile-menu-v2__save");
+    assert.equal(await save.isVisible(), true);
+    assert.equal(
+      await save.getAttribute("href"),
+      `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=second`,
+    );
+    assert.equal(
+      await conditional.locator(".mobile-menu-v2__offer-details").getAttribute("open"),
+      null,
+    );
     assert.match(
       await conditional.locator("summary").innerText(),
       /5,50\s*€[\s\S]*Solo con: dopo le 18/,

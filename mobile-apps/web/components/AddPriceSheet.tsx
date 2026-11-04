@@ -147,25 +147,28 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
         }
       >
         <div class="mobile-price-flow">
-          <h3 class="section-title" tabIndex={-1} autofocus>
+          <label class="section-title" for="mobile-price-drink">
             {it.add.chooseDrink}
-          </h3>
-          <ul class="drinks">
+          </label>
+          <select
+            id="mobile-price-drink"
+            class="field mobile-price-flow__drink-select"
+            value=""
+            autofocus
+            onChange={(event) => {
+              const code = event.currentTarget.value;
+              if (findDrink(code)) setDrink(code);
+            }}
+          >
+            <option value="" disabled>
+              {it.add.chooseDrink}
+            </option>
             {CATALOG.map((d) => (
-              <li key={d.code}>
-                <button
-                  type="button"
-                  class="drink"
-                  onClick={() => {
-                    setDrink(d.code);
-                  }}
-                >
-                  <Icon name={drinkIcon(d.code)} />
-                  <span class="drink__name">{drinkName(d.code)}</span>
-                </button>
-              </li>
+              <option value={d.code} key={d.code}>
+                {drinkName(d.code)}
+              </option>
             ))}
-          </ul>
+          </select>
         </div>
       </Sheet>
     );

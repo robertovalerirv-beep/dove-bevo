@@ -15,8 +15,12 @@ import {
 import { menuMoney, type MenuOffer, type MenuPage } from "../menu-v2";
 import {
   menuOfferMatchesFocus,
+  mobileCustomerItemKeyPattern,
+  mobileCustomerSaveURL,
   mobileOfferIdPattern,
   mobileOfferSaveURL,
+  mobileRecommendURL,
+  validCategory,
   type DrinkFocus,
 } from "../routes";
 
@@ -29,6 +33,19 @@ function nativeOfferSaveEnabled(): boolean {
     typeof window !== "undefined" &&
     (window as Window & { DoveBevoNativeOfferSave?: boolean }).DoveBevoNativeOfferSave === true
   );
+}
+
+function nativeCapabilities() {
+  const native = window as Window & {
+    DoveBevoNativeOfferSave?: boolean;
+    DoveBevoNativeCustomerSave?: boolean;
+    DoveBevoNativeRecommend?: boolean;
+  };
+  return {
+    offer: native.DoveBevoNativeOfferSave === true,
+    customer: native.DoveBevoNativeCustomerSave === true,
+    recommend: native.DoveBevoNativeRecommend === true,
+  };
 }
 
 const CATEGORY_OPTIONS = [
@@ -85,6 +102,8 @@ export function CustomerPricesV2({
   const offers = menu?.offers ?? [];
   const [rows, setRows] = useState<CustomerRow[]>([]);
   const [nativeOfferSave, setNativeOfferSave] = useState(nativeOfferSaveEnabled);
+  const [nativeCustomerSave, setNativeCustomerSave] = useState(false);
+  const [nativeRecommend, setNativeRecommend] = useState(false);
   const [nextAfter, setNextAfter] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [moreBusy, setMoreBusy] = useState(false);
@@ -109,7 +128,10 @@ export function CustomerPricesV2({
 
   useEffect(() => {
     const updateNative = () => {
-      setNativeOfferSave(nativeOfferSaveEnabled());
+      const capabilities = nativeCapabilities();
+      setNativeOfferSave(capabilities.offer);
+      setNativeCustomerSave(capabilities.customer);
+      setNativeRecommend(capabilities.recommend);
     };
     window.addEventListener("dovebevo-native-ready", updateNative);
     updateNative();
@@ -551,6 +573,37 @@ export function CustomerPricesV2({
         <span>Prezzo segnalato da un cliente</span>
         <strong>{menuMoney(row.amount_minor, row.currency, row.currency_exponent)}</strong>
         <small>Pagato il {customerDate(row)} · prezzo del drink, non totale del conto</small>
+        {(nativeCustomerSave || nativeRecommend) && (
+          <div class="mobile-menu-v2__quick-actions mobile-customer-v2__quick-actions">
+            {nativeCustomerSave && mobileCustomerItemKeyPattern.test(row.item_key) && (
+              <a
+                href={mobileCustomerSaveURL(key, cell, row.item_key)}
+                class="btn btn--secondary mobile-menu-v2__save"
+                aria-label={`Salva ${row.name} da ${menu?.venue.name ?? key} nei preferiti`}
+              >
+                Salva prezzo segnalato
+              </a>
+            )}
+            {nativeRecommend &&
+              (validCategory(row.category) ? (
+                <a
+                  href={mobileRecommendURL(key, cell, row.category)}
+                  class="btn btn--secondary mobile-menu-v2__recommend"
+                  aria-label={`Consiglia ${row.name} da ${menu?.venue.name ?? key}`}
+                >
+                  Consiglia
+                </a>
+              ) : (
+                <span
+                  class="btn btn--secondary mobile-menu-v2__recommend"
+                  aria-disabled="true"
+                  title="Categoria del drink non disponibile"
+                >
+                  Consiglia · categoria assente
+                </span>
+              ))}
+          </div>
+        )}
         <button
           type="button"
           class="btn btn--ghost"
@@ -608,6 +661,38 @@ export function CustomerPricesV2({
         </span>
       </>
     );
+    const quickActions =
+      nativeOfferSave || nativeRecommend ? (
+        <div class="mobile-menu-v2__quick-actions">
+          {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
+            <a
+              href={mobileOfferSaveURL(key, cell, offer.id)}
+              class="btn btn--secondary mobile-menu-v2__save"
+              aria-label={`Salva ${offer.name} da ${menu?.venue.name ?? key} nei preferiti`}
+            >
+              Salva questo drink
+            </a>
+          )}
+          {nativeRecommend &&
+            (validCategory(offer.category) ? (
+              <a
+                href={mobileRecommendURL(key, cell, offer.category)}
+                class="btn btn--secondary mobile-menu-v2__recommend"
+                aria-label={`Consiglia ${offer.name} da ${menu?.venue.name ?? key}`}
+              >
+                Consiglia
+              </a>
+            ) : (
+              <span
+                class="btn btn--secondary mobile-menu-v2__recommend"
+                aria-disabled="true"
+                title="Categoria del drink non disponibile"
+              >
+                Consiglia · categoria assente
+              </span>
+            ))}
+        </div>
+      ) : null;
     const actions = (
       <>
         <a
@@ -618,14 +703,6 @@ export function CustomerPricesV2({
         >
           Menu verificato il {offer.source.checked_on}
         </a>
-        {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
-          <a
-            href={mobileOfferSaveURL(key, cell, offer.id)}
-            class="btn btn--secondary mobile-menu-v2__save"
-          >
-            Salva questo drink
-          </a>
-        )}
         {customer && observation(customer)}
         {loadState === "ready" && (
           <button
@@ -657,16 +734,20 @@ export function CustomerPricesV2({
         }
       >
         {compact ? (
-          <details class="mobile-menu-v2__offer-details">
-            <summary class="mobile-menu-v2__offer-summary">
-              {summary}
-              <small class="mobile-menu-v2__expand">{english ? "Details" : "Dettagli"}</small>
-            </summary>
-            <div class="mobile-menu-v2__offer-actions">{actions}</div>
-          </details>
+          <>
+            <details class="mobile-menu-v2__offer-details">
+              <summary class="mobile-menu-v2__offer-summary">
+                {summary}
+                <small class="mobile-menu-v2__expand">{english ? "Details" : "Dettagli"}</small>
+              </summary>
+              <div class="mobile-menu-v2__offer-actions">{actions}</div>
+            </details>
+            {quickActions}
+          </>
         ) : (
           <>
             {summary}
+            {quickActions}
             {actions}
           </>
         )}

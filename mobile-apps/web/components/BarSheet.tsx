@@ -22,7 +22,17 @@ import {
   type MenuOffer,
 } from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
-import { menuOfferMatchesFocus, mobileFocus, mobileOfferFocus, mobilePath } from "../routes";
+import {
+  menuOfferMatchesFocus,
+  mobileFocus,
+  mobileOfferFocus,
+  mobileOfferIdPattern,
+  mobileOfferSaveURL,
+  mobileDrinkSaveURL,
+  mobileRecommendURL,
+  mobilePath,
+  validCategory,
+} from "../routes";
 import "./sheets.css";
 
 export interface BarActions {
@@ -78,6 +88,8 @@ function PriceItem({
   actions,
   inReview,
   tier,
+  nativeDrinkSave,
+  nativeRecommend,
   featured = false,
 }: {
   row: PriceRow;
@@ -85,6 +97,8 @@ function PriceItem({
   actions: BarActions;
   inReview: boolean;
   tier: Tier;
+  nativeDrinkSave: boolean;
+  nativeRecommend: boolean;
   featured?: boolean;
 }) {
   const [, drink, hh, cents, day, confirmations] = row;
@@ -171,6 +185,28 @@ function PriceItem({
         {formatDate(day)} · {it.bar.confirmations(count)}
         {isStale(day, todayRome()) && <span class="price__stale"> · {it.bar.toConfirm}</span>}
       </span>
+      {!inReview && validCategory(drink) && (nativeDrinkSave || nativeRecommend) && (
+        <span class="mobile-menu-v2__quick-actions mobile-price__quick-actions">
+          {nativeDrinkSave && (
+            <a
+              class="btn btn--secondary mobile-menu-v2__save"
+              href={mobileDrinkSaveURL(venue.key, venue.cell, drink, hh ? "happy_hour" : "normal")}
+              aria-label={`Salva ${name} da ${venue.name} nei preferiti`}
+            >
+              Salva questo drink
+            </a>
+          )}
+          {nativeRecommend && (
+            <a
+              class="btn btn--secondary mobile-menu-v2__recommend"
+              href={mobileRecommendURL(venue.key, venue.cell, drink)}
+              aria-label={`Consiglia ${name} da ${venue.name}`}
+            >
+              Consiglia
+            </a>
+          )}
+        </span>
+      )}
       {featured && tier !== "neutro" && (
         <span class={`mobile-price__tier mobile-price__tier--${tier}`}>{it.map.tiers[tier]}</span>
       )}
@@ -263,6 +299,13 @@ function menuFeeAmount(fee: MenuFee): string {
 
 export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
+  const [nativeOfferSave, setNativeOfferSave] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      (window as Window & { DoveBevoNativeOfferSave?: boolean }).DoveBevoNativeOfferSave === true,
+  );
+  const [nativeDrinkSave, setNativeDrinkSave] = useState(false);
+  const [nativeRecommend, setNativeRecommend] = useState(false);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -273,6 +316,24 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const [menuAttempt, setMenuAttempt] = useState(0);
   const [mapSample, setMapSample] = useState<MenuOffer | null>(null);
   const menuAbort = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const updateNative = () => {
+      setNativeOfferSave(
+        (window as Window & { DoveBevoNativeOfferSave?: boolean }).DoveBevoNativeOfferSave === true,
+      );
+      setNativeDrinkSave(
+        (window as Window & { DoveBevoNativeDrinkSave?: boolean }).DoveBevoNativeDrinkSave === true,
+      );
+      setNativeRecommend(
+        (window as Window & { DoveBevoNativeRecommend?: boolean }).DoveBevoNativeRecommend === true,
+      );
+    };
+    window.addEventListener("dovebevo-native-ready", updateNative);
+    updateNative();
+    return () => {
+      window.removeEventListener("dovebevo-native-ready", updateNative);
+    };
+  }, []);
   const savedFocus =
     typeof location !== "undefined" &&
     mobilePath(location) === "/bar/" + venueKey &&
@@ -655,6 +716,37 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                     <small class="mobile-menu-v2__meta">
                       Prezzo del drink da menu, non totale pagato. Supplementi separati.
                     </small>
+                    {(nativeOfferSave || nativeRecommend) && (
+                      <div class="mobile-menu-v2__quick-actions">
+                        {nativeOfferSave && mobileOfferIdPattern.test(featuredOffer.id) && (
+                          <a
+                            href={mobileOfferSaveURL(venueKey, cell, featuredOffer.id)}
+                            class="btn btn--secondary mobile-menu-v2__save"
+                            aria-label={`Salva ${featuredOffer.name} da ${venue.name} nei preferiti`}
+                          >
+                            Salva questo drink
+                          </a>
+                        )}
+                        {nativeRecommend &&
+                          (validCategory(featuredOffer.category) ? (
+                            <a
+                              href={mobileRecommendURL(venueKey, cell, featuredOffer.category)}
+                              class="btn btn--secondary mobile-menu-v2__recommend"
+                              aria-label={`Consiglia ${featuredOffer.name} da ${venue.name}`}
+                            >
+                              Consiglia
+                            </a>
+                          ) : (
+                            <span
+                              class="btn btn--secondary mobile-menu-v2__recommend"
+                              aria-disabled="true"
+                              title="Categoria del drink non disponibile"
+                            >
+                              Consiglia · categoria assente
+                            </span>
+                          ))}
+                      </div>
+                    )}
                     <a
                       class="mobile-menu-v2__source"
                       href={featuredOffer.source.url}
@@ -711,6 +803,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 actions={actions}
                 inReview={false}
                 tier={tier(row)}
+                nativeDrinkSave={nativeDrinkSave}
+                nativeRecommend={nativeRecommend}
                 featured={index === 0 && (!savedFocus || savedFound)}
               />,
             ])}
@@ -806,6 +900,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   actions={actions}
                   inReview
                   tier="neutro"
+                  nativeDrinkSave={nativeDrinkSave}
+                  nativeRecommend={nativeRecommend}
                 />
               ))}
             </ul>

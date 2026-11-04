@@ -11,6 +11,18 @@ export interface DrinkFocus {
   hh: 0 | 1;
 }
 export const mobileOfferIdPattern = /^[A-Za-z0-9._:-]{1,128}$/;
+export const mobileCustomerItemKeyPattern = /^[oc][0-9a-f]{64}$/;
+
+function nativeVenueQuery(key: string, cell: string): URLSearchParams {
+  if (!mobileVenueKeyPattern.test(key) || !CELL_PATTERN.test(cell))
+    throw new TypeError("Invalid native venue identity");
+  return new URLSearchParams({ path: `/bar/${key}`, c: cell });
+}
+
+export function validCategory(code: string | null): code is string {
+  if (code === null) return false;
+  return CATALOG.some((item) => item.code === code);
+}
 
 function focusPair(params: URLSearchParams): DrinkFocus | null {
   const drink = params.get("drink"),
@@ -80,6 +92,36 @@ export function mobileOfferSaveURL(key: string, cell: string, id: string): strin
   )
     throw new TypeError("Invalid offer save identity");
   return `${ENTRY}?${new URLSearchParams({ path: `/bar/${key}`, c: cell, save_offer: id })}`;
+}
+
+/** App-only native commands; each native app independently validates live venue and row identity. */
+export function mobileDrinkSaveURL(
+  key: string,
+  cell: string,
+  drink: string,
+  band: string,
+): string {
+  const params = nativeVenueQuery(key, cell);
+  if (!validCategory(drink) || (band !== "normal" && band !== "happy_hour"))
+    throw new TypeError("Invalid drink save identity");
+  params.set("save_drink", drink);
+  params.set("band", band);
+  return `${ENTRY}?${params}`;
+}
+
+export function mobileCustomerSaveURL(key: string, cell: string, itemKey: string): string {
+  const params = nativeVenueQuery(key, cell);
+  if (!mobileCustomerItemKeyPattern.test(itemKey))
+    throw new TypeError("Invalid customer price identity");
+  params.set("save_customer", itemKey);
+  return `${ENTRY}?${params}`;
+}
+
+export function mobileRecommendURL(key: string, cell: string, drink: string): string {
+  const params = nativeVenueQuery(key, cell);
+  if (!validCategory(drink)) throw new TypeError("Invalid recommendation category");
+  params.set("recommend_drink", drink);
+  return `${ENTRY}?${params}`;
 }
 
 export function mobileURL(path: string, origin = location.origin): string {

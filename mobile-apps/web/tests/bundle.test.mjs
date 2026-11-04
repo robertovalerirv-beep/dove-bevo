@@ -140,6 +140,10 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         });
         return route.fulfill({ status: 503, body: "Old identity request failed" });
       }
+      if (options.failNextIdentity && cell === "u0nd9" && categories.length === 0) {
+        options.failNextIdentity -= 1;
+        return route.fulfill({ status: 503, body: "Retry identity request failed" });
+      }
       if (options.menuUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
       const source = {
         id: "source-1",
@@ -1248,6 +1252,38 @@ test("a stale identity failure cannot discard a successful new selected drink", 
       ).length,
       2,
       "The selected drink must recover with exactly one fresh identity read",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    options.releaseOldIdentity?.();
+    await f.close();
+  }
+});
+
+test("a selected sourced price survives an unavailable full-menu identity retry", async () => {
+  const options = { menu: true, holdFirstIdentity: true, failNextIdentity: 1, cellRequests: [] };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true }).click();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
+    );
+    assert.equal(typeof options.releaseOldIdentity, "function");
+    const drinks = await openDrinks(f.page);
+    await drinks.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    assert.match(await f.page.getByTestId("drink-summary").textContent(), /Spritz/);
+    options.releaseOldIdentity();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+      "The selected price must survive one failed full-menu identity retry",
     );
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);

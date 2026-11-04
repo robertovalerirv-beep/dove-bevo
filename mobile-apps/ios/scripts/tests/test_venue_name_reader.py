@@ -38,11 +38,13 @@ const results = input.cases.map((scenario) => {
         getBoundingClientRect: () => rect(s.headingY, s.width, s.height),
         getClientRects: () => Array(s.clientRects).fill(1)
     });
+    const matchingHeadingCount = s.headingShape === 'unrelated' ? 0 :
+        s.headingShape === 'both' ? 2 * s.headingCount : s.headingCount;
     const paper = Object.freeze({ querySelectorAll: (selector) => {
         if (selector !== ':scope > h2.scontrino__name, :scope > header.mobile-venue__identity > h2.scontrino__name') {
             throw new Error('unexpected paper heading selector');
         }
-        return Array(s.headingCount).fill(heading);
+        return Array(matchingHeadingCount).fill(heading);
     }});
     const dialog = Object.freeze({
         isConnected: s.connected, parentElement: body,
@@ -59,7 +61,10 @@ const results = input.cases.map((scenario) => {
                 return Array(s.paperCount).fill(paper);
             }
             if (selector === ':scope > .sheet__body > .scontrino > .scontrino__paper > h2.scontrino__name') {
-                return s.headingShape === 'direct' ? Array(s.headingCount).fill(heading) : [];
+                return s.headingShape === 'direct' ? Array(s.paperCount * s.headingCount).fill(heading) : [];
+            }
+            if (selector === ':scope > .sheet__body > .scontrino > .scontrino__paper > h2.scontrino__name, :scope > .sheet__body > .scontrino > .scontrino__paper > header.mobile-venue__identity > h2.scontrino__name') {
+                return Array(s.paperCount * matchingHeadingCount).fill(heading);
             }
             throw new Error('unexpected dialog selector');
         }
@@ -143,14 +148,23 @@ class VenueNameReaderTests(unittest.TestCase):
         base = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9"
         for script in [self.script, android]:
             with self.subTest(platform="android" if script == android else "ios"):
-                actual = self.read([{"olderWebKit": True, "href": base}], script)[0]
-                self.assertIsNotNone(actual.get("value"), actual)
+                for heading_shape in ["direct", "nested"]:
+                    actual = self.read([{"olderWebKit": True, "href": base, "headingShape": heading_shape}], script)[0]
+                    self.assertIsNotNone(actual.get("value"), (heading_shape, actual))
                 for bad in [base + "&c=u0nd8", base + "&token=private", base + "#private"]:
                     self.assertIsNone(self.read([{"olderWebKit": True, "href": bad}], script)[0].get("value"))
                 self.assertIsNone(self.read([{"olderWebKit": True, "href": base, "marker": False}], script)[0].get("value"))
                 for hh in ["0", "1"]:
                     focused = base + "&drink=beer_draft&hh=" + hh
-                    self.assertIsNotNone(self.read([{"olderWebKit": True, "href": focused}], script)[0].get("value"))
+                    for heading_shape in ["direct", "nested"]:
+                        self.assertIsNotNone(self.read([{"olderWebKit": True, "href": focused,
+                                                         "headingShape": heading_shape}], script)[0].get("value"))
+                for bad_shape in ["unrelated", "both"]:
+                    self.assertIsNone(self.read([{"olderWebKit": True, "href": base,
+                                                  "headingShape": bad_shape}], script)[0].get("value"))
+                for paper_count in [0, 2]:
+                    self.assertIsNone(self.read([{"olderWebKit": True, "href": base,
+                                                  "headingShape": "nested", "paperCount": paper_count}], script)[0].get("value"))
                 for bad in ["&drink=beer_draft", "&hh=1", "&drink=unknown&hh=0", "&drink=spritz&hh=2",
                             "&drink=spritz&hh=0&hh=1", "&drink=spritz&drink=water&hh=0",
                             "&%64rink=spritz&hh=0", "&drink=spritz&hh=0&token=private", "&drink=spritz&hh=0#private"]:

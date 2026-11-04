@@ -2832,7 +2832,7 @@
       "source_sha256": "93af6fefc9eed0f9d7c5c81c6f630e184ed61cdb7e0ad8bfa9d7cd8e76480be4",
       "source_text_sha256": "93af6fefc9eed0f9d7c5c81c6f630e184ed61cdb7e0ad8bfa9d7cd8e76480be4",
       "source_url": "https://guero.it/menu/",
-      "use_review_basis": "Guero owner menu footer states Via Goito 9/2 A, Bologna, matching the existing OSM/Roberto pub and OSM website tag. Visible HTML item cards give exact named EUR drink prices. Food, unpriced/grouped drinks, duplicated items and summer-only Bellini are excluded. No customer visit, serving volume (except explicit Forst 0,30 L) or fee completeness is inferred; changing source must be rechecked before import.",
+      "use_review_basis": "Guero owner menu footer states Via Goito 9/2 A, Bologna, matching the existing OSM/Roberto pub and OSM website tag. Visible HTML item cards give exact named EUR drink prices. Food, unpriced/grouped drinks, duplicated items and summer-only Bellini are excluded. The Forst description says 0,30 without a stated unit, so its serving label and volume remain unknown. No customer visit or fee completeness is inferred; changing source must be rechecked before import.",
       "use_review_reference": "https://guero.it/",
       "use_review_status": "approved",
       "use_reviewed_on": "2026-11-04",

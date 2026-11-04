@@ -228,8 +228,21 @@ async function drinkDetail(
     : null;
 }
 
-async function claim(env: Env, voter: string, key: string, target: StoredTarget): Promise<string> {
-  return hmacHex(env.HASH_KEY, ["mobile-exact-drink-vote-v1", voter, key, target.kind, target.id]);
+async function claim(
+  env: Env,
+  voter: string,
+  key: string,
+  cell: string,
+  target: StoredTarget,
+): Promise<string> {
+  return hmacHex(env.HASH_KEY, [
+    "mobile-exact-drink-vote-v1",
+    voter,
+    key,
+    cell,
+    target.kind,
+    target.id,
+  ]);
 }
 
 function voteRow(row: CountRow, own: Set<string>): ExactDrinkVote {
@@ -291,7 +304,7 @@ mobileExactDrinkVotes.get("/venues/:key", async (c) => {
   if (voter && result.results.length) {
     const claims = await Promise.all(
       result.results.map((row) =>
-        claim(c.env, voter, key.data, { kind: row.target_kind, id: row.target_id }),
+        claim(c.env, voter, key.data, cell, { kind: row.target_kind, id: row.target_id }),
       ),
     );
     for (let offset = 0; offset < claims.length; offset += 100) {
@@ -327,7 +340,7 @@ mobileExactDrinkVotes.post("/venues/:key", async (c) => {
   const target = storedTarget(body.target);
   if (!(await drinkDetail(c.env, key.data, cell, target))) throw new ApiError("not_found");
   if (body.recommended) await consumeRecommendationQuota(c.env, voter, clientIp(c.req.raw));
-  const voterClaim = await claim(c.env, voter, key.data, target);
+  const voterClaim = await claim(c.env, voter, key.data, cell, target);
   const mutation = c.env.DB.prepare(
     body.recommended
       ? "INSERT OR IGNORE INTO mobile_exact_drink_votes (venue_key,cell,target_kind,target_id,claim)" +

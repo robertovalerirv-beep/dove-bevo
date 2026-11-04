@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { createExecutionContext } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
+import { encodeGeohash } from "../../src/shared/geohash";
 import type {
   ExactDrinkAreaVotes,
   ExactDrinkTarget,
@@ -134,6 +135,49 @@ describe("apps-only exact drink recommendation counts", () => {
     expect(
       await json<ExactDrinkVote>(await request(path(ITALY), { ...vote, recommended: false })),
     ).toEqual({ target: vote.target, count: 0, recommended: false });
+  });
+
+  it("keeps votes distinct when a venue's verified cell changes", async () => {
+    await londonOffer("cell-shift-offer");
+    await env.DB.prepare(
+      "INSERT INTO prices_current (venue_key,drink,hh,cell,city,price_cents,observed_on," +
+        " confirmations,status,source) VALUES (?1,'spritz',0,?2,1,650,'2026-11-04',0,'active','manual')",
+    )
+      .bind(LONDON.key, LONDON.cell)
+      .run();
+    const vote = { target: target(), recommended: true };
+    expect(await json<ExactDrinkVote>(await request(path(LONDON), vote))).toEqual({
+      target: vote.target,
+      count: 1,
+      recommended: true,
+    });
+
+    const movedLatitude = 51.6;
+    const moved = {
+      key: LONDON.key,
+      cell: encodeGeohash(movedLatitude, -0.1278, 5),
+    };
+    expect(moved.cell).not.toBe(LONDON.cell);
+    await env.DB.prepare("UPDATE mobile_menu_v2_venues SET cell=?1,lat=?2 WHERE venue_key=?3")
+      .bind(moved.cell, movedLatitude, LONDON.key)
+      .run();
+    await env.DB.prepare("UPDATE prices_current SET cell=?1 WHERE venue_key=?2 AND drink='spritz'")
+      .bind(moved.cell, LONDON.key)
+      .run();
+
+    expect(await json<ExactDrinkVote>(await request(path(moved), vote))).toEqual({
+      target: vote.target,
+      count: 1,
+      recommended: true,
+    });
+    const claims = await env.DB.prepare(
+      "SELECT cell,claim FROM mobile_exact_drink_votes WHERE venue_key=?1 ORDER BY cell",
+    )
+      .bind(LONDON.key)
+      .all<{ cell: string; claim: string }>();
+    expect(claims.results).toHaveLength(2);
+    expect(claims.results.map((row) => row.cell).sort()).toEqual([LONDON.cell, moved.cell].sort());
+    expect(claims.results[0]?.claim).not.toBe(claims.results[1]?.claim);
   });
 
   it("requires a live row, exact cell, valid identity and valid installation before public writes", async () => {

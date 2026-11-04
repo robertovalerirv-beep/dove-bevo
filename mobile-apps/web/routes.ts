@@ -95,12 +95,7 @@ export function mobileOfferSaveURL(key: string, cell: string, id: string): strin
 }
 
 /** App-only native commands; each native app independently validates live venue and row identity. */
-export function mobileDrinkSaveURL(
-  key: string,
-  cell: string,
-  drink: string,
-  band: string,
-): string {
+export function mobileDrinkSaveURL(key: string, cell: string, drink: string, band: string): string {
   const params = nativeVenueQuery(key, cell);
   if (!validCategory(drink) || (band !== "normal" && band !== "happy_hour"))
     throw new TypeError("Invalid drink save identity");

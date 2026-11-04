@@ -12,7 +12,15 @@ import { HoursList, VerifiedBadge } from "@site/app/components/Verified";
 import { drinkImage } from "@mobile/drink-images";
 import { sharePresentation } from "../share-presentation";
 import { DrinkHero } from "./DrinkHero";
-import { loadMenuPage, menuMoney, mobileMenuVenue, type MenuPage, type MenuFee } from "../menu-v2";
+import {
+  loadMenuPage,
+  loadMobileCell,
+  menuMoney,
+  mobileMenuVenue,
+  type MenuPage,
+  type MenuFee,
+  type MenuOffer,
+} from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
 import { menuOfferMatchesFocus, mobileFocus, mobileOfferFocus, mobilePath } from "../routes";
 import "./sheets.css";
@@ -263,6 +271,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const [menuFailed, setMenuFailed] = useState(false);
   const [menuMoreBusy, setMenuMoreBusy] = useState(false);
   const [menuAttempt, setMenuAttempt] = useState(0);
+  const [mapSample, setMapSample] = useState<MenuOffer | null>(null);
   const menuAbort = useRef<AbortController | null>(null);
   const savedFocus =
     typeof location !== "undefined" &&
@@ -280,8 +289,44 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     savedOfferFocus !== null
       ? offer.id === savedOfferFocus
       : savedFocus !== null && menuOfferMatchesFocus(offer, savedFocus);
-  const matchesMapMenu = (offer: MenuPage["offers"][number]) =>
-    offer.category !== null && offer.context.kind === "regular" && focus.includes(offer.category);
+  const focusKey = focus.join(",");
+  useEffect(() => {
+    setMapSample(null);
+    if (savedOfferFocus !== null || savedFocus !== null || focus.length === 0) return;
+    let active = true;
+    const readMapSample = () => {
+      void loadMobileCell(cell, focus)
+        .then((venues) => {
+          if (!active) return;
+          const selected: (Venue & { mobileMenuSamples?: MenuOffer[] }) | undefined = venues.find(
+            (row) => row.key === venueKey,
+          );
+          const samples = selected?.mobileMenuSamples ?? [];
+          const sample = focus
+            .map((category) =>
+              samples.find(
+                (offer) => offer.category === category && offer.context.kind === "regular",
+              ),
+            )
+            .find((offer) => offer !== undefined);
+          setMapSample(sample ?? null);
+        })
+        .catch(() => {
+          if (active) setMapSample(null);
+        });
+    };
+    const onCellReady = (event: Event) => {
+      const detail: unknown = (event as CustomEvent<unknown>).detail;
+      if (typeof detail === "object" && detail !== null && "cell" in detail && detail.cell === cell)
+        readMapSample();
+    };
+    window.addEventListener("dovebevo:menu-cell-ready", onCellReady);
+    readMapSample();
+    return () => {
+      active = false;
+      window.removeEventListener("dovebevo:menu-cell-ready", onCellReady);
+    };
+  }, [cell, venueKey, focusKey, savedFocus?.drink, savedFocus?.hh, savedOfferFocus]);
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -379,17 +424,27 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   // A map/list menu price or saved drink can be on a later bounded menu page.
   useEffect(() => {
     const lookingForSaved = savedFocus !== null || savedOfferFocus !== null;
-    const lookingForMap = !lookingForSaved && focus.length > 0;
+    const lookingForMap = !lookingForSaved && mapSample !== null;
     if (
       (!lookingForSaved && !lookingForMap) ||
       !menu?.next_after ||
       menuMoreBusy ||
       menuFailed ||
-      (lookingForSaved ? menu.offers.some(matchesMenu) : menu.offers.some(matchesMapMenu))
+      (lookingForSaved
+        ? menu.offers.some(matchesMenu)
+        : menu.offers.some((offer) => offer.id === mapSample?.id))
     )
       return;
     void loadMoreMenu();
-  }, [menu, menuMoreBusy, menuFailed, savedFocus?.drink, savedFocus?.hh, savedOfferFocus, focus]);
+  }, [
+    menu,
+    menuMoreBusy,
+    menuFailed,
+    savedFocus?.drink,
+    savedFocus?.hh,
+    savedOfferFocus,
+    mapSample?.id,
+  ]);
 
   if (venue === undefined) {
     return (
@@ -433,15 +488,17 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   );
   const savedFound = active.some(matchesSaved);
   const menuFound = menu?.offers.some(matchesMenu) ?? false;
-  const mapMenuFound = menu?.offers.some(matchesMapMenu) ?? false;
-  const menuFirst =
-    (savedOfferFocus !== null && menuFound) ||
-    (savedFocus !== null && !savedFound && menuFound) ||
-    (savedOfferFocus === null &&
-      savedFocus === null &&
-      focus.length > 0 &&
-      !active.some(isFocus) &&
-      mapMenuFound);
+  const featuredOffer =
+    savedOfferFocus !== null && menuFound
+      ? menu?.offers.find(matchesMenu)
+      : savedFocus !== null && !savedFound && menuFound
+        ? menu?.offers.find(matchesMenu)
+        : savedOfferFocus === null &&
+            savedFocus === null &&
+            !active.some(isFocus) &&
+            mapSample !== null
+          ? menu?.offers.find((offer) => offer.id === mapSample.id)
+          : undefined;
   const savedMissing =
     savedFocus &&
     !savedFound &&
@@ -471,7 +528,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           null);
   const menuSection =
     menu && menu.stored_offer_count > 0 && menu.offers.length > 0 ? (
-      <section class="mobile-menu-v2" aria-label="Prezzi dal menu online">
+      <section key="venue-menu" class="mobile-menu-v2" aria-label="Prezzi dal menu online">
         <div class="mobile-menu-v2__heading">
           <h3>Dal menu del locale</h3>
           <span>{menu.stored_offer_count} prezzi</span>
@@ -487,6 +544,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           focus={savedFocus}
           offerFocus={savedOfferFocus}
           mapFocus={focus}
+          mapOfferId={mapSample?.id ?? null}
           hasLegacyPrices={active.length > 0}
         />
         {menu.next_after && (
@@ -553,10 +611,66 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             {/* The hours of a verified bar come before the prices (SPEC 7.2, D-34). */}
             {venue.verified && prices?.o && <HoursList hours={prices.o} />}
           </header>
-          {menuFirst && menuSection}
+          <div class="mobile-menu-v2__spotlight-slot">
+            {featuredOffer && (
+              <section class="mobile-menu-v2" aria-label="Prezzo selezionato dal menu online">
+                <h3 class="section-title">
+                  {savedOfferFocus || savedFocus ? "Drink salvato" : "Drink scelto sulla mappa"}
+                </h3>
+                <ul class="mobile-menu-v2__offers">
+                  <li
+                    class="mobile-menu-v2__offer mobile-menu-v2__offer--focused"
+                    data-testid="featured-menu-price"
+                  >
+                    <span class="mobile-menu-v2__name">
+                      {featuredOffer.name}
+                      <small class="mobile-menu-v2__provenance">Prezzo da menu</small>
+                    </span>
+                    <strong class="mobile-menu-v2__amount">
+                      {menuMoney(
+                        featuredOffer.amount_minor,
+                        featuredOffer.currency,
+                        featuredOffer.currency_exponent,
+                      )}
+                    </strong>
+                    <small class="mobile-menu-v2__meta">
+                      {[
+                        featuredOffer.serving.label ??
+                          (featuredOffer.serving.ml
+                            ? `${String(featuredOffer.serving.ml)} ml`
+                            : ""),
+                        featuredOffer.context.kind === "happy_hour"
+                          ? ["Happy hour", featuredOffer.context.condition]
+                              .filter(Boolean)
+                              .join(" · ")
+                          : featuredOffer.context.kind === "conditional"
+                            ? featuredOffer.context.condition
+                              ? `Solo con: ${featuredOffer.context.condition}`
+                              : "Prezzo condizionato"
+                            : (featuredOffer.context.condition ?? ""),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </small>
+                    <small class="mobile-menu-v2__meta">
+                      Prezzo del drink da menu, non totale pagato. Supplementi separati.
+                    </small>
+                    <a
+                      class="mobile-menu-v2__source"
+                      href={featuredOffer.source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Menu verificato il {featuredOffer.source.checked_on}
+                    </a>
+                  </li>
+                </ul>
+              </section>
+            )}
+          </div>
           {active.length > 0 && (
             <h3 class="section-title">
-              {menuFirst
+              {featuredOffer
                 ? currentLang() === "en"
                   ? "Prices reported by customers"
                   : "Prezzi segnalati dai clienti"
@@ -624,7 +738,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               Caricamento menu online…
             </p>
           )}
-          {!menuFirst && menuSection}
+          {menuSection}
           {menu && (menu.stored_offer_count === 0 || menu.offers.length === 0) && (
             <CustomerPricesV2
               key={`${venueKey}:${cell}`}
@@ -633,6 +747,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               focus={savedFocus}
               offerFocus={savedOfferFocus}
               mapFocus={focus}
+              mapOfferId={mapSample?.id ?? null}
               hasLegacyPrices={active.length > 0}
             />
           )}
@@ -644,6 +759,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               focus={savedFocus}
               offerFocus={savedOfferFocus}
               mapFocus={focus}
+              mapOfferId={mapSample?.id ?? null}
               hasLegacyPrices={active.length > 0}
             />
           )}

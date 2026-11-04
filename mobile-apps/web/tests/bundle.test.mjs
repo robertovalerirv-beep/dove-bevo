@@ -152,7 +152,7 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         checked_on: "2026-11-02",
       };
       const offer = {
-        id: "offer-1",
+        id: options.cheapestOnLaterPage ? "z-spritz-low" : "offer-1",
         name: options.uncategorized ? "Signature senza categoria" : "Spritz speciale",
         category: options.uncategorized ? null : "spritz",
         serving: { label: "Calice", ml: null },
@@ -211,6 +211,12 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     ) {
       if (options.detailUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
       const staticVenue = url.pathname.endsWith("/n123");
+      const after = url.searchParams.get("after");
+      options.menuDetailRequests?.push(after);
+      if (options.holdSecondMenuPage && staticVenue && after)
+        await new Promise((resolve) => {
+          options.releaseSecondMenuPage = resolve;
+        });
       const source = {
         id: "source-1",
         url: "https://official.fixture.test/menu",
@@ -260,7 +266,7 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
                     source,
                   },
                   {
-                    id: "offer-1",
+                    id: options.cheapestOnLaterPage ? "z-spritz-low" : "offer-1",
                     name: "Spritz speciale",
                     category: "spritz",
                     serving: { label: "Calice", ml: null },
@@ -282,6 +288,12 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
                     source,
                   })),
                 ]
+                  .sort((a, b) => (options.cheapestOnLaterPage ? a.id.localeCompare(b.id) : 0))
+                  .filter(
+                    (offer) =>
+                      !options.cheapestOnLaterPage ||
+                      (after ? offer.id === "z-spritz-low" : offer.id !== "z-spritz-low"),
+                  )
               : [
                   {
                     id: "offer-1",
@@ -295,7 +307,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
                     source,
                   },
                 ],
-          next_after: null,
+          next_after:
+            options.cheapestOnLaterPage && staticVenue && !after ? "offer-water-first" : null,
           fees: [],
           fee_coverage: { status: "unknown", source: null },
         },
@@ -1113,15 +1126,18 @@ test("the selected map menu price leads venue detail ahead of unrelated customer
       assert.match(await listRow.innerText(), /7,50\s*€[\s\S]*Dal menu del locale/);
       await listRow.click();
       await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
+      const featured = f.page.getByTestId("featured-menu-price");
+      await featured.waitFor();
       const selected = f.page.getByTestId("map-selected-menu-offer");
       await selected.waitFor();
       assert.match(
-        await selected.innerText(),
-        /Spritz speciale[\s\S]*Prezzo da menu[\s\S]*Drink scelto sulla mappa[\s\S]*7,50\s*€/,
+        await featured.innerText(),
+        /Spritz speciale[\s\S]*Prezzo da menu[\s\S]*7,50\s*€[\s\S]*Menu verificato/,
       );
+      assert.match(await selected.innerText(), /Drink scelto sulla mappa[\s\S]*7,50\s*€/);
       assert.equal(
         await f.page.evaluate(() => {
-          const selected = document.querySelector('[data-testid="map-selected-menu-offer"]');
+          const selected = document.querySelector('[data-testid="featured-menu-price"]');
           const customer = document.querySelector(".prices .price");
           return Boolean(selected && customer && selected.compareDocumentPosition(customer) & 4);
         }),
@@ -1129,14 +1145,93 @@ test("the selected map menu price leads venue detail ahead of unrelated customer
         "The selected menu price must precede the unrelated legacy beer price",
       );
       assert.match(await f.page.locator(".prices .price").first().innerText(), /Birra media/);
-      await selected.scrollIntoViewIfNeeded();
-      const box = await selected.boundingBox();
+      await featured.scrollIntoViewIfNeeded();
+      const box = await featured.boundingBox();
       assert.ok(box && box.x >= -1 && box.x + box.width <= width + 1);
       assert.deepEqual(f.writes, []);
       assert.deepEqual(f.errors, []);
     } finally {
       await f.close();
     }
+  }
+});
+
+test("the map's exact menu offer is found on a later venue page before it is featured", async () => {
+  const options = {
+    menu: true,
+    staticMenu: true,
+    staticMenuMixed: true,
+    cheapestOnLaterPage: true,
+    noSpritzLegacy: true,
+    customerEmpty: true,
+    menuDetailRequests: [],
+  };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await selectOnlyDrink(f.page, "Spritz");
+    await f.page.locator(".map__list").click();
+    const listRow = f.page.getByRole("dialog").getByRole("link", { name: /^Locale di prova/ });
+    await listRow.waitFor();
+    assert.match(await listRow.innerText(), /7,50\s*€/);
+    await listRow.click();
+    const featured = f.page.getByTestId("featured-menu-price");
+    await featured.waitFor();
+    assert.match(await featured.innerText(), /Spritz speciale[\s\S]*7,50\s*€/);
+    assert.deepEqual(options.menuDetailRequests, [null, "offer-water-first"]);
+    assert.equal(
+      await f.page
+        .getByRole("region", { name: "Prezzi dal menu online" })
+        .locator(".mobile-menu-v2__offers > li")
+        .first()
+        .getAttribute("data-testid"),
+      "map-selected-menu-offer",
+    );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("an in-progress menu price editor survives arrival of the selected later-page offer", async () => {
+  const options = {
+    menu: true,
+    staticMenu: true,
+    staticMenuMixed: true,
+    cheapestOnLaterPage: true,
+    holdSecondMenuPage: true,
+    noSpritzLegacy: true,
+    customerEmpty: true,
+  };
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await selectOnlyDrink(f.page, "Spritz");
+    await f.page.locator(".map__list").click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("link", { name: /^Locale di prova/ })
+      .click();
+    const high = f.page
+      .getByRole("region", { name: "Prezzi dal menu online" })
+      .locator(".mobile-menu-v2__offer")
+      .filter({ hasText: "The Dome Spritz" });
+    await high.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
+    const amount = high.getByLabel("Importo pagato (EUR)");
+    await amount.fill("11,10");
+    await f.page.waitForFunction(() =>
+      Boolean(document.querySelector(".mobile-customer-v2__form")),
+    );
+    assert.equal(typeof options.releaseSecondMenuPage, "function");
+    options.releaseSecondMenuPage();
+    await f.page.getByTestId("featured-menu-price").waitFor();
+    assert.equal(await amount.inputValue(), "11,10");
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    options.releaseSecondMenuPage?.();
+    await f.close();
   }
 });
 
@@ -1152,8 +1247,13 @@ test("an exact saved offer stays ahead of map drink ordering", async () => {
     const saved = f.page.getByTestId("saved-exact-offer");
     await saved.waitFor();
     assert.match(await saved.innerText(), /Still water 75cl[\s\S]*4,00\s*€/);
+    assert.match(await f.page.getByTestId("featured-menu-price").innerText(), /Still water 75cl/);
     assert.equal(
-      await f.page.locator(".mobile-menu-v2__offers > li").first().getAttribute("data-testid"),
+      await f.page
+        .getByRole("region", { name: "Prezzi dal menu online" })
+        .locator(".mobile-menu-v2__offers > li")
+        .first()
+        .getAttribute("data-testid"),
       "saved-exact-offer",
     );
     assert.equal(await f.page.getByTestId("map-selected-menu-offer").count(), 0);

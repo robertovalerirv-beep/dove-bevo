@@ -70,6 +70,7 @@ export function CustomerPricesV2({
   focus,
   offerFocus,
   mapFocus,
+  mapOfferId,
   hasLegacyPrices,
 }: {
   menu: MenuPage | null;
@@ -77,6 +78,7 @@ export function CustomerPricesV2({
   focus: DrinkFocus | null;
   offerFocus: string | null;
   mapFocus: readonly string[];
+  mapOfferId: string | null;
   hasLegacyPrices: boolean;
 }) {
   const { key, cell, country } = menu?.venue ?? venue;
@@ -324,13 +326,15 @@ export function CustomerPricesV2({
       ? 0
       : focus && menuOfferMatchesFocus(offer, focus)
         ? 1
-        : !offerFocus && !focus && mapCategoryIndex(offer) !== -1
+        : !offerFocus && !focus && mapOfferId === offer.id
           ? 2
-          : 3;
+          : !offerFocus && !focus && mapCategoryIndex(offer) !== -1
+            ? 3
+            : 4;
   const orderedOffers = [...offers].sort((a, b) => {
     const priority = offerPriority(a) - offerPriority(b);
     if (priority) return priority;
-    if (offerPriority(a) !== 2) return 0;
+    if (offerPriority(a) !== 3) return 0;
     return (
       mapCategoryIndex(a) - mapCategoryIndex(b) ||
       a.currency.localeCompare(b.currency) ||
@@ -564,12 +568,7 @@ export function CustomerPricesV2({
     const exactSaved = offerFocus === offer.id;
     const categorySaved = focus !== null && menuOfferMatchesFocus(offer, focus);
     const mapSelected =
-      !exactSaved &&
-      !categorySaved &&
-      !offerFocus &&
-      !focus &&
-      orderedOffers[0]?.id === offer.id &&
-      mapCategoryIndex(offer) !== -1;
+      !exactSaved && !categorySaved && !offerFocus && !focus && mapOfferId === offer.id;
     const summary = (
       <>
         <span class="mobile-menu-v2__name">

@@ -266,11 +266,13 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     if (/^\/api\/prices\//.test(url.pathname))
       return route.fulfill({
         json: {
-          p: url.pathname.endsWith("u0nd9")
-            ? options.densePrices
-              ? [...rows, ["n456", "spritz", 0, 600, "2026-11-01", 0, 0]]
-              : rows
-            : [],
+          p: options.noLegacyPrices
+            ? []
+            : url.pathname.endsWith("u0nd9")
+              ? options.densePrices
+                ? [...rows, ["n456", "spritz", 0, 600, "2026-11-01", 0, 0]]
+                : rows
+              : [],
           u: [],
           pend: [],
           h: [],
@@ -316,6 +318,159 @@ async function selectOnlyDrink(page, name) {
   await page.locator(".mobile-drink-menu__button").click();
 }
 
+test("compact map chips switch exact drink filters and retain the full accessible picker", async () => {
+  const options = { menu: true, cellRequests: [] };
+  const f = await fixture({ width: 393, height: 852 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const row = f.page.getByRole("group", { name: "Filtra la mappa per drink" });
+    const birra = row.getByRole("button", { name: "Birra", exact: true });
+    assert.equal(
+      await row.getByRole("button", { name: "Spritz", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+    assert.match(
+      await f.page.locator("section.map").getAttribute("data-prices-shown"),
+      /7,50.*MENU/,
+    );
+    assert.ok(options.cellRequests.some((request) => request.categories.join(",") === "spritz"));
+    await f.page.screenshot({ path: path.join(output, "map-default-spritz-fixture.png") });
+    await row.getByRole("button", { name: "Tutti", exact: true }).click();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
+    );
+    const allPinLabels = await f.page.locator("section.map").getAttribute("data-prices-shown");
+    assert.match(allPinLabels, /1 VOCE/);
+    assert.doesNotMatch(allPinLabels, /7,50|5,50|€/);
+    assert.ok(options.cellRequests.some((request) => request.categories.length === 0));
+    await f.page.screenshot({ path: path.join(output, "map-all-counts-fixture.png") });
+    await birra.click();
+    assert.equal(await birra.getAttribute("aria-pressed"), "true");
+    const geometry = await row.evaluate((element) => {
+      const scroller = element.querySelector(".mobile-drink-quick__scroller");
+      return {
+        height: element.getBoundingClientRect().height,
+        rowWidth: scroller.clientWidth,
+        contentWidth: scroller.scrollWidth,
+        moreVisible:
+          element.querySelector(".mobile-drink-menu__button").getBoundingClientRect().right <=
+          document.documentElement.clientWidth,
+        viewportWidth: document.documentElement.clientWidth,
+        pageWidth: document.documentElement.scrollWidth,
+      };
+    });
+    assert.ok(geometry.height < 54, JSON.stringify(geometry));
+    assert.ok(geometry.contentWidth > geometry.rowWidth, JSON.stringify(geometry));
+    assert.equal(geometry.moreVisible, true);
+    assert.equal(geometry.pageWidth, geometry.viewportWidth);
+    await f.page.screenshot({ path: path.join(output, "map-quick-chips-fixture.png") });
+    await row.getByRole("button", { name: "Gin", exact: true }).click();
+    assert.equal(
+      await row.getByRole("button", { name: "Gin", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    const full = await openDrinks(f.page);
+    assert.equal(
+      await full.getByRole("checkbox", { name: "Gin tonic", exact: true }).isChecked(),
+      true,
+    );
+    assert.equal(
+      await full.getByRole("checkbox", { name: "Gin lemon", exact: true }).isChecked(),
+      true,
+    );
+    assert.equal(
+      await full.getByRole("checkbox", { name: "Birra media", exact: true }).isChecked(),
+      false,
+    );
+    await f.page.keyboard.press("Escape");
+    assert.equal(await full.isVisible(), false);
+    await row.getByRole("button", { name: "Vino", exact: true }).click();
+    assert.equal(
+      await row.getByRole("button", { name: "Vino", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    const wineMenu = await openDrinks(f.page);
+    assert.equal(
+      await wineMenu.getByRole("checkbox", { name: "Calice di vino", exact: true }).isChecked(),
+      true,
+    );
+    await f.page.keyboard.press("Escape");
+    await row.getByRole("button", { name: "Tutti", exact: true }).click();
+    assert.equal(
+      await row.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("quick drink chips and their screen-reader labels follow the English language choice", async () => {
+  const f = await fixture({ width: 393, height: 852 });
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/");
+    await f.page.locator(".map__lang .lang-menu__button").click();
+    await f.page.locator(".map__lang").getByRole("button", { name: "English" }).click();
+    await f.page.waitForFunction(() => document.documentElement.lang === "en");
+    const row = f.page.getByRole("group", { name: "Filter map by drink" });
+    assert.equal(
+      await row.getByRole("button", { name: "Spritz", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.equal(await row.getByRole("button", { name: "All", exact: true }).count(), 1);
+    assert.equal(await row.getByRole("button", { name: "Beer", exact: true }).count(), 1);
+    assert.equal(await row.getByRole("button", { name: "Wine", exact: true }).count(), 1);
+    const more = row.getByRole("button", { name: "More drinks. Selection: Spritz" });
+    await more.click();
+    const full = f.page.getByRole("group", { name: "Drinks" });
+    assert.equal(await full.getByRole("checkbox", { name: "Medium beer" }).count(), 1);
+    assert.equal(await full.getByRole("button", { name: "All", exact: true }).count(), 1);
+    await full.getByRole("button", { name: "All", exact: true }).click();
+    assert.equal(await row.getByRole("button", { name: "More drinks. Selection: All" }).count(), 1);
+    assert.equal(
+      await row.getByRole("button", { name: "All", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("fresh Spritz view does not invent a price when only an uncategorized menu is sourced", async () => {
+  const options = { menu: true, uncategorized: true, noLegacyPrices: true };
+  const f = await fixture({ width: 393, height: 852 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const row = f.page.getByRole("group", { name: "Filtra la mappa per drink" });
+    assert.equal(
+      await row.getByRole("button", { name: "Spritz", exact: true }).getAttribute("aria-pressed"),
+      "true",
+    );
+    await f.page.waitForFunction(() =>
+      /0\/\d+ con prezzo/.test(
+        document.querySelector('[data-testid="map-status"]')?.textContent ?? "",
+      ),
+    );
+    assert.equal(await f.page.locator("section.map").getAttribute("data-prices-shown"), "");
+    await row.getByRole("button", { name: "Tutti", exact: true }).click();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
+    );
+    assert.match(await f.page.locator("section.map").getAttribute("data-prices-shown"), /1 VOCE/);
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("production mobile entry renders chips and preserves venue route across reload and close", async () => {
   const f = await fixture();
   try {
@@ -323,10 +478,8 @@ test("production mobile entry renders chips and preserves venue route across rel
     const name = f.page.locator("h2.scontrino__name");
     await name.waitFor();
     assert.equal(await name.textContent(), "Locale di prova");
-    assert.match(
-      await f.page.locator(".mobile-price--featured").innerText(),
-      /Birra media[\s\S]*5,00/,
-    );
+    assert.match(await f.page.locator(".mobile-price--featured").innerText(), /Spritz[\s\S]*5,50/);
+    assert.match(await f.page.locator(".prices").innerText(), /Birra media[\s\S]*5,00/);
     const photo = f.page.locator(".mobile-price--featured img");
     assert.equal(await photo.evaluate((img) => img.complete && img.naturalWidth > 0), true);
     await f.page.reload();
@@ -357,7 +510,7 @@ test("production mobile entry renders chips and preserves venue route across rel
     assert.equal(await chips.getByRole("checkbox").count(), 9);
     assert.equal(
       await chips.getByRole("checkbox", { name: "Birra media", exact: true }).isChecked(),
-      true,
+      false,
     );
     assert.equal(
       await chips
@@ -368,6 +521,20 @@ test("production mobile entry renders chips and preserves venue route across rel
     assert.equal(
       await chips.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
       "false",
+    );
+    assert.equal(
+      await chips.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
+      true,
+    );
+    await f.page.locator(".mobile-drink-menu__button").click();
+    await f.page
+      .getByRole("group", { name: "Filtra la mappa per drink" })
+      .getByRole("button", { name: "Birra", exact: true })
+      .click();
+    await openDrinks(f.page);
+    assert.equal(
+      await chips.getByRole("checkbox", { name: "Birra media", exact: true }).isChecked(),
+      true,
     );
     assert.equal(
       await chips.getByRole("checkbox", { name: "Spritz", exact: true }).isChecked(),
@@ -570,6 +737,10 @@ test("a dense priced dot opens its own venue and retains the exact viewed price 
   const f = await fixture({ width: 393, height: 852 }, { densePrices: true });
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page
+      .getByRole("group", { name: "Filtra la mappa per drink" })
+      .getByRole("button", { name: "Birra", exact: true })
+      .click();
     const menu = await openDrinks(f.page);
     await menu.getByText("Spritz", { exact: true }).click();
     await menu.getByText("Birra media", { exact: true }).click();
@@ -785,7 +956,7 @@ test("orange mobile controls retain readable selected, unselected and focused dr
     const strip = await openDrinks(f.page);
     await strip.waitFor();
     assert.equal(
-      await f.page.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
+      await strip.getByRole("button", { name: "Tutti", exact: true }).getAttribute("aria-pressed"),
       "false",
     );
     await strip.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
@@ -862,9 +1033,9 @@ test("empty menu-linked customer section does not deny an existing legacy price"
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
     await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
-    await f.page.locator(".prices .price").first().waitFor();
+    await f.page.locator(".prices .price").filter({ hasText: "Birra media" }).first().waitFor();
     assert.match(
-      await f.page.locator(".prices .price").first().innerText(),
+      await f.page.locator(".prices .price").filter({ hasText: "Birra media" }).first().innerText(),
       /Birra media[\s\S]*5,00/,
     );
     const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
@@ -976,19 +1147,7 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     assert.ok(await menu.locator('a[href="https://official.fixture.test/menu"]').count());
     await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
     await openDrinks(f.page);
-    const spritzResponse = f.page.waitForResponse(
-      (response) => {
-        const url = new URL(response.url());
-        return (
-          /^\/api\/mobile\/v2\/menu\/cells\//.test(url.pathname) &&
-          url.searchParams.get("categories") === "spritz" &&
-          response.status() === 200
-        );
-      },
-      { timeout: 30000 },
-    );
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
-    await spritzResponse;
     await f.page.waitForFunction(
       () =>
         !document
@@ -1056,21 +1215,18 @@ test("a stale identity failure cannot discard a successful new selected drink", 
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
     );
     assert.equal(typeof options.releaseOldIdentity, "function");
-    const sampled = f.page.waitForResponse(
+    const staleResponse = f.page.waitForResponse(
       (response) =>
-        response.url().includes("/api/mobile/v2/menu/cells/u0nd9?categories=spritz") &&
-        response.status() === 200,
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
+        !new URL(response.url()).searchParams.get("categories") &&
+        response.status() === 503,
       { timeout: 8000 },
     );
     const drinks = await openDrinks(f.page);
     await drinks.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
-    await sampled.catch((error) => {
-      throw new Error(`Fresh Spritz response missing: ${JSON.stringify(options.cellRequests)}`, {
-        cause: error,
-      });
-    });
-    await f.page.getByTestId("drink-summary").getByText("Spritz").waitFor();
+    assert.match(await f.page.getByTestId("drink-summary").textContent(), /Spritz/);
     options.releaseOldIdentity();
+    await staleResponse;
     await f.page
       .waitForFunction(
         () =>

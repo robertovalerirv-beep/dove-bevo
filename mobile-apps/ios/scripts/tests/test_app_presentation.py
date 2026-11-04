@@ -10,13 +10,15 @@ class AppPresentationGuards(unittest.TestCase):
         source = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
         self.assertIn("verifyLiveVenueAndPriceFormReadOnly(venueName: publicName)", source)
         flow = source.split("private func verifyLiveVenueAndPriceFormReadOnly", 1)[1].split("private func ordinaryDecimalKeyboard", 1)[0]
-        for required in ['website.buttons["Aggiungi un prezzo qui"]', 'website.buttons["Birra media"]',
+        for required in ['website.buttons["Aggiungi un prezzo qui"]', 'let categoryLabel = NSPredicate(format: "label == %@", "Birra media")',
                          'app.textFields["Prezzo in euro"]', 'website.buttons["Salva"]', "XCTAssertFalse(submit.isEnabled",
                          "visibleAboveKeyboard(price", "visibleAboveKeyboard(submit", "ordinaryDecimalKeyboard()",
                          'DoveBevo-live-venue-detail-read-only', 'DoveBevo-live-price-form-empty-read-only',
                          'DoveBevo-live-price-field-with-keyboard-read-only', 'DoveBevo-live-price-action-with-keyboard-read-only',
                          "closeForm.tap()", 'website.links["Indicazioni"].exists']:
             self.assertIn(required, flow)
+        self.assertIn('app.buttons.matching(categoryLabel)', flow)
+        self.assertIn('XCTFail("The native drink picker must expose a tappable Birra media option")', flow)
         for forbidden in ["typeText(", "submit.tap()", 'buttons["Confermo"].tap()', ".seen__price", "coordinate("]:
             self.assertNotIn(forbidden, flow)
         keyboard = source.split("private func ordinaryDecimalKeyboard", 1)[1].split("private func visibleAboveKeyboard", 1)[0]

@@ -553,8 +553,15 @@ final class BrowserSmokeTests: XCTestCase {
         // The venue is already selected. Choosing a fixed catalogue category
         // only opens its empty form; never tap a one-touch public price chip.
         XCTAssertTrue(app.staticTexts["Che cosa hai preso?"].waitForExistence(timeout: 10))
-        let category = website.buttons["Birra media"]
-        XCTAssertTrue(category.isHittable)
+        // iOS presents this HTML select as a native picker above the WebView.
+        // Choose its visible option, not the obscured underlying DOM button.
+        let categoryLabel = NSPredicate(format: "label == %@", "Birra media")
+        let category = app.buttons.matching(categoryLabel).allElementsBoundByIndex.first(where: { $0.isHittable })
+            ?? app.staticTexts.matching(categoryLabel).allElementsBoundByIndex.first(where: { $0.isHittable })
+        guard let category else {
+            XCTFail("The native drink picker must expose a tappable Birra media option")
+            return
+        }
         category.tap()
         let price = app.textFields["Prezzo in euro"]
         XCTAssertTrue(price.waitForExistence(timeout: 10))

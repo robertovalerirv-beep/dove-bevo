@@ -368,7 +368,7 @@
       "id": "friends-milano-20261104-023",
       "name": "LOST IN MOSAIC",
       "price_context": "regular",
-      "serving_label": "0,44 CL",
+      "serving_label": null,
       "serving_ml": null,
       "source_id": "src-friends-milano-53e8eacb72d7",
       "venue_key": "n4449004403"

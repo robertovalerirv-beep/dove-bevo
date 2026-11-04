@@ -36,7 +36,8 @@ def fixture():
     report = {"schema_version": 1, "purpose": "review_only_existing_italian_venues",
               "queue_sha256": hashlib.sha256(queue).hexdigest(),
               "queue_inventory_complete": False, "selected_venues": len(records),
-              "publication_blocked": True, "public_imports": 0, "records": records}
+              "publication_blocked": True, "public_imports": 0,
+              "page_complete": True, "records": records}
     static = {"c": [[CITY, "Milano"]],
               "v": [[r["key"], r["name"], 2, LAT, LON, "Via Uno 1", 0] for r in rows]}
     return queue, report, static
@@ -101,6 +102,17 @@ class RevalidatorTests(unittest.TestCase):
         self.assertFalse(result["complete"])
         self.assertEqual(result["candidates"], [])
         self.assertIn("queue_report_coverage_incomplete", result["errors"])
+
+    def test_report_page_requires_explicit_true(self):
+        queue, report, static = fixture()
+        for bad in (False, None, "true", 1):
+            with self.subTest(page_complete=bad):
+                report["page_complete"] = bad
+                with self.assertRaisesRegex(review.Held, "incomplete_report_page"):
+                    review.rank(queue, [report], set(), "f" * 64, fetch=self.fetch(static))
+        report.pop("page_complete")
+        with self.assertRaisesRegex(review.Held, "incomplete_report_page"):
+            review.rank(queue, [report], set(), "f" * 64, fetch=self.fetch(static))
 
     def test_deterministic_read_only_result_and_seed_integrity(self):
         queue, report, static = fixture()

@@ -17,6 +17,12 @@ The report reader uses the matching menu-candidates-sample-YYYYMMDD-final
 directory for the first 30 venues and menu-candidates-YYYYMMDD-offsetN
 directories for the remaining pages. It requires the exact original queue
 hash, unique records, a full queue cohort, and a stable public data version.
+Every report page must explicitly declare `page_complete: true`; missing or
+malformed completion markers fail closed before any candidate is ranked.
+The archived 20261103 sample-final report predates this crawler marker, so the
+example command currently returns `incomplete_report_page`. Re-run that page
+with the current crawler into a separate evidence directory, or collect a fresh
+cohort; do not patch the archived report or infer completion from its count.
 The current seed digest is included so a later run can detect a changed seed
 snapshot. An unavailable public cell or a changing data version clears the
 shortlist and makes the command fail.

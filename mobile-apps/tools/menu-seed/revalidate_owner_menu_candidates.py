@@ -167,7 +167,7 @@ def rank(queue_raw: bytes, reports: list[dict], seeded: set[str], seed_digest: s
                 or type(report.get("selected_venues")) is not int
                 or report["selected_venues"] != len(records)):
             raise Held("invalid_report_records")
-        if report.get("page_complete") is False:
+        if report.get("page_complete") is not True:
             raise Held("incomplete_report_page")
         for record in records:
             if not isinstance(record, dict):

@@ -54,10 +54,10 @@ public final class DiscoveryRuntimeTest {
         onMain(()->{assertNotNull(activity.findViewById(R.id.discovery_drink));assertTrue(rows().getChildAt(0).getHeight()>0);assertTrue(rows().getChildAt(0).getHeight()<=Math.round(120*activity.getResources().getDisplayMetrics().density));
             assertNull(activity.findViewById(android.R.id.content).findViewWithTag("discovery.categoryCarousel"));
             Spinner dropdown=activity.findViewById(R.id.discovery_drink);
-            dropdown.setSelection(RecommendationDrink.BEER_DRAFT.ordinal());
-            assertEquals("beer_draft",screen.selectedDrink());assertEquals(0,rows().getChildCount());
-            dropdown.setSelection(RecommendationDrink.SPRITZ.ordinal());
-            assertEquals("spritz",screen.selectedDrink());assertEquals(2,rows().getChildCount());});
+            dropdown.setSelection(RecommendationDrink.BEER_DRAFT.ordinal());});
+        onMain(()->{assertEquals("beer_draft",screen.selectedDrink());assertEquals(0,rows().getChildCount());
+            ((Spinner)activity.findViewById(R.id.discovery_drink)).setSelection(RecommendationDrink.SPRITZ.ordinal());});
+        onMain(()->{assertEquals("spritz",screen.selectedDrink());assertEquals(2,rows().getChildCount());});
         onMain(()->{
             Spinner drinks=activity.findViewById(R.id.discovery_drink);
             assertEquals(9,drinks.getCount());assertEquals("Scegli cosa bere",drinks.getContentDescription());

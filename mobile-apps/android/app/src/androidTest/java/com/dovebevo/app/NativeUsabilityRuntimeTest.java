@@ -104,6 +104,7 @@ public final class NativeUsabilityRuntimeTest {
     private WebViewClient actualClient;
     private SavedVenueStore store;
     private SavedVenuesUi savedUi;
+    private ExactVoteAreaScreen fixtureAreaScreen;
     private File fixtureDirectory;
     private SharedPreferences rules;
     private String oldRulesVersion;
@@ -163,6 +164,18 @@ public final class NativeUsabilityRuntimeTest {
                         callback -> invoke("readSavedVenue", new Class<?>[]{Consumer.class}, callback),
                         url -> invoke("navigate", new Class<?>[]{String.class}, url));
                 set("savedVenues", savedUi);
+                // The owned shell needs the area destination that production
+                // mounts; its transport cannot reach the public network.
+                fixtureAreaScreen = new ExactVoteAreaScreen(activity,
+                        new ExactVoteAreaClient((url, max, call) -> {
+                            throw new IOException("Owned recommendation fixture has no network");
+                        }), url -> invoke("navigate", new Class<?>[]{String.class}, url),
+                        () -> invoke("openMapSearch"),
+                        () -> (Boolean) get("foreground"),
+                        java.util.concurrent.Executors.newSingleThreadExecutor());
+                set("areaScreen", fixtureAreaScreen);
+                content.addView(fixtureAreaScreen.view(), new FrameLayout.LayoutParams(-1, -1));
+                fixtureAreaScreen.view().setVisibility(View.GONE);
                 invoke("updateToolbar");
             } catch (Exception error) { throw new AssertionError(error); }
         });
@@ -172,6 +185,11 @@ public final class NativeUsabilityRuntimeTest {
         release.countDown();
         if (activity != null) onMain(() -> {
             if (savedUi != null) savedUi.dismiss();
+            FavoritesScreen currentFavorites = (FavoritesScreen) get("favorites");
+            if (currentFavorites != null) currentFavorites.close();
+            ExactVoteAreaScreen currentArea = (ExactVoteAreaScreen) get("areaScreen");
+            if (currentArea != null && currentArea != fixtureAreaScreen) currentArea.close();
+            if (fixtureAreaScreen != null) fixtureAreaScreen.close();
             if (web != null) { web.stopLoading(); web.destroy(); }
             try { set("website", null); } catch (Exception error) { throw new AssertionError(error); }
             ServiceWorkerController.getInstance().getServiceWorkerWebSettings().setBlockNetworkLoads(priorWorkerBlock);
@@ -313,6 +331,7 @@ public final class NativeUsabilityRuntimeTest {
     @Test public void communityDestinationRetainsSelectedAreaAcrossFavouritesAndRestoration() throws Exception {
         DiscoveryArea selected=new DiscoveryArea(45.4642,9.19,14);
         onMain(()->{
+            installOwnedFavorites();
             ExactVoteAreaScreen old=(ExactVoteAreaScreen)get("areaScreen");
             ((FrameLayout)get("content")).removeView(old.view());old.close();
             ExactVoteAreaScreen owned=new ExactVoteAreaScreen(activity,
@@ -360,6 +379,7 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals("true",readyResult.get());
         DiscoveryArea expected=new DiscoveryArea(45.4642,9.19,14);
         onMain(()->{
+            installOwnedFavorites();
             ExactVoteAreaScreen old=(ExactVoteAreaScreen)get("areaScreen");
             ((FrameLayout)get("content")).removeView(old.view());old.close();
             ExactVoteAreaScreen owned=new ExactVoteAreaScreen(activity,
@@ -381,6 +401,7 @@ public final class NativeUsabilityRuntimeTest {
     @Test public void failedMapCaptureDoesNotReusePreviousCityVotes() throws Exception {
         DiscoveryArea oldCity=new DiscoveryArea(45.4642,9.19,14);
         onMain(()->{
+            installOwnedFavorites();
             set("selectedArea",oldCity);
             invoke("showMap");
             set("failed",true);
@@ -423,6 +444,7 @@ public final class NativeUsabilityRuntimeTest {
         });
         navigate(ONE);
         WebView original = web;
+        int[] index = new int[1];
         onMain(() -> {
             assertNull(activity.findViewById(R.id.save_venue));
             assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
@@ -435,9 +457,13 @@ public final class NativeUsabilityRuntimeTest {
                     new FavoritesLoader(client, task -> activity.runOnUiThread(task)));
             set("favorites", screen); ((FrameLayout)get("content")).addView(screen.view());
             screen.view().setVisibility(View.GONE);
-            int index = web.copyBackForwardList().getCurrentIndex();
+            index[0] = web.copyBackForwardList().getCurrentIndex();
             activity.findViewById(R.id.favorites_destination).performClick();
-            assertSame(screen, get("favorites")); assertTrue((Boolean)get("favoritesVisible"));
+        });
+        await(() -> (Boolean) get("favoritesVisible"));
+        onMain(() -> {
+            assertTrue((Boolean)get("favoritesVisible"));
+            assertEquals(View.VISIBLE, ((FavoritesScreen)get("favorites")).view().getVisibility());
             assertTrue(activity.findViewById(R.id.favorites_destination).isSelected());
             assertNull(activity.findViewById(R.id.save_venue));
             assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
@@ -447,7 +473,7 @@ public final class NativeUsabilityRuntimeTest {
             assertTrue("Preferiti refresh is in the top overflow",browserMenu().getMenu().findItem(R.id.refresh).isEnabled());
             assertTrue(browserMenu().getMenu().performIdentifierAction(R.id.refresh,0));
             activity.findViewById(R.id.map_destination).performClick();
-            assertSame(original, get("website")); assertEquals(index, web.copyBackForwardList().getCurrentIndex());
+            assertSame(original, get("website")); assertEquals(index[0], web.copyBackForwardList().getCurrentIndex());
             assertEquals(APP_ONE, web.getUrl()); assertFalse((Boolean)get("favoritesVisible"));
             DiscoveryScreen home=new DiscoveryScreen(activity,
                     url->{invoke("showMap");invoke("navigate",new Class<?>[]{String.class},url);},
@@ -501,14 +527,16 @@ public final class NativeUsabilityRuntimeTest {
 
     @Test public void staleSearchFailureCannotSurfaceAfterDestinationNavigationOrBackgroundChange() throws Exception {
         navigate(ONE);
+        String[] captured = new String[1];
+        long[] tokens = new long[3];
+        Class<?>[] signature = {WebView.class, String.class, long.class, long.class, long.class};
         onMain(() -> {
             assertEquals(APP_ONE, web.getUrl());
-            String captured = web.getUrl();
-            long search = (Long) get("searchCallbackGeneration");
-            long document = (Long) get("documentCheckGeneration");
-            long venue = (Long) get("venueCaptureEpoch");
-            Class<?>[] signature = {WebView.class, String.class, long.class, long.class, long.class};
-            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
+            captured[0] = web.getUrl();
+            tokens[0] = (Long) get("searchCallbackGeneration");
+            tokens[1] = (Long) get("documentCheckGeneration");
+            tokens[2] = (Long) get("venueCaptureEpoch");
+            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured[0], tokens[0], tokens[1], tokens[2]));
 
             FavoritesScreen screen = new FavoritesScreen(activity, store,
                     url -> invoke("navigate", new Class<?>[]{String.class}, url),
@@ -520,26 +548,29 @@ public final class NativeUsabilityRuntimeTest {
             ((FrameLayout) get("content")).addView(screen.view());
             screen.view().setVisibility(View.GONE);
             activity.findViewById(R.id.favorites_destination).performClick();
+        });
+        await(() -> (Boolean) get("favoritesVisible"));
+        onMain(() -> {
             assertTrue((Boolean) get("favoritesVisible"));
-            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured[0], tokens[0], tokens[1], tokens[2]));
             activity.findViewById(R.id.map_destination).performClick();
-            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, search, document, venue));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured[0], tokens[0], tokens[1], tokens[2]));
 
             long currentSearch = (Long) get("searchCallbackGeneration");
             long currentVenue = (Long) get("venueCaptureEpoch");
-            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
-            set("documentCheckGeneration", document + 1);
-            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
-            set("documentCheckGeneration", document);
+            assertTrue((Boolean) invoke("searchFailureIsCurrent", signature, web, captured[0], currentSearch, tokens[1], currentVenue));
+            set("documentCheckGeneration", tokens[1] + 1);
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured[0], currentSearch, tokens[1], currentVenue));
+            set("documentCheckGeneration", tokens[1]);
             set("foreground", false);
-            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured[0], currentSearch, tokens[1], currentVenue));
             set("foreground", true);
             set("searchPending", true);
             set("searchOpening", true);
             invoke("onPause");
             assertFalse("Backgrounding must cancel the queued search", (Boolean) get("searchPending"));
             assertFalse((Boolean) get("searchOpening"));
-            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured, currentSearch, document, currentVenue));
+            assertFalse((Boolean) invoke("searchFailureIsCurrent", signature, web, captured[0], currentSearch, tokens[1], currentVenue));
             invoke("onResume");
             assertFalse("Resume must require a fresh Cerca tap", (Boolean) get("searchPending"));
         });
@@ -792,25 +823,30 @@ public final class NativeUsabilityRuntimeTest {
         WebView original=web;
         AtomicInteger publicReads=new AtomicInteger();
         AtomicReference<FavoritesScreen> nativeFavorites=new AtomicReference<>();
+        int[] history=new int[2];
         onMain(()->{
             FavoritesLoader loader=new FavoritesLoader(new FavoritePricesClient((url,max,call)->{publicReads.incrementAndGet();throw new IOException("Owned empty-list transport must not be used");},()->"2026-10-29"),task->activity.runOnUiThread(task));
             FavoritesScreen screen=new FavoritesScreen(activity,store,url->invoke("navigate",new Class<?>[]{String.class},url),()->(Boolean)get("foreground"),loader);
             nativeFavorites.set(screen);set("favorites",screen);((FrameLayout)get("content")).addView(screen.view(),new FrameLayout.LayoutParams(-1,-1));screen.view().setVisibility(View.GONE);
-            int historySize=web.copyBackForwardList().getSize(),historyIndex=web.copyBackForwardList().getCurrentIndex();
+            history[0]=web.copyBackForwardList().getSize();history[1]=web.copyBackForwardList().getCurrentIndex();
             invoke("showFavorites");
+        });
+        await(()->(Boolean)get("favoritesVisible"));
+        onMain(()->{
+            FavoritesScreen screen=nativeFavorites.get();
             assertTrue((Boolean)get("favoritesVisible"));assertEquals(View.VISIBLE,screen.view().getVisibility());assertEquals(View.GONE,web.getVisibility());
             assertEquals(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS,web.getImportantForAccessibility());assertNull(invoke("eligibleSavedVenue"));
             // A genuine app-client callback must update browser state without exposing its hidden document.
             actualClient.onPageFinished(web,APP_ONE);assertEquals(View.GONE,web.getVisibility());
             actualClient.onReceivedHttpError(web,mainFrameRequest(APP_ONE),new WebResourceResponse("text/html","UTF-8",500,"Service Unavailable",Collections.emptyMap(),new ByteArrayInputStream(new byte[0])));
             assertTrue((Boolean)get("failed"));assertEquals(View.GONE,((View)get("errorPanel")).getVisibility());assertEquals(View.VISIBLE,screen.view().getVisibility());
-            assertEquals(historySize,web.copyBackForwardList().getSize());assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
+            assertEquals(history[0],web.copyBackForwardList().getSize());assertEquals(history[1],web.copyBackForwardList().getCurrentIndex());
             invoke("goBack"); // System Back selects Mappa before touching retained browser history.
             assertFalse((Boolean)get("favoritesVisible"));assertEquals(View.GONE,screen.view().getVisibility());assertEquals(View.VISIBLE,((View)get("errorPanel")).getVisibility());
-            assertSame(original,get("website"));assertEquals(historySize,web.copyBackForwardList().getSize());assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
+            assertSame(original,get("website"));assertEquals(history[0],web.copyBackForwardList().getSize());assertEquals(history[1],web.copyBackForwardList().getCurrentIndex());
             invoke("showFavorites"); // An already presented map failure must also stay behind the selected native destination.
             assertEquals(View.GONE,((View)get("errorPanel")).getVisibility());assertEquals(View.VISIBLE,screen.view().getVisibility());assertTrue((Boolean)get("failed"));
-            invoke("goBack");assertEquals(View.VISIBLE,((View)get("errorPanel")).getVisibility());assertEquals(historyIndex,web.copyBackForwardList().getCurrentIndex());
+            invoke("goBack");assertEquals(View.VISIBLE,((View)get("errorPanel")).getVisibility());assertEquals(history[1],web.copyBackForwardList().getCurrentIndex());
             nativeFavorites.get().close();set("favorites",null);
         });
         assertEquals(0,publicReads.get());
@@ -1367,6 +1403,18 @@ public final class NativeUsabilityRuntimeTest {
     private Object invoke(String name, Class<?>[] types, Object... values) {
         try { Method method = MainActivity.class.getDeclaredMethod(name, types); method.setAccessible(true); return method.invoke(activity, values); }
         catch (ReflectiveOperationException error) { throw new AssertionError(error); }
+    }
+
+    private void installOwnedFavorites() {
+        FavoritesScreen owned = new FavoritesScreen(activity, store,
+                url -> invoke("navigate", new Class<?>[]{String.class}, url),
+                () -> (Boolean) get("foreground"),
+                new FavoritesLoader(new FavoritePricesClient((url, max, call) -> {
+                    throw new IOException("Owned favourites fixture has no network");
+                }, () -> "2026-11-04"), task -> activity.runOnUiThread(task)));
+        set("favorites", owned);
+        ((FrameLayout) get("content")).addView(owned.view(), new FrameLayout.LayoutParams(-1, -1));
+        owned.view().setVisibility(View.GONE);
     }
 
     private void onMain(Runnable action) {

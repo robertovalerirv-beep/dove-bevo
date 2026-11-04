@@ -293,7 +293,10 @@ export function transformMap(source, styleURLExpression) {
       const hits = this.map.queryRenderedFeatures(event.point, { layers: ["venue-price", "price-hit", "priced-dot", "venue-hit"] });
       const priceLabel = hits.find((hit) => hit.layer.id === "venue-price");
       const pricedDot = hits.find((hit) => hit.layer.id === "priced-dot");
-      const target = (this.map.getZoom() < 14 ? pricedDot ?? priceLabel : priceLabel ?? pricedDot) ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
+      const labelCoordinates = priceLabel?.geometry.type === "Point" ? priceLabel.geometry.coordinates : null;
+      const labelAnchor = labelCoordinates ? this.map.project([Number(labelCoordinates[0]), Number(labelCoordinates[1])]) : null;
+      const onVisibleLabelHead = labelAnchor !== null && event.point.y < labelAnchor.y - 12;
+      const target = (onVisibleLabelHead ? priceLabel : pricedDot ?? priceLabel) ?? hits.find((hit) => hit.layer.id === "price-hit") ?? hits[0];
       if (target?.properties) listener(String(target.properties.key), String(target.properties.cell));
     });
   }` +

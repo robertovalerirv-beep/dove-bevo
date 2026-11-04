@@ -21,7 +21,8 @@ const results = input.cases.map((scenario) => {
     const s = Object.assign({
         href: 'https://www.dovebevo.com/bar/n123?c=u0nd9',
         name: 'Caffè Centrale 🍹', selectedKey: 'n123',
-        mapCount: 1, sheetCount: 1, headingCount: 1,
+        mapCount: 1, sheetCount: 1, paperCount: 1, headingCount: 1,
+        headingShape: 'direct',
         bare: true, modal: true, connected: true, hidden: false,
         inert: false, hiddenHeading: false, display: 'block',
         visibility: 'visible', opacity: '1', width: 300, height: 40,
@@ -37,6 +38,12 @@ const results = input.cases.map((scenario) => {
         getBoundingClientRect: () => rect(s.headingY, s.width, s.height),
         getClientRects: () => Array(s.clientRects).fill(1)
     });
+    const paper = Object.freeze({ querySelectorAll: (selector) => {
+        if (selector !== ':scope > h2.scontrino__name, :scope > header.mobile-venue__identity > h2.scontrino__name') {
+            throw new Error('unexpected paper heading selector');
+        }
+        return Array(s.headingCount).fill(heading);
+    }});
     const dialog = Object.freeze({
         isConnected: s.connected, parentElement: body,
         matches: (selector) => selector === ':modal' ? s.modal : s.bare,
@@ -48,10 +55,13 @@ const results = input.cases.map((scenario) => {
         getBoundingClientRect: () => rect(s.dialogY, 350, 500),
         getClientRects: () => [1],
         querySelectorAll: (selector) => {
-            if (selector !== ':scope > .sheet__body > .scontrino > .scontrino__paper > h2.scontrino__name') {
-                throw new Error('unexpected heading selector');
+            if (selector === ':scope > .sheet__body > .scontrino > .scontrino__paper') {
+                return Array(s.paperCount).fill(paper);
             }
-            return Array(s.headingCount).fill(heading);
+            if (selector === ':scope > .sheet__body > .scontrino > .scontrino__paper > h2.scontrino__name') {
+                return s.headingShape === 'direct' ? Array(s.headingCount).fill(heading) : [];
+            }
+            throw new Error('unexpected dialog selector');
         }
     });
     const map = Object.freeze({ getAttribute: (attribute) => {
@@ -163,9 +173,20 @@ class VenueNameReaderTests(unittest.TestCase):
     def test_loading_duplicate_hidden_inert_and_overlaid_sheets_reject(self):
         self.assert_rejected([
             {"bare": False}, {"modal": False}, {"sheetCount": 0}, {"sheetCount": 2},
-            {"headingCount": 0}, {"headingCount": 2}, {"hidden": True}, {"hiddenHeading": True},
+            {"paperCount": 0}, {"paperCount": 2}, {"headingCount": 0}, {"headingCount": 2},
+            {"hidden": True}, {"hiddenHeading": True},
             {"inert": True}, {"connected": False}, {"display": "none"}, {"visibility": "hidden"},
             {"opacity": "0"}, {"width": 0}, {"height": 0}, {"clientRects": 0}, {"dialogY": -1000},
+        ])
+
+    def test_focused_saved_drink_accepts_current_italian_header_without_weaker_identity(self):
+        focused = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=beer_draft&hh=0"
+        value = self.read([{"href": focused, "headingShape": "nested"}])[0]["value"]
+        self.assertEqual(value, {"href": focused, "name": "Caffè Centrale 🍹", "selectedKey": "n123"})
+        self.assert_rejected([
+            {"href": focused, "headingShape": "nested", "selectedKey": "w456"},
+            {"href": focused, "headingShape": "nested", "headingCount": 2},
+            {"href": focused, "headingShape": "nested", "paperCount": 2},
         ])
 
     def test_scrolled_heading_is_accepted_without_a_viewport_intersection_requirement(self):

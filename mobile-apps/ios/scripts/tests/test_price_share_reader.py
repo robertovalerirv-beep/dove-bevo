@@ -17,15 +17,19 @@ const vm = require('node:vm');
 const {URL} = require('node:url');
 const input = JSON.parse(require('node:fs').readFileSync(0, 'utf8'));
 const results = input.cases.map((scenario) => {
-  const s = Object.assign({href:'https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9',name:'Actual venue',selected:'n123',marker:true,priceCount:1,hidden:false,priceY:100,modal:true,dialogCount:1,priceKey:'n123',priceName:'Actual venue',version:'1',provenance:'Da menu online · Fonte verificata il 2026-11-02'},scenario);
+  const s = Object.assign({href:'https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9',name:'Actual venue',selected:'n123',marker:true,paperCount:1,headingCount:1,priceCount:1,hidden:false,priceY:100,modal:true,dialogCount:1,priceKey:'n123',priceName:'Actual venue',version:'1',provenance:'Da menu online · Fonte verificata il 2026-11-02'},scenario);
   const rect=(y)=>({x:0,y,left:0,top:y,right:300,bottom:y+100,width:300,height:100});
   const body={parentElement:null,getAttribute:()=>null,closest:()=>null};
   const heading={parentElement:body,isConnected:true,textContent:s.name,closest:()=>null,getBoundingClientRect:()=>rect(20),getClientRects:()=>[1]};
+  const paper={querySelectorAll:(selector)=>{
+    if(selector===':scope > h2.scontrino__name, :scope > header.mobile-venue__identity > h2.scontrino__name')return Array(s.headingCount).fill(heading);
+    throw new Error('unexpected paper selector');
+  }};
   let dialog;
   const attributes={'data-dovebevo-share':'1','data-version':s.version,'data-venue':s.priceKey,'data-venue-name':s.priceName,'data-drink':'spritz','data-drink-name':'Spritz','data-hh':'1','data-amount-minor':'650','data-currency':'GBP','data-serving':'Drink singolo','data-provenance':s.provenance,'data-confirmations':'0','data-tier':'affare','data-location':'London'};
   const price={parentElement:body,isConnected:true,closest:()=>s.hidden?body:null,getAttribute:(key)=>attributes[key]??null,getBoundingClientRect:()=>rect(s.priceY),getClientRects:()=>[1]};
   dialog={parentElement:body,isConnected:true,closest:()=>null,matches:(selector)=>selector===':modal'?s.modal:true,getAttribute:()=>s.name,getBoundingClientRect:()=>rect(0),getClientRects:()=>[1],querySelectorAll:(selector)=>{
-    if(selector.includes('h2.scontrino__name'))return[heading];
+    if(selector===':scope > .sheet__body > .scontrino > .scontrino__paper')return Array(s.paperCount).fill(paper);
     if(selector==="[data-dovebevo-share='1']")return Array(s.priceCount).fill(price);
     throw new Error('unexpected modal selector');
   }};
@@ -74,7 +78,8 @@ class PriceShareReaderTests(unittest.TestCase):
         scenarios = [{"href":"https://evil.invalid/mobile/?path=%2Fbar%2Fn123&c=u0nd9"},
                      {"href":"https://www.dovebevo.com/bar/n123?c=u0nd9"},
                      {"marker":False}, {"selected":"n124"}, {"priceKey":"n124"}, {"priceName":"Wrong venue"},
-                     {"hidden":True}, {"priceCount":0}, {"priceCount":2}, {"priceY":800},
+                     {"hidden":True}, {"paperCount":0}, {"paperCount":2}, {"headingCount":0},
+                     {"headingCount":2}, {"priceCount":0}, {"priceCount":2}, {"priceY":800},
                      {"modal":False}, {"dialogCount":2}, {"iframe":True}, {"provenance":"a" * 1025}]
         self.assertEqual(self.run_reader(scenarios), [None] * len(scenarios))
 

@@ -323,6 +323,7 @@ export function CustomerPricesV2({
             Number(menuOfferMatchesFocus(b, focus)) - Number(menuOfferMatchesFocus(a, focus)),
         )
       : offers;
+  const compactMenu = orderedOffers.length > 6;
   const observations = new Map(
     rows
       .filter((row) => row.kind === "menu_offer" && row.offer_id)
@@ -542,89 +543,129 @@ export function CustomerPricesV2({
     );
   }
 
+  function offerRow(offer: MenuOffer, compact: boolean) {
+    const customer = observations.get(offer.id);
+    const exactSaved = offerFocus === offer.id;
+    const categorySaved = focus !== null && menuOfferMatchesFocus(offer, focus);
+    const summary = (
+      <>
+        <span class="mobile-menu-v2__name">
+          {offer.name}
+          <small class="mobile-menu-v2__provenance">Prezzo da menu</small>
+          {exactSaved ? (
+            <small class="mobile-menu-v2__saved">Questo drink è nei tuoi preferiti</small>
+          ) : (
+            categorySaved && (
+              <small class="mobile-menu-v2__saved">
+                Stesso tipo di drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
+              </small>
+            )
+          )}
+        </span>
+        <strong class="mobile-menu-v2__amount">
+          {menuMoney(offer.amount_minor, offer.currency, offer.currency_exponent)}
+        </strong>
+        <span class="mobile-menu-v2__meta">
+          {[
+            offer.serving.label ?? (offer.serving.ml ? `${String(offer.serving.ml)} ml` : ""),
+            offer.context.kind === "happy_hour"
+              ? ["Happy hour", offer.context.condition].filter(Boolean).join(" · ")
+              : offer.context.kind === "conditional"
+                ? offer.context.condition
+                  ? `Solo con: ${offer.context.condition}`
+                  : "Prezzo condizionato"
+                : (offer.context.condition ?? ""),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+      </>
+    );
+    const actions = (
+      <>
+        <a
+          href={offer.source.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="mobile-menu-v2__source"
+        >
+          Menu verificato il {offer.source.checked_on}
+        </a>
+        {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
+          <a
+            href={mobileOfferSaveURL(key, cell, offer.id)}
+            class="btn btn--secondary mobile-menu-v2__save"
+          >
+            Salva questo drink
+          </a>
+        )}
+        {customer && observation(customer)}
+        {loadState === "ready" && (
+          <button
+            type="button"
+            class="btn btn--secondary mobile-customer-v2__update"
+            disabled={resolvingOffer !== null || saving || moreBusy}
+            onClick={() => {
+              void beginOffer(offer);
+            }}
+          >
+            Prezzo diverso? Aggiorna
+          </button>
+        )}
+        {editor?.kind === "menu_offer" && editor.offer.id === offer.id && priceForm}
+      </>
+    );
+    return (
+      <li
+        key={offer.id}
+        class={`mobile-menu-v2__offer${compact ? " mobile-menu-v2__offer--compact" : ""}${exactSaved || categorySaved ? " mobile-menu-v2__offer--focused" : ""}`}
+        data-testid={
+          exactSaved ? "saved-exact-offer" : categorySaved ? "saved-menu-offer" : undefined
+        }
+      >
+        {compact ? (
+          <details class="mobile-menu-v2__offer-details">
+            <summary class="mobile-menu-v2__offer-summary">
+              {summary}
+              <small class="mobile-menu-v2__expand">{english ? "Details" : "Dettagli"}</small>
+            </summary>
+            <div class="mobile-menu-v2__offer-actions">{actions}</div>
+          </details>
+        ) : (
+          <>
+            {summary}
+            {actions}
+          </>
+        )}
+      </li>
+    );
+  }
+
   if (!menu && loadState === "missing") return null;
 
   return (
     <>
       {offers.length > 0 && (
-        <ul class="mobile-menu-v2__offers">
-          {orderedOffers.map((offer) => {
-            const customer = observations.get(offer.id);
-            const exactSaved = offerFocus === offer.id;
-            const categorySaved = focus !== null && menuOfferMatchesFocus(offer, focus);
-            return (
-              <li
-                key={offer.id}
-                class={`mobile-menu-v2__offer${exactSaved || categorySaved ? " mobile-menu-v2__offer--focused" : ""}`}
-                data-testid={
-                  exactSaved ? "saved-exact-offer" : categorySaved ? "saved-menu-offer" : undefined
-                }
-              >
-                <span class="mobile-menu-v2__name">
-                  {offer.name}
-                  <small class="mobile-menu-v2__provenance">Prezzo da menu</small>
-                  {exactSaved ? (
-                    <small class="mobile-menu-v2__saved">Questo drink è nei tuoi preferiti</small>
-                  ) : (
-                    categorySaved && (
-                      <small class="mobile-menu-v2__saved">
-                        Stesso tipo di drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
-                      </small>
-                    )
-                  )}
+        <>
+          <ul class="mobile-menu-v2__offers">
+            {(compactMenu ? orderedOffers.slice(0, 1) : orderedOffers).map((offer) =>
+              offerRow(offer, false),
+            )}
+          </ul>
+          {compactMenu && (
+            <details class="mobile-menu-v2__more-offers">
+              <summary>
+                {english ? "Other menu prices" : "Altri prezzi dal menu"}
+                <span>
+                  {String(orderedOffers.length - 1)} {english ? "drinks" : "drink"}
                 </span>
-                <strong class="mobile-menu-v2__amount">
-                  {menuMoney(offer.amount_minor, offer.currency, offer.currency_exponent)}
-                </strong>
-                <span class="mobile-menu-v2__meta">
-                  {[
-                    offer.serving.label ??
-                      (offer.serving.ml ? `${String(offer.serving.ml)} ml` : ""),
-                    offer.context.kind === "happy_hour"
-                      ? ["Happy hour", offer.context.condition].filter(Boolean).join(" · ")
-                      : offer.context.kind === "conditional"
-                        ? offer.context.condition
-                          ? `Solo con: ${offer.context.condition}`
-                          : "Prezzo condizionato"
-                        : (offer.context.condition ?? ""),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-                <a
-                  href={offer.source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="mobile-menu-v2__source"
-                >
-                  Menu verificato il {offer.source.checked_on}
-                </a>
-                {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
-                  <a
-                    href={mobileOfferSaveURL(key, cell, offer.id)}
-                    class="btn btn--secondary mobile-menu-v2__save"
-                  >
-                    Salva questo drink
-                  </a>
-                )}
-                {customer && observation(customer)}
-                {loadState === "ready" && (
-                  <button
-                    type="button"
-                    class="btn btn--secondary mobile-customer-v2__update"
-                    disabled={resolvingOffer !== null || saving || moreBusy}
-                    onClick={() => {
-                      void beginOffer(offer);
-                    }}
-                  >
-                    Prezzo diverso? Aggiorna
-                  </button>
-                )}
-                {editor?.kind === "menu_offer" && editor.offer.id === offer.id && priceForm}
-              </li>
-            );
-          })}
-        </ul>
+              </summary>
+              <ul class="mobile-menu-v2__offers mobile-menu-v2__offers--compact">
+                {orderedOffers.slice(1).map((offer) => offerRow(offer, true))}
+              </ul>
+            </details>
+          )}
+        </>
       )}
       <section
         class={`mobile-customer-v2${compactNoMenu ? " mobile-customer-v2--compact" : ""}`}

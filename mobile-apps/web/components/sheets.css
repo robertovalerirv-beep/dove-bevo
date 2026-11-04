@@ -940,6 +940,110 @@
   min-height: 48px;
   margin: 9px 0;
 }
+.mobile-menu-v2__more-offers {
+  margin-top: 8px;
+  border: 1px solid var(--line-soft, #e2d3be);
+  border-radius: 14px;
+  background: var(--surface, #fffbf4);
+  overflow: hidden;
+}
+.mobile-menu-v2__more-offers > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 13px;
+  list-style: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+.mobile-menu-v2__more-offers > summary::-webkit-details-marker,
+.mobile-menu-v2__offer-summary::-webkit-details-marker {
+  display: none;
+}
+.mobile-menu-v2__more-offers > summary span {
+  color: var(--ink-muted, #5e554b);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mobile-menu-v2__more-offers > summary span::after,
+.mobile-menu-v2__expand::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 2px 2px 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+.mobile-menu-v2__more-offers[open] > summary span::after,
+.mobile-menu-v2__offer-details[open] .mobile-menu-v2__expand::after {
+  transform: rotate(225deg);
+}
+.mobile-menu-v2__more-offers[open] > summary {
+  border-bottom: 1px solid var(--line-soft, #e2d3be);
+}
+.mobile-menu-v2__offers--compact {
+  max-height: min(50vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 12px 8px;
+}
+.mobile-menu-v2__offer--compact {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft, #e2d3be);
+  border-radius: 0;
+  background: transparent;
+}
+.mobile-menu-v2__offer--compact:last-child {
+  border-bottom: 0;
+}
+.mobile-menu-v2__offer-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  min-height: 64px;
+  padding: 10px 4px;
+  list-style: none;
+  cursor: pointer;
+}
+.mobile-menu-v2__offer-summary .mobile-menu-v2__meta {
+  grid-column: 1;
+}
+.mobile-menu-v2__offer-summary .mobile-menu-v2__provenance {
+  display: inline;
+  margin-left: 5px;
+}
+.mobile-menu-v2__expand {
+  color: var(--spritz-text, #b93a0b);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+.mobile-menu-v2__offer-actions {
+  display: grid;
+  gap: 8px;
+  padding: 0 4px 12px;
+}
+.mobile-menu-v2__offer-actions .mobile-menu-v2__source,
+.mobile-menu-v2__offer-actions .mobile-menu-v2__save {
+  grid-column: auto;
+}
+.mobile-menu-v2__offer-summary:focus-visible,
+.mobile-menu-v2__more-offers > summary:focus-visible {
+  outline: 2px solid var(--spritz-text, #b93a0b);
+  outline-offset: -3px;
+  border-radius: 8px;
+}
 .mobile-menu-v2__fees {
   margin: 15px 0 0;
   padding: 14px;

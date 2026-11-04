@@ -18,6 +18,7 @@ import { seo, seoPages } from "./routes/seo";
 import { session } from "./routes/session";
 import { venues } from "./routes/venues";
 import { mobileRecommendations } from "./routes/mobile-recommendations";
+import { mobileExactDrinkVotes } from "./routes/mobile-exact-drink-votes";
 import { mobilePrices } from "./routes/mobile-prices";
 import { mobileMenuV2 } from "./routes/mobile-menu-v2";
 import {
@@ -50,6 +51,7 @@ app.get("/api/mobile/venues/*", readLimit);
 app.get("/api/mobile/prices/*", readLimit);
 app.get("/api/mobile/v2/menu/*", readLimit);
 app.get("/api/mobile/v2/customer-prices/*", readLimit);
+app.get("/api/mobile/v2/drink-votes/*", readLimit);
 // Website contribution writes need a session (SPEC 9.1; /api/events is exempt by D-06).
 // Apps-only recommendations use their separately validated anonymous installation claim (ADR 0041).
 app.on(
@@ -79,6 +81,7 @@ app.route("/api/venues", venues);
 app.route("/api/reports", reports);
 app.route("/api/events", events);
 app.route("/api/mobile/venues", mobileRecommendations);
+app.route("/api/mobile/v2/drink-votes", mobileExactDrinkVotes);
 app.route("/api/mobile/prices", mobilePrices);
 app.route("/api/mobile/v2/menu", mobileMenuV2);
 app.route("/api/mobile/v2/customer-prices", mobileMenuV2CustomerPrices);

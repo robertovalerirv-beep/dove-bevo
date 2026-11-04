@@ -30,7 +30,12 @@ enum VenueNameReader {
         if (sheets.length !== 1) return null;
         const dialog = sheets[0];
         if (!dialog.matches("dialog.sheet.sheet--bare[open]") || !dialog.matches(":modal")) return null;
-        const headings = dialog.querySelectorAll(":scope > .sheet__body > .scontrino > .scontrino__paper > h2.scontrino__name");
+        // The Italian receipt now groups its title in the identity header;
+        // older receipts and European venues keep the direct h2. Both remain
+        // scoped to the single current modal's single receipt paper.
+        const papers = dialog.querySelectorAll(":scope > .sheet__body > .scontrino > .scontrino__paper");
+        if (papers.length !== 1) return null;
+        const headings = papers[0].querySelectorAll(":scope > h2.scontrino__name, :scope > header.mobile-venue__identity > h2.scontrino__name");
         if (headings.length !== 1) return null;
         const heading = headings[0];
         const rendered = (element) => {
@@ -63,4 +68,35 @@ enum VenueNameReader {
         return { href, name: trimmed, selectedKey: key };
     })()
     """#
+
+    /// Failure telemetry is a fixed, content-free stage code. It is evaluated
+    /// only after a user-initiated read fails; no venue name, key or URL leaves
+    /// the page. The authoritative reader above remains the acceptance gate.
+    static let diagnosticScript = #"""
+    (() => {
+        "use strict";
+        try {
+            if (document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1") return "document";
+            if (!/^\/mobile\/(?:index\.html)?$/.test(location.pathname) ||
+                !new URL(location.href).searchParams.has("path")) return "route";
+            const maps = document.querySelectorAll("section.map[data-selected]");
+            if (maps.length !== 1) return "map";
+            const sheets = document.querySelectorAll("dialog.sheet[open]");
+            if (sheets.length !== 1) return "sheet";
+            const dialog = sheets[0];
+            if (!dialog.matches("dialog.sheet.sheet--bare[open]") || !dialog.matches(":modal")) return "modal";
+            const papers = dialog.querySelectorAll(":scope > .sheet__body > .scontrino > .scontrino__paper");
+            if (papers.length !== 1) return "paper";
+            const headings = papers[0].querySelectorAll(":scope > h2.scontrino__name, :scope > header.mobile-venue__identity > h2.scontrino__name");
+            if (headings.length !== 1) return "heading";
+            if (headings[0].textContent !== dialog.getAttribute("aria-label")) return "name";
+            return "route_or_visibility";
+        } catch (_) { return "diagnostic_error"; }
+    })()
+    """#
+
+    static let diagnosticCodes: Set<String> = [
+        "document", "route", "map", "sheet", "modal", "paper", "heading",
+        "name", "route_or_visibility", "diagnostic_error"
+    ]
 }

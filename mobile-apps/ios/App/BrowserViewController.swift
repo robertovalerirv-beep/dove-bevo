@@ -672,6 +672,26 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                 self.updateMoreMenu()
                 onRead(venue)
             } catch {
+                let failureKind: String
+                if let captureError = error as? VenueBookmarkCapture.CaptureError {
+                    switch captureError {
+                    case .pageChanged: failureKind = "page_changed_or_reader_empty"
+                    case .unavailableName: failureKind = "name_unavailable"
+                    }
+                } else {
+                    failureKind = "javascript_error"
+                }
+                let sameVenue = self.usableVenueURL == request.url
+                let focused = MobileEntry.drinkFocus(self.webView.url ?? request.url) != nil
+                let diagnosticURL = self.webView.url
+                self.webView.evaluateJavaScript(VenueNameReader.diagnosticScript, in: nil, in: .defaultClient) { [weak self] result in
+                    guard let self else { return }
+                    let raw = (try? result.get()) as? String ?? "unavailable"
+                    let stage = self.webView.url == diagnosticURL && VenueNameReader.diagnosticCodes.contains(raw)
+                        ? raw : "unavailable"
+                    NSLog("DoveBevo venue read rejected: kind=%@ stage=%@ focused=%d sameVenue=%d",
+                          failureKind, stage, focused ? 1 : 0, sameVenue ? 1 : 0)
+                }
                 self.invalidateBookmarkCapture()
                 self.showVenueReadError(title: failureTitle, message: "Non riesco a leggere questo locale. Attendi che la scheda sia caricata e riprova.")
             }

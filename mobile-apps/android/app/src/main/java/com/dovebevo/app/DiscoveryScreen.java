@@ -12,7 +12,6 @@ import android.widget.LinearLayout;
 import android.view.Gravity;
 import android.widget.ScrollView;
 import android.widget.Spinner;
-import android.widget.HorizontalScrollView;
 import android.widget.TextView;
 import java.io.IOException;
 import java.util.Collections;
@@ -24,7 +23,7 @@ import java.util.function.Supplier;
 /** Native nearby price discovery, independent of the website's controls and private bookmarks. */
 final class DiscoveryScreen {
     private final Activity activity;private final Consumer<String> navigate;private final Supplier<Boolean> foreground;private final DiscoveryLoader loader;
-    private final ScrollView view;private final LinearLayout rows,categoryCards;private final TextView status;private final Spinner bands,drinks;
+    private final ScrollView view;private final LinearLayout rows;private final TextView status;private final Spinner bands,drinks;
     private RecommendationDrink drink=RecommendationDrink.BEER_DRAFT;private int band;private DiscoveryArea area;private DiscoveryLoader.Result snapshot;
     private boolean visible,closed,busy;private long generation;private DiscoveryLoader.Batch request;
     DiscoveryScreen(Activity activity,Consumer<String> navigate,Supplier<Boolean> foreground){this(activity,navigate,foreground,new DiscoveryLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)));}
@@ -41,9 +40,6 @@ final class DiscoveryScreen {
         body.addView(new DiscoveryHeader(activity,title,bands),new LinearLayout.LayoutParams(-1,-2));
         status=text("",12);status.setId(R.id.discovery_status);NativeAppearance.muted(status);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);status.setPadding(0,0,0,dp(4));
         TextView featureTitle=text("Esplora i drink",20);NativeAppearance.title(featureTitle);heading(featureTitle);featureTitle.setPadding(0,dp(4),0,dp(4));body.addView(featureTitle);
-        HorizontalScrollView carousel=new HorizontalScrollView(activity);carousel.setTag("discovery.categoryCarousel");carousel.setHorizontalScrollBarEnabled(false);
-        categoryCards=new LinearLayout(activity);categoryCards.setOrientation(LinearLayout.HORIZONTAL);categoryCards.setGravity(Gravity.TOP);
-        carousel.addView(categoryCards,new HorizontalScrollView.LayoutParams(-2,-2));body.addView(carousel,new LinearLayout.LayoutParams(-1,-2));
         drinks=new Spinner(activity);drinks.setId(R.id.discovery_drink);drinks.setContentDescription("Scegli cosa bere");
         RecommendationDrink[] options=RecommendationDrink.values();String[] names=new String[options.length];for(int index=0;index<options.length;index++)names[index]=NativePricePresentation.category(options[index]);
         ArrayAdapter<String> drinkOptions=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,names);drinkOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);drinks.setAdapter(drinkOptions);drinks.setMinimumHeight(dp(48));drinks.setSelection(drink.ordinal(),false);
@@ -70,7 +66,7 @@ final class DiscoveryScreen {
     String selectedDrink(){return drink.code;}int selectedBand(){return band;}
     void restoreSelection(String code,int selectedBand){RecommendationDrink value=RecommendationDrink.from(code);if(value!=null){drink=value;drinks.setSelection(drink.ordinal(),false);}if(selectedBand==0||selectedBand==1){band=selectedBand;bands.setSelection(band);}render();}
     private void render(){
-        if(rows==null||status==null)return;rows.removeAllViews();renderCategoryCards();
+        if(rows==null||status==null)return;rows.removeAllViews();
         if(area==null){status.setText(R.string.discovery_unready);return;}if(busy){status.setText(R.string.favorites_loading);return;}
         if(snapshot==null){status.setText(R.string.favorites_paused);return;}
         if(snapshot.cells.isEmpty()){status.setText(R.string.discovery_unavailable);return;}
@@ -109,49 +105,6 @@ final class DiscoveryScreen {
             if(old)details.addView(text(menu?NativePricePresentation.menuWarning():activity.getString(R.string.favorites_old),13));
             Button disclosure=new Button(activity);disclosure.setId(R.id.discovery_details);disclosure.setText("⌄");disclosure.setContentDescription("Dettagli prezzo per "+row.venue.name);NativeAppearance.button(disclosure,false);disclosure.setMinWidth(dp(44));disclosure.setMinimumWidth(dp(44));disclosure.setOnClickListener(v->{boolean expand=details.getVisibility()!=View.VISIBLE;details.setVisibility(expand?View.VISIBLE:View.GONE);disclosure.setText(expand?"⌃":"⌄");disclosure.setContentDescription((expand?"Nascondi dettagli prezzo per ":"Dettagli prezzo per ")+row.venue.name);});summary.addView(disclosure,new LinearLayout.LayoutParams(-2,-2));card.addView(summary);card.addView(details);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(6);rows.addView(card,size);
-        }
-    }
-
-    private void renderCategoryCards(){
-        categoryCards.removeAllViews();
-        for(RecommendationDrink category:RecommendationDrink.values()){
-            String headline,detail;
-            if(busy){headline="Caricamento…";detail="Prezzi nella zona";}
-            else if(area==null||snapshot==null||snapshot.cells.isEmpty()){
-                headline="Prezzi non caricati";detail="Apri la mappa o ricarica";
-            }else{
-                List<DiscoveryData.Row> offers;
-                try{offers=DiscoveryData.rows(snapshot.cells,area,category,band);}
-                catch(IOException unavailable){offers=null;}
-                if(offers==null){headline="Prezzi non caricati";detail="Ricarica";}
-                else if(offers.isEmpty()){
-                    headline=snapshot.partial?"Nessun prezzo nei dati caricati":snapshot.menuSamples?"Nessun prezzo nell'anteprima":"Nessun prezzo";
-                    detail=snapshot.partial?"Zona parziale · Ricarica":snapshot.menuSamples?"Apri il locale per altri drink":"Prova un altro drink";
-                }
-                else{
-                    String firstGroup=offers.get(0).group();boolean comparable=true;
-                    for(DiscoveryData.Row offer:offers)if(!firstGroup.equals(offer.group())){comparable=false;break;}
-                    if(comparable){
-                        DiscoveryData.Row lowest=offers.get(0);
-                        headline="Da "+lowest.amountLabel();
-                        String source=lowest.menuSource()?"Menu verificato il "+lowest.day():"Segnalato il "+lowest.day();
-                        detail=lowest.groupLabel()+" · "+source
-                                +(lowest.old()?" · Da ricontrollare":"")+(snapshot.partial?" · Zona parziale":"");
-                    }else{headline=offers.size()+" prezzi";detail="Valute o formati diversi"+(snapshot.partial?" · Zona parziale":"");}
-                }
-            }
-            LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);
-            card.setTag("discovery.category."+category.code);card.setClickable(true);card.setFocusable(true);
-            card.setPadding(dp(8),dp(8),dp(8),dp(8));
-            card.setBackground(NativeAppearance.shape(activity,category==drink?R.color.chrome:R.color.surface,14,true));
-            DrinkArtwork art=new DrinkArtwork(activity,category);art.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-            card.addView(art,new LinearLayout.LayoutParams(-1,dp(82)));
-            TextView name=text(NativePricePresentation.category(category),15);NativeAppearance.title(name);card.addView(name);
-            TextView price=text(headline,15);NativeAppearance.title(price);card.addView(price);
-            TextView serving=text(detail,12);NativeAppearance.muted(serving);card.addView(serving);
-            card.setContentDescription(NativePricePresentation.category(category)+". "+headline+". "+detail+". Immagine illustrativa del drink");
-            card.setOnClickListener(v->{if(drink!=category){drink=category;drinks.setSelection(category.ordinal());render();}});
-            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(dp(146),-2);size.rightMargin=dp(8);categoryCards.addView(card,size);
         }
     }
 

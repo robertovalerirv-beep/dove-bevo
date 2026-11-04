@@ -583,7 +583,7 @@ export function CustomerPricesV2({
                 class="btn btn--secondary mobile-menu-v2__save"
                 aria-label={`Salva ${row.name} da ${menu?.venue.name ?? key} nei preferiti`}
               >
-                Salva prezzo segnalato
+                ☆ Salva
               </a>
             )}
             {voteVisible && (
@@ -659,7 +659,7 @@ export function CustomerPricesV2({
             class="btn btn--secondary mobile-menu-v2__save"
             aria-label={`Salva ${offer.name} da ${menu?.venue.name ?? key} nei preferiti`}
           >
-            Salva questo drink
+            ☆ Salva
           </a>
         )}
         {mobileOfferIdPattern.test(offer.id) && (

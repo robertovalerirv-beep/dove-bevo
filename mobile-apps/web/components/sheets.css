@@ -960,6 +960,116 @@
 .scontrino.mobile-venue .mobile-price__quick-actions {
   grid-column: 1 / -1;
 }
+
+/* Keep the exact-drink actions in the price row, with room for the real source details. */
+.mobile-menu-v2__quick-actions {
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 2px 0;
+}
+.mobile-menu-v2__quick-actions > .mobile-menu-v2__save {
+  flex: 0 0 auto;
+  min-width: 74px;
+}
+.mobile-menu-v2__quick-actions .btn,
+.mobile-menu-v2__quick-actions .mobile-drink-vote {
+  min-height: 44px;
+  border-radius: 11px;
+}
+.mobile-menu-v2__quick-actions .mobile-drink-vote {
+  min-width: 56px;
+  padding: 7px 9px;
+}
+.scontrino.mobile-venue .mobile-venue__hero {
+  height: 112px;
+  border-radius: 0 0 16px 16px;
+}
+.scontrino.mobile-venue .mobile-venue__hero--neutral img {
+  width: 50px;
+  height: 50px;
+}
+.scontrino.mobile-venue .mobile-venue__hero--neutral strong {
+  font-size: 17px;
+}
+.scontrino.mobile-venue .mobile-venue__hero figcaption {
+  bottom: 20px;
+}
+.scontrino.mobile-venue .mobile-venue__hero + .scontrino__paper {
+  margin-top: -12px;
+  padding-top: 15px;
+}
+.scontrino.mobile-venue .mobile-price--featured {
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  column-gap: 8px;
+  row-gap: 2px;
+  padding: 10px;
+  box-shadow: 0 2px 10px rgb(27 22 17 / 4%);
+}
+.scontrino.mobile-venue .mobile-price--featured .price__icon {
+  grid-row: 1 / 3;
+}
+.scontrino.mobile-venue .mobile-price--featured .price__icon img {
+  width: 44px;
+  height: 52px;
+  object-fit: cover;
+}
+.scontrino.mobile-venue .mobile-price--featured .price__name {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 15px;
+}
+.scontrino.mobile-venue .mobile-price--featured .price__value {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  font-size: 21px;
+}
+.scontrino.mobile-venue .mobile-price--featured .price__meta {
+  grid-column: 2 / -1;
+  grid-row: 2;
+}
+.scontrino.mobile-venue .mobile-price--featured .mobile-price__tier {
+  grid-column: 1 / 3;
+  grid-row: 3;
+  justify-self: start;
+  align-self: center;
+}
+.scontrino.mobile-venue .mobile-price__quick-actions {
+  grid-column: 2 / -1;
+  grid-row: 3;
+  justify-content: flex-end;
+}
+.scontrino.mobile-venue .mobile-price--featured .mobile-price__quick-actions {
+  grid-column: 3;
+}
+.scontrino.mobile-venue .mobile-price--featured .price__actions {
+  grid-row: 4;
+  margin-top: 2px;
+}
+.scontrino.mobile-venue .mobile-price:not(.mobile-price--featured) .mobile-price__quick-actions {
+  grid-row: 3;
+}
+.scontrino.mobile-venue .mobile-price:not(.mobile-price--featured) .price__actions {
+  grid-row: 4;
+}
+.scontrino.mobile-venue .mobile-price:not(.mobile-price--featured) .mobile-price__toggle {
+  height: 48px;
+  min-height: 48px;
+}
+.mobile-menu-v2__offer {
+  padding: 10px 12px;
+}
+.mobile-menu-v2__offer .mobile-menu-v2__quick-actions {
+  justify-content: flex-end;
+}
+.mobile-menu-v2__offer--compact .mobile-menu-v2__quick-actions {
+  padding-bottom: 8px;
+}
+.scontrino.mobile-venue .mobile-menu-v2__spotlight-slot .mobile-menu-v2__offer {
+  border-color: var(--spritz, #ff5a1f);
+  box-shadow: 0 2px 10px rgb(27 22 17 / 4%);
+}
 .mobile-menu-v2__more {
   display: block;
   width: 100%;

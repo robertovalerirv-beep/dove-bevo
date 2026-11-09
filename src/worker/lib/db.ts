@@ -892,7 +892,7 @@ export async function getSitemapRows(db: D1Database, limit: number, cityIds: num
   const [bars, cities] = await db.batch([
     db
       .prepare(
-        `SELECT venue_key, MAX(cell) AS cell FROM prices_current WHERE status = 'active' AND ${PUBLIC_BAR}
+        `SELECT venue_key, MAX(cell) AS cell, MAX(observed_on) AS lastmod FROM prices_current WHERE status = 'active' AND ${PUBLIC_BAR}
          GROUP BY venue_key ORDER BY venue_key LIMIT ?1`,
       )
       .bind(limit),
@@ -903,7 +903,11 @@ export async function getSitemapRows(db: D1Database, limit: number, cityIds: num
       .bind(...cityIds),
   ]);
   return {
-    bars: (bars?.results ?? []) as unknown as { venue_key: string; cell: string }[],
+    bars: (bars?.results ?? []) as unknown as {
+      venue_key: string;
+      cell: string;
+      lastmod: string;
+    }[],
     cities: ((cities?.results ?? []) as unknown as { city: number }[]).map((r) => r.city),
   };
 }

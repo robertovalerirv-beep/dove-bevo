@@ -4,6 +4,20 @@ Una voce per sessione, la più recente in alto. Ogni voce: data, milestone, cosa
 
 ---
 
+## 2026-11-09 · Segnalazioni di indicizzazione di Google (ramo `claude/dovebevo-indexing-issues-26e3cb`) · ADR 0046
+
+**Richiesta di Roberto:** Search Console segnala 3 «Pagina con reindirizzamento» e 92 bar «Rilevata, attualmente non indicizzata»; normalizzare e aiutare l'indicizzazione, senza peggiorare il sito in produzione.
+
+**Fatto:** sitemap con `<lastmod>` (giorno dell'ultimo prezzo) per i bar e senza `changefreq`/`priority`; le pagine città elencano nel testo per i motori di ricerca ogni bar con nome già risolto (sezione «Tutti i bar con un prezzo»). Nessuna modifica a UI, SPEC, schema, API, `feature_list.json`. I redirect sono 301 voluti: nessuna modifica nel codice (il salto doppio di `http://dovebevo.com` si toglie con una Redirect Rule Cloudflare, a carico di Roberto).
+
+**Prove**
+- Test scritti prima: 2 falliti per il motivo giusto (sitemap con `changefreq`/`priority` e senza `lastmod`; sezione «Tutti i bar con un prezzo» assente).
+- `npx vitest run --project worker tests/worker/seo.test.ts`: 40 su 40 verdi. `tsc -b` e ESLint senza errori.
+
+**Da verificare a mano dopo il deploy:** `curl -sS https://www.dovebevo.com/sitemap.xml | head -40` (lastmod presente), `curl -sS https://www.dovebevo.com/milano | grep -c 'href="/bar/'` (più dei 15 di oggi), poi i passi su Cloudflare e Search Console.
+
+---
+
 ## 2026-11-02 · MF-02 a `passes: true` (ramo `docs/mf-02-passes`)
 
 **Richiesta di Roberto:** registrare la verifica a mano di MF-02 e chiudere la voce in una PR unica.

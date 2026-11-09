@@ -51,8 +51,11 @@ seo.on(["POST", "PUT", "PATCH", "DELETE"], ["/robots.txt", "/llms.txt", "/sitema
 // ---- sitemap.xml ----
 
 const XML_HEAD = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n`;
-const entry = (loc: string, changefreq: string, priority: string) =>
-  `  <url>\n    <loc>${escapeHtml(loc)}</loc>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`;
+// Only <loc> and, where a real date exists, <lastmod>: Google ignores changefreq and priority (ADR 0046).
+const entry = (loc: string, lastmod?: string) =>
+  `  <url>\n    <loc>${escapeHtml(loc)}</loc>\n${
+    lastmod ? `    <lastmod>${escapeHtml(lastmod)}</lastmod>\n` : ""
+  }  </url>`;
 const XML = (body: string, cache: string) =>
   new Response(body, {
     headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": cache },
@@ -71,12 +74,12 @@ seo.get("/sitemap.xml", readLimit, async (c) => {
     const { bars, cities } = await getSitemapRows(c.env.DB, room, ids);
     const withPrices = new Set(cities);
     const urls = [
-      entry(`${url.origin}/`, "daily", "1.0"),
-      entry(`${url.origin}/copertura`, "daily", "0.8"),
+      entry(`${url.origin}/`),
+      entry(`${url.origin}/copertura`),
       ...slugs
         .filter((slug) => (index.byKey.get(slug) ?? []).some((id) => withPrices.has(id)))
-        .map((slug) => entry(`${url.origin}/${slug}`, "daily", "0.9")),
-      ...bars.map((b) => entry(`${url.origin}/bar/${b.venue_key}?c=${b.cell}`, "weekly", "0.6")),
+        .map((slug) => entry(`${url.origin}/${slug}`)),
+      ...bars.map((b) => entry(`${url.origin}/bar/${b.venue_key}?c=${b.cell}`, b.lastmod)),
     ].slice(0, SEO_LIMITS.sitemapUrls);
     const xml = `${XML_HEAD}${urls.join("\n")}\n</urlset>`;
     memSet(key, xml);
@@ -84,7 +87,7 @@ seo.get("/sitemap.xml", readLimit, async (c) => {
   } catch {
     // D1 or the data files are unavailable: a sitemap with the home page, not cached.
     console.error(JSON.stringify({ code: "sitemap_failed" }));
-    return XML(`${XML_HEAD}${entry(`${url.origin}/`, "daily", "1.0")}\n</urlset>`, "no-store");
+    return XML(`${XML_HEAD}${entry(`${url.origin}/`)}\n</urlset>`, "no-store");
   }
 });
 

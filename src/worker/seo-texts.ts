@@ -41,6 +41,7 @@ export const seoText = {
   cityDrink: (label: string, median: string, low: string, high: string, count: number) =>
     `${label}: mediana ${median}, da ${low} a ${high} (${prices(count)}).`,
   cityCheapest: (label: string) => `I più economici: ${label}`,
+  cityAllBars: "Tutti i bar con un prezzo",
   cityEmpty: (city: string) => `Per ${city} non ci sono ancora prezzi: puoi inserire il primo.`,
 
   venueTitle: (name: string) => `${name}: prezzi di birra, spritz e cocktail`,

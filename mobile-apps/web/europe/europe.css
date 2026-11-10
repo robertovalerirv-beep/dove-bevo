@@ -258,6 +258,38 @@
 .europe-venue .price__actions [disabled] {
   opacity: 0.6;
 }
+.europe-venue .europe-price__quick-actions {
+  grid-column: 2 / -1;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.europe-venue .europe-price__save {
+  min-height: 44px;
+}
+.europe-venue .europe-drink-vote {
+  min-height: 44px;
+  min-width: 70px;
+}
+.europe-venue .europe-vote-failed {
+  flex-basis: 100%;
+  color: var(--spritz-text, #b93a0b);
+  font-size: 12px;
+}
+.europe-venue .europe-vote-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--line-soft, #e2d3be);
+  border-radius: 10px;
+  color: var(--ink, #1b1611);
+  font-size: 13px;
+}
+.europe-venue .europe-vote-status .btn {
+  min-height: 44px;
+}
 .europe-price-form .europe-field-label {
   display: flex;
   flex-direction: column;

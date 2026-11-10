@@ -106,6 +106,13 @@ describe("sitemap.xml", () => {
     expect(xml).not.toContain(`<loc>${ORIGIN}/roma</loc>`); // no prices there
     expect(xml).toContain(`<loc>${ORIGIN}/bar/n1?c=u0nd9</loc>`);
     expect(xml).toContain(`<loc>${ORIGIN}/bar/u1?c=u0nd9</loc>`);
+    // lastmod is the day of the latest price of the bar (ADR 0046); Google ignores changefreq and priority
+    expect(xml).toContain(`<loc>${ORIGIN}/bar/n1?c=u0nd9</loc>\n    <lastmod>2026-10-10</lastmod>`);
+    expect(xml).not.toContain("<changefreq>");
+    expect(xml).not.toContain("<priority>");
+    // pages with no real date carry no lastmod: an invented one would cost the trust of the crawler
+    expect(xml).toContain(`<loc>${ORIGIN}/</loc>\n  </url>`);
+    expect(xml).toContain(`<loc>${ORIGIN}/milano</loc>\n  </url>`);
     for (const hidden of ["n3", "u2", "n4"]) expect(xml).not.toContain(`/bar/${hidden}?`);
     expect(xml).not.toContain("/admin");
     expect((xml.match(/<url>/g) ?? []).length).toBeLessThanOrEqual(5000);
@@ -182,6 +189,20 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
     expect(html).toContain("© OpenStreetMap contributors");
     // cheapest first inside the list
     expect(html.indexOf(">Vesta</a>")).toBeLessThan(html.indexOf(">Bistrot Italia</a>"));
+  });
+
+  it("a city page links every named bar with a price once, also the ones outside the cheapest lists (ADR 0046)", async () => {
+    await price("n10013246997", "spritz", 600);
+    await price("n10013246997", "beer_draft", 500);
+    // only a wine price: not in any "cheapest" list, but still a page worth reaching from the city
+    await price("n10128978471", "wine_glass", 700);
+    const html = await (await get("/milano")).text();
+    const main = html.slice(html.indexOf("<noscript><main>"));
+    expect(main).toContain("<h2>Tutti i bar con un prezzo</h2>");
+    const list = main.slice(main.indexOf("<h2>Tutti i bar con un prezzo</h2>"));
+    expect(list).toContain('href="/bar/n10128978471?c=u0nd9">Sally bar</a>');
+    // a bar in two cheapest lists is still listed once
+    expect(list.match(/href="\/bar\/n10013246997\?c=u0nd9"/g)).toHaveLength(1);
   });
 
   it("two cities never share a cached page: /roma does not show Milano's data", async () => {

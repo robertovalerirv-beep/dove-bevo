@@ -6,9 +6,11 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private let store: SavedVenueStore
     private let drinkStore: SavedDrinkStore
     private let offerStore: SavedMenuOfferStore
+    private let customerStore: SavedCustomerItemStore
     private let comparisonClient: FavouriteComparisonServing
     private let menuClient: MenuV2Serving?
     private let recommendationClient: RecommendationServing
+    private let areaVotesClient: AreaVotesServing
     private let discoveryClient: DiscoveryServing
     private let providedBrowser: BrowserViewController?
     private let content = UIView()
@@ -21,6 +23,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private var parentAppearance: (navigation: UINavigationController, appearing: Bool)?
     private var venueActionsAvailable = false
     private var homeIntent = UUID()
+    private var lastMapArea: DiscoveryArea?
 
     var selectedIndex: Int {
         get { destinationIndex }
@@ -28,7 +31,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     }
 
     private(set) lazy var browser: BrowserViewController = {
-        let controller = self.providedBrowser ?? BrowserViewController(savedVenues: self.store, savedDrinks: self.drinkStore, savedMenuOffers: self.offerStore, menuClient: self.menuClient ?? MenuV2Client(), recommendationClient: self.recommendationClient)
+        let controller = self.providedBrowser ?? BrowserViewController(savedVenues: self.store, savedDrinks: self.drinkStore, savedMenuOffers: self.offerStore, menuClient: self.menuClient ?? MenuV2Client(), savedCustomerItems: self.customerStore, comparisonClient: self.comparisonClient, recommendationClient: self.recommendationClient)
         controller.onShowFavourites = { [weak self] in self?.selectedIndex = 1 }
         controller.isMapDestinationSelected = { [weak self] in self?.selectedIndex == 0 }
         controller.onVenueActionsChanged = { [weak self] enabled in
@@ -42,7 +45,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     }()
     private(set) lazy var mapNavigation = UINavigationController(rootViewController: browser)
     private(set) lazy var favourites: SavedVenuesViewController = {
-        let controller = SavedVenuesViewController(store: self.store, drinkStore: self.drinkStore, offerStore: self.offerStore, client: self.comparisonClient, menuClient: self.menuClient) { [weak self] url in
+        let controller = SavedVenuesViewController(store: self.store, drinkStore: self.drinkStore, offerStore: self.offerStore, customerStore: self.customerStore, client: self.comparisonClient, menuClient: self.menuClient) { [weak self] url in
             guard let self else { return }
             self.browser.retireVenueActions()
             self.mapNavigation.popToRootViewController(animated: false)
@@ -67,18 +70,39 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         return controller
     }()
     private(set) lazy var discoveryNavigation = UINavigationController(rootViewController: discovery)
+    private(set) lazy var areaVotes: AreaVotesViewController = {
+        let controller = AreaVotesViewController(client: areaVotesClient, onOpen: { [weak self] url in
+            guard let self else { return }
+            self.browser.retireVenueActions()
+            self.mapNavigation.popToRootViewController(animated: false)
+            self.selectedIndex = 0
+            self.browser.openSavedVenue(url)
+        }, onMap: { [weak self] in
+            guard let self else { return }
+            self.mapNavigation.popToRootViewController(animated: false)
+            self.selectedIndex = 0
+            self.browser.openMapSearch()
+        })
+        controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 3 }
+        controller.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
+        return controller
+    }()
+    private(set) lazy var areaVotesNavigation = UINavigationController(rootViewController: areaVotes)
 
     init(store: SavedVenueStore = SavedVenueStore(), comparisonClient: FavouriteComparisonServing = FavouriteComparisonClient(),
          menuClient: MenuV2Serving? = MenuV2Client(), drinkStore: SavedDrinkStore = SavedDrinkStore(), offerStore: SavedMenuOfferStore = SavedMenuOfferStore(),
+         customerStore: SavedCustomerItemStore = SavedCustomerItemStore(),
          recommendationClient: RecommendationServing = RecommendationClient(), browser: BrowserViewController? = nil,
-         discoveryClient: DiscoveryServing = DiscoveryClient()) {
-        self.store = store; self.drinkStore = drinkStore; self.offerStore = offerStore; self.comparisonClient = comparisonClient; self.menuClient = menuClient; self.recommendationClient = recommendationClient
+         discoveryClient: DiscoveryServing = DiscoveryClient(), areaVotesClient: AreaVotesServing = AreaVotesClient()) {
+        self.store = store; self.drinkStore = drinkStore; self.offerStore = offerStore; self.customerStore = customerStore; self.comparisonClient = comparisonClient; self.menuClient = menuClient; self.recommendationClient = recommendationClient
         self.providedBrowser = browser
         self.discoveryClient = discoveryClient
+        self.areaVotesClient = areaVotesClient
         super.init(nibName: nil, bundle: nil)
         mapNavigation.delegate = self
         favouritesNavigation.delegate = self
         discoveryNavigation.delegate = self
+        areaVotesNavigation.delegate = self
     }
 
     required init?(coder: NSCoder) { return nil }
@@ -95,6 +119,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         NativeAppearance.configure(mapNavigation)
         NativeAppearance.configure(favouritesNavigation)
         NativeAppearance.configure(discoveryNavigation)
+        NativeAppearance.configure(areaVotesNavigation)
         mapNavigation.setNavigationBarHidden(true, animated: false)
         [content, topChrome, bottomBackground, bottomBar].forEach {
             $0.translatesAutoresizingMaskIntoConstraints = false
@@ -134,7 +159,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             bottomBackground.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             bottomBackground.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
-        for child in [mapNavigation, favouritesNavigation, discoveryNavigation] {
+        for child in [mapNavigation, favouritesNavigation, discoveryNavigation, areaVotesNavigation] {
             addChild(child)
             child.view.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(child.view)
@@ -149,6 +174,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         mapNavigation.view.isHidden = destinationIndex != 0
         favouritesNavigation.view.isHidden = destinationIndex != 1
         discoveryNavigation.view.isHidden = destinationIndex != 2
+        areaVotesNavigation.view.isHidden = destinationIndex != 3
         refreshBottomBar()
     }
 
@@ -177,7 +203,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     }
 
     private var activeNavigation: UINavigationController {
-        switch destinationIndex { case 1: return favouritesNavigation; case 2: return discoveryNavigation; default: return mapNavigation }
+        switch destinationIndex { case 1: return favouritesNavigation; case 2: return discoveryNavigation; case 3: return areaVotesNavigation; default: return mapNavigation }
     }
 
     private func beginParentAppearance(_ appearing: Bool, animated: Bool) {
@@ -194,7 +220,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     }
 
     private func selectDestination(_ index: Int) {
-        guard (0...2).contains(index) else { return }
+        guard (0...3).contains(index) else { return }
         homeIntent = UUID()
         guard index != destinationIndex else { refreshBottomBar(); return }
         let previous = activeNavigation
@@ -258,6 +284,14 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             }
             if !discovery.canReloadFromMore { reload.attributes = [.disabled] }
             actions.append(reload)
+        } else if destinationIndex == 3 && areaVotesNavigation.topViewController === areaVotes {
+            reloadTitle = "Ricarica"
+            let reload = UIAction(title: "Ricarica", image: UIImage(systemName: "arrow.clockwise"),
+                                  identifier: UIAction.Identifier("native.reload")) { [weak self] _ in
+                self?.areaVotes.reloadFromMore()
+            }
+            if !areaVotes.canReloadFromMore { reload.attributes = [.disabled] }
+            actions.append(reload)
         } else if destinationIndex == 0,
                   let recommendations = mapNavigation.topViewController as? RecommendationsViewController {
             let title = recommendations.reloadMenuTitle
@@ -296,10 +330,27 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             let intent = UUID(); homeIntent = intent
             browser.captureDiscoveryArea { [weak self] area in
                 guard let self, self.homeIntent == intent, self.selectedIndex == 0 else { return }
+                self.lastMapArea = area
                 self.discovery.setArea(area)
                 self.selectedIndex = 2
             }
         } else { selectedIndex = 2 }
+    }
+
+    private func openAreaVotes() {
+        browser.retireVenueActions()
+        if selectedIndex == 0 && mapNavigation.topViewController === browser {
+            let intent = UUID(); homeIntent = intent
+            browser.captureDiscoveryArea { [weak self] area in
+                guard let self, self.homeIntent == intent, self.selectedIndex == 0 else { return }
+                self.lastMapArea = area
+                self.areaVotes.setArea(area)
+                self.selectedIndex = 3
+            }
+        } else {
+            areaVotes.setArea(lastMapArea)
+            selectedIndex = 3
+        }
     }
 
     private func performBottomAction(_ action: BottomNavigationAction) {
@@ -312,10 +363,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             browser.openMapSearch()
         case .map: selectedIndex = 0
         case .favourites: selectedIndex = 1
-        case .save, .recommendations:
-            guard selectedIndex == 0, mapNavigation.topViewController === browser, venueActionsAvailable else { return }
-            if action == .save { browser.saveCurrentVenue() }
-            else { browser.showRecommendations() }
+        case .recommendations: openAreaVotes()
         }
         refreshBottomBar()
     }

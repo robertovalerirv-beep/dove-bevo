@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "preact/hooks";
 import { formatDate } from "@site/app/lib/format";
 import { currentLang } from "@site/app/i18n/lang";
 import { drinkImage } from "@mobile/drink-images";
+import { DrinkVoteButton } from "./DrinkVotes";
 import {
   CustomerPriceHttpError,
   customerCurrency,
@@ -15,6 +16,8 @@ import {
 import { menuMoney, type MenuOffer, type MenuPage } from "../menu-v2";
 import {
   menuOfferMatchesFocus,
+  mobileCustomerItemKeyPattern,
+  mobileCustomerSaveURL,
   mobileOfferIdPattern,
   mobileOfferSaveURL,
   type DrinkFocus,
@@ -29,6 +32,17 @@ function nativeOfferSaveEnabled(): boolean {
     typeof window !== "undefined" &&
     (window as Window & { DoveBevoNativeOfferSave?: boolean }).DoveBevoNativeOfferSave === true
   );
+}
+
+function nativeCapabilities() {
+  const native = window as Window & {
+    DoveBevoNativeOfferSave?: boolean;
+    DoveBevoNativeCustomerSave?: boolean;
+  };
+  return {
+    offer: native.DoveBevoNativeOfferSave === true,
+    customer: native.DoveBevoNativeCustomerSave === true,
+  };
 }
 
 const CATEGORY_OPTIONS = [
@@ -85,6 +99,7 @@ export function CustomerPricesV2({
   const offers = menu?.offers ?? [];
   const [rows, setRows] = useState<CustomerRow[]>([]);
   const [nativeOfferSave, setNativeOfferSave] = useState(nativeOfferSaveEnabled);
+  const [nativeCustomerSave, setNativeCustomerSave] = useState(false);
   const [nextAfter, setNextAfter] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [moreBusy, setMoreBusy] = useState(false);
@@ -109,7 +124,9 @@ export function CustomerPricesV2({
 
   useEffect(() => {
     const updateNative = () => {
-      setNativeOfferSave(nativeOfferSaveEnabled());
+      const capabilities = nativeCapabilities();
+      setNativeOfferSave(capabilities.offer);
+      setNativeCustomerSave(capabilities.customer);
     };
     window.addEventListener("dovebevo-native-ready", updateNative);
     updateNative();
@@ -546,11 +563,37 @@ export function CustomerPricesV2({
   );
 
   function observation(row: CustomerRow) {
+    const voteTarget =
+      row.kind === "menu_offer" && row.offer_id && mobileOfferIdPattern.test(row.offer_id)
+        ? ({ kind: "offer", id: row.offer_id } as const)
+        : row.kind === "new_drink" && /^c[0-9a-f]{64}$/.test(row.item_key)
+          ? ({ kind: "customer", id: row.item_key } as const)
+          : null;
+    const voteVisible = voteTarget !== null && !offers.some((offer) => offer.id === row.offer_id);
     return (
       <div class="mobile-customer-v2__observation">
         <span>Prezzo segnalato da un cliente</span>
         <strong>{menuMoney(row.amount_minor, row.currency, row.currency_exponent)}</strong>
         <small>Pagato il {customerDate(row)} · prezzo del drink, non totale del conto</small>
+        {(nativeCustomerSave || voteVisible) && (
+          <div class="mobile-menu-v2__quick-actions mobile-customer-v2__quick-actions">
+            {nativeCustomerSave && mobileCustomerItemKeyPattern.test(row.item_key) && (
+              <a
+                href={mobileCustomerSaveURL(key, cell, row.item_key)}
+                class="btn btn--secondary mobile-menu-v2__save"
+                aria-label={`Salva ${row.name} da ${menu?.venue.name ?? key} nei preferiti`}
+              >
+                Salva prezzo segnalato
+              </a>
+            )}
+            {voteVisible && (
+              <DrinkVoteButton
+                target={voteTarget}
+                name={`${row.name} da ${menu?.venue.name ?? key}`}
+              />
+            )}
+          </div>
+        )}
         <button
           type="button"
           class="btn btn--ghost"
@@ -608,6 +651,25 @@ export function CustomerPricesV2({
         </span>
       </>
     );
+    const quickActions = (
+      <div class="mobile-menu-v2__quick-actions">
+        {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
+          <a
+            href={mobileOfferSaveURL(key, cell, offer.id)}
+            class="btn btn--secondary mobile-menu-v2__save"
+            aria-label={`Salva ${offer.name} da ${menu?.venue.name ?? key} nei preferiti`}
+          >
+            Salva questo drink
+          </a>
+        )}
+        {mobileOfferIdPattern.test(offer.id) && (
+          <DrinkVoteButton
+            target={{ kind: "offer", id: offer.id }}
+            name={`${offer.name} da ${menu?.venue.name ?? key}`}
+          />
+        )}
+      </div>
+    );
     const actions = (
       <>
         <a
@@ -618,14 +680,6 @@ export function CustomerPricesV2({
         >
           Menu verificato il {offer.source.checked_on}
         </a>
-        {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
-          <a
-            href={mobileOfferSaveURL(key, cell, offer.id)}
-            class="btn btn--secondary mobile-menu-v2__save"
-          >
-            Salva questo drink
-          </a>
-        )}
         {customer && observation(customer)}
         {loadState === "ready" && (
           <button
@@ -657,16 +711,20 @@ export function CustomerPricesV2({
         }
       >
         {compact ? (
-          <details class="mobile-menu-v2__offer-details">
-            <summary class="mobile-menu-v2__offer-summary">
-              {summary}
-              <small class="mobile-menu-v2__expand">{english ? "Details" : "Dettagli"}</small>
-            </summary>
-            <div class="mobile-menu-v2__offer-actions">{actions}</div>
-          </details>
+          <>
+            <details class="mobile-menu-v2__offer-details">
+              <summary class="mobile-menu-v2__offer-summary">
+                {summary}
+                <small class="mobile-menu-v2__expand">{english ? "Details" : "Dettagli"}</small>
+              </summary>
+              <div class="mobile-menu-v2__offer-actions">{actions}</div>
+            </details>
+            {quickActions}
+          </>
         ) : (
           <>
             {summary}
+            {quickActions}
             {actions}
           </>
         )}

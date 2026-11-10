@@ -68,7 +68,7 @@ async function fixture(options = {}) {
   });
   const page = await context.newPage();
   const writes = [];
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;
     if (pathname === "/api/mobile/v2/customer-prices" && request.method() === "POST") {
@@ -83,9 +83,39 @@ async function fixture(options = {}) {
         },
       });
     }
+    if (pathname.startsWith("/api/mobile/v2/drink-votes/venues/") && request.method() === "POST") {
+      const body = request.postDataJSON();
+      options.votePosts?.push(body);
+      const key = pathname.slice("/api/mobile/v2/drink-votes/venues/".length);
+      if (options.holdVotePostKey === key) {
+        options.votePostHeld?.();
+        await new Promise((resolve) => {
+          options.releaseVotePost = resolve;
+        });
+      }
+      return route.fulfill({
+        json: {
+          target: body.target,
+          count: body.recommended ? 4 : 3,
+          recommended: body.recommended,
+        },
+      });
+    }
     if (request.method() !== "GET") {
       writes.push(request.method());
       return route.abort();
+    }
+    if (pathname.startsWith("/api/mobile/v2/drink-votes/venues/")) {
+      const key = pathname.slice("/api/mobile/v2/drink-votes/venues/".length);
+      options.voteGets?.push(key);
+      if (options.voteUnavailable) return route.fulfill({ status: 503, body: "Unavailable" });
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          venue: { key, cell: "u0nd9", name: "Locale di prova" },
+          items: options.voteItemsByKey?.[key] ?? options.voteItems ?? [],
+        },
+      });
     }
     if (pathname === "/" || pathname === "/mobile/")
       return route.fulfill({
@@ -529,13 +559,13 @@ test("quick seen price and venue-drink-price navigation retain real callbacks", 
     );
     await f.page.evaluate(() => window.sheetFixture.price(null));
     await f.page.getByRole("button", { name: /Locale di prova <strong>/ }).click();
-    await f.page.getByRole("button", { name: "Spritz", exact: true }).click();
+    const drinkSelector = f.page.getByRole("combobox", { name: "Che cosa hai preso?" });
+    assert.equal(await drinkSelector.locator("option").count(), 10);
+    assert.equal(await f.page.locator(".mobile-price-flow .drinks").count(), 0);
+    await drinkSelector.selectOption("spritz");
     assert.equal(await f.page.locator(".mobile-price-form .context-tag").innerText(), "Spritz");
     await f.page.getByRole("button", { name: "Indietro", exact: true }).click();
-    assert.equal(
-      await f.page.getByRole("button", { name: "Birra media", exact: true }).isVisible(),
-      true,
-    );
+    assert.equal(await drinkSelector.isVisible(), true);
     await f.page.getByRole("button", { name: "Indietro", exact: true }).click();
     await f.page.getByRole("button", { name: "Non trovi il bar?", exact: true }).click();
     assert.equal(
@@ -760,20 +790,192 @@ test("exact named favorite reloads its menu page and native save link uses only 
     assert.match(await saved.innerText(), /Analcolico[\s\S]*Questo drink è nei tuoi preferiti/);
     assert.equal(await f.page.getByTestId("saved-offer-unavailable").count(), 0);
     assert.equal(await f.page.getByTestId("saved-menu-offer").count(), 0);
-    assert.equal(await f.page.getByRole("link", { name: "Salva questo drink" }).count(), 0);
+    assert.equal(await f.page.locator(".mobile-menu-v2__save").count(), 0);
     await f.page.evaluate(() => {
       window.DoveBevoNativeOfferSave = true;
       window.dispatchEvent(new window.Event("dovebevo-native-ready"));
     });
-    const links = f.page.getByRole("link", { name: "Salva questo drink" });
+    const links = f.page.locator(".mobile-menu-v2__save");
     await links.first().waitFor();
-    assert.equal(await links.count(), 3);
+    assert.equal(await links.count(), 4);
     assert.equal(
-      await saved.getByRole("link", { name: "Salva questo drink" }).getAttribute("href"),
+      await saved.locator(".mobile-menu-v2__save").getAttribute("href"),
+      `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=third`,
+    );
+    assert.equal(
+      await f.page
+        .getByTestId("featured-menu-price")
+        .locator(".mobile-menu-v2__save")
+        .getAttribute("href"),
       `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=third`,
     );
     assert.deepEqual(f.writes, []);
   } finally {
+    await f.close();
+  }
+});
+
+test("exact private saves and one public vote read identify each visible drink", async () => {
+  const voteGets = [];
+  const f = await fixture({
+    customerNewDrink: true,
+    voteGets,
+    voteItems: [
+      { target: { kind: "legacy", drink: "spritz", band: "normal" }, count: 3, recommended: true },
+      { target: { kind: "offer", id: "first" }, count: 5, recommended: false },
+      { target: { kind: "customer", id: `c${"b".repeat(64)}` }, count: 2, recommended: false },
+    ],
+  });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const legacy = f.page.locator(".mobile-price--featured");
+    await legacy.waitFor();
+    assert.equal(await legacy.locator(".mobile-menu-v2__save").count(), 0);
+    assert.equal(
+      await f.page.locator(".mobile-customer-v2__quick-actions .mobile-menu-v2__save").count(),
+      0,
+    );
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeDrinkSave = true;
+      window.DoveBevoNativeCustomerSave = true;
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
+    });
+    const legacyActions = legacy.locator(".mobile-price__quick-actions");
+    await legacyActions.waitFor();
+    await legacyActions.locator(".mobile-drink-vote[data-voted='true']").waitFor();
+    assert.equal(
+      await legacyActions.locator(".mobile-menu-v2__save").getAttribute("href"),
+      "/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_drink=spritz&band=normal",
+    );
+    assert.equal(
+      await legacyActions.locator(".mobile-drink-vote").getAttribute("aria-pressed"),
+      "true",
+    );
+    assert.match(await legacyActions.locator(".mobile-drink-vote").innerText(), /3/);
+    const offer = f.page
+      .locator(".mobile-menu-v2__offer")
+      .filter({ hasText: "Spritz <script>" })
+      .first();
+    await offer.locator(".mobile-drink-vote").getByText("5").waitFor();
+    assert.match(await offer.locator(".mobile-drink-vote").innerText(), /5/);
+    const customer = f.page.locator(".mobile-customer-v2__observation").first();
+    await customer.locator(".mobile-menu-v2__save").waitFor();
+    assert.equal(
+      await customer.locator(".mobile-menu-v2__save").getAttribute("href"),
+      `/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_customer=o${"a".repeat(64)}`,
+    );
+    const additional = f.page.locator(".mobile-customer-v2__additional > li");
+    await additional.locator(".mobile-drink-vote").getByText("2").waitFor();
+    assert.equal(
+      await additional.locator(".mobile-menu-v2__save").getAttribute("href"),
+      `/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_customer=c${"b".repeat(64)}`,
+    );
+    assert.match(await additional.locator(".mobile-drink-vote").innerText(), /2/);
+    assert.deepEqual(voteGets, ["n123"]);
+    for (const width of [320, 390]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      for (const action of await legacyActions.locator("a, button").all())
+        assert.ok((await action.boundingBox())?.height >= 44);
+      const overflow = await f.page.locator(".sheet__body").evaluate((element) => ({
+        width: element.clientWidth,
+        scroll: element.scrollWidth,
+      }));
+      assert.ok(overflow.scroll <= overflow.width + 1, JSON.stringify({ width, overflow }));
+    }
+    if (process.env.DOVEBEVO_ACTION_CAPTURE)
+      await f.page.screenshot({ path: process.env.DOVEBEVO_ACTION_CAPTURE });
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("uncategorized named menu drink has its own exact thumb and private save", async () => {
+  const f = await fixture({ menuCategory: null, customerEmpty: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeOfferSave = true;
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
+    });
+    const offer = f.page
+      .locator(".mobile-menu-v2__offer")
+      .filter({ hasText: "Cocktail della casa" });
+    await offer.locator(".mobile-menu-v2__save").waitFor();
+    assert.equal(await offer.locator(".mobile-drink-vote").count(), 1);
+    assert.equal(await offer.locator(".mobile-drink-vote").getAttribute("aria-pressed"), "false");
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("a thumb tap updates only its exact legacy drink in an intercepted local fixture", async () => {
+  const votePosts = [];
+  const f = await fixture({
+    votePosts,
+    voteItems: [
+      { target: { kind: "legacy", drink: "spritz", band: "normal" }, count: 3, recommended: false },
+    ],
+  });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const thumb = f.page.locator(".mobile-price--featured .mobile-drink-vote");
+    await thumb.getByText("3").waitFor();
+    assert.equal(await thumb.getAttribute("aria-pressed"), "false");
+    await thumb.click();
+    await thumb.getByText("4").waitFor();
+    assert.equal(await thumb.getAttribute("aria-pressed"), "true");
+    assert.deepEqual(votePosts, [
+      { target: { kind: "legacy", drink: "spritz", band: "normal" }, recommended: true },
+    ]);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("late vote response from a closed venue cannot change another venue's thumb", async () => {
+  const otherKey = "maaaaaaaaaaaaaaaaaaaaaaaa";
+  let votePostHeld;
+  const held = new Promise((resolve) => {
+    votePostHeld = resolve;
+  });
+  const options = {
+    holdVotePostKey: "n123",
+    votePostHeld,
+    voteItemsByKey: {
+      n123: [
+        {
+          target: { kind: "legacy", drink: "spritz", band: "normal" },
+          count: 3,
+          recommended: false,
+        },
+      ],
+      [otherKey]: [{ target: { kind: "offer", id: "first" }, count: 7, recommended: false }],
+    },
+  };
+  const f = await fixture(options);
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const firstThumb = f.page.locator(".mobile-price--featured .mobile-drink-vote");
+    await firstThumb.getByText("3").waitFor();
+    await firstThumb.click();
+    await held;
+    await f.page.evaluate((key) => window.sheetFixture.bar([], key), otherKey);
+    const otherThumb = f.page.locator(".mobile-menu-v2__offer .mobile-drink-vote").first();
+    await otherThumb.getByText("7").waitFor();
+    const response = f.page.waitForResponse(
+      (value) =>
+        value.url().includes("/drink-votes/venues/n123") && value.request().method() === "POST",
+    );
+    options.releaseVotePost();
+    await response;
+    assert.equal(await otherThumb.getAttribute("aria-pressed"), "false");
+    assert.match(await otherThumb.innerText(), /7/);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    options.releaseVotePost?.();
     await f.close();
   }
 });
@@ -827,6 +1029,10 @@ test("long owner menus keep the saved drink prominent and reveal sourced seconda
   });
   try {
     await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeOfferSave = true;
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
+    });
     const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
     const saved = menu.getByTestId("saved-exact-offer");
     await saved.waitFor();
@@ -839,6 +1045,16 @@ test("long owner menus keep the saved drink prominent and reveal sourced seconda
     const rows = more.locator(".mobile-menu-v2__offers--compact");
     assert.equal(await rows.evaluate((element) => getComputedStyle(element).overflowY), "visible");
     const conditional = rows.locator(".mobile-menu-v2__offer").filter({ hasText: "Spritz serale" });
+    const save = conditional.locator(".mobile-menu-v2__save");
+    assert.equal(await save.isVisible(), true);
+    assert.equal(
+      await save.getAttribute("href"),
+      `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=second`,
+    );
+    assert.equal(
+      await conditional.locator(".mobile-menu-v2__offer-details").getAttribute("open"),
+      null,
+    );
     assert.match(
       await conditional.locator("summary").innerText(),
       /5,50\s*€[\s\S]*Solo con: dopo le 18/,

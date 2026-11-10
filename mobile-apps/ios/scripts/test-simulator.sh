@@ -42,6 +42,7 @@ while [[ -e "$ENTRY_BROWSER_RESULT_BUNDLE" ]]; do
 done
 mkdir -p "$IOS_ROOT/.build"
 printf '%s\n' "$RESULT_BUNDLE" > "$IOS_ROOT/.build/last-test-result-path.txt"
+printf '%s\n' "$ENTRY_BROWSER_RESULT_BUNDLE" > "$IOS_ROOT/.build/entry-browser-test-result-path.txt"
 TEST_STARTED_AT="$(date +%s)"
 DIAGNOSTICS="$IOS_ROOT/.build/SimulatorDiagnostics"
 mkdir -p "$DIAGNOSTICS"

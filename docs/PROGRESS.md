@@ -19,7 +19,6 @@ Copiati dalle voci indicate perché non finiscano dimenticati nell'archivio; lo 
 - **Sicurezza, decisioni di SPEC (Roberto):** i quattro punti del pen test del 22/10 che cambiano la SPEC restano da decidere: prezzo in quarantena attivato dalla conferma di una seconda identità (D-10), rimozione con 4 segnalazioni distinte, prezzo «ultimo vince» sotto i 5 prezzi in cella, quote per IP aggirabili con molti prefissi IPv6 (`SECURITY.md`, «Rischi accettati»; ADR 0029; voci del 22/10 e del 24/10).
 - **Sicurezza, GitHub (Roberto):** Environment `staging` con i segreti Cloudflare (poi `environment: staging` nel deploy: il 10/11 `deploy-staging.yml` non lo ha), scope del token Cloudflare, email privata su GitHub (voce del 22/10).
 - **Accessibilità, admin:** in `/admin`, «Trova un bar sulla mappa», il messaggio della ricerca non era in una regione `aria-live` (voce del 25/10, «Gestore verificato»).
-- **SPEC 7.8, link legali:** stanno nella scheda bar e nel foglio di ricerca, non in un «piè di pagina della mappa»: per averli sulla mappa serve una decisione sul layout (D-28; voce del 24/10).
 - **Controlli dopo il deploy mai registrati come fatti:** riga `OSM import <versione>: … , 0 skipped` nel log del deploy (29/10, ADR 0043); sezioni di `/admin` che si caricano senza far scattare il limite sulle GET (29/10, ADR 0044).
 - **Prove a mano su telefono mai registrate come fatte:** Timbro e vibrazione su Android, invito all'installazione, offline dopo l'installazione, Fuori orario di notte, ricerca con rete mobile (17/10); pallino fermo camminando (24/10); spunta e orari di un gestore verificato, campo orario a 24 ore (25/10).
 
@@ -48,6 +47,8 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 - Nessun test o script legge il contenuto dei due file: `grep` su `tests/`, `scripts/`, `.claude/`, `.githooks/`, `init.sh` (solo `init.sh` controlla che i due file esistano).
 - Seconda passata, chiesta da Roberto prima dell'unione: riletti tutti i blocchi «Da verificare», «Da fare», «Non fatto», «Non risolto», «Limiti», «Resta» delle 49 voci archiviate e confrontati con codice, `SECURITY.md`, ADR e `docs/release-checklist.md`; ciò che è ancora aperto o è scritto solo nel diario è riportato nelle due sezioni in cima.
 - Non eseguiti: `npm run verify` e i test (nessun file di codice toccato, `node_modules` assente nel container): li esegue la CI sulla PR.
+
+**Decisione di Roberto (10/11/2026, in chat):** i link a `/privacy` e `/regole` restano dove sono, nella scheda bar e nel foglio di ricerca; nessun link sulla mappa. Il punto aperto del 24/10 è chiuso. La frase «piè di pagina della mappa» di SPEC 7.8 e M5-04 si allinea alla prossima versione della SPEC, non con una modifica a parte.
 
 **Da verificare (Roberto):** che il nuovo `CLAUDE.md` non abbia tolto nulla che ti serve; l'elenco dei punti aperti qui sopra.
 

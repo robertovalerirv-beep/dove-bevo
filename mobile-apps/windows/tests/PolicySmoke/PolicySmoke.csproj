@@ -9,6 +9,7 @@
     <Compile Include="../../NavigationPolicy.cs" Link="NavigationPolicy.cs" />
     <Compile Include="../../BookmarkStore.cs" Link="BookmarkStore.cs" />
     <Compile Include="../../DiscoveryClient.cs" Link="DiscoveryClient.cs" />
+    <Compile Include="../../EuropeDiscoveryClient.cs" Link="EuropeDiscoveryClient.cs" />
     <Compile Include="../../AreaVotesClient.cs" Link="AreaVotesClient.cs" />
     <Compile Include="../../BookmarkPriceClient.cs" Link="BookmarkPriceClient.cs" />
   </ItemGroup>

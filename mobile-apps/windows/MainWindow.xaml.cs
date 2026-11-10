@@ -626,17 +626,19 @@ public partial class MainWindow : Window
         var request = new CancellationTokenSource();
         discoveryCancellation = request;
         DiscoveryList.ItemsSource = Array.Empty<DiscoveryRow>();
-        StatusText.Text = $"Cerco {category.Name.ToLowerInvariant()} nei menu verificati qui vicino…";
+        StatusText.Text = $"Cerco prezzi pubblici per {category.Name.ToLowerInvariant()} qui vicino…";
         try
         {
             var snapshot = await discovery.LoadAsync(discoveryArea, category.Code, request.Token);
             if (request.IsCancellationRequested || DiscoveryPanel.Visibility != Visibility.Visible) return;
             DiscoveryList.ItemsSource = snapshot.Rows.ToArray();
-            StatusText.Text = snapshot.UnavailableCells > 0
-                ? $"{snapshot.Rows.Count} prezzi trovati; {snapshot.UnavailableCells} zone non disponibili. Riprova Aggiorna."
+            StatusText.Text = snapshot.EuropeUnavailable
+                ? $"Prezzi europei non disponibili ora; {snapshot.Rows.Count} prezzi di altre fonti mostrati. Riprova Aggiorna."
+                : snapshot.UnavailableCells > 0
+                ? $"{snapshot.Rows.Count} prezzi trovati; {snapshot.UnavailableCells} fonti non disponibili. Riprova Aggiorna."
                 : snapshot.Rows.Count == 0
-                    ? "Nessun prezzo verificato per questo drink qui vicino. Prova un altro drink o sposta la mappa."
-                    : $"{snapshot.Rows.Count} prezzi verificati nella zona selezionata.";
+                    ? "Nessun prezzo pubblico per questo drink qui vicino. Prova un altro drink o sposta la mappa."
+                    : $"{snapshot.Rows.Count} prezzi pubblici nella zona selezionata.";
         }
         catch (OperationCanceledException) { }
         catch (Exception)

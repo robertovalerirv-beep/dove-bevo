@@ -106,7 +106,7 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock Text="Scopri i prezzi" FontSize="26" FontWeight="Bold" />
-                        <TextBlock Text="Prezzi verificati dai menu dei locali nella zona selezionata. Prezzi base: eventuali costi di servizio possono aggiungersi."
+                        <TextBlock Text="Prezzi pubblici da menu verificati o segnalati dai clienti nella zona. Eventuali costi di servizio possono aggiungersi."
                                    TextWrapping="Wrap" Margin="0,5,0,14" Foreground="#5E554B" />
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,14">
                         <StackPanel Orientation="Horizontal">

@@ -256,6 +256,77 @@ var offer = DiscoveryClient.ParsePage(menuBytes, "u0nd9", "spritz").Rows.Single(
 Require(offer.Display.Contains("18,00 EUR") && offer.Display.Contains("menu.example") &&
     offer.FocusedVenue()?.AbsoluteUri.EndsWith("&drink=spritz&hh=0") == true,
     "verified discovery offer/focus mismatch");
+var londonArea = new DiscoveryArea(51.5072, -0.1276, 15);
+Require(londonArea.Cells().Contains("gcpvj") &&
+    new DiscoveryArea(45.4642, 9.1900, 15).Cells().Contains("u0nd9"),
+    "London and Milano city cells must include their actual price cells");
+var londonCatalogBytes = JsonSerializer.SerializeToUtf8Bytes(new {
+    schema_version = 1, version = "test-v1", venues = new[] {
+        new { key = "n123", name = "Test London Bar", cell = "gcpvj", city = "London",
+            country = "GB", currency = "GBP", lat = 51.51389, lon = -0.12639 },
+    },
+});
+using var londonCatalog = JsonDocument.Parse(londonCatalogBytes);
+var parsedCatalog = EuropeDiscoveryClient.ParseCatalog(londonCatalog);
+var checkedDay = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+var londonPrices = new[] {
+    new { venue = "n123", cell = "gcpvj", drink = "beer_draft", hh = 0,
+        currency = "GBP", amount_minor = 650, serving = new { unit = "ml", ml = 400 },
+        observed_on = (string?)null, status = "active", provenance = new {
+            kind = "online_menu", source_url = "https://example.com/menu",
+            source_checked_on = checkedDay, source_sha256 = new string('a', 64),
+            menu_item = "Draft beer" },
+    },
+    new { venue = "n123", cell = "gcpvj", drink = "beer_draft", hh = 0,
+        currency = "GBP", amount_minor = 650, serving = new { unit = "ml", ml = 568 },
+        observed_on = (string?)null, status = "active", provenance = new {
+            kind = "online_menu", source_url = "https://example.com/menu",
+            source_checked_on = checkedDay, source_sha256 = new string('a', 64),
+            menu_item = "Draft beer" },
+    },
+};
+using var londonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 1, catalog_version = "test-v1", rows = londonPrices,
+    hidden = Array.Empty<string>(), legacy_venues = Array.Empty<string>(),
+}));
+var londonRows = EuropeDiscoveryClient.ParseCell(londonPage, "gcpvj", "beer_draft",
+    parsedCatalog.Version, parsedCatalog.Venues);
+Require(londonRows.Count == 2 && londonRows.All(row => row.Currency == "GBP" && row.IsEurope) &&
+    londonRows.Any(row => row.Display.Contains("6,50 GBP") && row.Display.Contains("568 ml")) &&
+    londonRows[0].FocusedVenue()?.AbsoluteUri ==
+        "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=gcpvj",
+    "London GBP servings must stay distinct and reopen the app venue without wrong serving focus");
+using var customerLondonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 1, catalog_version = "test-v1", rows = new[] { new {
+        venue = "n123", cell = "gcpvj", drink = "spritz", hh = 0,
+        currency = "GBP", amount_minor = 900, serving = new { unit = "drink" },
+        observed_on = checkedDay, status = "quarantined", provenance = new {
+            kind = "customer", source_url = (string?)null,
+            source_checked_on = (string?)null, source_sha256 = (string?)null,
+            menu_item = (string?)null },
+    } }, hidden = Array.Empty<string>(), legacy_venues = Array.Empty<string>(),
+}));
+var customerLondon = EuropeDiscoveryClient.ParseCell(customerLondonPage, "gcpvj", "spritz",
+    parsedCatalog.Version, parsedCatalog.Venues).Single();
+Require(customerLondon.Display.Contains("9,00 GBP") &&
+    customerLondon.Display.Contains("Segnalato da un cliente") &&
+    customerLondon.Display.Contains("Da confermare") && customerLondon.SourceUrl is null,
+    "customer-reported European price must retain provenance and review state");
+using var hiddenLondonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 1, catalog_version = "test-v1", rows = londonPrices,
+    hidden = new[] { "n123" }, legacy_venues = Array.Empty<string>(),
+}));
+using var legacyLondonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 1, catalog_version = "test-v1", rows = londonPrices,
+    hidden = Array.Empty<string>(), legacy_venues = new[] { "n123" },
+}));
+Require(EuropeDiscoveryClient.ParseCell(hiddenLondonPage, "gcpvj", "beer_draft",
+        parsedCatalog.Version, parsedCatalog.Venues).Count == 0 &&
+    EuropeDiscoveryClient.ParseCell(legacyLondonPage, "gcpvj", "beer_draft",
+        parsedCatalog.Version, parsedCatalog.Venues).Count == 0,
+    "excluded European prices must never enter Home discovery");
+ExpectInvalid(() => EuropeDiscoveryClient.ParseCell(londonPage, "gcpvj", "beer_draft",
+    "wrong-version", parsedCatalog.Venues));
 ExpectInvalid(() => DiscoveryClient.ParsePage(menuBytes, "u0nd9", "negroni"));
 ExpectInvalid(() => DiscoveryClient.ParsePage(Encoding.UTF8.GetBytes(
     Encoding.UTF8.GetString(menuBytes).Replace("https://menu.example/", "http://menu.example/")),
@@ -267,6 +338,13 @@ if (args.Contains("--live-discovery"))
     Require(live.Rows.Any(row => row.Cell == "u0nd9" && row.Venue == "The Dome"),
         "live Milano menu v2 offer missing");
     Console.WriteLine($"Live Milano discovery: {live.Rows.Count} offers; {live.UnavailableCells} unavailable cells.");
+    var londonLive = await new DiscoveryClient().LoadAsync(londonArea,
+        "spritz", CancellationToken.None);
+    Require(londonLive.Rows.Any(row => row.IsEurope && row.Currency == "GBP" &&
+        row.Cell == "gcpvj" && row.SourceUrl is not null),
+        "live London app catalogue GBP menu price missing from Home discovery");
+    Console.WriteLine($"Live London discovery: {londonLive.Rows.Count} prices; " +
+        $"{londonLive.UnavailableCells} unavailable cells.");
 }
 
 Console.WriteLine("Windows policy: origin, exact bookmarks, live-price parsing, area totals, and discovery passed.");

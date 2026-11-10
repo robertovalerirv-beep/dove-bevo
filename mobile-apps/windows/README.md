@@ -28,15 +28,15 @@ appears. Browser cookies and private favourites stay under Windows
 LocalAppData, outside source and OneDrive. Old local favourites are preserved;
 their live price is shown on the venue page until an exact row is saved anew.
 
-Scopri reads the existing public, read-only `/api/mobile/v2/menu/cells/` route
-for at most nine geohash cells near the selected city or the zoomed-in map
-centre. Pick a drink to see its original menu price, currency, context and
-source-check date. It uses bounded pagination and reports unavailable cells
-instead of claiming that a failed read means there are no prices. Choosing a
-row opens that drink at its venue; Scopri cannot submit or invent menu prices.
-The menu endpoint supplies sample offers, so the venue detail remains the place
-to inspect the full named menu and fee information. The fixed city centres are
-navigation shortcuts, not a claim of complete coverage.
+Scopri combines the public Italian menu cells with the app-only European
+catalogue and price cells near the selected city or zoomed-in map. The latter
+preserves EUR or GBP and the actual serving, and excludes hidden or
+legacy-overridden venues. Menu rows show their source and check date; customer
+rows are labelled as reports. A failed source is reported as unavailable,
+without inventing a price or converting currencies. Selecting a European row
+opens its venue without an ambiguous drink-only focus. This is a bounded
+view of actual public prices, not a claim of complete city coverage; full menu
+details and fees remain in the venue sheet.
 
 ## Build and checks
 

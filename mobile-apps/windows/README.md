@@ -5,6 +5,8 @@ This Windows client opens Roberto's separate app interface at
 Cerca, Mappa, Preferiti and Consigliati. The overflow menu has Reload, Share,
 Scopri prezzi and Privacy. The app keeps the normal HTTPS website session,
 location permission prompt, and external-link confirmation.
+Mappa returns from a venue to the last selected city map, including city changes
+made within the app; Home resets to the default map.
 
 An exact drink row in an open venue offers **Salva** and a public 👍 count.
 Salva stores the venue, drink and original serving locally on this PC without

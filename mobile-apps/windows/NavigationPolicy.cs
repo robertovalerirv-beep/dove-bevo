@@ -33,6 +33,14 @@ internal static partial class NavigationPolicy
                 out var longitude) && longitude is >= -180 and <= 180;
     }
 
+    internal static string MapDestination(Uri? current, string? lastMapRoute)
+    {
+        if (IsMapRoute(current)) return current!.AbsoluteUri;
+        if (Uri.TryCreate(lastMapRoute, UriKind.Absolute, out var remembered) &&
+            IsMapRoute(remembered)) return remembered.AbsoluteUri;
+        return Home;
+    }
+
     internal static bool TryVenue(string? address, string? selectedKey, out Uri? canonical)
     {
         canonical = null;
@@ -243,3 +251,17 @@ internal static partial class NavigationPolicy
 
 internal sealed record SaveAction(string VenueKey, string Cell, string Kind, string Item,
     string? Band, string? Currency, string? Serving, string CommandUrl);
+
+internal sealed class MapRouteTracker
+{
+    private string? lastMapRoute;
+
+    internal void Observe(Uri? route)
+    {
+        if (NavigationPolicy.IsMapRoute(route)) lastMapRoute = route!.AbsoluteUri;
+    }
+
+    internal string Destination(Uri? current) => NavigationPolicy.MapDestination(current, lastMapRoute);
+
+    internal void ResetHome() => lastMapRoute = NavigationPolicy.Home;
+}

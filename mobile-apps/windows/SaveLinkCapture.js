@@ -8,10 +8,10 @@
     current.origin !== "https://www.dovebevo.com" ||
     current.pathname !== "/mobile/" ||
     document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1"
-  ) return { status: "unavailable" };
-  const sheets = document.querySelectorAll("dialog.sheet.sheet--bare[open]");
-  if (sheets.length !== 1 || !sheets[0].matches(":modal"))
+  )
     return { status: "unavailable" };
+  const sheets = document.querySelectorAll("dialog.sheet.sheet--bare[open]");
+  if (sheets.length !== 1 || !sheets[0].matches(":modal")) return { status: "unavailable" };
   const heading = sheets[0].querySelector(".scontrino__name");
   const venueName = heading?.textContent?.trim();
   if (!venueName || venueName.length > 120 || !heading.getClientRects().length)
@@ -26,7 +26,11 @@
   const suffix = suffixes.find((value) => label.endsWith(value));
   if (!prefix || !suffix) return { status: "unavailable" };
   const drinkName = label.slice(prefix.length, -suffix.length).trim();
-  if (!drinkName || drinkName.length > 120 || /[\u0000-\u001f\u007f]/.test(drinkName))
+  if (
+    !drinkName ||
+    drinkName.length > 120 ||
+    [...drinkName].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127)
+  )
     return { status: "unavailable" };
   return { status: "ready", href: location.href, target, venueName, drinkName };
 })();

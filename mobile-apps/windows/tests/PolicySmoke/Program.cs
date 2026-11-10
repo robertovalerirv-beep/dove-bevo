@@ -25,6 +25,19 @@ Require(NavigationPolicy.IsMapRoute(new Uri(NavigationPolicy.Home)) &&
     !NavigationPolicy.IsMapRoute(new Uri(
         "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9")),
     "Mappa must close a venue route and retain actual map routes");
+var mapRoutes = new MapRouteTracker();
+var londonMap = new Uri(NavigationPolicy.Home + "?at=51.50720,-0.12760");
+var londonVenue = new Uri("https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=gcpvj");
+Require(mapRoutes.Destination(londonVenue) == NavigationPolicy.Home,
+    "Mappa without selected city must use Home");
+mapRoutes.Observe(new Uri(NavigationPolicy.Home));
+mapRoutes.Observe(londonMap); // SourceChanged/HistoryChanged after the app's city pushState.
+mapRoutes.Observe(londonVenue);
+Require(mapRoutes.Destination(londonVenue) == londonMap.AbsoluteUri,
+    "London venue must return to the selected London map");
+mapRoutes.ResetHome();
+Require(mapRoutes.Destination(londonVenue) == NavigationPolicy.Home,
+    "Home must reset the remembered map city");
 
 var venues = new[]
 {

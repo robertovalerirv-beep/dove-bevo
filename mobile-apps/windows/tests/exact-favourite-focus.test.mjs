@@ -16,8 +16,12 @@ function focus({ target = pint, link = pint, href = venue, visible = true } = {}
   const row = {
     style: {},
     getClientRects: () => (visible ? [{}] : []),
-    setAttribute(name, value) { this[name] = value; },
-    scrollIntoView() { scrolled = true; },
+    setAttribute(name, value) {
+      this[name] = value;
+    },
+    scrollIntoView() {
+      scrolled = true;
+    },
   };
   const anchor = {
     href: link,
@@ -33,7 +37,9 @@ function focus({ target = pint, link = pint, href = venue, visible = true } = {}
   window.top = window;
   const script = source.replaceAll("__DOVE_BEVO_EXACT_TARGET__", JSON.stringify(target));
   const result = runInNewContext(script, {
-    URL, window, location: { href },
+    URL,
+    window,
+    location: { href },
     document: {
       documentElement: { getAttribute: () => "1" },
       querySelectorAll: () => [dialog],

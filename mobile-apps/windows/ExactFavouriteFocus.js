@@ -14,7 +14,8 @@
     current.searchParams.get("path") !== saved.searchParams.get("path") ||
     current.searchParams.get("c") !== saved.searchParams.get("c") ||
     document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1"
-  ) return false;
+  )
+    return false;
   const sheets = document.querySelectorAll("dialog.sheet.sheet--bare[open]");
   if (sheets.length !== 1 || !sheets[0].matches(":modal")) return false;
   const links = [...sheets[0].querySelectorAll("a.europe-price__save")].filter(

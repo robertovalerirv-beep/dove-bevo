@@ -57,10 +57,16 @@ test("retains original serving in a European drink label", () => {
 test("hidden or mismatched links never produce a private save", () => {
   const target =
     "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_drink=spritz&band=normal";
-  assert.equal(capture({ label: "Salva Spritz da Test Bar nei preferiti", target, hidden: true }).status,
-    "unavailable");
-  assert.equal(capture({ label: "Salva Spritz da Other Bar nei preferiti", target }).status,
-    "unavailable");
-  assert.equal(capture({ label: "Salva Spritz da Test Bar nei preferiti", target, shell: false }).status,
-    "unavailable");
+  assert.equal(
+    capture({ label: "Salva Spritz da Test Bar nei preferiti", target, hidden: true }).status,
+    "unavailable",
+  );
+  assert.equal(
+    capture({ label: "Salva Spritz da Other Bar nei preferiti", target }).status,
+    "unavailable",
+  );
+  assert.equal(
+    capture({ label: "Salva Spritz da Test Bar nei preferiti", target, shell: false }).status,
+    "unavailable",
+  );
 });

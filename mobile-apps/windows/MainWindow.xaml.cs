@@ -12,6 +12,7 @@ public partial class MainWindow : Window
     private readonly BookmarkStore bookmarks = new();
     private readonly BookmarkPriceClient bookmarkPrices = new();
     private readonly AreaVotesClient areaVotes = new();
+    private readonly MapRouteTracker mapRoutes = new();
     private readonly DiscoveryClient discovery = new();
     private DiscoveryArea? discoveryArea;
     private CancellationTokenSource? discoveryCancellation;
@@ -47,6 +48,8 @@ public partial class MainWindow : Window
             core.Settings.IsStatusBarEnabled = false;
             core.NavigationStarting += Browser_NavigationStarting;
             core.NavigationCompleted += Browser_NavigationCompleted;
+            core.SourceChanged += (_, _) => RememberMapRoute();
+            core.HistoryChanged += (_, _) => RememberMapRoute();
             core.NewWindowRequested += Browser_NewWindowRequested;
             core.PermissionRequested += Browser_PermissionRequested;
             core.ProcessFailed += Browser_ProcessFailed;
@@ -96,6 +99,7 @@ public partial class MainWindow : Window
     {
         if (e.IsSuccess)
         {
+            RememberMapRoute();
             ErrorPanel.Visibility = Visibility.Collapsed;
             ShowWebsiteIfNoOverlay();
             StatusText.Text = "Prezzi e locali aggiornati online.";
@@ -116,6 +120,15 @@ public partial class MainWindow : Window
             ShowError("Controlla la connessione e riprova.");
         UpdateButtons();
     }
+
+    private void RememberMapRoute()
+    {
+        if (ready) mapRoutes.Observe(CurrentBrowserRoute());
+    }
+
+    private Uri? CurrentBrowserRoute() =>
+        Uri.TryCreate(Website.CoreWebView2?.Source, UriKind.Absolute, out var current)
+            ? current : Website.Source;
 
     private async Task AdvertiseNativeActionsAsync()
     {
@@ -258,9 +271,14 @@ public partial class MainWindow : Window
         else _ = StartBrowser();
     }
 
-    private void Home_Click(object sender, RoutedEventArgs e) => Navigate(NavigationPolicy.Home);
+    private void Home_Click(object sender, RoutedEventArgs e)
+    {
+        mapRoutes.ResetHome();
+        Navigate(NavigationPolicy.Home);
+    }
     private void Map_Click(object sender, RoutedEventArgs e)
     {
+        var current = CurrentBrowserRoute();
         favouritesCancellation?.Cancel();
         recommendationCancellation?.Cancel();
         CloseDiscovery();
@@ -268,7 +286,8 @@ public partial class MainWindow : Window
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ErrorPanel.Visibility = Visibility.Collapsed;
         ShowWebsiteIfNoOverlay();
-        if (!ready || !NavigationPolicy.IsMapRoute(Website.Source)) Navigate(NavigationPolicy.Home);
+        if (!ready || !NavigationPolicy.IsMapRoute(current))
+            Navigate(mapRoutes.Destination(current));
         UpdateButtons();
     }
     private void More_Click(object sender, RoutedEventArgs e)

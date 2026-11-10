@@ -102,16 +102,60 @@ const FEE_COLS =
 // The app's Birra media map price must not use a cheaper small draft serving.
 // Keep the full named menu (and the legacy website price path) unchanged.
 const SERVING_WORDS =
-  "' ' || REPLACE(REPLACE(REPLACE(REPLACE(LOWER(COALESCE(o.serving_label,''))," +
-  " '/', ' '), '-', ' '), ',', ' '), '.', ' ') || ' '";
+  "' ' || " +
+  ["/", "-", ",", ".", "(", ")", "[", "]", ":", ";"].reduce(
+    (sql, separator) => "REPLACE(" + sql + ", '" + separator + "', ' ')",
+    "LOWER(COALESCE(o.serving_label,''))",
+  ) +
+  " || ' '";
+const COMPACT_SERVING =
+  "LOWER(REPLACE(REPLACE(REPLACE(COALESCE(o.serving_label,'')," +
+  " ' ', ''), CHAR(9), ''), CHAR(160), ''))";
+const PADDED_COMPACT_SERVING = "'_' || " + COMPACT_SERVING + " || '_'";
 const hasServingWord = (word: string) => "INSTR(" + SERVING_WORDS + ", ' " + word + " ') > 0";
 const lacksServingWord = (word: string) => "INSTR(" + SERVING_WORDS + ", ' " + word + " ') = 0";
+const matchesOnlyQuantity = (quantity: string) => {
+  const remainder = "REPLACE(" + COMPACT_SERVING + ", " + quantity + ", '')";
+  return (
+    "(" +
+    PADDED_COMPACT_SERVING +
+    " GLOB ('*[^0-9]' || " +
+    quantity +
+    " || '[^a-z0-9]*') AND LENGTH(" +
+    COMPACT_SERVING +
+    ") - LENGTH(" +
+    remainder +
+    ") = LENGTH(" +
+    quantity +
+    ") AND NOT (" +
+    ["ml", "cl", "l"].map((unit) => remainder + " GLOB '*[0-9]" + unit + "*'").join(" OR ") +
+    "))"
+  );
+};
+const CONSISTENT_PRINTED_VOLUME =
+  "(" +
+  COMPACT_SERVING +
+  " NOT GLOB '*[0-9]*' OR " +
+  [
+    "CAST(o.serving_ml AS TEXT) || 'ml'",
+    "CAST(o.serving_ml / 10 AS TEXT) || 'cl'",
+    "CAST(o.serving_ml / 1000.0 AS TEXT) || 'l'",
+    "REPLACE(CAST(o.serving_ml / 1000.0 AS TEXT), '.', ',') || 'l'",
+  ]
+    .map(matchesOnlyQuantity)
+    .join(" OR ") +
+  ")";
 const MEDIUM_DRAFT =
-  "(o.serving_ml BETWEEN 400 AND 600 OR" +
+  "((o.serving_ml BETWEEN 400 AND 600 AND " +
+  CONSISTENT_PRINTED_VOLUME +
+  ") OR" +
   " (o.serving_ml IS NULL AND (" +
   [hasServingWord("media"), hasServingWord("medium")].join(" OR ") +
   ") AND " +
   ["grande", "large", "pint", "pinta"].map(lacksServingWord).join(" AND ") +
+  " AND " +
+  COMPACT_SERVING +
+  " NOT GLOB '*[0-9]*'" +
   ")) AND " +
   ["piccola", "piccolo", "small", "mini"].map(lacksServingWord).join(" AND ");
 

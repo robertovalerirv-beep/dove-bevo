@@ -361,6 +361,30 @@ describe("app-only named menu v2", () => {
         ml: 500,
         amount: 150,
       }),
+      addOffer("printed-25cl-conflicts-with-volume", ITALY.key, ITALY.cell, sourceId, {
+        name: "Fixture lager",
+        servingLabel: "Media 25 cl",
+        ml: 500,
+        amount: 100,
+      }),
+      addOffer("printed-70cl-conflicts-with-volume", ITALY.key, ITALY.cell, sourceId, {
+        name: "Fixture lager",
+        servingLabel: "Media 70cl",
+        ml: 500,
+        amount: 120,
+      }),
+      addOffer("printed-two-volumes-conflict", ITALY.key, ITALY.cell, sourceId, {
+        name: "Fixture lager",
+        servingLabel: "Media 40cl / 50cl",
+        ml: 500,
+        amount: 130,
+      }),
+      addOffer("printed-two-volumes-repeat", ITALY.key, ITALY.cell, sourceId, {
+        name: "Fixture lager",
+        servingLabel: "Media 50cl / 50cl",
+        ml: 500,
+        amount: 140,
+      }),
       addOffer("medium-400ml", ITALY.key, ITALY.cell, sourceId, {
         name: "Fixture lager",
         servingLabel: "Media 40cl",
@@ -390,7 +414,7 @@ describe("app-only named menu v2", () => {
     );
     expect(response.status, await response.clone().text()).toBe(200);
     const cell = await response.json<Cell>();
-    expect(cell.venues[0]?.matching_offer_count).toBe(7);
+    expect(cell.venues[0]?.matching_offer_count).toBe(11);
     expect(cell.venues[0]?.sample_offers).toMatchObject([
       {
         id: "medium-400ml",
@@ -411,7 +435,7 @@ describe("app-only named menu v2", () => {
     expect(detail.offers.map((offer) => offer.id)).toEqual(
       expect.arrayContaining(["cheap-small", "medium-400ml"]),
     );
-    expect(detail.stored_offer_count).toBe(7);
+    expect(detail.stored_offer_count).toBe(11);
   });
 
   it("recognizes an unambiguous media label when volume is absent", async () => {
@@ -432,6 +456,10 @@ describe("app-only named menu v2", () => {
       addOffer("pint-ambiguous", ITALY.key, ITALY.cell, sourceId, {
         servingLabel: "media/pinta",
         amount: 150,
+      }),
+      addOffer("printed-25cl-without-volume", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "Media 25 cl",
+        amount: 100,
       }),
       addOffer("media", ITALY.key, ITALY.cell, sourceId, {
         servingLabel: "media",
@@ -458,6 +486,29 @@ describe("app-only named menu v2", () => {
       id: "medium",
       amount_minor: 700,
       serving: { label: "Medium", ml: null },
+    });
+  });
+
+  it("recognizes a parenthesized media label without a structured volume", async () => {
+    const sourceId = await addSource(ITALY.key, ITALY.cell);
+    await env.DB.batch([
+      addOffer("small", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "Piccola 25cl",
+        ml: 250,
+        amount: 400,
+      }),
+      addOffer("parenthesized-media", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "(Media)",
+        amount: 600,
+      }),
+    ]);
+    const cell = await (
+      await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?category=beer_draft")
+    ).json<Cell>();
+    expect(cell.venues[0]?.sample_offers[0]).toMatchObject({
+      id: "parenthesized-media",
+      serving: { label: "(Media)", ml: null },
+      amount_minor: 600,
     });
   });
 

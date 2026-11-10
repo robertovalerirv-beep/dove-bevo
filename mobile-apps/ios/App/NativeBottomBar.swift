@@ -1,12 +1,11 @@
 import UIKit
 
 enum BottomNavigationAction: Int, CaseIterable {
-    case home, search, map, favourites, recommendations
+    case home, map, favourites, recommendations
 
     var title: String {
         switch self {
         case .home: return "Home"
-        case .search: return "Cerca"
         case .map: return "Mappa"
         case .favourites: return "Preferiti"
         case .recommendations: return "Consigliati"
@@ -21,7 +20,6 @@ enum BottomNavigationAction: Int, CaseIterable {
     var identifier: String {
         switch self {
         case .home: return "tab.home"
-        case .search: return "tab.search"
         case .map: return "tab.map"
         case .favourites: return "tab.favorites"
         case .recommendations: return "tab.recommendations"
@@ -30,7 +28,6 @@ enum BottomNavigationAction: Int, CaseIterable {
     var symbol: String {
         switch self {
         case .home: return "house"
-        case .search: return "magnifyingglass"
         case .map: return "map"
         case .favourites: return "bookmark"
         case .recommendations: return "hand.thumbsup"
@@ -93,7 +90,7 @@ final class NativeBottomBar: UIView {
             button.addTarget(self, action: #selector(selectAction), for: .touchUpInside)
             buttons.append(button)
         }
-        arrange(columns: 5)
+        arrange(columns: 4)
         update(destination: 0, venueActionsEnabled: false)
     }
 
@@ -102,7 +99,7 @@ final class NativeBottomBar: UIView {
     static func columns(for usableWidth: CGFloat, fontScale: CGFloat) -> Int {
         // Each native target still has at least 56 points of horizontal room.
         // The stack has four-point insets on both sides of the safe area.
-        usableWidth - 8 >= 5 * 56 * max(1, fontScale) ? 5 : 3
+        usableWidth - 8 >= 4 * 56 * max(1, fontScale) ? 4 : 2
     }
 
     override func layoutSubviews() {

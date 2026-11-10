@@ -378,20 +378,20 @@ class AndroidSmokeTests(unittest.TestCase):
                 m.port_open(5041)
 
     def test_required_ui_checks_retained(self):
-        for text in ['native adult usage rules', 'live map and native city-search control',
-                     'com.dovebevo.app:id/search_destination', 'Mappa interattiva dei bar',
+        for text in ['native adult usage rules', 'live map and city-search control',
+                     'Cerca città o bar', 'Mappa interattiva dei bar',
                      'clickable Milano city result', 'live map initialized after city selection',
                      'accepted app restarts into live service']:
             self.assertIn(text, source)
 
-    def test_live_search_requires_both_rendered_map_and_native_destination(self):
-        search = '<node class="android.widget.Button" package="com.dovebevo.app" resource-id="com.dovebevo.app:id/search_destination" text="Cerca" enabled="true" />'
+    def test_live_search_requires_both_rendered_map_and_web_destination(self):
+        search = '<node class="android.widget.Button" package="com.dovebevo.app" text="Milano · Cerca città o bar" enabled="true" />'
         web = '<node class="android.webkit.WebView" package="com.dovebevo.app"><node text="Mappa interattiva dei bar" /></node>'
         for body in (search, web, search + '<node class="android.webkit.WebView" package="com.dovebevo.app" />'):
             with mock.patch.object(m, 'tree', return_value=m.ET.fromstring('<hierarchy>' + body + '</hierarchy>')):
                 self.assertIsNone(m.live_map_search_destination())
-        with mock.patch.object(m, 'tree', return_value=m.ET.fromstring('<hierarchy>' + search + web + '</hierarchy>')):
-            self.assertEqual(m.live_map_search_destination().get('resource-id'), 'com.dovebevo.app:id/search_destination')
+        with mock.patch.object(m, 'tree', return_value=m.ET.fromstring('<hierarchy><node class="android.webkit.WebView" package="com.dovebevo.app"><node text="Mappa interattiva dei bar" />' + search + '</node></hierarchy>')):
+            self.assertEqual(m.live_map_search_destination().get('text'), 'Milano · Cerca città o bar')
 
     def test_registered_source_inventory_is_exact_and_checked_before_emulator_start(self):
         self.assertEqual(m.OWNED_TEST_COUNT, 58)

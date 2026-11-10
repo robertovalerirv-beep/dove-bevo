@@ -416,15 +416,16 @@ public final class NativeUsabilityRuntimeTest {
         });
     }
 
-    @Test public void fiveBottomControlsAndTopOverflowHaveNoDestinationDuplicates() throws Exception {
+    @Test public void fourBottomControlsAndTopOverflowHaveNoDestinationDuplicates() throws Exception {
         onMain(() -> {
             android.view.ViewGroup bottom = activity.findViewById(R.id.bottom_navigation);
             assertNotNull(bottom);
-            for (int id : new int[]{R.id.home, R.id.search_destination, R.id.map_destination,
+            for (int id : new int[]{R.id.home, R.id.map_destination,
                     R.id.favorites_destination, R.id.recommendation_entry}) {
                 View control = bottom.findViewById(id);
                 assertNotNull(control); assertEquals(View.VISIBLE, control.getVisibility());
             }
+            assertNull(bottom.findViewById(R.id.search_destination));
             assertNull(bottom.findViewById(R.id.save_venue));
             assertTrue(activity.findViewById(R.id.recommendation_entry).isEnabled());
             assertNull("The map has no duplicate browser header", activity.findViewById(R.id.browser_tools));
@@ -481,10 +482,10 @@ public final class NativeUsabilityRuntimeTest {
                     new DiscoveryLoader(new FavoritePricesClient((url,max,call)->{throw new IOException("Unready owned map must not fetch");},()->"2026-11-01"),task->activity.runOnUiThread(task)));
             set("discovery",home);((FrameLayout)get("content")).addView(home.view());home.view().setVisibility(View.GONE);
             activity.findViewById(R.id.favorites_destination).performClick();
-            activity.findViewById(R.id.search_destination).performClick();
             assertFalse((Boolean)get("favoritesVisible"));
             assertSame(original, get("website"));
         });
+        fixtureJavascript("document.querySelector('[data-dovebevo-search]').click()");
         AtomicBoolean searchOpened = new AtomicBoolean();
         await(()->{
             web.evaluateJavascript("document.body.dataset.searchOpen === '1'", result -> searchOpened.set("true".equals(result)));
@@ -622,16 +623,16 @@ public final class NativeUsabilityRuntimeTest {
                 android.content.res.Configuration config = new android.content.res.Configuration(activity.getResources().getConfiguration());
                 config.screenWidthDp = (int)fixture[0]; config.fontScale = fixture[1];
                 android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
-                BottomNavigationBar bar = new BottomNavigationBar(context, () -> {}, () -> {}, () -> {}, () -> {}, () -> {});
+                BottomNavigationBar bar = new BottomNavigationBar(context, () -> {}, () -> {}, () -> {}, () -> {});
                 float density = context.getResources().getDisplayMetrics().density;
                 int width = Math.round(fixture[0] * density);
                 bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 bar.layout(0, 0, width, bar.getMeasuredHeight());
                 assertEquals("Unexpected row count at " + fixture[0] + "dp, font scale " + fixture[1],
-                        BottomNavigationLayout.columns((int)fixture[0]-12,fixture[1])==5 ? 1 : 2,
+                        BottomNavigationLayout.columns((int)fixture[0]-12,fixture[1])==4 ? 1 : 2,
                         bar.getChildCount());
                 java.util.ArrayList<android.graphics.Rect> boxes = new java.util.ArrayList<>();
-                for (int id : new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.recommendation_entry}) {
+                for (int id : new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.recommendation_entry}) {
                     Button button = bar.findViewById(id); assertNotNull(button);
                     assertEquals(View.VISIBLE, button.getVisibility());
                     assertTrue(button.getWidth() >= 48*density); assertTrue(button.getHeight() >= 56*density);
@@ -657,7 +658,7 @@ public final class NativeUsabilityRuntimeTest {
             config.screenWidthDp = 640; config.fontScale = 1.5f;
             android.content.Context context = new android.view.ContextThemeWrapper(activity.createConfigurationContext(config), R.style.AppTheme);
             AtomicInteger taps = new AtomicInteger();
-            BottomNavigationBar bar = new BottomNavigationBar(context, taps::incrementAndGet, () -> {}, () -> {}, () -> {}, () -> {});
+            BottomNavigationBar bar = new BottomNavigationBar(context, taps::incrementAndGet, () -> {}, () -> {}, () -> {});
             View originalHome = bar.findViewById(R.id.home);
             float density = context.getResources().getDisplayMetrics().density;
             for (int widthDp : new int[]{640,320,640,360,640}) {
@@ -666,7 +667,7 @@ public final class NativeUsabilityRuntimeTest {
                 bar.layout(0,0,width,bar.getMeasuredHeight());
                 assertEquals(widthDp==640?1:2,bar.getChildCount());
                 assertSame(originalHome,bar.findViewById(R.id.home));
-                for(int id:new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.recommendation_entry}) {
+                for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.recommendation_entry}) {
                     Button button=bar.findViewById(id);
                     assertTrue(button.getWidth()>=48*density); assertTrue(button.getHeight()>=48*density);
                     assertNotNull(button.getLayout());
@@ -718,7 +719,7 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals("light",state.getString(2));
     }
 
-    @Test public void verifiedMobileShellHidesWebLensAndBottomSearchStillOpens() throws Exception {
+    @Test public void verifiedMobileShellShowsMapLensAndOpensSearch() throws Exception {
         presentationMode=5;
         navigate(BrowserPolicy.HOME);
         AtomicReference<String> appearance=new AtomicReference<>();CountDownLatch measured=new CountDownLatch(1);
@@ -726,13 +727,13 @@ public final class NativeUsabilityRuntimeTest {
                 result->{appearance.set(result);measured.countDown();}));
         assertTrue(measured.await(5,TimeUnit.SECONDS));
         JSONArray state=new JSONArray(appearance.get());
-        assertEquals("1",state.getString(0));assertEquals(1,state.getInt(1));assertEquals("none",state.getString(2));
-        onMain(()->activity.findViewById(R.id.search_destination).performClick());
+        assertEquals("1",state.getString(0));assertEquals(1,state.getInt(1));assertEquals("grid",state.getString(2));
+        fixtureJavascript("document.querySelector('[data-dovebevo-search]').click()");
         AtomicBoolean opened=new AtomicBoolean();
         await(()->{web.evaluateJavascript("document.body.dataset.searchOpen === '1'",result->opened.set("true".equals(result)));return opened.get();});
     }
 
-    @Test public void lateMobileMountEventuallyHidesWebLensWithoutAnEmptyTopRail() throws Exception {
+    @Test public void lateMobileMountShowsMapLensWithoutAnEmptyTopRail() throws Exception {
         presentationMode=7;
         navigate(BrowserPolicy.HOME);
         float density=activity.getResources().getDisplayMetrics().density;
@@ -750,9 +751,9 @@ public final class NativeUsabilityRuntimeTest {
         await(()->{web.evaluateJavascript("[document.documentElement.getAttribute('data-dovebevo-app-theme'),"
                 +"document.querySelectorAll('#dovebevo-native-theme-v1').length,"
                 +"getComputedStyle(document.querySelector('.top__row > .search-field')).display]",after::set);
-            return "[\"1\",1,\"none\"]".equals(after.get())
+            return "[\"1\",1,\"grid\"]".equals(after.get())
                     && ((FrameLayout.LayoutParams)web.getLayoutParams()).topMargin==0;});
-        onMain(()->activity.findViewById(R.id.search_destination).performClick());
+        fixtureJavascript("document.querySelector('[data-dovebevo-search]').click()");
         AtomicBoolean opened=new AtomicBoolean();
         await(()->{web.evaluateJavascript("document.body.dataset.searchOpen === '1'",result->opened.set("true".equals(result)));return opened.get();});
     }
@@ -786,7 +787,7 @@ public final class NativeUsabilityRuntimeTest {
             bottom.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0,View.MeasureSpec.UNSPECIFIED));
             bottom.layout(0,0,width,bottom.getMeasuredHeight());
             assertNull(bottom.findViewById(R.id.more));
-            for(int id:new int[]{R.id.home,R.id.search_destination}) {
+            for(int id:new int[]{R.id.home,R.id.map_destination}) {
                 Button action=bottom.findViewById(id);
                 assertNotNull(action);assertTrue(action.getWidth()>=48*density);assertTrue(action.getHeight()>=48*density);
                 assertNotNull(action.getContentDescription());assertTrue(action.getContentDescription().length()>1);

@@ -1,6 +1,7 @@
 import UIKit
 
-/// Map, favourites and Home/Discover remain retained; Cerca opens the map search.
+/// Map, favourites, Home/Discover and shared recommendations remain retained.
+/// The city/bar search lives on the map, beside Locate and Add.
 /// Actions never select an empty controller or replace the browser's history.
 final class NativeTabsController: UIViewController, UINavigationControllerDelegate {
     private let store: SavedVenueStore
@@ -358,10 +359,6 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         switch action {
         case .home:
             openDiscovery()
-        case .search:
-            mapNavigation.popToRootViewController(animated: false)
-            selectedIndex = 0
-            browser.openMapSearch()
         case .map: selectedIndex = 0
         case .favourites: selectedIndex = 1
         case .recommendations: openAreaVotes()

@@ -721,13 +721,9 @@ test("drink checkboxes stay inside the narrow dropdown and viewport", async () =
     assert.equal(await f.page.evaluate(() => document.documentElement.scrollWidth), 412);
     const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
     assert.ok(locate && locate.x >= 0 && locate.x + locate.width <= 412);
-    const nativeSearch = f.page.locator('button[data-dovebevo-search="1"]');
-    assert.equal(
-      await nativeSearch.count(),
-      1,
-      "The native Cerca command has one app-owned map target",
-    );
-    await nativeSearch.click();
+    const mapSearch = f.page.locator('button[data-dovebevo-search="1"]');
+    assert.equal(await mapSearch.count(), 1, "The map has exactly one app-owned search action");
+    await mapSearch.click();
     const dialog = f.page.getByRole("dialog");
     await dialog.waitFor();
     await dialog.getByRole("combobox").fill("Milano");
@@ -830,8 +826,63 @@ test("zoom hint fits between the map language and venue-list controls", async ()
       if (width === 320)
         await f.page.screenshot({ path: path.join(output, "map-zoom-hint-320-fixture.png") });
     }
+    await status.getByRole("button", { name: "Cerca città o bar" }).click();
+    await f.page.getByRole("dialog").getByRole("combobox").waitFor();
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("map search stays usable above a short keyboard viewport and after closing", async () => {
+  const f = await fixture({ width: 320, height: 700 });
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const search = f.page.locator('.top__row button[data-dovebevo-search="1"]');
+    await search.click();
+    const dialog = f.page.getByRole("dialog");
+    const input = dialog.getByRole("combobox");
+    await input.waitFor();
+    await f.page.setViewportSize({ width: 320, height: 320 });
+    await input.focus();
+    const searchBox = await input.boundingBox();
+    const dialogBox = await dialog.boundingBox();
+    assert.ok(searchBox && dialogBox);
+    assert.ok(searchBox.y >= 0 && searchBox.y + searchBox.height <= 320);
+    assert.ok(dialogBox.y >= 0 && dialogBox.y + dialogBox.height <= 320);
+    await f.page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+    await f.page.setViewportSize({ width: 320, height: 700 });
+    const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
+    const add = await f.page.locator(".mobile-map-actions__toggle").boundingBox();
+    const searchAfter = await search.boundingBox();
+    assert.ok(searchAfter && locate && add);
+    assert.ok(searchAfter.x + searchAfter.width + 8 <= locate.x);
+    assert.ok(locate.x + locate.width + 8 <= add.x);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("denied location opens the existing city search without hiding map search", async () => {
+  const f = await fixture({ width: 390, height: 700 });
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.context().clearPermissions();
+    await f.page.getByRole("button", { name: "Vicino a me" }).click();
+    const dialog = f.page.getByRole("dialog");
+    await dialog.getByRole("combobox", { name: "Cerca una città o un bar" }).waitFor();
+    await f.page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+    assert.equal(
+      await f.page.locator('.top__row button[data-dovebevo-search="1"]').isVisible(),
+      true,
+    );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
   } finally {
     await f.close();
   }
@@ -1963,18 +2014,23 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     const toggle = actions.getByRole("button", { name: "Aggiungi", exact: true });
     await toggle.waitFor();
     assert.equal(await f.page.locator(".bottom").isVisible(), false);
-    assert.equal(await f.page.locator(".top .search-field > .icon").isVisible(), false);
+    assert.equal(await f.page.locator(".top .search-field > .icon").isVisible(), true);
     const map = await f.page.locator("section.map").boundingBox();
     assert.ok(map && map.height >= 500, JSON.stringify(map));
     await f.page.getByTestId("map-status").waitFor();
     const status = await f.page.getByTestId("map-status").boundingBox();
     const actionBox = await toggle.boundingBox();
     const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
+    const search = await f.page.locator(".top__row > .search-field").boundingBox();
     const attribution = await f.page.locator(".map__attribution").boundingBox();
-    assert.ok(status && actionBox && locate && attribution);
+    assert.ok(status && actionBox && locate && search && attribution);
     assert.ok(status.y + status.height + 8 <= actionBox.y, "Add must clear coverage card");
-    assert.ok(locate.x + locate.width + 8 <= actionBox.x, "Locate belongs left of Add");
-    assert.ok(Math.abs(locate.y - actionBox.y) <= 2, "Locate and Add share the lower map row");
+    assert.ok(search.x + search.width + 8 <= locate.x, "Search belongs left of Locate");
+    assert.ok(locate.x + locate.width + 8 <= actionBox.x, "Locate belongs between Search and Add");
+    assert.ok(
+      Math.abs(search.y - locate.y) <= 2 && Math.abs(locate.y - actionBox.y) <= 2,
+      "Search, Locate and Add share the lower map row",
+    );
     assert.ok(actionBox.y + actionBox.height + 8 <= attribution.y, "Add clears attribution");
     assert.ok(
       map.y + map.height - (actionBox.y + actionBox.height) <= attribution.height + 20,
@@ -2002,10 +2058,12 @@ test("app map actions reclaim the footer and retain both contribution routes", a
       const legal = await f.page.locator(".map__attribution").boundingBox();
       const currentMap = await f.page.locator("section.map").boundingBox();
       const locateAtWidth = await f.page.locator(".top__row > .icon-btn").boundingBox();
-      assert.ok(legend && add && legal && currentMap && locateAtWidth);
+      const searchAtWidth = await f.page.locator(".top__row > .search-field").boundingBox();
+      assert.ok(legend && add && legal && currentMap && locateAtWidth && searchAtWidth);
       assert.ok(legend.y + legend.height + 12 <= add.y, `Legend clears Add at ${width}px`);
       assert.ok(add.y + add.height + 8 <= legal.y, `Add clears attribution at ${width}px`);
-      assert.ok(locateAtWidth.x >= currentMap.x && locateAtWidth.x <= currentMap.x + 16);
+      assert.ok(searchAtWidth.x >= currentMap.x && searchAtWidth.x <= currentMap.x + 16);
+      assert.ok(searchAtWidth.x + searchAtWidth.width + 8 <= locateAtWidth.x);
       assert.ok(locateAtWidth.x + locateAtWidth.width + 8 <= add.x);
       assert.ok(Math.abs(locateAtWidth.y - add.y) <= 2);
       assert.ok(locateAtWidth.y + locateAtWidth.height + 8 <= legal.y);
@@ -2034,10 +2092,12 @@ test("app map actions reclaim the footer and retain both contribution routes", a
         .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
         .boundingBox();
       const locateButton = await f.page.locator(".top__row > .icon-btn").boundingBox();
-      assert.ok(addVenue && locateButton);
+      const searchButton = await f.page.locator(".top__row > .search-field").boundingBox();
+      assert.ok(addVenue && locateButton && searchButton);
       assert.ok(
-        locateButton.x + locateButton.width + 8 <= addVenue.x,
-        `Expanded Add menu must clear lower-left locate control at ${width}px`,
+        addVenue.y + addVenue.height + 8 <= locateButton.y &&
+          addVenue.y + addVenue.height + 8 <= searchButton.y,
+        `Expanded Add menu must clear the map controls at ${width}px`,
       );
       const hit = await f.page.evaluate(
         ({ x, y }) =>

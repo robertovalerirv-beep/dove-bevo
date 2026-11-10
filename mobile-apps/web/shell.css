@@ -43,6 +43,8 @@ html[data-dovebevo-mobile-shell="1"] .top {
 }
 html[data-dovebevo-mobile-shell="1"] .top__row {
   gap: 8px;
+  /* Search and Locate live on the map; only the drink picker uses header space. */
+  height: 0;
 }
 html[data-dovebevo-mobile-shell="1"] .brand {
   position: absolute;
@@ -52,28 +54,37 @@ html[data-dovebevo-mobile-shell="1"] .brand {
   clip-path: inset(50%);
 }
 html[data-dovebevo-mobile-shell="1"] .search-field {
-  min-height: 44px;
-  padding: 8px 4px;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  position: fixed;
+  z-index: 6;
+  left: 12px;
+  right: auto;
+  bottom: calc(var(--attribution-h, 24px) + 8px);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 50%;
+  box-shadow: 0 2px 10px rgb(27 22 17 / 12%);
   background: var(--surface);
   color: var(--ink);
-  font: 650 17px/1.3 var(--font-sans);
-  justify-content: space-between;
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-map-city {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: none;
 }
 html[data-dovebevo-mobile-shell="1"] .search-field > .icon {
-  display: none;
+  display: block;
+  width: 24px;
+  height: 24px;
 }
 html[data-dovebevo-mobile-shell="1"] .top__row > .icon-btn {
   position: fixed;
   z-index: 6;
-  left: 12px;
+  left: calc(50% - 24px);
   right: auto;
   bottom: calc(var(--attribution-h, 24px) + 8px);
   width: 48px;
@@ -227,13 +238,29 @@ html[data-dovebevo-mobile-shell="1"] .map__status[data-mobile-zoom-hint="1"] {
   display: grid;
   place-items: center;
   min-height: 48px;
-  padding: 6px;
+  padding: 0 6px;
   overflow: hidden;
   font-size: 12px;
   line-height: 1.2;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+  pointer-events: auto;
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-zoom-search {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-zoom-search:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
 }
 html[data-dovebevo-mobile-shell="1"] .map__status .mobile-menu-map-note {
   display: block;
@@ -287,7 +314,7 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__toggle {
   justify-content: center;
   gap: 6px;
   min-height: 48px;
-  padding: 0 16px;
+  padding: 0 10px;
   border: 0;
   border-radius: 24px;
   background: var(--spritz);
@@ -303,7 +330,7 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__plus {
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu {
   position: absolute;
-  /* Keep the expanded actions on the right, clear of the lower-left locate control. */
+  /* Keep the expanded actions above the search, locate and Add row. */
   right: 0;
   bottom: calc(100% + 8px);
   display: grid;

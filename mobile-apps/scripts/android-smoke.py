@@ -548,17 +548,18 @@ def find(label, exact=True):
 
 
 def live_map_search_destination():
-    """Require the rendered site map and the app's actual bottom Cerca control."""
+    """Require the rendered site map and its visible city/bar search button."""
     ui = tree()
     web = next((node for node in ui.iter("node") if node.get("class") == "android.webkit.WebView"
                 and node.get("package") == "com.dovebevo.app"), None)
     if web is None or not any("Mappa interattiva dei bar" in (node.get("text", ""), node.get("content-desc", ""))
                               for node in web.iter("node")):
         return None
-    return next((node for node in ui.iter("node")
-                 if node.get("resource-id") == "com.dovebevo.app:id/search_destination"
-                 and node.get("class") == "android.widget.Button"
-                 and node.get("text") == "Cerca" and node.get("enabled") == "true"), None)
+    return next((node for node in web.iter("node")
+                 if node.get("class") == "android.widget.Button"
+                 and any(re.fullmatch(r"(?:[^\r\n]{1,120} · )?Cerca città o bar", value)
+                         for value in (node.get("text", ""), node.get("content-desc", "")))
+                 and node.get("enabled") == "true"), None)
 
 
 def tap(node):
@@ -658,7 +659,7 @@ def main():
         tap(accept_rules)
         result["checks"].append("offline privacy and declined rules retain the gate; explicit acceptance opens service")
         PUBLIC_STAGE = "home"
-        search = wait_for("live map and native city-search control", live_map_search_destination, 90)
+        search = wait_for("live map and city-search control", live_map_search_destination, 90)
         result["checks"].append("live website rendered inside WebView")
         screenshot("01-live-home.png")
         tap(search)

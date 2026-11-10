@@ -6,7 +6,7 @@ import { before, after, test } from "node:test";
 import { chromium } from "@playwright/test";
 import { contrastRatio } from "./contrast.mjs";
 import { pageCsp } from "../../../src/worker/lib/security-headers.ts";
-/* global document, structuredClone, getComputedStyle, history, location */
+/* global document, structuredClone, getComputedStyle, history, location, window, Event */
 
 // Synthetic records exist only inside intercepted requests. No public read/write is used.
 const client = path.resolve(fileURLToPath(new URL("../../../dist/client/", import.meta.url)));
@@ -133,8 +133,12 @@ async function fixture(options = {}) {
     writes = [],
     errors = [],
     external = [],
-    reads = [];
+    reads = [],
+    voteReads = [],
+    voteStates = new Map();
   let catalogReads = 0;
+  let voteReadCount = 0,
+    voteWriteCount = 0;
   page.on("pageerror", (error) => errors.push(error.message));
   // Emulate Safari 16's missing size member, in addition to the pure route regression test.
   await page.addInitScript(() => {
@@ -157,6 +161,19 @@ async function fixture(options = {}) {
     if (request.method() !== "GET") {
       const record = { path: url.pathname, body: request.postDataJSON() };
       writes.push(record);
+      if (url.pathname.startsWith("/api/mobile/v2/drink-votes/venues/")) {
+        voteWriteCount++;
+        const { target, recommended } = record.body;
+        assert.equal(request.headers()["x-dovebevo-voter"]?.length, 36);
+        const identity = JSON.stringify(target);
+        if (options.voteFailPostOnce && voteWriteCount === 1)
+          return route.fulfill({ status: 503, json: { error: "fixture_vote_failure" } });
+        if (recommended) voteStates.set(identity, { target, count: 1, recommended: true });
+        else voteStates.delete(identity);
+        if (options.voteCommitThenFailOnce && voteWriteCount === 1)
+          return route.fulfill({ status: 503, json: { error: "fixture_lost_response" } });
+        return route.fulfill({ json: { target, count: recommended ? 1 : 0, recommended } });
+      }
       if (url.pathname === "/api/session") return route.fulfill({ json: { ok: true } });
       if (options.first401 && writes.filter((v) => v.path === url.pathname).length === 1)
         return route.fulfill({ status: 401, json: { error: "session" } });
@@ -187,6 +204,23 @@ async function fixture(options = {}) {
       });
     }
     reads.push(url.pathname);
+    if (url.pathname.startsWith("/api/mobile/v2/drink-votes/venues/")) {
+      voteReadCount++;
+      voteReads.push(url.href);
+      if (options.voteFailReadOnce && voteReadCount === 1)
+        return route.fulfill({ status: 503, json: { error: "fixture_vote_failure" } });
+      return route.fulfill({
+        json: {
+          schema_version: 1,
+          venue: {
+            key: url.pathname.split("/").at(-1),
+            cell: url.searchParams.get("cell"),
+            name: catalog.venues.find((v) => v.key === url.pathname.split("/").at(-1))?.name ?? "",
+          },
+          items: [...voteStates.values()],
+        },
+      });
+    }
     if (url.pathname === "/mobile-data/catalog.json") {
       catalogReads++;
       return route.fulfill({
@@ -260,7 +294,7 @@ async function fixture(options = {}) {
     }
     return route.abort();
   });
-  return { page, writes, errors, external, reads, close: () => context.close() };
+  return { page, writes, errors, external, reads, voteReads, close: () => context.close() };
 }
 async function openLondon(f, venue = true) {
   await f.page.goto(
@@ -1023,6 +1057,178 @@ test("European price actions and selected drink dropdown remain readable on smal
     assert.equal(f.writes.length, 1, "Only the intercepted owned confirmation was submitted");
   } finally {
     release();
+    await f.close();
+  }
+});
+
+test("European drink rows expose exact native saves only after the native bridge advertises support", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f);
+    assert.equal(await f.page.locator(".europe-price__save").count(), 0);
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeEuropeSave = true;
+      window.dispatchEvent(new Event("dovebevo-native-ready"));
+    });
+    const beer400 = f.page.locator(".europe-venue .mobile-price").filter({
+      has: f.page.locator(".price__name", { hasText: "400 ml" }),
+    });
+    const beer568 = f.page.locator(".europe-venue .mobile-price").filter({
+      has: f.page.locator(".price__name", { hasText: "568 ml" }),
+    });
+    const first = new URL(
+      await beer400.locator(".europe-price__save").getAttribute("href"),
+      origin,
+    );
+    const second = new URL(
+      await beer568.locator(".europe-price__save").getAttribute("href"),
+      origin,
+    );
+    assert.equal(first.pathname, "/mobile/");
+    assert.deepEqual(
+      [...first.searchParams],
+      [
+        ["path", "/bar/n1001"],
+        ["c", "gcpvj"],
+        ["save_europe", "beer_draft"],
+        ["band", "normal"],
+        ["currency", "GBP"],
+        ["serving", "ml:400"],
+      ],
+    );
+    assert.equal(second.searchParams.get("serving"), "ml:568");
+    assert.equal(await f.page.locator(".europe-price__save").count(), 3);
+    for (const width of [390, 320]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const geometry = await beer400
+        .locator(".europe-price__quick-actions > a, .europe-price__quick-actions > button")
+        .evaluateAll((nodes) =>
+          nodes.map((node) => {
+            const box = node.getBoundingClientRect();
+            return { left: box.left, right: box.right, height: box.height };
+          }),
+        );
+      assert.equal(geometry.length, 2);
+      assert.ok(
+        geometry.every((box) => box.left >= 0 && box.right <= width + 1 && box.height >= 44),
+        JSON.stringify(geometry),
+      );
+    }
+    await f.page.screenshot({ path: path.join(output, "europe-exact-drink-actions-320.png") });
+    assert.deepEqual(f.writes, [], "A private Save link does not post a public contribution");
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("European thumbs are adjacent and vote only the original serving and GBP price identity", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f);
+    await f.page.waitForFunction(() =>
+      [...document.querySelectorAll(".europe-drink-vote")].every((button) => !button.disabled),
+    );
+    assert.ok(f.voteReads.every((url) => new URL(url).searchParams.get("include_europe") === "1"));
+    const beer400 = f.page.locator(".europe-venue .mobile-price").filter({
+      has: f.page.locator(".price__name", { hasText: "400 ml" }),
+    });
+    const beer568 = f.page.locator(".europe-venue .mobile-price").filter({
+      has: f.page.locator(".price__name", { hasText: "568 ml" }),
+    });
+    const first = beer400.locator(".europe-drink-vote");
+    const second = beer568.locator(".europe-drink-vote");
+    assert.match(await first.innerText(), /0/);
+    await first.click();
+    await f.page.waitForFunction(() =>
+      document.querySelector('.europe-drink-vote[aria-pressed="true"]')?.textContent.includes("1"),
+    );
+    assert.equal(await first.getAttribute("aria-pressed"), "true");
+    assert.match(await second.innerText(), /0/, "A different beer serving keeps its own count");
+    assert.deepEqual(f.writes[0], {
+      path: "/api/mobile/v2/drink-votes/venues/n1001",
+      body: {
+        target: {
+          kind: "europe",
+          drink: "beer_draft",
+          band: "normal",
+          currency: "GBP",
+          serving: { unit: "ml", ml: 400 },
+        },
+        recommended: true,
+      },
+    });
+    await first.click();
+    await f.page.waitForFunction(() => {
+      const row = [...document.querySelectorAll(".europe-venue .mobile-price")].find((element) =>
+        element.querySelector(".price__name")?.textContent.includes("400 ml"),
+      );
+      const button = row?.querySelector(".europe-drink-vote");
+      return button?.getAttribute("aria-pressed") === "false" && button.textContent.includes("0");
+    });
+    assert.equal(await first.getAttribute("aria-pressed"), "false");
+    assert.equal(f.writes[1].body.recommended, false);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("European vote read and failed write expose retry instead of claiming success", async () => {
+  const f = await fixture({ voteFailReadOnce: true, voteFailPostOnce: true });
+  try {
+    await openLondon(f);
+    await f.page.getByRole("alert").getByRole("button", { name: "Riprova" }).click();
+    const first = f.page.locator(".europe-venue .mobile-price--featured .europe-drink-vote");
+    await f.page.waitForFunction(
+      () =>
+        !document.querySelector(".europe-venue .mobile-price--featured .europe-drink-vote")
+          ?.disabled,
+    );
+    await first.click();
+    await f.page.getByText("Consiglio non salvato. Riprova.").waitFor();
+    assert.equal(await first.getAttribute("aria-pressed"), "false");
+    assert.match(await first.innerText(), /0/);
+    await first.click();
+    await f.page.waitForFunction(() =>
+      document
+        .querySelector(
+          '.europe-venue .mobile-price--featured .europe-drink-vote[aria-pressed="true"]',
+        )
+        ?.textContent.includes("1"),
+    );
+    assert.equal(await f.page.getByText("Consiglio non salvato. Riprova.").count(), 0);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("European vote reconciles a committed write after its response is lost", async () => {
+  const f = await fixture({ voteCommitThenFailOnce: true });
+  try {
+    await openLondon(f);
+    const first = f.page.locator(".europe-venue .mobile-price--featured .europe-drink-vote");
+    await f.page.waitForFunction(
+      () =>
+        !document.querySelector(".europe-venue .mobile-price--featured .europe-drink-vote")
+          ?.disabled,
+    );
+    await first.click();
+    await f.page.waitForFunction(() =>
+      document
+        .querySelector(
+          '.europe-venue .mobile-price--featured .europe-drink-vote[aria-pressed="true"]',
+        )
+        ?.textContent.includes("1"),
+    );
+    assert.equal(await f.page.locator(".europe-vote-failed").count(), 0);
+    assert.ok(
+      f.voteReads.length >= 2,
+      "The client reconciles the ambiguous write with a second read",
+    );
+    assert.deepEqual(f.errors, []);
+  } finally {
     await f.close();
   }
 });

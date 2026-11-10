@@ -99,6 +99,67 @@ const FEE_COLS =
   "f.id, f.label, f.fee_kind, f.basis, f.amount_minor, f.currency," +
   " f.currency_exponent, f.rate_bps, f.applicability, f.condition_text, " +
   SOURCE;
+// The app's Birra media map price must not use a cheaper small draft serving.
+// Keep the full named menu (and the legacy website price path) unchanged.
+const SERVING_WORDS =
+  "' ' || " +
+  ["/", "-", ",", ".", "(", ")", "[", "]", ":", ";"].reduce(
+    (sql, separator) => "REPLACE(" + sql + ", '" + separator + "', ' ')",
+    "LOWER(COALESCE(o.serving_label,''))",
+  ) +
+  " || ' '";
+const COMPACT_SERVING =
+  "REPLACE(LOWER(REPLACE(REPLACE(REPLACE(COALESCE(o.serving_label,'')," +
+  " ' ', ''), CHAR(9), ''), CHAR(160), '')), 'lt', 'l')";
+const PADDED_COMPACT_SERVING = "'_' || " + COMPACT_SERVING + " || '_'";
+const hasServingWord = (word: string) => "INSTR(" + SERVING_WORDS + ", ' " + word + " ') > 0";
+const lacksServingWord = (word: string) => "INSTR(" + SERVING_WORDS + ", ' " + word + " ') = 0";
+const matchesOnlyQuantity = (quantity: string) => {
+  const remainder = "REPLACE(" + COMPACT_SERVING + ", " + quantity + ", '')";
+  return (
+    "(" +
+    PADDED_COMPACT_SERVING +
+    " GLOB ('*[^0-9]' || " +
+    quantity +
+    " || '[^a-z0-9]*') AND LENGTH(" +
+    COMPACT_SERVING +
+    ") - LENGTH(" +
+    remainder +
+    ") = LENGTH(" +
+    quantity +
+    ") AND NOT (" +
+    ["ml", "cl", "l"].map((unit) => remainder + " GLOB '*[0-9]" + unit + "*'").join(" OR ") +
+    "))"
+  );
+};
+const CONSISTENT_PRINTED_VOLUME =
+  "(" +
+  COMPACT_SERVING +
+  " NOT GLOB '*[0-9]*' OR " +
+  [
+    "CAST(o.serving_ml AS TEXT) || 'ml'",
+    "CAST(o.serving_ml / 10 AS TEXT) || 'cl'",
+    "CAST(o.serving_ml / 1000.0 AS TEXT) || 'l'",
+    "REPLACE(CAST(o.serving_ml / 1000.0 AS TEXT), '.', ',') || 'l'",
+    "PRINTF('%.2f', o.serving_ml / 1000.0) || 'l'",
+    "REPLACE(PRINTF('%.2f', o.serving_ml / 1000.0), '.', ',') || 'l'",
+  ]
+    .map(matchesOnlyQuantity)
+    .join(" OR ") +
+  ")";
+const MEDIUM_DRAFT =
+  "((o.serving_ml BETWEEN 400 AND 600 AND " +
+  CONSISTENT_PRINTED_VOLUME +
+  ") OR" +
+  " (o.serving_ml IS NULL AND (" +
+  [hasServingWord("media"), hasServingWord("medium")].join(" OR ") +
+  ") AND " +
+  ["grande", "large", "pint", "pinta"].map(lacksServingWord).join(" AND ") +
+  " AND " +
+  COMPACT_SERVING +
+  " NOT GLOB '*[0-9]*'" +
+  ")) AND " +
+  ["piccola", "piccolo", "small", "mini"].map(lacksServingWord).join(" AND ");
 
 function source(row: Evidence) {
   if (
@@ -604,6 +665,9 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
         "," +
         " ROW_NUMBER() OVER (PARTITION BY o.venue_key,o.category,o.currency,o.currency_exponent" +
         " ORDER BY CASE WHEN o.price_context='regular' THEN 0 ELSE 1 END," +
+        " CASE WHEN o.category='beer_draft' AND " +
+        MEDIUM_DRAFT +
+        " THEN 0 WHEN o.category='beer_draft' THEN 1 ELSE 0 END," +
         " o.amount_minor,o.id) AS rank FROM mobile_menu_v2_offers o" +
         APPROVED +
         " WHERE o.cell=? AND o.category IN (" +

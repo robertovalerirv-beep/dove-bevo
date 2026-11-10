@@ -22,17 +22,22 @@ final class AreaVotesTests: XCTestCase {
         let source = try page([
             row(key: "n123", target: ["kind": "offer", "id": "spritz.7"], count: 8),
             row(key: "n124", target: ["kind": "customer", "id": "c" + String(repeating: "a", count: 64)], count: 3),
-            row(key: "n125", target: ["kind": "legacy", "drink": "spritz", "band": "normal"], count: 1)
+            row(key: "n125", target: ["kind": "legacy", "drink": "spritz", "band": "normal"], count: 1),
+            row(key: "n126", target: ["kind": "europe", "drink": "spritz", "band": "normal",
+                "currency": "GBP", "serving": ["unit": "drink"]], count: 1)
         ], next: "YWZ0ZXI")
         let result = try XCTUnwrap(AreaVotesPage.parse(source, requestedCells: area.cells))
-        XCTAssertEqual(result.items.map(\.count), [8, 3, 1])
+        XCTAssertEqual(result.items.map(\.count), [8, 3, 1, 1])
         XCTAssertEqual(result.nextAfter, "YWZ0ZXI")
         XCTAssertEqual(result.items[0].venue.url,
                        URL(string: "https://www.dovebevo.com/bar/n123?c=\(area.cells[0])"))
         XCTAssertEqual(result.items[1].target, .customer("c" + String(repeating: "a", count: 64)))
+        XCTAssertEqual(result.items[3].target, .europe("spritz", .normal, "GBP", EuropeServing(unit: "drink", ml: nil)))
         XCTAssertNil(AreaVotesPage.parse(source, requestedCells: ["u0nd9"]))
         XCTAssertNil(AreaVotesPage.parse(try page([row(key: "n123", target: ["kind": "legacy", "drink": "not-a-drink", "band": "normal"], count: 1)]), requestedCells: area.cells))
         XCTAssertNil(AreaVotesPage.parse(try page([row(key: "n123", target: ["kind": "offer", "id": "spritz.7"], count: 0)]), requestedCells: area.cells))
+        XCTAssertNil(AreaVotesPage.parse(try page([row(key: "n123", target: ["kind": "europe", "drink": "spritz", "band": "normal",
+            "currency": "GBP", "serving": ["unit": "ml", "ml": 500]], count: 2)]), requestedCells: area.cells))
     }
 
     func testEndpointUsesNineValidatedCellsAndReadOnlyLimit() throws {
@@ -42,6 +47,7 @@ final class AreaVotesTests: XCTestCase {
         XCTAssertEqual(components.queryItems?.first(where: { $0.name == "cells" })?.value, area.cells.joined(separator: ","))
         XCTAssertEqual(components.queryItems?.first(where: { $0.name == "limit" })?.value, "50")
         XCTAssertEqual(components.queryItems?.first(where: { $0.name == "after" })?.value, "YWZ0ZXI")
+        XCTAssertEqual(components.queryItems?.first(where: { $0.name == "include_europe" })?.value, "1")
         XCTAssertNil(AreaVotesClient.endpoint(area: area, after: "bad&limit=1000"))
     }
 

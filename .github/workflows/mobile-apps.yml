@@ -396,7 +396,7 @@ jobs:
           path: |
             mobile-apps/ios/.build/DoveBevo.xcarchive
             mobile-apps/ios/.build/TestResults.xcresult
-            mobile-apps/ios/.build/EntryBrowserFixtureResults.xcresult
+            mobile-apps/ios/.build/EntryBrowserFixtureResults*.xcresult
             mobile-apps/ios/.build/Screenshots/
             mobile-apps/ios/.build/Screenshots-iPad/
             mobile-apps/ios/.build/iPadScreenshots.xcresult

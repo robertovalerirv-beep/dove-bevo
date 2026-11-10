@@ -33,7 +33,9 @@ final class MobileEntryBrowserTests: XCTestCase {
         waitUntil("Missing app marker must show native retry", timeout: 35) { !error.isHidden }
         XCTAssertEqual(loads, [MobileEntry.homeURL])
         XCTAssertTrue(try share(tabs).attributes.contains(.disabled))
-        XCTAssertEqual(tabs.bottomBar.buttons.count, 5, "Saving is attached to each drink, not the bottom navigation")
+        XCTAssertEqual(tabs.bottomBar.buttons.count, 4, "Saving is attached to each drink, not the bottom navigation")
+        XCTAssertEqual(BottomNavigationAction.allCases.map(\.identifier),
+                       ["tab.home", "tab.map", "tab.favorites", "tab.recommendations"])
         XCTAssertTrue(tabs.bottomBar.button(for: .recommendations).isEnabled, "Area recommendations remain reachable without a selected venue")
         XCTAssertTrue(try XCTUnwrap(ownedWeb).accessibilityElementsHidden)
         marked = true

@@ -46,6 +46,7 @@
     "Gin tonic": "gin_tonic",
     "Gin and tonic": "gin_tonic",
     "Gin lemon": "gin_lemon",
+    Americano: "gin_lemon",
     "Calice di vino": "wine_glass",
     "Glass of wine": "wine_glass",
     Analcolico: "alcohol_free",

@@ -64,8 +64,12 @@ generated Xcode projects, tools and build outputs are ignored.
 
 Outputs stay under `mobile-apps/ios/.build/`: the simulator app is
 `DerivedData/Build/Products/Debug-iphonesimulator/DoveBevo.app`, device archive is
-`DoveBevo.xcarchive`, and test evidence is `TestResults*.xcresult` plus exported
-`Screenshots/`. `last-test-result-path.txt` records the latest result bundle.
+`DoveBevo.xcarchive`, and test evidence is `TestResults*.xcresult`,
+`EntryBrowserFixtureResults*.xcresult` and exported `Screenshots/`. The
+owned-document WebKit fixtures run first in a fresh test process; both that
+run and the remaining unit/UI suite must pass. `entry-browser-test-result-path.txt`
+records the first result bundle; `last-test-result-path.txt` continues to
+record the later full-suite bundle.
 `SimulatorDiagnostics/` retains bounded process-termination diagnostics without
 logging website URLs or session values from application code.
 Reruns preserve previous result bundles. An unsigned archive cannot be installed

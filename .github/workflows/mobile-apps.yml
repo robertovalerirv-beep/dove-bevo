@@ -44,7 +44,7 @@ jobs:
       github.repository == 'robertovalerirv-beep/dove-bevo'
     runs-on: xcode-27
     # The observed build and simulator boot used about nine minutes before UI tests began.
-    timeout-minutes: 35
+    timeout-minutes: 50
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
       IOS_SIMULATOR_RUNTIME: "27.0"
@@ -69,7 +69,7 @@ jobs:
       - name: Verify existing native release and simulator guards
         run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
       - name: Run native unit and phone UI tests
-        timeout-minutes: 28
+        timeout-minutes: 40
         run: |
           case "$GITHUB_REF" in
             refs/tags/mobile-unit/v*) bash mobile-apps/ios/scripts/test-simulator.sh --unit-only ;;
@@ -83,6 +83,8 @@ jobs:
           include-hidden-files: true
           path: |
             mobile-apps/ios/.build/TestResults*.xcresult
+            mobile-apps/ios/.build/EntryBrowserFixtureResults*.xcresult
+            mobile-apps/ios/.build/entry-browser-test-result-path.txt
             mobile-apps/ios/.build/Screenshots/
             mobile-apps/ios/.build/SimulatorDiagnostics/
           retention-days: 7
@@ -333,7 +335,7 @@ jobs:
     name: iOS simulator tests and unsigned device archive
     if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/mobile-release/v')
     runs-on: xcode-27
-    timeout-minutes: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mobile-release/v') && 70 || 50 }}
+    timeout-minutes: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mobile-release/v') && 100 || 50 }}
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
       IOS_SIMULATOR_RUNTIME: "27.0"
@@ -373,7 +375,9 @@ jobs:
       - name: Build simulator app
         run: bash mobile-apps/ios/scripts/build-simulator.sh
       - name: Run unit and live application tests
-        timeout-minutes: 25
+        # Hosted iOS 27 accessibility queries used the former 25-minute step
+        # budget before the final UI smoke test; keep the full assertions.
+        timeout-minutes: 40
         run: bash mobile-apps/ios/scripts/test-simulator.sh
       - name: Verify live map on 13-inch iPad and capture store screenshots
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mobile-release/v')
@@ -391,9 +395,12 @@ jobs:
         if: always()
         with:
           name: dove-bevo-ios
+          include-hidden-files: true
           path: |
             mobile-apps/ios/.build/DoveBevo.xcarchive
             mobile-apps/ios/.build/TestResults.xcresult
+            mobile-apps/ios/.build/EntryBrowserFixtureResults*.xcresult
+            mobile-apps/ios/.build/entry-browser-test-result-path.txt
             mobile-apps/ios/.build/Screenshots/
             mobile-apps/ios/.build/Screenshots-iPad/
             mobile-apps/ios/.build/iPadScreenshots.xcresult
@@ -413,7 +420,7 @@ jobs:
       startsWith(github.ref, 'refs/tags/mobile-capture/v') &&
       github.repository == 'robertovalerirv-beep/dove-bevo'
     runs-on: xcode-27
-    timeout-minutes: 40
+    timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
       IOS_SIMULATOR_RUNTIME: "27.0"
@@ -439,7 +446,7 @@ jobs:
       - name: Verify native release and simulator guards without credentials
         run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
       - name: Run full unit and live application tests on iPhone 17
-        timeout-minutes: 20
+        timeout-minutes: 40
         run: bash mobile-apps/ios/scripts/test-simulator.sh
       - name: Verify live map on 13-inch iPad and capture store screenshots
         timeout-minutes: 8
@@ -513,7 +520,9 @@ jobs:
           include-hidden-files: true
           path: |
             mobile-apps/ios/.build/TestResults*.xcresult
+            mobile-apps/ios/.build/EntryBrowserFixtureResults*.xcresult
             mobile-apps/ios/.build/last-test-result-path.txt
+            mobile-apps/ios/.build/entry-browser-test-result-path.txt
             mobile-apps/ios/.build/Screenshots/
             mobile-apps/ios/.build/Screenshots-iPad/
             mobile-apps/ios/.build/iPadScreenshots.xcresult
@@ -565,7 +574,7 @@ jobs:
        startsWith(github.ref, 'refs/tags/mobile-beta/v')) &&
       github.repository == 'robertovalerirv-beep/dove-bevo'
     runs-on: xcode-27
-    timeout-minutes: 25
+    timeout-minutes: 50
     env:
       DEVELOPER_DIR: /Applications/Xcode_27.1.app/Contents/Developer
       IOS_SIMULATOR_RUNTIME: "27.0"
@@ -591,7 +600,7 @@ jobs:
       - name: Verify native release and simulator guards without credentials
         run: python3 -B -m unittest discover -s mobile-apps/ios/scripts/tests -p 'test_*.py' -q
       - name: Run native unit tests and beta phone UI tests
-        timeout-minutes: 22
+        timeout-minutes: 40
         run: |
           case "$GITHUB_REF" in
             refs/tags/mobile-beta/v*) bash mobile-apps/ios/scripts/test-simulator.sh ;;
@@ -605,6 +614,8 @@ jobs:
           include-hidden-files: true
           path: |
             mobile-apps/ios/.build/TestResults.xcresult
+            mobile-apps/ios/.build/EntryBrowserFixtureResults*.xcresult
+            mobile-apps/ios/.build/entry-browser-test-result-path.txt
             mobile-apps/ios/.build/Screenshots/
             mobile-apps/ios/.build/SimulatorDiagnostics/
           retention-days: 7

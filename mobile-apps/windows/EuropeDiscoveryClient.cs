@@ -12,9 +12,12 @@ internal sealed record EuropeDiscoverySnapshot(IReadOnlyList<DiscoveryRow> Rows,
     int UnavailableCells, bool CatalogUnavailable, IReadOnlySet<string> Governed,
     IReadOnlySet<string> Hidden, IReadOnlySet<string> Legacy, IReadOnlySet<string> ResolvedCells)
 {
-    internal bool AllowsLegacy(DiscoveryRow row) =>
-        !Governed.Contains(row.Key) ||
-        (ResolvedCells.Contains(row.Cell) && Legacy.Contains(row.Key) && !Hidden.Contains(row.Key));
+    internal bool AllowsLegacy(DiscoveryRow row) => AllowsLegacy(row.Key, row.Cell);
+
+    internal bool AllowsLegacy(string key, string cell) =>
+        !CatalogUnavailable &&
+        (!Governed.Contains(key) ||
+         (ResolvedCells.Contains(cell) && Legacy.Contains(key) && !Hidden.Contains(key)));
 }
 
 /// <summary>Reads original-currency app catalogue prices without publishing contributions.</summary>

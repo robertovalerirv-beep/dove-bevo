@@ -23,8 +23,7 @@ internal sealed class BookmarkPriceClient
         {
             return action.Kind switch
             {
-                "legacy" => ParseLegacy(await ReadAsync($"https://www.dovebevo.com/api/prices/{action.Cell}",
-                    cancellation), action),
+                "legacy" => await LegacyAsync(action, cancellation),
                 "europe" => await EuropeAsync(action, cancellation),
                 "offer" => await OfferAsync(action, cancellation),
                 "customer" => await CustomerAsync(action, cancellation),
@@ -33,6 +32,14 @@ internal sealed class BookmarkPriceClient
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception) { return "Prezzo non verificabile. Riprova più tardi."; }
+    }
+
+    private static async Task<string?> LegacyAsync(SaveAction action, CancellationToken cancellation)
+    {
+        var scope = await EuropeDiscoveryClient.LoadAsync([action.Cell], action.Item, cancellation);
+        if (!scope.AllowsLegacy(action.VenueKey, action.Cell)) return null;
+        using var page = await ReadAsync($"https://www.dovebevo.com/api/prices/{action.Cell}", cancellation);
+        return ParseLegacy(page, action);
     }
 
     private static async Task<string?> EuropeAsync(SaveAction action, CancellationToken cancellation)

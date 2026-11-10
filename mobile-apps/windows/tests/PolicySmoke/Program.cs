@@ -303,6 +303,13 @@ Require(legacyRows.All(legacyOverride.AllowsLegacy) &&
     !new EuropeDiscoverySnapshot([], 1, false, governed, noKeys,
         new HashSet<string>(StringComparer.Ordinal) { "n123" }, noKeys).AllowsLegacy(legacyRows[0]),
     "validated legacy override must survive, but unavailable app cell must not");
+var unavailableCatalog = new EuropeDiscoverySnapshot([], 0, true, noKeys, noKeys, noKeys, noKeys);
+Require(legacyRows.All(row => !unavailableCatalog.AllowsLegacy(row)),
+    "legacy prices must fail closed when app moderation cannot be resolved");
+Require(!unavailableCatalog.AllowsLegacy("n123", "u0nd9") &&
+    !hiddenSource.AllowsLegacy("n123", "u0nd9") &&
+    legacyOverride.AllowsLegacy("n123", "u0nd9"),
+    "saved legacy drink refresh must share the app moderation gate");
 var londonArea = new DiscoveryArea(51.5072, -0.1276, 15);
 Require(londonArea.Cells().Contains("gcpvj") &&
     new DiscoveryArea(45.4642, 9.1900, 15).Cells().Contains("u0nd9"),

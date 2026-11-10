@@ -876,11 +876,19 @@ test("exact private saves and one public vote read identify each visible drink",
       await f.page.setViewportSize({ width, height: 700 });
       for (const action of await legacyActions.locator("a, button").all())
         assert.ok((await action.boundingBox())?.height >= 44);
+      const priceBox = await legacy.boundingBox();
+      const saveBox = await legacyActions.locator(".mobile-menu-v2__save").boundingBox();
+      const voteBox = await legacyActions.locator(".mobile-drink-vote").boundingBox();
+      assert.ok(priceBox && saveBox && voteBox);
+      assert.ok(saveBox.x + saveBox.width + 4 <= voteBox.x, "Save and vote must not overlap");
+      assert.ok(voteBox.x + voteBox.width <= priceBox.x + priceBox.width + 1);
       const overflow = await f.page.locator(".sheet__body").evaluate((element) => ({
         width: element.clientWidth,
         scroll: element.scrollWidth,
       }));
       assert.ok(overflow.scroll <= overflow.width + 1, JSON.stringify({ width, overflow }));
+      if (width === 320 && process.env.DOVEBEVO_ACTION_CAPTURE_320)
+        await f.page.screenshot({ path: process.env.DOVEBEVO_ACTION_CAPTURE_320 });
     }
     if (process.env.DOVEBEVO_ACTION_CAPTURE)
       await f.page.screenshot({ path: process.env.DOVEBEVO_ACTION_CAPTURE });

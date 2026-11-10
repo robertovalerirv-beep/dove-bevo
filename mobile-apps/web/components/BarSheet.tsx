@@ -191,7 +191,7 @@ function PriceItem({
               href={mobileDrinkSaveURL(venue.key, venue.cell, drink, hh ? "happy_hour" : "normal")}
               aria-label={`Salva ${name} da ${venue.name} nei preferiti`}
             >
-              Salva questo drink
+              ☆ Salva
             </a>
           )}
           <DrinkVoteButton
@@ -712,7 +712,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                           class="btn btn--secondary mobile-menu-v2__save"
                           aria-label={`Salva ${featuredOffer.name} da ${venue.name} nei preferiti`}
                         >
-                          Salva questo drink
+                          ☆ Salva
                         </a>
                       )}
                       {mobileOfferIdPattern.test(featuredOffer.id) && (

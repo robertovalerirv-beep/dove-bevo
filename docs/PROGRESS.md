@@ -16,6 +16,21 @@ Copiati dalle voci indicate perché non finiscano dimenticati nell'archivio; lo 
 - **Cloudflare Queues (Roberto):** controllare che il Worker `dovebevo-staging` non sia più consumatore di `dovebevo-tasks` (voce del 29/10, ADR 0042).
 - **Legale (Roberto):** `/privacy` senza titolare del trattamento; privacy e regole in inglese sono una bozza da rileggere (`docs/release-checklist.md`, sezione F; voce del 28/10, ME-05).
 - **iPhone Safari:** l'effetto del download anticipato della mappa resta da misurare (voci dell'01/11 e del 02/11).
+- **Sicurezza, decisioni di SPEC (Roberto):** i quattro punti del pen test del 22/10 che cambiano la SPEC restano da decidere: prezzo in quarantena attivato dalla conferma di una seconda identità (D-10), rimozione con 4 segnalazioni distinte, prezzo «ultimo vince» sotto i 5 prezzi in cella, quote per IP aggirabili con molti prefissi IPv6 (`SECURITY.md`, «Rischi accettati»; ADR 0029; voci del 22/10 e del 24/10).
+- **Sicurezza, GitHub (Roberto):** Environment `staging` con i segreti Cloudflare (poi `environment: staging` nel deploy: il 10/11 `deploy-staging.yml` non lo ha), scope del token Cloudflare, email privata su GitHub (voce del 22/10).
+- **Accessibilità, admin:** in `/admin`, «Trova un bar sulla mappa», il messaggio della ricerca non era in una regione `aria-live` (voce del 25/10, «Gestore verificato»).
+- **SPEC 7.8, link legali:** stanno nella scheda bar e nel foglio di ricerca, non in un «piè di pagina della mappa»: per averli sulla mappa serve una decisione sul layout (D-28; voce del 24/10).
+- **Controlli dopo il deploy mai registrati come fatti:** riga `OSM import <versione>: … , 0 skipped` nel log del deploy (29/10, ADR 0043); sezioni di `/admin` che si caricano senza far scattare il limite sulle GET (29/10, ADR 0044).
+- **Prove a mano su telefono mai registrate come fatte:** Timbro e vibrazione su Android, invito all'installazione, offline dopo l'installazione, Fuori orario di notte, ricerca con rete mobile (17/10); pallino fermo camminando (24/10); spunta e orari di un gestore verificato, campo orario a 24 ore (25/10).
+
+## Limiti noti scritti solo nel diario
+
+Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
+
+- **Prezzo cambiato (21/10):** la Cache API si svuota solo nella sede Cloudflare che serve la richiesta (accettato: è quella di chi ha appena salvato); nessun test e2e della parte client (`cache: "reload"` in `src/app/lib/data.ts`).
+- **`/api/ai/cerca` (19/10):** il nome del bar c'è solo per le 3 celle con più righe di ogni pagina (CPU del piano gratuito); altrove `nome: null` e l'`url` apre la scheda.
+- **Pagine per i motori di ricerca (19/10):** `/copertura` e le pagine di città sono viste per i crawler: un utente che ci arriva vede la mappa.
+- **Indici D1 (19/10):** nessuna migrazione di indici; da rivalutare con le misure reali del sito vivo.
 
 ---
 
@@ -31,6 +46,7 @@ Copiati dalle voci indicate perché non finiscano dimenticati nell'archivio; lo 
 - Archivio identico all'originale: le righe 85–1115 del vecchio `PROGRESS.md` confrontate con `cmp` con il corpo di `docs/progress/2026-10.md`: nessuna differenza; 49 titoli nell'indice, 49 voci.
 - Le voci di novembre qui sotto sono le righe 7–81 del vecchio file, invariate (`cmp`).
 - Nessun test o script legge il contenuto dei due file: `grep` su `tests/`, `scripts/`, `.claude/`, `.githooks/`, `init.sh` (solo `init.sh` controlla che i due file esistano).
+- Seconda passata, chiesta da Roberto prima dell'unione: riletti tutti i blocchi «Da verificare», «Da fare», «Non fatto», «Non risolto», «Limiti», «Resta» delle 49 voci archiviate e confrontati con codice, `SECURITY.md`, ADR e `docs/release-checklist.md`; ciò che è ancora aperto o è scritto solo nel diario è riportato nelle due sezioni in cima.
 - Non eseguiti: `npm run verify` e i test (nessun file di codice toccato, `node_modules` assente nel container): li esegue la CI sulla PR.
 
 **Da verificare (Roberto):** che il nuovo `CLAUDE.md` non abbia tolto nulla che ti serve; l'elenco dei punti aperti qui sopra.

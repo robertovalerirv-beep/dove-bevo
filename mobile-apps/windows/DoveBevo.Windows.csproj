@@ -12,7 +12,6 @@
     <Compile Remove="tests\**\*.cs" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3179.45" />
     <Content Include="Assets\Logo.png" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="SearchClick.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="MapAreaReader.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="SaveLinkCapture.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="ExactFavouriteFocus.js" CopyToOutputDirectory="PreserveNewest" />

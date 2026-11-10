@@ -54,9 +54,8 @@
         </Border>
 
         <Border Grid.Row="2" Background="#FFFBF4" BorderBrush="#E2D3BE" BorderThickness="0,1,0,0" Padding="16,8">
-            <UniformGrid Columns="5" HorizontalAlignment="Stretch">
+            <UniformGrid Columns="4" HorizontalAlignment="Stretch">
                 <Button Style="{StaticResource NavButton}" Content="Home" Click="Home_Click" />
-                <Button Style="{StaticResource NavButton}" Content="Cerca" Click="Search_Click" />
                 <Button Style="{StaticResource NavButton}" Content="Mappa" Click="Map_Click" />
                 <Button Style="{StaticResource NavButton}" Content="Preferiti" Click="Favourites_Click" />
                 <Button Style="{StaticResource NavButton}" Content="Consigliati" Click="Recommendations_Click" />

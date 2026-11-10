@@ -7,17 +7,16 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const read = (name) => readFileSync(resolve(here, "..", name), "utf8");
 
-test("the Windows bottom bar has the five agreed destinations and no Save tab", () => {
+test("the Windows bottom bar has the four agreed destinations and no Search or Save tab", () => {
   const xaml = read("MainWindow.xaml");
-  const bar = xaml.match(/<UniformGrid Columns="5"[^>]*>([\s\S]*?)<\/UniformGrid>/)?.[1];
-  assert.ok(bar, "five-item bottom bar missing");
+  const bar = xaml.match(/<UniformGrid Columns="4"[^>]*>([\s\S]*?)<\/UniformGrid>/)?.[1];
+  assert.ok(bar, "four-item bottom bar missing");
   const buttons = [...bar.matchAll(/Content="([^"]+)" Click="([^"]+)"/g)].map((match) => [
     match[1],
     match[2],
   ]);
   assert.deepEqual(buttons, [
     ["Home", "Home_Click"],
-    ["Cerca", "Search_Click"],
     ["Mappa", "Map_Click"],
     ["Preferiti", "Favourites_Click"],
     ["Consigliati", "Recommendations_Click"],

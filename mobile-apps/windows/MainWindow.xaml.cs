@@ -23,7 +23,6 @@ public partial class MainWindow : Window
     private CancellationTokenSource? recommendationCancellation;
     private CancellationTokenSource? favouritesCancellation;
     private bool saveBusy;
-    private bool searchPending;
     private string? pendingExactBookmark;
     private string lastTrustedUrl = NavigationPolicy.Home;
 
@@ -107,12 +106,6 @@ public partial class MainWindow : Window
             {
                 await AdvertiseNativeActionsAsync();
                 await HighlightPendingBookmarkAsync();
-                if (searchPending && ready)
-                {
-                    searchPending = false;
-                    var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "SearchClick.js"));
-                    await Website.CoreWebView2.ExecuteScriptAsync(script);
-                }
             }
             catch (Exception) { StatusText.Text = "La pagina è visibile. Riprova l'azione se necessario."; }
         }
@@ -327,31 +320,6 @@ public partial class MainWindow : Window
         await LoadDiscovery();
     }
     private void Privacy_Click(object sender, RoutedEventArgs e) => Navigate(NavigationPolicy.Privacy);
-
-    private async void Search_Click(object sender, RoutedEventArgs e)
-    {
-        CloseDiscovery();
-        FavouritesPanel.Visibility = Visibility.Collapsed;
-        RecommendationsPanel.Visibility = Visibility.Collapsed;
-        ShowWebsiteIfNoOverlay();
-        if (!ready) { searchPending = true; Navigate(NavigationPolicy.Home); return; }
-        try
-        {
-            var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "SearchClick.js"));
-            var opened = await Website.CoreWebView2.ExecuteScriptAsync(script);
-            if (opened != "true")
-            {
-                searchPending = true;
-                Navigate(NavigationPolicy.Home);
-            }
-            else StatusText.Text = "Cerca una città o un locale.";
-        }
-        catch (Exception)
-        {
-            searchPending = true;
-            Navigate(NavigationPolicy.Home);
-        }
-    }
 
     private void Back_Click(object sender, RoutedEventArgs e)
     {

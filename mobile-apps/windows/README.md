@@ -2,7 +2,7 @@
 
 This Windows client opens Roberto's separate app interface at
 `https://www.dovebevo.com/mobile/` inside WebView2. The bottom bar has Home,
-Cerca, Mappa, Preferiti and Consigliati. Home opens Scopri prezzi; the overflow
+Mappa, Preferiti and Consigliati. Search is on the map. Home opens Scopri prezzi; the overflow
 menu has Reload, Share and Privacy. The app keeps the normal HTTPS website session,
 location permission prompt, and external-link confirmation.
 Mappa returns from a venue to the last selected city map, including city changes
@@ -46,7 +46,6 @@ and Microsoft Edge WebView2 Runtime for running the app.
 ```powershell
 dotnet run --project mobile-apps/windows/tests/PolicySmoke/PolicySmoke.csproj -c Release
 node --check mobile-apps/windows/SaveLinkCapture.js
-node --test mobile-apps/windows/tests/search-click.test.mjs
 node --test mobile-apps/windows/tests/save-link-capture.test.mjs
 node --test mobile-apps/windows/tests/exact-favourite-focus.test.mjs
 node --test mobile-apps/windows/tests/shell-contract.test.mjs
@@ -78,7 +77,7 @@ reserve the revision component for Store use.
 
 ## Current limits
 
-The current public Store build predates the five-tab interface in this source.
+The current public Store build predates the four-tab interface in this source.
 This update needs a new Store submission and an installed-client check before
 the new behaviour can be claimed public. Private favourites are local to this
 PC and have no account sync. Scopri shows

@@ -40,7 +40,6 @@ if (-not (Test-Path -LiteralPath (Join-Path $stage 'DoveBevo.Windows.exe')) -or
     -not (Test-Path -LiteralPath (Join-Path $stage 'Assets\Logo.png')) -or
     -not (Test-Path -LiteralPath (Join-Path $stage 'SaveLinkCapture.js')) -or
     -not (Test-Path -LiteralPath (Join-Path $stage 'ExactFavouriteFocus.js')) -or
-    -not (Test-Path -LiteralPath (Join-Path $stage 'SearchClick.js')) -or
     -not (Test-Path -LiteralPath (Join-Path $stage 'MapAreaReader.js'))) {
     throw 'Published app is incomplete.'
 }

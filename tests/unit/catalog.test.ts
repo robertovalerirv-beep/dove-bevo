@@ -11,7 +11,7 @@ describe("one catalog for the map filter and the price entry", () => {
       "Negroni",
       "Sbagliato",
       "Gin tonic",
-      "Gin lemon",
+      "Americano",
       "Calice di vino",
       "Analcolico",
       "Acqua",

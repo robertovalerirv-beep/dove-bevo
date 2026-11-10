@@ -353,7 +353,7 @@ export const en: Dict = {
     negroni: "Negroni",
     sbagliato: "Sbagliato",
     gin_tonic: "Gin and tonic",
-    gin_lemon: "Gin lemon",
+    gin_lemon: "Americano",
     wine_glass: "Glass of wine",
     alcohol_free: "Non-alcoholic",
     water: "Water",

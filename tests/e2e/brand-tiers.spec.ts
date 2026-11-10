@@ -27,7 +27,7 @@ test("M4-03 with five prices the legend appears and the pins are drawn; with few
 test("M4-05 a price older than 90 days says «Da confermare» on the bar page", async ({ page }) => {
   await page.goto("/bar/n11755824793?c=u0nd9");
   const sheet = page.getByRole("dialog", { name: "Le Jardin Bistrot" });
-  const old = sheet.getByRole("listitem").filter({ hasText: "Gin lemon" });
+  const old = sheet.getByRole("listitem").filter({ hasText: "Americano" });
   await expect(old).toContainText("Da confermare");
   const wine = sheet.getByRole("listitem").filter({ hasText: "Calice di vino" });
   await expect(wine).not.toContainText("Da confermare"); // 4 days old
@@ -38,7 +38,7 @@ test("M4-05 a price older than 90 days is marked on the map list too, and a rece
 }) => {
   await page.goto("/");
   await goToMilano(page);
-  await chooseDrinks(page, "Gin lemon");
+  await chooseDrinks(page, "Americano");
   await page.getByRole("button", { name: "Elenco" }).click();
   const list = page.getByRole("dialog", { name: "Bar nella zona" });
   await expect(list.getByRole("link", { name: /Le Jardin Bistrot/ })).toContainText(

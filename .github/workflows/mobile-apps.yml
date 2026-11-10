@@ -373,7 +373,9 @@ jobs:
       - name: Build simulator app
         run: bash mobile-apps/ios/scripts/build-simulator.sh
       - name: Run unit and live application tests
-        timeout-minutes: 25
+        # Hosted iOS 27 accessibility queries used the former 25-minute step
+        # budget before the final UI smoke test; keep the full assertions.
+        timeout-minutes: 40
         run: bash mobile-apps/ios/scripts/test-simulator.sh
       - name: Verify live map on 13-inch iPad and capture store screenshots
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/mobile-release/v')
@@ -394,6 +396,7 @@ jobs:
           path: |
             mobile-apps/ios/.build/DoveBevo.xcarchive
             mobile-apps/ios/.build/TestResults.xcresult
+            mobile-apps/ios/.build/EntryBrowserFixtureResults.xcresult
             mobile-apps/ios/.build/Screenshots/
             mobile-apps/ios/.build/Screenshots-iPad/
             mobile-apps/ios/.build/iPadScreenshots.xcresult

@@ -5,6 +5,7 @@ using System.Text.Json;
 var trusted = new[]
 {
     "https://www.dovebevo.com/",
+    NavigationPolicy.Home,
     "https://dovebevo.com/bar/n123?c=u0nd9",
 };
 var untrusted = new[]
@@ -25,6 +26,7 @@ var venues = new[]
     ("https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", true),
     ("https://www.dovebevo.com/mobile/index.html?path=%2Fbar%2Fn123&c=u0nd9", "n123", true),
     ("https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=spritz&hh=0", "n123", true),
+    ("https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9&offer=menu-123", "n123", true),
     ("https://www.dovebevo.com/bar/n123?c=u0nd9", "n124", false),
     ("https://www.dovebevo.com/bar/n123?c=u0nd9&c=u0nd9", "n123", false),
     ("https://www.dovebevo.com/bar/n123?c=u0nd9#secret", "n123", false),
@@ -34,14 +36,6 @@ var venues = new[]
 };
 foreach (var (address, key, expected) in venues)
     Require(NavigationPolicy.TryVenue(address, key, out _) == expected, "venue route policy mismatch");
-
-Require(NavigationPolicy.TryRecommendationEndpoint(
-    "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", out var endpoint)
-    && endpoint?.AbsoluteUri == "https://www.dovebevo.com/api/mobile/venues/n123/recommendations?c=u0nd9",
-    "recommendation endpoint mismatch");
-Require(!NavigationPolicy.TryRecommendationEndpoint(
-    "https://www.dovebevo.com/bar/m" + new string('a', 24) + "?c=u0nd9",
-    "m" + new string('a', 24), out _), "unsupported catalogue vote accepted");
 
 Require(NavigationPolicy.TryFocusedVenue(
     "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", "spritz", 0, out var focusedItalian)
@@ -61,6 +55,36 @@ Require(!NavigationPolicy.TryFocusedVenue(
     "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", "spritz", 2, out _),
     "invalid favourite hour accepted");
 
+var baseVenue = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9";
+var legacyCommand = baseVenue + "&save_drink=spritz&band=normal";
+Require(NavigationPolicy.Home == "https://www.dovebevo.com/mobile/", "Windows must enter app-only mobile shell");
+Require(NavigationPolicy.TrySaveAction(legacyCommand, baseVenue, out var legacyAction)
+    && legacyAction is { Kind: "legacy", Item: "spritz", Band: "normal" },
+    "exact Italian drink action rejected");
+Require(NavigationPolicy.TrySaveAction(baseVenue + "&save_offer=menu-123", baseVenue,
+        out var offerAction) && offerAction is { Kind: "offer", Item: "menu-123" },
+    "exact menu offer action rejected");
+var customerKey = "c" + new string('a', 64);
+Require(NavigationPolicy.TrySaveAction(baseVenue + "&save_customer=" + customerKey, baseVenue,
+        out var customerAction) && customerAction is { Kind: "customer" },
+    "exact customer price action rejected");
+var euroVenue = $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{europeKey}&c=u0nd9";
+Require(NavigationPolicy.TrySaveAction(euroVenue +
+        "&save_europe=beer_draft&band=happy_hour&currency=GBP&serving=ml%3A568",
+        euroVenue, out var euroAction)
+    && euroAction is { Kind: "europe", Item: "beer_draft", Currency: "GBP", Serving: "ml:568" },
+    "exact GBP beer action rejected");
+foreach (var invalid in new[] {
+    baseVenue + "&save_drink=spritz&band=normal&extra=1",
+    baseVenue + "&save_drink=spritz&band=normal&band=normal",
+    baseVenue + "&save_offer=menu-123#fragment",
+    baseVenue + "&save_customer=" + customerKey[..^1],
+    euroVenue + "&save_europe=beer_draft&band=normal&currency=EUR&serving=ml%3A0",
+}) Require(!NavigationPolicy.TrySaveAction(invalid, baseVenue, out _), "invalid save command accepted");
+Require(!NavigationPolicy.TrySaveAction(legacyCommand,
+    "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn124&c=u0nd9", out _),
+    "cross-venue save command accepted");
+
 var storeFile = Path.Combine("mobile-apps", "windows", "out", $"bookmark-smoke-{Guid.NewGuid():N}.json");
 try
 {
@@ -75,6 +99,10 @@ try
     var reopened = new BookmarkStore(storeFile);
     Require(reopened.Items.Count == 2 && reopened.Items.Any(item => item.Display.Contains("Happy hour")),
         "favourite offers were not retained distinctly");
+    var exact = new Bookmark("n123", "Test Bar", "Spritz", focusedItalian.AbsoluteUri,
+        legacyCommand);
+    Require(store.Add(exact) && !store.Add(exact) && new BookmarkStore(storeFile).Items.Count == 3,
+        "native exact drink action not retained once");
 }
 finally
 {
@@ -95,29 +123,68 @@ foreach (var (address, expected) in emailLinks)
     Require(NavigationPolicy.TrySupportEmail(address, out _) == expected,
         "support email policy mismatch");
 
-var codes = new[] { "beer_draft", "spritz", "negroni", "sbagliato", "gin_tonic",
-    "gin_lemon", "wine_glass", "alcohol_free", "water" };
-var rows = codes.Select((drink, index) =>
-    new { drink, count = index == 1 ? 5 : 0, recommended = index == 1 }).ToArray();
-var payload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { venue_key = "n123", drinks = rows }));
-var snapshot = RecommendationClient.Parse(payload, "n123");
-Require(snapshot.Count == 9 && snapshot[0].Code == "spritz"
-    && snapshot[0].Count == 5 && snapshot[0].Recommended, "recommendation totals mismatch");
-var duplicate = rows.ToArray();
-duplicate[0] = duplicate[1];
-ExpectInvalid(() => RecommendationClient.Parse(
-    Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { venue_key = "n123", drinks = duplicate })), "n123"));
-ExpectInvalid(() => RecommendationClient.Parse(payload, "n124"));
-
 Require(DiscoveryArea.Geohash(45.4635, 9.18839) == "u0nd9", "Milano geohash mismatch");
 var area = DiscoveryArea.ParseWebView(
-    "{\"href\":\"https://www.dovebevo.com/\",\"latitude\":45.4635,\"longitude\":9.18839,\"zoom\":15}",
+    "{\"href\":\"https://www.dovebevo.com/mobile/\",\"latitude\":45.4635,\"longitude\":9.18839,\"zoom\":15}",
     new Uri(NavigationPolicy.Home));
 Require(area is not null && area.Cells().Contains("u0nd9") && area.Cells().Count <= 9,
     "visible map discovery area mismatch");
 Require(DiscoveryArea.ParseWebView(
     "{\"href\":\"https://evil.example/\",\"latitude\":45.4635,\"longitude\":9.18839,\"zoom\":15}",
     new Uri(NavigationPolicy.Home)) is null, "foreign map area accepted");
+var cells = new[] { "u0nd9" };
+Require(AreaVotesClient.Endpoint(cells) ==
+    "https://www.dovebevo.com/api/mobile/v2/drink-votes/area?cells=u0nd9&limit=50&include_europe=1",
+    "area votes GET must opt into Europe without posting");
+var areaPayload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new {
+    schema_version = 1, scope = new { cells }, items = new[] { new {
+        venue = new { key = "n123", cell = "u0nd9", name = "Test Bar", city = "Milano" },
+        target = new { kind = "legacy", drink = "spritz", band = "normal" },
+        drink = new { name = "Spritz", category = "spritz", serving_label = (string?)null },
+        count = 2,
+    } }, next_after = (string?)null,
+}));
+var areaPage = AreaVotesClient.Parse(areaPayload, cells);
+Require(areaPage.Rows.Count == 1 && areaPage.Rows[0].Count == 2 &&
+    areaPage.Rows[0].VenueName == "Test Bar", "read-only area totals mismatch");
+ExpectInvalid(() => AreaVotesClient.Parse(areaPayload, new[] { "u33db" }));
+using var legacyPriceJson = JsonDocument.Parse("{\"p\":[[\"n123\",\"spritz\",0,550,\"2026-11-10\",0,0]]}");
+Require(BookmarkPriceClient.ParseLegacy(legacyPriceJson, legacyAction!)?.Contains("5,50 €") == true,
+    "current exact Italian price not shown");
+Require(BookmarkPriceClient.ParseLegacy(legacyPriceJson, euroAction!) is null,
+    "other currency or venue must not borrow an Italian price");
+using var offerPriceJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 2, price_scope = "menu_item_only",
+    venue = new { key = "n123", cell = "u0nd9" },
+    offers = new[] {
+        new { id = "menu-123", amount_minor = 850, currency = "EUR", currency_exponent = 2 },
+        new { id = "menu-456", amount_minor = 420, currency = "EUR", currency_exponent = 2 },
+    }, next_after = (string?)null,
+}));
+Require(BookmarkPriceClient.ParseOffer(offerPriceJson, offerAction!).Price?.Contains("8,50 €") == true,
+    "exact menu offer price missing");
+using var customerPriceJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 1, price_scope = "customer_reported_drink_item",
+    venue = new { key = "n123", cell = "u0nd9" },
+    rows = new[] { new { item_key = customerKey, amount_minor = 570,
+        currency = "EUR", currency_exponent = 2 } }, next_after = (string?)null,
+}));
+Require(BookmarkPriceClient.ParseCustomer(customerPriceJson, customerAction!).Price?.Contains("5,70 €") == true,
+    "exact customer drink price missing");
+using var europePriceJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 1, catalog_version = "test-version",
+    rows = new[] {
+        new { venue = europeKey, cell = "u0nd9", drink = "beer_draft", hh = 1,
+            currency = "GBP", serving = new { unit = "ml", ml = (int?)568 },
+            amount_minor = 650, status = "active" },
+        new { venue = europeKey, cell = "u0nd9", drink = "beer_draft", hh = 0,
+            currency = "GBP", serving = new { unit = "ml", ml = (int?)568 },
+            amount_minor = 550, status = "active" },
+    },
+}));
+Require(BookmarkPriceClient.ParseEurope(europePriceJson, euroAction!, "test-version")?.Contains("6,50 £") == true,
+    "exact GBP serving and happy-hour price missing");
+ExpectInvalid(() => BookmarkPriceClient.ParseEurope(europePriceJson, euroAction!, "wrong-version"));
 var menu = new
 {
     schema_version = 2,
@@ -162,7 +229,7 @@ if (args.Contains("--live-discovery"))
     Console.WriteLine($"Live Milano discovery: {live.Rows.Count} offers; {live.UnavailableCells} unavailable cells.");
 }
 
-Console.WriteLine("Windows policy: origin, venue, focus, bookmark, email, vote schema, and 6 discovery cases passed.");
+Console.WriteLine("Windows policy: origin, exact bookmarks, live-price parsing, area totals, and discovery passed.");
 
 static void Require(bool condition, string message)
 {
@@ -173,5 +240,5 @@ static void ExpectInvalid(Action action)
 {
     try { action(); }
     catch (InvalidDataException) { return; }
-    throw new Exception("invalid recommendation response accepted");
+    throw new Exception("invalid response accepted");
 }

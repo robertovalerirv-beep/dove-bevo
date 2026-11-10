@@ -10,15 +10,19 @@ namespace DoveBevo.Windows;
 public partial class MainWindow : Window
 {
     private readonly BookmarkStore bookmarks = new();
-    private readonly RecommendationClient recommendations = new();
+    private readonly BookmarkPriceClient bookmarkPrices = new();
+    private readonly AreaVotesClient areaVotes = new();
     private readonly DiscoveryClient discovery = new();
     private DiscoveryArea? discoveryArea;
     private CancellationTokenSource? discoveryCancellation;
     private bool starting;
     private bool ready;
     private bool recommendationBusy;
-    private string? recommendationVenueUrl;
-    private string? recommendationVenueKey;
+    private DiscoveryArea? recommendationArea;
+    private CancellationTokenSource? recommendationCancellation;
+    private CancellationTokenSource? favouritesCancellation;
+    private bool saveBusy;
+    private bool searchPending;
     private string lastTrustedUrl = NavigationPolicy.Home;
 
     public MainWindow() => InitializeComponent();
@@ -63,6 +67,16 @@ public partial class MainWindow : Window
 
     private void Browser_NavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
+        if (e.Uri.Contains("save_offer=", StringComparison.Ordinal) ||
+            e.Uri.Contains("save_drink=", StringComparison.Ordinal) ||
+            e.Uri.Contains("save_customer=", StringComparison.Ordinal) ||
+            e.Uri.Contains("save_europe=", StringComparison.Ordinal))
+        {
+            e.Cancel = true;
+            if (e.IsUserInitiated && !saveBusy) _ = SaveExactDrinkAsync(e.Uri);
+            else StatusText.Text = "Salvataggio non disponibile. Riprova dal drink nel locale.";
+            return;
+        }
         if (Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri) && NavigationPolicy.IsTrusted(uri))
         {
             lastTrustedUrl = uri.AbsoluteUri;
@@ -74,17 +88,43 @@ public partial class MainWindow : Window
         else StatusText.Text = "Collegamento esterno bloccato.";
     }
 
-    private void Browser_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+    private async void Browser_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
     {
         if (e.IsSuccess)
         {
             ErrorPanel.Visibility = Visibility.Collapsed;
             ShowWebsiteIfNoOverlay();
             StatusText.Text = "Prezzi e locali aggiornati online.";
+            try
+            {
+                await AdvertiseNativeActionsAsync();
+                if (searchPending && ready)
+                {
+                    searchPending = false;
+                    var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "SearchClick.js"));
+                    await Website.CoreWebView2.ExecuteScriptAsync(script);
+                }
+            }
+            catch (Exception) { StatusText.Text = "La pagina è visibile. Riprova l'azione se necessario."; }
         }
         else if (e.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
             ShowError("Controlla la connessione e riprova.");
         UpdateButtons();
+    }
+
+    private async Task AdvertiseNativeActionsAsync()
+    {
+        // A successfully loaded HTTPS document can still be the old website shell.
+        // Advertise native links only after the app marker has actually mounted.
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            if (!ready || Website.Source is not { AbsolutePath: "/mobile/" } source ||
+                !NavigationPolicy.IsTrusted(source)) return;
+            var enabled = await Website.CoreWebView2.ExecuteScriptAsync(
+                "(()=>{if(location.origin!=='https://www.dovebevo.com'||location.pathname!=='/mobile/'||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return false;window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeEuropeSave=true;window.dispatchEvent(new Event('dovebevo-native-ready'));return true})()");
+            if (enabled == "true") return;
+            await Task.Delay(150);
+        }
     }
 
     private void Browser_ProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
@@ -173,6 +213,8 @@ public partial class MainWindow : Window
 
     private void Navigate(string address)
     {
+        favouritesCancellation?.Cancel();
+        recommendationCancellation?.Cancel();
         CloseDiscovery();
         FavouritesPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
@@ -186,6 +228,26 @@ public partial class MainWindow : Window
     }
 
     private void Home_Click(object sender, RoutedEventArgs e) => Navigate(NavigationPolicy.Home);
+    private void Map_Click(object sender, RoutedEventArgs e)
+    {
+        favouritesCancellation?.Cancel();
+        recommendationCancellation?.Cancel();
+        CloseDiscovery();
+        FavouritesPanel.Visibility = Visibility.Collapsed;
+        RecommendationsPanel.Visibility = Visibility.Collapsed;
+        ErrorPanel.Visibility = Visibility.Collapsed;
+        ShowWebsiteIfNoOverlay();
+        if (!ready || Website.Source?.AbsolutePath is not "/mobile/") Navigate(NavigationPolicy.Home);
+        UpdateButtons();
+    }
+    private void More_Click(object sender, RoutedEventArgs e)
+    {
+        if (MoreButton.ContextMenu is { } menu)
+        {
+            menu.PlacementTarget = MoreButton;
+            menu.IsOpen = true;
+        }
+    }
     private async void Discover_Click(object sender, RoutedEventArgs e)
     {
         if (DiscoveryPanel.Visibility == Visibility.Visible) { await LoadDiscovery(); return; }
@@ -225,18 +287,22 @@ public partial class MainWindow : Window
         FavouritesPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ShowWebsiteIfNoOverlay();
-        if (!ready) { Navigate(NavigationPolicy.Home); return; }
+        if (!ready) { searchPending = true; Navigate(NavigationPolicy.Home); return; }
         try
         {
             var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "SearchClick.js"));
             var opened = await Website.CoreWebView2.ExecuteScriptAsync(script);
-            StatusText.Text = opened == "true"
-                ? "Cerca una città o un locale."
-                : "Torna alla mappa e riprova Cerca.";
+            if (opened != "true")
+            {
+                searchPending = true;
+                Navigate(NavigationPolicy.Home);
+            }
+            else StatusText.Text = "Cerca una città o un locale.";
         }
         catch (Exception)
         {
-            StatusText.Text = "Attendi che la mappa sia caricata e riprova.";
+            searchPending = true;
+            Navigate(NavigationPolicy.Home);
         }
     }
 
@@ -249,6 +315,7 @@ public partial class MainWindow : Window
         }
         if (FavouritesPanel.Visibility == Visibility.Visible)
         {
+            favouritesCancellation?.Cancel();
             FavouritesPanel.Visibility = Visibility.Collapsed;
             ShowWebsiteIfNoOverlay();
             UpdateButtons();
@@ -293,79 +360,95 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Favourites_Click(object sender, RoutedEventArgs e)
+    private async void Favourites_Click(object sender, RoutedEventArgs e)
     {
         CloseDiscovery();
-        FavouriteList.ItemsSource = bookmarks.Items.ToArray();
+        favouritesCancellation?.Cancel();
+        favouritesCancellation?.Dispose();
+        var request = new CancellationTokenSource();
+        favouritesCancellation = request;
+        var views = bookmarks.Items.Select(item =>
+            new BookmarkView(item, "Prezzo in verifica online")).ToArray();
+        FavouriteList.ItemsSource = views;
         ErrorPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         FavouritesPanel.Visibility = Visibility.Visible;
         ShowWebsiteIfNoOverlay();
         UpdateButtons();
         StatusText.Text = bookmarks.Items.Count == 0 ? "Nessun drink salvato." : "Drink preferiti su questo PC.";
+        await RefreshFavouritePricesAsync(views, request);
     }
 
-    private async void SaveDrink_Click(object sender, RoutedEventArgs e)
+    private async Task RefreshFavouritePricesAsync(BookmarkView[] views, CancellationTokenSource request)
     {
-        if (FavouritesPanel.Visibility == Visibility.Visible || RecommendationsPanel.Visibility == Visibility.Visible ||
-            DiscoveryPanel.Visibility == Visibility.Visible)
+        using var gate = new SemaphoreSlim(3);
+        var work = views.Select(async (view, index) =>
         {
-            StatusText.Text = "Torna alla scheda del locale per salvare un drink.";
-            return;
-        }
+            await gate.WaitAsync(request.Token);
+            try
+            {
+                var price = await bookmarkPrices.RefreshAsync(view.Bookmark, request.Token);
+                if (request.IsCancellationRequested || FavouritesPanel.Visibility != Visibility.Visible)
+                    return;
+                views[index] = new BookmarkView(view.Bookmark, price);
+                FavouriteList.ItemsSource = views.ToArray();
+            }
+            catch (OperationCanceledException) { }
+            finally { gate.Release(); }
+        }).ToArray();
+        try { await Task.WhenAll(work); }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task SaveExactDrinkAsync(string address)
+    {
+        if (!ready || saveBusy) return;
+        saveBusy = true;
         try
         {
-            var venue = await CaptureVenue();
-            if (venue is null)
+            var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory,
+                "SaveLinkCapture.js"));
+            script = script.Replace("__DOVE_BEVO_SAVE_TARGET__", JsonSerializer.Serialize(address),
+                StringComparison.Ordinal);
+            using var document = JsonDocument.Parse(await Website.CoreWebView2.ExecuteScriptAsync(script));
+            var result = document.RootElement;
+            if (result.ValueKind != JsonValueKind.Object ||
+                result.GetProperty("status").GetString() != "ready" ||
+                result.GetProperty("target").GetString() != address ||
+                !NavigationPolicy.TrySaveAction(address, result.GetProperty("href").GetString(),
+                    out var action) || action is null)
+                throw new InvalidDataException("No visible exact drink action");
+            var venueName = result.GetProperty("venueName").GetString();
+            var drinkName = result.GetProperty("drinkName").GetString();
+            if (venueName is not { Length: > 0 and <= 120 } ||
+                drinkName is not { Length: > 0 and <= 120 } ||
+                venueName.Any(char.IsControl) || drinkName.Any(char.IsControl))
+                throw new InvalidDataException("Invalid drink name");
+            var venueUrl = $"https://www.dovebevo.com/bar/{action.VenueKey}?c={action.Cell}";
+            Uri? focused = null;
+            var valid = action.Kind switch
             {
-                StatusText.Text = "Apri un locale e attendi che la sua scheda sia visibile.";
-                return;
-            }
-            if (venue.Value.Drink is null || venue.Value.DrinkCode is null)
-            {
-                StatusText.Text = "Seleziona un solo drink in «Scegli cosa bere», poi riprova.";
-                return;
-            }
-            if (!NavigationPolicy.TryFocusedVenue(venue.Value.Href, venue.Value.Key,
-                    venue.Value.DrinkCode, venue.Value.HappyHour, out var focused) || focused is null)
-            {
-                StatusText.Text = "Non riesco a creare il link del drink. Riprova.";
-                return;
-            }
-            StatusText.Text = bookmarks.Add(new Bookmark(venue.Value.Key, venue.Value.Name,
-                    venue.Value.Drink, focused.AbsoluteUri))
-                ? $"{venue.Value.Drink} da {venue.Value.Name} salvato nei Preferiti."
-                : "Già salvato, oppure l'archivio dei Preferiti è pieno.";
+                "offer" => NavigationPolicy.TryOfferVenue(venueUrl, action.VenueKey, action.Item,
+                    out focused),
+                "legacy" or "europe" => NavigationPolicy.TryFocusedVenue(venueUrl, action.VenueKey,
+                    action.Item, action.Band == "happy_hour" ? 1 : 0, out focused),
+                "customer" => NavigationPolicy.TryVenue(
+                    $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{action.VenueKey}&c={action.Cell}",
+                    action.VenueKey, out focused),
+                _ => false,
+            };
+            if (!valid || focused is null) throw new InvalidDataException("Invalid drink destination");
+            var item = new Bookmark(action.VenueKey, venueName, drinkName,
+                focused.AbsoluteUri, action.CommandUrl);
+            StatusText.Text = bookmarks.Add(item)
+                ? $"{drinkName} da {venueName} salvato nei Preferiti di questo PC."
+                : "Drink già salvato o archivio dei Preferiti pieno.";
         }
         catch (Exception)
         {
-            StatusText.Text = "Impossibile salvare il drink. Riprova dalla scheda del locale.";
+            StatusText.Text = "Non riesco a salvare questo drink. Riapri il locale e riprova.";
         }
-    }
-
-    private async Task<(string Href, string Key, string Name, string? Drink,
-        string? DrinkCode, int HappyHour)?> CaptureVenue()
-    {
-        if (!ready || !Uri.TryCreate(Website.Source?.AbsoluteUri, UriKind.Absolute, out var current)
-            || !NavigationPolicy.IsTrusted(current)) return null;
-        var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "VenueCapture.js"));
-        using var result = JsonDocument.Parse(await Website.CoreWebView2.ExecuteScriptAsync(script));
-        var root = result.RootElement;
-        if (root.ValueKind != JsonValueKind.Object
-            || !root.TryGetProperty("status", out var status) || status.GetString() != "ready")
-            return null;
-        var href = root.GetProperty("href").GetString();
-        var key = root.GetProperty("key").GetString();
-        var name = root.GetProperty("name").GetString();
-        var drink = root.GetProperty("drink").GetString();
-        var drinkCode = root.GetProperty("drinkCode").GetString();
-        var happyHour = root.GetProperty("hh").GetInt32();
-        if (href is null || key is null || name is null || name.Length is < 1 or > 120
-            || !NavigationPolicy.TryVenue(href, key, out _)
-            || (drink is not null && (drink.Length is < 1 or > 80 || drink.Any(char.IsControl)))
-            || (happyHour != 0 && happyHour != 1))
-            return null;
-        return (href, key, name, drink, drinkCode, happyHour);
+        finally { saveBusy = false; }
     }
 
     private async void Recommendations_Click(object sender, RoutedEventArgs e)
@@ -374,51 +457,64 @@ public partial class MainWindow : Window
         if (DiscoveryPanel.Visibility == Visibility.Visible) CloseDiscovery();
         if (RecommendationsPanel.Visibility != Visibility.Visible)
         {
+            favouritesCancellation?.Cancel();
+            FavouritesPanel.Visibility = Visibility.Collapsed;
+            ErrorPanel.Visibility = Visibility.Collapsed;
+            ShowWebsiteIfNoOverlay();
             try
             {
-                var venue = await CaptureVenue();
-                if (venue is null)
+                if (ready)
                 {
-                    StatusText.Text = "Apri la scheda di un locale prima di vedere i consigli.";
+                    var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory,
+                        "MapAreaReader.js"));
+                    recommendationArea = DiscoveryArea.ParseWebView(
+                        await Website.CoreWebView2.ExecuteScriptAsync(script), Website.Source);
+                }
+                if (recommendationArea is null)
+                {
+                    StatusText.Text = "Apri la mappa e attendi che la zona sia caricata per vedere i consigli.";
                     return;
                 }
-                if (!NavigationPolicy.TryRecommendationEndpoint(venue.Value.Href, venue.Value.Key, out _))
-                {
-                    StatusText.Text = "I consigli condivisi non sono disponibili per questo locale.";
-                    return;
-                }
-                recommendationVenueUrl = venue.Value.Href;
-                recommendationVenueKey = venue.Value.Key;
-                RecommendationVenue.Text = venue.Value.Name;
-                FavouritesPanel.Visibility = Visibility.Collapsed;
-                ErrorPanel.Visibility = Visibility.Collapsed;
+                RecommendationVenue.Text = "I drink consigliati da tutti nella zona della mappa.";
                 RecommendationsPanel.Visibility = Visibility.Visible;
                 ShowWebsiteIfNoOverlay();
                 UpdateButtons();
             }
             catch (Exception)
             {
-                StatusText.Text = "Non riesco a leggere questo locale. Riprova dalla sua scheda.";
+                StatusText.Text = "Non riesco a leggere la zona della mappa. Riprova.";
                 return;
             }
         }
         await LoadRecommendations();
     }
 
-    private async Task LoadRecommendations(string? drink = null, bool recommended = false)
+    private async Task LoadRecommendations()
     {
-        if (recommendationBusy || recommendationVenueUrl is null || recommendationVenueKey is null) return;
+        if (recommendationBusy || recommendationArea is null) return;
         recommendationBusy = true;
-        StatusText.Text = drink is null ? "Caricamento dei consigli…" : "Aggiornamento del consiglio…";
+        recommendationCancellation?.Cancel();
+        recommendationCancellation?.Dispose();
+        var request = new CancellationTokenSource();
+        recommendationCancellation = request;
+        RecommendationList.ItemsSource = Array.Empty<AreaVoteRow>();
+        StatusText.Text = "Caricamento dei consigli condivisi…";
         try
         {
-            RecommendationList.ItemsSource = (await recommendations.LoadAsync(
-                recommendationVenueUrl, recommendationVenueKey, drink, recommended)).ToArray();
-            StatusText.Text = "I totali sono condivisi con tutti. Puoi annullare il tuo consiglio.";
+            var snapshot = await areaVotes.LoadAsync(recommendationArea, request.Token);
+            if (request.IsCancellationRequested || RecommendationsPanel.Visibility != Visibility.Visible) return;
+            RecommendationList.ItemsSource = snapshot.Rows.ToArray();
+            StatusText.Text = snapshot.HasMore
+                ? $"{snapshot.Rows.Count} consigli mostrati; altri disponibili in questa zona."
+                : snapshot.Rows.Count == 0
+                    ? "Nessun drink consigliato ancora in questa zona."
+                    : $"{snapshot.Rows.Count} drink consigliati dagli utenti in questa zona.";
         }
+        catch (OperationCanceledException) { }
         catch (Exception)
         {
-            StatusText.Text = "Consigli non disponibili. Controlla la connessione e premi Ricarica.";
+            if (!request.IsCancellationRequested)
+                StatusText.Text = "Consigli non disponibili. Controlla la connessione e premi Ricarica.";
         }
         finally
         {
@@ -426,14 +522,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void Vote_Click(object sender, RoutedEventArgs e)
+    private void OpenRecommendedVenue_Click(object sender, RoutedEventArgs e)
     {
-        if (RecommendationList.SelectedItem is not RecommendationRow row || recommendationBusy) return;
-        await LoadRecommendations(row.Code, !row.Recommended);
+        if (RecommendationList.SelectedItem is AreaVoteRow row) Navigate(row.VenueUrl);
     }
 
     private void CloseRecommendations_Click(object sender, RoutedEventArgs e)
     {
+        recommendationCancellation?.Cancel();
+        recommendationCancellation?.Dispose();
+        recommendationCancellation = null;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ShowWebsiteIfNoOverlay();
         UpdateButtons();
@@ -441,17 +539,18 @@ public partial class MainWindow : Window
 
     private void OpenFavourite_Click(object sender, RoutedEventArgs e)
     {
-        if (FavouriteList.SelectedItem is Bookmark item) Navigate(item.Url);
+        if (FavouriteList.SelectedItem is BookmarkView item) Navigate(item.Bookmark.Url);
     }
 
     private void RemoveFavourite_Click(object sender, RoutedEventArgs e)
     {
-        if (FavouriteList.SelectedItem is not Bookmark item) return;
+        if (FavouriteList.SelectedItem is not BookmarkView view) return;
+        var item = view.Bookmark;
         try
         {
             if (!bookmarks.Remove(item)) return;
-            FavouriteList.ItemsSource = bookmarks.Items.ToArray();
             StatusText.Text = "Drink rimosso dai Preferiti.";
+            Favourites_Click(sender, e);
         }
         catch (IOException)
         {

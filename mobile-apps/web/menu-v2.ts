@@ -405,6 +405,30 @@ export function mobileAllCount(venue: Venue): { count: number; kind: "menu" | "r
   return reportedCount > 0 ? { count: reportedCount, kind: "reported" } : null;
 }
 
+/** A menu's smallest draft beer is not evidence of the selected "Birra media" price. */
+export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean {
+  // A contradictory small label makes even a structured volume ambiguous.
+  // An explicit volume otherwise decides whether this is a medium serving.
+  const label = serving.label?.normalize("NFKC").toLowerCase();
+  if (label && /\b(?:piccola|piccolo|small|mini)\b/u.test(label)) return false;
+  if (serving.ml !== null) return serving.ml >= 400 && serving.ml <= 600;
+  if (!label || !/\b(?:media|medium)\b/u.test(label)) return false;
+  if (/\b(?:grande|large|pinta|pint)\b/u.test(label)) return false;
+  // If the label itself contains a volume, only accept an explicit medium one.
+  const quantities = [...label.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(ml|cl|l)\b/gu)];
+  if (quantities.length > 1) return false;
+  const quantity = quantities[0];
+  if (quantity) {
+    const amount = quantity[1];
+    const unit = quantity[2];
+    if (!amount || !unit) return false;
+    const value = Number(amount.replace(",", "."));
+    const ml = unit === "l" ? value * 1000 : unit === "cl" ? value * 10 : value;
+    return ml >= 400 && ml <= 600;
+  }
+  return true;
+}
+
 export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string | null {
   if (drinks.length === 0) {
     const found = mobileAllCount(venue);
@@ -422,7 +446,10 @@ export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string |
   const samples = (venue as WithMenu).mobileMenuSamples ?? [];
   for (const category of drinks) {
     const regular = samples.find(
-      (offer) => offer.category === category && offer.context.kind === "regular",
+      (offer) =>
+        offer.category === category &&
+        offer.context.kind === "regular" &&
+        (category !== "beer_draft" || isMediumDraftBeerServing(offer.serving)),
     );
     if (regular)
       return `${menuMoney(regular.amount_minor, regular.currency, regular.currency_exponent)} MENU`;

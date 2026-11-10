@@ -151,6 +151,12 @@ def public_fetch(transport,address,maximum,content_kind=None,resolver=None):
         raise Error("unexpected OSM XML content")
     if content_kind=="json" and not header.startswith(b"{"):
         raise Error("unexpected JSON source content")
+    if content_kind=="jpeg":
+        media_type=(getattr(transport,"last_fetch_content_type",None) or "").split(";",1)[0].strip().lower()
+        if ((isinstance(transport,legacy.Transport) and media_type!="image/jpeg")
+            or (media_type and media_type!="image/jpeg")):
+            raise Error("unexpected JPEG source content")
+        jpeg_dimensions(raw)
     return raw
 
 def canonical_owner_url(value):
@@ -243,19 +249,42 @@ def image_review_digest(raw_pdf_sha256,entries):
                          ensure_ascii=False,sort_keys=True,separators=(",",":")).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
 
+def jpeg_review_digest(raw_jpeg_sha256,entries):
+    """Bind one exact JPEG to each manually reviewed named-price line."""
+    digest(raw_jpeg_sha256)
+    if not isinstance(entries,list) or not 1<=len(entries)<=1000:
+        raise Error("invalid JPEG evidence")
+    seen=set()
+    for entry in entries:
+        fields(entry,("offer_id","line"))
+        offer_id=identifier(entry["offer_id"])
+        text(entry["line"],3,220)
+        if offer_id in seen: raise Error("duplicate JPEG evidence")
+        seen.add(offer_id)
+    canonical=json.dumps({"jpeg_sha256":raw_jpeg_sha256,
+                          "evidence":sorted(entries,key=lambda entry:entry["offer_id"])},
+                         ensure_ascii=False,sort_keys=True,separators=(",",":")).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
 def validate_source(row,venues,checked):
     required=("id","venue_key","cell","source_url","source_format","source_sha256",
               "source_text_sha256","source_checked_on","use_review_status",
               "use_review_basis","use_review_reference","use_reviewed_on")
     if isinstance(row,dict) and row.get("source_format")=="pdf_image_v1":
         required+=("page_count","image_evidence")
+    if isinstance(row,dict) and row.get("source_format")=="jpeg_image_v1":
+        required+=("image_evidence",)
     fields(row,required)
     identifier(row["id"])
     key=venue_key(row["venue_key"])
     if key not in venues or cell(row["cell"])!=venues[key]["cell"]:
         raise Error("source venue mismatch")
     https(row["source_url"],True)
-    if row["source_format"] not in ("html_text_v1","pdf_text_v1","pdf_image_v1","json_menu_v1"):
+    if row["source_format"]=="jpeg_image_v1":
+        parsed=urlsplit(row["source_url"])
+        if parsed.query or not parsed.path.lower().endswith((".jpg",".jpeg")):
+            raise Error("JPEG source must be a direct image URL")
+    if row["source_format"] not in ("html_text_v1","pdf_text_v1","pdf_image_v1","jpeg_image_v1","json_menu_v1"):
         raise Error("unsupported source format")
     digest(row["source_sha256"]);digest(row["source_text_sha256"])
     if row["source_format"]=="pdf_image_v1":
@@ -264,6 +293,9 @@ def validate_source(row,venues,checked):
         if (any(entry["page"]>row["page_count"] for entry in row["image_evidence"])
             or reviewed_hash!=row["source_text_sha256"]):
             raise Error("image PDF review hash or page mismatch")
+    if row["source_format"]=="jpeg_image_v1" and jpeg_review_digest(
+        row["source_sha256"],row["image_evidence"])!=row["source_text_sha256"]:
+        raise Error("JPEG review hash mismatch")
     if row["source_format"]=="json_menu_v1" and (row["source_url"]!="https://www.carico.io/api/menu"
         or row["use_review_reference"]!=CARICO_RENDERER_URL):
         raise Error("unreviewed JSON menu endpoint or renderer")
@@ -351,21 +383,42 @@ def verify_image_pdf_offers(source,offers,fees,coverage):
         line=entry["line"]
         if row["evidence_ref"]!=f'PDF page {entry["page"]}: {line}':
             raise Error("image PDF offer page reference mismatch")
-        normalized=lambda value: re.sub(r"\s+"," ",unicodedata.normalize("NFKC",value)).casefold()
-        if normalized(row["name"]) not in normalized(line):
-            raise Error("image PDF offer name absent from reviewed line")
-        if row["serving_label"] is not None and normalized(row["serving_label"]) not in normalized(line):
-            raise Error("image PDF serving absent from reviewed line")
-        if row["serving_ml"] is not None and not re.search(
-            r"(?<![0-9])"+str(row["serving_ml"])+r"\s*ml(?![a-z])",normalized(line)):
-            raise Error("image PDF serving ml absent from reviewed line")
-        divisor=10**row["currency_exponent"]
-        whole,remainder=divmod(row["amount_minor"],divisor)
-        numeric=(str(whole) if row["currency_exponent"]==0 else
-                 f'{whole}.{remainder:0{row["currency_exponent"]}d}')
-        amount=f'{row["currency"]} {numeric}'
-        if not re.search(r"(?<![A-Za-z0-9])"+re.escape(amount)+r"(?![A-Za-z0-9.,])",line):
-            raise Error("image PDF amount absent from reviewed line")
+        verify_reviewed_image_line(row,line,"image PDF")
+
+def verify_reviewed_image_line(row,line,kind):
+    """Check that reviewed image evidence names the exact offer, size and amount."""
+    normalized=lambda value: re.sub(r"\s+"," ",unicodedata.normalize("NFKC",value)).casefold()
+    if normalized(row["name"]) not in normalized(line):
+        raise Error(f"{kind} offer name absent from reviewed line")
+    if row["serving_label"] is not None and normalized(row["serving_label"]) not in normalized(line):
+        raise Error(f"{kind} serving absent from reviewed line")
+    if row["serving_ml"] is not None and not re.search(
+        r"(?<![0-9])"+str(row["serving_ml"])+r"\s*ml(?![a-z])",normalized(line)):
+        raise Error(f"{kind} serving ml absent from reviewed line")
+    divisor=10**row["currency_exponent"]
+    whole,remainder=divmod(row["amount_minor"],divisor)
+    numeric=(str(whole) if row["currency_exponent"]==0 else
+             f'{whole}.{remainder:0{row["currency_exponent"]}d}')
+    amount=f'{row["currency"]} {numeric}'
+    if not re.search(r"(?<![A-Za-z0-9])"+re.escape(amount)+r"(?![A-Za-z0-9.,])",line):
+        raise Error(f"{kind} amount absent from reviewed line")
+
+def verify_jpeg_image_offers(source,offers,fees,coverage):
+    """Require a complete one-to-one human transcription for each JPEG source."""
+    source_id=source["id"]
+    if any(row["source_id"]==source_id for row in fees+coverage):
+        raise Error("JPEG fees need separate reviewed source format")
+    own=[row for row in offers if row["source_id"]==source_id]
+    entries={entry["offer_id"]:entry for entry in source["image_evidence"]}
+    if {row["id"] for row in own}!=set(entries):
+        raise Error("JPEG offer evidence coverage mismatch")
+    for row in own:
+        if row["price_context"]!="regular":
+            raise Error("JPEG conditional prices need separate review")
+        line=entries[row["id"]]["line"]
+        if row["evidence_ref"]!="JPEG image: "+line:
+            raise Error("JPEG offer reference mismatch")
+        verify_reviewed_image_line(row,line,"JPEG")
 
 def validate(raw):
     if not isinstance(raw,bytes) or not 1<=len(raw)<=MAX_MANIFEST: raise Error("manifest size")
@@ -411,6 +464,8 @@ def validate(raw):
     for src in sources.values():
         if src["source_format"]=="pdf_image_v1":
             verify_image_pdf_offers(src,doc["offers"],doc["fees"],doc["fee_coverage"])
+        if src["source_format"]=="jpeg_image_v1":
+            verify_jpeg_image_offers(src,doc["offers"],doc["fees"],doc["fee_coverage"])
     for src in sources.values():
         if src["use_review_status"]=="approved" and not any(
             row["source_id"]==src["id"]
@@ -430,6 +485,51 @@ def pdf_page_count(raw):
         raise Error("invalid image PDF page count")
     return int(match.group(1))
 
+def jpeg_dimensions(raw):
+    """Check the bounded JPEG marker structure without decoding image pixels."""
+    if not isinstance(raw,bytes) or not 512<=len(raw)<=MAX_SOURCE or raw[:2]!=b"\xff\xd8":
+        raise Error("invalid JPEG")
+    pos=2
+    size=None
+    scanned=False
+    while pos<len(raw):
+        if raw[pos]!=0xff: raise Error("invalid JPEG marker")
+        while pos<len(raw) and raw[pos]==0xff: pos+=1
+        if pos>=len(raw): raise Error("invalid JPEG marker")
+        marker=raw[pos];pos+=1
+        if marker==0xd9:
+            if pos!=len(raw) or not scanned or size is None:
+                raise Error("incomplete JPEG")
+            return size
+        if marker in (0x00,0xd8,0x01) or 0xd0<=marker<=0xd7 or pos+2>len(raw):
+            raise Error("invalid JPEG marker")
+        length=int.from_bytes(raw[pos:pos+2],"big")
+        if length<2 or pos+length>len(raw): raise Error("invalid JPEG segment")
+        if marker in (0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf):
+            if length<8 or size is not None: raise Error("invalid JPEG frame")
+            height=int.from_bytes(raw[pos+3:pos+5],"big")
+            width=int.from_bytes(raw[pos+5:pos+7],"big")
+            if not 1<=width<=20000 or not 1<=height<=20000:
+                raise Error("invalid JPEG dimensions")
+            size=(width,height)
+        if marker==0xda:
+            if size is None: raise Error("JPEG scan without frame")
+            scanned=True
+            pos+=length
+            while pos<len(raw):
+                if raw[pos]==0xff:
+                    end=pos+1
+                    while end<len(raw) and raw[end]==0xff: end+=1
+                    if end>=len(raw): raise Error("incomplete JPEG scan")
+                    if raw[end]==0x00 or 0xd0<=raw[end]<=0xd7:
+                        pos=end+1
+                        continue
+                    break
+                pos+=1
+        else:
+            pos+=length
+    raise Error("incomplete JPEG")
+
 def source_digests(raw,fmt,image_evidence=None,page_count=None):
     if len(raw)>MAX_SOURCE: raise Error("source too large")
     if fmt=="html_text_v1":
@@ -439,6 +539,10 @@ def source_digests(raw,fmt,image_evidence=None,page_count=None):
         json_menu_entries(raw)
         result=hashlib.sha256(raw).hexdigest()
         return result,result
+    if fmt=="jpeg_image_v1":
+        jpeg_dimensions(raw)
+        raw_hash=hashlib.sha256(raw).hexdigest()
+        return raw_hash,jpeg_review_digest(raw_hash,image_evidence)
     if fmt not in ("pdf_text_v1","pdf_image_v1") or not raw.startswith(b"%PDF-"):
         raise Error("invalid PDF")
     try:
@@ -669,7 +773,8 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
     key=(row["source_url"],row["source_format"],row.get("source_text_sha256"))
     if key not in cache:
         content_kind={"html_text_v1":"html","pdf_text_v1":"pdf",
-                      "pdf_image_v1":"pdf","json_menu_v1":"json"}[row["source_format"]]
+                      "pdf_image_v1":"pdf","jpeg_image_v1":"jpeg",
+                      "json_menu_v1":"json"}[row["source_format"]]
         # Re-resolve the public address on one bounded retry of a transport timeout.
         # Redirects, HTTP errors, and changed content are never retried or accepted.
         for attempt in range(2):

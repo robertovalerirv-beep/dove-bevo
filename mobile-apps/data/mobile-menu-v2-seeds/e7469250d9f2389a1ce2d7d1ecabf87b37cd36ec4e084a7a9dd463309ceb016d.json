@@ -1,0 +1,1238 @@
+{
+  "batch_id": "birrificio-torino-menu-20261110",
+  "checked_on": "2026-11-10",
+  "data_version": "20261108",
+  "fee_coverage": [],
+  "fees": [],
+  "offers": [
+    {
+      "amount_minor": 350,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: La Dròla | BOCCALI | 25 cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-001",
+      "name": "La Dròla",
+      "price_context": "regular",
+      "serving_label": "25 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 600,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: La Dròla | BOCCALI | 50 cl | EUR 6.00",
+      "id": "birrificio-torino-20261110-002",
+      "name": "La Dròla",
+      "price_context": "regular",
+      "serving_label": "50 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1100,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: La Dròla | BOCCALI | 1l | EUR 11.00",
+      "id": "birrificio-torino-20261110-003",
+      "name": "La Dròla",
+      "price_context": "regular",
+      "serving_label": "1l",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Aurora | BOCCALI | 25 cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-004",
+      "name": "Aurora",
+      "price_context": "regular",
+      "serving_label": "25 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 600,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Aurora | BOCCALI | 50 cl | EUR 6.00",
+      "id": "birrificio-torino-20261110-005",
+      "name": "Aurora",
+      "price_context": "regular",
+      "serving_label": "50 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1100,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Aurora | BOCCALI | 1l | EUR 11.00",
+      "id": "birrificio-torino-20261110-006",
+      "name": "Aurora",
+      "price_context": "regular",
+      "serving_label": "1l",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: L’Originale | BOCCALI | 25 cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-007",
+      "name": "L’Originale",
+      "price_context": "regular",
+      "serving_label": "25 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 600,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: L’Originale | BOCCALI | 50 cl | EUR 6.00",
+      "id": "birrificio-torino-20261110-008",
+      "name": "L’Originale",
+      "price_context": "regular",
+      "serving_label": "50 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1100,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: L’Originale | BOCCALI | 1l | EUR 11.00",
+      "id": "birrificio-torino-20261110-009",
+      "name": "L’Originale",
+      "price_context": "regular",
+      "serving_label": "1l",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Clara | BOCCALI | 25 cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-010",
+      "name": "Clara",
+      "price_context": "regular",
+      "serving_label": "25 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 600,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Clara | BOCCALI | 50 cl | EUR 6.00",
+      "id": "birrificio-torino-20261110-011",
+      "name": "Clara",
+      "price_context": "regular",
+      "serving_label": "50 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1100,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Clara | BOCCALI | 1l | EUR 11.00",
+      "id": "birrificio-torino-20261110-012",
+      "name": "Clara",
+      "price_context": "regular",
+      "serving_label": "1l",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbvnnn",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Lavaiss | BOCCALI | 25 cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-013",
+      "name": "Lavaiss",
+      "price_context": "regular",
+      "serving_label": "25 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bira2",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 600,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Lavaiss | BOCCALI | 50 cl | EUR 6.00",
+      "id": "birrificio-torino-20261110-014",
+      "name": "Lavaiss",
+      "price_context": "regular",
+      "serving_label": "50 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bira2",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1100,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Lavaiss | BOCCALI | 1l | EUR 11.00",
+      "id": "birrificio-torino-20261110-015",
+      "name": "Lavaiss",
+      "price_context": "regular",
+      "serving_label": "1l",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bira2",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Rufus | BOCCALI | 25 cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-016",
+      "name": "Rufus",
+      "price_context": "regular",
+      "serving_label": "25 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bira2",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 600,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Rufus | BOCCALI | 50 cl | EUR 6.00",
+      "id": "birrificio-torino-20261110-017",
+      "name": "Rufus",
+      "price_context": "regular",
+      "serving_label": "50 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bira2",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1100,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Rufus | BOCCALI | 1l | EUR 11.00",
+      "id": "birrificio-torino-20261110-018",
+      "name": "Rufus",
+      "price_context": "regular",
+      "serving_label": "1l",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bira2",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: 22 | BOCCALI | 25 cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-019",
+      "name": "22",
+      "price_context": "regular",
+      "serving_label": "25 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bira2",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 600,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: 22 | BOCCALI | 50 cl | EUR 6.00",
+      "id": "birrificio-torino-20261110-020",
+      "name": "22",
+      "price_context": "regular",
+      "serving_label": "50 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bira2",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1100,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: 22 | BOCCALI | 1l | EUR 11.00",
+      "id": "birrificio-torino-20261110-021",
+      "name": "22",
+      "price_context": "regular",
+      "serving_label": "1l",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bira2",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 400,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: D’ora | BOCCALI | 25 cl | EUR 4.00",
+      "id": "birrificio-torino-20261110-022",
+      "name": "D’ora",
+      "price_context": "regular",
+      "serving_label": "25 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbv22",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 650,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: D’ora | BOCCALI | 50 cl | EUR 6.50",
+      "id": "birrificio-torino-20261110-023",
+      "name": "D’ora",
+      "price_context": "regular",
+      "serving_label": "50 cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbv22",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1200,
+      "category": "beer_draft",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: D’ora | BOCCALI | 1l | EUR 12.00",
+      "id": "birrificio-torino-20261110-024",
+      "name": "D’ora",
+      "price_context": "regular",
+      "serving_label": "1l",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbv22",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1500,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Calaide | SOLO IN BOTTIGLIA | Bottiglia da 0,75 | EUR 15.00",
+      "id": "birrificio-torino-20261110-025",
+      "name": "Calaide",
+      "price_context": "regular",
+      "serving_label": "Bottiglia da 0,75",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bbbv22",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 200,
+      "category": "water",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Acqua minerale naturale | Bottiglia di vetro da 1/2 litro | EUR 2.00",
+      "id": "birrificio-torino-20261110-026",
+      "name": "Acqua minerale naturale",
+      "price_context": "regular",
+      "serving_label": "Bottiglia di vetro da 1/2 litro",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 200,
+      "category": "water",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Acqua minerale frizzante | Bottiglia di vetro da 1/2 litro | EUR 2.00",
+      "id": "birrificio-torino-20261110-027",
+      "name": "Acqua minerale frizzante",
+      "price_context": "regular",
+      "serving_label": "Bottiglia di vetro da 1/2 litro",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 400,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Birra senza glutine | Bottiglia da 33cl | EUR 4.00",
+      "id": "birrificio-torino-20261110-028",
+      "name": "Birra senza glutine",
+      "price_context": "regular",
+      "serving_label": "Bottiglia da 33cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 400,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Birra analcolica | Bottiglia da 33cl | EUR 4.00",
+      "id": "birrificio-torino-20261110-029",
+      "name": "Birra analcolica",
+      "price_context": "regular",
+      "serving_label": "Bottiglia da 33cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Coca-Cola | BIBITE ALLA SPINA | Piccola 25cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-030",
+      "name": "Coca-Cola",
+      "price_context": "regular",
+      "serving_label": "Piccola 25cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 500,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Coca-Cola | BIBITE ALLA SPINA | Media 50cl | EUR 5.00",
+      "id": "birrificio-torino-20261110-031",
+      "name": "Coca-Cola",
+      "price_context": "regular",
+      "serving_label": "Media 50cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Seven-Up | BIBITE ALLA SPINA | Piccola 25cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-032",
+      "name": "Seven-Up",
+      "price_context": "regular",
+      "serving_label": "Piccola 25cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 500,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Seven-Up | BIBITE ALLA SPINA | Media 50cl | EUR 5.00",
+      "id": "birrificio-torino-20261110-033",
+      "name": "Seven-Up",
+      "price_context": "regular",
+      "serving_label": "Media 50cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Tonica Schweppes | BIBITE ALLA SPINA | Piccola 25cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-034",
+      "name": "Tonica Schweppes",
+      "price_context": "regular",
+      "serving_label": "Piccola 25cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 500,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Tonica Schweppes | BIBITE ALLA SPINA | Media 50cl | EUR 5.00",
+      "id": "birrificio-torino-20261110-035",
+      "name": "Tonica Schweppes",
+      "price_context": "regular",
+      "serving_label": "Media 50cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Coca Cola Zero | Lattina da 33cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-036",
+      "name": "Coca Cola Zero",
+      "price_context": "regular",
+      "serving_label": "Lattina da 33cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Lemonsoda | Lattina da 33cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-037",
+      "name": "Lemonsoda",
+      "price_context": "regular",
+      "serving_label": "Lattina da 33cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Fanta | Lattina da 33cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-038",
+      "name": "Fanta",
+      "price_context": "regular",
+      "serving_label": "Lattina da 33cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 300,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Succhi di frutta | EUR 3.00",
+      "id": "birrificio-torino-20261110-039",
+      "name": "Succhi di frutta",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: The freddo limone | Lattina da 33cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-040",
+      "name": "The freddo limone",
+      "price_context": "regular",
+      "serving_label": "Lattina da 33cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 350,
+      "category": "alcohol_free",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: The freddo pesca | Lattina da 33cl | EUR 3.50",
+      "id": "birrificio-torino-20261110-041",
+      "name": "The freddo pesca",
+      "price_context": "regular",
+      "serving_label": "Lattina da 33cl",
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 150,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Caffé | EUR 1.50",
+      "id": "birrificio-torino-20261110-042",
+      "name": "Caffé",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 200,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Caffé corretto | EUR 2.00",
+      "id": "birrificio-torino-20261110-043",
+      "name": "Caffé corretto",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 200,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Cappuccino | EUR 2.00",
+      "id": "birrificio-torino-20261110-044",
+      "name": "Cappuccino",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 500,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Grappa di Moscato Sibona | EUR 5.00",
+      "id": "birrificio-torino-20261110-045",
+      "name": "Grappa di Moscato Sibona",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 500,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Unicum | EUR 5.00",
+      "id": "birrificio-torino-20261110-046",
+      "name": "Unicum",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 650,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Distillato di birra Sibona | EUR 6.50",
+      "id": "birrificio-torino-20261110-047",
+      "name": "Distillato di birra Sibona",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 1200,
+      "category": "gin_tonic",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Gin tonic premium | EUR 12.00",
+      "id": "birrificio-torino-20261110-048",
+      "name": "Gin tonic premium",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 700,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Coca&Rum | LONG DRINKS | EUR 7.00",
+      "id": "birrificio-torino-20261110-049",
+      "name": "Coca&Rum",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 700,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Coca&Whisky | LONG DRINKS | EUR 7.00",
+      "id": "birrificio-torino-20261110-050",
+      "name": "Coca&Whisky",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 700,
+      "category": "gin_tonic",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Gin tonic | LONG DRINKS | EUR 7.00",
+      "id": "birrificio-torino-20261110-051",
+      "name": "Gin tonic",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 700,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Gin Lemon | LONG DRINKS | EUR 7.00",
+      "id": "birrificio-torino-20261110-052",
+      "name": "Gin Lemon",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 700,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Vodka tonic | LONG DRINKS | EUR 7.00",
+      "id": "birrificio-torino-20261110-053",
+      "name": "Vodka tonic",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 700,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Vodka lemon | LONG DRINKS | EUR 7.00",
+      "id": "birrificio-torino-20261110-054",
+      "name": "Vodka lemon",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 700,
+      "category": "negroni",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Negroni | NEGRONI/AMERICANO | EUR 7.00",
+      "id": "birrificio-torino-20261110-055",
+      "name": "Negroni",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 700,
+      "category": null,
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Americano | NEGRONI/AMERICANO | EUR 7.00",
+      "id": "birrificio-torino-20261110-056",
+      "name": "Americano",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    },
+    {
+      "amount_minor": 600,
+      "category": "spritz",
+      "cell": "u0j2r",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "JPEG image: Birra Spritz | Birra Spritz con la Nostra Drola | EUR 6.00",
+      "id": "birrificio-torino-20261110-057",
+      "name": "Birra Spritz",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-birrificio-torino-bibitossiz",
+      "venue_key": "n1234453071"
+    }
+  ],
+  "schema_version": 1,
+  "sources": [
+    {
+      "cell": "u0j2r",
+      "id": "src-birrificio-torino-bbbvnnn",
+      "image_evidence": [
+        {
+          "line": "La Dròla | BOCCALI | 25 cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-001"
+        },
+        {
+          "line": "La Dròla | BOCCALI | 50 cl | EUR 6.00",
+          "offer_id": "birrificio-torino-20261110-002"
+        },
+        {
+          "line": "La Dròla | BOCCALI | 1l | EUR 11.00",
+          "offer_id": "birrificio-torino-20261110-003"
+        },
+        {
+          "line": "Aurora | BOCCALI | 25 cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-004"
+        },
+        {
+          "line": "Aurora | BOCCALI | 50 cl | EUR 6.00",
+          "offer_id": "birrificio-torino-20261110-005"
+        },
+        {
+          "line": "Aurora | BOCCALI | 1l | EUR 11.00",
+          "offer_id": "birrificio-torino-20261110-006"
+        },
+        {
+          "line": "L’Originale | BOCCALI | 25 cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-007"
+        },
+        {
+          "line": "L’Originale | BOCCALI | 50 cl | EUR 6.00",
+          "offer_id": "birrificio-torino-20261110-008"
+        },
+        {
+          "line": "L’Originale | BOCCALI | 1l | EUR 11.00",
+          "offer_id": "birrificio-torino-20261110-009"
+        },
+        {
+          "line": "Clara | BOCCALI | 25 cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-010"
+        },
+        {
+          "line": "Clara | BOCCALI | 50 cl | EUR 6.00",
+          "offer_id": "birrificio-torino-20261110-011"
+        },
+        {
+          "line": "Clara | BOCCALI | 1l | EUR 11.00",
+          "offer_id": "birrificio-torino-20261110-012"
+        }
+      ],
+      "source_checked_on": "2026-11-10",
+      "source_format": "jpeg_image_v1",
+      "source_sha256": "e5adac22aa14f5da3f667d4ef1917d661a750f989a01377c39b26cdd75a7769d",
+      "source_text_sha256": "3362123461e8326e3e7863c1f5aa05bc47890ed3cca7af36c922ec84b2c97230",
+      "source_url": "https://marcopascoli-com-769919.hostingersite.com/wp-content/uploads/2026/11/bbbvnnn.jpg",
+      "use_review_basis": "Owner site birrificiotorino.com links qrco.de/BirrificioTorino-Menu, which resolves to this venue-branded November 2026 menu image. Exact factual named drinks, sizes and numeric prices are transcribed after visual inspection. The image has no printed effective date; upload month is provenance, not a visit or current-price guarantee. No image, description, customer report, fee or review count is copied or invented.",
+      "use_review_reference": "https://www.birrificiotorino.com/",
+      "use_review_status": "approved",
+      "use_reviewed_on": "2026-11-10",
+      "venue_key": "n1234453071"
+    },
+    {
+      "cell": "u0j2r",
+      "id": "src-birrificio-torino-bira2",
+      "image_evidence": [
+        {
+          "line": "Lavaiss | BOCCALI | 25 cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-013"
+        },
+        {
+          "line": "Lavaiss | BOCCALI | 50 cl | EUR 6.00",
+          "offer_id": "birrificio-torino-20261110-014"
+        },
+        {
+          "line": "Lavaiss | BOCCALI | 1l | EUR 11.00",
+          "offer_id": "birrificio-torino-20261110-015"
+        },
+        {
+          "line": "Rufus | BOCCALI | 25 cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-016"
+        },
+        {
+          "line": "Rufus | BOCCALI | 50 cl | EUR 6.00",
+          "offer_id": "birrificio-torino-20261110-017"
+        },
+        {
+          "line": "Rufus | BOCCALI | 1l | EUR 11.00",
+          "offer_id": "birrificio-torino-20261110-018"
+        },
+        {
+          "line": "22 | BOCCALI | 25 cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-019"
+        },
+        {
+          "line": "22 | BOCCALI | 50 cl | EUR 6.00",
+          "offer_id": "birrificio-torino-20261110-020"
+        },
+        {
+          "line": "22 | BOCCALI | 1l | EUR 11.00",
+          "offer_id": "birrificio-torino-20261110-021"
+        }
+      ],
+      "source_checked_on": "2026-11-10",
+      "source_format": "jpeg_image_v1",
+      "source_sha256": "47070a8a16168f1d57f62d0905f9a6b1a71954efdec58ce381b69b932f341bba",
+      "source_text_sha256": "bbff7e746b2da594092789d60662b0813b836ea8a3a23cdb6c0ff1bffa2b3252",
+      "source_url": "https://marcopascoli-com-769919.hostingersite.com/wp-content/uploads/2026/11/bira2.jpg",
+      "use_review_basis": "Owner site birrificiotorino.com links qrco.de/BirrificioTorino-Menu, which resolves to this venue-branded November 2026 menu image. Exact factual named drinks, sizes and numeric prices are transcribed after visual inspection. The image has no printed effective date; upload month is provenance, not a visit or current-price guarantee. No image, description, customer report, fee or review count is copied or invented.",
+      "use_review_reference": "https://www.birrificiotorino.com/",
+      "use_review_status": "approved",
+      "use_reviewed_on": "2026-11-10",
+      "venue_key": "n1234453071"
+    },
+    {
+      "cell": "u0j2r",
+      "id": "src-birrificio-torino-bbbv22",
+      "image_evidence": [
+        {
+          "line": "D’ora | BOCCALI | 25 cl | EUR 4.00",
+          "offer_id": "birrificio-torino-20261110-022"
+        },
+        {
+          "line": "D’ora | BOCCALI | 50 cl | EUR 6.50",
+          "offer_id": "birrificio-torino-20261110-023"
+        },
+        {
+          "line": "D’ora | BOCCALI | 1l | EUR 12.00",
+          "offer_id": "birrificio-torino-20261110-024"
+        },
+        {
+          "line": "Calaide | SOLO IN BOTTIGLIA | Bottiglia da 0,75 | EUR 15.00",
+          "offer_id": "birrificio-torino-20261110-025"
+        }
+      ],
+      "source_checked_on": "2026-11-10",
+      "source_format": "jpeg_image_v1",
+      "source_sha256": "97050f306bbbb8e4a87fbad5a15f3f2c3f3d3d5eda4ab3abe6cdd64ccd374764",
+      "source_text_sha256": "d10c1af156b35405eefa3f1e8a5bcf4a3ad7918d813ca7cd491afe087a74f023",
+      "source_url": "https://marcopascoli-com-769919.hostingersite.com/wp-content/uploads/2026/11/bbbv22.jpg",
+      "use_review_basis": "Owner site birrificiotorino.com links qrco.de/BirrificioTorino-Menu, which resolves to this venue-branded November 2026 menu image. Exact factual named drinks, sizes and numeric prices are transcribed after visual inspection. The image has no printed effective date; upload month is provenance, not a visit or current-price guarantee. No image, description, customer report, fee or review count is copied or invented.",
+      "use_review_reference": "https://www.birrificiotorino.com/",
+      "use_review_status": "approved",
+      "use_reviewed_on": "2026-11-10",
+      "venue_key": "n1234453071"
+    },
+    {
+      "cell": "u0j2r",
+      "id": "src-birrificio-torino-bibitossiz",
+      "image_evidence": [
+        {
+          "line": "Acqua minerale naturale | Bottiglia di vetro da 1/2 litro | EUR 2.00",
+          "offer_id": "birrificio-torino-20261110-026"
+        },
+        {
+          "line": "Acqua minerale frizzante | Bottiglia di vetro da 1/2 litro | EUR 2.00",
+          "offer_id": "birrificio-torino-20261110-027"
+        },
+        {
+          "line": "Birra senza glutine | Bottiglia da 33cl | EUR 4.00",
+          "offer_id": "birrificio-torino-20261110-028"
+        },
+        {
+          "line": "Birra analcolica | Bottiglia da 33cl | EUR 4.00",
+          "offer_id": "birrificio-torino-20261110-029"
+        },
+        {
+          "line": "Coca-Cola | BIBITE ALLA SPINA | Piccola 25cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-030"
+        },
+        {
+          "line": "Coca-Cola | BIBITE ALLA SPINA | Media 50cl | EUR 5.00",
+          "offer_id": "birrificio-torino-20261110-031"
+        },
+        {
+          "line": "Seven-Up | BIBITE ALLA SPINA | Piccola 25cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-032"
+        },
+        {
+          "line": "Seven-Up | BIBITE ALLA SPINA | Media 50cl | EUR 5.00",
+          "offer_id": "birrificio-torino-20261110-033"
+        },
+        {
+          "line": "Tonica Schweppes | BIBITE ALLA SPINA | Piccola 25cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-034"
+        },
+        {
+          "line": "Tonica Schweppes | BIBITE ALLA SPINA | Media 50cl | EUR 5.00",
+          "offer_id": "birrificio-torino-20261110-035"
+        },
+        {
+          "line": "Coca Cola Zero | Lattina da 33cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-036"
+        },
+        {
+          "line": "Lemonsoda | Lattina da 33cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-037"
+        },
+        {
+          "line": "Fanta | Lattina da 33cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-038"
+        },
+        {
+          "line": "Succhi di frutta | EUR 3.00",
+          "offer_id": "birrificio-torino-20261110-039"
+        },
+        {
+          "line": "The freddo limone | Lattina da 33cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-040"
+        },
+        {
+          "line": "The freddo pesca | Lattina da 33cl | EUR 3.50",
+          "offer_id": "birrificio-torino-20261110-041"
+        },
+        {
+          "line": "Caffé | EUR 1.50",
+          "offer_id": "birrificio-torino-20261110-042"
+        },
+        {
+          "line": "Caffé corretto | EUR 2.00",
+          "offer_id": "birrificio-torino-20261110-043"
+        },
+        {
+          "line": "Cappuccino | EUR 2.00",
+          "offer_id": "birrificio-torino-20261110-044"
+        },
+        {
+          "line": "Grappa di Moscato Sibona | EUR 5.00",
+          "offer_id": "birrificio-torino-20261110-045"
+        },
+        {
+          "line": "Unicum | EUR 5.00",
+          "offer_id": "birrificio-torino-20261110-046"
+        },
+        {
+          "line": "Distillato di birra Sibona | EUR 6.50",
+          "offer_id": "birrificio-torino-20261110-047"
+        },
+        {
+          "line": "Gin tonic premium | EUR 12.00",
+          "offer_id": "birrificio-torino-20261110-048"
+        },
+        {
+          "line": "Coca&Rum | LONG DRINKS | EUR 7.00",
+          "offer_id": "birrificio-torino-20261110-049"
+        },
+        {
+          "line": "Coca&Whisky | LONG DRINKS | EUR 7.00",
+          "offer_id": "birrificio-torino-20261110-050"
+        },
+        {
+          "line": "Gin tonic | LONG DRINKS | EUR 7.00",
+          "offer_id": "birrificio-torino-20261110-051"
+        },
+        {
+          "line": "Gin Lemon | LONG DRINKS | EUR 7.00",
+          "offer_id": "birrificio-torino-20261110-052"
+        },
+        {
+          "line": "Vodka tonic | LONG DRINKS | EUR 7.00",
+          "offer_id": "birrificio-torino-20261110-053"
+        },
+        {
+          "line": "Vodka lemon | LONG DRINKS | EUR 7.00",
+          "offer_id": "birrificio-torino-20261110-054"
+        },
+        {
+          "line": "Negroni | NEGRONI/AMERICANO | EUR 7.00",
+          "offer_id": "birrificio-torino-20261110-055"
+        },
+        {
+          "line": "Americano | NEGRONI/AMERICANO | EUR 7.00",
+          "offer_id": "birrificio-torino-20261110-056"
+        },
+        {
+          "line": "Birra Spritz | Birra Spritz con la Nostra Drola | EUR 6.00",
+          "offer_id": "birrificio-torino-20261110-057"
+        }
+      ],
+      "source_checked_on": "2026-11-10",
+      "source_format": "jpeg_image_v1",
+      "source_sha256": "f3a01f76f4b53b100c736f8a06458b36906f913a6655c852e951e33c110d0f90",
+      "source_text_sha256": "8dde7127081f629e8470a00cb231cbe9e35412426a3ff4c365e9e10d7cdc7cd5",
+      "source_url": "https://marcopascoli-com-769919.hostingersite.com/wp-content/uploads/2026/11/bibitossiz.jpg",
+      "use_review_basis": "Owner site birrificiotorino.com links qrco.de/BirrificioTorino-Menu, which resolves to this venue-branded November 2026 menu image. Exact factual named drinks, sizes and numeric prices are transcribed after visual inspection. The image has no printed effective date; upload month is provenance, not a visit or current-price guarantee. No image, description, customer report, fee or review count is copied or invented.",
+      "use_review_reference": "https://www.birrificiotorino.com/",
+      "use_review_status": "approved",
+      "use_reviewed_on": "2026-11-10",
+      "venue_key": "n1234453071"
+    }
+  ],
+  "venues": [
+    {
+      "address": "Via Parma 30",
+      "cell": "u0j2r",
+      "city": "Torino",
+      "country": "IT",
+      "geo_reference_hash_basis": null,
+      "geo_reference_sha256": null,
+      "geo_reference_url": null,
+      "identity_checked_on": "2026-11-10",
+      "identity_fingerprint": null,
+      "identity_kind": "osm_static",
+      "identity_url": "https://www.openstreetmap.org/node/1234453071",
+      "kind": 2,
+      "lat": 45.07812,
+      "lon": 7.69318,
+      "name": "Birrificio Torino",
+      "owner_page_sha256": null,
+      "static_city_id": 63621589,
+      "venue_key": "n1234453071"
+    }
+  ]
+}

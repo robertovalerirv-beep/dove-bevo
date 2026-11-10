@@ -65,7 +65,8 @@ jobs:
       - name: App-only mobile presentation and routing
         run: |
           npx tsc -p mobile-apps/web/tsconfig.json --noEmit
-          node --test mobile-apps/web/tests/*.test.mjs mobile-apps/web/components/tests/components.test.mjs
+          # Four test files launch Chromium; serialize their software-rendered map contexts.
+          node --test --test-concurrency=1 mobile-apps/web/tests/*.test.mjs mobile-apps/web/components/tests/components.test.mjs
 
   osm-import:
     name: OSM import on a test PBF

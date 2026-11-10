@@ -4,6 +4,7 @@ import Foundation
 enum DrinkActionCommand: Equatable {
     case saveDrink(String, ComparisonBand)
     case saveCustomer(String)
+    case saveEurope(String, ComparisonBand, String, EuropeServing)
 
     private static let venue = #"(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})"#
     private static let cell = #"[0-9b-hjkmnp-z]{5}"#
@@ -31,6 +32,14 @@ enum DrinkActionCommand: Equatable {
            raw.range(of: "^\(prefix)save_customer=[oc][0-9a-f]{64}$", options: .regularExpression) != nil,
            let key = items[2].value {
             return .saveCustomer(key)
+        }
+        if items.count == 6,
+           items.map(\.name) == ["path", "c", "save_europe", "band", "currency", "serving"],
+           raw.range(of: "^\(prefix)save_europe=[a-z_]+&band=(?:normal|happy_hour)&currency=(?:EUR|GBP)&serving=(?:drink|glass|ml)%3A[0-9]{0,4}$", options: .regularExpression) != nil,
+           let drink = items[2].value, let bandValue = items[3].value,
+           let currency = items[4].value, let servingKey = items[5].value,
+           let serving = SavedEuropeDrink.serving(from: servingKey, drink: drink) {
+            return .saveEurope(drink, bandValue == "normal" ? .normal : .happyHour, currency, serving)
         }
         return nil
     }

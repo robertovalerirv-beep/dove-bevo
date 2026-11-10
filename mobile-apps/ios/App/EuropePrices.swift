@@ -177,10 +177,12 @@ enum EuropeJSON {
                   let lat = ComparisonJSON.number(row["lat"], range: box[0]...box[1]),
                   let lon = ComparisonJSON.number(row["lon"], range: box[2]...box[3]),
                   let cell = row["cell"] as? String, ComparisonJSON.cellForCoordinates(latitude: lat, longitude: lon) == cell,
-                  let google = row["google"] as? [String: Any], exact(google, ["url","review_count","checked_on"]),
+                  let google = row["google"] as? [String: Any],
+                  Set(google.keys) == Set(["url", "checked_on"]) || Set(google.keys) == Set(["url", "review_count", "checked_on"]),
                   let googleURL = https(google["url"]), let host = googleURL.host,
                   ComparisonJSON.matches(host, "^(www\\.|maps\\.)?google\\.(com|it|fr|de|es|co\\.uk)$"),
-                  ComparisonJSON.integer(google["review_count"], minimum: 101, maximum: 100_000_000) != nil,
+                  (google["review_count"] == nil || google["review_count"] is NSNull
+                      || ComparisonJSON.integer(google["review_count"], minimum: 0, maximum: 100_000_000) != nil),
                   day(google["checked_on"], today: checkedToday) != nil else { throw ComparisonReadError.invalidData }
             venues[key] = EuropeVenue(key: key, name: name, cell: cell, latitude: lat, longitude: lon, city: city, country: country, currency: currency)
         }

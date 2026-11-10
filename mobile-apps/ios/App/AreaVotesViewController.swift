@@ -230,7 +230,11 @@ final class AreaVotesViewController: UITableViewController {
         var content = cell.defaultContentConfiguration()
         content.text = item.drinkName
         let place = [item.venue.label, item.city].compactMap { $0 }.joined(separator: " · ")
-        content.secondaryText = "\(place)\n\(item.servingLabel ?? "Formato non dichiarato") · \(item.count) \(item.count == 1 ? "consiglio" : "consigli")"
+        let format: String
+        if case .europe(_, _, let currency, let serving) = item.target {
+            format = "\(currency) · \(serving.label)"
+        } else { format = item.servingLabel ?? "Formato non dichiarato" }
+        content.secondaryText = "\(place)\n\(format) · \(item.count) \(item.count == 1 ? "consiglio" : "consigli")"
         content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
         content.secondaryTextProperties.numberOfLines = 0
         content.textToSecondaryTextVerticalPadding = 8

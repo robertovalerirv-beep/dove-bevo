@@ -4,6 +4,28 @@ import XCTest
 @testable import DoveBevo
 
 final class EuropePricesTests: XCTestCase {
+    func testCatalogueAcceptsUnknownOrLowReviewCountsButRejectsInventedCounts() throws {
+        var low = EuropeFixtures.venues[0]
+        var google = try XCTUnwrap(low["google"] as? [String: Any])
+        google["review_count"] = 0
+        low["google"] = google
+        var unknown = EuropeFixtures.venues[1]
+        var unknownGoogle = try XCTUnwrap(unknown["google"] as? [String: Any])
+        unknownGoogle.removeValue(forKey: "review_count")
+        unknown["google"] = unknownGoogle
+        let venues = [low, unknown]
+        let catalog = try EuropeJSON.catalog(EuropeFixtures.json(["schema_version":1,"version":"fixture-v1","venues":venues]), checkedToday: "2026-11-02")
+        XCTAssertEqual(catalog.venues.count, 2)
+        unknownGoogle["review_count"] = NSNull()
+        unknown["google"] = unknownGoogle
+        XCTAssertEqual(try EuropeJSON.catalog(EuropeFixtures.json(["schema_version":1,"version":"fixture-v1","venues":[unknown]]), checkedToday: "2026-11-02").venues.count, 1)
+        let invalidCounts: [Any] = [-1, 1.5, "100"]
+        for invalid in invalidCounts {
+            google["review_count"] = invalid; low["google"] = google
+            XCTAssertThrowsError(try EuropeJSON.catalog(EuropeFixtures.json(["schema_version":1,"version":"fixture-v1","venues":[low]]), checkedToday: "2026-11-02"))
+        }
+    }
+
     func testAllRealServingVariantsAndCurrencyGroupsSurviveWithoutLegacyCasting() throws {
         let catalog = try EuropeFixtures.catalog()
         let london = try EuropeJSON.resolve(EuropeFixtures.cell("gcpvj"), catalog: catalog, cell: "gcpvj", today: "2026-11-02", checkedToday: "2026-11-02")

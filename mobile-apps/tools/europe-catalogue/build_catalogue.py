@@ -90,7 +90,7 @@ def join_city(slug, provider, osm, today):
         raise ValueError("Missing source observation timestamp")
     checked = datetime.fromtimestamp(observed / 1000, timezone.utc).date()
     if not 0 <= (today-checked).days <= 7:
-        raise ValueError("Review counts need a fresh nonfuture source")
+        raise ValueError("Business evidence needs a fresh nonfuture source")
     if provider.get("country") != country or provider.get("currency") != currency or provider.get("city") != city:
         raise ValueError("Business city or currency identity mismatch")
     if osm.get("remark") or not isinstance(osm.get("elements"), list):
@@ -100,8 +100,11 @@ def join_city(slug, provider, osm, today):
         name = business.get("name")
         count = business.get("review_count")
         point = coordinates({"lat": business.get("latitude"), "lon": business.get("longitude")})
-        if type(count) is not int or count <= 100 or not isinstance(name, str) or not point or metres(point, (lat, lon)) > 40000:
-            held.append({"name": name, "reason": "review threshold or location identity"})
+        if count is not None and (type(count) is not int or not 0 <= count <= 100000000):
+            held.append({"name": name, "reason": "invalid review count"})
+            continue
+        if not isinstance(name, str) or not point or metres(point, (lat, lon)) > 40000:
+            held.append({"name": name, "reason": "location identity"})
             continue
         feature = business.get("feature_id", "")
         if not re.fullmatch(r"0x[0-9a-fA-F]{1,16}:0x[0-9a-fA-F]{1,16}", feature):
@@ -133,7 +136,10 @@ def join_city(slug, provider, osm, today):
             held.append({"name": name, "reason": "unsupported catalogue name"})
             continue
         latitude, longitude = (round(value, 5) for value in location)
-        venue = {"key": prefix+str(identity), "name": name, "kind": KINDS[element["tags"]["amenity"]], "lat": latitude, "lon": longitude, "cell": geohash(latitude, longitude), "city": city, "country": country, "currency": currency, "google": {"url": "https://www.google.com/maps?cid="+str(int(feature.split(":")[1], 16)), "review_count": count, "checked_on": checked.isoformat()}}
+        google = {"url": "https://www.google.com/maps?cid="+str(int(feature.split(":")[1], 16)), "checked_on": checked.isoformat()}
+        if "review_count" in business:
+            google["review_count"] = count
+        venue = {"key": prefix+str(identity), "name": name, "kind": KINDS[element["tags"]["amenity"]], "lat": latitude, "lon": longitude, "cell": geohash(latitude, longitude), "city": city, "country": country, "currency": currency, "google": google}
         accepted.append((venue, {"key": venue["key"], "business_name": business["name"], "match": match, "distance_m": round(distance, 2), "official_website": business.get("website"), "osm_url": f"https://www.openstreetmap.org/{element['type']}/{identity}", "osm_timestamp": osm.get("osm3s", {}).get("timestamp_osm_base")}))
     keys = [v[0]["key"] for v in accepted]
     duplicates = {k for k in keys if keys.count(k) > 1}

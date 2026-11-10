@@ -421,8 +421,6 @@ def review_reasons(spec, sources, venue):
         raise InputError("invalid review evidence kind")
     source = sources.get(spec["source_id"])
     reasons = excerpt_reasons(source, spec["excerpt"], 1000)
-    if count <= 100:
-        reasons.append("google_review_count_must_be_strictly_greater_than_100")
     if spec["kind"] != "google_visible":
         reasons.append("first_party_or_unverified_review_count_is_not_direct_google_evidence")
     if source and not re.fullmatch(r"(?:www\.|maps\.)?google\.(?:com|it|fr|de|es|co\.uk)", source["host"]):

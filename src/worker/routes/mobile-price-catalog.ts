@@ -72,7 +72,8 @@ const Google = z.strictObject({
       return false;
     }
   }),
-  review_count: z.number().int().min(101).max(100_000_000),
+  // A verified venue may have few reviews, or no visible count at all.
+  review_count: z.number().int().min(0).max(100_000_000).nullable().optional(),
   checked_on: EvidenceDay,
 });
 function safeName(value: string): boolean {

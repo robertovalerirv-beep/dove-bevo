@@ -106,14 +106,14 @@ class PlannerAcceptanceTests(unittest.TestCase):
         self.assertIn("live_customer_price_history_removed_and_moderation_preservation_not_proven", report["publication_blockers"])
         self.assertIn("current_written_backend_boundary_does_not_authorize_menu_price_import", report["publication_blockers"])
 
-    def test_google_count_100_fails_and_101_passes(self):
+    def test_google_review_count_has_no_minimum_but_still_needs_exact_evidence(self):
         review = self.doc["candidates"][0]["review"]
-        for count, held in ((100, True), (101, False)):
+        for count in (0, 12, 100, 101):
             with self.subTest(count=count):
                 text = f"Caffe Esempio | Via Roma 10 | {count} reviews"
                 self.add_source("google", text, "text/plain", "https://www.google.com/maps/place/Caffe-Esempio")
                 review.update(count=count, excerpt=text)
-                self.assertEqual(bool(self.reasons()), held)
+                self.assertEqual(self.reasons(), [])
 
     def test_publisher_claim_and_wrong_google_venue_stay_held(self):
         candidate = self.doc["candidates"][0]

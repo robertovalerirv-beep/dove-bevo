@@ -28,8 +28,9 @@ appears. Browser cookies and private favourites stay under Windows
 LocalAppData, outside source and OneDrive. Old local favourites are preserved;
 their live price is shown on the venue page until an exact row is saved anew.
 
-Scopri combines the public Italian menu cells with the app-only European
-catalogue and price cells near the selected city or zoomed-in map. The latter
+Scopri combines current public Italian customer reports and reviewed menu
+offers with the app-only European catalogue and price cells near the selected
+city or zoomed-in map. The latter
 preserves EUR or GBP and the actual serving, and excludes hidden or
 legacy-overridden venues. Menu rows show their source and check date; customer
 rows are labelled as reports. A failed source is reported as unavailable,

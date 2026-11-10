@@ -164,6 +164,7 @@ internal sealed class DiscoveryClient
         using var gate = new SemaphoreSlim(3);
         var cells = area.Cells();
         var europeTask = EuropeDiscoveryClient.LoadAsync(cells, category, cancellation);
+        var legacyTask = LegacyDiscoveryClient.LoadAsync(cells, category, cancellation);
         var tasks = cells.Select(async cell =>
         {
             await gate.WaitAsync(cancellation);
@@ -176,9 +177,11 @@ internal sealed class DiscoveryClient
         }).ToArray();
         var pages = await Task.WhenAll(tasks);
         var europe = await europeTask;
+        var legacy = await legacyTask;
         cancellation.ThrowIfCancellationRequested();
         var rows = pages.Where(page => page is not null).SelectMany(page => page!)
             .Concat(europe.Rows)
+            .Concat(legacy.Rows)
             .GroupBy(row => (row.Key, row.Cell, row.DrinkCode, row.Currency,
                 row.Context, row.AmountMinor, row.Serving, row.Drink, row.SourceUrl))
             .Select(group => group.First())
@@ -186,7 +189,8 @@ internal sealed class DiscoveryClient
             .ThenBy(row => row.AmountMinor / Math.Pow(10, row.Exponent))
             .ThenBy(row => row.Venue, StringComparer.CurrentCultureIgnoreCase)
             .ToArray();
-        return new DiscoverySnapshot(rows, pages.Count(page => page is null) + europe.UnavailableCells,
+        return new DiscoverySnapshot(rows, pages.Count(page => page is null) + europe.UnavailableCells +
+            legacy.UnavailableSources,
             europe.CatalogUnavailable);
     }
 

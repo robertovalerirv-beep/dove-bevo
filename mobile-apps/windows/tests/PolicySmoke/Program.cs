@@ -153,6 +153,9 @@ foreach (var (address, expected) in emailLinks)
         "support email policy mismatch");
 
 Require(DiscoveryArea.Geohash(45.4635, 9.18839) == "u0nd9", "Milano geohash mismatch");
+Require(LegacyDiscoveryClient.IsItalianCell("u0nd9") &&
+    !LegacyDiscoveryClient.IsItalianCell("gcpvj"),
+    "Italian customer source must not be queried for London");
 var area = DiscoveryArea.ParseWebView(
     "{\"href\":\"https://www.dovebevo.com/mobile/\",\"latitude\":45.4635,\"longitude\":9.18839,\"zoom\":15}",
     new Uri(NavigationPolicy.Home));
@@ -256,6 +259,34 @@ var offer = DiscoveryClient.ParsePage(menuBytes, "u0nd9", "spritz").Rows.Single(
 Require(offer.Display.Contains("18,00 EUR") && offer.Display.Contains("menu.example") &&
     offer.FocusedVenue()?.AbsoluteUri.EndsWith("&drink=spritz&hh=0") == true,
     "verified discovery offer/focus mismatch");
+var legacyStatic = JsonSerializer.SerializeToUtf8Bytes(new {
+    c = new object[][] { new object[] { 62505581, "Milano" } },
+    v = new object[][] { new object[] { "n123", "Test Bar", 1, 45.4635, 9.18839, "Via Test", 0 } },
+});
+var legacyPrices = JsonSerializer.SerializeToUtf8Bytes(new {
+    p = new object[][] {
+        new object[] { "n123", "spritz", 0, 550, "2026-11-10", 2, 0 },
+        new object[] { "u1", "spritz", 0, 650, "2026-11-10", 0, 0 },
+        new object[] { "n123", "negroni", 0, 900, "2026-11-10", 0, 1 },
+    },
+    u = new object[][] { new object[] { "u1", "Customer Bar", 1, 45.4635, 9.18839 } },
+    pend = Array.Empty<object[]>(), h = Array.Empty<string>(), g = Array.Empty<string>(),
+});
+var legacyRows = LegacyDiscoveryClient.ParseCell(legacyStatic, legacyPrices,
+    "u0nd9", "spritz", new DateOnly(2026, 11, 10));
+Require(legacyRows.Count == 2 && legacyRows.All(row => row.SourceUrl is null && row.Currency == "EUR") &&
+    legacyRows.Any(row => row.Key == "n123" && row.Venue == "Test Bar" &&
+        row.Display.Contains("5,50 EUR") && row.FocusedVenue() is not null) &&
+    legacyRows.Any(row => row.Key == "u1" && row.Venue == "Customer Bar"),
+    "Italian customer prices missing from Windows discovery");
+Require(LegacyDiscoveryClient.ParseCell(null, legacyPrices, "u0nd9", "spritz",
+    new DateOnly(2026, 11, 10)).Single().Key == "u1",
+    "approved user venue must remain available when the OSM asset is unavailable");
+Require(LegacyDiscoveryClient.ParseCell(legacyStatic, legacyPrices, "u0nd9", "negroni",
+    new DateOnly(2026, 11, 10)).Count == 0,
+    "quarantined customer price must not enter discovery");
+ExpectInvalid(() => LegacyDiscoveryClient.ParseCell(legacyStatic, legacyPrices,
+    "u0nd9", "spritz", new DateOnly(2026, 11, 9)));
 var londonArea = new DiscoveryArea(51.5072, -0.1276, 15);
 Require(londonArea.Cells().Contains("gcpvj") &&
     new DiscoveryArea(45.4642, 9.1900, 15).Cells().Contains("u0nd9"),
@@ -337,12 +368,17 @@ if (args.Contains("--live-discovery"))
         "spritz", CancellationToken.None);
     Require(live.Rows.Any(row => row.Cell == "u0nd9" && row.Venue == "The Dome"),
         "live Milano menu v2 offer missing");
+    Require(live.Rows.Any(row => row.Cell == "u0nd9" && row.SourceUrl is null &&
+        row.DrinkCode == "spritz" && row.Currency == "EUR"),
+        "live Milano customer reports are missing from Windows Home");
     Console.WriteLine($"Live Milano discovery: {live.Rows.Count} offers; {live.UnavailableCells} unavailable cells.");
     var londonLive = await new DiscoveryClient().LoadAsync(londonArea,
         "spritz", CancellationToken.None);
     Require(londonLive.Rows.Any(row => row.IsEurope && row.Currency == "GBP" &&
         row.Cell == "gcpvj" && row.SourceUrl is not null),
         "live London app catalogue GBP menu price missing from Home discovery");
+    Require(londonLive.UnavailableCells == 0,
+        "London must not report irrelevant Italian legacy sources as unavailable");
     Console.WriteLine($"Live London discovery: {londonLive.Rows.Count} prices; " +
         $"{londonLive.UnavailableCells} unavailable cells.");
 }

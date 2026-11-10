@@ -284,7 +284,8 @@ test("ME-04 search, list, bar page, report, add a price and a missing bar are in
 
   // Add a price: bar → drink → price (nothing is saved).
   await page.getByRole("button", { name: "Close" }).first().click();
-  await page.getByRole("button", { name: "Add a price" }).click();
+  // exact: the bar page may still be closing, with its own «Add a price here».
+  await page.getByRole("button", { name: "Add a price", exact: true }).click();
   const add = page.getByRole("dialog", { name: "Choose the bar" });
   await expect(add.getByRole("searchbox", { name: "Search the bar by name" })).toBeVisible();
   await expect(add.getByRole("button", { name: "Can't find the bar?" })).toBeVisible();

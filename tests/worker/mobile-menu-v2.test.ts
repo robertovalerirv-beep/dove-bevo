@@ -43,8 +43,11 @@ interface Cell {
     sample_offers: {
       id: string;
       category: string | null;
+      serving: { label: string | null; ml: number | null };
       amount_minor: number;
       currency: string;
+      context: { kind: string; condition: string | null };
+      source: { url: string; text_sha256: string; checked_on: string };
     }[];
   }[];
   unresolved_venues: number;
@@ -335,6 +338,148 @@ describe("app-only named menu v2", () => {
     ]) {
       expect((await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?" + query)).status).toBe(400);
     }
+  });
+
+  it("samples a documented 400 ml draft beer ahead of a cheaper 250 ml beer", async () => {
+    const sourceId = await addSource(ITALY.key, ITALY.cell);
+    await env.DB.batch([
+      addOffer("cheap-small", ITALY.key, ITALY.cell, sourceId, {
+        name: "Fixture lager",
+        servingLabel: "Piccola 25cl",
+        ml: 250,
+        amount: 400,
+      }),
+      addOffer("label-conflicts-with-volume", ITALY.key, ITALY.cell, sourceId, {
+        name: "Fixture lager",
+        servingLabel: "small",
+        ml: 500,
+        amount: 300,
+      }),
+      addOffer("mini-conflicts-with-volume", ITALY.key, ITALY.cell, sourceId, {
+        name: "Fixture lager",
+        servingLabel: "mini",
+        ml: 500,
+        amount: 150,
+      }),
+      addOffer("medium-400ml", ITALY.key, ITALY.cell, sourceId, {
+        name: "Fixture lager",
+        servingLabel: "Media 40cl",
+        ml: 400,
+        amount: 600,
+      }),
+      addOffer("medium-500ml", ITALY.key, ITALY.cell, sourceId, {
+        name: "Fixture stout",
+        servingLabel: "0,5l",
+        ml: 500,
+        amount: 200,
+      }),
+      addOffer("spritz-cheap", ITALY.key, ITALY.cell, sourceId, {
+        category: "spritz",
+        amount: 450,
+      }),
+      addOffer("spritz-expensive", ITALY.key, ITALY.cell, sourceId, {
+        category: "spritz",
+        amount: 700,
+      }),
+    ]);
+    await env.DB.prepare(
+      "UPDATE mobile_menu_v2_offers SET price_context='happy_hour' WHERE id='medium-500ml'",
+    ).run();
+    const response = await get(
+      "/api/mobile/v2/menu/cells/" + ITALY.cell + "?categories=beer_draft,spritz",
+    );
+    expect(response.status, await response.clone().text()).toBe(200);
+    const cell = await response.json<Cell>();
+    expect(cell.venues[0]?.matching_offer_count).toBe(7);
+    expect(cell.venues[0]?.sample_offers).toMatchObject([
+      {
+        id: "medium-400ml",
+        amount_minor: 600,
+        currency: "EUR",
+        serving: { label: "Media 40cl", ml: 400 },
+        context: { kind: "regular", condition: null },
+        source: {
+          url: "https://official.example/test-menu",
+          checked_on: TODAY,
+        },
+      },
+      { id: "spritz-cheap", amount_minor: 450 },
+    ]);
+    const detail = await (
+      await get("/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell)
+    ).json<Detail>();
+    expect(detail.offers.map((offer) => offer.id)).toEqual(
+      expect.arrayContaining(["cheap-small", "medium-400ml"]),
+    );
+    expect(detail.stored_offer_count).toBe(7);
+  });
+
+  it("recognizes an unambiguous media label when volume is absent", async () => {
+    const sourceId = await addSource(ITALY.key, ITALY.cell);
+    await env.DB.batch([
+      addOffer("piccola", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "piccola",
+        amount: 400,
+      }),
+      addOffer("ambiguous", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "piccola/media",
+        amount: 300,
+      }),
+      addOffer("large-ambiguous", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "media/grande",
+        amount: 200,
+      }),
+      addOffer("media", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "media",
+        amount: 600,
+      }),
+      addOffer("medium", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "Medium",
+        amount: 700,
+      }),
+    ]);
+    const cell = await (
+      await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?category=beer_draft")
+    ).json<Cell>();
+    expect(cell.venues[0]?.sample_offers[0]).toMatchObject({
+      id: "media",
+      amount_minor: 600,
+      serving: { label: "media", ml: null },
+    });
+    await env.DB.prepare("DELETE FROM mobile_menu_v2_offers WHERE id='media'").run();
+    const english = await (
+      await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?category=beer_draft")
+    ).json<Cell>();
+    expect(english.venues[0]?.sample_offers[0]).toMatchObject({
+      id: "medium",
+      amount_minor: 700,
+      serving: { label: "Medium", ml: null },
+    });
+  });
+
+  it("does not invent a medium serving where the menu documents only small and unknown sizes", async () => {
+    const sourceId = await addSource(ITALY.key, ITALY.cell);
+    await env.DB.batch([
+      addOffer("small-only", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "Piccola 25cl",
+        ml: 250,
+        amount: 400,
+      }),
+      addOffer("unknown-size", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: null,
+        ml: null,
+        amount: 600,
+      }),
+    ]);
+    const cell = await (
+      await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?category=beer_draft")
+    ).json<Cell>();
+    expect(cell.venues[0]?.sample_offers[0]).toMatchObject({
+      id: "small-only",
+      amount_minor: 400,
+      serving: { label: "Piccola 25cl", ml: 250 },
+    });
+    expect(cell.venues[0]?.matching_offer_count).toBe(2);
   });
 
   it("keeps fixed and percentage fees separate and never infers an all-in price", async () => {

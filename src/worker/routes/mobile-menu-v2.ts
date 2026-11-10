@@ -99,6 +99,21 @@ const FEE_COLS =
   "f.id, f.label, f.fee_kind, f.basis, f.amount_minor, f.currency," +
   " f.currency_exponent, f.rate_bps, f.applicability, f.condition_text, " +
   SOURCE;
+// The app's Birra media map price must not use a cheaper small draft serving.
+// Keep the full named menu (and the legacy website price path) unchanged.
+const SERVING_WORDS =
+  "' ' || REPLACE(REPLACE(REPLACE(REPLACE(LOWER(COALESCE(o.serving_label,''))," +
+  " '/', ' '), '-', ' '), ',', ' '), '.', ' ') || ' '";
+const hasServingWord = (word: string) => "INSTR(" + SERVING_WORDS + ", ' " + word + " ') > 0";
+const lacksServingWord = (word: string) => "INSTR(" + SERVING_WORDS + ", ' " + word + " ') = 0";
+const MEDIUM_DRAFT =
+  "(o.serving_ml BETWEEN 400 AND 600 OR" +
+  " (o.serving_ml IS NULL AND (" +
+  [hasServingWord("media"), hasServingWord("medium")].join(" OR ") +
+  ") AND " +
+  ["grande", "large", "pint"].map(lacksServingWord).join(" AND ") +
+  ")) AND " +
+  ["piccola", "piccolo", "small", "mini"].map(lacksServingWord).join(" AND ");
 
 function source(row: Evidence) {
   if (
@@ -604,6 +619,9 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
         "," +
         " ROW_NUMBER() OVER (PARTITION BY o.venue_key,o.category,o.currency,o.currency_exponent" +
         " ORDER BY CASE WHEN o.price_context='regular' THEN 0 ELSE 1 END," +
+        " CASE WHEN o.category='beer_draft' AND " +
+        MEDIUM_DRAFT +
+        " THEN 0 WHEN o.category='beer_draft' THEN 1 ELSE 0 END," +
         " o.amount_minor,o.id) AS rank FROM mobile_menu_v2_offers o" +
         APPROVED +
         " WHERE o.cell=? AND o.category IN (" +

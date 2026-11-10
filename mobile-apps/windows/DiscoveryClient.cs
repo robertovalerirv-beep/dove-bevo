@@ -147,7 +147,7 @@ internal sealed class DiscoveryClient
     [
         new("beer_draft", "Birra media"), new("spritz", "Spritz"),
         new("negroni", "Negroni"), new("sbagliato", "Sbagliato"),
-        new("gin_tonic", "Gin tonic"), new("gin_lemon", "Gin lemon"),
+        new("gin_tonic", "Gin tonic"), new("gin_lemon", "Americano"),
         new("wine_glass", "Calice di vino"), new("alcohol_free", "Analcolico"),
         new("water", "Acqua"),
     ];

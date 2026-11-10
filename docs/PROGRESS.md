@@ -33,6 +33,30 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
+## 2026-11-10 · «Gin lemon» diventa «Americano» (ramo `claude/gin-lemon-americano-rename-e63888`) · SPEC 1.17 · ADR 0047
+
+**Richiesta di Roberto:** sostituire Gin lemon con Americano nella scelta dei drink, senza rompere il sito vivo. Scelte sue in chat: il codice `gin_lemon` resta, i prezzi già salvati restano e si leggono come Americano, vale per tutto il sito web (non per le app native), icona nuova e limiti 4–20 €.
+
+**Fatto**
+- `src/app/i18n/it.ts` e `en.ts`: `gin_lemon` → «Americano». `src/worker/seo-texts.ts`: «americano» nell'elenco dei drink.
+- `src/app/components/Icon.tsx`: disegno nuovo per `gin_lemon` (tumbler basso, mezza fetta d'arancia, ghiaccio).
+- SPEC 1.17 (intestazione, registro, tabella 6) e ADR 0047. `docs/feature_list.json` non cambia: nessun tag nuovo.
+- Test cambiati perché è cambiato il requisito (il nome): `tests/unit/catalog.test.ts`, `tests/e2e/helpers.ts`, `english.spec.ts`, `brand-tiers.spec.ts`.
+- Non toccati: `catalog.ts`, migrazioni, `seed.sql`, rotte del Worker, `mobile-apps/`.
+
+**Prove**
+- Test prima del codice: `tests/unit/catalog.test.ts` rosso con `- "Americano" + "Gin lemon"`, poi verde.
+- `npm run typecheck`, `npm run lint`, Prettier: verdi. `npm run test`: 67 file, 846 test verdi. `node scripts/check-feature-list.mjs`: ok.
+- e2e `brand-tiers`, `english`, `drink-menu` su Chromium e WebKit: 83 verdi e 1 rosso su WebKit in `goToMilano` (MC-02, passo «cerca Milano»); ripetuto 2 volte su WebKit: 16 su 16 verdi (intermittenza già nota).
+- Screenshot 390×844: `docs/screenshots/mc/menu-aperto-390.png`, `menu-scuro-due-drink-390.png`, `docs/screenshots/americano/` (griglia e scheda, due temi).
+
+**Da sapere**
+- `GET` dei voti sul drink esatto per le app (`src/worker/routes/mobile-exact-drink-votes.ts`) prende il nome da `it.ts`: per un prezzo `gin_lemon` ora risponde «Americano», mentre le etichette scritte nelle app dicono «Gin lemon».
+- `mobile-apps/tools/menu-seed/` classifica come `gin_lemon` le voci «Gin Lemon» dei listini e le scrive in `prices_current`: sul sito quei prezzi, già importati e futuri, compaiono come Americano finché lo strumento non viene allineato.
+- La frase «piè di pagina della mappa» di SPEC 7.8 (decisione del 10/11 qui sotto) non è stata allineata in questa versione: resta da fare.
+
+---
+
 ## 2026-11-10 · `CLAUDE.md` e diario più corti (ramo `claude/happy-feynman-hfktn3`)
 
 **Richiesta di Roberto:** togliere da `CLAUDE.md` le righe morte e ridurlo il più possibile senza perdere regole; ridurre molto `docs/PROGRESS.md` senza perdere dettagli e senza rischi per la sicurezza.

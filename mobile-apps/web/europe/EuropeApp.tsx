@@ -46,6 +46,8 @@ import {
   type Venue,
 } from "./model";
 import { PriceForm, ReportForm } from "./PriceForm";
+import { EuropeDrinkVoteButton, EuropeDrinkVotesProvider } from "./EuropeDrinkVotes";
+import { europeDrinkSaveURL } from "./europe-save";
 import "./europe.css";
 
 const t = (italian: string, english: string) => (currentLang() === "en" ? english : italian);
@@ -93,6 +95,11 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
     [view, setView] = useState<MapView | null>(null),
     [rendered, setRendered] = useState<string[]>([]);
   const [me, setMe] = useState<{ lat: number; lon: number } | null>(null);
+  const [nativeEuropeSave, setNativeEuropeSave] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      (window as Window & { DoveBevoNativeEuropeSave?: boolean }).DoveBevoNativeEuropeSave === true,
+  );
   const canvas = useRef<HTMLDivElement>(null),
     root = useRef<HTMLDivElement>(null),
     generation = useRef(0);
@@ -137,6 +144,20 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
       )
     : [];
   const visiblePriced = visibleVenues.filter((v) => prices.has(v.key)).length;
+
+  useEffect(() => {
+    const updateNative = () => {
+      setNativeEuropeSave(
+        (window as Window & { DoveBevoNativeEuropeSave?: boolean }).DoveBevoNativeEuropeSave ===
+          true,
+      );
+    };
+    window.addEventListener("dovebevo-native-ready", updateNative);
+    updateNative();
+    return () => {
+      window.removeEventListener("dovebevo-native-ready", updateNative);
+    };
+  }, []);
 
   useEffect(() => {
     const token = ++generation.current,
@@ -859,27 +880,33 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
                   prezzi del locale sono qui sotto.
                 </p>
               )}
-              <ul class="prices">
-                {venueRows.map((row, index) => (
-                  <PriceItem
-                    key={row.revision}
-                    row={row}
-                    venue={selectedVenue}
-                    featured={index === 0 && (!selectedFocus || savedFound)}
-                    tier={priceTier(row, rows)}
-                    busy={busy || queued}
-                    onConfirm={() => {
-                      void confirm(selectedVenue, row);
-                    }}
-                    onChanged={() => {
-                      setForm({ venue: selectedVenue, row });
-                    }}
-                    onReport={() => {
-                      setReport({ venue: selectedVenue, row });
-                    }}
-                  />
-                ))}
-              </ul>
+              <EuropeDrinkVotesProvider
+                key={`${selectedVenue.key}:${selectedVenue.cell}`}
+                venue={selectedVenue}
+              >
+                <ul class="prices">
+                  {venueRows.map((row, index) => (
+                    <PriceItem
+                      key={row.revision}
+                      row={row}
+                      venue={selectedVenue}
+                      featured={index === 0 && (!selectedFocus || savedFound)}
+                      tier={priceTier(row, rows)}
+                      nativeSave={nativeEuropeSave}
+                      busy={busy || queued}
+                      onConfirm={() => {
+                        void confirm(selectedVenue, row);
+                      }}
+                      onChanged={() => {
+                        setForm({ venue: selectedVenue, row });
+                      }}
+                      onReport={() => {
+                        setReport({ venue: selectedVenue, row });
+                      }}
+                    />
+                  ))}
+                </ul>
+              </EuropeDrinkVotesProvider>
               <p class="hint">
                 {t(
                   "I prezzi da menu hanno una data di verifica della fonte, non una visita o un pagamento.",
@@ -964,6 +991,7 @@ function PriceItem({
   venue,
   featured,
   tier,
+  nativeSave,
   busy,
   onConfirm,
   onChanged,
@@ -973,6 +1001,7 @@ function PriceItem({
   venue: Venue;
   featured: boolean;
   tier: Tier;
+  nativeSave: boolean;
   busy: boolean;
   onConfirm: () => void;
   onChanged: () => void;
@@ -1071,6 +1100,18 @@ function PriceItem({
         {row.status === "quarantined" || stale
           ? ` · ${t("Da confermare", "Needs confirmation")}`
           : ""}
+      </span>
+      <span class="mobile-menu-v2__quick-actions mobile-price__quick-actions europe-price__quick-actions">
+        {nativeSave && (
+          <a
+            class="btn btn--secondary mobile-menu-v2__save europe-price__save"
+            href={europeDrinkSaveURL(venue, row)}
+            aria-label={`${t("Salva", "Save")} ${it.drinks[row.drink] ?? row.drink} ${servingLabel(row.serving)} ${t("da", "at")} ${venue.name} ${t("nei preferiti", "to favourites")}`}
+          >
+            {t("Salva questo drink", "Save this drink")}
+          </a>
+        )}
+        <EuropeDrinkVoteButton row={row} venue={venue} />
       </span>
       {featured && tier !== "neutro" && (
         <span class={`mobile-price__tier mobile-price__tier--${tier}`}>{it.map.tiers[tier]}</span>

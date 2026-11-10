@@ -50,8 +50,14 @@ final class EuropePrices {
             NativeJson.integer(v.get("kind"),1,4);String name=text(v.get("name"),120,false),city=text(v.get("city"),120,false);if(name.trim().length()<2||city.trim().length()<2)throw NativeJson.invalid();
             double lat=NativeJson.decimal(v.get("lat"),-90,90),lon=NativeJson.decimal(v.get("lon"),-180,180);double[] box=countryBox(country);
             if(lat<box[0]||lat>box[1]||lon<box[2]||lon>box[3]||!DiscoveryArea.geohash(lat,lon).equals(cell)||!currency.equals(country.equals("GB")?"GBP":"EUR"))throw NativeJson.invalid();
-            Map<?,?> google=object(v.get("google"));keys(google,"url","review_count","checked_on");String url=https(google.get("url"));try{if(!new URI(url).getHost().matches("(?:www\\.|maps\\.)?google\\.(?:com|it|fr|de|es|co\\.uk)"))throw NativeJson.invalid();}catch(java.net.URISyntaxException invalid){throw NativeJson.invalid();}
-            NativeJson.integer(google.get("review_count"),101,100000000);day(google.get("checked_on"),today,false);
+            Map<?,?> google=object(v.get("google"));
+            if(!google.keySet().equals(new HashSet<>(Arrays.asList("url","checked_on"))))
+                    keys(google,"url","review_count","checked_on");
+            String url=https(google.get("url"));try{if(!new URI(url).getHost().matches("(?:www\\.|maps\\.)?google\\.(?:com|it|fr|de|es|co\\.uk)"))throw NativeJson.invalid();}catch(java.net.URISyntaxException invalid){throw NativeJson.invalid();}
+            // Review count is provenance, not an eligibility threshold. Menus from
+            // verified existing venues may have few or no published reviews.
+            if(google.get("review_count")!=null)NativeJson.integer(google.get("review_count"),0,100000000);
+            day(google.get("checked_on"),today,false);
             if(venues.put(key,new Venue(key,name,cell,city,country,currency,lat,lon))!=null)throw NativeJson.invalid();
         }return new Catalog(version,venues);
     }

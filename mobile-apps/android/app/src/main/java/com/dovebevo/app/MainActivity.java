@@ -67,8 +67,11 @@ public final class MainActivity extends ComponentActivity {
     private SavedDrinkUi savedDrinks;
     private SavedMenuOfferStore offerStore;
     private SavedMenuOfferStore customerStore;
+    private SavedEuropeDrinkStore europeStore;
     private MenuV2Loader offerVerifier;
     private MenuV2Loader.Batch offerVerifyBatch;
+    private EuropeDrinkVerifier europeVerifier;
+    private EuropeDrinkVerifier.Batch europeVerifyBatch;
     private AlertDialog offerSaveDialog;
     private long offerSaveGeneration;
     private long drinkCapture;
@@ -252,9 +255,11 @@ public final class MainActivity extends ComponentActivity {
         SavedDrinkStore drinkStore=new SavedDrinkStore(new SavedVenueFile(getFilesDir(),"saved-drinks-v1"));
         offerStore=new SavedMenuOfferStore(new SavedVenueFile(getFilesDir(),"saved-owner-offers-v1"));
         customerStore=new SavedMenuOfferStore(new SavedVenueFile(getFilesDir(),"saved-customer-drinks-v1"));
+        europeStore=new SavedEuropeDrinkStore(new SavedVenueFile(getFilesDir(),"saved-europe-drinks-v1"));
         offerVerifier=new MenuV2Loader(new MenuV2Prices(),task->new android.os.Handler(android.os.Looper.getMainLooper()).post(task));
+        europeVerifier=new EuropeDrinkVerifier(task->new android.os.Handler(android.os.Looper.getMainLooper()).post(task));
         savedDrinks=new SavedDrinkUi(this,drinkStore,this::eligibleSavedVenue,this::readSavedVenue,()->venueCaptureEpoch);
-        favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore,offerStore,customerStore);
+        favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore,offerStore,customerStore,europeStore);
         content.addView(favorites.view(),new FrameLayout.LayoutParams(-1,-1));favorites.view().setVisibility(View.GONE);
         discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},()->foreground&&!destroyed);
         content.addView(discovery.view(),new FrameLayout.LayoutParams(-1,-1));discovery.view().setVisibility(View.GONE);
@@ -771,9 +776,32 @@ public final class MainActivity extends ComponentActivity {
         });}
         catch(IOException unavailable){Toast.makeText(this,"Prezzo non disponibile. Riprova quando sei online.",Toast.LENGTH_LONG).show();}
     }
+    private void beginEuropeSave(EuropeDrinkSaveCommand command){
+        String active=eligibleSavedVenue();
+        if(active==null||command==null||!active.equals(command.venueUrl)||europeVerifier==null||europeStore==null||offerSaveDialog!=null)return;
+        retireOfferSave();long token=offerSaveGeneration;
+        Toast.makeText(this,"Verifico il prezzo del drink...",Toast.LENGTH_SHORT).show();
+        try{europeVerifyBatch=europeVerifier.load(command,verified->{
+            if(token!=offerSaveGeneration||!foreground||destroyed||!active.equals(eligibleSavedVenue()))return;
+            europeVerifyBatch=null;
+            if(verified==null){Toast.makeText(this,"Prezzo non disponibile ora. Nessun preferito salvato; riprova quando sei online.",Toast.LENGTH_LONG).show();return;}
+            SavedEuropeDrinkStore.Entry saved=verified.entry;
+            String detail=NativePricePresentation.category(saved.drink)+" · "+saved.serving.label()+" · "+saved.currency;
+            AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Salva nei Preferiti?")
+                .setMessage(detail+" · "+saved.venue.label+". Il prezzo si aggiorna online e non viene salvato sul telefono.")
+                .setNegativeButton("Annulla",(d,w)->{}).setPositiveButton("Salva",(d,w)->{
+                    if(token!=offerSaveGeneration||!foreground||destroyed||!active.equals(eligibleSavedVenue()))return;
+                    SavedEuropeDrinkStore.Result result=europeStore.save(saved);
+                    Toast.makeText(this,result==SavedEuropeDrinkStore.Result.SAVED?"Drink salvato nei Preferiti.":"Drink non salvato. I preferiti precedenti sono stati mantenuti.",Toast.LENGTH_LONG).show();
+                }).create();
+            offerSaveDialog=dialog;dialog.setOnDismissListener(ignored->{if(offerSaveDialog==dialog)offerSaveDialog=null;});dialog.show();
+        });}
+        catch(IOException unavailable){Toast.makeText(this,"Prezzo non disponibile. Riprova quando sei online.",Toast.LENGTH_LONG).show();}
+    }
     private void retireOfferSave(){
         offerSaveGeneration++;
         if(offerVerifyBatch!=null){offerVerifyBatch.cancel();offerVerifyBatch=null;}
+        if(europeVerifyBatch!=null){europeVerifyBatch.cancel();europeVerifyBatch=null;}
         if(offerSaveDialog!=null){AlertDialog old=offerSaveDialog;offerSaveDialog=null;old.dismiss();}
     }
 
@@ -1047,6 +1075,12 @@ public final class MainActivity extends ComponentActivity {
             if(!request.isForMainFrame())return false;
             String url=request.getUrl().toString();
             if(url.contains("save_offer=")){beginOfferSave(url);return true;}
+            if(EuropeDrinkSaveCommand.requested(url)){
+                EuropeDrinkSaveCommand command=EuropeDrinkSaveCommand.parse(url,eligibleSavedVenue());
+                if(command!=null)beginEuropeSave(command);
+                else Toast.makeText(MainActivity.this,"Drink non disponibile. Riapri il locale e riprova.",Toast.LENGTH_LONG).show();
+                return true;
+            }
             if(DrinkActionCommand.requested(url)){
                 DrinkActionCommand command=DrinkActionCommand.parse(url,eligibleSavedVenue());
                 if(command!=null){
@@ -1098,7 +1132,7 @@ public final class MainActivity extends ComponentActivity {
                     // fixes colour mode; without this call the duplicate web
                     // search lens remains visible above native Cerca.
                     installMobilePresentation(view, view.getUrl());
-                    view.evaluateJavascript("window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeVoteOffer=true;window.DoveBevoNativeVoteCustomer=true;window.DoveBevoNativeVoteDrink=true;window.dispatchEvent(new Event('dovebevo-native-ready'));",null);
+                    view.evaluateJavascript("window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeVoteOffer=true;window.DoveBevoNativeVoteCustomer=true;window.DoveBevoNativeVoteDrink=true;"+(europeStore!=null&&europeVerifier!=null?"window.DoveBevoNativeEuropeSave=true;":"")+"window.dispatchEvent(new Event('dovebevo-native-ready'));",null);
                     setLoading(false);
                     errorPanel.setVisibility(View.GONE);
                     view.setVisibility(nativeDestinationVisible()?View.GONE:View.VISIBLE);
@@ -1330,7 +1364,7 @@ public final class MainActivity extends ComponentActivity {
         discoveryCapture++;
         venueCaptureEpoch++;
         destroyed = true;
-        retireOfferSave();if(offerVerifier!=null)offerVerifier.close();
+        retireOfferSave();if(offerVerifier!=null)offerVerifier.close();if(europeVerifier!=null)europeVerifier.close();
         areaCapture++;areaCapturing=false;
         if(areaScreen!=null)areaScreen.close();
         if(favorites!=null)favorites.close();

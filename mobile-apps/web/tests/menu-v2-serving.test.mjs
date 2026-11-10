@@ -114,6 +114,17 @@ test("400–600 ml and explicit medium labels show their sourced menu amount", (
   for (const ml of [399, 601]) assert.equal(isMediumDraftBeerServing({ ml, label: null }), false);
 });
 
+test("conflicting 25 cl or 70 cl label rejects a 500 ml field and its map coverage", () => {
+  for (const label of ["Media 25 cl", "Media 70 cl", "Media 40 cl"]) {
+    const serving = { ml: 500, label };
+    assert.equal(isMediumDraftBeerServing(serving), false, label);
+    const row = venue([offer(serving.ml, serving.label, 400)]);
+    assert.equal(mobileMenuPin(row, ["beer_draft"]), null, label);
+    assert.deepEqual(mobileCoverage([row], ["beer_draft"]), { withPrice: 0, total: 1 });
+  }
+  assert.equal(isMediumDraftBeerServing({ ml: 500, label: "Media 50 cl" }), true);
+});
+
 test("a smaller first sample cannot mask a later medium beer; non-beer categories stay intact", () => {
   const small = offer(250, "Piccola", 400);
   const medium = offer(500, "Media", 650);

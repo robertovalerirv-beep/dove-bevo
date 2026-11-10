@@ -408,24 +408,27 @@ export function mobileAllCount(venue: Venue): { count: number; kind: "menu" | "r
 /** A menu's smallest draft beer is not evidence of the selected "Birra media" price. */
 export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean {
   // A contradictory small label makes even a structured volume ambiguous.
-  // An explicit volume otherwise decides whether this is a medium serving.
+  // Explicit quantities in the label and structured field must also agree.
   const label = serving.label?.normalize("NFKC").toLowerCase();
   if (label && /\b(?:piccola|piccolo|small|mini)\b/u.test(label)) return false;
-  if (serving.ml !== null) return serving.ml >= 400 && serving.ml <= 600;
-  if (!label || !/\b(?:media|medium)\b/u.test(label)) return false;
-  if (/\b(?:grande|large|pinta|pint)\b/u.test(label)) return false;
-  // If the label itself contains a volume, only accept an explicit medium one.
-  const quantities = [...label.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(ml|cl|l)\b/gu)];
+  const quantities = label ? [...label.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(ml|cl|l)\b/gu)] : [];
   if (quantities.length > 1) return false;
   const quantity = quantities[0];
+  let labelledMl: number | null = null;
   if (quantity) {
     const amount = quantity[1];
     const unit = quantity[2];
     if (!amount || !unit) return false;
     const value = Number(amount.replace(",", "."));
-    const ml = unit === "l" ? value * 1000 : unit === "cl" ? value * 10 : value;
-    return ml >= 400 && ml <= 600;
+    labelledMl = unit === "l" ? value * 1000 : unit === "cl" ? value * 10 : value;
   }
+  if (serving.ml !== null) {
+    if (labelledMl !== null && Math.abs(labelledMl - serving.ml) > 1) return false;
+    return serving.ml >= 400 && serving.ml <= 600;
+  }
+  if (!label || !/\b(?:media|medium)\b/u.test(label)) return false;
+  if (/\b(?:grande|large|pinta|pint)\b/u.test(label)) return false;
+  if (labelledMl !== null) return labelledMl >= 400 && labelledMl <= 600;
   return true;
 }
 

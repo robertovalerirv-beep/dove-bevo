@@ -42,7 +42,8 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("bottomBar = NativeBottomBar()", tabs)
         self.assertIn("for child in [mapNavigation, favouritesNavigation, discoveryNavigation, areaVotesNavigation]", tabs)
         bar = (IOS / "App/NativeBottomBar.swift").read_text(encoding="utf-8")
-        self.assertIn("case home, search, map, favourites, recommendations", bar)
+        self.assertIn("case home, map, favourites, recommendations", bar)
+        self.assertNotIn("case home, search", bar)
         self.assertIn("for action in BottomNavigationAction.allCases", bar)
         self.assertIn("let button = NativeBottomButton(type: .system)", bar)
         self.assertIn("private final class NativeBottomButton: UIButton", bar)
@@ -63,10 +64,11 @@ class FavouritesComparisonGuards(unittest.TestCase):
     def test_bottom_destinations_are_reachable_and_save_is_per_drink(self):
         tabs = (IOS / "App/NativeTabsController.swift").read_text(encoding="utf-8")
         bar = (IOS / "App/NativeBottomBar.swift").read_text(encoding="utf-8")
-        for label in ["Home", "Cerca", "Consigliati"]:
+        for label in ["Home", "Mappa", "Preferiti", "Consigliati"]:
             self.assertIn(f'return "{label}"', bar)
         self.assertNotIn('case .save:', bar)
-        self.assertIn('case home, search, map, favourites, recommendations', bar)
+        self.assertIn('case home, map, favourites, recommendations', bar)
+        self.assertNotIn('case .search:', tabs)
         self.assertIn('topMoreButton.accessibilityIdentifier = "browser.more"', tabs)
         self.assertIn('content.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor)', tabs)
         self.assertIn('topChrome.widthAnchor.constraint(equalToConstant: 48)', tabs)
@@ -78,7 +80,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("heightAnchor.constraint(greaterThanOrEqualToConstant: 56)", bar)
         self.assertIn("widthAnchor.constraint(greaterThanOrEqualToConstant: 48)", bar)
         self.assertIn("Self.columns(for: usableWidth, fontScale:", bar)
-        self.assertIn("usableWidth - 8 >= 5 * 56 * max(1, fontScale) ? 5 : 3", bar)
+        self.assertIn("usableWidth - 8 >= 4 * 56 * max(1, fontScale) ? 4 : 2", bar)
         self.assertIn("safeAreaLayoutGuide.leadingAnchor", bar)
         self.assertIn("safeAreaInsets.left - safeAreaInsets.right", bar)
         self.assertIn("mapNavigation.topViewController === browser && venueActionsAvailable", tabs)
@@ -121,7 +123,7 @@ class FavouritesComparisonGuards(unittest.TestCase):
         for required in ["descendants(bar).compactMap", "UIWindow(windowScene: scene)", "previousKeyWindow?.makeKey()",
                          "bar.window === window", "convert($0.bounds, to: bar)",
                          "accessibilityExtraExtraExtraLarge", "tabs.children.count, 4",
-                         "testCercaReturnsToMapSearchAndMoreUsesTheVisibleNavigationStack", "testDestinationChangesDuringParentAppearance",
+                         "testMapRetainsBrowserAndMoreUsesTheVisibleNavigationStack", "testDestinationChangesDuringParentAppearance",
                          "testOffscreenFavouritesCannotFetchOrAcceptLateResults", "testOverflowUpdatesLoadingAndRecovery",
                          "testOwnedRequestHistory", "browser.openSavedVenue(canonical)", "MobileEntry.venueDocument(canonical)", "web.canGoBack",
                          "web.backForwardList.currentItem", "web.backForwardList.backList.last", "web.backForwardList.forwardList.first",
@@ -132,6 +134,8 @@ class FavouritesComparisonGuards(unittest.TestCase):
         self.assertIn("web.window === window", history)
         ui = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
         self.assertIn('app.descendants(matching: .any)["native.bottomNavigation"]', ui)
+        self.assertIn('assertMapSearch(in: website)', ui)
+        self.assertIn('XCTAssertFalse(app.buttons["tab.search"].exists', ui)
         self.assertIn("assertShareAndReloadAvailable()", ui)
         self.assertIn("verifyLiveVenueHistoryReadOnly(venueName: publicName)", ui)
         self.assertIn('let back = app.buttons["Indietro"]', ui)

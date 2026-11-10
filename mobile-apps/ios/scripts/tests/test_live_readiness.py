@@ -32,7 +32,7 @@ class LiveReadinessTests(unittest.TestCase):
         for damaged in ["\u00c3\u00a0", "\u00e2\u201a\u00ac", "\ufffd"]:
             self.assertNotIn(damaged, self.source)
 
-    def test_city_search_uses_anchored_label_but_only_the_bottom_action_is_visible(self):
+    def test_city_search_uses_anchored_label_and_only_the_map_action_is_visible(self):
         query = self.source.split("private func citySearchPredicate(", 1)[1].split("private func interactiveMap()", 1)[0]
         for required in ["NSRegularExpression.escapedPattern(for: $0)", 'label MATCHES %@',
                          "{1,120}", "website.buttons.matching", 'app.buttons["tab.search"]']:
@@ -40,12 +40,13 @@ class LiveReadinessTests(unittest.TestCase):
         self.assertIn(chr(92) * 2 + "A", query)
         self.assertIn(chr(92) * 2 + "z", query)
         self.assertNotIn("CONTAINS", query)
-        self.assertIn('assertOnlyNativeSearch(in: website)', self.source)
+        self.assertIn('assertMapSearch(in: website)', self.source)
         self.assertIn('"(?:" + NSRegularExpression.escapedPattern(for: $0) + " · )?"', query)
         self.assertIn('citySearchPredicate(city: "Milano").evaluate(with: ["label": "Cerca città o bar"])', self.source)
         self.assertIn('XCTAssertFalse(citySearchPredicate(city: "Milano").evaluate(with: ["label": "Torino · Cerca città o bar"]))', self.source)
         self.assertIn("hasVisiblePositiveCoverage()", self.source)
-        self.assertIn('website.buttons.matching(citySearchPredicate()).count, 0', self.source)
+        self.assertIn('let mapSearch = website.buttons.matching(citySearchPredicate()).firstMatch', self.source)
+        self.assertIn('XCTAssertFalse(app.buttons["tab.search"].exists', self.source)
         self.assertIn('searchButton.tap()', self.source)
         self.assertIn('let searchClosed = XCTNSPredicateExpectation', self.source)
 

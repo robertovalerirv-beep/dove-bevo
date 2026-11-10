@@ -147,7 +147,7 @@ final class AppPresentationThemeTests: XCTestCase {
         while (Date.now() < deadline) {
           const button = document.querySelector('.top__row > .search-field');
           if (document.documentElement.getAttribute('data-dovebevo-app-theme') === '1' &&
-              button && getComputedStyle(button).display === 'none') return '1|none';
+              button && getComputedStyle(button).display === 'grid') return '1|grid';
           await new Promise(resolve => setTimeout(resolve, 50));
         }
         const button = document.querySelector('.top__row > .search-field');
@@ -155,7 +155,7 @@ final class AppPresentationThemeTests: XCTestCase {
           (button ? getComputedStyle(button).display : 'missing');
         """, arguments: [:], in: nil, in: .defaultClient) { result in value = result; styled.fulfill() }
         wait(for: [styled], timeout: 8)
-        XCTAssertEqual(try XCTUnwrap(value).get() as? String, "1|none")
+        XCTAssertEqual(try XCTUnwrap(value).get() as? String, "1|grid")
         XCTAssertEqual(try evaluate(web, "document.querySelectorAll('#dovebevo-native-theme-v1').length") as? Int, 1)
     }
 

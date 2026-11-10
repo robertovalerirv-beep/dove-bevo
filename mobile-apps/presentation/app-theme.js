@@ -61,13 +61,16 @@ html[data-dovebevo-app-theme="1"] .top {
   background: var(--bg);
   padding: 10px 16px 12px;
 }
-/* Native Cerca owns city search. Retain the real button in the document for
- * the native action to click, while removing the duplicate top lens. */
+/* The map owns city search beside Locate and Add. The native bar has only
+ * destinations, so the map button must remain visible in the styled shell. */
 html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .top__row > .search-field {
-  display: none !important;
+  display: grid !important;
+  background: var(--surface);
+  border-color: var(--line-soft);
+  border-radius: 50%;
 }
 html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .europe-search {
-  display: none !important;
+  display: grid !important;
 }
 html[data-dovebevo-app-theme="1"][data-dovebevo-mobile-shell="1"] .europe-city-current {
   display: block;

@@ -529,23 +529,6 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
     <div class="app europe-app" ref={root}>
       <header class="europe-top">
         <div class="europe-search-row">
-          <button
-            class="europe-search"
-            data-dovebevo-search="1"
-            aria-label={it.search.open}
-            onClick={() => {
-              if (venueKey !== null) {
-                history.replaceState(null, "", cityURL(city));
-                setVenueKey(null);
-                setSavedFocus(null);
-              }
-              setPicker(true);
-              setQuery("");
-            }}
-          >
-            {city.name}
-            <Icon name="search" />
-          </button>
           <span class="europe-city-current" aria-label={`${t("Città", "City")}: ${city.name}`}>
             {city.name}
           </span>
@@ -631,6 +614,22 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
           <Icon name="list" />
         </button>
         <button
+          class="europe-search"
+          data-dovebevo-search="1"
+          aria-label={it.search.open}
+          onClick={() => {
+            if (venueKey !== null) {
+              history.replaceState(null, "", cityURL(city));
+              setVenueKey(null);
+              setSavedFocus(null);
+            }
+            setPicker(true);
+            setQuery("");
+          }}
+        >
+          <Icon name="search" />
+        </button>
+        <button
           class="europe-locate"
           aria-label={it.map.nearMe}
           onClick={() => {
@@ -638,6 +637,17 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
           }}
         >
           <Icon name="locate" />
+        </button>
+        <button
+          class="europe-map-add"
+          aria-label={t("Aggiungi prezzo", "Add price")}
+          disabled={busy || queued || !snapshot}
+          onClick={() => {
+            if (venue) setForm({ venue });
+            else setList(true);
+          }}
+        >
+          <span aria-hidden="true">+</span> {t("Aggiungi", "Add")}
         </button>
         {(mapFailed || loadError) && (
           <div class="europe-map-error" role="alert">
@@ -679,26 +689,6 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
           </a>
         </div>
       </section>
-      <div class="bottom europe-bottom">
-        <button
-          class="btn btn--primary"
-          disabled={busy || queued || !snapshot}
-          onClick={() => {
-            if (venue) setForm({ venue });
-            else setList(true);
-          }}
-        >
-          {t("Aggiungi prezzo", "Add price")}
-        </button>
-        <button
-          class="btn btn--secondary"
-          onClick={() => {
-            setPicker(true);
-          }}
-        >
-          {t("Cambia città", "Change city")}
-        </button>
-      </div>
       {notice &&
         createPortal(
           <div

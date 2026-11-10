@@ -101,6 +101,14 @@ private final class MenuV2Load: RecommendationRequest {
                     report.linkedOfferID = id
                     return report
                 }
+                let customerReports: [MenuV2Price] = all.map { item in
+                    MenuV2Price(id: item.id, venueName: name, itemName: item.name,
+                                category: item.category ?? "", band: item.offerID.flatMap { byID[$0]?.band },
+                                amountMinor: item.amountMinor, currency: item.currency, exponent: item.exponent,
+                                servingLabel: item.servingLabel, servingML: item.servingML,
+                                origin: .customer(item.observedOn),
+                                feeNotice: "Spese del locale secondo il menu: \(fees)")
+                }
                 let comparable = linked.filter { report in
                     guard let id = report.linkedOfferID, let source = byID[id] else { return false }
                     return source.band != nil && source.category == report.category
@@ -109,7 +117,7 @@ private final class MenuV2Load: RecommendationRequest {
                 }
                 self.completed(venue, result: MenuV2Venue(key: venue.url.lastPathComponent, cell: cell,
                                                           name: name, offers: offers + comparable, feeNotice: fees,
-                                                          linkedReports: linked))
+                                                          linkedReports: linked, customerReports: customerReports))
             }
         }
     }

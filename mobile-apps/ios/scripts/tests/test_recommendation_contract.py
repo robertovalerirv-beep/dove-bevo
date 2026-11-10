@@ -39,10 +39,11 @@ class RecommendationContractTests(unittest.TestCase):
 
     def test_live_ui_checks_never_tap_recommendation_write_buttons(self):
         source = (IOS / "UITests/BrowserSmokeTests.swift").read_text(encoding="utf-8")
-        self.assertIn("verifyLiveRecommendationsReadOnly", source)
-        flow = source.split("private func verifyLiveRecommendationsReadOnly", 1)[1].split("\n    private func", 1)[0]
+        self.assertIn("verifyAreaRecommendationsReadOnly", source)
+        flow = source.split("private func verifyAreaRecommendationsReadOnly", 1)[1].split("\n    private func", 1)[0]
         self.assertNotRegex(flow, r'(?s)recommendations\.toggle[^\n]*\.tap\(')
-        self.assertIn("recommendations.loaded", flow)
+        self.assertIn('app.tables["areaVotes.list"]', flow)
+        self.assertIn("bottom feed only displays community counts", flow)
 
 
 if __name__ == "__main__":

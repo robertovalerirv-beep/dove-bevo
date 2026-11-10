@@ -273,8 +273,12 @@ class ImportTests(unittest.TestCase):
                                          'https://example.com/',target))
         self.assertTrue(m.index_has_link(b'<html><a href="/menu.pdf">Current menu</a></html>',
                                         'https://example.com/',target))
-    def test_catalog_schema_threshold_geography_duplicate_and_italy_fail(self):
-        for change in [lambda v:v['google'].update(review_count=100),lambda v:v.update(kind=0),
+    def test_catalog_schema_geography_duplicate_and_italy_fail(self):
+        for change in [lambda v:v['google'].update(review_count=-1),
+                       lambda v:v['google'].update(review_count=100.5),
+                       lambda v:v['google'].update(review_count='100'),
+                       lambda v:v['google'].update(review_count=True),
+                       lambda v:v.update(kind=0),
                        lambda v:v.update(cell='u0000'),lambda v:v.update(name='x'*121),
                        lambda v:v['google'].update(checked_on='2999-01-01')]:
             cat=copy.deepcopy(self.t.catalog)
@@ -282,6 +286,17 @@ class ImportTests(unittest.TestCase):
             raw=json.dumps(cat).encode()
             pin={**self.doc['catalog'],'sha256':m.sha(raw)}
             with self.assertRaises(m.Error):m.validate_catalog(raw,pin)
+        for count in (0, 12, 100, 101, None):
+            cat=copy.deepcopy(self.t.catalog)
+            cat['venues'][0]['google']['review_count']=count
+            raw=json.dumps(cat).encode()
+            pin={**self.doc['catalog'],'sha256':m.sha(raw)}
+            self.assertIn('n123',m.validate_catalog(raw,pin))
+        cat=copy.deepcopy(self.t.catalog)
+        del cat['venues'][0]['google']['review_count']
+        raw=json.dumps(cat).encode()
+        pin={**self.doc['catalog'],'sha256':m.sha(raw)}
+        self.assertIn('n123',m.validate_catalog(raw,pin))
         self.t.catalog['venues'][0].update(country='IT',lat=45.4,lon=9.2,cell=m.legacy.geo(45.4,9.2))
         self.record['cell']=self.t.catalog['venues'][0]['cell']
         self.doc['catalog']['sha256']=m.sha(json.dumps(self.t.catalog).encode())

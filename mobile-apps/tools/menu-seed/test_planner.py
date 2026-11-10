@@ -106,14 +106,75 @@ class PlannerAcceptanceTests(unittest.TestCase):
         self.assertIn("live_customer_price_history_removed_and_moderation_preservation_not_proven", report["publication_blockers"])
         self.assertIn("current_written_backend_boundary_does_not_authorize_menu_price_import", report["publication_blockers"])
 
-    def test_google_count_100_fails_and_101_passes(self):
+    def test_google_review_count_has_no_minimum_but_still_needs_exact_evidence(self):
         review = self.doc["candidates"][0]["review"]
-        for count, held in ((100, True), (101, False)):
+        for count in (0, 12, 100, 101):
             with self.subTest(count=count):
                 text = f"Caffe Esempio | Via Roma 10 | {count} reviews"
                 self.add_source("google", text, "text/plain", "https://www.google.com/maps/place/Caffe-Esempio")
                 review.update(count=count, excerpt=text)
-                self.assertEqual(bool(self.reasons()), held)
+                self.assertEqual(self.reasons(), [])
+
+    def test_unknown_google_count_uses_direct_venue_evidence_without_inventing_zero(self):
+        review = self.doc["candidates"][0]["review"]
+        text = "Caffe Esempio | Via Roma 10 | business listing"
+        self.add_source("google", text, "text/plain", "https://www.google.com/maps/place/Caffe-Esempio")
+        review.update(excerpt=text, count=None)
+        self.assertEqual(self.reasons(), [])
+        self.assertIsNone(self.run_plan()["rows"][0]["review"]["count"])
+        del review["count"]
+        self.assertEqual(self.reasons(), [])
+        self.assertNotIn("count", self.run_plan()["rows"][0]["review"])
+
+        # A count elsewhere in the same pinned capture cannot be hidden by
+        # selecting a shorter excerpt.
+        self.add_source("google", text + " | 101 reviews", "text/plain",
+                        "https://www.google.com/maps/place/Caffe-Esempio")
+        self.assertIn("visible_google_review_count_not_reported", self.reasons())
+
+    def test_unknown_google_count_still_requires_google_source_and_exact_venue(self):
+        review = self.doc["candidates"][0]["review"]
+        text = "Another Bar | Via Roma 10 | business listing"
+        self.add_source("google", text, "text/plain", "https://google.com.example.com/menu")
+        review.update(excerpt=text, count=None)
+        reasons = self.reasons()
+        self.assertIn("review_source_is_not_direct_google", reasons)
+        self.assertIn("google_review_venue_name_not_evidenced", reasons)
+
+    def test_unknown_count_cannot_hide_european_review_labels_or_label_first_counts(self):
+        review = self.doc["candidates"][0]["review"]
+        identity = "Caffe Esempio | Via Roma 10"
+        labelled = ("101 reviews", "101 recensioni", "101 avis",
+                    "101 reseñas", "101 Rezensionen", "101 Bewertungen",
+                    "Reviews (101)", "Reseñas: 101", "Bewertungen (101)")
+        for suffix in labelled:
+            with self.subTest(suffix=suffix):
+                capture = identity + " | " + suffix
+                self.add_source("google", capture, "text/plain",
+                                "https://www.google.com/maps/place/Caffe-Esempio")
+                review.update(excerpt=identity, count=None)
+                self.assertIn("visible_google_review_count_not_reported", self.reasons())
+                del review["count"]
+                self.assertIn("visible_google_review_count_not_reported", self.reasons())
+                review.update(excerpt=capture, count=101)
+                self.assertEqual(self.reasons(), [])
+
+    def test_malformed_labelled_count_is_held_even_when_claimed_unknown(self):
+        review = self.doc["candidates"][0]["review"]
+        text = "Caffe Esempio | Via Roma 10 | Reviews (1,10)"
+        self.add_source("google", text, "text/plain", "https://www.google.com/maps/place/Caffe-Esempio")
+        review.update(excerpt=text, count=None)
+        self.assertIn("visible_google_review_count_not_reported", self.reasons())
+        review["count"] = 110
+        self.assertIn("visible_google_review_count_not_evidenced", self.reasons())
+
+    def test_review_count_rejects_invalid_numeric_types_and_bounds(self):
+        review = self.doc["candidates"][0]["review"]
+        for count in (-1, 100000001, 1.5, True, "101"):
+            with self.subTest(count=count):
+                review["count"] = count
+                with self.assertRaises(planner.InputError):
+                    self.run_plan()
 
     def test_publisher_claim_and_wrong_google_venue_stay_held(self):
         candidate = self.doc["candidates"][0]

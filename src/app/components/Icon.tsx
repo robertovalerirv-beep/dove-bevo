@@ -21,8 +21,9 @@ const PATHS = {
     "M6 8h12l-1.4 12.2a1 1 0 0 1-1 .8H8.4a1 1 0 0 1-1-.8ZM13.5 13 16.5 3h3M10 16h.01M11 12.2h.01",
   sbagliato:
     "M5 9h14l-1.2 10.8a1.5 1.5 0 0 1-1.5 1.2H7.7a1.5 1.5 0 0 1-1.5-1.2ZM5.6 13h12.8M9.5 5.5v.01M12.5 3.5v.01M15.5 5.5v.01",
+  // Shown as «Americano» since SPEC 1.17 (ADR 0047): the code stays, the drawing is a low tumbler with half an orange wheel and ice.
   gin_lemon:
-    "M6 3h8.5l-1.3 17.2a1 1 0 0 1-1 .8H8.3a1 1 0 0 1-1-.8ZM6.6 9h7.4M14.5 6.5a3 3 0 1 0 6 0 3 3 0 0 0-6 0ZM17.5 3.5v6M14.5 6.5h6",
+    "M5 9h14l-1.2 10.8a1.5 1.5 0 0 1-1.5 1.2H7.7a1.5 1.5 0 0 1-1.5-1.2ZM5.6 13h12.8M12.5 9a3.5 3.5 0 0 1 7 0M16 9V5.5M8.5 15.5h3v3h-3Z",
   water: "M7 4h10l-1.4 15.7a1.5 1.5 0 0 1-1.5 1.3H9.9a1.5 1.5 0 0 1-1.5-1.3ZM7.6 11h8.8",
 } as const;
 

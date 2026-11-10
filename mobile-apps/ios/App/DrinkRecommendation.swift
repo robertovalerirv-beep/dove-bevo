@@ -12,7 +12,7 @@ struct DrinkCategory: Equatable {
         DrinkCategory(code: "negroni", name: "Negroni"),
         DrinkCategory(code: "sbagliato", name: "Sbagliato"),
         DrinkCategory(code: "gin_tonic", name: "Gin tonic"),
-        DrinkCategory(code: "gin_lemon", name: "Gin lemon"),
+        DrinkCategory(code: "gin_lemon", name: "Americano"),
         DrinkCategory(code: "wine_glass", name: "Calice di vino"),
         DrinkCategory(code: "alcohol_free", name: "Analcolico"),
         DrinkCategory(code: "water", name: "Acqua")

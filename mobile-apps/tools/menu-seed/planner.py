@@ -33,6 +33,13 @@ LIMITS = {
     "wine_glass": (200, 1500), "alcohol_free": (200, 1200),
     "water": (50, 600),
 }
+REVIEW_LABEL = (r"(?:reviews?|recension(?:i|e)|avis|bewertungen?|"
+                r"rezension(?:en)?|reseñas?|resenas?)")
+REVIEW_COUNT_CANDIDATE = r"(?P<count>\d[\d., ]{0,24})"
+REVIEW_COUNT_PATTERNS = (
+    re.compile(rf"(?<![\d.,]){REVIEW_COUNT_CANDIDATE}\s+(?:Google\s+)?{REVIEW_LABEL}\b", re.I),
+    re.compile(rf"\b{REVIEW_LABEL}\b(?:\s*\(\s*|\s*[:\-–]\s*|\s+){REVIEW_COUNT_CANDIDATE}", re.I),
+)
 BLOCKERS = [
     "offline_planner_has_no_publication_capability",
     "current_written_backend_boundary_does_not_authorize_menu_price_import",
@@ -413,6 +420,11 @@ def venue_reasons(spec, venues, sources):
     return reasons
 
 
+def visible_review_count_literals(text):
+    return [match.group("count").strip()
+            for pattern in REVIEW_COUNT_PATTERNS for match in pattern.finditer(text)]
+
+
 def review_reasons(spec, sources, venue):
     fields = ("kind source_id excerpt count"
               if isinstance(spec, dict) and "count" in spec else "kind source_id excerpt")
@@ -429,9 +441,9 @@ def review_reasons(spec, sources, venue):
         reasons.append("first_party_or_unverified_review_count_is_not_direct_google_evidence")
     if source and not re.fullmatch(r"(?:www\.|maps\.)?google\.(?:com|it|fr|de|es|co\.uk)", source["host"]):
         reasons.append("review_source_is_not_direct_google")
-    # Accept an unambiguous adjacent number and review label; never infer count
-    # from a bare number, rating, claim, or 100/101 boundary rounding.
-    matches = re.findall(r"(?<![\d.,])(\d[\d., ]*?)\s+(?:Google\s+)?(?:reviews|recensioni|avis|bewertungen)\b", spec["excerpt"], re.I)
+    # Accept an unambiguous adjacent number and review label in either order;
+    # never infer a count from a bare number, rating, or publisher claim.
+    matches = visible_review_count_literals(spec["excerpt"])
     valid_count = (len(matches) == 1 and
                    re.fullmatch(r"(?:0|[1-9]\d{0,2})(?:(?:,\d{3})+|(?:\.\d{3})+|(?: \d{3})+)?", matches[0]))
     counts = [int(re.sub(r"\D", "", matches[0]))] if valid_count else []
@@ -439,9 +451,7 @@ def review_reasons(spec, sources, venue):
         # Unknown is distinct from zero: do not suppress a visible count by
         # omitting the field or setting it to null.
         visible = source["text"] if source and source["text"] is not None else spec["excerpt"]
-        visible_count = re.search(r"(?<![\d.,])\d[\d., ]{0,24}\s+(?:Google\s+)?"
-                                  r"(?:reviews|recensioni|avis|bewertungen)\b", visible, re.I)
-        if visible_count:
+        if visible_review_count_literals(visible):
             reasons.append("visible_google_review_count_not_reported")
     elif counts != [count]:
         reasons.append("visible_google_review_count_not_evidenced")

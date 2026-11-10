@@ -13,6 +13,8 @@ import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
@@ -31,6 +33,7 @@ final class RecommendationsUi {
     private final Handler main = new Handler(Looper.getMainLooper());
     private AlertDialog dialog;
     private SavedVenueCapture.Venue venue;
+    private RecommendationDrink focused;
     private RecommendationSession session;
     private RecommendationsClient.Cancellation cancellation;
     private TextView status;
@@ -44,9 +47,13 @@ final class RecommendationsUi {
         this.activity = activity; this.api = api; this.policy = policy; this.eligible = eligible; this.worker = worker;
     }
     void show(SavedVenueCapture.Venue selected) {
+        show(selected,null);
+    }
+    void show(SavedVenueCapture.Venue selected,RecommendationDrink focus) {
         dismiss();
         if (closed || paused || selected == null || !selected.url.equals(eligible.get())) return;
         venue = selected;
+        focused=focus;
         String key = selected.url.substring(selected.url.indexOf("/bar/") + 5, selected.url.indexOf('?'));
         session = new RecommendationSession(key);
         LinearLayout body = new LinearLayout(activity); body.setOrientation(LinearLayout.VERTICAL);
@@ -128,7 +135,9 @@ final class RecommendationsUi {
         rows.removeAllViews();
         DrinkRecommendations snapshot = session.snapshot();
         if (snapshot == null) return;
-        for (DrinkRecommendations.Row row : snapshot.sortedRows()) {
+        List<DrinkRecommendations.Row> display=new ArrayList<>(snapshot.sortedRows());
+        if(focused!=null)display.sort((left,right)->Boolean.compare(right.drink==focused,left.drink==focused));
+        for (DrinkRecommendations.Row row : display) {
             Button button = new Button(activity); button.setAllCaps(false); button.setId(R.id.recommendation_row); button.setTag(row.drink.code);
             String count = row.count == 0 ? activity.getString(R.string.recommendation_zero)
                     : activity.getResources().getQuantityString(R.plurals.recommendation_count, row.count == 1 ? 1 : 2, row.count);
@@ -158,7 +167,7 @@ final class RecommendationsUi {
     private void retire() {
         if (session != null) session.pause();
         if (cancellation != null) cancellation.cancel(); cancellation = null;
-        session = null; venue = null; dialog = null;
+        session = null; venue = null; focused=null; dialog = null;
     }
     void close() { closed = true; dismiss(); worker.shutdownNow(); }
 }

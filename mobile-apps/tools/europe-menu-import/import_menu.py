@@ -249,12 +249,15 @@ def validate_catalog(raw, pin):
         if v['currency'] != ('GBP' if v['country'] == 'GB' else 'EUR'):
             raise Error('catalog currency mismatch')
         g = v['google']
-        exact(g, 'url review_count checked_on', 'Google proof')
+        if not isinstance(g, dict) or set(g) not in (
+                {'url', 'checked_on'}, {'url', 'review_count', 'checked_on'}):
+            raise Error('invalid Google proof schema')
         https(g['url'])
         if not re.fullmatch(r'(?:www\.|maps\.)?google\.(?:com|it|fr|de|es|co\.uk)', urlsplit(g['url']).hostname):
             raise Error('invalid Google source')
-        if type(g['review_count']) is not int or not 100 < g['review_count'] <= 100000000:
-            raise Error('Google review threshold failed')
+        count = g.get('review_count')
+        if count is not None and (type(count) is not int or not 0 <= count <= 100000000):
+            raise Error('invalid Google review count')
         day(g['checked_on'])
         found[v['key']] = v
     return found

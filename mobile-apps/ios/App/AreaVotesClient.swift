@@ -5,12 +5,15 @@ enum AreaVoteTarget: Equatable {
     case offer(String)
     case customer(String)
     case legacy(String, ComparisonBand)
+    case europe(String, ComparisonBand, String, EuropeServing)
 
     var identity: String {
         switch self {
         case .offer(let id): return "offer:\(id)"
         case .customer(let id): return "customer:\(id)"
         case .legacy(let drink, let band): return "legacy:\(drink):\(band.rawValue)"
+        case .europe(let drink, let band, let currency, let serving):
+            return "europe:\(drink):\(band.rawValue):\(currency):\(serving.key)"
         }
     }
 }
@@ -65,6 +68,7 @@ struct AreaVotesPage: Equatable {
                                     category: drink["category"] as? String,
                                     servingLabel: drink["serving_label"] as? String, count: count)
             if case .legacy(let code, _) = target, item.category != code { return nil }
+            if case .europe(let code, _, _, _) = target, item.category != code { return nil }
             guard seen.insert(item.identity).inserted else { return nil }
             items.append(item)
         }
@@ -88,6 +92,18 @@ struct AreaVotesPage: Equatable {
                   DrinkCategory.all.contains(where: { $0.code == code }),
                   let band = value["band"] as? String, ["normal", "happy_hour"].contains(band) else { return nil }
             return .legacy(code, band == "normal" ? .normal : .happyHour)
+        case "europe":
+            guard Set(value.keys) == ["kind", "drink", "band", "currency", "serving"],
+                  let code = value["drink"] as? String,
+                  let band = value["band"] as? String, ["normal", "happy_hour"].contains(band),
+                  let currency = value["currency"] as? String, ["EUR", "GBP"].contains(currency),
+                  let rawServing = value["serving"] as? [String: Any],
+                  Set(rawServing.keys).isSubset(of: ["unit", "ml"]),
+                  let unit = rawServing["unit"] as? String else { return nil }
+            let ml = rawServing["ml"].flatMap { ComparisonJSON.integer($0, minimum: 1, maximum: 2000) }
+            guard rawServing["ml"] == nil || ml != nil,
+                  let serving = SavedEuropeDrink.serving(from: "\(unit):\(ml.map { String($0) } ?? "")", drink: code) else { return nil }
+            return .europe(code, band == "normal" ? .normal : .happyHour, currency, serving)
         default: return nil
         }
     }
@@ -117,7 +133,8 @@ final class AreaVotesClient: AreaVotesServing {
         guard after == nil || (after!.utf8.count <= 512 && ComparisonJSON.matches(after!, "^[A-Za-z0-9_-]+={0,2}$")) else { return nil }
         var components = URLComponents(string: "https://www.dovebevo.com/api/mobile/v2/drink-votes/area")!
         var query = [URLQueryItem(name: "cells", value: area.cells.joined(separator: ",")),
-                     URLQueryItem(name: "limit", value: "50")]
+                     URLQueryItem(name: "limit", value: "50"),
+                     URLQueryItem(name: "include_europe", value: "1")]
         if let after { query.append(URLQueryItem(name: "after", value: after)) }
         components.queryItems = query
         return components.url

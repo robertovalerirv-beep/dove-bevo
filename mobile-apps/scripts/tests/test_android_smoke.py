@@ -378,11 +378,23 @@ class AndroidSmokeTests(unittest.TestCase):
                 m.port_open(5041)
 
     def test_required_ui_checks_retained(self):
-        for text in ['native adult usage rules', 'live website city-search control', 'clickable Milano city result', 'live map initialized after city selection', 'accepted app restarts into live service']:
+        for text in ['native adult usage rules', 'live map and native city-search control',
+                     'com.dovebevo.app:id/search_destination', 'Mappa interattiva dei bar',
+                     'clickable Milano city result', 'live map initialized after city selection',
+                     'accepted app restarts into live service']:
             self.assertIn(text, source)
 
+    def test_live_search_requires_both_rendered_map_and_native_destination(self):
+        search = '<node class="android.widget.Button" package="com.dovebevo.app" resource-id="com.dovebevo.app:id/search_destination" text="Cerca" enabled="true" />'
+        web = '<node class="android.webkit.WebView" package="com.dovebevo.app"><node text="Mappa interattiva dei bar" /></node>'
+        for body in (search, web, search + '<node class="android.webkit.WebView" package="com.dovebevo.app" />'):
+            with mock.patch.object(m, 'tree', return_value=m.ET.fromstring('<hierarchy>' + body + '</hierarchy>')):
+                self.assertIsNone(m.live_map_search_destination())
+        with mock.patch.object(m, 'tree', return_value=m.ET.fromstring('<hierarchy>' + search + web + '</hierarchy>')):
+            self.assertEqual(m.live_map_search_destination().get('resource-id'), 'com.dovebevo.app:id/search_destination')
+
     def test_registered_source_inventory_is_exact_and_checked_before_emulator_start(self):
-        self.assertEqual(m.OWNED_TEST_COUNT, 55)
+        self.assertEqual(m.OWNED_TEST_COUNT, 58)
         m.verify_owned_test_sources()
         directory = self.base / 'registered-tests'
         directory.mkdir()
@@ -437,9 +449,9 @@ class AndroidSmokeTests(unittest.TestCase):
     def test_owned_instrumentation_requires_every_explicit_unskipped_case(self):
         good = self.owned_output()
         self.assertEqual(m.owned_instrumentation(good)['tests'], m.OWNED_TEST_COUNT)
-        old_47 = {name: count for name, count in m.OWNED_CLASSES.items() if name != 'DrinkFavoritesRuntimeTest'}
-        old_45 = {**old_47, 'NativeUsabilityRuntimeTest': 21}
-        for bad in [b'', self.owned_output(old_45), self.owned_output(old_47),
+        without_drink_favourites = {name: count for name, count in m.OWNED_CLASSES.items() if name != 'DrinkFavoritesRuntimeTest'}
+        old_native_count = {**without_drink_favourites, 'NativeUsabilityRuntimeTest': 21}
+        for bad in [b'', self.owned_output(old_native_count), self.owned_output(without_drink_favourites),
                     good.replace(f'OK ({m.OWNED_TEST_COUNT} tests)'.encode(), b''),
                     good.replace(f'INSTRUMENTATION_STATUS: numtests={m.OWNED_TEST_COUNT}'.encode(), b'INSTRUMENTATION_STATUS: numtests=1', 1),
                     good.replace(b'INSTRUMENTATION_CODE: -1', b''),

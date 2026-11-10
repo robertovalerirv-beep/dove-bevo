@@ -646,7 +646,14 @@ describe("trusted source seeding and catalog fail-closed boundary", () => {
     { ...catalog, venues: [{ ...london, currency: "EUR" }] },
     { ...catalog, venues: [{ ...london, cell: "u09tv" }] },
     { ...catalog, venues: [{ ...london, key: "u7" }] },
-    { ...catalog, venues: [{ ...london, google: { ...london.google, review_count: 100 } }] },
+    { ...catalog, venues: [{ ...london, google: { ...london.google, review_count: -1 } }] },
+    { ...catalog, venues: [{ ...london, google: { ...london.google, review_count: 100.5 } }] },
+    { ...catalog, venues: [{ ...london, google: { ...london.google, review_count: "100" } }] },
+    { ...catalog, venues: [{ ...london, google: { ...london.google, review_count: true } }] },
+    {
+      ...catalog,
+      venues: [{ ...london, google: { ...london.google, review_count: 100_000_001 } }],
+    },
     {
       ...catalog,
       venues: [
@@ -667,6 +674,20 @@ describe("trusted source seeding and catalog fail-closed boundary", () => {
     });
     expect(response.status).toBe(503);
   });
+  it.each([0, 12, 100, 101, null, undefined])(
+    "accepts verified venue with %j visible Google reviews",
+    async (count) => {
+      const google = {
+        url: london.google.url,
+        checked_on: TODAY,
+        ...(count === undefined ? {} : { review_count: count }),
+      };
+      const response = await call(`/api/mobile/prices/cells/${london.cell}`, undefined, {
+        bindings: bindings({ ...catalog, venues: [{ ...london, google }] }),
+      });
+      expect(response.status, await response.clone().text()).toBe(200);
+    },
+  );
   it("rejects HTML fallback, oversized bodies and future source dates", async () => {
     const configured = bindings();
     for (const response of [

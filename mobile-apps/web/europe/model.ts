@@ -5,6 +5,7 @@ import { encodeGeohash } from "@site/shared/geohash";
 import { medianOf, tierOf, type Tier } from "@site/app/lib/tiers";
 import { currentLang } from "@site/app/i18n/lang";
 import { mobileURL } from "../routes";
+import { GoogleReviewCount } from "./review-count";
 
 const Currency = z.enum(["EUR", "GBP"]);
 const Day = z
@@ -92,7 +93,7 @@ const VenueSchema = z
           return false;
         }
       }),
-      review_count: z.number().int().min(101).max(100000000),
+      review_count: GoogleReviewCount,
       checked_on: CheckedDay,
     }),
   })

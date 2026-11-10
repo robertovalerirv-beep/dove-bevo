@@ -18,9 +18,11 @@ import java.util.function.Consumer;
 
 /** One refresh has a global deadline, three workers, shared-cell reads and a single immutable result. */
 final class FavoritesLoader {
-    private final FavoritePricesClient client;private final ExecutorService network;private final ScheduledExecutorService timer;private final Executor deliver;private final long timeoutMs;
+    private final FavoritePricesClient client;private final ExecutorService network;private final ScheduledExecutorService timer;private final Executor deliver;private final long timeoutMs;private final boolean europeOnly;
     FavoritesLoader(FavoritePricesClient client,Executor deliver){this(client,deliver,Executors.newFixedThreadPool(3),Executors.newSingleThreadScheduledExecutor(),60000);}
-    FavoritesLoader(FavoritePricesClient client,Executor deliver,ExecutorService network,ScheduledExecutorService timer,long timeoutMs){this.client=client;this.deliver=deliver;this.network=network;this.timer=timer;this.timeoutMs=timeoutMs;}
+    FavoritesLoader(FavoritePricesClient client,Executor deliver,boolean europeOnly){this(client,deliver,Executors.newFixedThreadPool(3),Executors.newSingleThreadScheduledExecutor(),60000,europeOnly);}
+    FavoritesLoader(FavoritePricesClient client,Executor deliver,ExecutorService network,ScheduledExecutorService timer,long timeoutMs){this(client,deliver,network,timer,timeoutMs,false);}
+    FavoritesLoader(FavoritePricesClient client,Executor deliver,ExecutorService network,ScheduledExecutorService timer,long timeoutMs,boolean europeOnly){this.client=client;this.deliver=deliver;this.network=network;this.timer=timer;this.timeoutMs=timeoutMs;this.europeOnly=europeOnly;}
     Batch load(List<SavedVenueStore.Venue> saved,Consumer<Map<String,FavoriteComparison.Cell>> result)throws IOException{
         if(saved.size()>SavedVenueStore.MAX_VENUES)throw NativeJson.invalid();
         Map<String,Boolean> cells=new LinkedHashMap<>();
@@ -37,12 +39,12 @@ final class FavoritesLoader {
             timeout=timer.schedule(()->finish(true),timeoutMs,TimeUnit.MILLISECONDS);
             submit(()->{
                 String version=null;FavoritePricesClient.Call call=call();
-                try{version=client.version(call);}catch(IOException unavailable){/* Valid approved user venues remain independently readable. */}
+                if(!europeOnly)try{version=client.version(call);}catch(IOException unavailable){/* Valid approved user venues remain independently readable. */}
                 EuropePrices.Catalog catalog=null;try{catalog=client.catalog(call());}catch(IOException|RuntimeException unavailable){/* Legacy verified metadata remains independent. */}
                 String current=version;EuropePrices.Catalog mobile=catalog;
                 for(Map.Entry<String,Boolean> entry:cells.entrySet())submit(()->{
                     FavoriteComparison.Cell value=null;FavoritePricesClient.Call request=call();
-                    try{value=client.cell(entry.getKey(),current,entry.getValue(),mobile,request);}catch(IOException|RuntimeException unavailable){ }
+                    try{value=europeOnly?client.europeCell(entry.getKey(),mobile,request):client.cell(entry.getKey(),current,entry.getValue(),mobile,request);}catch(IOException|RuntimeException unavailable){ }
                     boolean done;
                     synchronized(this){if(finished||cancelled)return;if(value!=null)values.put(entry.getKey(),value);done=--remaining==0;}
                     if(done)finish(false);

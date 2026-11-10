@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.view.View;
 import android.widget.LinearLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -53,20 +52,12 @@ public final class DiscoveryRuntimeTest {
     @Test public void drinkDropdownExposesNineCategoriesAndKeepsBandWithoutNewRequests()throws Exception {
         partialOne=true;show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();int before=requests.get();
         onMain(()->{assertNotNull(activity.findViewById(R.id.discovery_drink));assertTrue(rows().getChildAt(0).getHeight()>0);assertTrue(rows().getChildAt(0).getHeight()<=Math.round(120*activity.getResources().getDisplayMetrics().density));
-            HorizontalScrollView carousel=activity.findViewById(android.R.id.content).findViewWithTag("discovery.categoryCarousel");
-            assertNotNull(carousel);assertEquals(9,((LinearLayout)carousel.getChildAt(0)).getChildCount());
-            View spritz=carousel.findViewWithTag("discovery.category.spritz");View beer=carousel.findViewWithTag("discovery.category.beer_draft");
-            String spritzSummary=spritz.getContentDescription().toString();
-            assertTrue("Actual category summary: "+spritzSummary,spritzSummary.contains("Da 6,00"));
-            assertTrue("Original euro currency must remain visible",spritzSummary.contains("€"));
-            assertTrue(spritzSummary.contains("Segnalato il 2026-06-01"));
-            assertTrue(spritzSummary.contains("Da ricontrollare"));
-            assertTrue(spritz.getContentDescription().toString().contains("Immagine illustrativa"));
-            assertTrue(beer.getContentDescription().toString().contains("Nessun prezzo nei dati caricati"));
-            assertTrue(spritzSummary.contains("Zona parziale"));
-            beer.performClick();assertEquals("beer_draft",screen.selectedDrink());assertEquals(0,rows().getChildCount());
-            activity.findViewById(android.R.id.content).findViewWithTag("discovery.category.spritz").performClick();
-            assertEquals("spritz",screen.selectedDrink());assertEquals(2,rows().getChildCount());});
+            assertNull(activity.findViewById(android.R.id.content).findViewWithTag("discovery.categoryCarousel"));
+            Spinner dropdown=activity.findViewById(R.id.discovery_drink);
+            dropdown.setSelection(RecommendationDrink.BEER_DRAFT.ordinal());});
+        onMain(()->{assertEquals("beer_draft",screen.selectedDrink());assertEquals(0,rows().getChildCount());
+            ((Spinner)activity.findViewById(R.id.discovery_drink)).setSelection(RecommendationDrink.SPRITZ.ordinal());});
+        onMain(()->{assertEquals("spritz",screen.selectedDrink());assertEquals(2,rows().getChildCount());});
         onMain(()->{
             Spinner drinks=activity.findViewById(R.id.discovery_drink);
             assertEquals(9,drinks.getCount());assertEquals("Scegli cosa bere",drinks.getContentDescription());

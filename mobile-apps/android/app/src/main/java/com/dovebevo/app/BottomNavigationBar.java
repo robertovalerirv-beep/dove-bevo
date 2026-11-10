@@ -7,12 +7,12 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
-/** Six persistent controls: Home, search, map, favourites and venue actions. */
+/** Five destinations: saving and voting belong beside a drink, not in this bar. */
 final class BottomNavigationBar extends LinearLayout {
     private final Button[] controls;
     private int columns;
     BottomNavigationBar(Context context, Runnable home, Runnable search, Runnable map,
-            Runnable favorites, Runnable save, Runnable recommendations) {
+            Runnable favorites, Runnable recommendations) {
         super(context);
         setId(R.id.bottom_navigation);
         setOrientation(VERTICAL);
@@ -23,7 +23,6 @@ final class BottomNavigationBar extends LinearLayout {
             control(R.id.search_destination, R.string.search, R.string.search, R.drawable.native_search, search),
             control(R.id.map_destination, R.string.map_destination, R.string.map_destination, R.drawable.native_map, map),
             control(R.id.favorites_destination, R.string.saved_venues, R.string.saved_venues, R.drawable.native_bookmark, favorites),
-            control(R.id.save_venue, R.string.save_venue_short, R.string.save_venue, R.drawable.native_bookmark_add, save),
             control(R.id.recommendation_entry, R.string.recommendation_short, R.string.recommendation_entry, R.drawable.native_thumb, recommendations),
         };
         android.content.res.Configuration config = getResources().getConfiguration();

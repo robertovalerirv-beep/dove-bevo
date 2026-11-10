@@ -68,9 +68,7 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-city {
   white-space: nowrap;
 }
 html[data-dovebevo-mobile-shell="1"] .search-field > .icon {
-  order: 1;
-  width: 22px;
-  height: 22px;
+  display: none;
 }
 html[data-dovebevo-mobile-shell="1"] .top__row > .icon-btn {
   position: fixed;
@@ -205,9 +203,9 @@ html[data-dovebevo-mobile-shell="1"] .map__list {
 }
 html[data-dovebevo-mobile-shell="1"] .map__status {
   display: block;
-  top: 72px;
-  left: 12px;
-  right: 12px;
+  top: 12px;
+  left: 72px;
+  right: 72px;
   bottom: auto;
   max-width: none;
   min-height: 48px;
@@ -245,10 +243,11 @@ html[data-dovebevo-mobile-shell="1"] .map__status .mobile-menu-map-note {
   line-height: 1.35;
 }
 html[data-dovebevo-mobile-shell="1"] .map__stack {
-  top: 12px;
-  bottom: auto;
-  left: 72px;
-  right: 72px;
+  top: auto;
+  /* Keep the price legend at the map's lower edge, above Add and legal attribution. */
+  bottom: calc(var(--attribution-h, 24px) + 72px);
+  left: 12px;
+  right: 12px;
 }
 html[data-dovebevo-mobile-shell="1"] .legend {
   flex-wrap: wrap;
@@ -275,7 +274,8 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions {
   position: absolute;
   z-index: 4;
   right: 12px;
-  bottom: 128px;
+  /* The map is already clipped above native tabs; leave only the attribution gap. */
+  bottom: calc(var(--attribution-h, 24px) + 8px);
   display: grid;
   justify-items: end;
   max-width: calc(100% - 24px);

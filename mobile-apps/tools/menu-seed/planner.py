@@ -414,8 +414,12 @@ def venue_reasons(spec, venues, sources):
 
 
 def review_reasons(spec, sources, venue):
-    obj(spec, "kind source_id excerpt count", "review")
-    count = integer(spec["count"], "review count", 0, 100000000)
+    fields = ("kind source_id excerpt count"
+              if isinstance(spec, dict) and "count" in spec else "kind source_id excerpt")
+    obj(spec, fields, "review")
+    count = spec.get("count")
+    if count is not None:
+        integer(count, "review count", 0, 100000000)
     string(spec["source_id"], "review source id", 80)
     if spec["kind"] not in ("google_visible", "publisher_claim", "unverified"):
         raise InputError("invalid review evidence kind")
@@ -431,7 +435,15 @@ def review_reasons(spec, sources, venue):
     valid_count = (len(matches) == 1 and
                    re.fullmatch(r"(?:0|[1-9]\d{0,2})(?:(?:,\d{3})+|(?:\.\d{3})+|(?: \d{3})+)?", matches[0]))
     counts = [int(re.sub(r"\D", "", matches[0]))] if valid_count else []
-    if counts != [count]:
+    if count is None:
+        # Unknown is distinct from zero: do not suppress a visible count by
+        # omitting the field or setting it to null.
+        visible = source["text"] if source and source["text"] is not None else spec["excerpt"]
+        visible_count = re.search(r"(?<![\d.,])\d[\d., ]{0,24}\s+(?:Google\s+)?"
+                                  r"(?:reviews|recensioni|avis|bewertungen)\b", visible, re.I)
+        if visible_count:
+            reasons.append("visible_google_review_count_not_reported")
+    elif counts != [count]:
         reasons.append("visible_google_review_count_not_evidenced")
     proof = " " + normalize(spec["excerpt"]) + " "
     for field in ("name", "address"):

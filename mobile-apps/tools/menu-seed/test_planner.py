@@ -115,6 +115,40 @@ class PlannerAcceptanceTests(unittest.TestCase):
                 review.update(count=count, excerpt=text)
                 self.assertEqual(self.reasons(), [])
 
+    def test_unknown_google_count_uses_direct_venue_evidence_without_inventing_zero(self):
+        review = self.doc["candidates"][0]["review"]
+        text = "Caffe Esempio | Via Roma 10 | business listing"
+        self.add_source("google", text, "text/plain", "https://www.google.com/maps/place/Caffe-Esempio")
+        review.update(excerpt=text, count=None)
+        self.assertEqual(self.reasons(), [])
+        self.assertIsNone(self.run_plan()["rows"][0]["review"]["count"])
+        del review["count"]
+        self.assertEqual(self.reasons(), [])
+        self.assertNotIn("count", self.run_plan()["rows"][0]["review"])
+
+        # A count elsewhere in the same pinned capture cannot be hidden by
+        # selecting a shorter excerpt.
+        self.add_source("google", text + " | 101 reviews", "text/plain",
+                        "https://www.google.com/maps/place/Caffe-Esempio")
+        self.assertIn("visible_google_review_count_not_reported", self.reasons())
+
+    def test_unknown_google_count_still_requires_google_source_and_exact_venue(self):
+        review = self.doc["candidates"][0]["review"]
+        text = "Another Bar | Via Roma 10 | business listing"
+        self.add_source("google", text, "text/plain", "https://google.com.example.com/menu")
+        review.update(excerpt=text, count=None)
+        reasons = self.reasons()
+        self.assertIn("review_source_is_not_direct_google", reasons)
+        self.assertIn("google_review_venue_name_not_evidenced", reasons)
+
+    def test_review_count_rejects_invalid_numeric_types_and_bounds(self):
+        review = self.doc["candidates"][0]["review"]
+        for count in (-1, 100000001, 1.5, True, "101"):
+            with self.subTest(count=count):
+                review["count"] = count
+                with self.assertRaises(planner.InputError):
+                    self.run_plan()
+
     def test_publisher_claim_and_wrong_google_venue_stay_held(self):
         candidate = self.doc["candidates"][0]
         candidate["review"]["kind"] = "publisher_claim"

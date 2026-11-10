@@ -41,8 +41,17 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
   });
   const page = await context.newPage(),
     writes = [],
-    errors = [];
+    errors = [],
+    menuResponses = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  page.on("response", (response) => {
+    const url = new URL(response.url());
+    if (url.pathname === "/api/mobile/v2/menu/cells/u0nd9")
+      menuResponses.push({
+        categories: url.searchParams.get("categories") ?? "",
+        status: response.status(),
+      });
+  });
   await page.route("**/*", async (route) => {
     const request = route.request(),
       url = new URL(request.url());
@@ -412,7 +421,34 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     }
     return route.abort();
   });
-  return { context, page, writes, errors, close: () => context.close() };
+  return { context, page, writes, errors, menuResponses, close: () => context.close() };
+}
+
+async function waitForSourcedMapPrice(f, options) {
+  try {
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
+  } catch (cause) {
+    const map = await f.page
+      .evaluate(() => {
+        const section = document.querySelector("section.map");
+        const canvas = section?.querySelector(".map__canvas");
+        return {
+          center: section?.getAttribute("data-center"),
+          zoom: section?.getAttribute("data-zoom"),
+          ready: section?.getAttribute("data-ready"),
+          prices: section?.getAttribute("data-prices-shown"),
+          height: Math.round(canvas?.getBoundingClientRect().height ?? 0),
+          note: document.querySelector(".mobile-menu-map-note")?.textContent?.trim(),
+        };
+      })
+      .catch(() => null);
+    throw new Error(
+      `Sourced map price was not drawn: ${JSON.stringify({ map, requests: options.cellRequests?.slice(-12), responses: f.menuResponses.slice(-12), pageErrors: f.errors.slice(-5) })}`,
+      { cause },
+    );
+  }
 }
 
 async function openDrinks(page) {
@@ -440,9 +476,7 @@ test("single drink dropdown switches map filters without lateral scroll", async 
     assert.equal(await toggle.getAttribute("aria-label"), "Scegli cosa bere: Spritz");
     assert.equal(await toggle.getAttribute("aria-expanded"), "false");
     assert.equal(await row.locator(".mobile-drink-quick__scroller").count(), 0);
-    await f.page.waitForFunction(() =>
-      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
-    );
+    await waitForSourcedMapPrice(f, options);
     assert.match(
       await f.page.locator("section.map").getAttribute("data-prices-shown"),
       /7,50.*MENU/,
@@ -1463,9 +1497,7 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
     await openDrinks(f.page);
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     await f.page.locator(".mobile-menu-map-note").waitFor();
-    await f.page.waitForFunction(() =>
-      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
-    );
+    await waitForSourcedMapPrice(f, options);
     await all.click();
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("1 VOCE"),
@@ -1557,9 +1589,7 @@ test("a selected sourced price survives an unavailable full-menu identity retry"
     await drinks.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
     assert.match(await f.page.getByTestId("drink-summary").textContent(), /Spritz/);
     options.releaseOldIdentity();
-    await f.page.waitForFunction(() =>
-      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
-    );
+    await waitForSourcedMapPrice(f, options);
     const identityReads = options.cellRequests.filter(
       (request) => request.cell === "u0nd9" && request.categories.length === 0,
     ).length;
@@ -1702,9 +1732,7 @@ test("a selection inheriting a pending recovery does not start a second recovery
     options.releaseRecoveryIdentity();
     await recoveryFailure;
     options.releaseCombinedSample();
-    await f.page.waitForFunction(() =>
-      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
-    );
+    await waitForSourcedMapPrice(f, options);
     assert.match(
       await f.page.locator("section.map").getAttribute("data-prices-shown"),
       /7,50.*MENU/,

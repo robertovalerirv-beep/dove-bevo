@@ -7,15 +7,15 @@ Ultimo allineamento: 09/11/2026, con le decisioni di Roberto in chat (i reel han
 ## Account
 
 - **Instagram:** @dovebevo · nome «Dove Bevo» · immagine: simbolo crema su fondo `spritz`.
-- **Bio attuale** (confermata da Roberto il 27/10/2026):
+- **Bio attuale** (rilevata dal profilo il 10/11/2026, schermata di Roberto; la data del cambio non è nota):
 
   ```
   Stessa storia, stessa piazza, stesso drink: 5€ da una parte e 11€ dall'altra.
   Dove si spende meno?
-  Coming soon. 🔞
+  Bevi responsabilmente 🔞
   ```
 
-- **Link in bio:** nessuno per ora. **Decisione aperta (Roberto, 27/10/2026): se e quando metterlo.** Il sito è raggiungibile su `www.dovebevo.com` dal 25/10/2026 (ADR 0035), quindi il vincolo non è più il dominio. Quando si decide, «Coming soon» lascia il posto a un invito diretto e si aggiunge il link; questo file va aggiornato nello stesso giorno.
+- **Link in bio:** `www.dovebevo.com`. «Coming soon» non c'è più, né in bio né come linea dei contenuti. Se bio o link cambiano, questo file va aggiornato nello stesso giorno.
 
 ## Come scriviamo
 
@@ -101,5 +101,7 @@ Dati di Instagram al 27/10/2026, ore 13:19 (35 follower, 1.001 visualizzazioni i
 | 03/11/2026 | Post | «Ma chi li scrive i prezzi sulla mappa?»: carosello a dialogo con Bevino, come si segna un prezzo e come si aggiunge un bar mancante, «Prezzi inventati: nessuno»; messaggio: chiunque può inserire, basta che sia reale (caption: «Alla cassa ti dicono la cifra e tu annuisci…», con invito a taggare il locale mancante) | da rilevare |
 | 05/11/2026 | Reel | Bevino e Franco passeggiano a Porta Romana verso le 18: Franco, che ha fatto da guida tutto il pomeriggio, propone una birra e dice a Bevino di aprire dovebevo.com; Bevino trova un locale vicino, raggiungibile a piedi in pochi minuti con «Indicazioni». Fatto con opengen | da rilevare |
 | 09/11/2026 | Post | «Quanto costa davvero il tuo drink?»: carosello a quattro slide, introduzione con Affare · Giusto · Salato e lo scontrino `?,??`; classifica della copertura per città (Sestri Levante 22 %, Legnano 14 %, Milano 7 %, Torino 3 %, Roma 1 %); obiettivo di Milano al 31 % (47 bar su 150, griglia); richiesta «Hai pagato? Segnalo.» con «Segna un prezzo» e «Aggiungi un bar». Dati `/admin` del 09/11: 138 bar con un prezzo, 39 città, 381 prezzi | da rilevare |
+
+Dati di Instagram al 10/11/2026 (export «Insight sull'account» 10/10–09/11 e profilo): 152 follower, 44 seguiti, 7 post, 15.730 visualizzazioni in 30 giorni, 9.508 account raggiunti, 1.924 visualizzazioni dei reel (4 reel nell'export, due sponsorizzati), 162 like, 4 commenti, 13 repost, 75 condivisioni, 22 salvataggi. Follower: 75,7 % uomini, 39,2 % tra 25 e 34 anni, 31,2 % tra 35 e 44, Milano 40,9 %. Tocchi sul link e dati per singolo contenuto: da rilevare.
 
 Ordine dei contenuti nel feed al 09/11/2026: 1° carosello (24/10), 2° reel (24/10), 3° carosello (26/10), 4° reel con Bevino (02/11), 5° carosello «Ma chi li scrive» (03/11), 6° reel con Bevino e Franco a Porta Romana (05/11), 7° carosello «Quanto costa davvero il tuo drink?» (09/11). Le storie non contano.

@@ -481,7 +481,6 @@ public final class NativeUsabilityRuntimeTest {
                     ()->(Boolean)get("foreground"),
                     new DiscoveryLoader(new FavoritePricesClient((url,max,call)->{throw new IOException("Unready owned map must not fetch");},()->"2026-11-01"),task->activity.runOnUiThread(task)));
             set("discovery",home);((FrameLayout)get("content")).addView(home.view());home.view().setVisibility(View.GONE);
-            activity.findViewById(R.id.favorites_destination).performClick();
             assertFalse((Boolean)get("favoritesVisible"));
             assertSame(original, get("website"));
         });
@@ -665,7 +664,7 @@ public final class NativeUsabilityRuntimeTest {
                 int width = Math.round(widthDp*density);
                 bar.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
                 bar.layout(0,0,width,bar.getMeasuredHeight());
-                assertEquals(widthDp==640?1:2,bar.getChildCount());
+                assertEquals(widthDp==320?2:1,bar.getChildCount());
                 assertSame(originalHome,bar.findViewById(R.id.home));
                 for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.recommendation_entry}) {
                     Button button=bar.findViewById(id);

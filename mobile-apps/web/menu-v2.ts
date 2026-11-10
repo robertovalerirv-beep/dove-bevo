@@ -411,7 +411,7 @@ export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean
   // Explicit quantities in the label and structured field must also agree.
   const label = serving.label?.normalize("NFKC").toLowerCase();
   if (label && /\b(?:piccola|piccolo|small|mini)\b/u.test(label)) return false;
-  const quantities = label ? [...label.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(ml|cl|l)\b/gu)] : [];
+  const quantities = label ? [...label.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(ml|cl|lt|l)\b/gu)] : [];
   if (quantities.length > 1) return false;
   const quantity = quantities[0];
   let labelledMl: number | null = null;
@@ -420,7 +420,7 @@ export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean
     const unit = quantity[2];
     if (!amount || !unit) return false;
     const value = Number(amount.replace(",", "."));
-    labelledMl = unit === "l" ? value * 1000 : unit === "cl" ? value * 10 : value;
+    labelledMl = unit === "l" || unit === "lt" ? value * 1000 : unit === "cl" ? value * 10 : value;
   }
   if (serving.ml !== null) {
     if (labelledMl !== null && Math.abs(labelledMl - serving.ml) > 1) return false;

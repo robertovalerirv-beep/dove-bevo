@@ -100,7 +100,9 @@ test("250 ml or unknown draft beer never becomes a medium map price or coverage"
 test("400–600 ml and explicit medium labels show their sourced menu amount", () => {
   for (const serving of [
     { ml: 400, label: "40 cl" },
+    { ml: 400, label: "MEDIA (0.40LT)" },
     { ml: 500, label: "50 cl" },
+    { ml: 500, label: "Media 0.50LT" },
     { ml: 600, label: "60 cl" },
     { ml: 568, label: "Pint" },
     { ml: null, label: "Media" },
@@ -115,8 +117,14 @@ test("400–600 ml and explicit medium labels show their sourced menu amount", (
   for (const ml of [399, 601]) assert.equal(isMediumDraftBeerServing({ ml, label: null }), false);
 });
 
-test("conflicting 25 cl or 70 cl label rejects a 500 ml field and its map coverage", () => {
-  for (const label of ["Media 25 cl", "Media 70 cl", "Media 40 cl"]) {
+test("conflicting cl or LT label rejects a 500 ml field and its map coverage", () => {
+  for (const label of [
+    "Media 25 cl",
+    "Media 70 cl",
+    "Media 40 cl",
+    "Media 0.25LT",
+    "Media 0.70LT",
+  ]) {
     const serving = { ml: 500, label };
     assert.equal(isMediumDraftBeerServing(serving), false, label);
     const row = venue([offer(serving.ml, serving.label, 400)]);

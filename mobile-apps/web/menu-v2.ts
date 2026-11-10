@@ -405,6 +405,33 @@ export function mobileAllCount(venue: Venue): { count: number; kind: "menu" | "r
   return reportedCount > 0 ? { count: reportedCount, kind: "reported" } : null;
 }
 
+/** A menu's smallest draft beer is not evidence of the selected "Birra media" price. */
+export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean {
+  // A contradictory small label makes even a structured volume ambiguous.
+  // Explicit quantities in the label and structured field must also agree.
+  const label = serving.label?.normalize("NFKC").toLowerCase();
+  if (label && /\b(?:piccola|piccolo|small|mini)\b/u.test(label)) return false;
+  const quantities = label ? [...label.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(ml|cl|lt|l)\b/gu)] : [];
+  if (quantities.length > 1) return false;
+  const quantity = quantities[0];
+  let labelledMl: number | null = null;
+  if (quantity) {
+    const amount = quantity[1];
+    const unit = quantity[2];
+    if (!amount || !unit) return false;
+    const value = Number(amount.replace(",", "."));
+    labelledMl = unit === "l" || unit === "lt" ? value * 1000 : unit === "cl" ? value * 10 : value;
+  }
+  if (serving.ml !== null) {
+    if (labelledMl !== null && Math.abs(labelledMl - serving.ml) > 1) return false;
+    return serving.ml >= 400 && serving.ml <= 600;
+  }
+  if (!label || !/\b(?:media|medium)\b/u.test(label)) return false;
+  if (/\b(?:grande|large|pinta|pint)\b/u.test(label)) return false;
+  if (labelledMl !== null) return labelledMl >= 400 && labelledMl <= 600;
+  return true;
+}
+
 export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string | null {
   if (drinks.length === 0) {
     const found = mobileAllCount(venue);
@@ -422,7 +449,10 @@ export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string |
   const samples = (venue as WithMenu).mobileMenuSamples ?? [];
   for (const category of drinks) {
     const regular = samples.find(
-      (offer) => offer.category === category && offer.context.kind === "regular",
+      (offer) =>
+        offer.category === category &&
+        offer.context.kind === "regular" &&
+        (category !== "beer_draft" || isMediumDraftBeerServing(offer.serving)),
     );
     if (regular)
       return `${menuMoney(regular.amount_minor, regular.currency, regular.currency_exponent)} MENU`;

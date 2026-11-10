@@ -111,7 +111,7 @@ const MEDIUM_DRAFT =
   " (o.serving_ml IS NULL AND (" +
   [hasServingWord("media"), hasServingWord("medium")].join(" OR ") +
   ") AND " +
-  ["grande", "large", "pint"].map(lacksServingWord).join(" AND ") +
+  ["grande", "large", "pint", "pinta"].map(lacksServingWord).join(" AND ") +
   ")) AND " +
   ["piccola", "piccolo", "small", "mini"].map(lacksServingWord).join(" AND ");
 

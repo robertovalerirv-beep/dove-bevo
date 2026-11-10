@@ -429,6 +429,10 @@ describe("app-only named menu v2", () => {
         servingLabel: "media/grande",
         amount: 200,
       }),
+      addOffer("pint-ambiguous", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "media/pinta",
+        amount: 150,
+      }),
       addOffer("media", ITALY.key, ITALY.cell, sourceId, {
         servingLabel: "media",
         amount: 600,

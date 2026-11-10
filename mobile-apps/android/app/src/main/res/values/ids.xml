@@ -28,6 +28,11 @@
     <item name="remove_saved_venue" type="id" />
     <item name="location_help" type="id" />
     <item name="recommendation_entry" type="id" />
+    <item name="recommendation_area_screen" type="id" />
+    <item name="recommendation_area_status" type="id" />
+    <item name="recommendation_area_rows" type="id" />
+    <item name="recommendation_area_choose" type="id" />
+    <item name="recommendation_area_more" type="id" />
     <item name="recommendation_status" type="id" />
     <item name="recommendation_refresh" type="id" />
     <item name="recommendation_rows" type="id" />

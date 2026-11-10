@@ -28,6 +28,15 @@ final class SavedDrinkUi {
     }
 
     void show() {
+        show(null,-1);
+    }
+
+    void showExact(RecommendationDrink drink,int band){
+        if(drink==null||(band!=0&&band!=1))return;
+        show(drink,band);
+    }
+
+    private void show(RecommendationDrink selectedDrink,int selectedBand) {
         String identity=SavedVenueUrl.canonicalize(eligible.get());
         if(identity==null||activity.isFinishing()||activity.isDestroyed())return;
         dismiss();
@@ -36,8 +45,24 @@ final class SavedDrinkUi {
             if(request!=generation||shownEpoch!=epoch.getAsLong()||activity.isFinishing()||activity.isDestroyed()
                     ||!identity.equals(SavedVenueUrl.canonicalize(eligible.get())))return;
             if(venue==null||!identity.equals(venue.url)){message("Impossibile leggere il nome del locale. Riprova.");return;}
-            present(venue,request,shownEpoch);
+            if(selectedDrink==null)present(venue,request,shownEpoch);
+            else presentExact(venue,selectedDrink,selectedBand,request,shownEpoch);
         });
+    }
+
+    private void presentExact(SavedVenueCapture.Venue venue,RecommendationDrink drink,int band,long request,long shownEpoch){
+        String detail=NativePricePresentation.category(drink)+(band==1?" · Happy hour":" · Prezzo normale")+" · "+venue.name;
+        AlertDialog shown=new AlertDialog.Builder(activity).setTitle("Salva nei preferiti?")
+                .setMessage(detail+". Il prezzo si aggiorna quando sei online.")
+                .setPositiveButton("Salva",(dialog,which)->{
+                    if(request!=generation||shownEpoch!=epoch.getAsLong()||!venue.url.equals(SavedVenueUrl.canonicalize(eligible.get())))return;
+                    SavedDrinkStore.Result result=store.save(venue.url,venue.name,drink,band);
+                    message(result==SavedDrinkStore.Result.SAVED?"Drink salvato nei preferiti"
+                            :result==SavedDrinkStore.Result.FULL?"Puoi salvare fino a 50 drink":"Impossibile salvare il drink. Riprova.");
+                }).setNegativeButton("Annulla",null).create();
+        dialog=shown;
+        shown.setOnDismissListener(ignored->{if(dialog==shown){dialog=null;generation++;}});
+        shown.show();
     }
 
     private void present(SavedVenueCapture.Venue venue,long request,long shownEpoch) {

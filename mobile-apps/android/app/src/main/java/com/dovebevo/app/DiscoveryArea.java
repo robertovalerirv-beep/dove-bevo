@@ -9,7 +9,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** A bounded read of the existing public map, made only after a Home tap. No location permission. */
+/** A bounded read of the existing public map for native discovery and area recommendations. No location permission. */
 final class DiscoveryArea {
     final double lat,lon,zoom;
     DiscoveryArea(double lat,double lon,double zoom)throws IOException {

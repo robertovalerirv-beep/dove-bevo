@@ -60,4 +60,17 @@ public final class SavedMenuOfferTest {
         data.fail=true;assertEquals(SavedMenuOfferStore.Result.STORAGE_ERROR,store.remove(store.load().get(0)));assertArrayEquals(old,data.bytes);
         data.fail=false;data.bytes=new byte[]{1,2};assertThrows(IOException.class,store::load);assertEquals(SavedMenuOfferStore.Result.STORAGE_ERROR,store.save(first));
     }
+    @Test public void exactCustomerItemUsesAnIndependentPrivateStoreWithoutSavingItsPrice()throws Exception {
+        String key="c"+"a".repeat(64);
+        MenuV2Prices.Price report=new MenuV2Prices.Price(key,"Bar Milano","Spritz cliente","spritz",0,650,"EUR",2,"calice",250,true,"2026-11-03","Spese non verificate");
+        SavedMenuOfferStore.Entry item=SavedMenuOfferStore.verifiedCustomer(SavedVenueStore.reference(VENUE,"Bar Milano"),report);
+        assertNotNull(item);assertEquals(key,item.id);
+        assertNull(SavedMenuOfferStore.verified(item.venue,report));
+        assertNull(SavedMenuOfferStore.verifiedCustomer(item.venue,new MenuV2Prices.Price("short","Bar Milano","Spritz cliente","spritz",0,650,"EUR",2,"calice",250,true,"2026-11-03","")));
+        Memory customerFile=new Memory(),ownerFile=new Memory();SavedMenuOfferStore customers=new SavedMenuOfferStore(customerFile),owners=new SavedMenuOfferStore(ownerFile);
+        assertEquals(SavedMenuOfferStore.Result.SAVED,customers.save(item));
+        assertEquals(key,customers.load().get(0).id);assertTrue(owners.load().isEmpty());
+        String bytes=new String(customerFile.bytes,StandardCharsets.ISO_8859_1);
+        for(String forbidden:new String[]{"650","EUR","2026-11-03"})assertFalse(bytes.contains(forbidden));
+    }
 }

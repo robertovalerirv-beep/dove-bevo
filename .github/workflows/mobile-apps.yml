@@ -395,6 +395,7 @@ jobs:
         if: always()
         with:
           name: dove-bevo-ios
+          include-hidden-files: true
           path: |
             mobile-apps/ios/.build/DoveBevo.xcarchive
             mobile-apps/ios/.build/TestResults.xcresult

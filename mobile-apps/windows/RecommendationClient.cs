@@ -19,7 +19,7 @@ internal sealed class RecommendationClient
     [
         ("beer_draft", "Birra media"), ("spritz", "Spritz"), ("negroni", "Negroni"),
         ("sbagliato", "Sbagliato"), ("gin_tonic", "Gin tonic"),
-        ("gin_lemon", "Gin lemon"), ("wine_glass", "Calice di vino"),
+        ("gin_lemon", "Americano"), ("wine_glass", "Calice di vino"),
         ("alcohol_free", "Analcolico"), ("water", "Acqua")
     ];
     private static readonly Regex VoterPattern = new(

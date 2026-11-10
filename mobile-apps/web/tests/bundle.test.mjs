@@ -484,7 +484,7 @@ test("single drink dropdown switches map filters without lateral scroll", async 
     assert.equal(geometry.pageWidth, geometry.viewportWidth);
     await f.page.screenshot({ path: path.join(output, "map-drink-dropdown-fixture.png") });
     await beerMenu.getByRole("checkbox", { name: "Gin tonic", exact: true }).check({ force: true });
-    await beerMenu.getByRole("checkbox", { name: "Gin lemon", exact: true }).check({ force: true });
+    await beerMenu.getByRole("checkbox", { name: "Americano", exact: true }).check({ force: true });
     await beerMenu
       .getByRole("checkbox", { name: "Birra media", exact: true })
       .uncheck({ force: true });
@@ -494,7 +494,7 @@ test("single drink dropdown switches map filters without lateral scroll", async 
       true,
     );
     assert.equal(
-      await full.getByRole("checkbox", { name: "Gin lemon", exact: true }).isChecked(),
+      await full.getByRole("checkbox", { name: "Americano", exact: true }).isChecked(),
       true,
     );
     assert.equal(

@@ -60,7 +60,7 @@ export const DRINK_NAMES = [
   "Negroni",
   "Sbagliato",
   "Gin tonic",
-  "Gin lemon",
+  "Americano",
   "Calice di vino",
   "Analcolico",
   "Acqua",

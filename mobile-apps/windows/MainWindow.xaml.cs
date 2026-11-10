@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? favouritesCancellation;
     private bool saveBusy;
     private bool searchPending;
+    private string? pendingExactBookmark;
     private string lastTrustedUrl = NavigationPolicy.Home;
 
     public MainWindow() => InitializeComponent();
@@ -79,6 +80,9 @@ public partial class MainWindow : Window
         }
         if (Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri) && NavigationPolicy.IsTrusted(uri))
         {
+            if (pendingExactBookmark is not null &&
+                !NavigationPolicy.TrySaveAction(pendingExactBookmark, uri.AbsoluteUri, out _))
+                pendingExactBookmark = null;
             lastTrustedUrl = uri.AbsoluteUri;
             StatusText.Text = "Caricamento…";
             return;
@@ -98,6 +102,7 @@ public partial class MainWindow : Window
             try
             {
                 await AdvertiseNativeActionsAsync();
+                await HighlightPendingBookmarkAsync();
                 if (searchPending && ready)
                 {
                     searchPending = false;
@@ -124,6 +129,31 @@ public partial class MainWindow : Window
                 "(()=>{if(location.origin!=='https://www.dovebevo.com'||location.pathname!=='/mobile/'||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return false;window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeEuropeSave=true;window.dispatchEvent(new Event('dovebevo-native-ready'));return true})()");
             if (enabled == "true") return;
             await Task.Delay(150);
+        }
+    }
+
+    private async Task HighlightPendingBookmarkAsync()
+    {
+        if (!ready || pendingExactBookmark is not { } action) return;
+        var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory,
+            "ExactFavouriteFocus.js"));
+        script = script.Replace("__DOVE_BEVO_EXACT_TARGET__", JsonSerializer.Serialize(action),
+            StringComparison.Ordinal);
+        for (var attempt = 0; attempt < 40; attempt++)
+        {
+            if (!ready || pendingExactBookmark != action) return;
+            if (await Website.CoreWebView2.ExecuteScriptAsync(script) == "true")
+            {
+                pendingExactBookmark = null;
+                StatusText.Text = "Il drink esatto salvato è evidenziato nel locale.";
+                return;
+            }
+            await Task.Delay(250);
+        }
+        if (pendingExactBookmark == action)
+        {
+            pendingExactBookmark = null;
+            StatusText.Text = "Il drink esatto salvato non è disponibile nel locale ora.";
         }
     }
 
@@ -211,8 +241,9 @@ public partial class MainWindow : Window
             ? Visibility.Visible : Visibility.Hidden;
     }
 
-    private void Navigate(string address)
+    private void Navigate(string address, string? exactBookmark = null)
     {
+        pendingExactBookmark = exactBookmark;
         favouritesCancellation?.Cancel();
         recommendationCancellation?.Cancel();
         CloseDiscovery();
@@ -237,7 +268,7 @@ public partial class MainWindow : Window
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ErrorPanel.Visibility = Visibility.Collapsed;
         ShowWebsiteIfNoOverlay();
-        if (!ready || Website.Source?.AbsolutePath is not "/mobile/") Navigate(NavigationPolicy.Home);
+        if (!ready || !NavigationPolicy.IsMapRoute(Website.Source)) Navigate(NavigationPolicy.Home);
         UpdateButtons();
     }
     private void More_Click(object sender, RoutedEventArgs e)
@@ -430,8 +461,11 @@ public partial class MainWindow : Window
             {
                 "offer" => NavigationPolicy.TryOfferVenue(venueUrl, action.VenueKey, action.Item,
                     out focused),
-                "legacy" or "europe" => NavigationPolicy.TryFocusedVenue(venueUrl, action.VenueKey,
+                "legacy" => NavigationPolicy.TryFocusedVenue(venueUrl, action.VenueKey,
                     action.Item, action.Band == "happy_hour" ? 1 : 0, out focused),
+                "europe" => NavigationPolicy.TryVenue(
+                    $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{action.VenueKey}&c={action.Cell}",
+                    action.VenueKey, out focused),
                 "customer" => NavigationPolicy.TryVenue(
                     $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{action.VenueKey}&c={action.Cell}",
                     action.VenueKey, out focused),
@@ -539,7 +573,13 @@ public partial class MainWindow : Window
 
     private void OpenFavourite_Click(object sender, RoutedEventArgs e)
     {
-        if (FavouriteList.SelectedItem is BookmarkView item) Navigate(item.Bookmark.Url);
+        if (FavouriteList.SelectedItem is not BookmarkView item) return;
+        var bookmark = item.Bookmark;
+        if (bookmark.ActionUrl is not null &&
+            NavigationPolicy.TryExactEuropeVenue(bookmark.ActionUrl, bookmark.Url, out var exactVenue) &&
+            exactVenue is not null)
+            Navigate(exactVenue.AbsoluteUri, bookmark.ActionUrl);
+        else Navigate(bookmark.Url);
     }
 
     private void RemoveFavourite_Click(object sender, RoutedEventArgs e)

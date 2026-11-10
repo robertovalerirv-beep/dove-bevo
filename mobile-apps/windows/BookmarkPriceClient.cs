@@ -57,6 +57,12 @@ internal sealed class BookmarkPriceClient
         if (root.GetProperty("schema_version").GetInt32() != 1 ||
             root.GetProperty("catalog_version").GetString() != version)
             throw new InvalidDataException("European price version mismatch");
+        // A row cannot make a moderated or legacy-overridden venue available.
+        if (root.GetProperty("hidden").EnumerateArray().Any(key =>
+                key.GetString() == action.VenueKey) ||
+            root.GetProperty("legacy_venues").EnumerateArray().Any(key =>
+                key.GetString() == action.VenueKey))
+            throw new InvalidDataException("European venue is excluded");
         string? value = null;
         foreach (var row in root.GetProperty("rows").EnumerateArray())
         {

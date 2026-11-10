@@ -20,6 +20,11 @@ foreach (var address in trusted)
     Require(NavigationPolicy.IsTrusted(new Uri(address)), "trusted origin rejected");
 foreach (var address in untrusted)
     Require(!NavigationPolicy.IsTrusted(new Uri(address)), "untrusted origin accepted");
+Require(NavigationPolicy.IsMapRoute(new Uri(NavigationPolicy.Home)) &&
+    NavigationPolicy.IsMapRoute(new Uri(NavigationPolicy.Home + "?at=51.50720,-0.12760")) &&
+    !NavigationPolicy.IsMapRoute(new Uri(
+        "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9")),
+    "Mappa must close a venue route and retain actual map routes");
 
 var venues = new[]
 {
@@ -74,6 +79,12 @@ Require(NavigationPolicy.TrySaveAction(euroVenue +
         euroVenue, out var euroAction)
     && euroAction is { Kind: "europe", Item: "beer_draft", Currency: "GBP", Serving: "ml:568" },
     "exact GBP beer action rejected");
+Require(NavigationPolicy.TryExactEuropeVenue(euroAction!.CommandUrl, euroVenue, out var exactEuropeVenue)
+    && exactEuropeVenue?.AbsoluteUri == euroVenue &&
+    !exactEuropeVenue.Query.Contains("drink=", StringComparison.Ordinal),
+    "exact European bookmark must reopen the venue without ambiguous drink focus");
+Require(!NavigationPolicy.TryExactEuropeVenue(legacyCommand, baseVenue, out _),
+    "Italian drink mistaken for a European exact bookmark");
 foreach (var invalid in new[] {
     baseVenue + "&save_drink=spritz&band=normal&extra=1",
     baseVenue + "&save_drink=spritz&band=normal&band=normal",
@@ -103,6 +114,10 @@ try
         legacyCommand);
     Require(store.Add(exact) && !store.Add(exact) && new BookmarkStore(storeFile).Items.Count == 3,
         "native exact drink action not retained once");
+    var exactEurope = new Bookmark(europeKey, "London Bar", "Birra 568 ml", euroVenue,
+        euroAction.CommandUrl);
+    Require(store.Add(exactEurope) && new BookmarkStore(storeFile).Items.Count == 4,
+        "exact European serving and currency bookmark not retained");
 }
 finally
 {
@@ -171,20 +186,31 @@ using var customerPriceJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
 }));
 Require(BookmarkPriceClient.ParseCustomer(customerPriceJson, customerAction!).Price?.Contains("5,70 €") == true,
     "exact customer drink price missing");
-using var europePriceJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
-    schema_version = 1, catalog_version = "test-version",
-    rows = new[] {
+var europeRows = new[] {
         new { venue = europeKey, cell = "u0nd9", drink = "beer_draft", hh = 1,
             currency = "GBP", serving = new { unit = "ml", ml = (int?)568 },
             amount_minor = 650, status = "active" },
         new { venue = europeKey, cell = "u0nd9", drink = "beer_draft", hh = 0,
             currency = "GBP", serving = new { unit = "ml", ml = (int?)568 },
             amount_minor = 550, status = "active" },
-    },
+    };
+using var europePriceJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 1, catalog_version = "test-version", rows = europeRows,
+    hidden = Array.Empty<string>(), legacy_venues = Array.Empty<string>(),
 }));
 Require(BookmarkPriceClient.ParseEurope(europePriceJson, euroAction!, "test-version")?.Contains("6,50 £") == true,
     "exact GBP serving and happy-hour price missing");
 ExpectInvalid(() => BookmarkPriceClient.ParseEurope(europePriceJson, euroAction!, "wrong-version"));
+using var hiddenEuropeJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 1, catalog_version = "test-version", rows = europeRows,
+    hidden = new[] { europeKey }, legacy_venues = Array.Empty<string>(),
+}));
+using var overriddenEuropeJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 1, catalog_version = "test-version", rows = europeRows,
+    hidden = Array.Empty<string>(), legacy_venues = new[] { europeKey },
+}));
+ExpectInvalid(() => BookmarkPriceClient.ParseEurope(hiddenEuropeJson, euroAction!, "test-version"));
+ExpectInvalid(() => BookmarkPriceClient.ParseEurope(overriddenEuropeJson, euroAction!, "test-version"));
 var menu = new
 {
     schema_version = 2,

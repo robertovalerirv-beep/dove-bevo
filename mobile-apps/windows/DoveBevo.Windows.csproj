@@ -15,6 +15,7 @@
     <Content Include="SearchClick.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="MapAreaReader.js" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="SaveLinkCapture.js" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="ExactFavouriteFocus.js" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

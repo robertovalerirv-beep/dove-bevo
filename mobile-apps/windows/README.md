@@ -14,6 +14,10 @@ that price cannot be verified. It never converts GBP to EUR. Consigliati is a
 read-only list of the public drink votes in the selected map area. To cast or
 remove a vote, use the 👍 beside that drink in its venue sheet. The native
 Windows client itself sends no vote POST.
+For European favourites, opening the venue highlights only the saved drink's
+exact currency and serving. If that live row is gone, it says so instead of
+focusing another serving. Moderated or legacy-overridden European venues do
+not reveal a price in Preferiti.
 
 The native Save action requires a visible link in the active venue sheet and
 checks its exact venue, drink, time band, currency and serving before storage.
@@ -42,6 +46,7 @@ dotnet run --project mobile-apps/windows/tests/PolicySmoke/PolicySmoke.csproj -c
 node --check mobile-apps/windows/SaveLinkCapture.js
 node --test mobile-apps/windows/tests/search-click.test.mjs
 node --test mobile-apps/windows/tests/save-link-capture.test.mjs
+node --test mobile-apps/windows/tests/exact-favourite-focus.test.mjs
 node --test mobile-apps/windows/tests/shell-contract.test.mjs
 node --test mobile-apps/windows/tests/map-area-reader.test.mjs
 & mobile-apps/windows/tests/PackageVersionSmoke.ps1

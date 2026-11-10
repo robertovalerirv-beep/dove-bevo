@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace DoveBevo.Windows;
@@ -15,6 +16,21 @@ internal static partial class NavigationPolicy
                 || uri.DnsSafeHost.Equals("dovebevo.com", StringComparison.OrdinalIgnoreCase))
             && uri.Port == 443
             && uri.UserInfo.Length == 0;
+    }
+
+    internal static bool IsMapRoute(Uri? uri)
+    {
+        if (!IsTrusted(uri) || uri is null || uri.AbsolutePath != "/mobile/" ||
+            uri.Fragment.Length != 0) return false;
+        if (uri.Query.Length == 0) return true;
+        var query = ParseQuery(uri.Query);
+        if (query is not { Count: 1 } || !query.TryGetValue("at", out var at)) return false;
+        var pair = at.Split(',');
+        return pair.Length == 2 &&
+            double.TryParse(pair[0], NumberStyles.Float, CultureInfo.InvariantCulture,
+                out var latitude) && latitude is >= -90 and <= 90 &&
+            double.TryParse(pair[1], NumberStyles.Float, CultureInfo.InvariantCulture,
+                out var longitude) && longitude is >= -180 and <= 180;
     }
 
     internal static bool TryVenue(string? address, string? selectedKey, out Uri? canonical)
@@ -136,6 +152,15 @@ internal static partial class NavigationPolicy
         if (kind is null || item is null) return false;
         action = new SaveAction(key, cell, kind, item, band, currency, serving, uri.AbsoluteUri);
         return true;
+    }
+
+    internal static bool TryExactEuropeVenue(string? actionUrl, string? bookmarkUrl, out Uri? venue)
+    {
+        venue = null;
+        if (!TrySaveAction(actionUrl, bookmarkUrl, out var action) || action?.Kind != "europe")
+            return false;
+        var route = $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{action.VenueKey}&c={action.Cell}";
+        return TryVenue(route, action.VenueKey, out venue);
     }
 
     private static bool SameVenue(Uri current, string key, string cell)

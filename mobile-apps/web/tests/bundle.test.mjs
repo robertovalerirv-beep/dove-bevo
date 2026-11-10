@@ -348,6 +348,14 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     }
     if (/^\/api\/mobile\/v2\/menu\//.test(url.pathname))
       return route.fulfill({ status: 404, body: "Not found" });
+    if (/^\/api\/mobile\/v2\/customer-prices\/venues\//.test(url.pathname)) {
+      options.customerGets?.push(url.pathname);
+      if (options.failCustomerGets > 0) {
+        options.failCustomerGets -= 1;
+        return route.fulfill({ status: 503, body: "Customer reports unavailable" });
+      }
+      if (options.customerMissing) return route.fulfill({ status: 404, body: "Not found" });
+    }
     if (
       options.customerEmpty &&
       /^\/api\/mobile\/v2\/customer-prices\/venues\//.test(url.pathname)
@@ -389,7 +397,9 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
     if (/^\/api\/venues\/n123\/prices$/.test(url.pathname))
       return route.fulfill({
         json: {
-          p: rows.filter((r) => r[0] === "n123" && !(options.noSpritzLegacy && r[1] === "spritz")),
+          p: options.noLegacyPrices
+            ? []
+            : rows.filter((r) => r[0] === "n123" && !(options.noSpritzLegacy && r[1] === "spritz")),
           h: [],
         },
       });
@@ -1288,12 +1298,112 @@ test("empty menu-linked customer section does not deny an existing legacy price"
       /Birra media[\s\S]*5,00/,
     );
     const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
-    await customer.getByText("Nessun altro prezzo segnalato per i drink del menu.").waitFor();
+    await customer.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    assert.match(await customer.getAttribute("class"), /mobile-customer-v2--compact/);
+    assert.equal(await customer.getByText(/Nessun altro prezzo segnalato/).count(), 0);
     await f.page.goto(
       "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fmaaaaaaaaaaaaaaaaaaaaaaaa&c=u0nd9",
     );
     await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
-    await customer.getByText("Nessun prezzo segnalato per i drink del menu.").waitFor();
+    await customer.getByRole("button", { name: "Aggiungi un drink mancante" }).waitFor();
+    assert.equal(
+      await customer.getByText(/Nessun prezzo segnalato per i drink del menu/).count(),
+      0,
+    );
+    assert.match(
+      await f.page.getByRole("region", { name: "Prezzi dal menu online" }).innerText(),
+      /7,50/,
+    );
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("missing customer-report route does not obscure a documented menu price", async () => {
+  const f = await fixture(
+    { width: 390, height: 700 },
+    { menu: true, staticMenu: true, noLegacyPrices: true, customerMissing: true },
+  );
+  try {
+    const missingReport = f.page.waitForResponse((response) =>
+      response.url().includes("/api/mobile/v2/customer-prices/venues/"),
+    );
+    await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+    assert.equal((await missingReport).status(), 404);
+    const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
+    await menu.waitFor();
+    assert.match(await menu.innerText(), /Spritz speciale[\s\S]*7,50/);
+    const customer = f.page.locator(".mobile-customer-v2");
+    await customer.waitFor({ state: "attached" });
+    await customer.getByText("Caricamento segnalazioni…").waitFor({ state: "hidden" });
+    assert.equal(await customer.isVisible(), false);
+    assert.equal(await customer.getByText(/non sono ancora disponibili qui/).count(), 0);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("customer-report failure is compact beside existing prices and retries without losing them", async () => {
+  const options = {
+    menu: true,
+    staticMenu: true,
+    customerEmpty: true,
+    failCustomerGets: 1,
+    customerGets: [],
+  };
+  const f = await fixture({ width: 320, height: 700 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+    const price = f.page.locator(".prices .price").filter({ hasText: "Birra media" }).first();
+    await price.waitFor();
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    const warning = customer.locator(".mobile-customer-v2__load-warning");
+    await warning.waitFor();
+    assert.match(await warning.innerText(), /Altre segnalazioni dei clienti non disponibili/);
+    assert.equal(
+      await customer.getAttribute("class"),
+      "mobile-customer-v2 mobile-customer-v2--compact",
+    );
+    assert.equal(await customer.locator(".mobile-menu-v2__error").count(), 0);
+    assert.match(await price.innerText(), /5,00/);
+    const warningBox = await warning.boundingBox();
+    assert.ok(warningBox && warningBox.height <= 70, JSON.stringify(warningBox));
+    await warning.scrollIntoViewIfNeeded();
+    await f.page.screenshot({
+      path: path.join(output, "app-customer-reports-partial-outage-320-fixture.png"),
+    });
+    await warning.getByRole("button", { name: "Riprova" }).click();
+    await warning.waitFor({ state: "hidden" });
+    assert.equal(options.customerGets.length, 2);
+    assert.match(await price.innerText(), /5,00/);
+    assert.equal(await customer.getByText(/Nessun altro prezzo segnalato/).count(), 0);
+    assert.deepEqual(f.writes, []);
+    assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("customer-report outage remains clear and retryable when no price is visible", async () => {
+  const f = await fixture(
+    { width: 390, height: 700 },
+    { noLegacyPrices: true, failCustomerGets: 1 },
+  );
+  f.page.setDefaultTimeout(5000);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+    const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
+    const error = customer.locator(".mobile-menu-v2__error");
+    await error.waitFor();
+    assert.match(
+      await error.innerText(),
+      /Non riusciamo a caricare i prezzi segnalati dai clienti/,
+    );
+    assert.equal(await error.getByRole("button", { name: "Riprova" }).isEnabled(), true);
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {
@@ -1347,7 +1457,7 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
         `Summary overlaps Add at ${width}px: ${JSON.stringify({ card, note, add, locate })}`,
       );
       assert.ok(
-        locate.y + locate.height + 8 <= add.y,
+        locate.x + locate.width + 8 <= add.x && Math.abs(locate.y - add.y) <= 2,
         `Locate overlaps Add at ${width}px: ${JSON.stringify({ card, note, add, locate })}`,
       );
       assert.ok(
@@ -1863,7 +1973,8 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     const attribution = await f.page.locator(".map__attribution").boundingBox();
     assert.ok(status && actionBox && locate && attribution);
     assert.ok(status.y + status.height + 8 <= actionBox.y, "Add must clear coverage card");
-    assert.ok(locate.y + locate.height <= actionBox.y, "Add must clear locate control");
+    assert.ok(locate.x + locate.width + 8 <= actionBox.x, "Locate belongs left of Add");
+    assert.ok(Math.abs(locate.y - actionBox.y) <= 2, "Locate and Add share the lower map row");
     assert.ok(actionBox.y + actionBox.height + 8 <= attribution.y, "Add clears attribution");
     assert.ok(
       map.y + map.height - (actionBox.y + actionBox.height) <= attribution.height + 20,
@@ -1890,15 +2001,22 @@ test("app map actions reclaim the footer and retain both contribution routes", a
       const add = await toggle.boundingBox();
       const legal = await f.page.locator(".map__attribution").boundingBox();
       const currentMap = await f.page.locator("section.map").boundingBox();
-      assert.ok(legend && add && legal && currentMap);
+      const locateAtWidth = await f.page.locator(".top__row > .icon-btn").boundingBox();
+      assert.ok(legend && add && legal && currentMap && locateAtWidth);
       assert.ok(legend.y + legend.height + 12 <= add.y, `Legend clears Add at ${width}px`);
       assert.ok(add.y + add.height + 8 <= legal.y, `Add clears attribution at ${width}px`);
+      assert.ok(locateAtWidth.x >= currentMap.x && locateAtWidth.x <= currentMap.x + 16);
+      assert.ok(locateAtWidth.x + locateAtWidth.width + 8 <= add.x);
+      assert.ok(Math.abs(locateAtWidth.y - add.y) <= 2);
+      assert.ok(locateAtWidth.y + locateAtWidth.height + 8 <= legal.y);
       assert.ok(
         legend.y >= currentMap.y + currentMap.height / 2,
         `Legend stays at the lower map edge at ${width}px`,
       );
       if (width === 320)
         await f.page.screenshot({ path: path.join(output, "app-map-controls-320-fixture.png") });
+      if (width === 390)
+        await f.page.screenshot({ path: path.join(output, "app-map-controls-390-fixture.png") });
     }
     await f.page.setViewportSize({ width: 430, height: 700 });
     await f.page.screenshot({
@@ -1918,8 +2036,8 @@ test("app map actions reclaim the footer and retain both contribution routes", a
       const locateButton = await f.page.locator(".top__row > .icon-btn").boundingBox();
       assert.ok(addVenue && locateButton);
       assert.ok(
-        addVenue.x + addVenue.width <= locateButton.x,
-        `Expanded Add menu must clear locate control at ${width}px`,
+        locateButton.x + locateButton.width + 8 <= addVenue.x,
+        `Expanded Add menu must clear lower-left locate control at ${width}px`,
       );
       const hit = await f.page.evaluate(
         ({ x, y }) =>

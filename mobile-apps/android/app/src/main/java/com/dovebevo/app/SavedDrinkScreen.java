@@ -22,11 +22,11 @@ import java.util.function.Supplier;
 
 /** Read-only live comparison of independent local drink choices. */
 final class SavedDrinkScreen {
-    private final Activity activity;private final SavedDrinkStore store;private final SavedMenuOfferStore offerStore,customerStore;private final FavoritesLoader loader;private final MenuV2Loader menuLoader;
+    private final Activity activity;private final SavedDrinkStore store;private final SavedMenuOfferStore offerStore,customerStore;private final SavedEuropeDrinkStore europeStore;private final FavoritesLoader loader,europeLoader;private final MenuV2Loader menuLoader;
     private final Consumer<String> navigate;private final Supplier<Boolean> foreground;private final SavedVenueStore legacyStore;
     private final LinearLayout view,rows;private final TextView status;private final Spinner categoryFilter;
-    private List<SavedMenuOfferStore.Entry> offers=Collections.emptyList(),customerOffers=Collections.emptyList();private List<SavedDrinkStore.Entry> saved=Collections.emptyList();private List<SavedVenueStore.Venue> legacy=Collections.emptyList();private Map<String,FavoriteComparison.Cell> cells=Collections.emptyMap();private Map<String,MenuV2Prices.Venue> menus=Collections.emptyMap();
-    private boolean visible,closed,busy,menuBusy,legacyFailed;private long generation;private FavoritesLoader.Batch request;private MenuV2Loader.Batch menuRequest;private AlertDialog migrationDialog;
+    private List<SavedMenuOfferStore.Entry> offers=Collections.emptyList(),customerOffers=Collections.emptyList();private List<SavedEuropeDrinkStore.Entry> europe=Collections.emptyList();private List<SavedDrinkStore.Entry> saved=Collections.emptyList();private List<SavedVenueStore.Venue> legacy=Collections.emptyList();private Map<String,FavoriteComparison.Cell> cells=Collections.emptyMap(),europeCells=Collections.emptyMap();private Map<String,MenuV2Prices.Venue> menus=Collections.emptyMap();
+    private boolean visible,closed,busy,menuBusy,europeBusy,legacyFailed;private long generation;private FavoritesLoader.Batch request,europeRequest;private MenuV2Loader.Batch menuRequest;private AlertDialog migrationDialog;
 
     SavedDrinkScreen(Activity activity,SavedDrinkStore store,FavoritesLoader loader,Consumer<String> navigate,Supplier<Boolean> foreground) {
         this(activity,store,loader,navigate,foreground,null);
@@ -41,7 +41,10 @@ final class SavedDrinkScreen {
         this(activity,store,loader,navigate,foreground,legacyStore,menuLoader,offerStore,null);
     }
     SavedDrinkScreen(Activity activity,SavedDrinkStore store,FavoritesLoader loader,Consumer<String> navigate,Supplier<Boolean> foreground,SavedVenueStore legacyStore,MenuV2Loader menuLoader,SavedMenuOfferStore offerStore,SavedMenuOfferStore customerStore) {
-        this.activity=activity;this.store=store;this.offerStore=offerStore;this.customerStore=customerStore;this.loader=loader;this.menuLoader=menuLoader;this.navigate=navigate;this.foreground=foreground;this.legacyStore=legacyStore;
+        this(activity,store,loader,navigate,foreground,legacyStore,menuLoader,offerStore,customerStore,null);
+    }
+    SavedDrinkScreen(Activity activity,SavedDrinkStore store,FavoritesLoader loader,Consumer<String> navigate,Supplier<Boolean> foreground,SavedVenueStore legacyStore,MenuV2Loader menuLoader,SavedMenuOfferStore offerStore,SavedMenuOfferStore customerStore,SavedEuropeDrinkStore europeStore) {
+        this.activity=activity;this.store=store;this.offerStore=offerStore;this.customerStore=customerStore;this.europeStore=europeStore;this.loader=loader;this.europeLoader=europeStore==null?null:new FavoritesLoader(new FavoritePricesClient(),task->new android.os.Handler(android.os.Looper.getMainLooper()).post(task),true);this.menuLoader=menuLoader;this.navigate=navigate;this.foreground=foreground;this.legacyStore=legacyStore;
         view=new LinearLayout(activity);view.setOrientation(LinearLayout.VERTICAL);view.setTag("drink_favourites_pane");
         view.addView(text("Drink salvati su questo dispositivo. Confronta i prezzi per drink; valuta e formato restano separati.",15));
         categoryFilter=new Spinner(activity);categoryFilter.setTag("drink_favourites_filter");categoryFilter.setContentDescription("Filtra i drink preferiti");
@@ -55,25 +58,31 @@ final class SavedDrinkScreen {
     }
     View view(){return view;}
     void show(){if(closed)return;visible=true;refresh();}
-    void hide(){visible=false;retire();cells=Collections.emptyMap();menus=Collections.emptyMap();if(migrationDialog!=null){migrationDialog.dismiss();migrationDialog=null;}}
-    void pause(){retire();cells=Collections.emptyMap();menus=Collections.emptyMap();if(visible){status.setText("Aggiornamento in pausa");render();}}
+    void hide(){visible=false;retire();cells=Collections.emptyMap();europeCells=Collections.emptyMap();menus=Collections.emptyMap();if(migrationDialog!=null){migrationDialog.dismiss();migrationDialog=null;}}
+    void pause(){retire();cells=Collections.emptyMap();europeCells=Collections.emptyMap();menus=Collections.emptyMap();if(visible){status.setText("Aggiornamento in pausa");render();}}
     void resume(){if(visible&&!closed)refresh();}
-    void close(){closed=true;hide();loader.close();if(menuLoader!=null)menuLoader.close();}
+    void close(){closed=true;hide();loader.close();if(europeLoader!=null)europeLoader.close();if(menuLoader!=null)menuLoader.close();}
     private boolean usable(){return visible&&!closed&&foreground.get()&&!activity.isFinishing()&&!activity.isDestroyed();}
-    boolean canRefresh(){return usable()&&!busy&&!menuBusy;}
-    private void retire(){generation++;if(request!=null)request.cancel();if(menuRequest!=null)menuRequest.cancel();request=null;menuRequest=null;busy=false;menuBusy=false;}
+    boolean canRefresh(){return usable()&&!busy&&!menuBusy&&!europeBusy;}
+    private void retire(){generation++;if(request!=null)request.cancel();if(europeRequest!=null)europeRequest.cancel();if(menuRequest!=null)menuRequest.cancel();request=null;europeRequest=null;menuRequest=null;busy=false;europeBusy=false;menuBusy=false;}
     void refresh(){
-        if(!usable())return;retire();long token=generation;cells=Collections.emptyMap();menus=Collections.emptyMap();
+        if(!usable())return;retire();long token=generation;cells=Collections.emptyMap();europeCells=Collections.emptyMap();menus=Collections.emptyMap();
         if(legacyStore!=null){try{legacy=legacyStore.load();legacyFailed=false;}catch(IOException unavailable){legacy=Collections.emptyList();legacyFailed=true;}}
-        try{saved=store.load();offers=offerStore==null?Collections.emptyList():offerStore.load();customerOffers=customerStore==null?Collections.emptyList():customerStore.load();}
-        catch(IOException unavailable){saved=Collections.emptyList();offers=Collections.emptyList();customerOffers=Collections.emptyList();status.setText("Impossibile leggere i drink salvati. Nessun dato modificato.");render();return;}
-        if(saved.isEmpty()&&offers.isEmpty()&&customerOffers.isEmpty()){status.setText(legacy.isEmpty()?"Non hai ancora salvato drink. Apri un locale sulla mappa e tocca Preferiti accanto al drink.":"Hai locali salvati in precedenza: scegli un drink qui sotto per conservarli.");render();return;}
+        try{saved=store.load();offers=offerStore==null?Collections.emptyList():offerStore.load();customerOffers=customerStore==null?Collections.emptyList():customerStore.load();europe=europeStore==null?Collections.emptyList():europeStore.load();}
+        catch(IOException unavailable){saved=Collections.emptyList();offers=Collections.emptyList();customerOffers=Collections.emptyList();europe=Collections.emptyList();status.setText("Impossibile leggere i drink salvati. Nessun dato modificato.");render();return;}
+        if(saved.isEmpty()&&offers.isEmpty()&&customerOffers.isEmpty()&&europe.isEmpty()){status.setText(legacy.isEmpty()?"Non hai ancora salvato drink. Apri un locale sulla mappa e tocca Preferiti accanto al drink.":"Hai locali salvati in precedenza: scegli un drink qui sotto per conservarli.");render();return;}
         List<SavedVenueStore.Venue> legacyVenues=new ArrayList<>();for(SavedDrinkStore.Entry item:saved)legacyVenues.add(item.venue);
         List<SavedVenueStore.Venue> venues=new ArrayList<>(legacyVenues);for(SavedMenuOfferStore.Entry item:offers)venues.add(item.venue);for(SavedMenuOfferStore.Entry item:customerOffers)venues.add(item.venue);
         if(!legacyVenues.isEmpty()){
             busy=true;status.setText("Aggiornamento prezzi...");render();
             try{request=loader.load(legacyVenues,value->{if(token!=generation||!usable())return;request=null;busy=false;cells=value;status.setText("Prezzi disponibili aggiornati");render();});}
             catch(IOException unavailable){busy=false;status.setText("Prezzi non disponibili. I drink salvati restano sul dispositivo.");render();}
+        }
+        if(europeLoader!=null&&!europe.isEmpty()){
+            List<SavedVenueStore.Venue> venuesForEurope=new ArrayList<>();for(SavedEuropeDrinkStore.Entry item:europe)venuesForEurope.add(item.venue);
+            europeBusy=true;status.setText("Aggiornamento prezzi...");render();
+            try{europeRequest=europeLoader.load(venuesForEurope,value->{if(token!=generation||!usable())return;europeRequest=null;europeBusy=false;europeCells=value;status.setText("Prezzi disponibili aggiornati");render();});}
+            catch(IOException unavailable){europeBusy=false;status.setText("Prezzi non disponibili. I drink salvati restano sul dispositivo.");render();}
         }
         if(menuLoader!=null){
             menuBusy=true;render();
@@ -184,7 +193,30 @@ final class SavedDrinkScreen {
             remove.setTag("customer_drink_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+item.name+" - "+item.venue.label);card.addView(remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
         }
-        if(values.isEmpty()&&visibleOffers==0&&visibleCustomers==0&&(!saved.isEmpty()||!offers.isEmpty()||!customerOffers.isEmpty()))rows.addView(text("Nessun drink salvato per questa scelta.",15));
+        int visibleEurope=0;
+        for(SavedEuropeDrinkStore.Entry item:europe){
+            if(filter>=0&&filter<RecommendationDrink.values().length&&item.drink!=RecommendationDrink.values()[filter])continue;
+            visibleEurope++;
+            FavoriteComparison.Cell cell=null;try{cell=europeCells.get(FavoriteComparison.cell(item.venue.url));}catch(IOException invalid){/* The private file reader already validated this URL. */}
+            EuropePrices.Price current=SavedEuropeDrinkStore.current(item,cell);
+            LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);NativeAppearance.card(card);card.setTag("europe_drink_favourite_"+item.key());
+            TextView title=text(NativePricePresentation.category(item.drink)+" - "+item.venue.label,18);NativeAppearance.title(title);card.addView(title);
+            card.addView(text((item.band==1?"Happy hour":"Prezzo normale")+" · "+item.serving.label()+" · "+item.currency,15));
+            if(current!=null){
+                TextView amount=text(NativePricePresentation.amount(null,current),22);NativeAppearance.price(amount);card.addView(amount);
+                card.addView(text(NativePricePresentation.context(current),15));
+                if(current.old)card.addView(text(current.sourceKind.equals("online_menu")?NativePricePresentation.menuWarning():activity.getString(R.string.favorites_old),15));
+            }else card.addView(text(europeBusy?"Caricamento del prezzo online...":"Prezzo non disponibile ora per questo drink, formato e valuta. Il preferito resta salvato.",15));
+            Button open=button("Apri "+NativePricePresentation.category(item.drink),()->{if(usable()&&containsEurope(item.key()))navigate.accept(item.focusedUrl());});
+            open.setTag("europe_drink_favourite_open");NativeAppearance.button(open,true);card.addView(open);
+            Button remove=button("Rimuovi questo drink",()->{if(!usable()||!containsEurope(item.key())||europeStore==null)return;
+                retire();SavedEuropeDrinkStore.Result result=europeStore.remove(item);
+                if(result==SavedEuropeDrinkStore.Result.REMOVED||result==SavedEuropeDrinkStore.Result.NOT_FOUND)refresh();
+                else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});
+            remove.setTag("europe_drink_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+NativePricePresentation.category(item.drink)+" - "+item.venue.label+" - "+item.serving.label());card.addView(remove);
+            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
+        }
+        if(values.isEmpty()&&visibleOffers==0&&visibleCustomers==0&&visibleEurope==0&&(!saved.isEmpty()||!offers.isEmpty()||!customerOffers.isEmpty()||!europe.isEmpty()))rows.addView(text("Nessun drink salvato per questa scelta.",15));
         if(legacyFailed)rows.addView(text("Vecchi locali non disponibili. Riprova piu tardi; nessun dato e stato modificato.",15));
         if(legacyStore!=null&&!legacy.isEmpty()){
             TextView heading=text("Locali salvati prima - scegli un drink",19);NativeAppearance.title(heading);if(Build.VERSION.SDK_INT>=28)heading.setAccessibilityHeading(true);rows.addView(heading);
@@ -223,6 +255,7 @@ final class SavedDrinkScreen {
     private boolean contains(String key){for(SavedDrinkStore.Entry item:saved)if(item.key().equals(key))return true;return false;}
     private boolean containsOffer(String key){for(SavedMenuOfferStore.Entry item:offers)if(item.key().equals(key))return true;return false;}
     private boolean containsCustomer(String key){for(SavedMenuOfferStore.Entry item:customerOffers)if(item.key().equals(key))return true;return false;}
+    private boolean containsEurope(String key){for(SavedEuropeDrinkStore.Entry item:europe)if(item.key().equals(key))return true;return false;}
     private TextView text(String value,int size){TextView t=new TextView(activity);t.setText(value);t.setTextSize(size);t.setTextColor(activity.getColor(R.color.shell_text));t.setPadding(0,dp(4),0,dp(4));return t;}
     private Button button(String label,Runnable action){Button b=new Button(activity);b.setText(label);b.setContentDescription(label);NativeAppearance.button(b,false);b.setOnClickListener(v->action.run());return b;}
     private int dp(int value){return Math.round(value*activity.getResources().getDisplayMetrics().density);}

@@ -24,6 +24,10 @@ final class FavoritePricesClient {
     FavoritePricesClient(){this(new HttpsTransport(),FavoriteDay::today);}
     FavoritePricesClient(Transport transport,Supplier<String> today){this.transport=transport;this.today=today;europe=new EuropePricesClient(transport,today);menu=new MenuV2Prices(transport);}
     EuropePrices.Catalog catalog(Call call)throws IOException{return europe.catalog(call);}
+    FavoriteComparison.Cell europeCell(String cell,EuropePrices.Catalog catalog,Call call)throws IOException{
+        EuropePrices.cell(cell);if(catalog==null||!catalog.containsCell(cell))return null;
+        return FavoriteComparison.withEurope(null,europe.cell(cell,catalog,call));
+    }
     MenuV2Prices.Cell menuCell(String cell,Call call)throws IOException{return menu.loadCell(cell,call);}
     FavoriteComparison.Cell cell(String cell,String version,boolean needsStatic,EuropePrices.Catalog catalog,Call call)throws IOException{
         EuropePrices.cell(cell);

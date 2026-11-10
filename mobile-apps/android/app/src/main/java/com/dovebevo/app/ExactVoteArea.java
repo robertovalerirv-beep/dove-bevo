@@ -40,7 +40,7 @@ final class ExactVoteArea {
     static String endpoint(List<String> cells,String after)throws IOException{
         List<String> sorted=cells(cells);
         if(after!=null&&!after.matches(CURSOR))throw NativeJson.invalid();
-        return ROOT+"?cells="+String.join(",",sorted)+"&limit=50"+(after==null?"":"&after="+after);
+        return ROOT+"?cells="+String.join(",",sorted)+"&limit=50&include_europe=1"+(after==null?"":"&after="+after);
     }
     static boolean allowed(String url){
         if(url==null||!url.startsWith(ROOT+"?cells="))return false;
@@ -51,6 +51,8 @@ final class ExactVoteArea {
             List<String> values=new ArrayList<>();Collections.addAll(values,pieces);
             if(!String.join(",",cells(values)).equals(raw))return false;
             String tail=query.substring(limit+"&limit=50".length());
+            if(!tail.startsWith("&include_europe=1"))return false;
+            tail=tail.substring("&include_europe=1".length());
             return tail.isEmpty()||tail.matches("&after="+CURSOR);
         }catch(IOException invalid){return false;}
     }
@@ -75,6 +77,18 @@ final class ExactVoteArea {
                 String code=text(target.get("drink"),32,null),band=text(target.get("band"),16,null);
                 if(RecommendationDrink.from(code)==null||!("normal".equals(band)||"happy_hour".equals(band)))throw NativeJson.invalid();
                 identity=code+"/"+band;
+            }else if("europe".equals(kind)){
+                String code=text(target.get("drink"),32,null),band=text(target.get("band"),16,null),currency=text(target.get("currency"),3,"(?:EUR|GBP)");
+                RecommendationDrink category=RecommendationDrink.from(code);
+                if(category==null||!("normal".equals(band)||"happy_hour".equals(band)))throw NativeJson.invalid();
+                Map<?,?> rawServing=object(target.get("serving"));
+                if(!rawServing.keySet().equals(Set.of("unit"))&&!rawServing.keySet().equals(Set.of("unit","ml")))throw NativeJson.invalid();
+                String unit=text(rawServing.get("unit"),5,"(?:drink|glass|ml)");
+                Integer ml=rawServing.containsKey("ml")?(int)NativeJson.integer(rawServing.get("ml"),1,2000):null;
+                EuropePrices.Serving serving=new EuropePrices.Serving(unit,ml);
+                if(SavedEuropeDrinkStore.validated(SavedVenueStore.reference(url,name),category,"happy_hour".equals(band)?1:0,currency,serving)==null)throw NativeJson.invalid();
+                if(!code.equals(drink.get("category")))throw NativeJson.invalid();
+                identity=code+"/"+band+"/"+currency+"/"+serving.key();
             }else throw NativeJson.invalid();
             String targetKey=kind+"/"+identity;
             if(!seen.add(url+"/"+targetKey))throw NativeJson.invalid();

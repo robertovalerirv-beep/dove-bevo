@@ -44,10 +44,11 @@ struct MenuV2Venue: Equatable {
     let offers: [MenuV2Price]
     let feeNotice: String
     let linkedReports: [MenuV2Price]
+    let customerReports: [MenuV2Price]
     init(key: String, cell: String, name: String, offers: [MenuV2Price], feeNotice: String,
-         linkedReports: [MenuV2Price] = []) {
+         linkedReports: [MenuV2Price] = [], customerReports: [MenuV2Price] = []) {
         self.key = key; self.cell = cell; self.name = name; self.offers = offers
-        self.feeNotice = feeNotice; self.linkedReports = linkedReports
+        self.feeNotice = feeNotice; self.linkedReports = linkedReports; self.customerReports = customerReports
     }
 }
 struct MenuV2Snapshot {

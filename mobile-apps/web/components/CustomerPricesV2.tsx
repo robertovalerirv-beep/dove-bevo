@@ -373,7 +373,8 @@ export function CustomerPricesV2({
   const additional = rows.filter(
     (row) => row.kind === "new_drink" || !row.offer_id || !loadedOfferIds.has(row.offer_id),
   );
-  const compactNoMenu = offers.length === 0 && rows.length === 0;
+  const compactNoCustomerRows = rows.length === 0;
+  const hasVisiblePrices = offers.length > 0 || hasLegacyPrices;
   const newCurrency = customerCurrency(country, offers);
   const chosenCurrency =
     editor?.kind === "menu_offer"
@@ -759,10 +760,10 @@ export function CustomerPricesV2({
         </>
       )}
       <section
-        class={`mobile-customer-v2${compactNoMenu ? " mobile-customer-v2--compact" : ""}`}
+        class={`mobile-customer-v2${compactNoCustomerRows ? " mobile-customer-v2--compact" : ""}`}
         aria-label="Prezzi segnalati dai clienti"
       >
-        {!compactNoMenu && (
+        {!compactNoCustomerRows && (
           <>
             <h4>Prezzi segnalati dai clienti</h4>
             <p>
@@ -777,12 +778,19 @@ export function CustomerPricesV2({
             Caricamento segnalazioni…
           </p>
         )}
-        {loadState === "missing" && !hasLegacyPrices && (
+        {loadState === "missing" && !hasVisiblePrices && (
           <p class="hint">Le segnalazioni dei clienti non sono ancora disponibili qui.</p>
         )}
         {loadState === "failed" && (
-          <div class="mobile-menu-v2__error" role="alert">
-            <p>Non riusciamo a caricare i prezzi segnalati.</p>
+          <div
+            class={hasVisiblePrices ? "mobile-customer-v2__load-warning" : "mobile-menu-v2__error"}
+            role="alert"
+          >
+            <p>
+              {hasVisiblePrices
+                ? "Altre segnalazioni dei clienti non disponibili."
+                : "Non riusciamo a caricare i prezzi segnalati dai clienti."}
+            </p>
             <button
               type="button"
               class="btn btn--secondary"
@@ -796,13 +804,6 @@ export function CustomerPricesV2({
         )}
         {loadState === "ready" && (
           <>
-            {rows.length === 0 && offers.length > 0 && (
-              <p class="hint">
-                {hasLegacyPrices
-                  ? "Nessun altro prezzo segnalato per i drink del menu."
-                  : "Nessun prezzo segnalato per i drink del menu."}
-              </p>
-            )}
             {additional.length > 0 && (
               <>
                 <h5>{offers.length > 0 ? "Altri drink segnalati" : "Drink segnalati"}</h5>

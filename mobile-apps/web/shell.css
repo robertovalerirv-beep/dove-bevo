@@ -73,8 +73,9 @@ html[data-dovebevo-mobile-shell="1"] .search-field > .icon {
 html[data-dovebevo-mobile-shell="1"] .top__row > .icon-btn {
   position: fixed;
   z-index: 6;
-  right: 14px;
-  bottom: 184px;
+  left: 12px;
+  right: auto;
+  bottom: calc(var(--attribution-h, 24px) + 8px);
   width: 48px;
   height: 48px;
   min-width: 48px;
@@ -302,8 +303,8 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__plus {
 }
 html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu {
   position: absolute;
-  /* Clear the fixed locate button, including its full touch target. */
-  right: 56px;
+  /* Keep the expanded actions on the right, clear of the lower-left locate control. */
+  right: 0;
   bottom: calc(100% + 8px);
   display: grid;
   gap: 8px;
@@ -330,6 +331,22 @@ html[data-dovebevo-mobile-shell="1"] .mobile-map-actions__menu > .btn:focus-visi
 }
 html[data-dovebevo-mobile-shell="1"] .map__attribution {
   background: rgb(255 251 244 / 90%);
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-customer-v2__load-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0;
+  color: var(--ink-muted);
+  font: var(--type-caption);
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-customer-v2__load-warning p {
+  margin: 0;
+}
+html[data-dovebevo-mobile-shell="1"] .mobile-customer-v2__load-warning .btn {
+  min-height: 44px;
+  flex: 0 0 auto;
 }
 html[data-dovebevo-mobile-shell="1"] .sheet {
   max-height: 95dvh;

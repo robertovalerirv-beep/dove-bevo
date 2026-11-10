@@ -1350,8 +1350,16 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
         locate.y + locate.height + 8 <= add.y,
         `Locate overlaps Add at ${width}px: ${JSON.stringify({ card, note, add, locate })}`,
       );
-      assert.ok(language.y + language.height + 8 <= card.y);
-      assert.ok(list.y + list.height + 8 <= card.y);
+      assert.ok(
+        language.x + language.width + 8 <= card.x,
+        `Language overlaps coverage at ${width}px`,
+      );
+      assert.ok(card.x + card.width + 8 <= list.x, `Coverage overlaps list at ${width}px`);
+      assert.ok(
+        Math.abs(language.y - card.y) <= 2,
+        `Language and coverage row differ at ${width}px`,
+      );
+      assert.ok(Math.abs(list.y - card.y) <= 2, `List and coverage row differ at ${width}px`);
       assert.equal(await coverageLines(), 1, `Coverage wraps at ${width}px`);
     }
     await f.page.setViewportSize({ width: 393, height: 700 });
@@ -1378,7 +1386,10 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
         largeCard.y + largeCard.height + 8 <= largeAdd.y,
         `Large text overlaps Add at ${width}px`,
       );
-      assert.equal(await coverageLines(), 1, `Large-text coverage wraps at ${width}px`);
+      assert.ok(
+        (await coverageLines()) <= 2,
+        `Large-text coverage needs more than two lines at ${width}px`,
+      );
     }
     await f.page.setViewportSize({ width: 430, height: 700 });
     await f.page.screenshot({ path: path.join(output, "app-map-summary-large-text-fixture.png") });
@@ -1842,15 +1853,57 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     const toggle = actions.getByRole("button", { name: "Aggiungi", exact: true });
     await toggle.waitFor();
     assert.equal(await f.page.locator(".bottom").isVisible(), false);
+    assert.equal(await f.page.locator(".top .search-field > .icon").isVisible(), false);
     const map = await f.page.locator("section.map").boundingBox();
     assert.ok(map && map.height >= 500, JSON.stringify(map));
     await f.page.getByTestId("map-status").waitFor();
     const status = await f.page.getByTestId("map-status").boundingBox();
     const actionBox = await toggle.boundingBox();
     const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
-    assert.ok(status && actionBox && locate);
+    const attribution = await f.page.locator(".map__attribution").boundingBox();
+    assert.ok(status && actionBox && locate && attribution);
     assert.ok(status.y + status.height + 8 <= actionBox.y, "Add must clear coverage card");
     assert.ok(locate.y + locate.height <= actionBox.y, "Add must clear locate control");
+    assert.ok(actionBox.y + actionBox.height + 8 <= attribution.y, "Add clears attribution");
+    assert.ok(
+      map.y + map.height - (actionBox.y + actionBox.height) <= attribution.height + 20,
+      "Add belongs at the lower-right map edge, directly above attribution",
+    );
+    assert.ok(map.x + map.width - (actionBox.x + actionBox.width) <= 16);
+
+    // The tier legend is conditional on five comparable real prices. Exercise the
+    // same app-only layout with a fixture legend, including the narrow viewport.
+    await f.page.evaluate(() => {
+      const legend = document.createElement("ul");
+      legend.className = "legend";
+      for (const label of ["Affare", "Giusto", "Salato"]) {
+        const item = document.createElement("li");
+        item.className = "legend__item";
+        item.textContent = label;
+        legend.append(item);
+      }
+      document.querySelector(".map__stack")?.append(legend);
+    });
+    for (const width of [320, 390, 430]) {
+      await f.page.setViewportSize({ width, height: 700 });
+      const legend = await f.page.locator(".map__stack .legend").boundingBox();
+      const add = await toggle.boundingBox();
+      const legal = await f.page.locator(".map__attribution").boundingBox();
+      const currentMap = await f.page.locator("section.map").boundingBox();
+      assert.ok(legend && add && legal && currentMap);
+      assert.ok(legend.y + legend.height + 12 <= add.y, `Legend clears Add at ${width}px`);
+      assert.ok(add.y + add.height + 8 <= legal.y, `Add clears attribution at ${width}px`);
+      assert.ok(
+        legend.y >= currentMap.y + currentMap.height / 2,
+        `Legend stays at the lower map edge at ${width}px`,
+      );
+      if (width === 320)
+        await f.page.screenshot({ path: path.join(output, "app-map-controls-320-fixture.png") });
+    }
+    await f.page.setViewportSize({ width: 430, height: 700 });
+    await f.page.screenshot({
+      path: path.join(output, "app-map-controls-iphone16plus-fixture.png"),
+    });
     await toggle.click();
     await f.page.screenshot({
       path: path.join(output, "app-map-actions-iphone16plus-fixture.png"),

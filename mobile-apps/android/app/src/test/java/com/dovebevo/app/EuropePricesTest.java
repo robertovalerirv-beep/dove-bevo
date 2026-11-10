@@ -64,7 +64,8 @@ public final class EuropePricesTest {
         assertThrows(IOException.class,()->cell(row("n91","gcpvj","GBP","spritz",0,1300,"{\"unit\":\"drink\",\"ml\":100}")));
     }
     @Test public void catalogueSchemaCountryCellAndPrimaryReviewMetadataAreStrict()throws Exception {
-        for(String invalid:new String[]{CATALOG.replace("\"review_count\":101","\"review_count\":100"),CATALOG.replace("\"currency\":\"GBP\"","\"currency\":\"EUR\""),CATALOG.replace("51.5074","10.0"),CATALOG.replace("gcpvj","u09tv"),CATALOG.replace("www.google.com","example.com"),CATALOG.replace("2026-11-01","2099-11-01"),CATALOG.replace("\"schema_version\":1","\"schema_version\":true")})assertThrows(IOException.class,()->EuropePrices.catalog(bytes(invalid),TODAY));
+        for(String valid:new String[]{CATALOG.replace("\"review_count\":101","\"review_count\":100"),CATALOG.replace("\"review_count\":101","\"review_count\":0"),CATALOG.replace("\"review_count\":101","\"review_count\":null"),CATALOG.replace("\"review_count\":101,","")})assertEquals(2,EuropePrices.catalog(bytes(valid),TODAY).venues.size());
+        for(String invalid:new String[]{CATALOG.replace("\"review_count\":101","\"review_count\":-1"),CATALOG.replace("\"review_count\":101","\"review_count\":true"),CATALOG.replace("\"currency\":\"GBP\"","\"currency\":\"EUR\""),CATALOG.replace("51.5074","10.0"),CATALOG.replace("gcpvj","u09tv"),CATALOG.replace("www.google.com","example.com"),CATALOG.replace("2026-11-01","2099-11-01"),CATALOG.replace("\"schema_version\":1","\"schema_version\":true")})assertThrows(IOException.class,()->EuropePrices.catalog(bytes(invalid),TODAY));
         assertThrows(IOException.class,()->EuropePrices.catalog(bytes("<html>SPA fallback</html>"),TODAY));
     }
     @Test public void clientAllowsOnlyBoundedExactPublicReadPathsAndRejectsVersionDrift()throws Exception {
@@ -82,6 +83,21 @@ public final class EuropePricesTest {
         List<String> urls=new java.util.concurrent.CopyOnWriteArrayList<>();FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{urls.add(url);if(url.endsWith("health"))return bytes("{\"status\":\"ok\",\"data_version\":\"20261030\"}");if(url.endsWith("catalog.json"))return bytes(CATALOG);if(url.endsWith("gcpvj"))return bytes(body(wine(175,720)+","+wine(250,920),"",""));throw new IOException("Unexpected owned URL");},()->TODAY);
         FavoritesLoader loader=new FavoritesLoader(client,Runnable::run);CountDownLatch done=new CountDownLatch(1);AtomicReference<Map<String,FavoriteComparison.Cell>> result=new AtomicReference<>();
         try{loader.load(saved(),value->{result.set(value);done.countDown();});assertTrue(done.await(3,TimeUnit.SECONDS));assertEquals(3,urls.size());assertTrue(urls.get(2).contains("/api/mobile/prices/cells/"));assertEquals(2,FavoriteComparison.rows(saved(),result.get(),RecommendationDrink.WINE_GLASS,0).size());}finally{loader.close();}
+    }
+    @Test public void exactSavedItalianDrinkRefreshesWithoutLegacyFeed()throws Exception {
+        String catalog="{\"schema_version\":1,\"version\":\"owned-v1\",\"venues\":["+venue("n94","Milano",45.4642,9.19,"u0nd9","IT","EUR")+"]}";
+        String price=row("n94","u0nd9","EUR","spritz",0,550,"{\"unit\":\"drink\"}");
+        List<String> urls=new java.util.concurrent.CopyOnWriteArrayList<>();
+        FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{
+            urls.add(url);if(url.endsWith("catalog.json"))return bytes(catalog);
+            if(url.endsWith("/api/mobile/prices/cells/u0nd9"))return bytes(body(price,"",""));
+            throw new IOException("Legacy feed unavailable");
+        },()->TODAY);
+        FavoritesLoader loader=new FavoritesLoader(client,Runnable::run,true);CountDownLatch done=new CountDownLatch(1);AtomicReference<Map<String,FavoriteComparison.Cell>> result=new AtomicReference<>();
+        try{loader.load(List.of(SavedVenueStore.reference("https://www.dovebevo.com/bar/n94?c=u0nd9","Milano")),value->{result.set(value);done.countDown();});
+            assertTrue(done.await(3,TimeUnit.SECONDS));assertEquals(2,urls.size());assertFalse(urls.stream().anyMatch(url->url.contains("/api/prices/")||url.endsWith("/api/health")));
+            EuropePrices.Price exact=result.get().get("u0nd9").europe.prices.get(0);assertEquals(550,exact.amountMinor);assertEquals("EUR",exact.currency);
+        }finally{loader.close();}
     }
     @Test public void discoverySharesCatalogAndRecognizesEmptyNeighbourScopeWithoutLegacyReads()throws Exception {
         List<String> urls=new java.util.concurrent.CopyOnWriteArrayList<>();FavoritePricesClient client=new FavoritePricesClient((url,max,call)->{urls.add(url);if(url.endsWith("health"))return bytes("{\"status\":\"ok\",\"data_version\":\"20261030\"}");if(url.endsWith("catalog.json"))return bytes(CATALOG);if(url.endsWith("gcpvj"))return bytes(body(wine(175,720)+","+wine(250,920),"",""));throw new IOException("Unexpected owned URL");},()->TODAY);

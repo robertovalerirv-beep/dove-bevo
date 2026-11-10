@@ -66,8 +66,12 @@ public final class MainActivity extends ComponentActivity {
     private SavedVenuesUi savedVenues;
     private SavedDrinkUi savedDrinks;
     private SavedMenuOfferStore offerStore;
+    private SavedMenuOfferStore customerStore;
+    private SavedEuropeDrinkStore europeStore;
     private MenuV2Loader offerVerifier;
     private MenuV2Loader.Batch offerVerifyBatch;
+    private EuropeDrinkVerifier europeVerifier;
+    private EuropeDrinkVerifier.Batch europeVerifyBatch;
     private AlertDialog offerSaveDialog;
     private long offerSaveGeneration;
     private long drinkCapture;
@@ -77,12 +81,14 @@ public final class MainActivity extends ComponentActivity {
     private boolean discoveryVisible;
     private long discoveryCapture;
     private boolean restoreFavoritesPending;
-    private boolean restoreDiscoveryPending;
-    private Button mapDestination,favoritesDestination,saveButton;
-    private RecommendationsUi recommendations;
+    private boolean restoreDiscoveryPending,restoreAreaPending;
+    private Button mapDestination,favoritesDestination;
+    private ExactVoteAreaScreen areaScreen;
+    private DiscoveryArea selectedArea;
+    private long favoritesAreaCapture;
+    private boolean areaVisible,areaCapturing;
+    private long areaCapture;
     private Button recommendationButton;
-    private long recommendationCapture;
-    private boolean recommendationCapturing;
     private long venueCaptureEpoch;
     private AlertDialog locationHelpDialog;
     private String lastTrustedUrl = MobileEntry.HOME;
@@ -248,19 +254,21 @@ public final class MainActivity extends ComponentActivity {
                 this::eligibleSavedVenue, this::readSavedVenue, this::navigate);
         SavedDrinkStore drinkStore=new SavedDrinkStore(new SavedVenueFile(getFilesDir(),"saved-drinks-v1"));
         offerStore=new SavedMenuOfferStore(new SavedVenueFile(getFilesDir(),"saved-owner-offers-v1"));
+        customerStore=new SavedMenuOfferStore(new SavedVenueFile(getFilesDir(),"saved-customer-drinks-v1"));
+        europeStore=new SavedEuropeDrinkStore(new SavedVenueFile(getFilesDir(),"saved-europe-drinks-v1"));
         offerVerifier=new MenuV2Loader(new MenuV2Prices(),task->new android.os.Handler(android.os.Looper.getMainLooper()).post(task));
+        europeVerifier=new EuropeDrinkVerifier(task->new android.os.Handler(android.os.Looper.getMainLooper()).post(task));
         savedDrinks=new SavedDrinkUi(this,drinkStore,this::eligibleSavedVenue,this::readSavedVenue,()->venueCaptureEpoch);
-        favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore,offerStore);
+        favorites=new FavoritesScreen(this,savedStore,url->{showMap();navigate(url);},()->foreground&&!destroyed,drinkStore,offerStore,customerStore,europeStore);
         content.addView(favorites.view(),new FrameLayout.LayoutParams(-1,-1));favorites.view().setVisibility(View.GONE);
         discovery=new DiscoveryScreen(this,url->{showMap();navigate(url);},()->foreground&&!destroyed);
         content.addView(discovery.view(),new FrameLayout.LayoutParams(-1,-1));discovery.view().setVisibility(View.GONE);
+        areaScreen=new ExactVoteAreaScreen(this,url->{showMap();navigate(url);},this::openMapSearch,()->foreground&&!destroyed);
+        content.addView(areaScreen.view(),new FrameLayout.LayoutParams(-1,-1));areaScreen.view().setVisibility(View.GONE);
         topActions = createTopActions();
         content.addView(topActions, new FrameLayout.LayoutParams(-2, dp(48), Gravity.TOP | Gravity.END));
         if(state!=null){favorites.restoreSelection(state.getString("favorite_drink"),state.getInt("favorite_band",0));favorites.restorePane(state.getBoolean("favorite_drinks_visible",false));}
         if(state!=null)discovery.restoreSelection(state.getString("discovery_drink"),state.getInt("discovery_band",0));
-        recommendations = new RecommendationsUi(this,
-                new RecommendationsClient(new RecommendationVoter(new RecommendationVoterFile(getNoBackupFilesDir())), testLabPolicy),
-                testLabPolicy, this::eligibleSavedVenue);
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() { goBack(); }
         });
@@ -297,10 +305,9 @@ public final class MainActivity extends ComponentActivity {
     }
     private LinearLayout createBottomNavigation() {
         BottomNavigationBar bottom = new BottomNavigationBar(this, this::goHome, this::openMapSearch,
-                this::showMap, this::showFavorites, this::saveCurrentVenue, this::showRecommendations);
+                this::showMap, this::showFavorites, this::openAreaRecommendations);
         mapDestination = bottom.findViewById(R.id.map_destination);
         favoritesDestination = bottom.findViewById(R.id.favorites_destination);
-        saveButton = bottom.findViewById(R.id.save_venue);
         recommendationButton = bottom.findViewById(R.id.recommendation_entry);
         return bottom;
     }
@@ -420,9 +427,11 @@ public final class MainActivity extends ComponentActivity {
         navigate(BrowserPolicy.target(url) == BrowserPolicy.Target.INTERNAL ? url : lastTrustedUrl);
     }
     private void goBack() {
+        if(areaVisible){showMap();return;}
         if(discoveryVisible){showMap();return;}
         if(favoritesVisible){showMap();return;}
         BackNavigation.perform(website != null && website.canGoBack(), () -> {
+            areaCapture++;areaCapturing=false;
             venueCaptureEpoch++;
             failed = false;
             preparedNavigationUrl = null;
@@ -440,6 +449,7 @@ public final class MainActivity extends ComponentActivity {
 
     private void goForward() {
         if (website == null || !website.canGoForward()) return;
+        areaCapture++;areaCapturing=false;
         venueCaptureEpoch++;
         failed = false;
         preparedNavigationUrl = null;
@@ -462,6 +472,7 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void prepareNavigation(String url) {
+        areaCapture++;areaCapturing=false;
         documentCheckGeneration++;
         venueCaptureEpoch++;
         failed = false;
@@ -491,41 +502,69 @@ public final class MainActivity extends ComponentActivity {
         backButton.setEnabled(foreground && !destroyed && (nativeDestinationVisible() || website != null && website.canGoBack()));
         forwardButton.setEnabled(foreground && !destroyed && !nativeDestinationVisible() && website != null && website.canGoForward());
         if (recommendationButton != null) {
-            recommendationButton.setEnabled(foreground && eligibleSavedVenue() != null && !recommendationCapturing);
+            recommendationButton.setEnabled(foreground && !destroyed && !areaCapturing);
             recommendationButton.setAlpha(recommendationButton.isEnabled() ? 1f : .5f);
         }
-        if(saveButton!=null){saveButton.setEnabled(foreground&&eligibleSavedVenue()!=null);saveButton.setAlpha(saveButton.isEnabled()?1f:.5f);}
         if(mapDestination!=null){styleDestination(mapDestination,!nativeDestinationVisible());styleDestination(favoritesDestination,favoritesVisible);}
         for(int id:new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.more}){
             View control=findViewById(id);if(control!=null)control.setEnabled(foreground&&!destroyed);
         }
-        for(int id:new int[]{R.id.home,R.id.search_destination,R.id.save_venue,R.id.recommendation_entry}){
+        for(int id:new int[]{R.id.home,R.id.search_destination}){
             Button control=findViewById(id);if(control!=null)styleDestination(control,id==R.id.home&&discoveryVisible);
         }
-        if (recommendations != null) recommendations.contextChanged();
+        if(recommendationButton!=null)styleDestination(recommendationButton,areaVisible);
     }
 
     private void styleDestination(Button button,boolean selected){
         NativeAppearance.destination(button, selected);
     }
-    private boolean nativeDestinationVisible(){return favoritesVisible||discoveryVisible;}
+    private boolean nativeDestinationVisible(){return favoritesVisible||discoveryVisible||areaVisible;}
 
     private void restoreDestination(Bundle state){
-        if(state!=null){restoreFavoritesPending=state.getBoolean("favorites_visible",false);restoreDiscoveryPending=!restoreFavoritesPending&&state.getBoolean("discovery_visible",false);}
+        if(state!=null){
+            if(state.getBoolean("selected_area_valid",false))try{
+                selectedArea=new DiscoveryArea(state.getDouble("selected_area_lat"),state.getDouble("selected_area_lon"),state.getDouble("selected_area_zoom"));
+            }catch(IOException invalid){selectedArea=null;}
+            restoreFavoritesPending=state.getBoolean("favorites_visible",false);
+            restoreAreaPending=!restoreFavoritesPending&&state.getBoolean("recommendation_area_visible",false);
+            restoreDiscoveryPending=!restoreFavoritesPending&&!restoreAreaPending&&state.getBoolean("discovery_visible",false);
+        }
         // onCreate precedes onResume. Keep the destination intent until foreground
         // rather than bypassing the same foreground guard used by user actions.
         if(restoreDiscoveryPending&&foreground&&!destroyed&&discovery!=null){restoreDiscoveryPending=false;goHome();return;}
+        if(restoreAreaPending&&foreground&&!destroyed&&areaScreen!=null){restoreAreaPending=false;showAreaRecommendations(selectedArea);return;}
         if(!restoreFavoritesPending||!foreground||destroyed||favorites==null)return;
         restoreFavoritesPending=false;
-        showFavorites();
+        showFavoritesNow();
     }
     private void showFavorites(){
         if(!foreground||destroyed||favorites==null||favoritesVisible)return;
+        if(discoveryVisible){selectedArea=discovery==null?null:discovery.area();showFavoritesNow();return;}
+        if(areaVisible){showFavoritesNow();return;}
+        // Capture while the active map document is still visible. Hiding the
+        // WebView before the JS callback can suppress its visibility guard.
+        String capturedUrl=website==null?null:website.getUrl();WebView source=website;
+        selectedArea=null;
+        if(!DiscoveryArea.visitor(capturedUrl)||failed||loading||awaitingDocumentStart||!hasUsablePage||documentHasHttpError){showFavoritesNow();return;}
+        long request=++favoritesAreaCapture,epoch=venueCaptureEpoch;
+        source.postDelayed(()->{
+            if(request!=favoritesAreaCapture||epoch!=venueCaptureEpoch||!foreground||destroyed||source!=website)return;
+            favoritesAreaCapture++;showFavoritesNow();
+        },700);
+        try{source.evaluateJavascript(DiscoveryArea.SCRIPT,result->{
+            if(request!=favoritesAreaCapture||epoch!=venueCaptureEpoch||!foreground||destroyed||source!=website)return;
+            favoritesAreaCapture++;
+            selectedArea=DiscoveryArea.decode(result,capturedUrl,source.getUrl(),epoch,venueCaptureEpoch);
+            showFavoritesNow();
+        });}catch(RuntimeException unavailable){if(request==favoritesAreaCapture){favoritesAreaCapture++;showFavoritesNow();}}
+    }
+    private void showFavoritesNow(){
+        if(!foreground||destroyed||favorites==null||favoritesVisible)return;
         searchPending=false;searchOpening=false;searchCallbackGeneration++;
         discoveryCapture++;if(discovery!=null){discovery.hide();discovery.view().setVisibility(View.GONE);}discoveryVisible=false;
-        venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
+        areaCapture++;areaCapturing=false;hideArea();venueCaptureEpoch++;
         cancelLocation();disposePopup();
-        if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
+        if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();
         retireOfferSave();favoritesVisible=true;
         if(website!=null){website.setVisibility(View.GONE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
         errorPanel.setVisibility(View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
@@ -533,6 +572,8 @@ public final class MainActivity extends ComponentActivity {
     }
     private void showMap(){
         if(!foreground||destroyed)return;
+        favoritesAreaCapture++;
+        areaCapture++;areaCapturing=false;hideArea();
         discoveryCapture++;if(discovery!=null){discovery.hide();discovery.view().setVisibility(View.GONE);}discoveryVisible=false;
         if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}
         favoritesVisible=false;
@@ -544,7 +585,6 @@ public final class MainActivity extends ComponentActivity {
     private void openMapSearch(){
         if(!foreground||destroyed)return;
         retireSharePresentation();
-        if(recommendations!=null)recommendations.dismiss();
         searchCallbackGeneration++;
         searchPending=true;
         searchOpening=true;
@@ -576,18 +616,12 @@ public final class MainActivity extends ComponentActivity {
                 venueGeneration==venueCaptureEpoch&&hasUsablePage&&!failed&&!loading&&
                 !awaitingDocumentStart&&!documentHasHttpError;
     }
-    private void saveCurrentVenue(){
-        if(!foreground||savedVenues==null||eligibleSavedVenue()==null)return;
-        retireSharePresentation();
-        recommendationCapture++;recommendationCapturing=false;if(savedDrinks!=null)savedDrinks.show();updateToolbar();
-    }
-
     private void goHome(){
         if(!foreground||destroyed)return;
         searchPending=false;searchOpening=false;searchCallbackGeneration++;
         if(discoveryVisible){discovery.refresh();return;}
-        venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
-        if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
+        venueCaptureEpoch++;areaCapture++;areaCapturing=false;
+        if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();
         disposePopup();showMap();
         if(discovery==null)return;
         String capturedUrl=website==null?null:website.getUrl();WebView source=website;
@@ -606,30 +640,49 @@ public final class MainActivity extends ComponentActivity {
     }
     private void showDiscovery(DiscoveryArea area){
         if(!foreground||destroyed||discovery==null)return;
-        discoveryCapture++;venueCaptureEpoch++;recommendationCapture++;recommendationCapturing=false;
-        cancelLocation();disposePopup();if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();if(recommendations!=null)recommendations.dismiss();
+        if(area!=null)selectedArea=area;
+        discoveryCapture++;areaCapture++;areaCapturing=false;hideArea();venueCaptureEpoch++;
+        cancelLocation();disposePopup();if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();
         retireOfferSave();if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}favoritesVisible=false;discoveryVisible=true;
         if(website!=null){website.setVisibility(View.GONE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
         errorPanel.setVisibility(View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);progress.setVisibility(View.GONE);
         discovery.view().setVisibility(View.VISIBLE);discovery.view().bringToFront();discovery.show(area);updateToolbar();
     }
 
-    private void showRecommendations() {
-        if (!foreground || recommendations == null || eligibleSavedVenue() == null || recommendationCapturing) return;
+    private void openAreaRecommendations(){
+        if(!foreground||destroyed||areaScreen==null||areaCapturing)return;
+        favoritesAreaCapture++;
+        if(areaVisible){areaScreen.refresh();return;}
+        if(discoveryVisible){showAreaRecommendations(discovery==null?null:discovery.area());return;}
+        if(favoritesVisible){showAreaRecommendations(selectedArea);return;}
+        String capturedUrl=website==null?null:website.getUrl();WebView source=website;
+        if(!DiscoveryArea.visitor(capturedUrl)||failed||loading||awaitingDocumentStart||!hasUsablePage||documentHasHttpError){showAreaRecommendations(null);return;}
+        long request=++areaCapture,epoch=venueCaptureEpoch;areaCapturing=true;updateToolbar();
+        source.postDelayed(()->{
+            if(request!=areaCapture||!areaCapturing||epoch!=venueCaptureEpoch||source!=website||!capturedUrl.equals(source.getUrl()))return;
+            areaCapturing=false;showAreaRecommendations(null);
+        },5000);
+        try{source.evaluateJavascript(DiscoveryArea.SCRIPT,result->{
+            if(request!=areaCapture||!areaCapturing||!foreground||destroyed||source!=website||epoch!=venueCaptureEpoch)return;
+            areaCapturing=false;
+            showAreaRecommendations(DiscoveryArea.decode(result,capturedUrl,source.getUrl(),epoch,venueCaptureEpoch));
+        });}catch(RuntimeException unavailable){if(request==areaCapture){areaCapturing=false;showAreaRecommendations(null);}}
+    }
+    private void showAreaRecommendations(DiscoveryArea area){
+        if(!foreground||destroyed||areaScreen==null)return;
+        selectedArea=area;
+        areaCapture++;areaCapturing=false;searchPending=false;searchOpening=false;searchCallbackGeneration++;
+        discoveryCapture++;if(discovery!=null){discovery.hide();discovery.view().setVisibility(View.GONE);}discoveryVisible=false;
+        if(favorites!=null){favorites.hide();favorites.view().setVisibility(View.GONE);}favoritesVisible=false;
+        venueCaptureEpoch++;cancelLocation();disposePopup();retireOfferSave();
         if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();
-        long request = ++recommendationCapture;
-        recommendationCapturing = true; updateToolbar();
-        recommendationButton.postDelayed(() -> {
-            if (request != recommendationCapture || !recommendationCapturing) return;
-            recommendationCapture++; recommendationCapturing = false; updateToolbar();
-            if (foreground) toast(R.string.recommendation_venue_unavailable);
-        }, 5000);
-        readSavedVenue(venue -> {
-            if (request != recommendationCapture || !recommendationCapturing || !foreground) return;
-            recommendationCapture++; recommendationCapturing = false; updateToolbar();
-            if (venue == null) toast(R.string.recommendation_venue_unavailable);
-            else recommendations.show(venue);
-        });
+        if(website!=null){website.setVisibility(View.GONE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);}
+        errorPanel.setVisibility(View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);progress.setVisibility(View.GONE);
+        areaVisible=true;areaScreen.view().setVisibility(View.VISIBLE);areaScreen.view().bringToFront();areaScreen.show(area);updateToolbar();
+    }
+    private void hideArea(){
+        if(areaScreen!=null){areaScreen.hide();areaScreen.view().setVisibility(View.GONE);}
+        areaVisible=false;
     }
 
     private String eligibleSavedVenue() {
@@ -696,9 +749,59 @@ public final class MainActivity extends ComponentActivity {
         });}
         catch(IOException unavailable){Toast.makeText(this,"Menu non disponibile. Riprova quando sei online.",Toast.LENGTH_LONG).show();}
     }
+    private void beginCustomerSave(DrinkActionCommand command){
+        String active=eligibleSavedVenue();
+        if(active==null||command==null||command.kind!=DrinkActionCommand.Kind.SAVE_CUSTOMER
+                ||offerVerifier==null||customerStore==null||offerSaveDialog!=null)return;
+        SavedVenueStore.Venue provisional=SavedVenueStore.reference(active,"Locale "+java.net.URI.create(active).getPath().substring(5));
+        if(provisional==null)return;
+        retireOfferSave();long token=offerSaveGeneration;
+        try{offerVerifyBatch=offerVerifier.load(java.util.Collections.singletonList(provisional),values->{
+            if(token!=offerSaveGeneration||!foreground||destroyed||!active.equals(eligibleSavedVenue()))return;
+            offerVerifyBatch=null;
+            MenuV2Prices.Venue menu=values.get(active);MenuV2Prices.Price verified=null;
+            if(menu!=null)for(MenuV2Prices.Price item:menu.customerPrices)
+                if(command.itemKey.equals(item.id)&&item.customer){verified=item;break;}
+            SavedVenueStore.Venue venue=menu==null?null:SavedVenueStore.reference(active,menu.name);
+            SavedMenuOfferStore.Entry saved=SavedMenuOfferStore.verifiedCustomer(venue,verified);
+            if(saved==null){Toast.makeText(this,"Questa segnalazione non e piu disponibile. Nessun preferito salvato.",Toast.LENGTH_LONG).show();return;}
+            AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Salva nei Preferiti?")
+                .setMessage(saved.name+" · "+saved.venue.label+". Il prezzo si aggiorna online e non viene salvato sul telefono.")
+                .setNegativeButton("Annulla",(d,w)->{}).setPositiveButton("Salva",(d,w)->{
+                    if(token!=offerSaveGeneration||!foreground||destroyed||!active.equals(eligibleSavedVenue()))return;
+                    SavedMenuOfferStore.Result result=customerStore.save(saved);
+                    Toast.makeText(this,result==SavedMenuOfferStore.Result.SAVED?"Drink salvato nei Preferiti.":"Drink non salvato. I preferiti precedenti sono stati mantenuti.",Toast.LENGTH_LONG).show();
+                }).create();
+            offerSaveDialog=dialog;dialog.setOnDismissListener(ignored->{if(offerSaveDialog==dialog)offerSaveDialog=null;});dialog.show();
+        });}
+        catch(IOException unavailable){Toast.makeText(this,"Prezzo non disponibile. Riprova quando sei online.",Toast.LENGTH_LONG).show();}
+    }
+    private void beginEuropeSave(EuropeDrinkSaveCommand command){
+        String active=eligibleSavedVenue();
+        if(active==null||command==null||!active.equals(command.venueUrl)||europeVerifier==null||europeStore==null||offerSaveDialog!=null)return;
+        retireOfferSave();long token=offerSaveGeneration;
+        Toast.makeText(this,"Verifico il prezzo del drink...",Toast.LENGTH_SHORT).show();
+        try{europeVerifyBatch=europeVerifier.load(command,verified->{
+            if(token!=offerSaveGeneration||!foreground||destroyed||!active.equals(eligibleSavedVenue()))return;
+            europeVerifyBatch=null;
+            if(verified==null){Toast.makeText(this,"Prezzo non disponibile ora. Nessun preferito salvato; riprova quando sei online.",Toast.LENGTH_LONG).show();return;}
+            SavedEuropeDrinkStore.Entry saved=verified.entry;
+            String detail=NativePricePresentation.category(saved.drink)+" · "+saved.serving.label()+" · "+saved.currency;
+            AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Salva nei Preferiti?")
+                .setMessage(detail+" · "+saved.venue.label+". Il prezzo si aggiorna online e non viene salvato sul telefono.")
+                .setNegativeButton("Annulla",(d,w)->{}).setPositiveButton("Salva",(d,w)->{
+                    if(token!=offerSaveGeneration||!foreground||destroyed||!active.equals(eligibleSavedVenue()))return;
+                    SavedEuropeDrinkStore.Result result=europeStore.save(saved);
+                    Toast.makeText(this,result==SavedEuropeDrinkStore.Result.SAVED?"Drink salvato nei Preferiti.":"Drink non salvato. I preferiti precedenti sono stati mantenuti.",Toast.LENGTH_LONG).show();
+                }).create();
+            offerSaveDialog=dialog;dialog.setOnDismissListener(ignored->{if(offerSaveDialog==dialog)offerSaveDialog=null;});dialog.show();
+        });}
+        catch(IOException unavailable){Toast.makeText(this,"Prezzo non disponibile. Riprova quando sei online.",Toast.LENGTH_LONG).show();}
+    }
     private void retireOfferSave(){
         offerSaveGeneration++;
         if(offerVerifyBatch!=null){offerVerifyBatch.cancel();offerVerifyBatch=null;}
+        if(europeVerifyBatch!=null){europeVerifyBatch.cancel();europeVerifyBatch=null;}
         if(offerSaveDialog!=null){AlertDialog old=offerSaveDialog;offerSaveDialog=null;old.dismiss();}
     }
 
@@ -776,7 +879,8 @@ public final class MainActivity extends ComponentActivity {
         PopupMenu menu = new PopupMenu(this, anchor);
         boolean mapActive=foreground&&!destroyed&&!nativeDestinationVisible()&&website!=null;
         boolean nativeRefresh=discoveryVisible&&discovery!=null&&discovery.canRefresh()
-                ||favoritesVisible&&favorites!=null&&favorites.canRefresh();
+                ||favoritesVisible&&favorites!=null&&favorites.canRefresh()
+                ||areaVisible&&areaScreen!=null&&areaScreen.canRefresh();
         menu.getMenu().add(Menu.NONE, R.id.share, Menu.NONE, R.string.share)
                 .setEnabled(mapActive&&hasUsablePage&&!failed&&!loading&&!awaitingDocumentStart);
         menu.getMenu().add(Menu.NONE, R.id.refresh, Menu.NONE, mapActive&&loading?R.string.stop_loading:R.string.refresh)
@@ -799,6 +903,7 @@ public final class MainActivity extends ComponentActivity {
             if (item.getItemId() == R.id.refresh) {
                 if(discoveryVisible&&discovery!=null&&discovery.canRefresh())discovery.refresh();
                 else if(favoritesVisible&&favorites!=null&&favorites.canRefresh())favorites.refresh();
+                else if(areaVisible&&areaScreen!=null&&areaScreen.canRefresh())areaScreen.refresh();
                 else if(!nativeDestinationVisible()&&website!=null)refresh();
                 return true;
             }
@@ -970,6 +1075,20 @@ public final class MainActivity extends ComponentActivity {
             if(!request.isForMainFrame())return false;
             String url=request.getUrl().toString();
             if(url.contains("save_offer=")){beginOfferSave(url);return true;}
+            if(EuropeDrinkSaveCommand.requested(url)){
+                EuropeDrinkSaveCommand command=EuropeDrinkSaveCommand.parse(url,eligibleSavedVenue());
+                if(command!=null)beginEuropeSave(command);
+                else Toast.makeText(MainActivity.this,"Drink non disponibile. Riapri il locale e riprova.",Toast.LENGTH_LONG).show();
+                return true;
+            }
+            if(DrinkActionCommand.requested(url)){
+                DrinkActionCommand command=DrinkActionCommand.parse(url,eligibleSavedVenue());
+                if(command!=null){
+                    if(command.kind==DrinkActionCommand.Kind.SAVE_LEGACY&&savedDrinks!=null)savedDrinks.showExact(command.drink,command.band);
+                    else if(command.kind==DrinkActionCommand.Kind.SAVE_CUSTOMER)beginCustomerSave(command);
+                }
+                return true;
+            }
             return handleNavigation(url);
         }
         @Override public void onPageStarted(WebView view, String url, Bitmap icon) {
@@ -1013,7 +1132,7 @@ public final class MainActivity extends ComponentActivity {
                     // fixes colour mode; without this call the duplicate web
                     // search lens remains visible above native Cerca.
                     installMobilePresentation(view, view.getUrl());
-                    view.evaluateJavascript("window.DoveBevoNativeOfferSave=true;window.dispatchEvent(new Event('dovebevo-native-ready'));",null);
+                    view.evaluateJavascript("window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeVoteOffer=true;window.DoveBevoNativeVoteCustomer=true;window.DoveBevoNativeVoteDrink=true;"+(europeStore!=null&&europeVerifier!=null?"window.DoveBevoNativeEuropeSave=true;":"")+"window.dispatchEvent(new Event('dovebevo-native-ready'));",null);
                     setLoading(false);
                     errorPanel.setVisibility(View.GONE);
                     view.setVisibility(nativeDestinationVisible()?View.GONE:View.VISIBLE);
@@ -1189,7 +1308,7 @@ public final class MainActivity extends ComponentActivity {
         foreground = true;
         if (website != null) website.onResume();
         if (website != null && hasUsablePage) installMobilePresentation(website, website.getUrl());
-        if (recommendations != null) recommendations.resume();
+        if(areaScreen!=null)areaScreen.resume();
         if(favorites!=null)favorites.resume();
         if(discovery!=null)discovery.resume();
         restoreDestination(null);
@@ -1204,8 +1323,8 @@ public final class MainActivity extends ComponentActivity {
         venueCaptureEpoch++;
         retireOfferSave();
         foreground = false;
-        recommendationCapture++; recommendationCapturing = false;
-        if (recommendations != null) recommendations.pause();
+        areaCapture++;areaCapturing=false;
+        if(areaScreen!=null)areaScreen.pause();
         if(savedVenues!=null)savedVenues.dismiss();if(savedDrinks!=null)savedDrinks.dismiss();
         if(favorites!=null)favorites.pause();
         if(discovery!=null)discovery.pause();
@@ -1223,7 +1342,9 @@ public final class MainActivity extends ComponentActivity {
     }
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putBoolean("favorites_visible",favoritesVisible||restoreFavoritesPending);
+        state.putBoolean("recommendation_area_visible",areaVisible||restoreAreaPending);
         state.putBoolean("discovery_visible",discoveryVisible||restoreDiscoveryPending);
+        if(selectedArea!=null){state.putBoolean("selected_area_valid",true);state.putDouble("selected_area_lat",selectedArea.lat);state.putDouble("selected_area_lon",selectedArea.lon);state.putDouble("selected_area_zoom",selectedArea.zoom);}
         if(favorites!=null){state.putString("favorite_drink",favorites.selectedDrink());state.putInt("favorite_band",favorites.selectedBand());state.putBoolean("favorite_drinks_visible",favorites.showingDrinks());}
         if(discovery!=null){state.putString("discovery_drink",discovery.selectedDrink());state.putInt("discovery_band",discovery.selectedBand());}
         state.putString("trusted_url", lastTrustedUrl);
@@ -1243,9 +1364,9 @@ public final class MainActivity extends ComponentActivity {
         discoveryCapture++;
         venueCaptureEpoch++;
         destroyed = true;
-        retireOfferSave();if(offerVerifier!=null)offerVerifier.close();
-        recommendationCapture++; recommendationCapturing = false;
-        if (recommendations != null) recommendations.close();
+        retireOfferSave();if(offerVerifier!=null)offerVerifier.close();if(europeVerifier!=null)europeVerifier.close();
+        areaCapture++;areaCapturing=false;
+        if(areaScreen!=null)areaScreen.close();
         if(favorites!=null)favorites.close();
         if(discovery!=null)discovery.close();
         if (privacyDialog != null) privacyDialog.dismiss();

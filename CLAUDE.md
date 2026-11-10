@@ -8,7 +8,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 
 ## Inizio di ogni sessione
 1. `./init.sh` (installa, avvia, smoke test). Se qualcosa è rotto, sistemalo prima di tutto.
-2. Leggi `docs/PROGRESS.md`, `git log --oneline -20`, `docs/feature_list.json`.
+2. Leggi `docs/PROGRESS.md` (i mesi chiusi stanno in `docs/progress/`: aprili solo se ti servono), `git log --oneline -20`, `docs/feature_list.json`.
 3. Plan mode: proponi la prossima funzionalità della milestone e come la verificherai. Aspetta l'ok.
 
 ## Ciclo di lavoro
@@ -28,20 +28,19 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 ## Feature list
 **IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-14`.
 
-## Comandi (da M0)
+## Comandi
 - `./init.sh` · `./init.sh --stop`
 - `npm run dev` — Vite + Worker in locale (dati fixture, `DATA_VERSION=fixture`)
 - `npm run lint` · `npm run typecheck` · `npm run format`
-- `npm run test` — unit Vitest (Worker con `@cloudflare/vitest-pool-workers`)
+- `npm run test` — unit e Worker (Vitest, `@cloudflare/vitest-plugin`)
 - `npm run test:e2e` — Playwright, Chromium e WebKit, 390×844
 - `npm run test:security` — `tests/security`
-- `npm run eval` — evals AI: **costano**, stima il costo e chiedi conferma prima
-- `npx wrangler d1 migrations apply DB --local`
+- `npm run db:local` — migrazioni e dati di prova sul D1 locale
 - `node scripts/check-feature-list.mjs`
 - `npm run verify` — esegue in locale tutto ciò che esegue la CI; lo lancia il hook `pre-push` (`.githooks/`, attivato da `init.sh`): un push con un controllo rosso viene bloccato
 
 ## Vietato a Claude Code
-- Deploy, `wrangler secret`, comandi D1 `--remote`, `npm run deploy`: solo Roberto o la CI.
+- Deploy, `wrangler secret`, comandi D1 `--remote`: solo Roberto o la CI.
 - Leggere `.dev.vars*` o `.env*`. Mai segreti nel repo, nei log o nei test.
 - Modificare migrazioni già presenti su `main`: si aggiunge una migrazione nuova.
 - Dipendenze fuori da SPEC 4.1 senza chiedere (motivo e peso in KB gzip).
@@ -49,24 +48,20 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 
 ## Vincoli da ricordare sempre
 - Nessuna registrazione, nessun onboarding, nessun cookie banner, nessun tracciamento.
+- Nessuna AI e nessun pagamento (SPEC 2.7).
 - Inserire un prezzo: al massimo 4 tocchi più le cifre.
 - La posizione dell'utente non lascia mai il dispositivo: al server vanno solo celle geohash5.
 - Nessun ID di sessione o IP salvato con i contributi; solo HMAC con sale del giorno in `counters`/`dedup`.
 - Prezzi e dati OSM mai negli stessi file o proprietà (ADR 0003).
 - Ogni "giorno" è in `Europe/Rome`.
-- Output del modello mai trattato come HTML; vietato `dangerouslySetInnerHTML`.
-- Tetto di spesa AI con prenotazione atomica (SPEC 13.5).
+- Nessun testo trattato come HTML; vietato `dangerouslySetInnerHTML`.
 - Header e CSP di SPEC 13.1 su asset e API; nessun CORS.
 
 ## Convenzioni
+- Stack, formato degli errori dell'API e contenuto dei log: SPEC 4, 9.1 e 13.8.
 - Codice e commenti in inglese; testi per l'utente in italiano in `src/app/i18n/it.ts` e, per la parte pubblica, in inglese in `src/app/i18n/en.ts` (SPEC 1.11); l'admin solo in italiano.
-- TypeScript strict, niente `any`. zod solo nel Worker, su ogni ingresso (`strict`). Il client usa i tipi di `src/shared/`.
-- Preact senza router di terze parti (`history` nativa); CSS con custom properties dal design system, niente Tailwind.
-- Accesso a D1 solo da `src/worker/lib/db.ts`; servizio AI solo da `src/worker/lib/anthropic.ts`.
-- Errori API: `{ "error": { "code", "message" } }`, messaggio in italiano, mai dettagli interni.
-- Log: solo codice errore, rotta senza parametri, durata.
-- Script npm multipiattaforma (Windows/Git Bash e Linux): niente `rm -rf`, usa Node.
-- Branch per milestone (`m0-tooling`, `m1-map`, …), Conventional Commits, merge su `main` solo con CI verde.
+- Accesso a D1 solo da `src/worker/lib/db.ts`.
+- Branch per milestone, Conventional Commits, merge su `main` solo con CI verde.
 - Ogni decisione di compromesso: ADR breve in `docs/adr/`.
 
 ## Design

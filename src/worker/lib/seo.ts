@@ -319,10 +319,26 @@ export async function buildCity(
     };
   });
 
+  // Every named bar with a price, once, so a crawler reaches the bar pages from the city and not only from
+  // the sitemap (ADR 0046). Only names already resolved above: no extra file to parse, no extra query.
+  const everyBar = new Map<string, SeoPriceRow>();
+  for (const r of local)
+    if (names.has(r.venue_key) && !everyBar.has(r.venue_key)) everyBar.set(r.venue_key, r);
+  const allBars = [...everyBar.values()]
+    .slice(0, SEO_LIMITS.barsPerPage)
+    .map((r) => {
+      const named = names.get(r.venue_key);
+      return `<li><a href="${escapeHtml(barHref(r.venue_key, r.cell))}">${escapeHtml(
+        named?.name ?? "",
+      )}</a>${named?.addr ? ` (${escapeHtml(named.addr)})` : ""}</li>`;
+    })
+    .join("");
+
   const html =
     `<h1>${escapeHtml(seoText.cityH1(city))}</h1>` +
     `<p>${escapeHtml(bars > 0 ? seoText.cityIntro(city, bars, prices) : seoText.cityEmpty(city))}</p>` +
     sections.join("") +
+    (allBars ? `<h2>${escapeHtml(seoText.cityAllBars)}</h2><ul>${allBars}</ul>` : "") +
     attribution;
   return {
     title: seoText.cityTitle(city),

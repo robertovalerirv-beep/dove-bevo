@@ -24,6 +24,10 @@ final class FavoritePricesClient {
     FavoritePricesClient(){this(new HttpsTransport(),FavoriteDay::today);}
     FavoritePricesClient(Transport transport,Supplier<String> today){this.transport=transport;this.today=today;europe=new EuropePricesClient(transport,today);menu=new MenuV2Prices(transport);}
     EuropePrices.Catalog catalog(Call call)throws IOException{return europe.catalog(call);}
+    FavoriteComparison.Cell europeCell(String cell,EuropePrices.Catalog catalog,Call call)throws IOException{
+        EuropePrices.cell(cell);if(catalog==null||!catalog.containsCell(cell))return null;
+        return FavoriteComparison.withEurope(null,europe.cell(cell,catalog,call));
+    }
     MenuV2Prices.Cell menuCell(String cell,Call call)throws IOException{return menu.loadCell(cell,call);}
     FavoriteComparison.Cell cell(String cell,String version,boolean needsStatic,EuropePrices.Catalog catalog,Call call)throws IOException{
         EuropePrices.cell(cell);
@@ -63,7 +67,7 @@ final class FavoritePricesClient {
         call.check();return DiscoveryData.parse(file,prices,cell,today.get());
     }
     private byte[] get(String url,int maximum,Call call)throws IOException{call.check();if(!allowed(url))throw NativeJson.invalid();byte[] bytes=transport.get(url,maximum,call);call.check();if(bytes==null||bytes.length>maximum)throw NativeJson.invalid();return bytes;}
-    static boolean allowed(String url){return MenuV2Prices.allowed(url)||EuropePricesClient.allowed(url)||url!=null&&(url.equals(ORIGIN+"/api/health")||url.matches("https://www\\.dovebevo\\.com/api/prices/[0-9b-hjkmnp-z]{5}")||url.matches("https://www\\.dovebevo\\.com/data/[0-9]{8}/v/[0-9b-hjkmnp-z]{5}\\.json"));}
+    static boolean allowed(String url){return MenuV2Prices.allowed(url)||EuropePricesClient.allowed(url)||ExactVoteArea.allowed(url)||url!=null&&(url.equals(ORIGIN+"/api/health")||url.matches("https://www\\.dovebevo\\.com/api/prices/[0-9b-hjkmnp-z]{5}")||url.matches("https://www\\.dovebevo\\.com/data/[0-9]{8}/v/[0-9b-hjkmnp-z]{5}\\.json"));}
     interface Connections{HttpsURLConnection open(String url)throws IOException;}
     static final class HttpsTransport implements Transport{
         private final Connections connections;

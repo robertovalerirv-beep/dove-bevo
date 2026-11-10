@@ -31,10 +31,24 @@ class CatalogueIdentityTests(unittest.TestCase):
         self.assertEqual(venue["cell"], "gcpvj")
         self.assertEqual(proof["distance_m"], 0)
 
-    def test_review_threshold_is_strict_and_never_coerces_booleans(self):
-        for count in [100, 0, True, "150"]:
+    def test_low_and_unknown_review_counts_preserve_exact_venue_proof(self):
+        for count in [0, 12, 100, 101, None]:
             self.provider["venues"][0]["review_count"] = count
-            self.assertFalse(self.join()[0])
+            accepted, held = self.join()
+            self.assertFalse(held)
+            self.assertEqual(accepted[0][0]["google"]["review_count"], count)
+            self.assertEqual(accepted[0][0]["key"], "n123")
+        del self.provider["venues"][0]["review_count"]
+        accepted, held = self.join()
+        self.assertFalse(held)
+        self.assertNotIn("review_count", accepted[0][0]["google"])
+
+    def test_review_count_never_coerces_bad_values(self):
+        for count in [-1, 100000001, 1.5, True, "150"]:
+            self.provider["venues"][0]["review_count"] = count
+            accepted, held = self.join()
+            self.assertFalse(accepted)
+            self.assertEqual(held[0]["reason"], "invalid review count")
 
     def test_same_name_far_away_or_without_coordinates_is_held(self):
         self.osm["elements"][0]["lat"] += .001
@@ -129,7 +143,15 @@ class CatalogueIdentityTests(unittest.TestCase):
         self.assertEqual(len({row["key"] for row in rows}), 34)
         self.assertEqual(len([row for row in rows if row["country"] == "DE" and row["city"] == "Berlin"]), 10)
         self.assertEqual(proof["accepted"], expected_proof)
-        self.assertEqual(proof["held"], held)
+        # The archived proof records the retired threshold as a hold reason for
+        # three businesses. Their identities remain held by the current join.
+        for slug, archived in proof["held"].items():
+            self.assertEqual(sorted(item.get("name", "") for item in archived),
+                             sorted(item.get("name", "") for item in held[slug]))
+            for item in archived:
+                if item["reason"] != "review threshold or location identity":
+                    self.assertIn(item, held[slug])
+        self.assertNotIn("review threshold", json.dumps(held))
         self.assertEqual(proof["catalogue_version"], catalog["version"])
         self.assertEqual(catalog["version"], hashlib.sha256(json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16])
 

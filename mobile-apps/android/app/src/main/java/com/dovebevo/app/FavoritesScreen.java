@@ -27,21 +27,30 @@ final class FavoritesScreen {
     private RecommendationDrink drink=RecommendationDrink.BEER_DRAFT;private int band;private long generation;private boolean visible,busy,closed;private FavoritesLoader.Batch request;
     private final LinearLayout localContent;private final SavedDrinkScreen drinkPane;private final Button localTab,drinkTab;private final boolean unifiedDrinks;private boolean drinksVisible;
     FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground){
-        this(activity,store,navigate,foreground,new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)),null,null,null,null,false);
+        this(activity,store,navigate,foreground,new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)),null,null,null,null,null,false);
     }
     FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,SavedDrinkStore drinks){
         this(activity,store,navigate,foreground,drinks,new SavedMenuOfferStore(new SavedVenueFile(activity.getFilesDir(),"saved-owner-offers-v1")));
     }
     FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,SavedDrinkStore drinks,SavedMenuOfferStore offers){
-        this(activity,store,navigate,foreground,new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)),drinks,new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)),new MenuV2Loader(new MenuV2Prices(),task->new Handler(Looper.getMainLooper()).post(task)),offers,true);
+        this(activity,store,navigate,foreground,drinks,offers,null);
+    }
+    FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,SavedDrinkStore drinks,SavedMenuOfferStore offers,SavedMenuOfferStore customerStore){
+        this(activity,store,navigate,foreground,drinks,offers,customerStore,null);
+    }
+    FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,SavedDrinkStore drinks,SavedMenuOfferStore offers,SavedMenuOfferStore customerStore,SavedEuropeDrinkStore europeStore){
+        this(activity,store,navigate,foreground,new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)),drinks,new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)),new MenuV2Loader(new MenuV2Prices(),task->new Handler(Looper.getMainLooper()).post(task)),offers,customerStore,europeStore,true);
     }
     FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,FavoritesLoader loader){
-        this(activity,store,navigate,foreground,loader,null,null,null,null,false);
+        this(activity,store,navigate,foreground,loader,null,null,null,null,null,false);
     }
     FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,FavoritesLoader loader,SavedDrinkStore drinkStore,FavoritesLoader drinkLoader){
-        this(activity,store,navigate,foreground,loader,drinkStore,drinkLoader,null,null,true);
+        this(activity,store,navigate,foreground,loader,drinkStore,drinkLoader,null,null,null,true);
     }
-    private FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,FavoritesLoader loader,SavedDrinkStore drinkStore,FavoritesLoader drinkLoader,MenuV2Loader menuLoader,SavedMenuOfferStore offerStore,boolean unifiedDrinks){
+    private FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,FavoritesLoader loader,SavedDrinkStore drinkStore,FavoritesLoader drinkLoader,MenuV2Loader menuLoader,SavedMenuOfferStore offerStore,SavedMenuOfferStore customerStore,boolean unifiedDrinks){
+        this(activity,store,navigate,foreground,loader,drinkStore,drinkLoader,menuLoader,offerStore,customerStore,null,unifiedDrinks);
+    }
+    private FavoritesScreen(Activity activity,SavedVenueStore store,Consumer<String> navigate,Supplier<Boolean> foreground,FavoritesLoader loader,SavedDrinkStore drinkStore,FavoritesLoader drinkLoader,MenuV2Loader menuLoader,SavedMenuOfferStore offerStore,SavedMenuOfferStore customerStore,SavedEuropeDrinkStore europeStore,boolean unifiedDrinks){
         this.activity=activity;this.store=store;this.navigate=navigate;this.foreground=foreground;this.loader=loader;this.unifiedDrinks=unifiedDrinks;
         view=new ScrollView(activity);view.setId(R.id.favorites_screen);view.setBackgroundColor(activity.getColor(R.color.shell_background));LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);int pad=dp(16);body.setPadding(pad,pad,pad,pad);view.addView(body);
         TextView title=text(activity.getString(R.string.saved_venues),26);heading(title);NativeAppearance.title(title);title.setMinHeight(dp(48));title.setPadding(0,0,dp(56),0);body.addView(title);
@@ -52,7 +61,7 @@ final class FavoritesScreen {
         localContent=new LinearLayout(activity);localContent.setOrientation(LinearLayout.VERTICAL);body.addView(localContent);
         if(drinkStore==null)drinkStore=new SavedDrinkStore(new SavedVenueFile(activity.getFilesDir(),"saved-drinks-v1"));
         if(drinkLoader==null)drinkLoader=new FavoritesLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task));
-        drinkPane=new SavedDrinkScreen(activity,drinkStore,drinkLoader,navigate,foreground,unifiedDrinks?store:null,menuLoader,offerStore);body.addView(drinkPane.view());drinkPane.view().setVisibility(unifiedDrinks?View.VISIBLE:View.GONE);
+        drinkPane=new SavedDrinkScreen(activity,drinkStore,drinkLoader,navigate,foreground,unifiedDrinks?store:null,menuLoader,offerStore,customerStore,europeStore);body.addView(drinkPane.view());drinkPane.view().setVisibility(unifiedDrinks?View.VISIBLE:View.GONE);
         if(unifiedDrinks){drinksVisible=true;localContent.setVisibility(View.GONE);}
         localTab.setOnClickListener(v->{if(usable())selectPane(false);});drinkTab.setOnClickListener(v->{if(usable())selectPane(true);});body=localContent;
         LinearLayout filters=new ComparisonFilters(activity);NativeAppearance.card(filters);body.addView(filters,new LinearLayout.LayoutParams(-1,-2));

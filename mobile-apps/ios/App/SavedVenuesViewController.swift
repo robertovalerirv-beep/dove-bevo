@@ -5,6 +5,8 @@ final class SavedVenuesViewController: UITableViewController {
     private let store: SavedVenueStore
     private let drinkStore: SavedDrinkStore
     private let offerStore: SavedMenuOfferStore
+    private let customerStore: SavedCustomerItemStore
+    private let europeDrinkStore: SavedEuropeDrinkStore
     private let unifiedDrinks: Bool
     private var savedDrinkFilter: DrinkCategory?
     private let client: FavouriteComparisonServing
@@ -17,7 +19,13 @@ final class SavedVenuesViewController: UITableViewController {
     private var drinkRows: [SavedDrinkRow] = []
     private var savedOffers: [SavedMenuOffer] = []
     private var offerRows: [(SavedMenuOffer, MenuV2Price?)] = []
+    private var savedCustomers: [SavedCustomerItem] = []
+    private var customerRows: [(SavedCustomerItem, MenuV2Price?)] = []
+    private var savedEurope: [SavedEuropeDrink] = []
+    private var europeRows: [(SavedEuropeDrink, EuropePrice?)] = []
     private var offersFailed = false
+    private var customersFailed = false
+    private var europeFailed = false
     private var drinksFailed = false
     private let kindControl = UISegmentedControl(items: ["Locali", "Drink"])
     private var showingDrinks: Bool { unifiedDrinks || kindControl.selectedSegmentIndex == 1 }
@@ -39,7 +47,7 @@ final class SavedVenuesViewController: UITableViewController {
     private let bandControl = ComparisonBandSelector()
     private let statusLabel = UILabel()
     var onReloadMenuChanged: (() -> Void)?
-    var reloadMenuTitle: String { (showingDrinks ? drinksFailed || offersFailed : storeFailed) ? "Riprova" : "Ricarica" }
+    var reloadMenuTitle: String { (showingDrinks ? drinksFailed || offersFailed || customersFailed || europeFailed : storeFailed) ? "Riprova" : "Ricarica" }
     var canReloadFromMore: Bool { canRead && !busy && !menuBusy }
     func reloadFromMore() { guard canReloadFromMore else { return }; refresh() }
     // The parent ellipsis overlays this corner, so UIKit actions stay to its left.
@@ -50,8 +58,10 @@ final class SavedVenuesViewController: UITableViewController {
     }()
 
     init(store: SavedVenueStore, drinkStore: SavedDrinkStore? = nil, offerStore: SavedMenuOfferStore = SavedMenuOfferStore(),
+         customerStore: SavedCustomerItemStore = SavedCustomerItemStore(),
+         europeDrinkStore: SavedEuropeDrinkStore = SavedEuropeDrinkStore(),
          client: FavouriteComparisonServing = FavouriteComparisonClient(), menuClient: MenuV2Serving? = nil, activityCheck: (() -> Bool)? = nil, onOpen: @escaping (URL) -> Void) {
-        self.store = store; self.drinkStore = drinkStore ?? SavedDrinkStore(); self.offerStore = offerStore
+        self.store = store; self.drinkStore = drinkStore ?? SavedDrinkStore(); self.offerStore = offerStore; self.customerStore = customerStore; self.europeDrinkStore = europeDrinkStore
         self.unifiedDrinks = drinkStore != nil
         self.client = client; self.menuClient = menuClient; self.activityCheck = activityCheck; self.onOpen = onOpen
         super.init(style: .insetGrouped)
@@ -181,6 +191,10 @@ final class SavedVenuesViewController: UITableViewController {
         catch { drinksFailed = true }
         do { savedOffers = try offerStore.load(); offersFailed = false }
         catch { offersFailed = true }
+        do { savedCustomers = try customerStore.load(); customersFailed = false }
+        catch { customersFailed = true }
+        do { savedEurope = try europeDrinkStore.load(); europeFailed = false }
+        catch { europeFailed = true }
         render()
     }
 
@@ -188,14 +202,14 @@ final class SavedVenuesViewController: UITableViewController {
         guard canRead else { return }
         retire()
         reloadVenues()
-        let selected = showingDrinks ? drinks.map(\.venue) + savedOffers.map(\.venue) : venues
-        guard !(showingDrinks ? drinksFailed || offersFailed : storeFailed), !selected.isEmpty else { return }
+        let selected = showingDrinks ? drinks.map(\.venue) + savedOffers.map(\.venue) + savedCustomers.map(\.venue) + savedEurope.map(\.venue) : venues
+        guard !(showingDrinks ? drinksFailed || offersFailed || customersFailed || europeFailed : storeFailed), !selected.isEmpty else { return }
         var seen = Set<URL>()
         let requested = selected.filter { seen.insert($0.url).inserted }
         let token = UUID(); generation = token
         let legacyRequested: [SavedVenue] = showingDrinks ? {
             var unique = Set<URL>()
-            return drinks.map(\.venue).filter { unique.insert($0.url).inserted }
+            return (drinks.map(\.venue) + savedEurope.map(\.venue)).filter { unique.insert($0.url).inserted }
         }() : requested
         if !legacyRequested.isEmpty {
             busy = true; render()
@@ -207,9 +221,14 @@ final class SavedVenuesViewController: UITableViewController {
             }
             if generation == token && busy { request = handle } else { handle.cancel() }
         }
-        if showingDrinks, let menuClient {
+        let menuRequested = requested.filter { venue in
+            savedOffers.contains(where: { $0.venue.url == venue.url })
+                || savedCustomers.contains(where: { $0.venue.url == venue.url })
+                || drinks.contains(where: { $0.venue.url == venue.url })
+        }
+        if showingDrinks, let menuClient, !menuRequested.isEmpty {
             menuBusy = true; render()
-            let menuHandle = menuClient.load(requested) { [weak self] value in
+            let menuHandle = menuClient.load(menuRequested) { [weak self] value in
                 guard let self, self.generation == token, self.menuBusy else { return }
                 guard self.canRead else { self.retire(); return }
                 self.menuRequest = nil; self.menuBusy = false; self.menuSnapshot = value
@@ -243,6 +262,27 @@ final class SavedVenuesViewController: UITableViewController {
             let b = left.0.venue.label.localizedCaseInsensitiveCompare(right.0.venue.label)
             return b == .orderedSame ? left.0.identity < right.0.identity : b == .orderedAscending
         }
+        customerRows = savedCustomers.filter { savedDrinkFilter == nil || $0.category == savedDrinkFilter?.code }.map { item in
+            let live = menuSnapshot?.venues[item.venue.url]?.customerReports.first { $0.id == item.itemKey }
+            return (item, live)
+        }.sorted { left, right in
+            let a = left.0.name.localizedCaseInsensitiveCompare(right.0.name)
+            if a != .orderedSame { return a == .orderedAscending }
+            let b = left.0.venue.label.localizedCaseInsensitiveCompare(right.0.venue.label)
+            return b == .orderedSame ? left.0.identity < right.0.identity : b == .orderedAscending
+        }
+        europeRows = savedEurope.filter { savedDrinkFilter == nil || $0.drink == savedDrinkFilter?.code }.map { item in
+            let venue = snapshot?.europe?.venues[item.venue.url.lastPathComponent]
+            let live = venue?.url == item.venue.url ? venue?.prices.first(where: {
+                !$0.quarantined && $0.drink == item.drink && $0.band == item.band && $0.currency == item.currency
+                    && $0.serving == item.serving
+            }) : nil
+            return (item, live)
+        }.sorted { left, right in
+            if left.0.drink != right.0.drink { return left.0.drink < right.0.drink }
+            let order = left.0.venue.label.localizedCaseInsensitiveCompare(right.0.venue.label)
+            return order == .orderedSame ? left.0.identity < right.0.identity : order == .orderedAscending
+        }
         drinkButton.isHidden = showingDrinks && !unifiedDrinks; bandControl.isHidden = showingDrinks
         var picker = NativeAppearance.button(traits: traitCollection)
         picker.baseBackgroundColor = NativeAppearance.surface
@@ -261,8 +301,8 @@ final class SavedVenuesViewController: UITableViewController {
             UIAction(title: category.name, state: (unifiedDrinks ? savedDrinkFilter?.code : drink.code) == category.code ? .on : .off) { [weak self] _ in self?.selectDrink(category.code) }
         }
         drinkButton.menu = UIMenu(children: unifiedDrinks ? categories + [allAction] : categories)
-        let failed = showingDrinks ? drinksFailed || offersFailed : storeFailed
-        let empty = showingDrinks ? drinks.isEmpty && savedOffers.isEmpty && (!unifiedDrinks || venues.isEmpty) : venues.isEmpty
+        let failed = showingDrinks ? drinksFailed || offersFailed || customersFailed || europeFailed : storeFailed
+        let empty = showingDrinks ? drinks.isEmpty && savedOffers.isEmpty && savedCustomers.isEmpty && savedEurope.isEmpty && (!unifiedDrinks || venues.isEmpty) : venues.isEmpty
         editButtonItem.isEnabled = !empty && !failed
         navigationItem.rightBarButtonItems = failed ? [moreOverlaySpace] : [moreOverlaySpace, editButtonItem]
         if failed {
@@ -271,7 +311,7 @@ final class SavedVenuesViewController: UITableViewController {
         } else if empty {
             statusLabel.text = showingDrinks ? "Non hai ancora drink salvati. Apri un locale sulla mappa e scegli un drink con Salva nei preferiti." : "Non hai ancora preferiti. Apri un locale nella mappa e tocca Salva nei preferiti."
             statusLabel.accessibilityIdentifier = "favorites.empty"
-        } else if unifiedDrinks && drinks.isEmpty && savedOffers.isEmpty && !venues.isEmpty {
+        } else if unifiedDrinks && drinks.isEmpty && savedOffers.isEmpty && savedCustomers.isEmpty && savedEurope.isEmpty && !venues.isEmpty {
             statusLabel.text = "Hai locali salvati in precedenza. Scegline uno qui sotto e seleziona un drink per conservarlo nei Preferiti."
             statusLabel.accessibilityIdentifier = "favorites.migration"
         } else if busy || menuBusy {
@@ -281,7 +321,10 @@ final class SavedVenuesViewController: UITableViewController {
             let available = Set(snapshot?.venues.keys.map { $0 } ?? [])
                 .union(snapshot?.europe?.venues.values.map(\.url) ?? [])
                 .union(menuSnapshot?.venues.keys.map { $0 } ?? [])
-            let missing = drinks.contains { !available.contains($0.venue.url) } || savedOffers.contains { !available.contains($0.venue.url) }
+            let missing = drinks.contains { !available.contains($0.venue.url) }
+                || savedOffers.contains { !available.contains($0.venue.url) }
+                || savedCustomers.contains { !available.contains($0.venue.url) }
+                || savedEurope.contains { !available.contains($0.venue.url) }
             statusLabel.text = missing ? "Alcuni locali non sono disponibili. Scegli Ricarica in Altre opzioni per riprovare." : "Dati disponibili caricati. Ogni prezzo mostra data e fonte."
             statusLabel.accessibilityIdentifier = missing ? "favorites.partial" : "favorites.loaded"
         } else if let snapshot {
@@ -363,7 +406,7 @@ final class SavedVenuesViewController: UITableViewController {
     override func numberOfSections(in tableView: UITableView) -> Int { unifiedDrinks && !venues.isEmpty ? 2 : 1 }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if unifiedDrinks && section == 1 { return venues.count }
-        return showingDrinks ? drinkRows.count + offerRows.count : rows.count
+        return showingDrinks ? drinkRows.count + offerRows.count + customerRows.count + europeRows.count : rows.count
     }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         unifiedDrinks && section == 1 ? "Locali salvati prima - scegli un drink" : nil
@@ -386,6 +429,45 @@ final class SavedVenuesViewController: UITableViewController {
             cell.accessoryType = .disclosureIndicator
             cell.accessibilityIdentifier = "favorites.migrate.\(venue.url.lastPathComponent)"
             cell.accessibilityHint = "Apre la scelta del drink"
+            return cell
+        }
+        if showingDrinks && indexPath.row >= drinkRows.count + offerRows.count + customerRows.count {
+            let (item, live) = europeRows[indexPath.row - drinkRows.count - offerRows.count - customerRows.count]
+            var content = cell.defaultContentConfiguration()
+            content.text = "\(item.category.name) · \(item.venue.label)"
+            let context = "\(item.band.name) · \(item.currency) · \(item.serving.label)"
+            let state = live.map { "\($0.amount)\n\($0.details(today: ComparisonJSON.today()))" }
+                ?? (busy ? "Caricamento del prezzo online…" : "Prezzo non disponibile ora. Il preferito resta salvato.")
+            content.secondaryText = "\(context)\n\(state)"
+            content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
+            content.secondaryTextProperties.numberOfLines = 0
+            content.textToSecondaryTextVerticalPadding = 8
+            cell.contentConfiguration = content
+            cell.backgroundConfiguration = NativeAppearance.card()
+            cell.accessoryType = .disclosureIndicator
+            cell.accessibilityIdentifier = "savedEurope.\(item.identity)"
+            cell.accessibilityLabel = "\(item.category.name), \(item.venue.label), \(context)"
+            cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
+            return cell
+        }
+        if showingDrinks && indexPath.row >= drinkRows.count + offerRows.count {
+            let (item, live) = customerRows[indexPath.row - drinkRows.count - offerRows.count]
+            var content = cell.defaultContentConfiguration()
+            content.text = "\(live?.itemName ?? item.name) - \(live?.venueName ?? item.venue.label)"
+            let serving = live?.serving ?? (item.servingLabel ?? "Formato non dichiarato")
+                + (item.servingML.map { " · \($0) ml" } ?? "")
+            let state = live.map { "\($0.amount) · \($0.evidence)" }
+                ?? (menuBusy ? "Caricamento del prezzo online…" : "Segnalazione non disponibile ora. Il preferito resta salvato.")
+            content.secondaryText = "\(serving)\n\(state)"
+            content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
+            content.secondaryTextProperties.numberOfLines = 0
+            content.textToSecondaryTextVerticalPadding = 8
+            cell.contentConfiguration = content
+            cell.backgroundConfiguration = NativeAppearance.card()
+            cell.accessoryType = .disclosureIndicator
+            cell.accessibilityIdentifier = "savedCustomer.\(item.itemKey)"
+            cell.accessibilityLabel = "\(live?.itemName ?? item.name), \(live?.venueName ?? item.venue.label)"
+            cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
             return cell
         }
         if showingDrinks && indexPath.row >= drinkRows.count {
@@ -496,7 +578,7 @@ final class SavedVenuesViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         if unifiedDrinks && section == 1 { return "I locali salvati prima restano intatti finche non scegli un drink e il nuovo preferito viene salvato." }
-        if showingDrinks { return "Ogni drink conserva la sua fascia Normale o Happy hour. Tutti i formati e le valute disponibili sono mostrati separatamente. I prezzi si ricaricano da internet e non sono salvati nel preferito. Rimuovere un drink non rimuove il locale o altri drink. Preferiti privati in questa app." }
+        if showingDrinks { return "Ogni drink conserva la sua categoria o segnalazione esatta. Tutti i formati e le valute disponibili sono mostrati separatamente. I prezzi si ricaricano da internet e non sono salvati nel preferito. Rimuovere un drink non rimuove il locale o altri drink. Preferiti privati in questa app." }
         return "Prezzi ordinati per valuta e formato; valute o volumi diversi non sono confrontabili. I prezzi italiani precedenti non dichiarano il formato. I preferiti sono privati e salvati in questa app. L'elenco è disponibile offline; mappa e prezzi richiedono internet. Rimuovi una voce con Rimuovi o scorrendo la riga."
     }
 
@@ -507,6 +589,16 @@ final class SavedVenuesViewController: UITableViewController {
             migrateLegacyVenue(venues[indexPath.row]); return
         }
         if showingDrinks {
+            if indexPath.row >= drinkRows.count + offerRows.count + customerRows.count {
+                let index = indexPath.row - drinkRows.count - offerRows.count - customerRows.count
+                guard europeRows.indices.contains(index) else { return }
+                onOpen(europeRows[index].0.venue.url); return
+            }
+            if indexPath.row >= drinkRows.count + offerRows.count {
+                let index = indexPath.row - drinkRows.count - offerRows.count
+                guard customerRows.indices.contains(index) else { return }
+                onOpen(customerRows[index].0.venue.url); return
+            }
             if indexPath.row >= drinkRows.count {
                 let index = indexPath.row - drinkRows.count
                 guard offerRows.indices.contains(index), let target = offerRows[index].0.focusedURL() else { return }
@@ -537,13 +629,43 @@ final class SavedVenuesViewController: UITableViewController {
             return
         }
         if showingDrinks {
+            if indexPath.row >= drinkRows.count + offerRows.count + customerRows.count {
+                let index = indexPath.row - drinkRows.count - offerRows.count - customerRows.count
+                guard europeRows.indices.contains(index) else { return }
+                do {
+                    let value = europeRows[index].0
+                    try europeDrinkStore.remove(value); retire(); savedEurope.removeAll { $0.identity == value.identity }
+                    if drinks.isEmpty && savedOffers.isEmpty && savedCustomers.isEmpty && savedEurope.isEmpty {
+                        setEditing(false, animated: true)
+                    }
+                    render(); UIAccessibility.post(notification: .announcement, argument: "Drink rimosso dai preferiti")
+                } catch {
+                    let alert = UIAlertController(title: "Drink non rimosso", message: "La lista precedente e stata mantenuta. Riprova.", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "Chiudi", style: .cancel)); present(alert, animated: true)
+                }
+                return
+            }
+            if indexPath.row >= drinkRows.count + offerRows.count {
+                let index = indexPath.row - drinkRows.count - offerRows.count
+                guard customerRows.indices.contains(index) else { return }
+                do {
+                    let value = customerRows[index].0
+                    try customerStore.remove(value); retire(); savedCustomers.removeAll { $0.identity == value.identity }
+                    if drinks.isEmpty && savedOffers.isEmpty && savedCustomers.isEmpty && savedEurope.isEmpty { setEditing(false, animated: true) }
+                    render(); UIAccessibility.post(notification: .announcement, argument: "Drink rimosso dai preferiti")
+                } catch {
+                    let alert = UIAlertController(title: "Drink non rimosso", message: "La lista precedente e stata mantenuta. Riprova.", preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "Chiudi", style: .cancel)); present(alert, animated: true)
+                }
+                return
+            }
             if indexPath.row >= drinkRows.count {
                 let index = indexPath.row - drinkRows.count
                 guard offerRows.indices.contains(index) else { return }
                 do {
                     let value = offerRows[index].0
                     try offerStore.remove(value); retire(); savedOffers.removeAll { $0.identity == value.identity }
-                    if drinks.isEmpty && savedOffers.isEmpty { setEditing(false, animated: true) }
+                    if drinks.isEmpty && savedOffers.isEmpty && savedCustomers.isEmpty && savedEurope.isEmpty { setEditing(false, animated: true) }
                     render(); UIAccessibility.post(notification: .announcement, argument: "Drink rimosso dai preferiti")
                 } catch {
                     let alert = UIAlertController(title: "Drink non rimosso", message: "La lista precedente e stata mantenuta. Riprova.", preferredStyle: .alert)
@@ -555,7 +677,7 @@ final class SavedVenuesViewController: UITableViewController {
             do {
                 let value = drinkRows[indexPath.row].saved
                 try drinkStore.remove(value); retire(); drinks.removeAll { $0.identity == value.identity }
-                if drinks.isEmpty { setEditing(false, animated: true) }
+                if drinks.isEmpty && savedOffers.isEmpty && savedCustomers.isEmpty && savedEurope.isEmpty { setEditing(false, animated: true) }
                 render(); UIAccessibility.post(notification: .announcement, argument: "Drink rimosso dai preferiti")
             } catch {
                 let alert = UIAlertController(title: "Drink non rimosso", message: "La lista precedente è stata mantenuta. Riprova.", preferredStyle: .alert)

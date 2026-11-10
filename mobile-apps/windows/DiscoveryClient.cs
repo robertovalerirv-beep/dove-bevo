@@ -181,7 +181,7 @@ internal sealed class DiscoveryClient
         cancellation.ThrowIfCancellationRequested();
         var rows = pages.Where(page => page is not null).SelectMany(page => page!)
             .Concat(europe.Rows)
-            .Concat(legacy.Rows)
+            .Concat(legacy.Rows.Where(europe.AllowsLegacy))
             .GroupBy(row => (row.Key, row.Cell, row.DrinkCode, row.Currency,
                 row.Context, row.AmountMinor, row.Serving, row.Drink, row.SourceUrl))
             .Select(group => group.First())

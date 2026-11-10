@@ -9,11 +9,19 @@ namespace DoveBevo.Windows;
 
 internal sealed record EuropeVenue(string Key, string Cell, string Name, string City, string Currency);
 internal sealed record EuropeDiscoverySnapshot(IReadOnlyList<DiscoveryRow> Rows,
-    int UnavailableCells, bool CatalogUnavailable);
+    int UnavailableCells, bool CatalogUnavailable, IReadOnlySet<string> Governed,
+    IReadOnlySet<string> Hidden, IReadOnlySet<string> Legacy, IReadOnlySet<string> ResolvedCells)
+{
+    internal bool AllowsLegacy(DiscoveryRow row) =>
+        !Governed.Contains(row.Key) ||
+        (ResolvedCells.Contains(row.Cell) && Legacy.Contains(row.Key) && !Hidden.Contains(row.Key));
+}
 
 /// <summary>Reads original-currency app catalogue prices without publishing contributions.</summary>
 internal static class EuropeDiscoveryClient
 {
+    private sealed record Cell(string Name, IReadOnlyList<DiscoveryRow> Rows,
+        IReadOnlySet<string> Hidden, IReadOnlySet<string> Legacy);
     private static readonly HttpClient Client = new(new HttpClientHandler
     {
         AllowAutoRedirect = false, UseCookies = false,
@@ -33,7 +41,8 @@ internal static class EuropeDiscoveryClient
             catalog = ParseCatalog(document);
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
-        catch (Exception) { return new EuropeDiscoverySnapshot([], 0, true); }
+        catch (Exception) { return new EuropeDiscoverySnapshot([], 0, true,
+            new HashSet<string>(), new HashSet<string>(), new HashSet<string>(), new HashSet<string>()); }
 
         var relevant = cells.Where(cell => catalog.Venues.Values.Any(venue => venue.Cell == cell))
             .Distinct(StringComparer.Ordinal).ToArray();
@@ -45,7 +54,10 @@ internal static class EuropeDiscoveryClient
             {
                 using var page = await ReadAsync($"https://www.dovebevo.com/api/mobile/prices/cells/{cell}",
                     cancellation);
-                return ParseCell(page, cell, category, catalog.Version, catalog.Venues);
+                var rows = ParseCell(page, cell, category, catalog.Version, catalog.Venues);
+                var root = page.RootElement;
+                return new Cell(cell, rows, Excluded(root.GetProperty("hidden"), cell, catalog.Venues),
+                    Excluded(root.GetProperty("legacy_venues"), cell, catalog.Venues));
             }
             catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
             catch (Exception) { return null; }
@@ -53,8 +65,13 @@ internal static class EuropeDiscoveryClient
         }).ToArray();
         var pages = await Task.WhenAll(tasks);
         cancellation.ThrowIfCancellationRequested();
-        return new EuropeDiscoverySnapshot(pages.Where(page => page is not null)
-            .SelectMany(page => page!).ToArray(), pages.Count(page => page is null), false);
+        var validated = pages.OfType<Cell>().ToArray();
+        return new EuropeDiscoverySnapshot(validated.SelectMany(page => page.Rows).ToArray(),
+            pages.Count(page => page is null), false,
+            catalog.Venues.Keys.ToHashSet(StringComparer.Ordinal),
+            validated.SelectMany(page => page.Hidden).ToHashSet(StringComparer.Ordinal),
+            validated.SelectMany(page => page.Legacy).ToHashSet(StringComparer.Ordinal),
+            validated.Select(page => page.Name).ToHashSet(StringComparer.Ordinal));
     }
 
     internal static (string Version, IReadOnlyDictionary<string, EuropeVenue> Venues)

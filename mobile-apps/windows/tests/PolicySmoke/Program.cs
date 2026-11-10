@@ -287,6 +287,22 @@ Require(LegacyDiscoveryClient.ParseCell(legacyStatic, legacyPrices, "u0nd9", "ne
     "quarantined customer price must not enter discovery");
 ExpectInvalid(() => LegacyDiscoveryClient.ParseCell(legacyStatic, legacyPrices,
     "u0nd9", "spritz", new DateOnly(2026, 11, 9)));
+var governed = new HashSet<string>(StringComparer.Ordinal) { "n123" };
+var resolved = new HashSet<string>(StringComparer.Ordinal) { "u0nd9" };
+var noKeys = new HashSet<string>(StringComparer.Ordinal);
+var hiddenSource = new EuropeDiscoverySnapshot([], 0, false, governed,
+    new HashSet<string>(StringComparer.Ordinal) { "n123" }, noKeys, resolved);
+Require(legacyRows.Where(hiddenSource.AllowsLegacy).Select(row => row.Key).SequenceEqual(["u1"]),
+    "hidden app-catalogue venue leaked a legacy customer price");
+var governedSource = new EuropeDiscoverySnapshot([], 0, false, governed, noKeys, noKeys, resolved);
+Require(legacyRows.Where(governedSource.AllowsLegacy).Select(row => row.Key).SequenceEqual(["u1"]),
+    "app-catalogue venue leaked a legacy price without a legacy override");
+var legacyOverride = new EuropeDiscoverySnapshot([], 0, false, governed, noKeys,
+    new HashSet<string>(StringComparer.Ordinal) { "n123" }, resolved);
+Require(legacyRows.All(legacyOverride.AllowsLegacy) &&
+    !new EuropeDiscoverySnapshot([], 1, false, governed, noKeys,
+        new HashSet<string>(StringComparer.Ordinal) { "n123" }, noKeys).AllowsLegacy(legacyRows[0]),
+    "validated legacy override must survive, but unavailable app cell must not");
 var londonArea = new DiscoveryArea(51.5072, -0.1276, 15);
 Require(londonArea.Cells().Contains("gcpvj") &&
     new DiscoveryArea(45.4642, 9.1900, 15).Cells().Contains("u0nd9"),

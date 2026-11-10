@@ -73,6 +73,11 @@ export function transformApp(source) {
   );
   result = once(
     result,
+    "              {status}\n              {!pinning",
+    '              {rawStatus === it.map.zoomIn ? (\n                <button type="button" class="mobile-zoom-search" aria-label={it.search.open}\n                  onClick={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }}>\n                  {status}\n                </button>\n              ) : status}\n              {!pinning',
+  );
+  result = once(
+    result,
     "Promise.all(cells.map(loadCell))",
     "Promise.all(cells.map((cell) => loadMobileCell(cell, drinks)))",
   );

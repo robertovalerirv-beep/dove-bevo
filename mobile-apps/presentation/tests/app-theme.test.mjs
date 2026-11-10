@@ -115,7 +115,7 @@ for (const url of [
     assert.match(page.nodes.values().next().value.textContent, /--spritz: #ff5a1f/);
   });
 
-test("native European document installs only the app shell style and hides its duplicate top search", () => {
+test("native European document installs the app shell style and keeps map search visible", () => {
   const page = fixture({
     url: "https://www.dovebevo.com/mobile/?at=51.5074,-0.1278",
     europe: true,
@@ -124,7 +124,7 @@ test("native European document installs only the app shell style and hides its d
   const style = page.nodes.values().next().value.textContent;
   assert.match(
     style,
-    /\[data-dovebevo-app-theme="1"\]\[data-dovebevo-mobile-shell="1"\] \.europe-search/,
+    /\[data-dovebevo-app-theme="1"\]\[data-dovebevo-mobile-shell="1"\] \.europe-search \{\s*display: grid !important/,
   );
   assert.match(style, /\[data-dovebevo-mobile-shell="1"\] \.europe-city-current/);
   assert.match(

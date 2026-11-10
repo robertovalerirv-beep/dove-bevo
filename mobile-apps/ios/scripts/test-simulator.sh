@@ -34,8 +34,15 @@ while [[ -e "$RESULT_BUNDLE" ]]; do
     RESULT_BUNDLE="$IOS_ROOT/.build/TestResults-$COUNTER.xcresult"
     COUNTER=$((COUNTER + 1))
 done
+ENTRY_BROWSER_RESULT_BUNDLE="$IOS_ROOT/.build/EntryBrowserFixtureResults.xcresult"
+COUNTER=1
+while [[ -e "$ENTRY_BROWSER_RESULT_BUNDLE" ]]; do
+    ENTRY_BROWSER_RESULT_BUNDLE="$IOS_ROOT/.build/EntryBrowserFixtureResults-$COUNTER.xcresult"
+    COUNTER=$((COUNTER + 1))
+done
 mkdir -p "$IOS_ROOT/.build"
 printf '%s\n' "$RESULT_BUNDLE" > "$IOS_ROOT/.build/last-test-result-path.txt"
+printf '%s\n' "$ENTRY_BROWSER_RESULT_BUNDLE" > "$IOS_ROOT/.build/entry-browser-test-result-path.txt"
 TEST_STARTED_AT="$(date +%s)"
 DIAGNOSTICS="$IOS_ROOT/.build/SimulatorDiagnostics"
 mkdir -p "$DIAGNOSTICS"
@@ -109,6 +116,21 @@ if [[ "$RUN_UI_TESTS" == true ]]; then
         --app "$IOS_ROOT/.build/DerivedData/Build/Products/Debug-iphonesimulator/DoveBevo.app"
 fi
 set +e
+# The owned-document tests exercise real WebKit navigation and URL identity.
+# Run them in a fresh test app process: the hosted simulator has previously
+# failed to finish simulated navigation after the other WebKit tests created
+# many WebContent processes. Keep the remaining unit and UI tests in the
+# ordinary result bundle, without omitting or weakening either set.
+xcodebuild \
+    -project "$IOS_ROOT/DoveBevo.xcodeproj" \
+    -scheme DoveBevo -configuration Debug \
+    -destination "platform=iOS Simulator,id=$SIMULATOR_ID,arch=$SIMULATOR_ARCH" \
+    -derivedDataPath "$IOS_ROOT/.build/DerivedData" \
+    -resultBundlePath "$ENTRY_BROWSER_RESULT_BUNDLE" \
+    -parallel-testing-enabled NO \
+    -only-testing:DoveBevoTests/MobileEntryBrowserTests \
+    CODE_SIGNING_ALLOWED=NO test
+ENTRY_BROWSER_TEST_STATUS=$?
 xcodebuild \
     -project "$IOS_ROOT/DoveBevo.xcodeproj" \
     -scheme DoveBevo -configuration Debug \
@@ -116,7 +138,11 @@ xcodebuild \
     -derivedDataPath "$IOS_ROOT/.build/DerivedData" \
     -resultBundlePath "$RESULT_BUNDLE" \
     "${TEST_ARGS[@]}" \
+    -skip-testing:DoveBevoTests/MobileEntryBrowserTests \
     CODE_SIGNING_ALLOWED=NO test
 TEST_STATUS=$?
 set -e
+if [[ "$ENTRY_BROWSER_TEST_STATUS" -ne 0 ]]; then
+    exit "$ENTRY_BROWSER_TEST_STATUS"
+fi
 exit "$TEST_STATUS"

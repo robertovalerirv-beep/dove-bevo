@@ -202,7 +202,9 @@ xcodebuild() { printf '%s\\n' "$@" > "$PWD/arguments.txt"; }
                         'platform=iOS Simulator,id=fixture-selected-device,arch=arm64',
                         '-derivedDataPath', 'fixture-ios-root/.build/DerivedData',
                         '-resultBundlePath', 'fixture-result.xcresult', '-parallel-testing-enabled', 'NO',
-                    ] + expected + ['CODE_SIGNING_ALLOWED=NO', 'test'])
+                    ] + expected + [
+                        '-skip-testing:DoveBevoTests/MobileEntryBrowserTests',
+                        'CODE_SIGNING_ALLOWED=NO', 'test'])
 
     def run_cleanup(self, *, owned, state, status):
         # Exercise the actual EXIT handler with shell functions replacing every

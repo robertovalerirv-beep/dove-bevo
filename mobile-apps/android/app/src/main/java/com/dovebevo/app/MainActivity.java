@@ -304,7 +304,7 @@ public final class MainActivity extends ComponentActivity {
         website.setLayoutParams(layout);
     }
     private LinearLayout createBottomNavigation() {
-        BottomNavigationBar bottom = new BottomNavigationBar(this, this::goHome, this::openMapSearch,
+        BottomNavigationBar bottom = new BottomNavigationBar(this, this::goHome,
                 this::showMap, this::showFavorites, this::openAreaRecommendations);
         mapDestination = bottom.findViewById(R.id.map_destination);
         favoritesDestination = bottom.findViewById(R.id.favorites_destination);
@@ -506,10 +506,10 @@ public final class MainActivity extends ComponentActivity {
             recommendationButton.setAlpha(recommendationButton.isEnabled() ? 1f : .5f);
         }
         if(mapDestination!=null){styleDestination(mapDestination,!nativeDestinationVisible());styleDestination(favoritesDestination,favoritesVisible);}
-        for(int id:new int[]{R.id.home,R.id.search_destination,R.id.map_destination,R.id.favorites_destination,R.id.more}){
+        for(int id:new int[]{R.id.home,R.id.map_destination,R.id.favorites_destination,R.id.more}){
             View control=findViewById(id);if(control!=null)control.setEnabled(foreground&&!destroyed);
         }
-        for(int id:new int[]{R.id.home,R.id.search_destination}){
+        for(int id:new int[]{R.id.home}){
             Button control=findViewById(id);if(control!=null)styleDestination(control,id==R.id.home&&discoveryVisible);
         }
         if(recommendationButton!=null)styleDestination(recommendationButton,areaVisible);

@@ -318,7 +318,7 @@ async function openLondon(f, venue = true) {
     .selectOption("spritz");
 }
 async function changeCity(page, name) {
-  await page.getByRole("button", { name: "Cambia città", exact: true }).click();
+  await page.locator('.europe-app button[data-dovebevo-search="1"]').click();
   await page.getByRole("button", { name: new RegExp(`^${name}`) }).click();
 }
 async function addPrice(f) {
@@ -848,11 +848,11 @@ test("legacy Italian search opens real app catalogue coordinates without synthet
     await input.press("ArrowDown");
     await input.press("Enter");
     await f.page.locator(".europe-app .europe-search").waitFor();
-    const nativeSearch = f.page.locator('.europe-app button[data-dovebevo-search="1"]');
-    assert.equal(await nativeSearch.count(), 1, "Cerca also opens the European city picker");
-    assert.equal(await nativeSearch.isVisible(), true, "ordinary browser keeps its city search");
-    assert.equal(await f.page.locator(".europe-city-current").isVisible(), false);
-    await nativeSearch.click();
+    const mapSearch = f.page.locator('.europe-app button[data-dovebevo-search="1"]');
+    assert.equal(await mapSearch.count(), 1, "The European map has one city search action");
+    assert.equal(await mapSearch.isVisible(), true, "The map search is visible");
+    assert.equal(await f.page.locator(".europe-city-current").isVisible(), true);
+    await mapSearch.click();
     await f.page
       .getByRole("dialog")
       .getByRole("textbox", { name: "Cerca una città o un bar" })
@@ -880,6 +880,18 @@ test("European map coverage remains one line at phone widths", async () => {
         "nowrap",
       );
       assert.ok((await coverage.boundingBox()).height <= 48);
+      const search = await f.page.locator(".europe-search").boundingBox();
+      const locate = await f.page.locator(".europe-locate").boundingBox();
+      const add = await f.page.locator(".europe-map-add").boundingBox();
+      const summary = await coverage.boundingBox();
+      assert.ok(search && locate && add && summary);
+      assert.ok(search.x + search.width + 8 <= locate.x, `Search clears Locate at ${width}px`);
+      assert.ok(locate.x + locate.width + 8 <= add.x, `Locate clears Add at ${width}px`);
+      assert.ok(Math.abs(search.y - locate.y) <= 2 && Math.abs(locate.y - add.y) <= 2);
+      assert.ok(
+        summary.y + summary.height + 8 <= search.y,
+        `Coverage clears map controls at ${width}px`,
+      );
       if (width === 320)
         await f.page.screenshot({ path: path.join(output, "europe-coverage-320-fixture.png") });
     }
@@ -947,7 +959,7 @@ test("European venue and city search privacy links use the approved app policy",
     }
     await checkLinks();
     await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi", exact: true }).click();
-    await f.page.getByRole("button", { name: "Cambia citt\u00e0", exact: true }).click();
+    await f.page.locator('.europe-app button[data-dovebevo-search="1"]').click();
     await checkLinks();
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);

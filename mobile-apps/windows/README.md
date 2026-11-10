@@ -2,11 +2,11 @@
 
 This Windows client opens Roberto's separate app interface at
 `https://www.dovebevo.com/mobile/` inside WebView2. The bottom bar has Home,
-Cerca, Mappa, Preferiti and Consigliati. The overflow menu has Reload, Share,
-Scopri prezzi and Privacy. The app keeps the normal HTTPS website session,
+Cerca, Mappa, Preferiti and Consigliati. Home opens Scopri prezzi; the overflow
+menu has Reload, Share and Privacy. The app keeps the normal HTTPS website session,
 location permission prompt, and external-link confirmation.
 Mappa returns from a venue to the last selected city map, including city changes
-made within the app; Home resets to the default map.
+made within the app. Home starts Scopri in that city when its map is unavailable.
 
 An exact drink row in an open venue offers **Salva** and a public 👍 count.
 Salva stores the venue, drink and original serving locally on this PC without

@@ -35,9 +35,10 @@ mapRoutes.Observe(londonMap); // SourceChanged/HistoryChanged after the app's ci
 mapRoutes.Observe(londonVenue);
 Require(mapRoutes.Destination(londonVenue) == londonMap.AbsoluteUri,
     "London venue must return to the selected London map");
-mapRoutes.ResetHome();
-Require(mapRoutes.Destination(londonVenue) == NavigationPolicy.Home,
-    "Home must reset the remembered map city");
+Require(mapRoutes.PreferredCityIndex(DiscoveryClient.Cities) == 8,
+    "Home discovery must start with the remembered London city");
+Require(mapRoutes.Destination(londonVenue) == londonMap.AbsoluteUri,
+    "Home discovery must not replace the selected map city");
 
 var venues = new[]
 {

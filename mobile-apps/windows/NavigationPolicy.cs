@@ -263,5 +263,21 @@ internal sealed class MapRouteTracker
 
     internal string Destination(Uri? current) => NavigationPolicy.MapDestination(current, lastMapRoute);
 
-    internal void ResetHome() => lastMapRoute = NavigationPolicy.Home;
+    internal int PreferredCityIndex(IReadOnlyList<DiscoveryLocation> cities)
+    {
+        if (lastMapRoute is null) return 0;
+        var query = Uri.UnescapeDataString(new Uri(lastMapRoute).Query);
+        if (!query.StartsWith("?at=", StringComparison.Ordinal)) return 0;
+        var coordinates = query[4..].Split(',');
+        if (coordinates.Length != 2 ||
+            !double.TryParse(coordinates[0], NumberStyles.Float, CultureInfo.InvariantCulture,
+                out var latitude) ||
+            !double.TryParse(coordinates[1], NumberStyles.Float, CultureInfo.InvariantCulture,
+                out var longitude)) return 0;
+        for (var index = 0; index < cities.Count; index++)
+            if (Math.Abs(cities[index].Area.Latitude - latitude) <= 0.00001 &&
+                Math.Abs(cities[index].Area.Longitude - longitude) <= 0.00001)
+                return index;
+        return 0;
+    }
 }

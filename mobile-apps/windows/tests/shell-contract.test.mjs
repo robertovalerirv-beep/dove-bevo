@@ -23,6 +23,15 @@ test("the Windows bottom bar has the five agreed destinations and no Save tab", 
     ["Consigliati", "Recommendations_Click"],
   ]);
   assert.doesNotMatch(xaml, /Click="(?:SaveDrink|Vote)_Click"/);
+  const window = read("MainWindow.xaml.cs");
+  assert.match(window, /private void Home_Click\([^)]*\) => Discover_Click\(sender, e\)/);
+  assert.doesNotMatch(window, /mapRoutes\.ResetHome\(/);
+  assert.equal((xaml.match(/Content="Torna alla mappa" Click="Map_Click"/g) ?? []).length, 3);
+  assert.doesNotMatch(xaml, /Header="Scopri prezzi"/);
+  assert.match(
+    window,
+    /private void Back_Click\([^)]*\)[\s\S]*?if \(DiscoveryPanel\.Visibility == Visibility\.Visible\)\s*\{\s*CloseDiscovery\(\);\s*return;/,
+  );
 });
 
 test("shared Consigliati is a read-only area view and native saves wait for the mobile shell", () => {

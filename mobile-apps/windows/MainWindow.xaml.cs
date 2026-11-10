@@ -271,11 +271,7 @@ public partial class MainWindow : Window
         else _ = StartBrowser();
     }
 
-    private void Home_Click(object sender, RoutedEventArgs e)
-    {
-        mapRoutes.ResetHome();
-        Navigate(NavigationPolicy.Home);
-    }
+    private void Home_Click(object sender, RoutedEventArgs e) => Discover_Click(sender, e);
     private void Map_Click(object sender, RoutedEventArgs e)
     {
         var current = CurrentBrowserRoute();
@@ -320,7 +316,8 @@ public partial class MainWindow : Window
             ? DiscoveryClient.Cities
             : new[] { new DiscoveryLocation("Zona della mappa", mapArea) }
                 .Concat(DiscoveryClient.Cities).ToArray();
-        DiscoveryCity.SelectedIndex = 0;
+        DiscoveryCity.SelectedIndex = mapArea is null
+            ? mapRoutes.PreferredCityIndex(DiscoveryClient.Cities) : 0;
         discoveryArea = ((DiscoveryLocation)DiscoveryCity.SelectedItem).Area;
         DiscoveryDrink.ItemsSource = DiscoveryClient.Categories;
         DiscoveryDrink.SelectedIndex = 1;
@@ -580,16 +577,6 @@ public partial class MainWindow : Window
         if (RecommendationList.SelectedItem is AreaVoteRow row) Navigate(row.VenueUrl);
     }
 
-    private void CloseRecommendations_Click(object sender, RoutedEventArgs e)
-    {
-        recommendationCancellation?.Cancel();
-        recommendationCancellation?.Dispose();
-        recommendationCancellation = null;
-        RecommendationsPanel.Visibility = Visibility.Collapsed;
-        ShowWebsiteIfNoOverlay();
-        UpdateButtons();
-    }
-
     private void OpenFavourite_Click(object sender, RoutedEventArgs e)
     {
         if (FavouriteList.SelectedItem is not BookmarkView item) return;
@@ -668,8 +655,6 @@ public partial class MainWindow : Window
         ShowWebsiteIfNoOverlay();
         UpdateButtons();
     }
-
-    private void CloseDiscovery_Click(object sender, RoutedEventArgs e) => CloseDiscovery();
 
     private void OpenDiscoveryVenue_Click(object sender, RoutedEventArgs e)
     {

@@ -436,6 +436,19 @@ describe("app-only named menu v2", () => {
       expect.arrayContaining(["cheap-small", "medium-400ml"]),
     );
     expect(detail.stored_offer_count).toBe(11);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE mobile_menu_v2_offers SET status='review' WHERE id='medium-400ml'"),
+      env.DB.prepare(
+        "UPDATE mobile_menu_v2_offers SET price_context='regular' WHERE id='medium-500ml'",
+      ),
+    ]);
+    const litreLabel = await (
+      await get("/api/mobile/v2/menu/cells/" + ITALY.cell + "?category=beer_draft")
+    ).json<Cell>();
+    expect(litreLabel.venues[0]?.sample_offers[0]).toMatchObject({
+      id: "medium-500ml",
+      serving: { label: "0,5l", ml: 500 },
+    });
   });
 
   it("recognizes an unambiguous media label when volume is absent", async () => {

@@ -37,8 +37,11 @@ final class BottomNavigationControllerTests: XCTestCase {
             bar.layoutIfNeeded()
             // Keyboard-guide registration and Dynamic Type configuration can
             // schedule another UIKit layout pass. Observe the real managed
-            // controls across two stable polls; never alter their bounds.
+            // controls across two stable display-pixel polls; never alter
+            // their bounds. UIKit can vary insignificant floating digits in
+            // converted thirds of a point on the 3x simulator.
             var previousFittingContent: String?
+            let pixelScale = max(bar.traitCollection.displayScale, 1)
             let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
                 window.layoutIfNeeded()
                 tabs.view.layoutIfNeeded()
@@ -55,7 +58,7 @@ final class BottomNavigationControllerTests: XCTestCase {
                     guard button.bounds.contains(titleFrame), button.bounds.contains(imageFrame) else {
                         previousFittingContent = nil; return false
                     }
-                    rectangles.append("\(button.accessibilityIdentifier ?? "")|\(self.precise(button.bounds))|\(self.precise(titleFrame))|\(self.precise(imageFrame))|\(title.font?.pointSize ?? 0)")
+                    rectangles.append("\(button.accessibilityIdentifier ?? "")|\(self.displayPixels(button.bounds, scale: pixelScale))|\(self.displayPixels(titleFrame, scale: pixelScale))|\(self.displayPixels(imageFrame, scale: pixelScale))|\(title.font?.pointSize ?? 0)")
                 }
                 let current = rectangles.joined(separator: "\n")
                 defer { previousFittingContent = current }
@@ -453,6 +456,11 @@ final class BottomNavigationControllerTests: XCTestCase {
 
     private func precise(_ rect: CGRect) -> String {
         [rect.minX, rect.minY, rect.width, rect.height].map { String(format: "%.17g", Double($0)) }.joined(separator: ",")
+    }
+
+    private func displayPixels(_ rect: CGRect, scale: CGFloat) -> String {
+        [rect.minX, rect.minY, rect.width, rect.height]
+            .map { String(Int(($0 * scale).rounded())) }.joined(separator: ",")
     }
 
     @MainActor

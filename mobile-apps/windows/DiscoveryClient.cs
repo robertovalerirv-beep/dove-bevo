@@ -19,7 +19,8 @@ internal sealed record DiscoveryLocation(string Name, DiscoveryArea Area)
 
 internal sealed record DiscoveryRow(string Key, string Cell, string Venue, string City,
     string DrinkCode, string Drink, long AmountMinor, string Currency, int Exponent,
-    string Context, string? Condition, string SourceUrl, DateOnly CheckedOn)
+    string Context, string? Condition, string? SourceUrl, DateOnly CheckedOn,
+    string? Serving = null, bool IsEurope = false)
 {
     public string Display
     {
@@ -29,13 +30,21 @@ internal sealed record DiscoveryRow(string Key, string Cell, string Venue, strin
             var price = value.ToString("N" + Exponent, CultureInfo.GetCultureInfo("it-IT"));
             var context = Context == "regular" ? "" : Context == "happy_hour" ? " · Happy hour" : " · Condizione";
             return $"{Venue} · {(City.Length == 0 ? "Località non indicata" : City)}\n{Drink} · {price} {Currency}{context}" +
+                   (Serving is null ? "" : $" · {Serving}") +
                    (Condition is null ? "" : $" · {Condition}") +
-                   $"\nFonte: {new Uri(SourceUrl).DnsSafeHost} · verificato {CheckedOn:dd/MM/yyyy}";
+                   (SourceUrl is null
+                       ? $"\nSegnalato da un cliente il {CheckedOn:dd/MM/yyyy}"
+                       : $"\nMenu: {new Uri(SourceUrl).DnsSafeHost} · verificato {CheckedOn:dd/MM/yyyy}");
         }
     }
 
     public Uri? FocusedVenue()
     {
+        if (IsEurope)
+        {
+            var mobile = $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{Key}&c={Cell}";
+            return NavigationPolicy.TryVenue(mobile, Key, out var venue) ? venue : null;
+        }
         var address = $"https://www.dovebevo.com/bar/{Key}?c={Cell}";
         return NavigationPolicy.TryFocusedVenue(address, Key, DrinkCode,
             Context == "happy_hour" ? 1 : 0, out var focused) ? focused : null;
@@ -114,7 +123,8 @@ internal sealed record DiscoveryArea(double Latitude, double Longitude, double Z
     }
 }
 
-internal sealed record DiscoverySnapshot(IReadOnlyList<DiscoveryRow> Rows, int UnavailableCells);
+internal sealed record DiscoverySnapshot(IReadOnlyList<DiscoveryRow> Rows, int UnavailableCells,
+    bool EuropeUnavailable = false);
 
 internal sealed class DiscoveryClient
 {
@@ -153,6 +163,8 @@ internal sealed class DiscoveryClient
         if (!Categories.Any(row => row.Code == category)) throw new ArgumentException("Unknown drink", nameof(category));
         using var gate = new SemaphoreSlim(3);
         var cells = area.Cells();
+        var europeTask = EuropeDiscoveryClient.LoadAsync(cells, category, cancellation);
+        var legacyTask = LegacyDiscoveryClient.LoadAsync(cells, category, cancellation);
         var tasks = cells.Select(async cell =>
         {
             await gate.WaitAsync(cancellation);
@@ -164,15 +176,22 @@ internal sealed class DiscoveryClient
             finally { gate.Release(); }
         }).ToArray();
         var pages = await Task.WhenAll(tasks);
+        var europe = await europeTask;
+        var legacy = await legacyTask;
         cancellation.ThrowIfCancellationRequested();
         var rows = pages.Where(page => page is not null).SelectMany(page => page!)
-            .GroupBy(row => (row.Key, row.DrinkCode, row.Currency, row.Context, row.AmountMinor))
+            .Concat(europe.Rows)
+            .Concat(legacy.Rows.Where(europe.AllowsLegacy))
+            .GroupBy(row => (row.Key, row.Cell, row.DrinkCode, row.Currency,
+                row.Context, row.AmountMinor, row.Serving, row.Drink, row.SourceUrl))
             .Select(group => group.First())
             .OrderBy(row => row.Currency, StringComparer.Ordinal)
             .ThenBy(row => row.AmountMinor / Math.Pow(10, row.Exponent))
             .ThenBy(row => row.Venue, StringComparer.CurrentCultureIgnoreCase)
             .ToArray();
-        return new DiscoverySnapshot(rows, pages.Count(page => page is null));
+        return new DiscoverySnapshot(rows, pages.Count(page => page is null) + europe.UnavailableCells +
+            legacy.UnavailableSources,
+            europe.CatalogUnavailable);
     }
 
     private static async Task<IReadOnlyList<DiscoveryRow>> LoadCellAsync(string cell, string category,

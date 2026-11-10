@@ -20,8 +20,8 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -40,27 +40,29 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="BackButton" Style="{StaticResource NavButton}" Content="←" ToolTip="Indietro" Click="Back_Click" />
                     <Button x:Name="ForwardButton" Style="{StaticResource NavButton}" Content="→" ToolTip="Avanti" Click="Forward_Click" />
-                    <Button Style="{StaticResource NavButton}" Content="Ricarica" Click="Reload_Click" />
-                    <Button Style="{StaticResource NavButton}" Content="Condividi" Click="Share_Click" />
+                    <Button x:Name="MoreButton" Style="{StaticResource NavButton}" Content="⋯" ToolTip="Altre opzioni" Click="More_Click">
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Ricarica" Click="Reload_Click" />
+                                <MenuItem Header="Condividi" Click="Share_Click" />
+                                <MenuItem Header="Privacy" Click="Privacy_Click" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Background="#FFF4E4" Padding="16,8">
-            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-            <StackPanel Orientation="Horizontal">
-                <Button Style="{StaticResource NavButton}" Content="Mappa" Click="Home_Click" />
-                <Button Style="{StaticResource NavButton}" Content="Cerca" Click="Search_Click" />
-                <Button Style="{StaticResource NavButton}" Content="Scopri" Click="Discover_Click" />
+        <Border Grid.Row="2" Background="#FFFBF4" BorderBrush="#E2D3BE" BorderThickness="0,1,0,0" Padding="16,8">
+            <UniformGrid Columns="4" HorizontalAlignment="Stretch">
+                <Button Style="{StaticResource NavButton}" Content="Home" Click="Home_Click" />
+                <Button Style="{StaticResource NavButton}" Content="Mappa" Click="Map_Click" />
                 <Button Style="{StaticResource NavButton}" Content="Preferiti" Click="Favourites_Click" />
-                <Button Style="{StaticResource NavButton}" Content="Salva drink" Click="SaveDrink_Click" />
                 <Button Style="{StaticResource NavButton}" Content="Consigliati" Click="Recommendations_Click" />
-                <Button Style="{StaticResource NavButton}" Content="Privacy" Click="Privacy_Click" />
-            </StackPanel>
-            </ScrollViewer>
+            </UniformGrid>
         </Border>
 
-        <Grid Grid.Row="2">
+        <Grid Grid.Row="1">
             <wv2:WebView2 x:Name="Website" Visibility="Hidden" />
             <Border x:Name="ErrorPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="24">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="480">
@@ -78,7 +80,7 @@
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
                         <Button Style="{StaticResource NavButton}" Content="Apri sulla mappa" Click="OpenFavourite_Click" />
                         <Button Style="{StaticResource NavButton}" Content="Rimuovi" Click="RemoveFavourite_Click" />
-                        <Button Style="{StaticResource NavButton}" Content="Torna alla mappa" Click="Home_Click" />
+                        <Button Style="{StaticResource NavButton}" Content="Torna alla mappa" Click="Map_Click" />
                     </StackPanel>
                     <ListBox x:Name="FavouriteList" FontSize="16" Background="#FFFBF4"
                              BorderBrush="#E2D3BE" DisplayMemberPath="Display"
@@ -92,19 +94,18 @@
                         <TextBlock x:Name="RecommendationVenue" Margin="0,5,0,16" Foreground="#5E554B" />
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
-                        <Button Style="{StaticResource NavButton}" Content="Consiglia / annulla" Click="Vote_Click" />
                         <Button Style="{StaticResource NavButton}" Content="Ricarica" Click="Recommendations_Click" />
-                        <Button Style="{StaticResource NavButton}" Content="Torna al locale" Click="CloseRecommendations_Click" />
+                        <Button Style="{StaticResource NavButton}" Content="Torna alla mappa" Click="Map_Click" />
                     </StackPanel>
                     <ListBox x:Name="RecommendationList" FontSize="16" Background="#FFFBF4"
-                             BorderBrush="#E2D3BE" DisplayMemberPath="Display" />
+                             BorderBrush="#E2D3BE" DisplayMemberPath="Display" MouseDoubleClick="OpenRecommendedVenue_Click" />
                 </DockPanel>
             </Border>
             <Border x:Name="DiscoveryPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="24">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock Text="Scopri i prezzi" FontSize="26" FontWeight="Bold" />
-                        <TextBlock Text="Prezzi verificati dai menu dei locali nella zona selezionata. Prezzi base: eventuali costi di servizio possono aggiungersi."
+                        <TextBlock Text="Prezzi pubblici da menu verificati o segnalati dai clienti nella zona. Eventuali costi di servizio possono aggiungersi."
                                    TextWrapping="Wrap" Margin="0,5,0,14" Foreground="#5E554B" />
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,14">
                         <StackPanel Orientation="Horizontal">
@@ -120,7 +121,7 @@
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
                         <Button Style="{StaticResource NavButton}" Content="Apri locale" Click="OpenDiscoveryVenue_Click" />
-                        <Button Style="{StaticResource NavButton}" Content="Torna alla mappa" Click="CloseDiscovery_Click" />
+                        <Button Style="{StaticResource NavButton}" Content="Torna alla mappa" Click="Map_Click" />
                     </StackPanel>
                     <ListBox x:Name="DiscoveryList" FontSize="15" Background="#FFFBF4"
                              BorderBrush="#E2D3BE" DisplayMemberPath="Display"

@@ -1,38 +1,43 @@
 # Dove Bevo for Windows
 
-This is the Windows desktop client for Roberto's existing Dove Bevo service. It uses
-WebView2 at `https://www.dovebevo.com/` with the normal website session. The
-Windows shell adds browser navigation, search access, foreground location
-consent, an external-link handoff, sharing by copying the current link,
-support email handoff to the default mail app,
-native Scopri for menu-verified offers by city or the visible map area, shared drink recommendations for
-supported Italian venues, and private favourite drinks saved with the venue's
-existing name. A favourite stores a validated app link that reopens the venue
-with that drink and time band selected. Regular and happy-hour offers can both
-be kept for the same drink and venue. Each favourite stays in this PC's local application
-data and requires internet to see current prices. Saving a price for everyone remains the site's
-orange contribution action; saving a private favourite does not publish a
-price.
+This Windows client opens Roberto's separate app interface at
+`https://www.dovebevo.com/mobile/` inside WebView2. The bottom bar has Home,
+Mappa, Preferiti and Consigliati. Search is on the map. Home opens Scopri prezzi; the overflow
+menu has Reload, Share and Privacy. The app keeps the normal HTTPS website session,
+location permission prompt, and external-link confirmation.
+Mappa returns from a venue to the last selected city map, including city changes
+made within the app. Home starts Scopri in that city when its map is unavailable.
 
-The website origin and venue route are validated before a native favourite is
-saved or reopened. The read-only venue capture requires a visible venue sheet
-and exactly one selected drink; it supports the existing Italian check boxes
-and the app-only Europe drink selector. It never accepts a name typed into the app.
-Browser cookies and favourites stay under Windows LocalAppData, outside source
-and OneDrive. Recommendations use a separate random installation voter ID in
-LocalAppData, without sharing WebView2 cookies or login credentials with the
-vote client. No authentication token or page script bridge is copied into
-native storage.
+An exact drink row in an open venue offers **Salva** and a public 👍 count.
+Salva stores the venue, drink and original serving locally on this PC without
+asking for a new name; it does not publish a price or a vote. Preferiti refreshes
+each saved drink's current public price through read-only routes and says when
+that price cannot be verified. It never converts GBP to EUR. Consigliati is a
+read-only list of the public drink votes in the selected map area. To cast or
+remove a vote, use the 👍 beside that drink in its venue sheet. The native
+Windows client itself sends no vote POST.
+For European favourites, opening the venue highlights only the saved drink's
+exact currency and serving. If that live row is gone, it says so instead of
+focusing another serving. Moderated or legacy-overridden European venues do
+not reveal a price in Preferiti.
 
-Scopri reads the existing public, read-only `/api/mobile/v2/menu/cells/` route
-for at most nine geohash cells near the selected city or the zoomed-in map
-centre. Pick a drink to see its original menu price, currency, context and
-source-check date. It uses bounded pagination and reports unavailable cells
-instead of claiming that a failed read means there are no prices. Choosing a
-row opens that drink at its venue; Scopri cannot submit or invent menu prices.
-The menu endpoint supplies sample offers, so the venue detail remains the place
-to inspect the full named menu and fee information. The fixed city centres are
-navigation shortcuts, not a claim of complete coverage.
+The native Save action requires a visible link in the active venue sheet and
+checks its exact venue, drink, time band, currency and serving before storage.
+The app advertises native Save only after the trusted `/mobile/` shell marker
+appears. Browser cookies and private favourites stay under Windows
+LocalAppData, outside source and OneDrive. Old local favourites are preserved;
+their live price is shown on the venue page until an exact row is saved anew.
+
+Scopri combines current public Italian customer reports and reviewed menu
+offers with the app-only European catalogue and price cells near the selected
+city or zoomed-in map. The latter
+preserves EUR or GBP and the actual serving, and excludes hidden or
+legacy-overridden venues. Menu rows show their source and check date; customer
+rows are labelled as reports. A failed source is reported as unavailable,
+without inventing a price or converting currencies. Selecting a European row
+opens its venue without an ambiguous drink-only focus. This is a bounded
+view of actual public prices, not a claim of complete city coverage; full menu
+details and fees remain in the venue sheet.
 
 ## Build and checks
 
@@ -41,13 +46,14 @@ and Microsoft Edge WebView2 Runtime for running the app.
 
 ```powershell
 dotnet run --project mobile-apps/windows/tests/PolicySmoke/PolicySmoke.csproj -c Release
-node --check mobile-apps/windows/VenueCapture.js
-node --test mobile-apps/windows/tests/search-click.test.mjs
-node --test mobile-apps/windows/tests/venue-capture.test.mjs
+node --check mobile-apps/windows/SaveLinkCapture.js
+node --test mobile-apps/windows/tests/save-link-capture.test.mjs
+node --test mobile-apps/windows/tests/exact-favourite-focus.test.mjs
+node --test mobile-apps/windows/tests/shell-contract.test.mjs
 node --test mobile-apps/windows/tests/map-area-reader.test.mjs
 & mobile-apps/windows/tests/PackageVersionSmoke.ps1
 dotnet build mobile-apps/windows/DoveBevo.Windows.csproj -c Release
-& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.11.0'
+& mobile-apps/windows/build-msix.ps1 -IdentityName 'SVGASSOCIATESLTD.DoveBevo' -Publisher 'CN=6662F5A9-CE4F-4B02-8FEF-E7EDB0927757' -PublisherDisplayName 'SVG ASSOCIATES LTD' -Version '1.0.12.0'
 ```
 
 The example uses the reserved Partner Center product **9P6XDNNQJ74N**, with
@@ -72,12 +78,12 @@ reserve the revision component for Store use.
 
 ## Current limits
 
-This first Windows build reuses the live website for shared prices and venues.
-Private favourites are local to this PC and have no account sync. Scopri shows
+The current public Store build predates the four-tab interface in this source.
+This update needs a new Store submission and an installed-client check before
+the new behaviour can be claimed public. Private favourites are local to this
+PC and have no account sync. Scopri shows
 verified sample menu offers near the selected city centre or current zoomed-in
 map, with a drink filter. It is a bounded local discovery view, rather than a
-complete city-wide inventory. Shared recommendations
-work for the existing Italian venue route supported by that API; other
-catalogue venues show an unavailable state. A genuine Desktop screenshot exists for the
-Store draft; the identity-aligned package still needs Store submission, certification and installed-client testing before a
-public release can be claimed.
+complete city-wide inventory. Area totals across Italian and European venues
+require the server deployment that accepts `include_europe=1`; if that route is
+unavailable, the app reports it instead of showing an empty list.

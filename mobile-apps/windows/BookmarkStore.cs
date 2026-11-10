@@ -3,9 +3,17 @@ using System.Text.Json;
 
 namespace DoveBevo.Windows;
 
-internal sealed record Bookmark(string VenueKey, string VenueName, string DrinkName, string Url)
+internal sealed record Bookmark(string VenueKey, string VenueName, string DrinkName, string Url,
+    string? ActionUrl = null)
 {
-    public string Display => $"{DrinkName}{(Url.EndsWith("&hh=1", StringComparison.Ordinal) ? " · Happy hour" : "")} · {VenueName}";
+    public string Display => $"{DrinkName}{(Url.EndsWith("&hh=1", StringComparison.Ordinal) ||
+        ActionUrl?.Contains("band=happy_hour", StringComparison.Ordinal) == true ? " · Happy hour" : "")} · {VenueName}";
+    public string Identity => ActionUrl ?? Url;
+}
+
+internal sealed record BookmarkView(Bookmark Bookmark, string Price)
+{
+    public string Display => $"{Bookmark.Display}\n{Price}";
 }
 
 internal sealed class BookmarkStore
@@ -35,7 +43,7 @@ internal sealed class BookmarkStore
     public bool Add(Bookmark item)
     {
         if (!writable || !IsValid(item) || items.Count >= 200
-            || items.Any(existing => existing.Url == item.Url))
+            || items.Any(existing => existing.Identity == item.Identity))
             return false;
         var next = new List<Bookmark>(items) { item };
         Persist(next);
@@ -66,8 +74,9 @@ internal sealed class BookmarkStore
     {
         return item is not null
             && NavigationPolicy.TryVenue(item.Url, item.VenueKey, out _)
+            && (item.ActionUrl is null || NavigationPolicy.TrySaveAction(item.ActionUrl, item.Url, out _))
             && ValidLabel(item.VenueName, 120)
-            && ValidLabel(item.DrinkName, 80);
+            && ValidLabel(item.DrinkName, 120);
     }
 
     private static bool ValidLabel(string? text, int max)

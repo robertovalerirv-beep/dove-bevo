@@ -525,6 +525,53 @@ describe("app-only named menu v2", () => {
     });
   });
 
+  it("recognizes matching LT litre labels but rejects contradictory printed LT sizes", async () => {
+    const sourceId = await addSource(ITALY.key, ITALY.cell);
+    await env.DB.batch([
+      addOffer("small-25cl", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "Piccola 25cl",
+        ml: 250,
+        amount: 400,
+      }),
+      addOffer("conflict-025lt", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "Media 0.25LT",
+        ml: 500,
+        amount: 100,
+      }),
+      addOffer("conflict-070lt", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "Media 0.70LT",
+        ml: 500,
+        amount: 120,
+      }),
+      addOffer("matching-040lt", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "MEDIA (0.40LT)",
+        ml: 400,
+        amount: 600,
+      }),
+      addOffer("matching-050lt", ITALY.key, ITALY.cell, sourceId, {
+        servingLabel: "MEDIA (0,50LT)",
+        ml: 500,
+        amount: 700,
+      }),
+    ]);
+    const path = "/api/mobile/v2/menu/cells/" + ITALY.cell + "?category=beer_draft";
+    const first = await (await get(path)).json<Cell>();
+    expect(first.venues[0]?.sample_offers[0]).toMatchObject({
+      id: "matching-040lt",
+      amount_minor: 600,
+      serving: { label: "MEDIA (0.40LT)", ml: 400 },
+    });
+    await env.DB.prepare(
+      "UPDATE mobile_menu_v2_offers SET status='review' WHERE id='matching-040lt'",
+    ).run();
+    const second = await (await get(path)).json<Cell>();
+    expect(second.venues[0]?.sample_offers[0]).toMatchObject({
+      id: "matching-050lt",
+      amount_minor: 700,
+      serving: { label: "MEDIA (0,50LT)", ml: 500 },
+    });
+  });
+
   it("does not invent a medium serving where the menu documents only small and unknown sizes", async () => {
     const sourceId = await addSource(ITALY.key, ITALY.cell);
     await env.DB.batch([

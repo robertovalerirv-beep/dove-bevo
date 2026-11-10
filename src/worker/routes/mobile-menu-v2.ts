@@ -109,8 +109,8 @@ const SERVING_WORDS =
   ) +
   " || ' '";
 const COMPACT_SERVING =
-  "LOWER(REPLACE(REPLACE(REPLACE(COALESCE(o.serving_label,'')," +
-  " ' ', ''), CHAR(9), ''), CHAR(160), ''))";
+  "REPLACE(LOWER(REPLACE(REPLACE(REPLACE(COALESCE(o.serving_label,'')," +
+  " ' ', ''), CHAR(9), ''), CHAR(160), '')), 'lt', 'l')";
 const PADDED_COMPACT_SERVING = "'_' || " + COMPACT_SERVING + " || '_'";
 const hasServingWord = (word: string) => "INSTR(" + SERVING_WORDS + ", ' " + word + " ') > 0";
 const lacksServingWord = (word: string) => "INSTR(" + SERVING_WORDS + ", ' " + word + " ') = 0";
@@ -141,6 +141,8 @@ const CONSISTENT_PRINTED_VOLUME =
     "CAST(o.serving_ml / 10 AS TEXT) || 'cl'",
     "CAST(o.serving_ml / 1000.0 AS TEXT) || 'l'",
     "REPLACE(CAST(o.serving_ml / 1000.0 AS TEXT), '.', ',') || 'l'",
+    "PRINTF('%.2f', o.serving_ml / 1000.0) || 'l'",
+    "REPLACE(PRINTF('%.2f', o.serving_ml / 1000.0), '.', ',') || 'l'",
   ]
     .map(matchesOnlyQuantity)
     .join(" OR ") +

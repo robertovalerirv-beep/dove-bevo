@@ -52,7 +52,7 @@ const CATEGORY_OPTIONS = [
   ["negroni", "Negroni"],
   ["sbagliato", "Sbagliato"],
   ["gin_tonic", "Gin tonic"],
-  ["gin_lemon", "Gin lemon"],
+  ["gin_lemon", "Americano"],
   ["wine_glass", "Calice di vino"],
   ["alcohol_free", "Analcolico"],
   ["water", "Acqua"],

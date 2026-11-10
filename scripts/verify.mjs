@@ -16,6 +16,10 @@ const steps = [
   ["npm audit", "npm audit --audit-level=high"],
   ["npm audit (produzione)", "npm audit --omit=dev --audit-level=low"],
   ["E2E (Chromium, WebKit) e sicurezza", "npx playwright test --workers=2"],
+  [
+    "App: presentazione e rotte mobile",
+    'npx tsc -p mobile-apps/web/tsconfig.json --noEmit && node --test "mobile-apps/web/tests/*.test.mjs" mobile-apps/web/components/tests/components.test.mjs',
+  ],
   ["Build", "npm run build"],
   ["Budget della shell", "node scripts/check-bundle-size.mjs"],
   ["Lighthouse (mediana di 3)", "npx --yes @lhci/cli@0.15.1 autorun"],

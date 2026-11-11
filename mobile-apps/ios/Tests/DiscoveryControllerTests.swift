@@ -37,6 +37,9 @@ final class DiscoveryControllerTests: XCTestCase {
         let strip = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? DiscoveryFeaturedStrip }.first)
         let first = try XCTUnwrap(cards.first)
         XCTAssertTrue(first.window === mounted.window)
+        XCTAssertTrue(descendants(controller.view).compactMap { ($0 as? UILabel)?.text }
+            .contains("Immagini illustrative dei drink, non foto dei locali"),
+            "The page must visibly disclose that drink artwork is illustrative")
         XCTAssertLessThanOrEqual(strip.bounds.height, 260, "Featured prices should not fill most of the Discover screen")
         XCTAssertLessThanOrEqual(first.bounds.width, 176)
         XCTAssertLessThanOrEqual(cards[1].frame.maxX, strip.bounds.width + 1,

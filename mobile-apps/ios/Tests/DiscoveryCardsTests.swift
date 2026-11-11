@@ -36,6 +36,90 @@ final class DiscoveryCardsTests: XCTestCase {
         XCTAssertTrue(card.accessibilityValue?.contains("Immagine illustrativa") == true)
     }
 
+    @MainActor func testLongMenuFeaturedCardsMountWithoutCroppingAtStandardTextSize() throws {
+        try assertLongMenuFeaturedCardsFit(textSize: .large, expectTwoVisibleCards: true)
+    }
+
+    @MainActor func testLongMenuFeaturedCardsMountWithoutCroppingAtXXXLTextSize() throws {
+        try assertLongMenuFeaturedCardsFit(textSize: .accessibilityExtraExtraExtraLarge,
+                                           expectTwoVisibleCards: false)
+    }
+
+    @MainActor private func assertLongMenuFeaturedCardsFit(textSize: UIContentSizeCategory,
+                                                           expectTwoVisibleCards: Bool) throws {
+        let drink = try XCTUnwrap(DrinkCategory.all.first { $0.code == "spritz" })
+        let names = ["Terrazza dei Navigli e Giardino Botanico Milano",
+                     "Osteria della Piazza con Terrazza Panoramica Milano"]
+        let items = ["Spritz analcolico al pompelmo rosa e rosmarino della casa",
+                     "Spritz della casa con arancia rossa e note di bergamotto"]
+        let rows = try (0..<2).map { index -> DiscoveryPresentedRow in
+            let key = "n\(4100 + index)"
+            let price = MenuV2Price(id: "menu-\(index)", venueName: names[index], itemName: items[index],
+                category: "spritz", band: .normal, amountMinor: index == 0 ? 650 : 700,
+                currency: "EUR", exponent: 2,
+                servingLabel: "Bicchiere grande con ghiaccio e decorazione", servingML: 350,
+                origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu/\(index)")), "2026-11-02"),
+                feeNotice: "Altre spese non verificate.")
+            return DiscoveryPresentedRow(key: key, name: names[index],
+                url: try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/\(key)?c=u0nd9")),
+                latitude: 45.46, longitude: 9.19, location: "Milano", price: .menuV2(price))
+        }
+        let root = UIViewController()
+        root.view.backgroundColor = NativeAppearance.canvas
+        let strip = DiscoveryFeaturedStrip()
+        strip.translatesAutoresizingMaskIntoConstraints = false
+        root.view.addSubview(strip)
+        NSLayoutConstraint.activate([
+            strip.topAnchor.constraint(equalTo: root.view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            strip.leadingAnchor.constraint(equalTo: root.view.leadingAnchor, constant: 20),
+            strip.trailingAnchor.constraint(equalTo: root.view.trailingAnchor, constant: -20)
+        ])
+        let mounted = try OwnedReferenceWindow(root: root, category: textSize)
+        defer { mounted.close() }
+        strip.configure(rows: rows, category: drink, availableWidth: strip.bounds.width,
+                        traits: root.traitCollection, target: nil,
+                        action: #selector(UIResponder.resignFirstResponder))
+        mounted.layout()
+        let cards = descendants(strip).compactMap { $0 as? DiscoveryFeaturedCard }
+        XCTAssertEqual(cards.count, rows.count)
+        XCTAssertGreaterThan(strip.bounds.height, 232, "A long real menu row needs more room than the compact baseline")
+        if expectTwoVisibleCards {
+            XCTAssertLessThanOrEqual(cards[1].frame.maxX, strip.bounds.width + 1,
+                                     "Two complete cards must fit at ordinary iPhone text size")
+        }
+        for (index, card) in cards.enumerated() {
+            XCTAssertTrue(card.window === mounted.window)
+            XCTAssertEqual(card.bounds.height, strip.bounds.height, accuracy: 1)
+            let labels = descendants(card).compactMap { $0 as? UILabel }
+            XCTAssertEqual(labels.count, 5)
+            let copy = labels.compactMap(\.text).joined(separator: "\n")
+            for expected in [items[index], names[index], index == 0 ? "6,50 €" : "7,00 €",
+                             "EUR", "Bicchiere grande con ghiaccio e decorazione · 350 ml",
+                             "Menu online · Fonte verificata il 2026-11-02"] {
+                XCTAssertTrue(copy.contains(expected), expected)
+            }
+            XCTAssertFalse(copy.contains("Affare"), "The card must not invent a deal")
+            XCTAssertTrue(card.accessibilityValue?.contains("Immagine illustrativa del drink") == true)
+            for label in labels {
+                XCTAssertFalse(label.isHidden)
+                XCTAssertGreaterThan(label.bounds.width, 0)
+                let needed = label.sizeThatFits(CGSize(width: label.bounds.width,
+                                                      height: .greatestFiniteMagnitude)).height
+                XCTAssertLessThanOrEqual(needed, label.bounds.height + 1, label.text ?? "")
+                let inCard = label.convert(label.bounds, to: card)
+                XCTAssertGreaterThanOrEqual(inCard.minY, -1)
+                XCTAssertLessThanOrEqual(inCard.maxY, card.bounds.height + 1,
+                                         "The full source and serving must stay inside the card")
+            }
+        }
+        if textSize.isAccessibilityCategory {
+            let drinkLabel = try XCTUnwrap(descendants(cards[0]).compactMap { $0 as? UILabel }.first)
+            XCTAssertGreaterThan(drinkLabel.font.pointSize, 30,
+                                 "The mounted card must use actual XXXL fonts")
+        }
+        mounted.attach(to: self, name: "Scopri-long-menu-\(textSize.rawValue)")
+    }
+
     func testFeaturedEvidenceShowsSourceDateAndOldStatusForEveryPriceFeed() throws {
         let legacy = NativeComparablePrice.legacy(FavouritePrice(drink: "spritz", band: .normal,
             cents: 550, observedOn: "2026-06-01", confirmations: 0, quarantined: false))

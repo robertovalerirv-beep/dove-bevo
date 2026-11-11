@@ -2,6 +2,17 @@ import Foundation
 
 /// A retained city route is a trusted map document, never a venue or arbitrary URL.
 enum MapReturnRoute {
+    static func forArea(_ area: DiscoveryArea?) -> URL? {
+        guard let area else { return nil }
+        let locale = Locale(identifier: "en_US_POSIX")
+        let latitude = String(format: "%.5f", locale: locale, arguments: [area.latitude])
+        let longitude = String(format: "%.5f", locale: locale, arguments: [area.longitude])
+        var parts = URLComponents(url: MobileEntry.homeURL, resolvingAgainstBaseURL: false)!
+        parts.queryItems = [URLQueryItem(name: "at", value: "\(latitude),\(longitude)")]
+        guard let url = parts.url, valid(url) else { return nil }
+        return url
+    }
+
     static func valid(_ url: URL?) -> Bool {
         guard let url, URLPolicy.isWebsite(url),
               let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),

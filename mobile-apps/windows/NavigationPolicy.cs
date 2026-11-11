@@ -255,6 +255,7 @@ internal sealed record SaveAction(string VenueKey, string Cell, string Kind, str
 internal sealed class MapRouteTracker
 {
     private string? lastMapRoute;
+    private string? pendingNativeReturn;
 
     internal void Observe(Uri? route)
     {
@@ -262,6 +263,16 @@ internal sealed class MapRouteTracker
     }
 
     internal string Destination(Uri? current) => NavigationPolicy.MapDestination(current, lastMapRoute);
+
+    internal void BeginNativeVenue(Uri? current) =>
+        pendingNativeReturn ??= Destination(current);
+
+    internal string? ConsumeNativeReturn()
+    {
+        var route = pendingNativeReturn;
+        pendingNativeReturn = null;
+        return route;
+    }
 
     internal int PreferredCityIndex(IReadOnlyList<DiscoveryLocation> cities)
     {

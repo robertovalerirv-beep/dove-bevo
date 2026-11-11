@@ -852,6 +852,49 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals(0,publicReads.get());
     }
 
+    @Test public void venueFromFavouritesBackThenMapRestoresSelectedCity() throws Exception {
+        String city=APP_HOME+"?at=45.46420%2C9.19000";
+        navigate(city);
+        onMain(()->{
+            installOwnedFavorites();
+            invoke("showFavoritesNow");
+            assertTrue((Boolean)get("favoritesVisible"));
+            invoke("openFromNative",new Class<?>[]{String.class,int.class},ONE,1);
+        });
+        await(()->APP_ONE.equals(web.getUrl()) && !(Boolean)get("loading"));
+        onMain(()->{
+            assertEquals(city,get("pendingMapReturn"));
+            invoke("goBack");
+            assertTrue((Boolean)get("favoritesVisible"));
+            assertEquals("Native Back keeps the venue behind Preferiti until Mappa is chosen",APP_ONE,web.getUrl());
+            activity.findViewById(R.id.map_destination).performClick();
+        });
+        await(()->city.equals(web.getUrl()) && !(Boolean)get("loading") && (Boolean)get("hasUsablePage"));
+        onMain(()->{
+            assertFalse((Boolean)get("favoritesVisible"));
+            assertNull(get("pendingMapReturn"));
+            assertEquals(0,get("returnDestination"));
+        });
+    }
+
+    @Test public void sameDocumentVenueRouteRepublishesSavedDrinkState() throws Exception {
+        String city=APP_HOME+"?at=45.46420%2C9.19000";
+        navigate(city);
+        fixtureJavascript("window.addEventListener('dovebevo-native-favourites-changed',()=>{if(location.href==='"+APP_ONE+"')document.title='saved-key-refreshed'})");
+        fixtureJavascript("document.title='before-venue';history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')");
+        await(()->APP_ONE.equals(web.getUrl()));
+        String title;
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+        do {
+            title=fixtureValue("document.title");
+            if("\"saved-key-refreshed\"".equals(title))break;
+            Thread.sleep(50);
+        } while(System.nanoTime()<deadline);
+        String renderer=fixtureValue("JSON.stringify({href:location.href,title:document.title,marker:document.documentElement.getAttribute('data-dovebevo-mobile-shell'),keys:window.DoveBevoNativeSavedDrinkKeys})");
+        assertEquals(renderer,"\"saved-key-refreshed\"",title);
+        onMain(()->assertEquals(city,get("lastMapRoute")));
+    }
+
     @Test public void actualHeadingReaderRejectsUncommittedSelectionOverlayAndHiddenHeading() throws Exception {
         navigate(ONE);
         assertEquals("Locale di prova", readVenue().name);
@@ -1338,6 +1381,14 @@ public final class NativeUsabilityRuntimeTest {
         CountDownLatch ready = new CountDownLatch(1);
         onMain(() -> web.evaluateJavascript("(() => {" + script + "})()", ignored -> ready.countDown()));
         assertTrue("Owned fixture update missing", ready.await(5, TimeUnit.SECONDS));
+    }
+
+    private String fixtureValue(String script) throws Exception {
+        CountDownLatch ready = new CountDownLatch(1);
+        AtomicReference<String> value = new AtomicReference<>();
+        onMain(() -> web.evaluateJavascript(script, result -> { value.set(result); ready.countDown(); }));
+        assertTrue("Owned fixture value missing", ready.await(5, TimeUnit.SECONDS));
+        return value.get();
     }
 
     private void awaitOwnedResponse(int token) throws Exception {

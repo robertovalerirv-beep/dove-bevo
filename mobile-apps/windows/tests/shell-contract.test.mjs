@@ -44,3 +44,32 @@ test("shared Consigliati is a read-only area view and native saves wait for the 
   assert.match(window, /core\.SourceChanged \+=/);
   assert.match(window, /core\.HistoryChanged \+=/);
 });
+
+test("source Back wins over web history and Mappa cancels a pending venue load", () => {
+  const window = read("MainWindow.xaml.cs");
+  const back = window.slice(
+    window.indexOf("private void Back_Click("),
+    window.indexOf("private void Forward_Click("),
+  );
+  assert.ok(back.indexOf("var source = returnDestination;") >= 0);
+  assert.ok(
+    back.indexOf("var source = returnDestination;") < back.indexOf("Website.CoreWebView2.GoBack()"),
+  );
+  assert.doesNotMatch(back, /ConsumeNativeReturn/);
+  const map = window.slice(
+    window.indexOf("private void Map_Click("),
+    window.indexOf("private void More_Click("),
+  );
+  assert.match(
+    window,
+    /if \(source != NativeReturnDestination\.None\)\s*mapRoutes\.BeginNativeVenue\(CurrentBrowserRoute\(\)\)/,
+  );
+  assert.match(map, /var pendingMapReturn = mapRoutes\.ConsumeNativeReturn\(\);/);
+  assert.match(
+    map,
+    /if \(pendingMapReturn is not null \|\| !ready \|\| !NavigationPolicy\.IsMapRoute\(current\)\)\s*Navigate\(pendingMapReturn \?\? mapRoutes\.Destination\(current\)\)/,
+  );
+  assert.match(window, /core\.SourceChanged \+= \(_, _\) => RememberMapRoute\(\)/);
+  assert.match(window, /core\.HistoryChanged \+= \(_, _\) => RememberMapRoute\(\)/);
+  assert.match(window, /private void RememberMapRoute\(\)[\s\S]*?PublishSavedDrinkKeysAsync\(\)/);
+});

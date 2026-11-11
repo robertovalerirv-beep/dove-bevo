@@ -26,6 +26,8 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private var venueActionsAvailable = false
     private var homeIntent = UUID()
     private var lastMapArea: DiscoveryArea?
+    private var returnDestination: Int?
+    private var pendingMapReturn: URL?
 
     var selectedIndex: Int {
         get { destinationIndex }
@@ -43,16 +45,19 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         controller.onMoreMenuChanged = { [weak self] _ in
             self?.refreshMoreMenu()
         }
+        controller.canReturnToNativeSource = { [weak self] in self?.returnDestination != nil }
+        controller.onReturnToNativeSource = { [weak self] in
+            guard let self, let source = self.returnDestination else { return false }
+            self.returnDestination = nil
+            self.selectedIndex = source
+            return true
+        }
         return controller
     }()
     private(set) lazy var mapNavigation = UINavigationController(rootViewController: browser)
     private(set) lazy var favourites: SavedVenuesViewController = {
         let controller = SavedVenuesViewController(store: self.store, drinkStore: self.drinkStore, offerStore: self.offerStore, customerStore: self.customerStore, europeDrinkStore: self.europeDrinkStore, client: self.comparisonClient, menuClient: self.menuClient) { [weak self] url in
-            guard let self else { return }
-            self.browser.retireVenueActions()
-            self.mapNavigation.popToRootViewController(animated: false)
-            self.selectedIndex = 0
-            self.browser.openSavedVenue(url)
+            self?.openVenueFromNative(url, source: 1)
         }
         controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 1 }
         controller.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
@@ -61,11 +66,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private(set) lazy var favouritesNavigation = UINavigationController(rootViewController: favourites)
     private(set) lazy var discovery: DiscoveryViewController = {
         let controller = DiscoveryViewController(client: discoveryClient, onOpen: { [weak self] url in
-            guard let self else { return }
-            self.browser.retireVenueActions()
-            self.mapNavigation.popToRootViewController(animated: false)
-            self.selectedIndex = 0
-            self.browser.openSavedVenue(url)
+            self?.openVenueFromNative(url, source: 2)
         }, onMap: { [weak self] in self?.selectedIndex = 0 })
         controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 2 }
         controller.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
@@ -74,11 +75,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private(set) lazy var discoveryNavigation = UINavigationController(rootViewController: discovery)
     private(set) lazy var areaVotes: AreaVotesViewController = {
         let controller = AreaVotesViewController(client: areaVotesClient, onOpen: { [weak self] url in
-            guard let self else { return }
-            self.browser.retireVenueActions()
-            self.mapNavigation.popToRootViewController(animated: false)
-            self.selectedIndex = 0
-            self.browser.openSavedVenue(url)
+            self?.openVenueFromNative(url, source: 3)
         }, onMap: { [weak self] in
             guard let self else { return }
             self.mapNavigation.popToRootViewController(animated: false)
@@ -223,8 +220,12 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
 
     private func selectDestination(_ index: Int) {
         guard (0...3).contains(index) else { return }
+        returnDestination = nil
         homeIntent = UUID()
-        guard index != destinationIndex else { refreshBottomBar(); return }
+        guard index != destinationIndex else {
+            if index == 0 { restorePendingMapIfNeeded() }
+            browser.refreshNavigationControls(); refreshBottomBar(); return
+        }
         let previous = activeNavigation
         destinationIndex = index
         if index != 0 { browser.cancelPendingSearch() }
@@ -249,8 +250,29 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             previous.endAppearanceTransition()
             next.endAppearanceTransition()
         }
+        if index == 0 { restorePendingMapIfNeeded() }
         browser.refreshNavigationControls()
+        if index == 0 { browser.refreshSavedDrinkKeys() }
         refreshBottomBar()
+    }
+
+    func openVenueFromNative(_ url: URL, source: Int) {
+        guard (1...3).contains(source), SavedVenuePolicy.canonicalURL(url) != nil else { return }
+        let priorMap = pendingMapReturn ?? browser.lastMapRoute
+        pendingMapReturn = nil
+        browser.retireVenueActions()
+        mapNavigation.popToRootViewController(animated: false)
+        selectedIndex = 0
+        pendingMapReturn = priorMap
+        returnDestination = source
+        browser.openSavedVenue(url)
+        browser.refreshNavigationControls()
+    }
+
+    private func restorePendingMapIfNeeded() {
+        guard let route = pendingMapReturn else { return }
+        pendingMapReturn = nil
+        browser.restoreMapRoute(route)
     }
 
     private func refreshBottomBar() {

@@ -87,7 +87,7 @@
     },
     {
       "amount_minor": 300,
-      "category": null,
+      "category": "alcohol_free",
       "cell": "sr2yk",
       "condition_text": null,
       "currency": "EUR",
@@ -103,7 +103,7 @@
     },
     {
       "amount_minor": 500,
-      "category": null,
+      "category": "alcohol_free",
       "cell": "sr2yk",
       "condition_text": null,
       "currency": "EUR",
@@ -119,7 +119,7 @@
     },
     {
       "amount_minor": 550,
-      "category": null,
+      "category": "alcohol_free",
       "cell": "sr2yk",
       "condition_text": null,
       "currency": "EUR",
@@ -135,7 +135,7 @@
     },
     {
       "amount_minor": 300,
-      "category": null,
+      "category": "alcohol_free",
       "cell": "sr2yk",
       "condition_text": null,
       "currency": "EUR",
@@ -759,7 +759,7 @@
     },
     {
       "amount_minor": 500,
-      "category": null,
+      "category": "alcohol_free",
       "cell": "sr2yk",
       "condition_text": null,
       "currency": "EUR",
@@ -775,7 +775,7 @@
     },
     {
       "amount_minor": 500,
-      "category": null,
+      "category": "alcohol_free",
       "cell": "sr2yk",
       "condition_text": null,
       "currency": "EUR",

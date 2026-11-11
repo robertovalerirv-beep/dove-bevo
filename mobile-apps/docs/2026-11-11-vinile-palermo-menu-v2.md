@@ -13,7 +13,7 @@ This is a **source-only, unseeded** mobile-menu-v2 candidate for one existing ve
 
 75 unambiguous named offers were transcribed: 17 on page 2, 17 on page 3, 14 on page 4, 15 on page 5, three wine-by-glass offers on page 7, one prosecco-by-glass offer on page 8, and eight beverages on page 9. This is deliberately a subset, not a statement that other menu items or prices do not exist. Factual names, displayed prices, and printed serving labels are used; no artwork, photos, prose, or menu layout is copied. EUR is supported by the menu's wine pages and its Palermo venue context.
 
-The source prints the draft-beer sizes as `0,20 cl` and `0,40 cl`, which appear anomalous. Those four draft-beer rows are held out of the manifest; no unit is inferred or converted. The page-4 Tequila Sunrise line has no legible associated amount and is also held out. For the prosecco glass, the printed `Bicchiere` size is recorded; no volume is inferred. The PDF states no mandatory cover or service charge. Fee coverage remains **unknown**; the manifest makes no fee-exemption claim. Prices are menu observations, not customer-confirmed receipts.
+The source prints the draft-beer sizes as `0,20 cl` and `0,40 cl`, which appear anomalous. Those four draft-beer rows are held out of the manifest; no unit is inferred or converted. Tequila Sunrise is held out of this first batch for the separate supplemental review. For the prosecco glass, the printed `Bicchiere` size is recorded; no volume is inferred. The PDF states no mandatory cover or service charge. Fee coverage remains **unknown**; the manifest makes no fee-exemption claim. Prices are menu observations, not customer-confirmed receipts.
 
 ## Verification and release gate
 

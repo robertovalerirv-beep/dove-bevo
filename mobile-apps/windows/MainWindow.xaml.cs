@@ -505,10 +505,17 @@ public partial class MainWindow : Window
         if (bookmark.ActionUrl is null ||
             !NavigationPolicy.TrySaveAction(bookmark.ActionUrl, bookmark.Url, out var action) ||
             action is not { Kind: "europe", Currency: not null, Serving: not null }) return "";
-        var serving = action.Serving.StartsWith("ml:", StringComparison.Ordinal)
-            ? action.Serving[3..] + " ml"
-            : action.Serving == "glass:" ? "calice" : "drink";
-        return action.Currency + " · " + serving;
+        var serving = action.Serving switch
+        {
+            "drink:" => "",
+            "glass:" => "calice",
+            _ when action.Serving.StartsWith("glass:", StringComparison.Ordinal) =>
+                "calice · " + action.Serving[6..] + " ml",
+            _ when action.Serving.StartsWith("ml:", StringComparison.Ordinal) =>
+                action.Serving[3..] + " ml",
+            _ => "",
+        };
+        return serving.Length == 0 ? action.Currency : action.Currency + " · " + serving;
     }
 
     private void RenderFavouriteViews()

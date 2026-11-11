@@ -134,6 +134,7 @@ final class SavedDrinkControllerTests: XCTestCase {
             let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore, offerStore: offerStore,
                                                         menuClient: client, activityCheck: { true }) { _ in }
             try withMounted(controller) { _ in
+                guard waitForLiveMenuRow(controller, client: client, amount: "7,50 €") else { return }
                 XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 1)
                 let index = IndexPath(row: 0, section: 0)
                 let cell = controller.tableView(controller.tableView, cellForRowAt: index)
@@ -157,10 +158,12 @@ final class SavedDrinkControllerTests: XCTestCase {
                                      feeNotice: exactFee)
             let recentSnapshot = MenuV2Snapshot(venues: [url: MenuV2Venue(key: "n123", cell: "u0nd9", name: "Bar Milano",
                                                                               offers: [recent], feeNotice: exactFee)], unavailable: [])
+            let recentClient = DrinkPaneMenuFixture(snapshot: recentSnapshot)
             let recentController = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore, offerStore: offerStore,
-                                                              menuClient: DrinkPaneMenuFixture(snapshot: recentSnapshot),
+                                                              menuClient: recentClient,
                                                               activityCheck: { true }) { _ in }
             try withMounted(recentController) { _ in
+                guard waitForLiveMenuRow(recentController, client: recentClient, amount: "5,50 €") else { return }
                 let index = IndexPath(row: 0, section: 0)
                 let cell = recentController.tableView(recentController.tableView, cellForRowAt: index)
                 let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
@@ -187,11 +190,13 @@ final class SavedDrinkControllerTests: XCTestCase {
             let customerSnapshot = MenuV2Snapshot(venues: [url: MenuV2Venue(key: "n123", cell: "u0nd9", name: "Bar Milano",
                                                                                 offers: [], feeNotice: customerFee,
                                                                                 customerReports: [customerPrice])], unavailable: [])
+            let customerClient = DrinkPaneMenuFixture(snapshot: customerSnapshot)
             let customerController = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
                                                                 offerStore: emptyOffers, customerStore: customerStore,
-                                                                menuClient: DrinkPaneMenuFixture(snapshot: customerSnapshot),
+                                                                menuClient: customerClient,
                                                                 activityCheck: { true }) { _ in }
             try withMounted(customerController) { _ in
+                guard waitForLiveMenuRow(customerController, client: customerClient, amount: "6,00 €") else { return }
                 let index = IndexPath(row: 0, section: 0)
                 XCTAssertEqual(customerController.tableView.numberOfRows(inSection: 0), 1)
                 let cell = customerController.tableView(customerController.tableView, cellForRowAt: index)
@@ -305,6 +310,16 @@ final class SavedDrinkControllerTests: XCTestCase {
         XCTAssertTrue(mounted, "\(label); waiter=\(result.rawValue)")
         return mounted
     }
+    @MainActor private func waitForLiveMenuRow(_ controller: SavedVenuesViewController,
+                                                client: DrinkPaneMenuFixture, amount: String) -> Bool {
+        return waitUntil("Live menu request and exact \(amount) row must render") {
+            guard client.requests > 0, controller.tableView.numberOfSections > 0,
+                  controller.tableView.numberOfRows(inSection: 0) > 0 else { return false }
+            let index = IndexPath(row: 0, section: 0)
+            let cell = controller.tableView(controller.tableView, cellForRowAt: index)
+            return (cell.contentConfiguration as? UIListContentConfiguration)?.secondaryText?.contains(amount) == true
+        }
+    }
     private func withStores(_ body: (SavedVenueStore, SavedDrinkStore) throws -> Void) throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -334,8 +349,10 @@ private final class DrinkPaneFixture: FavouriteComparisonServing {
 
 private final class DrinkPaneMenuFixture: MenuV2Serving {
     let snapshot: MenuV2Snapshot
+    private(set) var requests = 0
     init(snapshot: MenuV2Snapshot) { self.snapshot = snapshot }
     func load(_ saved: [SavedVenue], completion: @escaping (MenuV2Snapshot) -> Void) -> RecommendationRequest {
+        requests += 1
         completion(snapshot)
         return TestRecommendationRequest()
     }

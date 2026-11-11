@@ -10,6 +10,7 @@ final class DiscoveryViewController: UITableViewController {
     private(set) var area: DiscoveryArea?
     private var snapshot: DiscoverySnapshot?
     private var rows: [DiscoveryPresentedRow] = []
+    private var featuredRows: [DiscoveryPresentedRow] = []
     private var request: RecommendationRequest?
     private var generation = UUID()
     private var visible = false
@@ -21,6 +22,9 @@ final class DiscoveryViewController: UITableViewController {
     private let drinkSelector = UIButton(type: .system)
     private let bands = ComparisonBandSelector()
     private let statusLabel = UILabel()
+    private let featuredHeading = UILabel()
+    private let featuredStrip = DiscoveryFeaturedStrip()
+    private var featuredWidth: CGFloat = 0
     var onReloadMenuChanged: (() -> Void)?
     var canReloadFromMore: Bool { canRead && area != nil && !busy }
     func reloadFromMore() { guard canReloadFromMore else { return }; refresh() }
@@ -89,9 +93,15 @@ final class DiscoveryViewController: UITableViewController {
         statusLabel.font = .preferredFont(forTextStyle: .subheadline)
         statusLabel.textColor = NativeAppearance.muted
         statusLabel.adjustsFontForContentSizeCategory = true
+        featuredHeading.text = "Prezzi nella zona"
+        featuredHeading.font = .preferredFont(forTextStyle: .headline)
+        featuredHeading.adjustsFontForContentSizeCategory = true
+        featuredHeading.textColor = NativeAppearance.ink
+        featuredHeading.accessibilityTraits = .header
+        featuredHeading.accessibilityIdentifier = "discovery.featuredHeading"
         let header = UIView()
         let stack = UIStackView(arrangedSubviews: [heading, drinkSelector, bandLabel, bands,
-                                                   statusLabel, illustration])
+                                                   statusLabel, illustration, featuredHeading, featuredStrip])
         stack.axis = .vertical; stack.spacing = 5; stack.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(stack)
         NSLayoutConstraint.activate([
@@ -120,6 +130,10 @@ final class DiscoveryViewController: UITableViewController {
         super.viewDidLayoutSubviews()
         if renderedCategory != traitCollection.preferredContentSizeCategory {
             renderedCategory = traitCollection.preferredContentSizeCategory; render()
+        }
+        let width = max(0, tableView.bounds.width - 40)
+        if !featuredRows.isEmpty && abs(featuredWidth - width) > 1 {
+            configureFeatured(width: width)
         }
         if let header = tableView.tableHeaderView {
             let size = header.systemLayoutSizeFitting(CGSize(width: tableView.bounds.width, height: 0),
@@ -174,6 +188,8 @@ final class DiscoveryViewController: UITableViewController {
         guard isViewLoaded else { return }
         let allRows = snapshot?.displayRows(drink: drink.code, band: band) ?? []
         rows = Array(allRows.prefix(200))
+        featuredRows = area == nil || busy ? [] : DiscoveryFeaturedSelection.rows(from: rows)
+        configureFeatured(width: max(0, tableView.bounds.width - 40))
         var selectorConfiguration = drinkSelector.configuration ?? .bordered()
         selectorConfiguration.title = drink.name
         drinkSelector.configuration = selectorConfiguration
@@ -219,6 +235,17 @@ final class DiscoveryViewController: UITableViewController {
     }
     @objc private func bandChanged() { band = bands.selectedBand; render() }
     @objc private func showMap() { onMap() }
+    private func configureFeatured(width: CGFloat) {
+        featuredWidth = width
+        featuredHeading.isHidden = featuredRows.isEmpty
+        featuredStrip.configure(rows: featuredRows, category: drink, availableWidth: width,
+                                traits: traitCollection, target: self, action: #selector(openFeatured(_:)))
+    }
+    @objc private func openFeatured(_ sender: UIControl) {
+        guard canRead, featuredRows.indices.contains(sender.tag),
+              let url = SavedVenuePolicy.canonicalURL(featuredRows[sender.tag].url) else { return }
+        onOpen(url)
+    }
     @objc private func appDeactivated(_ notification: Notification) { lifecycleActive = false; retire() }
     @objc private func appActivated(_ notification: Notification) { lifecycleActive = true; refresh() }
     @objc private func sceneDeactivated(_ notification: Notification) {

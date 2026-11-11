@@ -59,6 +59,177 @@ struct DiscoveryCategorySummary: Equatable {
     }
 }
 
+/// A small visual sample of the already loaded results, never a second ranking
+/// or an independent source of venue/price data.
+enum DiscoveryFeaturedSelection {
+    static func rows(from rankedRows: [DiscoveryPresentedRow]) -> [DiscoveryPresentedRow] {
+        var seenVenues = Set<String>()
+        return rankedRows.filter { seenVenues.insert($0.key).inserted }.prefix(3).map { $0 }
+    }
+}
+
+enum DiscoveryFeaturedEvidence {
+    static func text(for value: NativeComparablePrice, today: String) -> String {
+        let source: String
+        let day: String?
+        let staleLabel: String
+        switch value {
+        case .legacy(let price):
+            day = price.observedOn
+            source = "Segnalato il \(price.observedOn)"
+            staleLabel = "Da riconfermare: oltre 90 giorni"
+        case .europe(let price):
+            if let checked = price.sourceCheckedOn {
+                day = checked
+                source = "Menu online · Fonte verificata il \(checked)"
+                staleLabel = "Menu da riverificare: oltre 90 giorni"
+            } else {
+                day = price.observedOn
+                source = price.observedOn.map { "Segnalato il \($0)" } ?? "Data non disponibile"
+                staleLabel = "Da riconfermare: oltre 90 giorni"
+            }
+        case .menuV2(let price):
+            switch price.origin {
+            case .ownerMenu(_, let checked):
+                day = checked
+                source = "Menu online · Fonte verificata il \(checked)"
+                staleLabel = "Menu da riverificare: oltre 90 giorni"
+            case .customer(let observed):
+                day = observed
+                source = observed.isEmpty ? "Data non disponibile" : "Segnalato da un cliente il \(observed)"
+                staleLabel = "Da riconfermare: oltre 90 giorni"
+            }
+        }
+        let old = day.flatMap(ComparisonJSON.day).map { date in
+            (ComparisonJSON.day(today)?.timeIntervalSince(date) ?? .infinity) > 90 * 86400
+        } ?? true
+        return old ? "\(source) · \(staleLabel)" : source
+    }
+}
+
+@MainActor final class DiscoveryFeaturedCard: UIControl {
+    private let artwork = UIImageView()
+    private let drinkLabel = UILabel()
+    private let venueLabel = UILabel()
+    private let priceLabel = UILabel()
+    private let servingLabel = UILabel()
+    private let evidenceLabel = UILabel()
+
+    init(row: DiscoveryPresentedRow, category: DrinkCategory, today: String = ComparisonJSON.today()) {
+        super.init(frame: .zero)
+        accessibilityIdentifier = "discovery.featured.\(row.key)"
+        isAccessibilityElement = true
+        accessibilityTraits = .button
+        accessibilityHint = "Apre questo locale nella mappa"
+        backgroundColor = NativeAppearance.surface
+        layer.cornerRadius = 16
+        layer.borderWidth = 1
+        layer.borderColor = NativeAppearance.muted.withAlphaComponent(0.25).cgColor
+        clipsToBounds = true
+
+        artwork.image = NativeDrinkArtwork.image(category.code)
+        artwork.contentMode = .scaleAspectFit
+        artwork.backgroundColor = NativeAppearance.secondary
+        artwork.isAccessibilityElement = false
+        artwork.heightAnchor.constraint(equalToConstant: 82).isActive = true
+        let item: String
+        switch row.price {
+        case .legacy: item = category.name
+        case .europe(let price): item = price.menuItem.flatMap { $0.isEmpty ? nil : $0 } ?? category.name
+        case .menuV2(let price): item = price.itemName
+        }
+        drinkLabel.text = item
+        venueLabel.text = row.name
+        priceLabel.text = row.price.amount
+        servingLabel.text = row.price.groupLabel
+        evidenceLabel.text = DiscoveryFeaturedEvidence.text(for: row.price, today: today)
+        drinkLabel.font = .preferredFont(forTextStyle: .subheadline)
+        drinkLabel.textColor = NativeAppearance.ink
+        venueLabel.font = .preferredFont(forTextStyle: .caption1)
+        venueLabel.textColor = NativeAppearance.muted
+        priceLabel.font = .preferredFont(forTextStyle: .headline)
+        priceLabel.textColor = NativeAppearance.ink
+        servingLabel.font = .preferredFont(forTextStyle: .caption2)
+        servingLabel.textColor = NativeAppearance.muted
+        evidenceLabel.font = .preferredFont(forTextStyle: .caption2)
+        evidenceLabel.textColor = NativeAppearance.muted
+        for label in [drinkLabel, venueLabel, priceLabel, servingLabel, evidenceLabel] {
+            label.numberOfLines = 0
+            label.adjustsFontForContentSizeCategory = true
+            label.isAccessibilityElement = false
+        }
+        let copy = UIStackView(arrangedSubviews: [drinkLabel, venueLabel, priceLabel, servingLabel, evidenceLabel])
+        copy.axis = .vertical
+        copy.spacing = 3
+        copy.isLayoutMarginsRelativeArrangement = true
+        copy.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 10, leading: 12, bottom: 12, trailing: 12)
+        let stack = UIStackView(arrangedSubviews: [artwork, copy])
+        stack.axis = .vertical
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.isUserInteractionEnabled = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor), stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor), stack.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+        accessibilityLabel = "\(item), \(row.name)"
+        accessibilityValue = "\(row.price.amount). \(row.price.groupLabel). \(evidenceLabel.text ?? ""). Immagine illustrativa del drink."
+    }
+
+    required init?(coder: NSCoder) { return nil }
+}
+
+@MainActor final class DiscoveryFeaturedStrip: UIScrollView {
+    private let cards = UIStackView()
+    private var height: NSLayoutConstraint!
+    private var cardWidths: [NSLayoutConstraint] = []
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        accessibilityIdentifier = "discovery.featuredStrip"
+        showsHorizontalScrollIndicator = false
+        alwaysBounceHorizontal = true
+        cards.axis = .horizontal
+        cards.spacing = 12
+        cards.alignment = .fill
+        cards.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(cards)
+        height = heightAnchor.constraint(equalToConstant: 290)
+        height.priority = .defaultHigh
+        NSLayoutConstraint.activate([
+            cards.topAnchor.constraint(equalTo: contentLayoutGuide.topAnchor),
+            cards.bottomAnchor.constraint(equalTo: contentLayoutGuide.bottomAnchor),
+            cards.leadingAnchor.constraint(equalTo: contentLayoutGuide.leadingAnchor),
+            cards.trailingAnchor.constraint(equalTo: contentLayoutGuide.trailingAnchor),
+            cards.heightAnchor.constraint(equalTo: frameLayoutGuide.heightAnchor),
+            height
+        ])
+    }
+
+    required init?(coder: NSCoder) { return nil }
+
+    func configure(rows: [DiscoveryPresentedRow], category: DrinkCategory, availableWidth: CGFloat,
+                   traits: UITraitCollection, target: Any?, action: Selector) {
+        cards.arrangedSubviews.forEach { cards.removeArrangedSubview($0); $0.removeFromSuperview() }
+        cardWidths.removeAll()
+        // The next card remains visible as a scroll cue on compact iPhones;
+        // accessibility text sizes get more room and a taller card.
+        let largeText = traits.preferredContentSizeCategory.isAccessibilityCategory
+        let cardWidth = max(180, min(largeText ? 280 : 220, availableWidth - 24))
+        height.constant = largeText ? 440 : 290
+        for (index, row) in rows.enumerated() {
+            let card = DiscoveryFeaturedCard(row: row, category: category)
+            card.tag = index
+            card.addTarget(target, action: action, for: .touchUpInside)
+            cards.addArrangedSubview(card)
+            let width = card.widthAnchor.constraint(equalToConstant: cardWidth)
+            width.isActive = true
+            cardWidths.append(width)
+        }
+        isHidden = rows.isEmpty
+    }
+}
+
 @MainActor final class DiscoveryCategoryButton: UIButton {
     private let photo = UIImageView()
     private let name = UILabel()

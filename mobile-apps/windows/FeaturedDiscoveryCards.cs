@@ -10,7 +10,7 @@ internal sealed record FeaturedDiscoveryCard(DiscoveryRow Row)
         .ToString("N" + Row.Exponent, CultureInfo.GetCultureInfo("it-IT")) + " " + Row.Currency;
     public string Details => (Row.Serving is { Length: > 0 } ? Row.Serving + " · " : "") +
         (Row.SourceUrl is null ? "Segnalato da cliente" : "Menu online") +
-        (Row.Context == "happy_hour" ? " · Happy hour" : "") +
+        (Row.Context == "happy_hour" ? " · Happy hour" : Row.Context == "conditional" ? " · Condizione" : "") +
         (Row.Condition is null ? "" : " · " + Row.Condition) +
         " · " + Row.CheckedOn.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("it-IT"));
     public Uri? Target => Row.FocusedVenue();

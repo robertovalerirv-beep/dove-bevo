@@ -382,6 +382,9 @@ Require(FeaturedDiscoveryCards.FromRows([]).Length == 0 &&
 Require(new FeaturedDiscoveryCard(localCustomer with { Condition = "Da confermare" })
         .Details.Contains("Da confermare"),
     "a reported drink must keep its review condition on the featured card");
+Require(new FeaturedDiscoveryCard(offer with { Context = "conditional", Condition = "Solo al banco" })
+        .Details.Contains("Condizione · Solo al banco"),
+    "a menu offer with restricted context must not look like a regular price");
 using var customerLondonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
     schema_version = 1, catalog_version = "test-v1", rows = new[] { new {
         venue = "n123", cell = "gcpvj", drink = "spritz", hh = 0,

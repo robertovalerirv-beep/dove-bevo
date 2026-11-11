@@ -42,6 +42,40 @@ final class SavedVenuesViewController: UITableViewController {
     private var drink = DrinkCategory.all[0]
     private var band = ComparisonBand.normal
     private var renderedCategory: UIContentSizeCategory?
+    private var favouriteDetailLineLimit: Int {
+        traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 0 : 2
+    }
+    private func detailLineLimit(showing warning: String, feeCue: String = "") -> Int {
+        if traitCollection.preferredContentSizeCategory.isAccessibilityCategory { return 0 }
+        if !warning.isEmpty && !feeCue.isEmpty { return 4 }
+        return warning.isEmpty && feeCue.isEmpty ? 2 : 3
+    }
+    private func isStale(_ day: String?) -> Bool {
+        day.flatMap(ComparisonJSON.day).map { date in
+            (ComparisonJSON.day(ComparisonJSON.today())?.timeIntervalSince(date) ?? .infinity) > 90 * 86_400
+        } ?? true
+    }
+    private func menuDay(_ price: MenuV2Price) -> String {
+        switch price.origin { case .ownerMenu(_, let day), .customer(let day): return day }
+    }
+    private func warningLabels(conditional: Bool = false, stale: Bool = false) -> String {
+        [conditional ? "Con condizioni" : "", stale ? "Da riverificare" : ""]
+            .filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+    /// A source-derived cue; exact fee amount and applicability remain in the detail text.
+    private func feeScopeCue(_ notice: String) -> String {
+        var words = notice.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let customerPrefix = "spese del locale secondo il menu:"
+        if words.hasPrefix(customerPrefix) { words = String(words.dropFirst(customerPrefix.count)).trimmingCharacters(in: .whitespacesAndNewlines) }
+        if words.isEmpty || words == "nessuna spesa obbligatoria dichiarata dalla fonte." { return "" }
+        let separate = words.contains("spese separate:")
+        let partial = words.contains("copertura delle spese parziale") || words.contains("documentate solo in parte")
+        let unknown = words.contains("non verificate")
+        let scope = partial ? "Copertura parziale" : unknown ? "Spese non verificate" : ""
+        if separate { return "Spese separate" + (scope.isEmpty ? "" : " · \(scope)") }
+        if words.contains("servizio escluso") { return "Servizio escluso" }
+        return scope.isEmpty ? "Spese: vedi dettagli" : scope
+    }
     var isDestinationSelected: (() -> Bool)?
     private let drinkButton = UIButton(type: .system)
     private let bandControl = ComparisonBandSelector()
@@ -436,15 +470,18 @@ final class SavedVenuesViewController: UITableViewController {
             var content = cell.defaultContentConfiguration()
             content.text = "\(item.category.name) · \(item.venue.label)"
             let context = [item.band.name, item.currency, item.serving.label].filter { !$0.isEmpty }.joined(separator: " · ")
-            let state = live.map { "\($0.amount)\n\($0.details(today: ComparisonJSON.today()))" }
-                ?? (busy ? "Caricamento del prezzo online…" : "Prezzo non disponibile ora. Il preferito resta salvato.")
-            content.secondaryText = "\(context)\n\(state)"
+            let warning = live.map { warningLabels(stale: isStale($0.observedOn ?? $0.sourceCheckedOn)) } ?? ""
+            content.secondaryText = live.map {
+                [$0.amount + (warning.isEmpty ? "" : " · \(warning)"), context, $0.details(today: ComparisonJSON.today())]
+                    .filter { !$0.isEmpty }.joined(separator: "\n")
+            } ?? "\(context)\n" + (busy ? "Caricamento del prezzo online…" : "Prezzo non disponibile ora. Il preferito resta salvato.")
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = 0
-            content.textToSecondaryTextVerticalPadding = 8
+            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning)
+            content.textToSecondaryTextVerticalPadding = 4
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
             cell.backgroundConfiguration = NativeAppearance.card()
-            cell.accessoryType = .disclosureIndicator
+            cell.accessoryType = .detailDisclosureButton
             cell.accessibilityIdentifier = "savedEurope.\(item.identity)"
             cell.accessibilityLabel = "\(item.category.name), \(item.venue.label), \(context)"
             cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
@@ -455,15 +492,26 @@ final class SavedVenuesViewController: UITableViewController {
             var content = cell.defaultContentConfiguration()
             content.text = "\(live?.itemName ?? item.name) - \(live?.venueName ?? item.venue.label)"
             let serving = live?.serving ?? MenuV2Price.displayServing(label: item.servingLabel, ml: item.servingML)
-            let state = live.map { "\($0.amount) · \($0.evidence)" }
-                ?? (menuBusy ? "Caricamento del prezzo online…" : "Segnalazione non disponibile ora. Il preferito resta salvato.")
-            content.secondaryText = [serving, state].filter { !$0.isEmpty }.joined(separator: "\n")
+            let warning = live.map { warningLabels(stale: isStale(menuDay($0))) } ?? ""
+            let feeCue = live.map { feeScopeCue($0.feeNotice) } ?? ""
+            if let live {
+                let detail = isStale(menuDay(live)) ? "Da riconfermare: oltre 90 giorni" : ""
+                content.secondaryText = [live.amount + (warning.isEmpty ? "" : " · \(warning)"),
+                                         feeCue,
+                                         [live.currency, serving].filter { !$0.isEmpty }.joined(separator: " · "),
+                                         live.evidence, detail]
+                    .filter { !$0.isEmpty }.joined(separator: "\n")
+            } else {
+                let state = menuBusy ? "Caricamento del prezzo online…" : "Segnalazione non disponibile ora. Il preferito resta salvato."
+                content.secondaryText = [serving, state].filter { !$0.isEmpty }.joined(separator: "\n")
+            }
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = 0
-            content.textToSecondaryTextVerticalPadding = 8
+            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning, feeCue: feeCue)
+            content.textToSecondaryTextVerticalPadding = 4
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
             cell.backgroundConfiguration = NativeAppearance.card()
-            cell.accessoryType = .disclosureIndicator
+            cell.accessoryType = .detailDisclosureButton
             cell.accessibilityIdentifier = "savedCustomer.\(item.itemKey)"
             cell.accessibilityLabel = "\(live?.itemName ?? item.name), \(live?.venueName ?? item.venue.label)"
             cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
@@ -473,11 +521,17 @@ final class SavedVenuesViewController: UITableViewController {
             let (item, live) = offerRows[indexPath.row - drinkRows.count]
             var content = cell.defaultContentConfiguration()
             content.text = "\(live?.itemName ?? item.name) - \(live?.venueName ?? item.venue.label)"
+            let warning = live.map { warningLabels(conditional: $0.band == nil, stale: isStale(menuDay($0))) } ?? ""
+            let feeCue = live.map { feeScopeCue($0.feeNotice) } ?? ""
             if let live {
-                var details = [live.serving, "Menu del locale: \(live.amount)", live.evidence]
+                var details = ["Menu del locale: \(live.amount)" + (warning.isEmpty ? "" : " · \(warning)"),
+                               feeCue,
+                               [live.currency, live.serving].filter { !$0.isEmpty }.joined(separator: " · "),
+                               live.evidence]
                 if live.band == nil {
                     details.append("Prezzo soggetto a condizioni: \(live.condition ?? "verifica il menu del locale").")
                 }
+                if isStale(menuDay(live)) { details.append("Menu da riverificare: oltre 90 giorni.") }
                 if live.servingLabel == nil && live.servingML == nil {
                     details.append("Formato non dichiarato: prezzi con formati diversi non sono confrontabili.")
                 }
@@ -500,11 +554,12 @@ final class SavedVenuesViewController: UITableViewController {
                 content.secondaryText = [savedServing, state].filter { !$0.isEmpty }.joined(separator: "\n")
             }
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = 0
-            content.textToSecondaryTextVerticalPadding = 8
+            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning, feeCue: feeCue)
+            content.textToSecondaryTextVerticalPadding = 4
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
             cell.backgroundConfiguration = NativeAppearance.card()
-            cell.accessoryType = .disclosureIndicator
+            cell.accessoryType = .detailDisclosureButton
             cell.accessibilityIdentifier = "savedOffer.\(item.offerID)"
             cell.accessibilityLabel = "\(live?.itemName ?? item.name), \(live?.venueName ?? item.venue.label)"
             cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
@@ -514,20 +569,26 @@ final class SavedVenuesViewController: UITableViewController {
             let saved = drinkRows[indexPath.row].saved
             var content = cell.defaultContentConfiguration()
             content.text = menuPrice.venueName
-            content.secondaryText = "\(saved.category.name) · \(saved.band.name)\n" +
-                [menuPrice.itemName, menuPrice.serving].filter { !$0.isEmpty }.joined(separator: " · ") +
-                "\n\(menuPrice.amount)\n\(menuPrice.evidence)"
+            let warning = warningLabels(conditional: menuPrice.band == nil, stale: isStale(menuDay(menuPrice)))
+            let feeCue = feeScopeCue(menuPrice.feeNotice)
+            content.secondaryText = "\(menuPrice.amount) · \(saved.band.name)" +
+                (warning.isEmpty ? "" : " · \(warning)") + "\n" +
+                (feeCue.isEmpty ? "" : "\(feeCue)\n") +
+                [menuPrice.itemName, menuPrice.currency, menuPrice.serving].filter { !$0.isEmpty }.joined(separator: " · ") +
+                "\n" + [menuPrice.evidence,
+                          isStale(menuDay(menuPrice)) ? "Menu da riverificare: oltre 90 giorni." : ""]
+                    .filter { !$0.isEmpty }.joined(separator: "\n")
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
             content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = 0
-            content.textToSecondaryTextVerticalPadding = 8
-            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 12)
+            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning, feeCue: feeCue)
+            content.textToSecondaryTextVerticalPadding = 4
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
             cell.backgroundConfiguration = NativeAppearance.card()
-            cell.accessoryType = .disclosureIndicator
+            cell.accessoryType = .detailDisclosureButton
             cell.accessibilityIdentifier = "savedDrink.\(saved.identity).menu.\(menuPrice.id)"
             cell.accessibilityLabel = "\(saved.category.name), \(saved.band.name), \(menuPrice.itemName), \(menuPrice.venueName)"
-            cell.accessibilityValue = [menuPrice.amount, menuPrice.serving, menuPrice.evidence].filter { !$0.isEmpty }.joined(separator: ", ")
+            cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
             cell.accessibilityHint = "Apre il locale nella mappa"
             return cell
         }
@@ -539,11 +600,19 @@ final class SavedVenuesViewController: UITableViewController {
         let visual = NSMutableAttributedString(string: "\(category.name) · \(priceBand.name)\n", attributes: [
             .font: UIFont.preferredFont(forTextStyle: .subheadline, compatibleWith: traitCollection), .foregroundColor: NativeAppearance.muted
         ])
+        var priceWarning = ""
         if let price = row.displayPrice {
             let amount = price.amount
             let evidence = price.details(today: ComparisonJSON.today())
+            let stale: Bool
+            switch price {
+            case .legacy(let legacy): stale = legacy.isOld(today: ComparisonJSON.today())
+            case .europe(let europe): stale = isStale(europe.observedOn ?? europe.sourceCheckedOn)
+            case .menuV2(let menu): stale = isStale(menuDay(menu))
+            }
+            priceWarning = warningLabels(stale: stale)
             details = "\(amount) · \(priceBand.name)\n\(evidence)"
-            visual.append(NSAttributedString(string: "\(amount)\n", attributes: [
+            visual.append(NSAttributedString(string: "\(amount)" + (priceWarning.isEmpty ? "" : " · \(priceWarning)") + "\n", attributes: [
                 .font: UIFontMetrics(forTextStyle: .title2).scaledFont(for: UIFont.systemFont(ofSize: 22, weight: .bold), compatibleWith: traitCollection), .foregroundColor: NativeAppearance.ink
             ]))
             visual.append(NSAttributedString(string: evidence, attributes: [
@@ -561,12 +630,13 @@ final class SavedVenuesViewController: UITableViewController {
         content.text = row.name; content.secondaryAttributedText = visual
         content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection); content.textProperties.numberOfLines = 0
         content.textProperties.color = NativeAppearance.ink
-        content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection); content.secondaryTextProperties.numberOfLines = 0
-        content.textToSecondaryTextVerticalPadding = 8
-        content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 12)
+        content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
+        content.secondaryTextProperties.numberOfLines = showingDrinks ? detailLineLimit(showing: priceWarning) : 0
+        content.textToSecondaryTextVerticalPadding = showingDrinks ? 4 : 8
+        content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: showingDrinks ? 8 : 20, leading: 16, bottom: showingDrinks ? 8 : 20, trailing: 12)
         cell.backgroundConfiguration = NativeAppearance.card()
         cell.tintColor = NativeAppearance.muted
-        cell.contentConfiguration = content; cell.accessoryType = .disclosureIndicator
+        cell.contentConfiguration = content; cell.accessoryType = showingDrinks ? .detailDisclosureButton : .disclosureIndicator
         cell.accessibilityIdentifier = "savedVenue.\(row.saved.url.lastPathComponent)"
         if let price = row.europePrice { cell.accessibilityIdentifier = "savedVenue.\(row.saved.url.lastPathComponent).\(price.group)" }
         if let savedDrink { cell.accessibilityIdentifier = "savedDrink.\(savedDrink.identity).\(row.displayPrice?.group ?? "unavailable")" }
@@ -574,6 +644,16 @@ final class SavedVenuesViewController: UITableViewController {
         cell.accessibilityValue = "\(category.name), \(details)"
         cell.accessibilityHint = "Apre il locale nella mappa"
         return cell
+    }
+
+    override func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
+        guard showingDrinks, !(unifiedDrinks && indexPath.section == 1),
+              let cell = tableView.cellForRow(at: indexPath) else { return }
+        let alert = UIAlertController(title: cell.accessibilityLabel ?? "Dettagli del prezzo",
+                                      message: cell.accessibilityValue ?? "Prezzo non disponibile ora.",
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Chiudi", style: .cancel))
+        present(alert, animated: true)
     }
 
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {

@@ -357,6 +357,31 @@ Require(londonRows.Count == 2 && londonRows.All(row => row.Currency == "GBP" && 
     londonRows[0].FocusedVenue()?.AbsoluteUri ==
         "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=gcpvj",
     "London GBP servings must stay distinct and reopen the app venue without wrong serving focus");
+var localOffer = legacyRows.Single(row => row.Key == "n123");
+var localCustomer = legacyRows.Single(row => row.Key == "u1");
+var featured = FeaturedDiscoveryCards.FromRows([
+    localOffer,
+    localOffer with { AmountMinor = 600 }, // A second drink at the same venue must not displace its first ranked price.
+    localCustomer,
+    londonRows[0],
+    offer,
+]);
+Require(featured.Length == 3 &&
+    featured.Select(card => (card.Row.Key, card.Row.Cell))
+        .SequenceEqual(new[] { (localOffer.Key, localOffer.Cell),
+                               (localCustomer.Key, localCustomer.Cell),
+                               (londonRows[0].Key, londonRows[0].Cell) }) &&
+    featured[0].Price == "5,50 EUR" && featured[2].Price == "6,50 GBP" &&
+    featured[2].Details.Contains("ml") &&
+    featured[2].Target?.AbsoluteUri == londonRows[0].FocusedVenue()?.AbsoluteUri &&
+    featured[0].Target?.AbsoluteUri == localOffer.FocusedVenue()?.AbsoluteUri,
+    "featured cards must retain sorted distinct real venues, original currency, serving and exact target");
+Require(FeaturedDiscoveryCards.FromRows([]).Length == 0 &&
+    FeaturedDiscoveryCards.FromRows([localOffer with { Key = "invalid/key" }]).Length == 0,
+    "empty or unnavigable results must not render a featured card");
+Require(new FeaturedDiscoveryCard(localCustomer with { Condition = "Da confermare" })
+        .Details.Contains("Da confermare"),
+    "a reported drink must keep its review condition on the featured card");
 using var customerLondonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
     schema_version = 1, catalog_version = "test-v1", rows = new[] { new {
         venue = "n123", cell = "gcpvj", drink = "spritz", hh = 0,

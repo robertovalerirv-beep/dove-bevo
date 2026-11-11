@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private readonly AreaVotesClient areaVotes = new();
     private readonly MapRouteTracker mapRoutes = new();
     private readonly DiscoveryClient discovery = new();
+    private FeaturedDiscoveryCard[] featuredCards = [];
     private DiscoveryArea? discoveryArea;
     private CancellationTokenSource? discoveryCancellation;
     private bool starting;
@@ -655,12 +656,18 @@ public partial class MainWindow : Window
         var request = new CancellationTokenSource();
         discoveryCancellation = request;
         DiscoveryList.ItemsSource = Array.Empty<DiscoveryRow>();
+        featuredCards = [];
+        FeaturedCards.ItemsSource = featuredCards;
+        UpdateFeaturedVisibility();
         StatusText.Text = $"Cerco prezzi pubblici per {category.Name.ToLowerInvariant()} qui vicino…";
         try
         {
             var snapshot = await discovery.LoadAsync(discoveryArea, category.Code, request.Token);
             if (request.IsCancellationRequested || DiscoveryPanel.Visibility != Visibility.Visible) return;
             DiscoveryList.ItemsSource = snapshot.Rows.ToArray();
+            featuredCards = FeaturedDiscoveryCards.FromRows(snapshot.Rows);
+            FeaturedCards.ItemsSource = featuredCards;
+            UpdateFeaturedVisibility();
             StatusText.Text = snapshot.EuropeUnavailable
                 ? $"Prezzi europei non disponibili ora; {snapshot.Rows.Count} prezzi di altre fonti mostrati. Riprova Aggiorna."
                 : snapshot.UnavailableCells > 0
@@ -683,6 +690,9 @@ public partial class MainWindow : Window
         discoveryCancellation = null;
         DiscoveryPanel.Visibility = Visibility.Collapsed;
         discoveryArea = null;
+        featuredCards = [];
+        FeaturedCards.ItemsSource = featuredCards;
+        UpdateFeaturedVisibility();
         ShowWebsiteIfNoOverlay();
         UpdateButtons();
     }
@@ -690,8 +700,31 @@ public partial class MainWindow : Window
     private void OpenDiscoveryVenue_Click(object sender, RoutedEventArgs e)
     {
         if (DiscoveryList.SelectedItem is not DiscoveryRow row) return;
-        var target = row.FocusedVenue();
+        OpenDiscoveryTarget(row.FocusedVenue());
+    }
+
+    private void OpenFeaturedVenue_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.Tag is not FeaturedDiscoveryCard card) return;
+        OpenDiscoveryTarget(card.Target);
+    }
+
+    private void OpenDiscoveryTarget(Uri? target)
+    {
         if (target is null) { StatusText.Text = "Non riesco ad aprire questo locale."; return; }
         Navigate(target.AbsoluteUri, source: NativeReturnDestination.Discovery);
+    }
+
+    private void DiscoveryPanel_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateFeaturedVisibility();
+
+    private void UpdateFeaturedVisibility()
+    {
+        if (DiscoveryPanel is null || FeaturedTitle is null || FeaturedSubtitle is null ||
+            FeaturedScroller is null) return;
+        var visible = featuredCards.Length > 0 && DiscoveryPanel.Visibility == Visibility.Visible &&
+                      DiscoveryPanel.ActualHeight >= 570;
+        FeaturedTitle.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        FeaturedSubtitle.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        FeaturedScroller.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
     }
 }

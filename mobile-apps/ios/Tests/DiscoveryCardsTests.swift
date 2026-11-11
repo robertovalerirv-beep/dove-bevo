@@ -3,6 +3,36 @@ import XCTest
 @testable import DoveBevo
 
 final class DiscoveryCardsTests: XCTestCase {
+    func testFeaturedSelectionKeepsOnlyThreeDistinctRealVenuesInLoadedOrder() throws {
+        let url = try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9"))
+        let price = NativeComparablePrice.legacy(FavouritePrice(drink: "spritz", band: .normal,
+            cents: 550, observedOn: "2026-11-01", confirmations: 0, quarantined: false))
+        let rows = ["n123", "n123", "n124", "n125", "n126"].map { key in
+            DiscoveryPresentedRow(key: key, name: key, url: url, latitude: 45.46, longitude: 9.19,
+                                  location: "Milano", price: price)
+        }
+        XCTAssertEqual(DiscoveryFeaturedSelection.rows(from: rows).map(\.key), ["n123", "n124", "n125"])
+        XCTAssertTrue(DiscoveryFeaturedSelection.rows(from: []).isEmpty)
+    }
+
+    @MainActor func testFeaturedCardUsesExactMenuItemCurrencyAndServingWithoutDealClaim() throws {
+        let price = MenuV2Price(id: "fixture", venueName: "Locale vero", itemName: "Spritz della casa",
+            category: "spritz", band: .normal, amountMinor: 650, currency: "EUR", exponent: 2,
+            servingLabel: "Calice", servingML: 200,
+            origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu")), "2026-11-02"),
+            feeNotice: "Altre spese non verificate.")
+        let row = DiscoveryPresentedRow(key: "n123", name: "Locale vero",
+            url: try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")),
+            latitude: 45.46, longitude: 9.19, location: "Milano", price: .menuV2(price))
+        let category = try XCTUnwrap(DrinkCategory.all.first { $0.code == "spritz" })
+        let card = DiscoveryFeaturedCard(row: row, category: category)
+        let text = descendants(card).compactMap { ($0 as? UILabel)?.text }.joined(separator: "\n")
+        for expected in ["Spritz della casa", "Locale vero", "6,50 €", "EUR", "Calice · 200 ml"] {
+            XCTAssertTrue(text.contains(expected), expected)
+        }
+        XCTAssertFalse(text.contains("Affare"))
+        XCTAssertTrue(card.accessibilityValue?.contains("Immagine illustrativa") == true)
+    }
     func testCategorySummaryNeverRanksDifferentCurrencyOrServingTogether() throws {
         let catalog = try EuropeFixtures.catalog()
         let london = try EuropeJSON.resolve(EuropeFixtures.cell("gcpvj"), catalog: catalog, cell: "gcpvj", today: "2026-11-02")

@@ -28,6 +28,26 @@ final class DiscoveryControllerTests: XCTestCase {
         mounted.attach(to: self, name: "Scopri-populated")
     }
 
+    @MainActor func testFeaturedCardsAreRealSelectedDrinkRowsAndOpenTheirVenues() throws {
+        var opened: URL?
+        let (controller, mounted) = try referenceFixture(category: .large, onOpen: { opened = $0 })
+        defer { mounted.close() }
+        let cards = descendants(controller.view).compactMap { $0 as? DiscoveryFeaturedCard }
+        XCTAssertEqual(cards.count, 3)
+        let first = try XCTUnwrap(cards.first)
+        XCTAssertTrue(first.window === mounted.window)
+        XCTAssertEqual(first.accessibilityIdentifier, "discovery.featured.n901")
+        XCTAssertTrue(first.accessibilityLabel?.contains("Locale fixture A") == true)
+        XCTAssertTrue(first.accessibilityValue?.contains("5,50 €") == true)
+        XCTAssertTrue(first.accessibilityValue?.contains("Formato non dichiarato") == true)
+        first.sendActions(for: .touchUpInside)
+        XCTAssertEqual(opened, URL(string: "https://www.dovebevo.com/bar/n901?c=u0nd9"))
+        XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 3, "The complete ranked list remains below the visual sample")
+        controller.selectDrink("beer_draft")
+        XCTAssertTrue(descendants(controller.view).compactMap { $0 as? DiscoveryFeaturedCard }.isEmpty)
+        XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 0)
+    }
+
     @MainActor func testReferenceDiscoveryPrivateFixtureMountsActualXXXLFontsWithoutClippedEvidence() throws {
         let (controller, mounted) = try referenceFixture(category: .accessibilityExtraExtraExtraLarge)
         defer { mounted.close() }
@@ -49,9 +69,10 @@ final class DiscoveryControllerTests: XCTestCase {
         mounted.attach(to: self, name: "Scopri-populated-XXXL-scrolled-to-row")
     }
 
-    @MainActor private func referenceFixture(category: UIContentSizeCategory) throws -> (DiscoveryViewController, OwnedReferenceWindow) {
+    @MainActor private func referenceFixture(category: UIContentSizeCategory,
+                                             onOpen: @escaping (URL) -> Void = { _ in }) throws -> (DiscoveryViewController, OwnedReferenceWindow) {
         let client = DelayedDiscoveryService()
-        let controller = DiscoveryViewController(client: client, activityCheck: { true }, onOpen: { _ in }, onMap: {})
+        let controller = DiscoveryViewController(client: client, activityCheck: { true }, onOpen: onOpen, onMap: {})
         let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
         controller.setArea(area)
         controller.selectDrink("spritz")

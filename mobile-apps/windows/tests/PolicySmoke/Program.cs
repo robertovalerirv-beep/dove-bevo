@@ -35,7 +35,10 @@ mapRoutes.Observe(londonMap); // SourceChanged/HistoryChanged after the app's ci
 mapRoutes.Observe(londonVenue);
 Require(mapRoutes.Destination(londonVenue) == londonMap.AbsoluteUri,
     "London venue must return to the selected London map");
-Require(mapRoutes.PreferredCityIndex(DiscoveryClient.Cities) == 8,
+Require(mapRoutes.PreferredCityIndex([
+        new DiscoveryLocation("Milano", new DiscoveryArea(45.4642, 9.1900, 14), "IT"),
+        new DiscoveryLocation("Londra", new DiscoveryArea(51.5072, -0.1276, 14), "GB"),
+    ]) == 1,
     "Home discovery must start with the remembered London city");
 Require(mapRoutes.Destination(londonVenue) == londonMap.AbsoluteUri,
     "Home discovery must not replace the selected map city");
@@ -286,6 +289,19 @@ Require(legacyRows.Count == 2 && legacyRows.All(row => row.SourceUrl is null && 
         row.Display.Contains("5,50 EUR") && row.FocusedVenue() is not null) &&
     legacyRows.Any(row => row.Key == "u1" && row.Venue == "Customer Bar"),
     "Italian customer prices missing from Windows discovery");
+var staleArea = new DiscoveryArea(45.4642, 9.1900, 14);
+var resultGate = new DiscoveryResultGate();
+var priorLoad = resultGate.Begin(staleArea);
+Require(resultGate.Publish(priorLoad, staleArea, legacyRows) && resultGate.Rows.Count == 2,
+    "a loaded selected city must show its own rows");
+resultGate.Begin(null); // Reopen Scopri without a readable map area.
+Require(resultGate.Area is null && resultGate.Rows.Count == 0 &&
+    !resultGate.Publish(priorLoad, staleArea, legacyRows),
+    "Scopri without an area must clear previously visible city prices");
+var inFlight = resultGate.Begin(staleArea);
+resultGate.Begin(null); // A refreshed directory removed the selected city.
+Require(resultGate.Rows.Count == 0 && !resultGate.Publish(inFlight, staleArea, legacyRows),
+    "a late old-city response must not repaint after city selection is cleared");
 Require(LegacyDiscoveryClient.ParseCell(null, legacyPrices, "u0nd9", "spritz",
     new DateOnly(2026, 11, 10)).Single().Key == "u1",
     "approved user venue must remain available when the OSM asset is unavailable");
@@ -329,6 +345,55 @@ var londonCatalogBytes = JsonSerializer.SerializeToUtf8Bytes(new {
 });
 using var londonCatalog = JsonDocument.Parse(londonCatalogBytes);
 var parsedCatalog = EuropeDiscoveryClient.ParseCatalog(londonCatalog);
+var placesBytes = JsonSerializer.SerializeToUtf8Bytes(new object[][] {
+    [1, "Genova", 44.4056, 8.9463, 50],
+    [2, "Milano", 45.4642, 9.1900, 100],
+    [3, "Forlì", 44.2226, 12.0408, 10],
+    [4, "Roma", 41.9028, 12.4964, 90],
+    [5, "Genova", 44.4000, 8.9400, 2],
+});
+using var places = JsonDocument.Parse(placesBytes);
+var italianCities = DiscoveryCityDirectory.ParseItalianPlaces(places);
+Require(italianCities.Select(city => city.Name).SequenceEqual(["Milano", "Roma", "Genova", "Forlì"]) &&
+    italianCities[2].Area.Latitude == 44.4056,
+    "live Italian places must lead with major cities and retain the first published centre");
+var catalogCities = DiscoveryCityDirectory.ParseCatalogue(londonCatalog);
+var directory = DiscoveryCityDirectory.Merge(italianCities, catalogCities);
+Require(directory.Cities.Count == 5 && directory.Cities[^1].ToString() == "London, Regno Unito" &&
+    DiscoveryCityDirectory.Visible(directory.Cities, "").Select(city => city.Name)
+        .SequenceEqual(["Milano", "Roma", "Genova", "Forlì", "London"]) &&
+    DiscoveryCityDirectory.Visible(directory.Cities, "forli").Single().Name == "Forlì" &&
+    DiscoveryCityDirectory.Visible(directory.Cities, "lon").Single().Name == "London",
+    "Scopri city preview and accent-insensitive search must cover Italian and European cities");
+var beyondPreview = italianCities.Concat(Enumerable.Range(0, 45).Select(index =>
+    new DiscoveryLocation($"Italian extra {index}", new DiscoveryArea(43, 10, 14), "IT"))).ToArray();
+Require(DiscoveryCityDirectory.Visible(beyondPreview, "").Count == 10 &&
+    DiscoveryCityDirectory.Visible(beyondPreview, "Italian extra 44").Single().Name == "Italian extra 44",
+    "typing must search all loaded cities, including those beyond the preview");
+var cityUrls = new List<string>();
+var cityReader = new DiscoveryCityDirectory((url, _, _) => {
+    cityUrls.Add(url);
+    return Task.FromResult(url switch {
+        "https://www.dovebevo.com/api/health" =>
+            JsonSerializer.SerializeToUtf8Bytes(new { status = "ok", data_version = "20261111" }),
+        "https://www.dovebevo.com/data/20261111/places.json" => placesBytes,
+        "https://www.dovebevo.com/mobile-data/catalog.json" => londonCatalogBytes,
+        _ => throw new Exception("Unexpected city source"),
+    });
+});
+var cityRead = await cityReader.LoadAsync(CancellationToken.None);
+Require(cityRead.Cities.Count == 5 && !cityRead.ItalianUnavailable && !cityRead.EuropeanUnavailable &&
+    cityUrls.Count == 3 && cityUrls.Contains("https://www.dovebevo.com/data/20261111/places.json"),
+    "city selection must read the versioned live map and current app catalogue");
+var europeanOnly = await new DiscoveryCityDirectory((url, _, _) =>
+    url == "https://www.dovebevo.com/mobile-data/catalog.json"
+        ? Task.FromResult(londonCatalogBytes)
+        : throw new IOException("Map unavailable")).LoadAsync(CancellationToken.None);
+Require(europeanOnly.Cities.Single().Name == "London" && europeanOnly.ItalianUnavailable &&
+    !europeanOnly.EuropeanUnavailable,
+    "one unavailable city source must not erase the other source's real cities");
+using var badPlaces = JsonDocument.Parse("[[1,\"Invalid\",99,9,1]]");
+ExpectInvalid(() => DiscoveryCityDirectory.ParseItalianPlaces(badPlaces));
 var checkedDay = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
 var londonPrices = new[] {
     new { venue = "n123", cell = "gcpvj", drink = "beer_draft", hh = 0,
@@ -439,6 +504,16 @@ if (args.Contains("--live-discovery"))
         "London must not report irrelevant Italian legacy sources as unavailable");
     Console.WriteLine($"Live London discovery: {londonLive.Rows.Count} prices; " +
         $"{londonLive.UnavailableCells} unavailable cells.");
+}
+if (args.Contains("--live-cities"))
+{
+    var cityLive = await new DiscoveryCityDirectory().LoadAsync(CancellationToken.None);
+    Require(!cityLive.ItalianUnavailable && !cityLive.EuropeanUnavailable &&
+        cityLive.Cities.Count >= 10 && cityLive.Cities[0].Name == "Milano" &&
+        cityLive.Cities.Any(city => city.Name == "Genova" && city.Country == "IT") &&
+        cityLive.Cities.Any(city => city.Country == "GB"),
+        "live Italian and European city choices are unavailable");
+    Console.WriteLine($"Live Scopri city choices: {cityLive.Cities.Count}.");
 }
 
 Console.WriteLine("Windows policy: origin, exact bookmarks, live-price parsing, area totals, and discovery passed.");

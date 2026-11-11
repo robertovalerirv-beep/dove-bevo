@@ -718,9 +718,6 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                         .filter(Boolean)
                         .join(" · ")}
                     </small>
-                    <small class="mobile-menu-v2__meta">
-                      Prezzo del drink da menu, non totale pagato. Supplementi separati.
-                    </small>
                     <div class="mobile-menu-v2__quick-actions">
                       {nativeOfferSave && mobileOfferIdPattern.test(featuredOffer.id) && (
                         <NativeSaveAction
@@ -737,6 +734,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                         />
                       )}
                     </div>
+                    <small class="mobile-menu-v2__meta">
+                      Prezzo del drink da menu, non totale pagato. Supplementi separati.
+                    </small>
                     <a
                       class="mobile-menu-v2__source"
                       href={featuredOffer.source.url}
@@ -781,7 +781,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           )}
           <ul class="prices">
             {shown.flatMap((row, index) => [
-              index === 1 && (
+              index === 1 && !featuredOffer && (
                 <li key="other-prices" class="mobile-price-section" role="presentation">
                   {currentLang() === "en" ? "Other prices" : "Altri prezzi"}
                 </li>
@@ -795,7 +795,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 tier={tier(row)}
                 nativeDrinkSave={nativeDrinkSave}
                 savedDrinkKeys={savedDrinkKeys}
-                featured={index === 0 && (!savedFocus || savedFound)}
+                featured={index === 0 && !featuredOffer && (!savedFocus || savedFound)}
               />,
             ])}
           </ul>

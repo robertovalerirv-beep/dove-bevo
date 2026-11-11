@@ -1540,6 +1540,59 @@ test("an existing Italian venue retains customer drinks when its owner menu retu
   }
 });
 
+test("a selected owner drink leaves unrelated customer price rows compact", async () => {
+  const f = await fixture({
+    url: "https://sheets.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&offer=first",
+  });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar([], "n123"));
+    const selected = f.page.getByTestId("featured-menu-price");
+    await selected.waitFor();
+    const customer = f.page.locator(".mobile-price").first();
+    await customer.waitFor();
+    if (process.env.DOVEBEVO_CAPTURE_VENUE) {
+      const captureDir = path.join(root, ".task-tmp", "venue-layout-evidence");
+      mkdirSync(captureDir, { recursive: true });
+      await f.page.screenshot({
+        path: path.join(captureDir, `${process.env.DOVEBEVO_CAPTURE_VENUE}.png`),
+      });
+    }
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeOfferSave = true;
+      window.DoveBevoNativeDrinkSave = true;
+      window.dispatchEvent(new window.Event("dovebevo-native-ready"));
+    });
+    await selected.locator(".mobile-menu-v2__save").waitFor();
+    await customer.locator(".mobile-menu-v2__save").waitFor();
+    if (process.env.DOVEBEVO_CAPTURE_VENUE) {
+      await f.page.screenshot({
+        path: path.join(
+          root,
+          ".task-tmp",
+          "venue-layout-evidence",
+          `${process.env.DOVEBEVO_CAPTURE_VENUE}-native.png`,
+        ),
+      });
+    }
+    assert.match(await selected.innerText(), /Spritz <script>[\s\S]*7,50\s*€/);
+    assert.match(await selected.innerText(), /Calice/);
+    assert.match(await selected.innerText(), /Prezzo del drink da menu, non totale pagato/);
+    assert.match(await selected.innerText(), /Menu verificato il 2026-11-02/);
+    assert.equal(await selected.locator(".mobile-drink-vote").count(), 1);
+    assert.equal(await selected.locator(".mobile-menu-v2__save").count(), 1);
+    assert.equal(await f.page.locator(".mobile-price--featured").count(), 0);
+    assert.equal(await f.page.locator(".mobile-price-section").count(), 0);
+    assert.equal(await customer.locator(".mobile-price__quick-actions").count(), 1);
+    assert.equal(await customer.locator(".mobile-drink-vote").count(), 1);
+    assert.equal(await customer.locator(".price__actions").isVisible(), false);
+    await customer.locator(".mobile-price__toggle").click();
+    assert.equal(await customer.locator(".price__actions").isVisible(), true);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("missing owner and customer menus leave a real legacy price without empty headings", async () => {
   const f = await fixture({ menuAbsent: true, customerAbsent: true });
   try {

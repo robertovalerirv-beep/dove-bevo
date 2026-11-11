@@ -15,7 +15,7 @@ import {
   menuOfferMatchesFocus,
 } from "../routes.ts";
 import { transformApp, transformMap, mobileMapStyle } from "../build-contract.mjs";
-import { mobilePinLabel } from "../map-pins.ts";
+import { mobilePinImage, mobilePinLabel } from "../map-pins.ts";
 import { renderSw } from "../../../scripts/sw.ts";
 
 const read = (name) => readFileSync(new URL(`../../../src/${name}`, import.meta.url), "utf8");
@@ -268,14 +268,67 @@ test("mobile map preserves the licensed website style and palette exactly", () =
 });
 
 test("happy-hour and longer amounts retain separate readable price and HH cues", () => {
-  assert.deepEqual(mobilePinLabel("6,00 € Happy hour"), { amount: "6,00", detail: "HH" });
-  assert.deepEqual(mobilePinLabel("6,00 € HH"), { amount: "6,00", detail: "HH" });
-  assert.deepEqual(mobilePinLabel("125,00 €"), { amount: "125,00", detail: "" });
-  assert.deepEqual(mobilePinLabel("7,50 € MENU"), { amount: "7,50", detail: "M+" });
-  assert.deepEqual(mobilePinLabel("30 VOCI"), { amount: "30", detail: "MENU" });
-  assert.deepEqual(mobilePinLabel("2 PREZZI"), { amount: "2", detail: "PREZZI" });
-  assert.deepEqual(mobilePinLabel("£7.50"), { amount: "7.50", detail: "£" });
-  assert.deepEqual(mobilePinLabel("7,50 £ HH"), { amount: "7,50", detail: "£ HH" });
+  assert.deepEqual(mobilePinLabel("6,00 € Happy hour"), {
+    amount: "6,00",
+    currency: "€",
+    detail: "HH",
+  });
+  assert.deepEqual(mobilePinLabel("6,00 € HH"), { amount: "6,00", currency: "€", detail: "HH" });
+  assert.deepEqual(mobilePinLabel("125,00 €"), { amount: "125,00", currency: "€", detail: "" });
+  assert.deepEqual(mobilePinLabel("7,50 € MENU"), {
+    amount: "7,50",
+    currency: "€",
+    detail: "MENU",
+  });
+  assert.deepEqual(mobilePinLabel("30 VOCI"), { amount: "30", currency: "", detail: "MENU" });
+  assert.deepEqual(mobilePinLabel("2 PREZZI"), { amount: "2", currency: "", detail: "PREZZI" });
+  assert.deepEqual(mobilePinLabel("£7.50"), { amount: "7.50", currency: "£", detail: "" });
+  assert.deepEqual(mobilePinLabel("7,50 £ HH"), {
+    amount: "7,50",
+    currency: "£",
+    detail: "HH",
+  });
+  assert.deepEqual(mobilePinLabel("7,50 € offer"), {
+    amount: "7,50",
+    currency: "€",
+    detail: "",
+  });
+});
+
+test("mobile price art draws the original currency and keeps menu counts currency-free", () => {
+  const previousDocument = globalThis.document;
+  const rendered = [];
+  const context = {
+    scale() {},
+    beginPath() {},
+    moveTo() {},
+    bezierCurveTo() {},
+    arc() {},
+    closePath() {},
+    fill() {},
+    stroke() {},
+    setLineDash() {},
+    fillText(value) {
+      rendered.push(value);
+    },
+    getImageData() {
+      return { width: 112, height: 136 };
+    },
+  };
+  globalThis.document = { createElement: () => ({ getContext: () => context }) };
+  try {
+    mobilePinImage("affare", false, "6,00 € MENU");
+    assert.deepEqual(rendered, ["6,00", "€", "↓ MENU"]);
+    rendered.length = 0;
+    mobilePinImage("salato", false, "£7.50 HH");
+    assert.deepEqual(rendered, ["7.50", "£", "↑ HH"]);
+    rendered.length = 0;
+    mobilePinImage("neutro", false, "30 VOCI");
+    assert.deepEqual(rendered, ["30", "MENU"]);
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
 });
 
 test("existing website service worker returns its legacy shell offline, requiring a native marker check", async () => {

@@ -15,6 +15,7 @@ import import_v2 as core
 
 ROOT=Path(__file__).resolve().parents[3]
 MIGRATION=ROOT/"migrations"/"0011_mobile_menu_v2.sql"
+MINIMUM_MIGRATION=ROOT/"migrations"/"0017_mobile_menu_v2_minimum_spends.sql"
 DAY=dt.date.today().isoformat()
 VENUE={
     "venue_key":"n2361866569","cell":"srb0b","name":"Kikuya","kind":1,
@@ -27,6 +28,8 @@ VENUE={
 }
 PAGE=b"<html><body>Classic Spritz EUR 7.50</body></html>"
 PAGE_SHA=core.legacy.source_digest(PAGE,"html_text_v1")
+MINIMUM_PAGE=b"<html><body>Minimum spend EUR 15.00 per person during live sports</body></html>"
+MINIMUM_PAGE_SHA=core.legacy.source_digest(MINIMUM_PAGE,"html_text_v1")
 SOURCE={
     "id":"src-test-1","venue_key":VENUE["venue_key"],"cell":VENUE["cell"],
     "source_url":"https://example.org/menu","source_format":"html_text_v1",
@@ -41,6 +44,14 @@ OFFER={
     "serving_label":None,"serving_ml":None,"amount_minor":750,
     "currency":"EUR","currency_exponent":2,"price_context":"regular",
     "condition_text":None,"evidence_ref":"Owner menu Classic Spritz",
+}
+MINIMUM={
+    "id":"minimum-test-1","venue_key":VENUE["venue_key"],"cell":VENUE["cell"],
+    "source_id":"src-minimum-test-1","label":"Minimum spend",
+    "amount_minor":1500,"currency":"EUR","currency_exponent":2,
+    "basis":"person","applicability":"conditional",
+    "condition_text":"During live sports",
+    "evidence_ref":"Owner page: Minimum spend EUR 15.00 per person during live sports",
 }
 
 def manifest():
@@ -73,12 +84,14 @@ class Fake:
             "CREATE TABLE venues_user(id INTEGER,name TEXT,kind INTEGER,lat REAL,lon REAL,cell TEXT,status TEXT);"
             +schema
         )
+        self.db.executescript(MINIMUM_MIGRATION.read_text(encoding="utf-8"))
         self.public=public or {
             core.SITE+"/api/health":json.dumps({"status":"ok","data_version":"20261101"}).encode(),
             core.SITE+"/data/20261101/v/srb0b.json":
                 json.dumps({"v":[["n2361866569","Kikuya",1,43.76857,11.26012,"Via dei Benci 43 R",0]],
                             "c":[[61753360,"Firenze"]]}).encode(),
             "https://example.org/menu":PAGE,
+            "https://example.org/minimum":MINIMUM_PAGE,
         }
     def fetch(self,url,maximum=None):
         if url not in self.public: raise core.Error("unexpected public URL")
@@ -93,6 +106,60 @@ class Fake:
         return [dict(row) for row in self.db.execute(sql,params).fetchall()]
 
 class ImportTests(unittest.TestCase):
+    def test_conditional_minimum_spend_is_separate_source_bound_and_idempotent(self):
+        doc=manifest()
+        source=copy.deepcopy(SOURCE)
+        source.update({"id":MINIMUM["source_id"],"source_url":"https://example.org/minimum",
+                       "source_sha256":MINIMUM_PAGE_SHA,
+                       "source_text_sha256":MINIMUM_PAGE_SHA})
+        doc["sources"].append(source)
+        doc["minimum_spends"]=[copy.deepcopy(MINIMUM)]
+        transport=Fake();payload=raw(doc)
+        audit=core.execute(payload,transport)
+        self.assertTrue(audit["complete"],audit["errors"])
+        self.assertEqual([r["kind"] for r in audit["rows"]],
+                         ["source","source","offer","minimum_spend"])
+        done=core.execute(payload,transport,True,hashlib.sha256(payload).hexdigest())
+        self.assertTrue(done["complete"],done["errors"])
+        self.assertEqual([r["outcome"] for r in done["rows"]],["inserted"]*4)
+        amount=transport.db.execute(
+            "SELECT amount_minor,currency,basis,applicability,condition_text "
+            "FROM mobile_menu_v2_minimum_spends").fetchone()
+        self.assertEqual(tuple(amount),(1500,"EUR","person","conditional","During live sports"))
+        self.assertEqual(transport.db.execute(
+            "SELECT amount_minor FROM mobile_menu_v2_offers").fetchone()[0],750)
+        self.assertEqual(transport.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_fees").fetchone()[0],0)
+        repeated=core.execute(payload,transport,True,hashlib.sha256(payload).hexdigest())
+        self.assertTrue(repeated["complete"],repeated["errors"])
+        self.assertEqual([r["outcome"] for r in repeated["rows"]],["existing_identical"]*4)
+
+        doc["minimum_spends"][0]["basis"]="table"
+        with self.assertRaises(core.Error):core.validate(raw(doc))
+        doc["minimum_spends"][0]["basis"]="person"
+        doc["minimum_spends"][0]["condition_text"]=None
+        with self.assertRaises(core.Error):core.validate(raw(doc))
+
+    def test_minimum_spend_active_row_rejects_held_source(self):
+        transport=Fake()
+        transport.db.execute(
+            "INSERT INTO mobile_menu_v2_sources"
+            " (id,venue_key,cell,source_url,source_text_sha256,source_checked_on,"
+            " use_review_status,use_review_basis,use_review_reference,use_reviewed_on)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (MINIMUM["source_id"],VENUE["venue_key"],VENUE["cell"],
+             "https://example.org/minimum",MINIMUM_PAGE_SHA,DAY,"held",
+             "Synthetic held use","https://example.org/rights",DAY))
+        with self.assertRaises(sqlite3.IntegrityError):
+            transport.db.execute(
+                "INSERT INTO mobile_menu_v2_minimum_spends"
+                " (id,venue_key,cell,label,amount_minor,currency,currency_exponent,"
+                " basis,applicability,condition_text,status,source_id)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                (MINIMUM["id"],VENUE["venue_key"],VENUE["cell"],MINIMUM["label"],
+                 1500,"EUR",2,"person","conditional","During live sports","active",
+                 MINIMUM["source_id"]))
+
     def test_dry_run_apply_retry_and_legacy_preservation(self):
         doc=manifest();payload=raw(doc);transport=Fake()
         transport.db.execute("INSERT INTO prices_current VALUES (?,?)",(VENUE["venue_key"],900))

@@ -1,8 +1,8 @@
 # Pub Alaska Napoli: owner-linked indoor menu source
 
-Checked 2026-11-11. This source-only draft records one existing Napoli venue and
-does not publish prices, create a venue, change customer observations, or touch
-Roberto's website.
+Checked 2026-11-11. This source-only record concerns one existing Napoli venue
+and does not itself publish prices, create a venue, change customer
+observations, or touch Roberto's website.
 
 ## Venue and menu identity
 
@@ -15,11 +15,19 @@ Roberto's website.
   [Ordinalo digital menu](https://menudigitale.ordinalo.net/pubalaska_it/).
   Ordinalo [documents](https://www.ordinalo.net/supporto/ordini-interni-e-staff/)
   that this is an indoor menu, which can differ from takeaway or delivery.
+- Dove Bevo's published static tuple has an empty address field; the live app
+  menu route reports null for this OSM node. The OSM node has no address tags. The
+  owner's address remains recorded above as separate identity evidence; it is
+  not a value in the published static tuple. The corrected manifest therefore
+  records `address: null`, the schema's unset value, while the importer still
+  checks the exact published name, kind, coordinates and city. Protected dry
+  run `43102731065` of the earlier manifest failed safely on an address
+  mismatch before any price write.
 
 ## Recorded drink facts
 
 - Immutable manifest:
-  `3f43bcb78f4b795be3ca2f943eabf9b14d0de23137af520b04095f5ee8c26da7.json`;
+  `1b526127bdba47de8cb10898b7801bd529863dc6aabe2e7ec5c24b87fda18383.json`;
   its filename is the SHA-256 of its exact UTF-8 bytes. The directly fetched
   297,830-byte HTML had raw SHA-256
   `10fcdedbdfbc4ff009526ca6507edb8e7ac6b7c141060ff04d80489e6e194b8e`
@@ -50,6 +58,6 @@ The strict local manifest validator accepted all 61 rows; the file hash
 matched its name; all 52 source cards and nine additional printed variants
 were accounted for. An independent reviewer should re-fetch the owner-linked
 menu, compare the entire offer list and exact source hash, confirm the venue
-identity and fee caveat, then run the guarded importer from approved `main`.
+identity and fee caveat, then run a new protected dry run from approved `main`.
 Only a separate successful protected seed receipt and live app readback can
 establish that these prices became available to customers.

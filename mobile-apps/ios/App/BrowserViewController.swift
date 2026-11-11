@@ -16,6 +16,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private let monitor = NWPathMonitor()
     private var observations: [NSKeyValueObservation] = []
     private var lastWebsiteURL = MobileEntry.homeURL
+    private(set) var lastMapRoute = MobileEntry.homeURL
+    var currentTargetURL: URL { lastWebsiteURL }
     private var documentMarkerCheck: UUID?
     private var documentHasClientError = false
     private var hasLoadedPage = false
@@ -251,13 +253,15 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         updateMoreMenu()
     }
     func refreshSavedDrinkKeys() {
-        guard isViewLoaded, hasLoadedPage, MobileEntry.isDocument(webView.url) else { return }
+        guard isViewLoaded, hasLoadedPage, let current = webView.url, MobileEntry.isDocument(current),
+              let expectedData = try? JSONEncoder().encode(current.absoluteString),
+              let expected = String(data: expectedData, encoding: .utf8) else { return }
         let assignment = NativeSavedDrinkKeys.assignment(
-            current: webView.url, drinks: savedDrinks, offers: savedMenuOffers,
+            current: current, drinks: savedDrinks, offers: savedMenuOffers,
             customers: savedCustomerItems, europe: savedEuropeDrinks)
         let script = """
         (() => {
-          if (location.origin !== 'https://www.dovebevo.com' ||
+          if (location.href !== \(expected) || location.origin !== 'https://www.dovebevo.com' ||
               !['/mobile/', '/mobile/index.html'].includes(location.pathname) ||
               document.documentElement.getAttribute('data-dovebevo-mobile-shell') !== '1') return;
           \(assignment)
@@ -265,6 +269,17 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         })()
         """
         webView.evaluateJavaScript(script, in: nil, in: .page) { _ in }
+    }
+    func restoreMapRoute(_ url: URL) {
+        guard MapReturnRoute.valid(url) else { return }
+        guard isViewLoaded else { lastWebsiteURL = url; loadViewIfNeeded(); return }
+        // A venue load can still be pending while WebKit reports the previous
+        // city URL. Restore explicitly so that load cannot land after Mappa.
+        if lastWebsiteURL == url && webView.url == url { return }
+        loadWebsite(url)
+    }
+    func recordMapRoute(_ url: URL) {
+        if MapReturnRoute.valid(url) { lastMapRoute = url }
     }
     func retireVenueActions() { invalidateBookmarkCapture() }
 
@@ -467,8 +482,11 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                 self.updateLoadingControl(loading)
                 self.updateMoreMenu()
             },
-            webView.observe(\.url, options: [.new]) { [weak self] _, _ in
-                self?.invalidateBookmarkCapture()
+            webView.observe(\.url, options: [.new]) { [weak self] webView, _ in
+                guard let self else { return }
+                self.invalidateBookmarkCapture()
+                if let url = webView.url { self.recordMapRoute(url) }
+                self.refreshSavedDrinkKeys()
             },
             webView.observe(\.canGoBack, options: [.new]) { [weak self] webView, _ in
                 self?.backButton.isEnabled = webView.canGoBack || self?.canReturnToNativeSource?() == true
@@ -513,7 +531,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         return lastWebsiteURL
     }
 
-    @objc private func goBack() {
+    @objc func goBack() {
         if onReturnToNativeSource?() == true { return }
         guard webView.canGoBack else { return }
         searchCallbackGeneration = UUID()

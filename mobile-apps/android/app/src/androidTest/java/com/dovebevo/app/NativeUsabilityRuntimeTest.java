@@ -852,6 +852,40 @@ public final class NativeUsabilityRuntimeTest {
         assertEquals(0,publicReads.get());
     }
 
+    @Test public void venueFromFavouritesBackThenMapRestoresSelectedCity() throws Exception {
+        String city=APP_HOME+"?at=45.46420%2C9.19000";
+        navigate(city);
+        onMain(()->{
+            installOwnedFavorites();
+            invoke("showFavoritesNow");
+            assertTrue((Boolean)get("favoritesVisible"));
+            invoke("openFromNative",new Class<?>[]{String.class,int.class},ONE,1);
+        });
+        await(()->APP_ONE.equals(web.getUrl()) && !(Boolean)get("loading"));
+        onMain(()->{
+            assertEquals(city,get("pendingMapReturn"));
+            invoke("goBack");
+            assertTrue((Boolean)get("favoritesVisible"));
+            assertEquals("Native Back keeps the venue behind Preferiti until Mappa is chosen",APP_ONE,web.getUrl());
+            activity.findViewById(R.id.map_destination).performClick();
+        });
+        await(()->city.equals(web.getUrl()) && !(Boolean)get("loading") && (Boolean)get("hasUsablePage"));
+        onMain(()->{
+            assertFalse((Boolean)get("favoritesVisible"));
+            assertNull(get("pendingMapReturn"));
+            assertEquals(0,get("returnDestination"));
+        });
+    }
+
+    @Test public void sameDocumentVenueRouteRepublishesSavedDrinkState() throws Exception {
+        String city=APP_HOME+"?at=45.46420%2C9.19000";
+        navigate(city);
+        fixtureJavascript("window.addEventListener('dovebevo-native-favourites-changed',()=>document.title='saved-key-refreshed')");
+        fixtureJavascript("history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')");
+        await(()->APP_ONE.equals(web.getUrl()) && "saved-key-refreshed".equals(web.getTitle()));
+        onMain(()->assertEquals(city,get("lastMapRoute")));
+    }
+
     @Test public void actualHeadingReaderRejectsUncommittedSelectionOverlayAndHiddenHeading() throws Exception {
         navigate(ONE);
         assertEquals("Locale di prova", readVenue().name);

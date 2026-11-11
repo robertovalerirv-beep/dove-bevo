@@ -118,7 +118,10 @@ public partial class MainWindow : Window
 
     private void RememberMapRoute()
     {
-        if (ready) mapRoutes.Observe(CurrentBrowserRoute());
+        if (!ready) return;
+        mapRoutes.Observe(CurrentBrowserRoute());
+        // SourceChanged/HistoryChanged also cover same-document venue navigation.
+        _ = PublishSavedDrinkKeysAsync();
     }
 
     private Uri? CurrentBrowserRoute() =>
@@ -131,12 +134,13 @@ public partial class MainWindow : Window
         // Advertise native links only after the app marker has actually mounted.
         for (var attempt = 0; attempt < 20; attempt++)
         {
-            if (!ready || Website.Source is not { AbsolutePath: "/mobile/" } source ||
+            if (!ready || CurrentBrowserRoute() is not { AbsolutePath: "/mobile/" } source ||
                 !NavigationPolicy.IsTrusted(source)) return;
             var assignment = "window.DoveBevoNativeSavedDrinkKeys=" +
-                JsonSerializer.Serialize(NativeSavedDrinkKeys.FromBookmarks(bookmarks.Items, Website.Source)) + ";";
+                JsonSerializer.Serialize(NativeSavedDrinkKeys.FromBookmarks(bookmarks.Items, source)) + ";";
             var enabled = await Website.CoreWebView2.ExecuteScriptAsync(
-                "(()=>{if(location.origin!=='https://www.dovebevo.com'||location.pathname!=='/mobile/'||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return false;" +
+                "(()=>{if(location.href!==" + JsonSerializer.Serialize(source.AbsoluteUri) +
+                "||location.origin!=='https://www.dovebevo.com'||location.pathname!=='/mobile/'||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return false;" +
                 assignment +
                 "window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeEuropeSave=true;window.dispatchEvent(new Event('dovebevo-native-ready'));return true})()");
             if (enabled == "true") return;
@@ -146,14 +150,15 @@ public partial class MainWindow : Window
 
     private async Task PublishSavedDrinkKeysAsync()
     {
-        if (!ready || Website.Source is not { AbsolutePath: "/mobile/" } source ||
+        if (!ready || CurrentBrowserRoute() is not { AbsolutePath: "/mobile/" } source ||
             !NavigationPolicy.IsTrusted(source)) return;
         try
         {
             var assignment = "window.DoveBevoNativeSavedDrinkKeys=" +
-                JsonSerializer.Serialize(NativeSavedDrinkKeys.FromBookmarks(bookmarks.Items, Website.Source)) + ";";
+                JsonSerializer.Serialize(NativeSavedDrinkKeys.FromBookmarks(bookmarks.Items, source)) + ";";
             await Website.CoreWebView2.ExecuteScriptAsync(
-                "(()=>{if(location.origin!=='https://www.dovebevo.com'||location.pathname!=='/mobile/'||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return;" +
+                "(()=>{if(location.href!==" + JsonSerializer.Serialize(source.AbsoluteUri) +
+                "||location.origin!=='https://www.dovebevo.com'||location.pathname!=='/mobile/'||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return;" +
                 assignment + "window.dispatchEvent(new Event('dovebevo-native-favourites-changed'));})()");
         }
         catch (Exception) { /* The next trusted document load republishes the local snapshot. */ }
@@ -299,6 +304,7 @@ public partial class MainWindow : Window
     private void Home_Click(object sender, RoutedEventArgs e) => Discover_Click(sender, e);
     private void Map_Click(object sender, RoutedEventArgs e)
     {
+        var fromNativeVenue = returnDestination != NativeReturnDestination.None;
         returnDestination = NativeReturnDestination.None;
         var current = CurrentBrowserRoute();
         favouritesCancellation?.Cancel();
@@ -308,7 +314,8 @@ public partial class MainWindow : Window
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ErrorPanel.Visibility = Visibility.Collapsed;
         ShowWebsiteIfNoOverlay();
-        if (!ready || !NavigationPolicy.IsMapRoute(current))
+        // Source can still show the old map while a venue navigation is in flight.
+        if (fromNativeVenue || !ready || !NavigationPolicy.IsMapRoute(current))
             Navigate(mapRoutes.Destination(current));
         UpdateButtons();
     }

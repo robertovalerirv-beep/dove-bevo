@@ -467,14 +467,20 @@ final class BottomNavigationControllerTests: XCTestCase {
         let tabs = NativeTabsController(browser: browser)
         tabs.loadViewIfNeeded()
         let venue = try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9"))
+        let city = try XCTUnwrap(URL(string: "https://www.dovebevo.com/mobile/?at=45.46420%2C9.19000"))
+        browser.recordMapRoute(city)
 
         tabs.selectedIndex = 1
         tabs.openVenueFromNative(venue, source: 1)
         XCTAssertEqual(tabs.selectedIndex, 0)
         XCTAssertEqual(browser.canReturnToNativeSource?(), true)
-        XCTAssertEqual(browser.onReturnToNativeSource?(), true)
+        browser.goBack()
         XCTAssertEqual(tabs.selectedIndex, 1)
         XCTAssertEqual(browser.canReturnToNativeSource?(), false)
+        XCTAssertNotEqual(browser.currentTargetURL, city)
+        tabs.selectedIndex = 0
+        XCTAssertEqual(browser.currentTargetURL, city,
+                       "Back to Preferiti must leave Mappa ready at the original city")
 
         tabs.selectedIndex = 3
         tabs.openVenueFromNative(venue, source: 3)
@@ -482,6 +488,7 @@ final class BottomNavigationControllerTests: XCTestCase {
         tabs.selectedIndex = 0
         XCTAssertEqual(browser.canReturnToNativeSource?(), false)
         XCTAssertEqual(browser.onReturnToNativeSource?(), false)
+        XCTAssertEqual(browser.currentTargetURL, city, "Explicit Mappa restores the city retained before the native venue opened")
     }
 
     @MainActor

@@ -49,6 +49,7 @@ import androidx.activity.OnBackPressedCallback;
 import java.io.IOException;
 import java.io.InputStream;
 import org.json.JSONArray;
+import org.json.JSONObject;
 
 /** The live website stays in its normal browser origin and cookie context. */
 public final class MainActivity extends ComponentActivity {
@@ -91,6 +92,7 @@ public final class MainActivity extends ComponentActivity {
     private long favoritesAreaCapture;
     private boolean areaVisible,areaCapturing;
     private int returnDestination = RETURN_NONE;
+    private String lastMapRoute = MobileEntry.HOME, pendingMapReturn;
     private long areaCapture;
     private Button recommendationButton;
     private long venueCaptureEpoch;
@@ -276,6 +278,9 @@ public final class MainActivity extends ComponentActivity {
         if(state!=null) {
             int savedReturn=state.getInt("native_return_destination",RETURN_NONE);
             if(savedReturn>=RETURN_FAVORITES&&savedReturn<=RETURN_RECOMMENDATIONS)returnDestination=savedReturn;
+            String savedMap=state.getString("last_map_route"),savedPending=state.getString("pending_map_return");
+            if(MapReturnRoute.valid(savedMap))lastMapRoute=savedMap;
+            if(MapReturnRoute.valid(savedPending))pendingMapReturn=savedPending;
         }
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override public void handleOnBackPressed() { goBack(); }
@@ -410,17 +415,18 @@ public final class MainActivity extends ComponentActivity {
 
     private void openFromNative(String url,int source) {
         if(!foreground||destroyed||BrowserPolicy.target(url)!=BrowserPolicy.Target.INTERNAL)return;
-        showMap();
+        showMap(false);
+        pendingMapReturn=lastMapRoute;
         returnDestination=source;
         navigate(url);
         updateToolbar();
     }
 
-    private String nativeSavedKeysAssignment() {
+    private String nativeSavedKeysAssignment(String current) {
         if(drinkStore==null||offerStore==null||customerStore==null||europeStore==null)
             return "window.DoveBevoNativeSavedDrinkKeys=null;";
         try {
-            String venue=NativeSavedDrinkKeys.venuePrefix(website==null?null:website.getUrl());
+            String venue=NativeSavedDrinkKeys.venuePrefix(current);
             java.util.List<String> keys=NativeSavedDrinkKeys.load(drinkStore,offerStore,customerStore,europeStore);
             keys.removeIf(key->venue==null||!key.startsWith(venue));
             return "window.DoveBevoNativeSavedDrinkKeys="+
@@ -431,11 +437,16 @@ public final class MainActivity extends ComponentActivity {
     }
 
     private void publishNativeSavedKeys() {
-        if(destroyed||website==null||!hasUsablePage||!MobileEntry.isDocument(website.getUrl()))return;
-        website.evaluateJavascript("(function(){if(location.origin!=='https://www.dovebevo.com'"+
+        publishNativeSavedKeys(website==null?null:website.getUrl());
+    }
+    private void publishNativeSavedKeys(String current) {
+        if(destroyed||website==null||!hasUsablePage||!MobileEntry.isDocument(current))return;
+        String expected=JSONObject.quote(current);
+        website.evaluateJavascript("(function(){if(location.href!=="+expected+
+                "||location.origin!=='https://www.dovebevo.com'"+
                 "||!['/mobile/','/mobile/index.html'].includes(location.pathname)"+
                 "||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return;"+
-                nativeSavedKeysAssignment()+
+                nativeSavedKeysAssignment(current)+
                 "window.dispatchEvent(new Event('dovebevo-native-favourites-changed'));})()",null);
     }
 
@@ -618,7 +629,8 @@ public final class MainActivity extends ComponentActivity {
         errorPanel.setVisibility(View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         progress.setVisibility(View.GONE);favorites.view().setVisibility(View.VISIBLE);favorites.view().bringToFront();favorites.show();updateToolbar();
     }
-    private void showMap(){
+    private void showMap(){showMap(true);}
+    private void showMap(boolean restoreCity){
         if(!foreground||destroyed)return;
         returnDestination=RETURN_NONE;
         favoritesAreaCapture++;
@@ -629,6 +641,14 @@ public final class MainActivity extends ComponentActivity {
         if(website!=null){website.setVisibility(failed?View.GONE:View.VISIBLE);website.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);}
         if(errorPanel!=null){errorPanel.setVisibility(failed?View.VISIBLE:View.GONE);errorPanel.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_AUTO);}
         if(progress!=null)progress.setVisibility(loading?View.VISIBLE:View.GONE);updateToolbar();
+        String restore=restoreCity?pendingMapReturn:null;
+        if(restoreCity)pendingMapReturn=null;
+        // A pending venue load may not have updated WebView.getUrl() yet. An
+        // explicit Mappa tap must cancel it even if the old city is still shown.
+        if(MapReturnRoute.valid(restore)&&website!=null){
+            navigate(restore);
+            return;
+        }
         publishNativeSavedKeys();
         dispatchPendingSearch();
     }
@@ -1171,6 +1191,7 @@ public final class MainActivity extends ComponentActivity {
         }
         @Override public void onPageFinished(WebView view, String url) {
             if (view != website || destroyed || awaitingDocumentStart || url.equals(stoppedUrl) || !url.equals(lastTrustedUrl)) return;
+            if(MapReturnRoute.valid(url))lastMapRoute=url;
             preparedNavigationUrl = null;
             if (!failed && !documentHasHttpError && MobileEntry.isDocument(url)) {
                 // A previously installed website SW can return its cached root page offline.
@@ -1188,7 +1209,8 @@ public final class MainActivity extends ComponentActivity {
                     // fixes colour mode; without this call the duplicate web
                     // search lens remains visible above native Cerca.
                     installMobilePresentation(view, view.getUrl());
-                    view.evaluateJavascript(nativeSavedKeysAssignment()+"window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeVoteOffer=true;window.DoveBevoNativeVoteCustomer=true;window.DoveBevoNativeVoteDrink=true;"+(europeStore!=null&&europeVerifier!=null?"window.DoveBevoNativeEuropeSave=true;":"")+"window.dispatchEvent(new Event('dovebevo-native-ready'));",null);
+                    view.evaluateJavascript("(function(){if(location.href!=="+JSONObject.quote(view.getUrl())+")return;"+
+                            nativeSavedKeysAssignment(view.getUrl())+"window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeVoteOffer=true;window.DoveBevoNativeVoteCustomer=true;window.DoveBevoNativeVoteDrink=true;"+(europeStore!=null&&europeVerifier!=null?"window.DoveBevoNativeEuropeSave=true;":"")+"window.dispatchEvent(new Event('dovebevo-native-ready'));})()",null);
                     setLoading(false);
                     errorPanel.setVisibility(View.GONE);
                     view.setVisibility(nativeDestinationVisible()?View.GONE:View.VISIBLE);
@@ -1215,7 +1237,9 @@ public final class MainActivity extends ComponentActivity {
         @Override public void doUpdateVisitedHistory(WebView view, String url, boolean isReload) {
             if (view != website || destroyed || BrowserPolicy.target(url) != BrowserPolicy.Target.INTERNAL) return;
             venueCaptureEpoch++;
+            if(MapReturnRoute.valid(url))lastMapRoute=url;
             if (!loading && !failed) lastTrustedUrl = url;
+            publishNativeSavedKeys(url);
             updateToolbar();
         }
         @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
@@ -1398,6 +1422,8 @@ public final class MainActivity extends ComponentActivity {
     }
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putInt("native_return_destination",returnDestination);
+        state.putString("last_map_route",lastMapRoute);
+        if(pendingMapReturn!=null)state.putString("pending_map_return",pendingMapReturn);
         state.putBoolean("favorites_visible",favoritesVisible||restoreFavoritesPending);
         state.putBoolean("recommendation_area_visible",areaVisible||restoreAreaPending);
         state.putBoolean("discovery_visible",discoveryVisible||restoreDiscoveryPending);

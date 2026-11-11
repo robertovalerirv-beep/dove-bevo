@@ -27,6 +27,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private var homeIntent = UUID()
     private var lastMapArea: DiscoveryArea?
     private var returnDestination: Int?
+    private var pendingMapReturn: URL?
 
     var selectedIndex: Int {
         get { destinationIndex }
@@ -221,7 +222,10 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         guard (0...3).contains(index) else { return }
         returnDestination = nil
         homeIntent = UUID()
-        guard index != destinationIndex else { browser.refreshNavigationControls(); refreshBottomBar(); return }
+        guard index != destinationIndex else {
+            if index == 0 { restorePendingMapIfNeeded() }
+            browser.refreshNavigationControls(); refreshBottomBar(); return
+        }
         let previous = activeNavigation
         destinationIndex = index
         if index != 0 { browser.cancelPendingSearch() }
@@ -246,6 +250,7 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
             previous.endAppearanceTransition()
             next.endAppearanceTransition()
         }
+        if index == 0 { restorePendingMapIfNeeded() }
         browser.refreshNavigationControls()
         if index == 0 { browser.refreshSavedDrinkKeys() }
         refreshBottomBar()
@@ -253,12 +258,21 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
 
     func openVenueFromNative(_ url: URL, source: Int) {
         guard (1...3).contains(source), SavedVenuePolicy.canonicalURL(url) != nil else { return }
+        let priorMap = pendingMapReturn ?? browser.lastMapRoute
+        pendingMapReturn = nil
         browser.retireVenueActions()
         mapNavigation.popToRootViewController(animated: false)
         selectedIndex = 0
+        pendingMapReturn = priorMap
         returnDestination = source
         browser.openSavedVenue(url)
         browser.refreshNavigationControls()
+    }
+
+    private func restorePendingMapIfNeeded() {
+        guard let route = pendingMapReturn else { return }
+        pendingMapReturn = nil
+        browser.restoreMapRoute(route)
     }
 
     private func refreshBottomBar() {

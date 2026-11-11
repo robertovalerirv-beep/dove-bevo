@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -83,5 +84,43 @@ public final class DiscoveryTest {
         EuropePrices.Price customer=new EuropePrices.Price("n1","u0nd9","spritz","EUR",0,550,new EuropePrices.Serving("drink",null),
                 "2026-11-01",null,0,"revision","customer",null,null,null,null,"catalog",false);
         assertEquals("Spritz",DiscoveryScreen.featuredDrinkName(new DiscoveryData.Row(venue,null,customer,area),RecommendationDrink.SPRITZ));
+    }
+    @Test public void nativeCityChoicesUseExistingItalianPlacesFirstThenVerifiedEuropeanCatalogue()throws Exception {
+        byte[] places=bytes("[[3,\"Bologna\",44.4939,11.3426,80],[1,\"Roma\",41.9028,12.4964,500],[2,\"Milano\",45.4642,9.19,600],[4,\"Torino\",45.0703,7.6869,300],[5,\"Lecce\",40.3515,18.175,20]]");
+        List<DiscoveryCities.City> italian=DiscoveryCities.italian(places);
+        assertEquals(Arrays.asList("Milano","Roma","Torino","Bologna","Lecce"),Arrays.asList(italian.get(0).name,italian.get(1).name,italian.get(2).name,italian.get(3).name,italian.get(4).name));
+        assertEquals("u0nd9",DiscoveryArea.geohash(italian.get(0).area().lat,italian.get(0).area().lon));
+        Map<String,EuropePrices.Venue> venues=new HashMap<>();
+        venues.put("n1",new EuropePrices.Venue("n1","Uno","gcpvj","London","GB","GBP",51.5074,-0.1278));
+        venues.put("n2",new EuropePrices.Venue("n2","Due","u09tv","Paris","FR","EUR",48.8566,2.3522));
+        venues.put("n3",new EuropePrices.Venue("n3","Tre","u09tv","Paris","FR","EUR",48.8567,2.3523));
+        List<DiscoveryCities.City> european=DiscoveryCities.fromCatalog(new EuropePrices.Catalog("v1",venues));
+        assertEquals(2,european.size());assertEquals("London, Regno Unito",european.get(0).label());assertEquals("Paris",european.get(1).name);
+        assertEquals(2,european.get(1).knownVenues);assertEquals((48.8566+48.8567)/2,european.get(1).lat,0.000001);
+        List<DiscoveryCities.City> searchable=new ArrayList<>(italian);
+        for(int i=0;i<12;i++)searchable.add(new DiscoveryCities.City("Comune "+i,"IT",45.4642,9.19,1));
+        searchable.add(new DiscoveryCities.City("Città Nuova","IT",45.4642,9.19,1));searchable.addAll(european);
+        List<DiscoveryCities.City> preview=DiscoveryCities.visible(searchable,"");
+        assertEquals(12,preview.size());assertEquals("Milano",preview.get(0).name);
+        assertEquals("London",preview.get(10).name);assertEquals("Paris",preview.get(11).name);
+        assertEquals("Comune 11",DiscoveryCities.visible(searchable,"comune 11").get(0).name);
+        assertEquals("Città Nuova",DiscoveryCities.visible(searchable,"citta nuova").get(0).name);
+        assertTrue(DiscoveryCities.visible(searchable,"not-a-city").isEmpty());
+        assertTrue(DiscoveryCities.allowed(FavoritePricesClient.ORIGIN+"/data/20261101/places.json"));
+        assertFalse(DiscoveryCities.allowed("https://evil.example/data/20261101/places.json"));
+        assertThrows(IOException.class,()->DiscoveryCities.italian(bytes("[[1,\"Milano\",90,9,1]]")));
+        DiscoveryCities.Source publicFixture=(url,maximum)->{
+            if(url.endsWith("/api/health"))return bytes("{\"status\":\"ok\",\"data_version\":\"20261101\"}");
+            if(url.endsWith("/data/20261101/places.json"))return places;
+            if(url.endsWith("/mobile-data/catalog.json"))return bytes("{\"schema_version\":1,\"version\":\"v1\",\"venues\":[]}");
+            throw new IOException("Unexpected source");
+        };
+        DiscoveryCities.Result loaded=DiscoveryCities.load(publicFixture,"2026-11-11");
+        assertEquals(5,loaded.cities.size());assertFalse(loaded.italianUnavailable);assertFalse(loaded.europeanUnavailable);
+        DiscoveryCities.Result fallback=DiscoveryCities.load((url,maximum)->{
+            if(url.endsWith("/mobile-data/catalog.json"))throw new IOException("Offline catalogue");
+            return publicFixture.get(url,maximum);
+        },"2026-11-11");
+        assertEquals(5,fallback.cities.size());assertFalse(fallback.italianUnavailable);assertTrue(fallback.europeanUnavailable);
     }
 }

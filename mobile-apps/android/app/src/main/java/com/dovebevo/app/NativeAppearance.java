@@ -32,6 +32,14 @@ final class NativeAppearance {
         view.setPadding(padding, padding, padding, padding);
     }
 
+    /** Dense discovery rows use a quiet divider; the price and venue remain the focus. */
+    static void discoveryCard(View view) {
+        Context context = view.getContext();
+        GradientDrawable background = shape(context, R.color.surface, 12, false);
+        background.setStroke(dp(context, 1), context.getColor(R.color.surface_line));
+        view.setBackground(background);
+    }
+
     static void title(TextView view) {
         view.setTextColor(view.getContext().getColor(R.color.shell_text));
         view.setTypeface(null, Typeface.BOLD);
@@ -69,7 +77,7 @@ final class NativeAppearance {
 
     static void destination(Button button, boolean selected) {
         Context context = button.getContext();
-        int ink = context.getColor(R.color.on_brand);
+        int ink = context.getColor(R.color.shell_text);
         button.setSelected(selected);
         button.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
         button.setTextColor(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled},new int[]{}},
@@ -78,9 +86,9 @@ final class NativeAppearance {
         button.setElevation(0);
         button.setBackgroundTintList(null);
         button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x221B1611),
-                shape(context, selected ? R.color.colorPrimary : R.color.shell_background, 12, selected), null));
+                shape(context, selected ? R.color.surface : R.color.shell_background, 12, false), null));
         for (android.graphics.drawable.Drawable icon : button.getCompoundDrawables()) {
-            if (icon != null) icon.mutate().setTint(selected ? ink : context.getColor(R.color.muted_text));
+            if (icon != null) icon.mutate().setTint(selected ? context.getColor(R.color.brand_text) : context.getColor(R.color.muted_text));
         }
     }
 

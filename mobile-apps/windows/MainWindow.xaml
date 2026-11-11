@@ -16,6 +16,14 @@
             <Setter Property="MinHeight" Value="38" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
+        <Style x:Key="BottomDestinationButton" TargetType="Button" BasedOn="{StaticResource NavButton}">
+            <Setter Property="Background" Value="#FFFBF4" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="MinHeight" Value="44" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -53,12 +61,12 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="2" Background="#FFFBF4" BorderBrush="#E2D3BE" BorderThickness="0,1,0,0" Padding="16,8">
+        <Border Grid.Row="2" Background="#FFFBF4" BorderBrush="#E2D3BE" BorderThickness="0,1,0,0" Padding="10,4">
             <UniformGrid Columns="4" HorizontalAlignment="Stretch">
-                <Button Style="{StaticResource NavButton}" Content="Home" Click="Home_Click" />
-                <Button Style="{StaticResource NavButton}" Content="Mappa" Click="Map_Click" />
-                <Button Style="{StaticResource NavButton}" Content="Preferiti" Click="Favourites_Click" />
-                <Button Style="{StaticResource NavButton}" Content="Consigliati" Click="Recommendations_Click" />
+                <Button Style="{StaticResource BottomDestinationButton}" Content="Home" Click="Home_Click" />
+                <Button Style="{StaticResource BottomDestinationButton}" Content="Mappa" Click="Map_Click" />
+                <Button Style="{StaticResource BottomDestinationButton}" Content="Preferiti" Click="Favourites_Click" />
+                <Button Style="{StaticResource BottomDestinationButton}" Content="Consigliati" Click="Recommendations_Click" />
             </UniformGrid>
         </Border>
 
@@ -101,19 +109,19 @@
                              BorderBrush="#E2D3BE" DisplayMemberPath="Display" MouseDoubleClick="OpenRecommendedVenue_Click" />
                 </DockPanel>
             </Border>
-            <Border x:Name="DiscoveryPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="24">
+            <Border x:Name="DiscoveryPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="16">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
-                        <TextBlock Text="Scopri i prezzi" FontSize="26" FontWeight="Bold" />
-                        <TextBlock Text="Prezzi pubblici da menu verificati o segnalati dai clienti nella zona. Eventuali costi di servizio possono aggiungersi."
-                                   TextWrapping="Wrap" Margin="0,5,0,14" Foreground="#5E554B" />
-                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,14">
+                        <TextBlock Text="Scopri i prezzi" FontSize="22" FontWeight="Bold" />
+                        <TextBlock Text="Menu verificati e segnalazioni nella zona · eventuali costi di servizio esclusi"
+                                   TextWrapping="Wrap" Margin="0,3,0,8" Foreground="#5E554B" />
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Zona" VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <ComboBox x:Name="DiscoveryCity" Width="175" MinHeight="38"
+                            <ComboBox x:Name="DiscoveryCity" Width="175" MinHeight="44"
                                       SelectionChanged="DiscoveryCity_SelectionChanged" />
                             <TextBlock Text="Cosa vuoi bere?" VerticalAlignment="Center" Margin="12,0,10,0" />
-                            <ComboBox x:Name="DiscoveryDrink" Width="210" MinHeight="38"
+                            <ComboBox x:Name="DiscoveryDrink" Width="210" MinHeight="44"
                                       SelectionChanged="DiscoveryDrink_SelectionChanged" />
                             <Button Style="{StaticResource NavButton}" Content="Aggiorna" Margin="12,0,0,0" Click="ReloadDiscovery_Click" />
                         </StackPanel>

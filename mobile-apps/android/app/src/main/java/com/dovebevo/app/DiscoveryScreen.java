@@ -15,9 +15,12 @@ import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -83,7 +86,7 @@ final class DiscoveryScreen {
                         (values.size()>DiscoveryData.MAX_ROWS?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_limit)):"")));
         if(!values.isEmpty()){
             featuredTitle.setVisibility(View.VISIBLE);((View)featured.getParent()).setVisibility(View.VISIBLE);
-            for(int index=0;index<Math.min(3,Math.min(values.size(),DiscoveryData.MAX_ROWS));index++)addFeatured(values.get(index));
+            for(DiscoveryData.Row row:featuredRows(values))addFeatured(row);
         }
         int count=0,rank=0;String group=null;
         for(DiscoveryData.Row row:values){if(count++==DiscoveryData.MAX_ROWS)break;
@@ -117,12 +120,25 @@ final class DiscoveryScreen {
         }
     }
 
+    /** Preserve list order while showing each venue at most once in the preview. */
+    static List<DiscoveryData.Row> featuredRows(List<DiscoveryData.Row> rows){
+        List<DiscoveryData.Row> preview=new ArrayList<>(3);Set<String> seen=new HashSet<>();
+        for(int index=0;index<Math.min(rows.size(),DiscoveryData.MAX_ROWS)&&preview.size()<3;index++){
+            DiscoveryData.Row row=rows.get(index);if(seen.add(row.venue.key))preview.add(row);
+        }
+        return preview;
+    }
+    static String featuredDrinkName(DiscoveryData.Row row,RecommendationDrink selected){
+        if(row.menuPrice!=null)return row.menuPrice.name;
+        if(row.mobilePrice!=null&&row.mobilePrice.menuItem!=null)return row.mobilePrice.menuItem;
+        return NativePricePresentation.category(selected);
+    }
     /** An ordered preview of the same read-only rows shown below, never a synthetic deal. */
     private void addFeatured(DiscoveryData.Row row){
         LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.discoveryCard(card);card.setPadding(dp(10),dp(10),dp(10),dp(10));
         LinearLayout.LayoutParams cardSize=new LinearLayout.LayoutParams(dp(208),-2);cardSize.rightMargin=dp(10);cardSize.bottomMargin=dp(8);featured.addView(card,cardSize);
         DrinkArtwork art=new DrinkArtwork(activity,drink);art.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);card.addView(art,new LinearLayout.LayoutParams(-1,dp(88)));
-        String drinkName=row.menuPrice==null?NativePricePresentation.category(drink):row.menuPrice.name;
+        String drinkName=featuredDrinkName(row,drink);
         TextView name=text(drinkName,15);NativeAppearance.title(name);name.setPadding(0,dp(6),0,0);card.addView(name);
         TextView venue=text(row.venue.name,13);card.addView(venue);
         TextView price=text(row.amountLabel(),18);NativeAppearance.title(price);card.addView(price);

@@ -85,20 +85,21 @@ public final class DiscoveryRuntimeTest {
     @Test public void featuredCardsPreviewRealRowsAndOpenTheirActualVenueAtCompactWidths()throws Exception {
         menuOne=true;show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();
         onMain(()->{
-            LinearLayout featured=featured();assertEquals(3,featured.getChildCount());assertEquals(3,rows().getChildCount());
-            for(int i=0;i<3;i++)assertEquals("Preview must preserve full-list row order",rows().getChildAt(i).getTag(),featured.getChildAt(i).getTag());
-            String preview=text(featured);assertTrue(preview.contains("6,00"));assertTrue(preview.contains("8,00"));assertTrue(preview.contains("5,50 £"));
-            assertTrue(preview.contains("GBP · Calice · 200 ml"));assertTrue(preview.contains("Spritz"));assertFalse(preview.contains("Affare"));
+            LinearLayout featured=featured();assertEquals(2,featured.getChildCount());assertEquals(3,rows().getChildCount());
+            for(int i=0;i<2;i++)assertEquals("Preview must preserve the first row for each venue",rows().getChildAt(i).getTag(),featured.getChildAt(i).getTag());
+            String preview=text(featured);assertTrue(preview.contains("6,00"));assertTrue(preview.contains("8,00"));
+            assertFalse("The third row belongs to an already featured venue",preview.contains("5,50 £"));
+            assertTrue("The complete list retains the distinct GBP menu row",text(rows()).contains("5,50 £"));assertTrue(preview.contains("Spritz"));assertFalse(preview.contains("Affare"));
             for(int width:new int[]{320,393,411}){
                 float density=activity.getResources().getDisplayMetrics().density;int pixels=Math.round(width*density);
                 View root=screen.view();root.measure(View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(700*density),View.MeasureSpec.EXACTLY));root.layout(0,0,pixels,Math.round(700*density));
-                View scroller=root.findViewWithTag("discovery.featuredScroll");assertTrue(scroller.getWidth()<=pixels);assertEquals(3,featured.getChildCount());
+                View scroller=root.findViewWithTag("discovery.featuredScroll");assertTrue(scroller.getWidth()<=pixels);assertEquals(2,featured.getChildCount());
                 for(int i=0;i<featured.getChildCount();i++){
                     View card=featured.getChildAt(i);assertTrue(card.getWidth()<=scroller.getWidth());assertTrue(card.getHeight()>=Math.round(48*density));
                     assertTrue(card.getContentDescription().toString().contains("Apri Spritz da "));assertTrue(card.getContentDescription().toString().contains("€")||card.getContentDescription().toString().contains("£"));
                 }
             }
-            View chosen=featured.getChildAt(2);String target=(String)chosen.getTag();chosen.performClick();assertEquals(target,opened.get());
+            View chosen=featured.getChildAt(1);String target=(String)chosen.getTag();chosen.performClick();assertEquals(target,opened.get());
             ((Spinner)activity.findViewById(R.id.discovery_drink)).setSelection(RecommendationDrink.NEGRONI.ordinal());
         });
         onMain(()->{assertEquals(0,featured().getChildCount());assertEquals(0,rows().getChildCount());assertEquals(View.GONE,screen.view().findViewWithTag("discovery.featuredScroll").getVisibility());});

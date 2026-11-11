@@ -39,6 +39,11 @@ opens its venue without an ambiguous drink-only focus. This is a bounded
 view of actual public prices, not a claim of complete city coverage; full menu
 details and fees remain in the venue sheet.
 
+The Scopri city selector reads the current Italian places and app venue
+catalogue. It previews major Italian cities before European choices; typing
+searches every loaded city. A partial or failed city source offers Retry, and
+the current map area remains available without inventing a location.
+
 ## Build and checks
 
 Requires Windows 10 version 2004 or newer, .NET SDK 10, Windows SDK MakeAppx,

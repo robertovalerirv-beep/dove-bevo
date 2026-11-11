@@ -2,6 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
 import {
+  atHour,
+  THEME_HOURS,
   DUOMO,
   goToMilano,
   milanoFromOpenSearch,
@@ -321,3 +323,60 @@ test("one failed request for the tile list does not leave the map dead", async (
   await expect(mapStatus(page)).not.toHaveText(/non si carica/);
   expect(calls).toBeGreaterThanOrEqual(2);
 });
+
+// SPEC 5.4: under zoom 13 the map is tiles and the invitation only. The bars of the cells already in
+// memory must not stay drawn under a message that says to zoom in to see the prices.
+for (const scheme of ["light", "dark"] as const) {
+  test(`M1-07 ${scheme}: under zoom 13 no pin is drawn, and they are back without requests`, async ({
+    page,
+  }, info) => {
+    await atHour(page, THEME_HOURS[scheme]);
+    await page.goto("/");
+    await goToMilano(page);
+    await chooseDrinks(page, "Spritz");
+    const map = mapRegion(page);
+    const drawn = async () => ({
+      prices: (await map.getAttribute("data-prices-shown")) ?? "",
+      marks: Number(await map.getAttribute("data-marks-shown")),
+    });
+    await expect.poll(async () => (await drawn()).prices).not.toBe("");
+    await expect.poll(async () => (await drawn()).marks).toBeGreaterThan(0);
+    const start = await zoomOf(page);
+    const coverage = await mapStatus(page).textContent();
+    const size = await map.boundingBox();
+    await page.screenshot({ path: info.outputPath(`m1-07-zoom-vicino-${scheme}.png`) });
+
+    await map.locator("canvas").focus();
+    // One step at a time: a key pressed during the zoom animation is relative to the animated zoom.
+    const step = async (key: "Minus" | "Equal") => {
+      const zoom = await zoomOf(page);
+      await page.keyboard.press(key);
+      await expect.poll(() => zoomOf(page)).not.toBe(zoom);
+    };
+    while ((await zoomOf(page)) >= 13) await step("Minus");
+    const requests: string[] = [];
+    page.on("request", (r) => {
+      const path = new URL(r.url()).pathname;
+      if (path.startsWith("/api/") || path.startsWith("/data/")) requests.push(path);
+    });
+    await expect(mapStatus(page)).toHaveText("Avvicinati per vedere i prezzi, o cerca una città.");
+    // What the map draws agrees with the message: no price, no dot, no numbered circle.
+    await expect.poll(drawn).toEqual({ prices: "", marks: 0 });
+    expect(await map.boundingBox()).toEqual(size); // M1-16
+    await page.screenshot({ path: info.outputPath(`m1-07-zoom-lontano-${scheme}.png`) });
+    // Nothing invisible answers a tap either: the bars were around the centre, where we tap.
+    const far = await zoomOf(page);
+    await map.locator("canvas").click();
+    await page.waitForTimeout(1000);
+    await expect(map).toHaveAttribute("data-selected", "");
+    expect(await zoomOf(page)).toBe(far);
+
+    // Back where we were: the same bars from memory, without asking the network again.
+    while ((await zoomOf(page)) < start) await step("Equal");
+    await expect(mapStatus(page)).toHaveText(coverage ?? "");
+    await expect.poll(async () => (await drawn()).prices).not.toBe("");
+    await expect.poll(async () => (await drawn()).marks).toBeGreaterThan(0);
+    expect(requests).toEqual([]);
+    expect(await map.boundingBox()).toEqual(size);
+  });
+}

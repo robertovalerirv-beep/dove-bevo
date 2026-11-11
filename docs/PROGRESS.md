@@ -62,6 +62,37 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 - WebKit non è nel container: lo verifica la CI.
 - Le due prove native preesistenti e la versione di Chromium del container (1243, non quella attesa da Playwright 1.64) meritano uno sguardo in CI.
 - Sotto i 480 px la barretta della copertura non si vede più (scelta dichiarata nell'ADR 0048).
+## 2026-11-11 · Sotto zoom 13 la mappa non disegna più i bar (ramo `claude/gracious-fermi-tnhqxu`) · SPEC 5.4, M1-07
+
+**Problema visto da Roberto su iPhone Safari:** dopo aver caricato una zona, allontanando la mappa sotto zoom 13 il messaggio diceva «Avvicinati per vedere i prezzi, o cerca una città.» ma i pin dei prezzi e i cerchi numerati restavano disegnati.
+
+**Causa:** i bar delle celle già scaricate restano in memoria (SPEC 5.4) e i layer della mappa non avevano uno zoom minimo; Elenco, copertura, legenda e «I più economici qui» sotto zoom 13 erano già vuoti: solo il disegno contraddiceva il messaggio.
+
+**Scelta di Roberto (11/11, in chat):** via (a), sotto zoom 13 i bar non si disegnano. È l'unica conforme a SPEC 5.4 («Sotto zoom 13: solo tessere e invito») e a M1-07 («a zoom 12 … invito visibile»); la via (b), pin visibili senza messaggio, avrebbe richiesto di cambiare SPEC e feature list. Nessuna modifica a SPEC, feature list, testi (`it.ts`, `en.ts`), API e D1.
+
+**Fatto**
+1. `MIN_ZOOM_CELLS = 13` in `src/shared/config.ts`: una sola soglia per caricamento delle celle, messaggio e layer.
+2. `src/app/lib/maplibre-map.ts`: `minzoom` su prezzi, pallini, cerchi numerati, tappo del bar selezionato e sulle tre aree di tocco invisibili. Il pallino della posizione (D-33) non è un bar e resta a ogni zoom. Nessun `setData` e nessuna richiesta in più: tornando a zoom 13 i bar ricompaiono dalla memoria.
+3. Gancio di test `data-marks-shown` accanto a `data-prices-shown` (pallini, cerchi e tappo disegnati).
+4. App native (`mobile-apps/web/build-contract.mjs`): la build delle app riusa i due file del sito e si ferma se cambiano. Pin aggiornati e una riga in più perché **l'app resti com'era** (prezzi da zoom 12, pallini e cerchi a ogni zoom); test in `routes-and-build.test.mjs`. Se l'app debba seguire la regola del sito è una decisione di Roberto.
+
+**Test nuovi:** `tests/e2e/map.spec.ts`, «M1-07 light/dark: under zoom 13 no pin is drawn, and they are back without requests» (nessun prezzo né segno disegnato, un tocco al centro non apre nulla, altezza della mappa identica, ritorno allo zoom di prima con zero richieste a `/api/*` e `/data/*`). Nessun test esistente cambiato.
+
+**Prove**
+- Il test fallisce senza la correzione e per il motivo giusto: sotto zoom 13 `{"marks": 55, "prices": "12,00 €"}` invece di `{"marks": 0, "prices": ""}`, nei due temi (prova fatta con la soglia dei layer a 0, cioè il comportamento di prima).
+- Con la correzione: Playwright su Chromium, sei file della mappa (`map`, `map-stability`, `map-start`, `position-dot`, `brand-map`, `brand-tiers`): 54 passati, 0 falliti, compresi M1-07 e M1-16. Suite completa su Chromium (`chromium`, `-writes`, `-proposals`, `security`): 245 passati, 0 falliti.
+- Lint, Prettier, `tsc -b` verdi; Vitest 878/878; `routes-and-build.test.mjs` 13/13.
+- Screenshot 390×844 nei due temi, sopra e sotto zoom 13: prodotti dal test (`m1-07-zoom-vicino-*.png`, `m1-07-zoom-lontano-*.png` in `test-results/`); nei test le tessere sono finte, quindi sotto zoom 13 si vede il fondo senza alcun pin.
+- `spec-reviewer` sul diff: OK to close; le sue richieste (tocco sotto zoom 13, test del contratto delle app) sono state aggiunte.
+
+**Non verificato qui**
+- **WebKit:** non c'è nel container, il test nuovo gira su WebKit solo in CI.
+- I 100 test delle app che aprono un browser (`mobile-apps/web/tests`) non partono nel container (manca il Chromium 1248 che Playwright 1.64 chiede): li esegue la CI.
+- `node scripts/check-feature-list.mjs`: il tag `spec-approved-14` non è in questo clone; `docs/feature_list.json` non è nel diff.
+
+**Da verificare a mano (Roberto)**
+- Su iPhone Safari dopo il deploy: carica Milano, allontana sotto zoom 13 → nessun pin né cerchio, messaggio «Avvicinati…»; riavvicina → i prezzi tornano subito.
+- Nell'app nativa nulla deve essere cambiato.
 
 ---
 

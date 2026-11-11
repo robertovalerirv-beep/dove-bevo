@@ -119,8 +119,31 @@
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Zona" VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <ComboBox x:Name="DiscoveryCity" Width="175" MinHeight="44"
-                                      SelectionChanged="DiscoveryCity_SelectionChanged" />
+                            <Button x:Name="DiscoveryCity" Style="{StaticResource NavButton}"
+                                    Width="175" MinHeight="44" Content="Scegli città ⌄"
+                                    Click="DiscoveryCity_Click" />
+                            <Popup x:Name="DiscoveryCityPopup" PlacementTarget="{Binding ElementName=DiscoveryCity}"
+                                   Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+                                <Border Width="320" MaxHeight="470" Padding="12" Background="#FFFBF4"
+                                        BorderBrush="#E2D3BE" BorderThickness="1" CornerRadius="12">
+                                    <DockPanel>
+                                        <TextBox x:Name="DiscoveryCitySearch" DockPanel.Dock="Top"
+                                                 Height="44" FontSize="16" Margin="0,0,0,8"
+                                                 ToolTip="Cerca città" TextChanged="DiscoveryCitySearch_TextChanged"
+                                                 PreviewKeyDown="DiscoveryCitySearch_PreviewKeyDown" />
+                                        <Button x:Name="DiscoveryCityRetry" DockPanel.Dock="Bottom"
+                                                Style="{StaticResource NavButton}" Content="Riprova elenco città"
+                                                Click="DiscoveryCityRetry_Click" Visibility="Collapsed" />
+                                        <TextBlock x:Name="DiscoveryCityMessage" DockPanel.Dock="Bottom"
+                                                   TextWrapping="Wrap" Foreground="#5E554B"
+                                                   Margin="0,7,0,0" />
+                                        <ListBox x:Name="DiscoveryCityChoices" MinHeight="150" MaxHeight="345"
+                                                 DisplayMemberPath="" Background="#FFFBF4"
+                                                 BorderBrush="#E2D3BE"
+                                                 SelectionChanged="DiscoveryCityChoices_SelectionChanged" />
+                                    </DockPanel>
+                                </Border>
+                            </Popup>
                             <TextBlock Text="Cosa vuoi bere?" VerticalAlignment="Center" Margin="12,0,10,0" />
                             <ComboBox x:Name="DiscoveryDrink" Width="210" MinHeight="44"
                                       SelectionChanged="DiscoveryDrink_SelectionChanged" />

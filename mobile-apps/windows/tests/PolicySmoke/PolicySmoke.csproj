@@ -9,6 +9,7 @@
     <Compile Include="../../NavigationPolicy.cs" Link="NavigationPolicy.cs" />
     <Compile Include="../../BookmarkStore.cs" Link="BookmarkStore.cs" />
     <Compile Include="../../DiscoveryClient.cs" Link="DiscoveryClient.cs" />
+    <Compile Include="../../DiscoveryCityDirectory.cs" Link="DiscoveryCityDirectory.cs" />
     <Compile Include="../../FeaturedDiscoveryCards.cs" Link="FeaturedDiscoveryCards.cs" />
     <Compile Include="../../LegacyDiscoveryClient.cs" Link="LegacyDiscoveryClient.cs" />
     <Compile Include="../../EuropeDiscoveryClient.cs" Link="EuropeDiscoveryClient.cs" />

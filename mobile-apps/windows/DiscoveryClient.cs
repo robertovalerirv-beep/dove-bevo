@@ -12,9 +12,15 @@ internal sealed record DiscoveryCategory(string Code, string Name)
     public override string ToString() => Name;
 }
 
-internal sealed record DiscoveryLocation(string Name, DiscoveryArea Area)
+internal sealed record DiscoveryLocation(string Name, DiscoveryArea Area, string Country = "")
 {
-    public override string ToString() => Name;
+    internal string Key => Country + "|" + DiscoveryCityDirectory.Fold(Name);
+    internal string CountryName => Country switch
+    {
+        "IT" => "Italia", "GB" => "Regno Unito", "FR" => "Francia",
+        "ES" => "Spagna", "DE" => "Germania", _ => Country,
+    };
+    public override string ToString() => Country.Length == 0 ? Name : $"{Name}, {CountryName}";
 }
 
 internal sealed record DiscoveryRow(string Key, string Cell, string Venue, string City,
@@ -126,23 +132,30 @@ internal sealed record DiscoveryArea(double Latitude, double Longitude, double Z
 internal sealed record DiscoverySnapshot(IReadOnlyList<DiscoveryRow> Rows, int UnavailableCells,
     bool EuropeUnavailable = false);
 
+/// <summary>Rejects results from an area that was replaced or cleared while loading.</summary>
+internal sealed class DiscoveryResultGate
+{
+    private long generation;
+    internal DiscoveryArea? Area { get; private set; }
+    internal IReadOnlyList<DiscoveryRow> Rows { get; private set; } = [];
+
+    internal long Begin(DiscoveryArea? area)
+    {
+        Area = area;
+        Rows = [];
+        return ++generation;
+    }
+
+    internal bool Publish(long request, DiscoveryArea area, IReadOnlyList<DiscoveryRow> rows)
+    {
+        if (request != generation || Area != area) return false;
+        Rows = rows;
+        return true;
+    }
+}
+
 internal sealed class DiscoveryClient
 {
-    internal static readonly DiscoveryLocation[] Cities =
-    [
-        new("Milano", new(45.4642, 9.1900, 15)),
-        new("Roma", new(41.9028, 12.4964, 15)),
-        new("Torino", new(45.0703, 7.6869, 15)),
-        new("Napoli", new(40.8518, 14.2681, 15)),
-        new("Firenze", new(43.7696, 11.2558, 15)),
-        new("Bologna", new(44.4949, 11.3426, 15)),
-        new("Venezia", new(45.4408, 12.3155, 15)),
-        new("Palermo", new(38.1157, 13.3615, 15)),
-        new("Londra", new(51.5072, -0.1276, 15)),
-        new("Parigi", new(48.8566, 2.3522, 15)),
-        new("Berlino", new(52.5200, 13.4050, 15)),
-        new("Madrid", new(40.4168, -3.7038, 15)),
-    ];
     internal static readonly DiscoveryCategory[] Categories =
     [
         new("beer_draft", "Birra media"), new("spritz", "Spritz"),

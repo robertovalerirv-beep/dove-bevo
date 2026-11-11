@@ -1,13 +1,15 @@
 import UIKit
 
 /// A disposable public read model. It neither creates contributions nor saves
-/// bookmarks, and uses the last explicitly captured map area rather than GPS.
+/// bookmarks. The area comes from a selected city or the last captured map.
 final class DiscoveryViewController: UITableViewController {
     private let client: DiscoveryServing
+    private let cityDirectory: DiscoveryCityDirectoryServing
     private let activityCheck: (() -> Bool)?
     private let onOpen: (URL) -> Void
     private let onMap: () -> Void
     private(set) var area: DiscoveryArea?
+    private(set) var selectedCity: DiscoveryCity?
     private var snapshot: DiscoverySnapshot?
     private var rows: [DiscoveryPresentedRow] = []
     private var featuredRows: [DiscoveryPresentedRow] = []
@@ -20,6 +22,7 @@ final class DiscoveryViewController: UITableViewController {
     private var band = ComparisonBand.normal
     private var renderedCategory: UIContentSizeCategory?
     private let drinkSelector = UIButton(type: .system)
+    private let citySelector = UIButton(type: .system)
     private let bands = ComparisonBandSelector()
     private let statusLabel = UILabel()
     private let featuredHeading = UILabel()
@@ -36,9 +39,11 @@ final class DiscoveryViewController: UITableViewController {
     }()
     var isDestinationSelected: (() -> Bool)?
 
-    init(client: DiscoveryServing = DiscoveryClient(), activityCheck: (() -> Bool)? = nil,
+    init(client: DiscoveryServing = DiscoveryClient(), cityDirectory: DiscoveryCityDirectoryServing = DiscoveryCityDirectory(),
+         activityCheck: (() -> Bool)? = nil,
          onOpen: @escaping (URL) -> Void, onMap: @escaping () -> Void) {
-        self.client = client; self.activityCheck = activityCheck; self.onOpen = onOpen; self.onMap = onMap
+        self.client = client; self.cityDirectory = cityDirectory
+        self.activityCheck = activityCheck; self.onOpen = onOpen; self.onMap = onMap
         super.init(style: .insetGrouped)
         title = "Scopri"
         let center = NotificationCenter.default
@@ -68,6 +73,8 @@ final class DiscoveryViewController: UITableViewController {
         // Mappa is already in the bottom navigation; reload lives in the
         // parent's ellipsis, leaving this header clear of duplicate actions.
         navigationItem.rightBarButtonItems = [moreOverlaySpace]
+        let cityHeading = label("Città", style: .caption1)
+        cityHeading.textColor = NativeAppearance.muted
         let heading = label("Scegli cosa bere", style: .headline)
         heading.accessibilityTraits = .header
         let illustration = label("Immagini illustrative dei drink, non foto dei locali", style: .caption2)
@@ -86,6 +93,15 @@ final class DiscoveryViewController: UITableViewController {
         // systemLayoutSizeFitting on an unmounted UIButton.
         drinkConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
         drinkSelector.configuration = drinkConfiguration
+        citySelector.accessibilityIdentifier = "discovery.citySelector"
+        citySelector.accessibilityLabel = "Scegli città"
+        citySelector.accessibilityHint = "Apre le città italiane e le città europee disponibili"
+        citySelector.contentHorizontalAlignment = .leading
+        citySelector.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        var cityConfiguration = UIButton.Configuration.bordered()
+        cityConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
+        citySelector.configuration = cityConfiguration
+        citySelector.addTarget(self, action: #selector(showCityPicker), for: .touchUpInside)
         bands.accessibilityIdentifier = "discovery.band"
         bands.accessibilityLabel = "Fascia di prezzo"
         bands.addTarget(self, action: #selector(bandChanged), for: .valueChanged)
@@ -100,7 +116,7 @@ final class DiscoveryViewController: UITableViewController {
         featuredHeading.accessibilityTraits = .header
         featuredHeading.accessibilityIdentifier = "discovery.featuredHeading"
         let header = UIView()
-        let stack = UIStackView(arrangedSubviews: [heading, drinkSelector, bandLabel, bands,
+        let stack = UIStackView(arrangedSubviews: [cityHeading, citySelector, heading, drinkSelector, bandLabel, bands,
                                                    statusLabel, illustration, featuredHeading, featuredStrip])
         stack.axis = .vertical; stack.spacing = 5; stack.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(stack)
@@ -145,10 +161,18 @@ final class DiscoveryViewController: UITableViewController {
         }
     }
 
-    func setArea(_ area: DiscoveryArea?) {
+    func setArea(_ area: DiscoveryArea?) { applyArea(area, city: nil) }
+
+    func selectCity(_ city: DiscoveryCity) {
+        guard let area = city.area else { return }
+        applyArea(area, city: city)
+    }
+
+    private func applyArea(_ area: DiscoveryArea?, city: DiscoveryCity?) {
         retire()
         if self.area != area { snapshot = nil }
         self.area = area
+        selectedCity = city
         if isViewLoaded { render() }
         if canRead { refresh() }
     }
@@ -187,6 +211,10 @@ final class DiscoveryViewController: UITableViewController {
     private func render() {
         guard isViewLoaded else { return }
         let allRows = snapshot?.displayRows(drink: drink.code, band: band) ?? []
+        var cityConfiguration = citySelector.configuration ?? .bordered()
+        cityConfiguration.title = selectedCity?.name ?? (area == nil ? "Scegli città" : "Zona mappa")
+        citySelector.configuration = cityConfiguration
+        citySelector.accessibilityValue = selectedCity.map { "\($0.name), \($0.countryName)" } ?? (area == nil ? "Nessuna città selezionata" : "Zona mappa")
         rows = Array(allRows.prefix(200))
         featuredRows = area == nil || busy ? [] : DiscoveryFeaturedSelection.rows(from: rows)
         configureFeatured(width: max(0, tableView.bounds.width - 40))
@@ -200,7 +228,7 @@ final class DiscoveryViewController: UITableViewController {
             }
         })
         if area == nil {
-            statusLabel.text = "Apri Mappa, scegli una città o avvicina la mappa, poi torna su Scopri per confrontare i prezzi in quella zona."
+            statusLabel.text = "Scegli una città per confrontare i prezzi dei drink, oppure apri Mappa per scegliere una zona."
             statusLabel.accessibilityIdentifier = "discovery.chooseArea"
         } else if busy {
             statusLabel.text = "Caricamento dei prezzi della zona…"
@@ -215,14 +243,14 @@ final class DiscoveryViewController: UITableViewController {
                 statusLabel.text = "\(allRows.count) prezzi per \(drink.name). Alcune parti della zona non sono disponibili: scegli Ricarica in Altre opzioni.\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.partial"
             } else if allRows.isEmpty {
-                statusLabel.text = "Nessun prezzo disponibile per \(drink.name) · \(band.name) nei dati caricati di questa zona. Prova un altro drink o una zona diversa nella mappa."
+                statusLabel.text = "Nessun prezzo disponibile per \(drink.name) · \(band.name) nei dati caricati di questa zona. Prova un altro drink o scegli un'altra città."
                 statusLabel.accessibilityIdentifier = "discovery.empty"
             } else {
                 statusLabel.text = "\(allRows.count) prezzi per \(drink.name) · \(band.name).\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.loaded"
             }
         } else {
-            statusLabel.text = "Apri Altre opzioni e scegli Ricarica per cercare i prezzi vicino al centro della mappa."
+            statusLabel.text = "Apri Altre opzioni e scegli Ricarica per cercare i prezzi della zona selezionata."
             statusLabel.accessibilityIdentifier = "discovery.unavailable"
         }
         tableView.reloadData(); view.setNeedsLayout()
@@ -235,6 +263,19 @@ final class DiscoveryViewController: UITableViewController {
     }
     @objc private func bandChanged() { band = bands.selectedBand; render() }
     @objc private func showMap() { onMap() }
+    @objc private func showCityPicker() {
+        // UIKit can attach a sheet to the owning navigation controller rather
+        // than this child. Present there explicitly and only while on screen.
+        guard view.window != nil else { return }
+        let presenter = navigationController ?? self
+        guard presenter.presentedViewController == nil else { return }
+        let picker = DiscoveryCityPickerController(directory: cityDirectory, selected: selectedCity) { [weak self] city in
+            self?.selectCity(city)
+        }
+        let navigation = UINavigationController(rootViewController: picker)
+        navigation.modalPresentationStyle = .pageSheet
+        presenter.present(navigation, animated: true)
+    }
     private func configureFeatured(width: CGFloat) {
         featuredWidth = width
         featuredHeading.isHidden = featuredRows.isEmpty
@@ -260,7 +301,7 @@ final class DiscoveryViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "I più convenienti qui · per valuta e formato" }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
-        "I prezzi da menu qui sono un campione per drink: apri il locale per vedere il listino disponibile. Valute e formati diversi non sono confrontabili; i prezzi italiani precedenti non dichiarano il formato. Prezzi nella zona del centro mappa, non una classifica personale. Le distanze sono dal centro della mappa. Mappa e prezzi richiedono internet."
+        "I prezzi da menu qui sono un campione per drink: apri il locale per vedere il listino disponibile. Valute e formati diversi non sono confrontabili; i prezzi italiani precedenti non dichiarano il formato. Prezzi nella zona del centro selezionato, non una classifica personale. Le distanze sono dal centro selezionato. Mappa e prezzi richiedono internet."
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {

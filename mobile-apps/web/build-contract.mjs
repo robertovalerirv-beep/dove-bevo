@@ -3,8 +3,8 @@ import ts from "typescript";
 /* global structuredClone */
 
 const PINS = {
-  app: "85203422ed9acfafe9675313c2e663f6f509cf17221a02ef4b533e474f9ca689",
-  map: "0d345d05f5e4cd684a339993e535f1cdd2019761e376e7d4b3ecb0323359b644",
+  app: "9ad927c8c8e72d5b7795bdbd43635339aee9906db67a6209acc2dc36215efc51",
+  map: "6cf9a2d5b015865f9ec7c3b4e48da8e16f574edf061d2c5826a48ee04bd1027e",
 };
 const normalized = (source) => source.replaceAll("\r\n", "\n");
 function pinned(source, name) {
@@ -254,9 +254,12 @@ export function transformMap(source, styleURLExpression) {
     map.addLayer({
       id: "venue-price",`,
   );
+  // The website hides every bar under zoom 13 (SPEC 5.4). The app keeps its own rule, unchanged:
+  // price pins from zoom 12, dots and clusters at any zoom.
+  result = once(result, "const BARS_FROM_ZOOM = MIN_ZOOM_CELLS;", "const BARS_FROM_ZOOM = 0;");
   result = once(
     result,
-    '      id: "venue-price",\n      type: "symbol",',
+    '      id: "venue-price",\n      type: "symbol",\n      minzoom: BARS_FROM_ZOOM,',
     '      id: "venue-price",\n      type: "symbol",\n      minzoom: 12,',
   );
   // A dense price label may be hidden by MapLibre collision handling. Keep the

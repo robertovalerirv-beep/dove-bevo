@@ -142,6 +142,8 @@ try
         euroAction.CommandUrl);
     Require(store.Add(exactEurope) && new BookmarkStore(storeFile).Items.Count == 4,
         "exact European serving and currency bookmark not retained");
+    Require(!File.ReadAllText(storeFile).Contains("VerifiedCategory", StringComparison.Ordinal),
+        "verified menu categories must not alter old bookmark JSON");
 }
 finally
 {
@@ -230,6 +232,62 @@ using var offerPriceJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
 }));
 Require(BookmarkPriceClient.ParseOffer(offerPriceJson, offerAction!).Price?.Contains("8,50 €") == true,
     "exact menu offer price missing");
+foreach (var (label, ml, expected) in new (string? Label, int? Ml, string? Category)[] {
+    ("Media", null, "beer_draft"),
+    ("50 cl", 500, "beer_draft"),
+    ("Pint", 568, "beer_draft"),
+    ("Piccola", 250, null),
+    ("Piccola", 500, null),
+    (null, null, null),
+    ("Media 25 cl", null, null),
+    ("Media 25 cl", 500, null),
+})
+{
+    using var namedDraft = JsonDocument.Parse(JsonSerializer.Serialize(new {
+        schema_version = 2, price_scope = "menu_item_only",
+        venue = new { key = "n123", cell = "u0nd9" },
+        offers = new[] { new { id = "menu-123", name = "Guinness Draught",
+            category = "beer_draft", serving = new { label, ml }, amount_minor = 650,
+            currency = "EUR", currency_exponent = 2 } }, next_after = (string?)null,
+    }));
+    var found = BookmarkPriceClient.ParseOffer(namedDraft, offerAction!);
+    Require(found.Price?.Contains("6,50 €") == true && found.Category == expected &&
+        found.Serving is not null,
+        "named draft must keep its price but only verified medium servings filter as Birra media");
+}
+using var namedNegroni = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 2, price_scope = "menu_item_only",
+    venue = new { key = "n123", cell = "u0nd9" },
+    offers = new[] { new { id = "menu-123", name = "Negroni della casa",
+        category = "negroni", serving = new { label = (string?)null, ml = (int?)null },
+        amount_minor = 1000, currency = "EUR", currency_exponent = 2 } },
+    next_after = (string?)null,
+}));
+Require(BookmarkPriceClient.ParseOffer(namedNegroni, offerAction!).Category == "negroni",
+    "named Negroni must use the verified menu category");
+using var poundDraft = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 2, price_scope = "menu_item_only",
+    venue = new { key = "n123", cell = "u0nd9" },
+    offers = new[] { new { id = "menu-123", name = "Guinness Draught",
+        category = "beer_draft", serving = new { label = "Pint", ml = (int?)568 },
+        amount_minor = 650, currency = "GBP", currency_exponent = 2 } },
+    next_after = (string?)null,
+}));
+var pound = BookmarkPriceClient.ParseOffer(poundDraft, offerAction!);
+Require(pound.Category == "beer_draft" && pound.Price?.Contains("6,50 £") == true &&
+    pound.Serving == "Pint · 568 ml",
+    "named draft must retain GBP and its verified 568 ml serving");
+using var malformedCategory = JsonDocument.Parse(JsonSerializer.Serialize(new {
+    schema_version = 2, price_scope = "menu_item_only",
+    venue = new { key = "n123", cell = "u0nd9" },
+    offers = new[] { new { id = "menu-123", name = "Guinness Draught",
+        category = "beer_drafts", serving = new { label = "Media", ml = (int?)500 },
+        amount_minor = 650, currency = "EUR", currency_exponent = 2 } },
+    next_after = (string?)null,
+}));
+var malformed = BookmarkPriceClient.ParseOffer(malformedCategory, offerAction!);
+Require(malformed.Category is null && malformed.Price?.Contains("6,50 €") == true,
+    "unknown menu category must retain the price but never enter a category filter");
 using var customerPriceJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
     schema_version = 1, price_scope = "customer_reported_drink_item",
     venue = new { key = "n123", cell = "u0nd9" },

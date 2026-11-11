@@ -3,35 +3,49 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace DoveBevo.Windows;
+
+internal sealed record BookmarkPriceResult(string Price, string? VerifiedCategory,
+    string? VerifiedServing);
 
 /// <summary>Refreshes an exact private favourite from public GET routes; it never submits a price.</summary>
 internal sealed class BookmarkPriceClient
 {
+    private static readonly Regex SmallBeer = new(@"\b(?:piccola|piccolo|small|mini)\b",
+        RegexOptions.CultureInvariant);
+    private static readonly Regex LargeBeer = new(@"\b(?:grande|large|pinta|pint)\b",
+        RegexOptions.CultureInvariant);
+    private static readonly Regex MediumBeer = new(@"\b(?:media|medium)\b",
+        RegexOptions.CultureInvariant);
+    private static readonly Regex Quantity = new(@"\b(\d+(?:[.,]\d+)?)\s*(ml|cl|lt|l)\b",
+        RegexOptions.CultureInvariant);
     private static readonly HttpClient Client = new(new HttpClientHandler
     {
         AllowAutoRedirect = false, UseCookies = false,
     }) { Timeout = TimeSpan.FromSeconds(12) };
 
-    internal async Task<string> RefreshAsync(Bookmark bookmark, CancellationToken cancellation)
+    internal async Task<BookmarkPriceResult> RefreshAsync(Bookmark bookmark, CancellationToken cancellation)
     {
         if (bookmark.ActionUrl is null || !NavigationPolicy.TrySaveAction(bookmark.ActionUrl,
                 bookmark.Url, out var action) || action is null)
-            return "Prezzo online nel locale";
+            return new("Prezzo online nel locale", null, null);
         try
         {
-            return action.Kind switch
+            if (action.Kind == "offer") return await OfferAsync(action, cancellation);
+            var price = action.Kind switch
             {
                 "legacy" => await LegacyAsync(action, cancellation),
                 "europe" => await EuropeAsync(action, cancellation),
-                "offer" => await OfferAsync(action, cancellation),
                 "customer" => await CustomerAsync(action, cancellation),
-                _ => "Prezzo non disponibile ora",
-            } ?? "Prezzo non disponibile ora";
+                _ => null,
+            };
+            return new(price ?? "Prezzo non disponibile ora", null, null);
         }
         catch (OperationCanceledException) { throw; }
-        catch (Exception) { return "Prezzo non verificabile. Riprova più tardi."; }
+        catch (Exception) { return new("Prezzo non verificabile. Riprova più tardi.", null, null); }
     }
 
     private static async Task<string?> LegacyAsync(SaveAction action, CancellationToken cancellation)
@@ -91,7 +105,7 @@ internal sealed class BookmarkPriceClient
         return value;
     }
 
-    private static async Task<string?> OfferAsync(SaveAction action, CancellationToken cancellation)
+    private static async Task<BookmarkPriceResult> OfferAsync(SaveAction action, CancellationToken cancellation)
     {
         string? after = null;
         for (var index = 0; index < 10; index++)
@@ -100,15 +114,16 @@ internal sealed class BookmarkPriceClient
                 (after is null ? "" : "&after=" + Uri.EscapeDataString(after));
             using var page = await ReadAsync(endpoint, cancellation);
             var result = ParseOffer(page, action);
-            if (result.Price is not null) return result.Price;
-            if (result.Next is null) return null;
+            if (result.Price is not null) return new(result.Price, result.Category, result.Serving);
+            if (result.Next is null) return new("Prezzo non disponibile ora", null, null);
             if (result.Next == after) throw new InvalidDataException("Repeated offer cursor");
             after = result.Next;
         }
         throw new InvalidDataException("Offer page limit");
     }
 
-    internal static (string? Price, string? Next) ParseOffer(JsonDocument page, SaveAction action)
+    internal static (string? Price, string? Next, string? Category, string? Serving) ParseOffer(
+        JsonDocument page, SaveAction action)
     {
         var root = page.RootElement;
         var venue = root.GetProperty("venue");
@@ -118,6 +133,8 @@ internal sealed class BookmarkPriceClient
             venue.GetProperty("cell").GetString() != action.Cell)
             throw new InvalidDataException("Offer identity mismatch");
         string? price = null;
+        string? category = null;
+        string? serving = null;
         foreach (var offer in root.GetProperty("offers").EnumerateArray())
         {
             if (offer.GetProperty("id").GetString() != action.Item) continue;
@@ -125,9 +142,78 @@ internal sealed class BookmarkPriceClient
             price = Money(offer.GetProperty("amount_minor").GetInt64(),
                 offer.GetProperty("currency").GetString()!,
                 offer.GetProperty("currency_exponent").GetInt32()) + " · prezzo da menu, supplementi separati";
+            category = VerifiedOfferCategory(offer);
+            serving = VerifiedOfferServing(offer);
         }
         var cursor = root.GetProperty("next_after");
-        return (price, cursor.ValueKind == JsonValueKind.Null ? null : cursor.GetString());
+        return (price, cursor.ValueKind == JsonValueKind.Null ? null : cursor.GetString(),
+            category, serving);
+    }
+
+    private static string? VerifiedOfferServing(JsonElement offer)
+    {
+        if (!offer.TryGetProperty("serving", out var serving) ||
+            serving.ValueKind != JsonValueKind.Object) return null;
+        string? label = null;
+        if (serving.TryGetProperty("label", out var labelValue) &&
+            labelValue.ValueKind == JsonValueKind.String)
+            label = labelValue.GetString()?.Trim();
+        if (label is { Length: > 256 } || label?.Any(char.IsControl) == true) return null;
+        if (label?.Length == 0 || label?.Equals("drink", StringComparison.OrdinalIgnoreCase) == true ||
+            label?.Equals("Drink singolo", StringComparison.OrdinalIgnoreCase) == true) label = null;
+        var ml = serving.TryGetProperty("ml", out var mlValue) &&
+            mlValue.ValueKind == JsonValueKind.Number && mlValue.TryGetInt32(out var amount) &&
+            amount is >= 1 and <= 100_000 ? amount : (int?)null;
+        return label is null ? ml is null ? "Formato non dichiarato" : ml + " ml"
+            : ml is null ? label : label + " · " + ml + " ml";
+    }
+
+    private static string? VerifiedOfferCategory(JsonElement offer)
+    {
+        if (!offer.TryGetProperty("category", out var value) || value.ValueKind != JsonValueKind.String)
+            return null;
+        var category = value.GetString();
+        if (!DiscoveryClient.Categories.Any(item => item.Code == category)) return null;
+        return category == "beer_draft" &&
+            (!offer.TryGetProperty("serving", out var serving) || !IsMediumDraftBeer(serving))
+            ? null : category;
+    }
+
+    // Keep the app's Birra media meaning aligned with the mobile menu: a small
+    // or unknown-size draft must stay under its exact saved name.
+    private static bool IsMediumDraftBeer(JsonElement serving)
+    {
+        if (serving.ValueKind != JsonValueKind.Object) return false;
+        string? label = null;
+        if (serving.TryGetProperty("label", out var labelValue) &&
+            labelValue.ValueKind == JsonValueKind.String)
+            label = labelValue.GetString()?.Normalize(NormalizationForm.FormKC).ToLowerInvariant();
+        if (label is not null && SmallBeer.IsMatch(label)) return false;
+        var quantities = label is null ? Match.Empty : Quantity.Match(label);
+        if (quantities.Success && quantities.NextMatch().Success) return false;
+        decimal? labelledMl = null;
+        if (quantities.Success)
+        {
+            var amount = quantities.Groups[1].Value.Replace(',', '.');
+            if (!decimal.TryParse(amount, NumberStyles.AllowDecimalPoint,
+                    CultureInfo.InvariantCulture, out var value)) return false;
+            labelledMl = quantities.Groups[2].Value switch
+            {
+                "l" or "lt" => value * 1000,
+                "cl" => value * 10,
+                _ => value,
+            };
+        }
+        if (serving.TryGetProperty("ml", out var mlValue) &&
+            mlValue.ValueKind != JsonValueKind.Null)
+        {
+            if (mlValue.ValueKind != JsonValueKind.Number || !mlValue.TryGetInt32(out var ml) ||
+                ml is < 1 or > 100_000 ||
+                labelledMl is not null && Math.Abs(labelledMl.Value - ml) > 1) return false;
+            return ml is >= 400 and <= 600;
+        }
+        if (label is null || !MediumBeer.IsMatch(label) || LargeBeer.IsMatch(label)) return false;
+        return labelledMl is null || labelledMl is >= 400 and <= 600;
     }
 
     private static async Task<string?> CustomerAsync(SaveAction action, CancellationToken cancellation)

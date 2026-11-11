@@ -475,7 +475,7 @@ public partial class MainWindow : Window
         var options = new List<FavouriteDrinkOption> { new("all", "Tutti i drink") };
         options.AddRange(DiscoveryClient.Categories.Select(category =>
             new FavouriteDrinkOption("code:" + category.Code, category.Name)));
-        options.AddRange(bookmarks.Items.Select(FavouriteDrinkKey)
+        options.AddRange(favouriteViews.Select(FavouriteDrinkKey)
             .Where(key => key.StartsWith("name:", StringComparison.Ordinal))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(key => key[5..], StringComparer.CurrentCultureIgnoreCase)
@@ -489,15 +489,23 @@ public partial class MainWindow : Window
         finally { updatingFavouriteDrink = false; }
     }
 
-    private static string FavouriteDrinkKey(Bookmark bookmark)
+    private static string FavouriteDrinkKey(BookmarkView view)
     {
+        var bookmark = view.Bookmark;
         if (bookmark.ActionUrl is not null &&
             NavigationPolicy.TrySaveAction(bookmark.ActionUrl, bookmark.Url, out var action) &&
             action is { Kind: "legacy" or "europe" })
+        {
+            // The catalogue's beer_draft code alone does not mean a medium beer.
+            if (action.Kind == "europe" && action.Item == "beer_draft" &&
+                (action.Serving is null || !action.Serving.StartsWith("ml:", StringComparison.Ordinal) ||
+                 !int.TryParse(action.Serving[3..], out var ml) || ml is < 400 or > 600))
+                return "name:" + bookmark.DrinkName;
             return "code:" + action.Item;
-        var namedCategory = DiscoveryClient.Categories.FirstOrDefault(category =>
-            category.Name.Equals(bookmark.DrinkName, StringComparison.OrdinalIgnoreCase));
-        return namedCategory is null ? "name:" + bookmark.DrinkName : "code:" + namedCategory.Code;
+        }
+        return view.VerifiedCategory is not null &&
+            DiscoveryClient.Categories.Any(category => category.Code == view.VerifiedCategory)
+            ? "code:" + view.VerifiedCategory : "name:" + bookmark.DrinkName;
     }
 
     private static string FavouriteServing(Bookmark bookmark)
@@ -518,17 +526,23 @@ public partial class MainWindow : Window
         return serving.Length == 0 ? action.Currency : action.Currency + " · " + serving;
     }
 
+    private static string FavouriteDisplayServing(BookmarkView view)
+    {
+        var exact = FavouriteServing(view.Bookmark);
+        return exact.Length > 0 ? exact : view.VerifiedServing ?? "";
+    }
+
     private void RenderFavouriteViews()
     {
         var selected = (FavouriteDrink.SelectedItem as FavouriteDrinkOption)?.Key ?? "all";
         var selectedBookmark = (FavouriteList.SelectedItem as FavouriteListRow)?.Bookmark.Identity;
         var rows = favouriteViews
-            .Where(view => selected == "all" || FavouriteDrinkKey(view.Bookmark) == selected)
-            .OrderBy(view => FavouriteServing(view.Bookmark), StringComparer.Ordinal)
+            .Where(view => selected == "all" || FavouriteDrinkKey(view) == selected)
+            .OrderBy(FavouriteDisplayServing, StringComparer.Ordinal)
             .ThenBy(view => view.Bookmark.VenueName, StringComparer.CurrentCultureIgnoreCase)
             .Select(view =>
             {
-                var serving = FavouriteServing(view.Bookmark);
+                var serving = FavouriteDisplayServing(view);
                 var display = view.Bookmark.Display + (serving.Length == 0 ? "" : " · " + serving)
                     + "\n" + view.Price;
                 return new FavouriteListRow(view.Bookmark, display);
@@ -559,8 +573,15 @@ public partial class MainWindow : Window
                 var price = await bookmarkPrices.RefreshAsync(view.Bookmark, request.Token);
                 if (request.IsCancellationRequested || FavouritesPanel.Visibility != Visibility.Visible)
                     return;
-                views[index] = new BookmarkView(view.Bookmark, price);
-                if (ReferenceEquals(request, favouritesCancellation)) RenderFavouriteViews();
+                var next = new BookmarkView(view.Bookmark, price.Price,
+                    price.VerifiedCategory, price.VerifiedServing);
+                var categoryChanged = FavouriteDrinkKey(views[index]) != FavouriteDrinkKey(next);
+                views[index] = next;
+                if (ReferenceEquals(request, favouritesCancellation))
+                {
+                    if (categoryChanged) UpdateFavouriteDrinkChoices();
+                    RenderFavouriteViews();
+                }
             }
             catch (OperationCanceledException) { }
             finally { gate.Release(); }

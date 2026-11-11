@@ -11,7 +11,8 @@ internal sealed record Bookmark(string VenueKey, string VenueName, string DrinkN
     public string Identity => ActionUrl ?? Url;
 }
 
-internal sealed record BookmarkView(Bookmark Bookmark, string Price)
+internal sealed record BookmarkView(Bookmark Bookmark, string Price, string? VerifiedCategory = null,
+    string? VerifiedServing = null)
 {
     public string Display => $"{Bookmark.Display}\n{Price}";
 }

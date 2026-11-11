@@ -76,6 +76,11 @@ public final class DiscoveryRuntimeTest {
         menuOne=true;show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();assertEquals(29,requests.get());
         onMain(()->{
             assertEquals(3,rows().getChildCount());
+            assertEquals("EUR · €",((TextView)rows().getChildAt(0).findViewWithTag("discovery.currencyHeading")).getText().toString());
+            assertEquals("GBP · £",((TextView)rows().getChildAt(2).findViewWithTag("discovery.currencyHeading")).getText().toString());
+            assertEquals("1",((TextView)rows().getChildAt(0).findViewWithTag("discovery.rank")).getText().toString());
+            assertEquals("2",((TextView)rows().getChildAt(1).findViewWithTag("discovery.rank")).getText().toString());
+            assertEquals("1",((TextView)rows().getChildAt(2).findViewWithTag("discovery.rank")).getText().toString());
             View sourced=null;
             for(int i=0;i<rows().getChildCount();i++)if(text(rows().getChildAt(i)).contains("5,50 £"))sourced=rows().getChildAt(i);
             assertNotNull(sourced);assertTrue(text(sourced).contains("GBP · Calice · 200 ml"));
@@ -106,6 +111,79 @@ public final class DiscoveryRuntimeTest {
             ((Spinner)activity.findViewById(R.id.discovery_drink)).setSelection(RecommendationDrink.NEGRONI.ordinal());
         });
         onMain(()->{assertEquals(0,featured().getChildCount());assertEquals(0,rows().getChildCount());assertEquals(View.GONE,screen.view().findViewWithTag("discovery.featuredScroll").getVisibility());});
+    }
+    @Test public void compactDiscoverShowsRealPricesBeforeLongCaveatsAndPreservesAccessibleFilters()throws Exception {
+        menuOne=true;show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();
+        onMain(()->{
+            LinearLayout body=(LinearLayout)((android.view.ViewGroup)screen.view()).getChildAt(0);
+            Button city=screen.view().findViewWithTag("discovery.citySelector");
+            Spinner drink=activity.findViewById(R.id.discovery_drink);
+            Spinner band=activity.findViewById(R.id.discovery_band);
+            View preview=screen.view().findViewWithTag("discovery.featuredScroll");
+            TextView caveats=screen.view().findViewWithTag("discovery.disclosure");
+            assertEquals("Scegli cosa bere",drink.getContentDescription());
+            assertTrue(city.getContentDescription().toString().contains("Scegli una città"));
+            assertEquals(activity.getString(R.string.favorites_band),band.getContentDescription());
+            assertEquals(View.VISIBLE,caveats.getVisibility());
+            assertTrue(caveats.getText().toString().contains(activity.getString(R.string.discovery_menu_samples)));
+            assertTrue(caveats.getText().toString().contains("Immagini illustrative"));
+            assertFalse("The long menu caveat must not delay featured prices",status().contains("Prezzi da menu"));
+            assertEquals("Altre spese non verificate",DiscoveryScreen.priceCaveat(new MenuV2Prices.Price(
+                    "fixture","Bar","Spritz","spritz",0,550,"GBP",2,"Calice",200,false,"2026-11-03",
+                    "Altre spese del locale non verificate; controlla la scheda del locale.",null,null,null)));
+            assertTrue("Ranked prices must show the same fee scope before expansion",text(rows()).contains("Altre spese non verificate"));
+            assertTrue("The ranked rows should precede the longer caveats",body.indexOfChild(rows())<body.indexOfChild(caveats));
+            float density=activity.getResources().getDisplayMetrics().density;
+            int width=Math.round(393*density);
+            screen.view().measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(Math.round(850*density),View.MeasureSpec.EXACTLY));
+            screen.view().layout(0,0,width,Math.round(850*density));
+            assertTrue("Featured prices should start near the selected filters",preview.getTop()<Math.round(300*density));
+            for(View control:new View[]{city,drink,band})assertTrue(control.getHeight()>=Math.round(48*density));
+        });
+    }
+    @Test public void priceCaveatKeepsConditionalAndKnownFeeScopeVisibleWithoutAddingFeeToDrinkAmount() {
+        MenuV2Prices.Price conditional=new MenuV2Prices.Price("fixture","Bar","Spritz","spritz",0,550,"EUR",2,
+                "Calice",200,false,"2026-11-01",
+                "Spese separate: Coperto 2,50 € / persona (solo se dopo le 20). Altre spese non verificate.",null,"Dopo le 20",null);
+        assertEquals("Condizioni: Dopo le 20 · Spese separate indicate dal menu · Altre spese non verificate",
+                DiscoveryScreen.priceCaveat(conditional));
+        assertEquals("5,50 €",conditional.amount());
+        assertTrue(conditional.feeNotice.contains("2,50 €"));
+    }
+    @Test public void mixedSourcePricesRiseWithinEachCurrencyAcrossServingsWithStableTies()throws Exception {
+        DiscoveryArea area=new DiscoveryArea(45.4642,9.19,14);
+        DiscoveryData.Venue venue=new DiscoveryData.Venue("n123","Bar","u0nd9","Via A","Milano",45.4642,9.19);
+        MenuV2Prices.Price menu=new MenuV2Prices.Price("a","Bar","Spritz","spritz",0,600,"EUR",2,
+                "Calice",200,false,"2026-11-01","Altre spese non verificate.");
+        EuropePrices.Price europe=new EuropePrices.Price("n123","u0nd9","spritz","EUR",0,650,
+                new EuropePrices.Serving("glass",200),"2026-11-01",null,0,"r1","user",
+                null,null,null,null,"v1",false);
+        EuropePrices.Price cheaperEuro=new EuropePrices.Price("n123","u0nd9","spritz","EUR",0,550,
+                new EuropePrices.Serving("ml",250),"2026-11-01",null,0,"r3","user",
+                null,null,null,null,"v1",false);
+        EuropePrices.Price pounds=new EuropePrices.Price("n123","u0nd9","spritz","GBP",0,450,
+                new EuropePrices.Serving("glass",200),"2026-11-01",null,0,"r2","user",
+                null,null,null,null,"v1",false);
+        DiscoveryData.Row sixFifty=new DiscoveryData.Row(venue,null,europe,area);
+        DiscoveryData.Row six=new DiscoveryData.Row(venue,menu,area);
+        DiscoveryData.Row eight=new DiscoveryData.Row(venue,new FavoriteComparison.Price(800,"2026-11-01",0,false),area);
+        DiscoveryData.Row fiveFiftyEuro=new DiscoveryData.Row(venue,null,cheaperEuro,area);
+        DiscoveryData.Row fourFiftyPounds=new DiscoveryData.Row(venue,null,pounds,area);
+        java.util.List<DiscoveryData.Row> sorted=DiscoveryData.rankRows(new java.util.ArrayList<>(
+                java.util.Arrays.asList(sixFifty,six,eight,fiveFiftyEuro,fourFiftyPounds)));
+        assertEquals(six.group(),sixFifty.group());
+        assertNotEquals(fiveFiftyEuro.group(),six.group());
+        assertEquals(550,sorted.get(0).amount());assertEquals(600,sorted.get(1).amount());
+        assertEquals(650,sorted.get(2).amount());assertEquals(800,sorted.get(3).amount());
+        assertEquals(450,sorted.get(4).amount());
+        assertTrue(sorted.get(0).amountLabel().contains("5,50"));assertEquals("6,00 €",sorted.get(1).amountLabel());
+        assertTrue(sorted.get(4).amountLabel().contains("£"));assertNotEquals(sorted.get(0).currency(),sorted.get(4).currency());
+        MenuV2Prices.Price later=new MenuV2Prices.Price("b","Bar","Spritz","spritz",0,600,"EUR",2,
+                "Calice",200,false,"2026-11-01","Altre spese non verificate.");
+        java.util.List<DiscoveryData.Row> ties=DiscoveryData.rankRows(new java.util.ArrayList<>(
+                java.util.Arrays.asList(new DiscoveryData.Row(venue,later,area),six)));
+        assertEquals("a",ties.get(0).menuPrice.id);assertEquals("b",ties.get(1).menuPrice.id);
     }
     @Test public void compactFeaturedCardsExpandToFitRealPriceAndSourceAtLargeText()throws Exception {
         android.content.res.Resources resources=activity.getResources();

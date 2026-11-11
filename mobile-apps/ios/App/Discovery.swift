@@ -81,11 +81,47 @@ struct DiscoverySnapshot {
                     price: .menuV2(price))
             }
         }
-        return (original + added + ownerMenus).sorted {
-            if $0.price.discoveryGroup != $1.price.discoveryGroup { return $0.price.discoveryGroup < $1.price.discoveryGroup }
-            if $0.price.amountMinor != $1.price.amountMinor { return $0.price.amountMinor < $1.price.amountMinor }
-            let order = $0.name.localizedCaseInsensitiveCompare($1.name)
-            return order == .orderedSame ? $0.key < $1.key : order == .orderedAscending
+        return Self.rankRows(original + added + ownerMenus, around: area)
+    }
+
+    /// Keep each original currency separate, then show ascending amounts
+    /// within it. Serving remains visible; different servings are not a
+    /// like-for-like comparison. A total tie has a stable source identity.
+    static func rankRows(_ values: [DiscoveryPresentedRow], around area: DiscoveryArea) -> [DiscoveryPresentedRow] {
+        values.sorted { first, second in
+            if currency(first.price) != currency(second.price) {
+                return currency(first.price) < currency(second.price)
+            }
+            if first.price.amountMinor != second.price.amountMinor {
+                return first.price.amountMinor < second.price.amountMinor
+            }
+            if first.price.discoveryGroup != second.price.discoveryGroup {
+                return first.price.discoveryGroup < second.price.discoveryGroup
+            }
+            let firstDistance = area.distance(latitude: first.latitude, longitude: first.longitude)
+            let secondDistance = area.distance(latitude: second.latitude, longitude: second.longitude)
+            if firstDistance != secondDistance { return firstDistance < secondDistance }
+            let firstName = first.name.lowercased(), secondName = second.name.lowercased()
+            if firstName != secondName { return firstName < secondName }
+            if first.name != second.name { return first.name < second.name }
+            if first.key != second.key { return first.key < second.key }
+            return Self.tieKey(first.price) < Self.tieKey(second.price)
+        }
+    }
+
+    static func currency(_ price: NativeComparablePrice) -> String {
+        switch price {
+        case .legacy: return "EUR"
+        case .europe(let value): return value.currency
+        case .menuV2(let value): return value.currency
+        }
+    }
+
+    private static func tieKey(_ price: NativeComparablePrice) -> String {
+        switch price {
+        case .legacy(let value): return "legacy|\(value.observedOn)"
+        case .europe(let value): return "europe|\(value.revision)|\(value.menuItem ?? "")"
+        case .menuV2(let value): return "menu|\(value.id)"
         }
     }
 

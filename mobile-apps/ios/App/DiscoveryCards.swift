@@ -107,6 +107,42 @@ enum DiscoveryFeaturedEvidence {
     }
 }
 
+/// A short, truthful warning beside a menu price. The exact venue fee text
+/// remains in the ranked row and VoiceOver description.
+enum DiscoveryPriceCaveat {
+    static func condition(for value: NativeComparablePrice) -> String? {
+        guard case .menuV2(let price) = value, let condition = price.condition, !condition.isEmpty else { return nil }
+        return "Prezzo soggetto a condizioni: \(condition)"
+    }
+
+    static func visible(for value: NativeComparablePrice) -> String? {
+        guard case .menuV2(let price) = value else { return nil }
+        var parts: [String] = []
+        if let condition = price.condition, !condition.isEmpty { parts.append("Condizioni: \(condition)") }
+        let fee = price.feeNotice.lowercased()
+        if fee.contains("spese separate") { parts.append("Spese separate indicate dal menu") }
+        if fee.contains("nessuna spesa obbligatoria") {
+            parts.append("Nessuna spesa obbligatoria dichiarata")
+        }
+        if fee.contains("non verificate") || fee.contains("non verificati") {
+            parts.append("Altre spese non verificate")
+        }
+        if fee.contains("documentate solo in parte") || fee.contains("copertura delle spese parziale") {
+            parts.append("Spese documentate solo in parte")
+        }
+        if parts.isEmpty && !fee.isEmpty {
+            parts.append("Spese del locale: vedi dettaglio")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    static func full(for value: NativeComparablePrice) -> String? {
+        guard case .menuV2(let price) = value else { return nil }
+        let parts: [String?] = [condition(for: value), price.feeNotice]
+        return parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
 @MainActor final class DiscoveryFeaturedCard: UIControl {
     private let artwork = UIImageView()
     private let copy = UIStackView()
@@ -146,7 +182,9 @@ enum DiscoveryFeaturedEvidence {
         venueLabel.text = row.name
         priceLabel.text = row.price.amount
         servingLabel.text = row.price.groupLabel
-        evidenceLabel.text = DiscoveryFeaturedEvidence.text(for: row.price, today: today)
+        let evidenceParts: [String?] = [DiscoveryFeaturedEvidence.text(for: row.price, today: today),
+                                        DiscoveryPriceCaveat.visible(for: row.price)]
+        evidenceLabel.text = evidenceParts.compactMap { $0 }.joined(separator: " · ")
         drinkLabel.font = .preferredFont(forTextStyle: .subheadline, compatibleWith: traits)
         drinkLabel.textColor = NativeAppearance.ink
         venueLabel.font = .preferredFont(forTextStyle: .caption1, compatibleWith: traits)
@@ -181,7 +219,7 @@ enum DiscoveryFeaturedEvidence {
             stack.leadingAnchor.constraint(equalTo: leadingAnchor), stack.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
         accessibilityLabel = "\(item), \(row.name)"
-        accessibilityValue = "\(row.price.amount). \(row.price.groupLabel). \(evidenceLabel.text ?? ""). Immagine illustrativa del drink."
+        accessibilityValue = "\(row.price.amount). \(row.price.groupLabel). \(evidenceLabel.text ?? ""). \(DiscoveryPriceCaveat.full(for: row.price) ?? "") Immagine illustrativa del drink."
     }
 
     /// Size the shared strip for the longest real item instead of cropping its
@@ -328,6 +366,7 @@ enum DiscoveryFeaturedEvidence {
 }
 
 @MainActor final class DiscoveryVenueCell: UITableViewCell {
+    private let currencyTitle = UILabel()
     private let rank = UILabel()
     private let photo = UIImageView()
     private let name = UILabel()
@@ -337,6 +376,11 @@ enum DiscoveryFeaturedEvidence {
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
+        currencyTitle.font = .preferredFont(forTextStyle: .caption1)
+        currencyTitle.adjustsFontForContentSizeCategory = true
+        currencyTitle.textColor = NativeAppearance.ink
+        currencyTitle.accessibilityTraits = .header
+        currencyTitle.isHidden = true
         rank.font = .preferredFont(forTextStyle: .caption1); rank.textAlignment = .center
         rank.textColor = NativeAppearance.accentText
         photo.contentMode = .scaleAspectFill; photo.clipsToBounds = true; photo.layer.cornerRadius = 8
@@ -352,7 +396,7 @@ enum DiscoveryFeaturedEvidence {
         let identity = UIStackView(arrangedSubviews: [name, location]); identity.axis = .vertical; identity.spacing = 3
         let title = UIStackView(arrangedSubviews: [identity, amount]); title.axis = .horizontal; title.spacing = 8; title.alignment = .top
         let row = UIStackView(arrangedSubviews: [rank, photo, title]); row.spacing = 8; row.alignment = .top
-        let card = UIStackView(arrangedSubviews: [row, evidence]); card.axis = .vertical; card.spacing = 4
+        let card = UIStackView(arrangedSubviews: [currencyTitle, row, evidence]); card.axis = .vertical; card.spacing = 4
         card.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(card)
         NSLayoutConstraint.activate([
             card.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
@@ -369,13 +413,20 @@ enum DiscoveryFeaturedEvidence {
     required init?(coder: NSCoder) { return nil }
 
     func configure(row: DiscoveryPresentedRow, category: DrinkCategory, band: ComparisonBand, rank number: Int,
-                   distance: String, today: String, traits: UITraitCollection) {
+                   distance: String, today: String, traits: UITraitCollection, currencyHeading: String? = nil) {
+        currencyTitle.text = currencyHeading
+        currencyTitle.isHidden = currencyHeading == nil
         rank.text = String(number); photo.image = NativeDrinkArtwork.image(category.code)
         name.text = row.name; amount.text = row.price.amount
         location.text = [row.location, "\(distance) dal centro mappa"].filter { !$0.isEmpty }.joined(separator: " · ")
-        evidence.text = row.price.details(today: today)
+        let menuServing: String?
+        if case .menuV2 = row.price { menuServing = row.price.groupLabel } else { menuServing = nil }
+        let evidenceParts: [String?] = [menuServing, row.price.details(today: today),
+                                        DiscoveryPriceCaveat.condition(for: row.price)]
+        evidence.text = evidenceParts.compactMap { $0 }.joined(separator: " · ")
         accessibilityLabel = row.name
-        accessibilityValue = "\(number) nel formato \(row.price.groupLabel). \(category.name) · \(band.name)\n\(row.price.amount)\n\(location.text ?? "")\n\(row.price.details(today: today)). Immagine illustrativa del drink."
+        let section = currencyHeading.map { "\($0). " } ?? ""
+        accessibilityValue = "\(section)\(number) nel formato \(row.price.groupLabel). \(category.name) · \(band.name)\n\(row.price.amount)\n\(location.text ?? "")\n\(evidence.text ?? ""). Immagine illustrativa del drink."
         accessibilityHint = "Apre questo locale nella mappa"
         // Narrow or large-type layouts put the exact amount above the evidence,
         // rather than compressing the venue name into an unreadable column.

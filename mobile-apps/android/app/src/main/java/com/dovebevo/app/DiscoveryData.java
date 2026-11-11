@@ -39,7 +39,19 @@ final class DiscoveryData {
         private Row(Venue venue,FavoriteComparison.Price price,EuropePrices.Price mobilePrice,MenuV2Prices.Price menuPrice,DiscoveryArea area){
             this.venue=venue;this.price=price;this.mobilePrice=mobilePrice;this.menuPrice=menuPrice;metres=area.metres(venue.lat,venue.lon);
         }
-        String group(){return menuPrice==null?NativePricePresentation.group(price,mobilePrice):menuPrice.group();}
+        /** Match the app's original-currency and serving groups across the
+         * mobile catalogue and named-menu feeds; legacy size stays unknown. */
+        String group(){
+            if(menuPrice!=null){
+                String label=menuPrice.servingLabel==null?"":menuPrice.servingLabel.trim().toLowerCase(java.util.Locale.ROOT);
+                String unit=label.equals("calice")||label.equals("bicchiere")||label.equals("glass")?"glass":
+                        label.equals("ml")?"ml":"label:"+label;
+                return menuPrice.currency+"|"+menuPrice.exponent+"|"+unit+"|"+(menuPrice.servingML==null?0:menuPrice.servingML);
+            }
+            if(mobilePrice!=null)return mobilePrice.currency+"|2|"+mobilePrice.serving.unit+"|"+(mobilePrice.serving.ml==null?0:mobilePrice.serving.ml);
+            return "EUR|legacy-unknown";
+        }
+        String currency(){return menuPrice!=null?menuPrice.currency:mobilePrice!=null?mobilePrice.currency:"EUR";}
         int amount(){return menuPrice!=null?menuPrice.amountMinor:mobilePrice==null?price.cents:mobilePrice.amountMinor;}
         String amountLabel(){return menuPrice==null?NativePricePresentation.amount(price,mobilePrice):menuPrice.amount();}
         String groupLabel(){return menuPrice==null?NativePricePresentation.groupLabel(price,mobilePrice):menuPrice.currency+(menuPrice.serving().isEmpty()?"":" · "+menuPrice.serving());}
@@ -51,6 +63,7 @@ final class DiscoveryData {
             return mobilePrice==null?price.old:mobilePrice.old;
         }
         String context(){return menuPrice!=null?menuPrice.evidence():mobilePrice!=null?NativePricePresentation.context(mobilePrice):"";}
+        String tieKey(){return menuPrice!=null?"menu|"+menuPrice.id:mobilePrice!=null?"europe|"+mobilePrice.revision:"legacy|"+price.day;}
     }
     static Cell withMenu(Cell legacy,MenuV2Prices.Cell menu)throws IOException{
         if(menu==null)throw NativeJson.invalid();
@@ -114,7 +127,20 @@ final class DiscoveryData {
             FavoriteComparison.Price price=cell.approved.prices.get(venue.key+"/"+drink.code+"/"+band);
             if(price!=null)result.put(venue.key,new Row(venue,price,area));
         }
-        List<Row> rows=new ArrayList<>(result.values());Collections.sort(rows,(a,b)->{int group=a.group().compareTo(b.group());if(group!=0)return group;int p=Integer.compare(a.amount(),b.amount());if(p!=0)return p;int distance=Double.compare(a.metres,b.metres);return distance!=0?distance:a.venue.key.compareTo(b.venue.key);});
+        return rankRows(new ArrayList<>(result.values()));
+    }
+    /** Ascending amounts within each original currency. Serving stays visible
+     * because unlike servings are not a like-for-like price comparison. */
+    static List<Row> rankRows(List<Row> rows){
+        Collections.sort(rows,(a,b)->{
+            int currency=a.currency().compareTo(b.currency());if(currency!=0)return currency;
+            int amount=Integer.compare(a.amount(),b.amount());if(amount!=0)return amount;
+            int group=a.group().compareTo(b.group());if(group!=0)return group;
+            int distance=Double.compare(a.metres,b.metres);if(distance!=0)return distance;
+            int name=a.venue.name.compareToIgnoreCase(b.venue.name);if(name!=0)return name;
+            name=a.venue.name.compareTo(b.venue.name);if(name!=0)return name;
+            int key=a.venue.key.compareTo(b.venue.key);return key!=0?key:a.tieKey().compareTo(b.tieKey());
+        });
         return Collections.unmodifiableList(rows);
     }
 }

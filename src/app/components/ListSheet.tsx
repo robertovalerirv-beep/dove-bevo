@@ -1,7 +1,7 @@
 import { it } from "../i18n/lang";
 import { bestPrice, type Venue } from "../lib/data";
 import { formatDistance, formatPrice, todayRome } from "../lib/format";
-import { compareListRows } from "../lib/list-order";
+import { compareListRowsByPrice } from "../lib/list-order";
 import { isStale } from "../lib/tiers";
 import { distanceMeters } from "../../shared/venue";
 import { Sheet } from "./Sheet";
@@ -18,7 +18,8 @@ interface Props {
 
 /**
  * Accessible alternative to the map (SPEC 7.1): visible bars, keyboard and screen reader friendly.
- * Bars with «Gestore verificato» come first, marked «Sponsorizzato» (D-34, lib/list-order.ts).
+ * Bars with «Gestore verificato» come first, marked «Sponsorizzato» (D-34); then the cheapest price
+ * first, bars without a price last (SPEC 1.19, lib/list-order.ts).
  */
 export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) {
   const today = todayRome();
@@ -29,18 +30,20 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
       meters: position ? distanceMeters(position.lat, position.lon, venue.lat, venue.lon) : null,
     }))
     .sort((a, b) =>
-      compareListRows(
+      compareListRowsByPrice(
         {
           name: a.venue.name,
           verified: a.venue.verified,
           priced: Boolean(a.price),
           meters: a.meters,
+          cents: a.price?.[3] ?? null,
         },
         {
           name: b.venue.name,
           verified: b.venue.verified,
           priced: Boolean(b.price),
           meters: b.meters,
+          cents: b.price?.[3] ?? null,
         },
       ),
     );

@@ -87,6 +87,9 @@
   --type-price-xl: 700 48px/48px var(--font-mono);
   --tracking-price-xl: -0.04em;
   --size-price-xl: 48px;
+  --type-price-lg: 700 32px/36px var(--font-mono);
+  --tracking-price-lg: -0.03em;
+  --size-price-lg: 32px;
   --type-price: 700 16px/16px var(--font-mono);
   --tracking-price: -0.02em;
   --size-price: 16px;

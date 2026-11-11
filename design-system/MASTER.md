@@ -19,8 +19,8 @@ Una schermata, un'azione primaria. Una mano, poca luce: comandi nella metà bass
 - Vietati: gradienti, viola-blu, `#000` o bianco puro come sfondo, colori esadecimali fuori dai file generati.
 
 ## Tipografia
-- **Bricolage Grotesque** (`sans`, variabile 200–800) per tutto il testo; **Geist Mono** (`mono`) solo per `price-xl`, `price`, `meta`. Due woff2 del kit, self-hosted, ≤ 70 KB in tutto, `font-display: swap`, preload del solo Bricolage, fallback con metriche misurate.
-- Stili: `display` (una volta per schermata), `title`, `subtitle`, `body` (mai sotto 16 px), `label`, `caption`, `price-xl`, `price`, `meta` (maiuscolo solo qui). Cifre tabellari negli elenchi. Solo per le attribuzioni della mappa: `--size-legal` 11 px (ADR 0031).
+- **Bricolage Grotesque** (`sans`, variabile 200–800) per tutto il testo; **Geist Mono** (`mono`) solo per `price-xl`, `price-lg`, `price`, `meta`. Due woff2 del kit, self-hosted, ≤ 70 KB in tutto, `font-display: swap`, preload del solo Bricolage, fallback con metriche misurate.
+- Stili: `display` (una volta per schermata), `title`, `subtitle`, `body` (mai sotto 16 px), `label`, `caption`, `price-xl`, `price-lg` (le cifre del passo Prezzo, SPEC 1.19), `price`, `meta` (maiuscolo solo qui). Cifre tabellari negli elenchi. Solo per le attribuzioni della mappa: `--size-legal` 11 px (ADR 0031).
 - Prezzi in formato italiano: `6,50 €` nelle schede, `6,50` nei pin.
 
 ## Forme, spazi, ombre

@@ -8,6 +8,11 @@ interface Props {
   onClose: () => void;
   /** Shown at the top left when the sheet has a previous step. */
   onBack?: () => void;
+  /**
+   * Steps of «Aggiungi prezzo» (SPEC 7.3, 1.19): «Indietro» shows only the arrow (its name stays for
+   * screen readers) and the bar name is a subtitle, so it is read in full.
+   */
+  iconBack?: boolean;
   /** Changes when the content is swapped (a new step): focus moves to its `[autofocus]` element. */
   step?: string;
   /** The content writes its own title (the bar receipt): the sheet only shows a grip and a close button. */
@@ -16,7 +21,7 @@ interface Props {
 }
 
 /** Bottom sheet on a native modal <dialog>: focus trap, Esc and inert background for free. */
-export function Sheet({ title, onClose, onBack, step, bare, children }: Props) {
+export function Sheet({ title, onClose, onBack, iconBack, step, bare, children }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   // Layout effects run in order: open the dialog first, then move focus into it.
@@ -56,11 +61,19 @@ export function Sheet({ title, onClose, onBack, step, bare, children }: Props) {
         </div>
       )}
       {!bare && (
-        <div class="sheet__head">
+        <div class={iconBack ? "sheet__head sheet__head--steps" : "sheet__head"}>
           {onBack && (
-            <button type="button" class="btn btn--ghost sheet__back" onClick={onBack}>
+            <button
+              type="button"
+              class={
+                iconBack
+                  ? "btn btn--ghost sheet__back sheet__back--icon"
+                  : "btn btn--ghost sheet__back"
+              }
+              onClick={onBack}
+            >
               <Icon name="back" />
-              {it.add.back}
+              {iconBack ? <span class="sr-only">{it.add.back}</span> : it.add.back}
             </button>
           )}
           <h2 id={titleId} class="sheet__title" tabIndex={-1}>

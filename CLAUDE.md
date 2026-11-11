@@ -37,7 +37,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - **Misura il caso reale**, non uno di comodo: il nome del drink predefinito, le due lingue, 390/360/320 px, i due temi.
 
 ## Feature list
-**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-15`.
+**IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-16`.
 
 ## Comandi
 - `./init.sh` · `./init.sh --stop`

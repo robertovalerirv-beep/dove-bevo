@@ -37,6 +37,10 @@ jobs:
       - run: npm ci
       # OSM import (SPEC 5.3, D-03): the PBF is cached by its Geofabrik date, so several deploys
       # on the same day do not download it again. A failed import fails the deploy.
+      # Temporary (11/11/2026): *.ubuntu.com does not resolve, so apt uses the kernel.org Ubuntu mirror (same
+      # step as in ci.yml). Remove once ubuntu.com resolves again.
+      - name: Ubuntu mirror outside ubuntu.com (temporary)
+        run: echo 'https://mirrors.edge.kernel.org/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt
       - run: sudo apt-get update && sudo apt-get install -y osmium-tool
       - name: Geofabrik extract date
         id: pbf

@@ -25,6 +25,14 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - Dopo ogni file: `tsc -b`, ESLint e Prettier. Il hook di fine turno (`.claude/hooks/check-before-stop.sh`) blocca se typecheck o test collegati sono rossi; `verify` sul push fa il resto.
 - Interfaccia: verifica a 390 px già la prima versione (a capo, griglie, testi lunghi).
 
+## Lezioni dai fallimenti (aggiungi una riga a ogni errore nuovo)
+- **Verifica completa prima del primo push**: il hook `pre-push` esegue tutto, Chromium e WebKit. Nel container installa i browser una volta (`npx playwright install webkit chromium-headless-shell`, `npx playwright install-deps webkit`) e lancia `npm run verify` prima di dichiarare finito: eseguire solo i test del file nuovo ha fatto trovare i difetti uno alla volta, un push da 15 minuti ciascuno.
+- **Chi altro usa ciò che tocco**: prima di cambiare `src/app/app.tsx`, `src/app/lib/maplibre-map.ts`, `app.css` o un testo di `it.ts`/`en.ts`, cerca con `grep` in `mobile-apps/` (contratto `build-contract.mjs` con hash e punti di aggancio, `shell.css`, app Europa) e nei test le stringhe e le classi che il mio codice emette o sostituisce (es. il marcatore `data-dovebevo-mobile-shell="1"` non deve comparire nella pagina del sito).
+- **Un cambio di altezza muove ciò che è ancorato a quel bordo**: dopo ogni cambio di layout controlla timbro, anello di focus (5 px fuori dalla scatola), attribuzioni, fogli aperti e controlli posizionati in assoluto.
+- **Prima di dare la colpa al codice mio o altrui**: costruisci il commit precedente in un worktree a parte e lancia lo stesso test; se fallisce uguale, è preesistente.
+- **Testo nascosto**: usa `.sr-only` o `display: none` (i controlli di overflow li escludono); non inventare una variante.
+- **Misura il caso reale**, non uno di comodo: il nome del drink predefinito, le due lingue, 390/360/320 px, i due temi.
+
 ## Feature list
 **IMPORTANT: in `docs/feature_list.json` puoi cambiare solo `passes`. Vietato togliere o modificare funzionalità, descrizioni o verifiche, e vietato indebolire un test per farlo passare.** La CI confronta il file con il tag `spec-approved-15`.
 

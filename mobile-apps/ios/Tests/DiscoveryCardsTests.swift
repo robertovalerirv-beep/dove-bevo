@@ -30,8 +30,29 @@ final class DiscoveryCardsTests: XCTestCase {
         for expected in ["Spritz della casa", "Locale vero", "6,50 €", "EUR", "Calice · 200 ml"] {
             XCTAssertTrue(text.contains(expected), expected)
         }
+        XCTAssertTrue(text.contains("Menu online · Fonte verificata il 2026-11-02"))
         XCTAssertFalse(text.contains("Affare"))
+        XCTAssertTrue(card.isAccessibilityElement)
         XCTAssertTrue(card.accessibilityValue?.contains("Immagine illustrativa") == true)
+    }
+
+    func testFeaturedEvidenceShowsSourceDateAndOldStatusForEveryPriceFeed() throws {
+        let legacy = NativeComparablePrice.legacy(FavouritePrice(drink: "spritz", band: .normal,
+            cents: 550, observedOn: "2026-06-01", confirmations: 0, quarantined: false))
+        XCTAssertEqual(DiscoveryFeaturedEvidence.text(for: legacy, today: "2026-11-11"),
+            "Segnalato il 2026-06-01 · Da riconfermare: oltre 90 giorni")
+        let europe = NativeComparablePrice.europe(EuropePrice(drink: "spritz", band: .normal,
+            currency: "GBP", amountMinor: 650, serving: EuropeServing(unit: "glass", ml: 200),
+            observedOn: nil, confirmedOn: nil, confirmations: 0, quarantined: false,
+            revision: "fixture", sourceURL: nil, sourceSHA256: nil, sourceCheckedOn: "2026-06-01", menuItem: "Spritz"))
+        XCTAssertEqual(DiscoveryFeaturedEvidence.text(for: europe, today: "2026-11-11"),
+            "Menu online · Fonte verificata il 2026-06-01 · Menu da riverificare: oltre 90 giorni")
+        let menu = NativeComparablePrice.menuV2(MenuV2Price(id: "fixture", venueName: "Locale vero",
+            itemName: "Spritz", category: "spritz", band: .normal, amountMinor: 650,
+            currency: "EUR", exponent: 2, servingLabel: "Calice", servingML: 200,
+            origin: .customer("2026-11-02"), feeNotice: "Altre spese non verificate."))
+        XCTAssertEqual(DiscoveryFeaturedEvidence.text(for: menu, today: "2026-11-11"),
+            "Segnalato da un cliente il 2026-11-02")
     }
     func testCategorySummaryNeverRanksDifferentCurrencyOrServingTogether() throws {
         let catalog = try EuropeFixtures.catalog()

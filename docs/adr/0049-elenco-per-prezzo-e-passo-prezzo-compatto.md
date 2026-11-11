@@ -19,7 +19,7 @@ Due cose viste da Roberto su iPhone l'11/11/2026:
 - **Anche «Chiudi» con la sola icona:** non richiesto; il sottotitolo basta perché il nome entri a 390 px.
 
 ## Conseguenze
-- Il testo di `/regole` sull'ordine dell'Elenco cambia (italiano e inglese).
+- Il testo di `/regole` sull'ordine dell'Elenco cambia (italiano e inglese) e dice «sul sito»: le app native aprono la stessa pagina ma tengono il loro ordine (verificati in cima, poi distanza oppure prima i bar con un prezzo e poi alfabetico). Se un giorno anche le app passano all'ordine per prezzo, si toglie «sul sito».
 - A 320 px un nome lungo nell'intestazione finisce ancora con «…»: il nome intero resta nella scheda del bar.
 - Il tag `spec-approved-16` sostituisce il 15 come riferimento della guardia della feature list.
 - Rollback con `git revert`: nessun dato è stato toccato.

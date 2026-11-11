@@ -6,6 +6,7 @@ No authentication, writes, redirects, retries, menu discovery or eligibility cla
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
+from functools import lru_cache
 import json
 import math
 import re
@@ -110,6 +111,43 @@ def unique_object(pairs):
     return result
 
 
+def canonical_shell(raw):
+    # Cloudflare appends a request-specific script to otherwise identical SPA
+    # fallback pages. Remove only that anchored trailing injection, then compare
+    # the complete remaining HTML with a known empty cell from this version.
+    without_cf = re.sub(
+        rb'<script>\(function\(\)\{function c\(\).*?window\.__CF\$cv\$params=.*?</script>(?=</body>\s*</html>\s*$)',
+        b'', raw, flags=re.DOTALL,
+    )
+    if (not without_cf.startswith(b'<!doctype html>\n<html lang="it">')
+            or b'<title>Dove bevo</title>' not in without_cf
+            or b'<div id="app"></div>' not in without_cf
+            or b'<script type="module" crossorigin src="/assets/index-' not in without_cf
+            or not re.search(rb'</body>\s*</html>\s*$', without_cf)):
+        raise Invalid("non_json_response")
+    return without_cf
+
+
+@lru_cache(maxsize=4)
+def empty_cell_shell(version):
+    if not re.fullmatch(r"[0-9]{8}", version):
+        raise Invalid("invalid_shell_version")
+    # The polar control cell cannot contain an Italian venue. A changed route,
+    # JSON response or HTML error invalidates the absence comparison.
+    url = f"{ORIGIN}/data/{version}/v/zzzzz.json"
+    opener = build_opener(ProxyHandler({}), NoRedirect())
+    request = Request(url, headers={"Accept": "application/json",
+                                    "User-Agent": "DoveBevoMenuAudit/1"}, method="GET")
+    with opener.open(request, timeout=TIMEOUT) as response:
+        if (response.status != 200 or response.geturl() != url
+                or response.headers.get_content_type() != "text/html"):
+            raise Invalid("empty_shell_unavailable")
+        raw = response.read(LIMIT + 1)
+    if len(raw) > LIMIT:
+        raise Invalid("body_limit")
+    return canonical_shell(raw)
+
+
 def public_json(url):
     if not allowed_url(url):
         raise Invalid("request_not_allowed")
@@ -120,11 +158,20 @@ def public_json(url):
     with opener.open(request, timeout=TIMEOUT) as response:
         if response.status != 200 or response.geturl() != url:
             raise Invalid("unexpected_http_response")
-        if response.headers.get_content_type() != "application/json":
+        kind = response.headers.get_content_type()
+        if kind not in ("application/json", "text/html"):
             raise Invalid("non_json_response")
         raw = response.read(LIMIT + 1)
     if len(raw) > LIMIT:
         raise Invalid("body_limit")
+    if kind == "text/html":
+        # The live site serves its app shell for a static cell with no venues.
+        # Compare the full shell with an independently requested empty cell.
+        match = re.fullmatch(r"/data/([0-9]{8})/v/" + CELL + r"\.json",
+                             urlsplit(url).path)
+        if match and canonical_shell(raw) == empty_cell_shell(match.group(1)):
+            return {"c": [], "v": []}
+        raise Invalid("non_json_response")
     return json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object,
                       parse_constant=lambda _: (_ for _ in ()).throw(Invalid("nonfinite_json")))
 

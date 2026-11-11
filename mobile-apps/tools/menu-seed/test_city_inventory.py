@@ -266,6 +266,63 @@ class TransportTests(unittest.TestCase):
                     core.public_json(core.ORIGIN + "/api/health")
                 setattr(response, attr, old)
 
+    def test_only_exact_published_empty_cell_shell_means_no_venues(self):
+        shell = (b'<!doctype html>\n<html lang="it"><head><title>Dove bevo</title>'
+                 b'<script type="module" crossorigin src="/assets/index-test.js"></script>'
+                 b'</head><body><div id="app"></div></body></html>')
+        cell = core.ORIGIN + "/data/20261108/v/u0n6j.json"
+
+        class Response:
+            status = 200
+
+            def __init__(self, url, body):
+                self.url = url
+                self.body = body
+
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def geturl(self): return self.url
+            def read(self, maximum): return self.body[:maximum]
+
+            @property
+            def headers(self):
+                header = Message()
+                header["Content-Type"] = "text/html; charset=utf-8"
+                return header
+
+        class Opener:
+            body = shell
+            control = shell
+
+            def open(self, request, timeout):
+                body = self.control if request.full_url.endswith("/v/zzzzz.json") else self.body
+                return Response(request.full_url, body)
+
+        opener = Opener()
+        core.empty_cell_shell.cache_clear()
+        with patch.object(core, "build_opener", return_value=opener):
+            self.assertEqual(core.public_json(cell), {"c": [], "v": []})
+            for path in ("/api/health", "/api/prices/u0n6j",
+                         "/data/20261108/places.json"):
+                with self.subTest(path=path), self.assertRaisesRegex(core.Invalid, "non_json_response"):
+                    core.public_json(core.ORIGIN + path)
+            for body in (b'<html lang="it"><title>Dove bevo</title></html>',
+                         b'<!doctype html><html lang="it"><title>Service error</title></html>',
+                         b'<!doctype html><html lang="en"><title>Dove bevo</title></html>',
+                         shell.replace(b'</body>', b'<p>Service error</p></body>')):
+                opener.body = body
+                with self.subTest(body=body), self.assertRaisesRegex(core.Invalid, "non_json_response"):
+                    core.public_json(cell)
+            opener.body = shell + b" " * (core.LIMIT + 1)
+            with self.assertRaisesRegex(core.Invalid, "body_limit"):
+                core.public_json(cell)
+            opener.body = shell
+            opener.control = shell.replace(b'</body>', b'<p>Service error</p></body>')
+            core.empty_cell_shell.cache_clear()
+            with self.assertRaisesRegex(core.Invalid, "non_json_response"):
+                core.public_json(cell)
+        core.empty_cell_shell.cache_clear()
+
 
 if __name__ == "__main__":
     unittest.main()

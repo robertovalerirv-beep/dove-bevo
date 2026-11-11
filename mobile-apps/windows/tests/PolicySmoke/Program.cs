@@ -202,6 +202,18 @@ var europeVote = AreaVotesClient.Parse(europeVotePayload, cells).Rows.Single();
 Require(europeVote.TargetKey.EndsWith("/EUR/drink:", StringComparison.Ordinal) &&
     europeVote.Serving is null && !europeVote.Display.Contains("Drink singolo"),
     "generic European serving must stay in vote identity but leave the visible count clean");
+var offerVotePayload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new {
+    schema_version = 1, scope = new { cells }, items = new[] { new {
+        venue = new { key = "n123", cell = "u0nd9", name = "Test Bar", city = "Milano" },
+        target = new { kind = "offer", id = "spritz.7" },
+        drink = new { name = "Spritz", category = (string?)null, serving_label = "drink" },
+        count = 2,
+    } }, next_after = (string?)null,
+}));
+var offerVote = AreaVotesClient.Parse(offerVotePayload, cells).Rows.Single();
+Require(offerVote.TargetKey == "offer/spritz.7" && offerVote.Serving is null &&
+    !offerVote.Display.Contains(" · drink"),
+    "generic owner-menu serving must not repeat beside the shared recommendation count");
 ExpectInvalid(() => AreaVotesClient.Parse(areaPayload, new[] { "u33db" }));
 using var legacyPriceJson = JsonDocument.Parse("{\"p\":[[\"n123\",\"spritz\",0,550,\"2026-11-10\",0,0]]}");
 Require(BookmarkPriceClient.ParseLegacy(legacyPriceJson, legacyAction!)?.Contains("5,50 €") == true,

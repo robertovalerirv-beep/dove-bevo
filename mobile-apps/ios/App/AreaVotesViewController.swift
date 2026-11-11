@@ -233,8 +233,8 @@ final class AreaVotesViewController: UITableViewController {
         let format: String
         if case .europe(_, _, let currency, let serving) = item.target {
             format = [currency, serving.label].filter { !$0.isEmpty }.joined(separator: " · ")
-        } else { format = item.servingLabel ?? "Formato non dichiarato" }
-        content.secondaryText = "\(place)\n\(format) · \(item.count) \(item.count == 1 ? "consiglio" : "consigli")"
+        } else { format = MenuV2Price.displayServing(label: item.servingLabel, ml: nil) }
+        content.secondaryText = "\(place)\n" + [format, "\(item.count) \(item.count == 1 ? "consiglio" : "consigli")"].filter { !$0.isEmpty }.joined(separator: " · ")
         content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
         content.secondaryTextProperties.numberOfLines = 0
         content.textToSecondaryTextVerticalPadding = 8

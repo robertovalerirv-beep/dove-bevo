@@ -42,7 +42,7 @@ final class DiscoveryData {
         String group(){return menuPrice==null?NativePricePresentation.group(price,mobilePrice):menuPrice.group();}
         int amount(){return menuPrice!=null?menuPrice.amountMinor:mobilePrice==null?price.cents:mobilePrice.amountMinor;}
         String amountLabel(){return menuPrice==null?NativePricePresentation.amount(price,mobilePrice):menuPrice.amount();}
-        String groupLabel(){return menuPrice==null?NativePricePresentation.groupLabel(price,mobilePrice):menuPrice.currency+" · "+menuPrice.serving();}
+        String groupLabel(){return menuPrice==null?NativePricePresentation.groupLabel(price,mobilePrice):menuPrice.currency+(menuPrice.serving().isEmpty()?"":" · "+menuPrice.serving());}
         String day(){return menuPrice!=null?menuPrice.day:mobilePrice==null?price.day:mobilePrice.sourceKind.equals("online_menu")?mobilePrice.sourceCheckedOn:mobilePrice.observedOn;}
         boolean menuSource(){return menuPrice!=null||mobilePrice!=null&&mobilePrice.sourceKind.equals("online_menu");}
         boolean old(){

@@ -26,8 +26,14 @@ struct MenuV2Price: Equatable {
         return "\(major)\(decimal) \(currency == "EUR" ? "€" : currency == "GBP" ? "£" : currency)"
     }
     var serving: String {
-        let label = servingLabel ?? "Formato non dichiarato"
-        return servingML.map { "\(label) · \($0) ml" } ?? label
+        Self.displayServing(label: servingLabel, ml: servingML)
+    }
+    static func displayServing(label rawLabel: String?, ml: Int?) -> String {
+        let label = rawLabel ?? "Formato non dichiarato"
+        if ["drink", "drink singolo"].contains(label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) {
+            return ml.map { "\($0) ml" } ?? ""
+        }
+        return ml.map { "\(label) · \($0) ml" } ?? label
     }
     var evidence: String {
         switch origin {

@@ -88,7 +88,7 @@ enum NativeComparablePrice {
             return "\(p.currency)|\(p.exponent)|\(unit)|\(p.servingML ?? 0)"
         }
     }
-    var groupLabel: String { switch self { case .legacy: return "EUR · Formato non dichiarato"; case .europe(let p): return p.groupLabel; case .menuV2(let p): return "\(p.currency) · \(p.serving) · Da menu online" } }
+    var groupLabel: String { switch self { case .legacy: return "EUR · Formato non dichiarato"; case .europe(let p): return p.groupLabel; case .menuV2(let p): return [p.currency, p.serving, "Da menu online"].filter { !$0.isEmpty }.joined(separator: " · ") } }
     var amount: String { switch self { case .legacy(let p): return String(format: "%d,%02d €", p.cents / 100, p.cents % 100); case .europe(let p): return p.amount; case .menuV2(let p): return p.amount } }
     func details(today: String) -> String {
         switch self {

@@ -138,8 +138,7 @@ internal sealed class AreaVotesClient
                 throw new InvalidDataException("Recommendation category mismatch");
             var serving = drink.GetProperty("serving_label").ValueKind == JsonValueKind.Null
                 ? null : Text(drink.GetProperty("serving_label"), 256);
-            if (kind == "europe" && target.GetProperty("serving").GetProperty("unit").GetString() == "drink" &&
-                (serving is "drink" or "Drink singolo")) serving = null;
+            if (serving is "drink" or "Drink singolo") serving = null;
             var count = item.GetProperty("count").GetInt64();
             if (count is < 1 or > 9_007_199_254_740_991 || count > previous)
                 throw new InvalidDataException("Invalid recommendation count");

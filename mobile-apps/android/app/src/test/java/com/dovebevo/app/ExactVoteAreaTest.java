@@ -27,6 +27,9 @@ public final class ExactVoteAreaTest {
         assertEquals(12,result.rows.get(0).count);assertEquals("offer/spritz.7",result.rows.get(0).targetKey);
         assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",result.rows.get(0).venueUrl);
         assertEquals("legacy/beer_draft/happy_hour",result.rows.get(1).targetKey);
+        ExactVoteArea.Row genericOffer=ExactVoteArea.parse(page(SCOPE,OFFER.replace("\"serving_label\":\"Calice\"","\"serving_label\":\"drink\""),"null"),cells).rows.get(0);
+        assertEquals("offer/spritz.7",genericOffer.targetKey);
+        assertNull(genericOffer.serving);
     }
 
     @Test public void europeanRecommendationsStayScopedAndKeepExactServingCurrencyAndCount()throws Exception {

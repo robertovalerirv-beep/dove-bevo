@@ -39,6 +39,24 @@ public final class MenuV2PricesTest {
         assertEquals(2,rows.size());assertEquals(550,rows.get(0).menuPrice.amountMinor);assertEquals(650,rows.get(1).menuPrice.amountMinor);
         assertArrayEquals(before,disk.bytes);
     }
+    @Test public void genericMenuDrinkRetainsSourceGroupButOmitsRedundantDisplay()throws Exception {
+        String generic=offer("a1","regular",550).replace("\"label\":\"Calice\",\"ml\":200","\"label\":\"drink\",\"ml\":null");
+        MenuV2Prices client=new MenuV2Prices((url,max,call)->{
+            if(url.contains("customer-prices"))throw new IOException("No customer fixture");
+            return bytes(menu(generic,1,null));
+        });
+        MenuV2Prices.Price price=client.load(SavedVenueStore.reference(VENUE,"Saved"),call()).prices.get(0);
+        assertEquals("drink",price.servingLabel);
+        assertEquals("GBP|2|drink|0",price.group());
+        assertEquals("",price.serving());
+        DiscoveryArea area=new DiscoveryArea(45.4642,9.19,14);
+        DiscoveryData.Row row=new DiscoveryData.Row(new DiscoveryData.Venue("n123","Current venue","u0nd9","","Milano",45.4642,9.19),price,area);
+        assertEquals("GBP",row.groupLabel());
+        assertEquals("200 ml",MenuV2Prices.Price.displayServing("drink",200));
+        assertEquals("",MenuV2Prices.Price.displayServing("Drink singolo",null));
+        assertEquals("Calice · 200 ml",MenuV2Prices.Price.displayServing("Calice",200));
+        assertEquals("Formato non dichiarato",MenuV2Prices.Price.displayServing(null,null));
+    }
     @Test public void lastOfferAfter149RowsCanBeVerifiedForExactFavourite()throws Exception {
         SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Saved actual name");
         StringBuilder first=new StringBuilder(),last=new StringBuilder();

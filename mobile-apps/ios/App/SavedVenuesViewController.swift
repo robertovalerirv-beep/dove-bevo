@@ -454,11 +454,10 @@ final class SavedVenuesViewController: UITableViewController {
             let (item, live) = customerRows[indexPath.row - drinkRows.count - offerRows.count]
             var content = cell.defaultContentConfiguration()
             content.text = "\(live?.itemName ?? item.name) - \(live?.venueName ?? item.venue.label)"
-            let serving = live?.serving ?? (item.servingLabel ?? "Formato non dichiarato")
-                + (item.servingML.map { " · \($0) ml" } ?? "")
+            let serving = live?.serving ?? MenuV2Price.displayServing(label: item.servingLabel, ml: item.servingML)
             let state = live.map { "\($0.amount) · \($0.evidence)" }
                 ?? (menuBusy ? "Caricamento del prezzo online…" : "Segnalazione non disponibile ora. Il preferito resta salvato.")
-            content.secondaryText = "\(serving)\n\(state)"
+            content.secondaryText = [serving, state].filter { !$0.isEmpty }.joined(separator: "\n")
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
             content.secondaryTextProperties.numberOfLines = 0
             content.textToSecondaryTextVerticalPadding = 8
@@ -484,7 +483,7 @@ final class SavedVenuesViewController: UITableViewController {
                 }
                 let linked = menuSnapshot?.venues[item.venue.url]?.linkedReports.filter { $0.linkedOfferID == item.offerID } ?? []
                 for report in linked.prefix(3) {
-                    details.append("Segnalazione cliente distinta: \(report.amount) - \(report.serving)")
+                    details.append("Segnalazione cliente distinta: " + [report.amount, report.serving].filter { !$0.isEmpty }.joined(separator: " - "))
                     details.append(report.evidence)
                     if report.currency != live.currency || report.exponent != live.exponent
                         || report.category != live.category || report.servingLabel != live.servingLabel
@@ -493,13 +492,12 @@ final class SavedVenuesViewController: UITableViewController {
                     }
                 }
                 if linked.count > 3 { details.append("Altre \(linked.count - 3) segnalazioni cliente nel locale.") }
-                content.secondaryText = details.joined(separator: "\n")
+                content.secondaryText = details.filter { !$0.isEmpty }.joined(separator: "\n")
             } else {
-                let savedServing = (item.servingLabel ?? "Formato non dichiarato")
-                    + (item.servingML.map { " - \($0) ml" } ?? "")
+                let savedServing = MenuV2Price.displayServing(label: item.servingLabel, ml: item.servingML)
                 let state = menuBusy ? "Caricamento del prezzo online..."
                     : "Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi."
-                content.secondaryText = "\(savedServing)\n\(state)"
+                content.secondaryText = [savedServing, state].filter { !$0.isEmpty }.joined(separator: "\n")
             }
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
             content.secondaryTextProperties.numberOfLines = 0
@@ -516,7 +514,9 @@ final class SavedVenuesViewController: UITableViewController {
             let saved = drinkRows[indexPath.row].saved
             var content = cell.defaultContentConfiguration()
             content.text = menuPrice.venueName
-            content.secondaryText = "\(saved.category.name) · \(saved.band.name)\n\(menuPrice.itemName) · \(menuPrice.serving)\n\(menuPrice.amount)\n\(menuPrice.evidence)"
+            content.secondaryText = "\(saved.category.name) · \(saved.band.name)\n" +
+                [menuPrice.itemName, menuPrice.serving].filter { !$0.isEmpty }.joined(separator: " · ") +
+                "\n\(menuPrice.amount)\n\(menuPrice.evidence)"
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
             content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
             content.secondaryTextProperties.numberOfLines = 0
@@ -527,7 +527,7 @@ final class SavedVenuesViewController: UITableViewController {
             cell.accessoryType = .disclosureIndicator
             cell.accessibilityIdentifier = "savedDrink.\(saved.identity).menu.\(menuPrice.id)"
             cell.accessibilityLabel = "\(saved.category.name), \(saved.band.name), \(menuPrice.itemName), \(menuPrice.venueName)"
-            cell.accessibilityValue = "\(menuPrice.amount), \(menuPrice.serving), \(menuPrice.evidence)"
+            cell.accessibilityValue = [menuPrice.amount, menuPrice.serving, menuPrice.evidence].filter { !$0.isEmpty }.joined(separator: ", ")
             cell.accessibilityHint = "Apre il locale nella mappa"
             return cell
         }

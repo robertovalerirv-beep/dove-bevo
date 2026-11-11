@@ -80,6 +80,26 @@ final class AreaVotesTests: XCTestCase {
         XCTAssertEqual(client.calls.count, 2, "Browsing a community count must not write a vote")
     }
 
+    @MainActor func testOwnerMenuRecommendationOmitsGenericDrinkServing() throws {
+        var item = row(key: "n123", target: ["kind": "offer", "id": "spritz.7"], count: 8)
+        var drink = try XCTUnwrap(item["drink"] as? [String: Any])
+        drink["serving_label"] = "drink"
+        item["drink"] = drink
+        let result = try XCTUnwrap(AreaVotesPage.parse(page([item]), requestedCells: area.cells))
+        XCTAssertEqual(result.items[0].target, .offer("spritz.7"))
+        let client = DelayedAreaVotesService()
+        let controller = AreaVotesViewController(client: client, activityCheck: { true }, onOpen: { _ in })
+        controller.isDestinationSelected = { true }
+        controller.setArea(area)
+        controller.loadViewIfNeeded()
+        controller.beginAppearanceTransition(true, animated: false); controller.endAppearanceTransition()
+        client.complete(0, .success(result))
+        let cell = controller.tableView(controller.tableView, cellForRowAt: IndexPath(row: 0, section: 0))
+        let detail = (cell.contentConfiguration as? UIListContentConfiguration)?.secondaryText ?? ""
+        XCTAssertTrue(detail.contains("8 consigli"))
+        XCTAssertFalse(detail.contains(" · drink"))
+    }
+
     @MainActor func testNoMapAreaOffersExplicitCitySearchWithoutRequest() throws {
         let client = DelayedAreaVotesService()
         var openedMap = false

@@ -20,6 +20,7 @@ import {
   mobileMenuVenue,
   type MenuPage,
   type MenuFee,
+  type MenuMinimumSpend,
   type MenuOffer,
 } from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
@@ -295,6 +296,10 @@ function menuFeeAmount(fee: MenuFee): string {
     unspecified: "base non specificata",
   }[fee.basis];
   return `${amount} ${basis}`;
+}
+
+function menuMinimumAmount(minimum: MenuMinimumSpend): string {
+  return `${menuMoney(minimum.amount_minor, minimum.currency, minimum.currency_exponent)} a persona`;
 }
 
 export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
@@ -664,6 +669,27 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         </div>
       </section>
     ) : null;
+  const minimumSection =
+    menu && menu.minimum_spends.length > 0 ? (
+      <section class="mobile-menu-v2__minimum" aria-label="Consumazione minima">
+        <h3>Consumazione minima</h3>
+        <p>Questa soglia riguarda la spesa a persona, non è un supplemento per ogni drink.</p>
+        <ul>
+          {menu.minimum_spends.map((minimum) => (
+            <li key={minimum.id}>
+              <span>{minimum.label}</span>
+              <strong>{menuMinimumAmount(minimum)}</strong>
+              {minimum.applicability === "conditional" && minimum.condition && (
+                <small>Solo se: {minimum.condition}</small>
+              )}
+              <a href={minimum.source.url} target="_blank" rel="noopener noreferrer">
+                Fonte verificata il {minimum.source.checked_on}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null;
   const sheet = (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
@@ -756,6 +782,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               </section>
             )}
           </div>
+          {minimumSection}
           {active.length > 0 && (
             <h3 class="section-title">
               {featuredOffer

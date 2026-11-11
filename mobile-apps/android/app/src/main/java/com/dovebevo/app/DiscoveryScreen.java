@@ -272,12 +272,13 @@ final class DiscoveryScreen {
         if(price==null)return null;
         String lower=price.feeNotice.toLowerCase(Locale.ROOT),scope="";
         if(lower.contains("spese separate"))scope="Spese separate indicate dal menu";
-        if(lower.contains("nessuna spesa obbligatoria"))scope=appendScope(scope,"Nessuna spesa obbligatoria dichiarata");
+        if(lower.contains("nessun supplemento obbligatorio"))scope=appendScope(scope,"Nessun supplemento obbligatorio dichiarato");
         if(lower.contains("non verificate")||lower.contains("non verificati"))scope=appendScope(scope,"Altre spese non verificate");
         if(lower.contains("documentate solo in parte")||lower.contains("copertura delle spese parziale"))scope=appendScope(scope,"Spese documentate solo in parte");
         if(scope.isEmpty()&&!lower.isEmpty())scope="Spese del locale: vedi dettaglio";
         String condition=price.condition==null||price.condition.isEmpty()?"":"Condizioni: "+price.condition;
-        String visible=appendScope(condition,scope);return visible.isEmpty()?null:visible;
+        String visible=appendScope(condition,price.minimumSpendNotice);
+        visible=appendScope(visible,scope);return visible.isEmpty()?null:visible;
     }
     private static String appendScope(String first,String next){return first.isEmpty()?next:next.isEmpty()?first:first+" · "+next;}
     static String currencyHeading(String currency){return currency.equals("EUR")?"EUR · €":currency.equals("GBP")?"GBP · £":currency;}

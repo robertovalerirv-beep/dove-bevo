@@ -26,7 +26,7 @@ internal sealed record DiscoveryLocation(string Name, DiscoveryArea Area, string
 internal sealed record DiscoveryRow(string Key, string Cell, string Venue, string City,
     string DrinkCode, string Drink, long AmountMinor, string Currency, int Exponent,
     string Context, string? Condition, string? SourceUrl, DateOnly CheckedOn,
-    string? Serving = null, bool IsEurope = false)
+    string? Serving = null, bool IsEurope = false, string MinimumSpendNotice = "")
 {
     public string Display
     {
@@ -38,6 +38,7 @@ internal sealed record DiscoveryRow(string Key, string Cell, string Venue, strin
             return $"{Venue} · {(City.Length == 0 ? "Località non indicata" : City)}\n{Drink} · {price} {Currency}{context}" +
                    (Serving is { Length: > 0 } ? $" · {Serving}" : "") +
                    (Condition is null ? "" : $" · {Condition}") +
+                   (MinimumSpendNotice.Length == 0 ? "" : $"\n{MinimumSpendNotice}") +
                    (SourceUrl is null
                        ? $"\nSegnalato da un cliente il {CheckedOn:dd/MM/yyyy}"
                        : $"\nMenu: {new Uri(SourceUrl).DnsSafeHost} · verificato {CheckedOn:dd/MM/yyyy}");
@@ -204,7 +205,7 @@ internal sealed class DiscoveryClient
         values
             .GroupBy(row => (row.Key, row.Cell, row.DrinkCode, row.Currency,
                 row.Exponent, row.Context, row.Condition, row.AmountMinor,
-                row.Serving, row.Drink, row.SourceUrl))
+                row.Serving, row.Drink, row.SourceUrl, row.MinimumSpendNotice))
             .Select(group => group.First())
             .OrderBy(row => row.Currency, StringComparer.Ordinal)
             .ThenBy(row => row.AmountMinor * (row.Exponent switch
@@ -222,7 +223,7 @@ internal sealed class DiscoveryClient
         string? after = null;
         for (var page = 0; page < 10; page++)
         {
-            var address = $"https://www.dovebevo.com/api/mobile/v2/menu/cells/{cell}?category={category}" +
+            var address = $"https://www.dovebevo.com/api/mobile/v2/menu/cells/{cell}?category={category}&minimum_spend=1" +
                           (after is null ? "" : "&after=" + Uri.EscapeDataString(after));
             using var response = await Client.GetAsync(address, HttpCompletionOption.ResponseHeadersRead, cancellation);
             if (response.StatusCode != HttpStatusCode.OK ||
@@ -274,6 +275,7 @@ internal sealed class DiscoveryClient
             var name = Text(venue.GetProperty("name"), 2, 512);
             var cityElement = venue.GetProperty("city");
             var city = cityElement.ValueKind == JsonValueKind.Null ? "" : Text(cityElement, 2, 200);
+            var minimum = MinimumSpendNotice(venue);
             foreach (var offer in venue.GetProperty("sample_offers").EnumerateArray())
             {
                 if (offer.GetProperty("category").GetString() != category) throw new InvalidDataException("Menu drink mismatch");
@@ -303,7 +305,8 @@ internal sealed class DiscoveryClient
                 var serving = BookmarkPriceClient.VerifiedOfferServing(offer);
                 if (serving == "Formato non dichiarato") serving = null;
                 rows.Add(new DiscoveryRow(key, cell, name, city, category, drink, amount,
-                    currency, exponent, kind, condition, sourceUrl, day, serving));
+                    currency, exponent, kind, condition, sourceUrl, day, serving,
+                    MinimumSpendNotice: minimum));
             }
         }
         var next = root.GetProperty("next_after").ValueKind == JsonValueKind.Null
@@ -320,5 +323,52 @@ internal sealed class DiscoveryClient
         if (text.Length < min || text.Length > max || text.Any(char.IsControl))
             throw new InvalidDataException("Invalid menu text");
         return text;
+    }
+
+    internal static string MinimumSpendNotice(JsonElement venue)
+    {
+        if (!venue.TryGetProperty("minimum_spends", out var value)) return "";
+        if (value.ValueKind != JsonValueKind.Array) throw new InvalidDataException("Invalid minimum spend");
+        var entries = value.EnumerateArray().ToArray();
+        if (entries.Length > 100) throw new InvalidDataException("Minimum spend limit");
+        var notices = new List<string>();
+        foreach (var item in entries)
+        {
+            var id = Text(item.GetProperty("id"), 1, 128);
+            if (!Regex.IsMatch(id, @"^[A-Za-z0-9._:-]+$")) throw new InvalidDataException("Invalid minimum spend id");
+            _ = Text(item.GetProperty("label"), 1, 512);
+            var amount = item.GetProperty("amount_minor").GetInt64();
+            var currency = Text(item.GetProperty("currency"), 3, 3);
+            var exponent = item.GetProperty("currency_exponent").GetInt32();
+            if (amount is < 1 or > 100_000_000 || exponent is < 0 or > 3 ||
+                !currency.All(c => c is >= 'A' and <= 'Z') ||
+                item.GetProperty("basis").GetString() != "person")
+                throw new InvalidDataException("Invalid minimum spend amount");
+            var applicability = item.GetProperty("applicability").GetString();
+            var conditionField = item.GetProperty("condition");
+            var condition = conditionField.ValueKind == JsonValueKind.Null ? null : Text(conditionField, 1, 500);
+            if (applicability is not ("all_orders" or "conditional") ||
+                (applicability == "conditional") != (condition is not null))
+                throw new InvalidDataException("Invalid minimum spend condition");
+            var source = item.GetProperty("source");
+            _ = Text(source.GetProperty("id"), 1, 128);
+            var sourceUrl = Text(source.GetProperty("url"), 1, 2048);
+            var hash = Text(source.GetProperty("text_sha256"), 64, 64);
+            if (!Uri.TryCreate(sourceUrl, UriKind.Absolute, out var sourceUri) ||
+                sourceUri.Scheme != Uri.UriSchemeHttps || sourceUri.UserInfo.Length != 0 ||
+                hash.Any(c => !Uri.IsHexDigit(c)) ||
+                !DateOnly.TryParseExact(source.GetProperty("checked_on").GetString(), "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+                throw new InvalidDataException("Invalid minimum spend source");
+            if (notices.Count < 3)
+            {
+                var formatted = (amount / Math.Pow(10, exponent)).ToString("N" + exponent,
+                    CultureInfo.GetCultureInfo("it-IT"));
+                notices.Add($"Consumazione minima {formatted} {currency} a persona" +
+                    (condition is null ? "" : $", solo se {condition}") + ".");
+            }
+        }
+        if (entries.Length > 3) notices.Add("Altre condizioni nel dettaglio del locale.");
+        return string.Join(" ", notices);
     }
 }

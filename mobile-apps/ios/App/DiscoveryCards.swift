@@ -119,10 +119,11 @@ enum DiscoveryPriceCaveat {
         guard case .menuV2(let price) = value else { return nil }
         var parts: [String] = []
         if let condition = price.condition, !condition.isEmpty { parts.append("Condizioni: \(condition)") }
+        if !price.minimumSpendNotice.isEmpty { parts.append(price.minimumSpendNotice) }
         let fee = price.feeNotice.lowercased()
         if fee.contains("spese separate") { parts.append("Spese separate indicate dal menu") }
-        if fee.contains("nessuna spesa obbligatoria") {
-            parts.append("Nessuna spesa obbligatoria dichiarata")
+        if fee.contains("nessun supplemento obbligatorio") {
+            parts.append("Nessun supplemento obbligatorio dichiarato")
         }
         if fee.contains("non verificate") || fee.contains("non verificati") {
             parts.append("Altre spese non verificate")
@@ -138,7 +139,7 @@ enum DiscoveryPriceCaveat {
 
     static func full(for value: NativeComparablePrice) -> String? {
         guard case .menuV2(let price) = value else { return nil }
-        let parts: [String?] = [condition(for: value), price.feeNotice]
+        let parts: [String?] = [condition(for: value), price.minimumSpendNotice, price.feeNotice]
         return parts.compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

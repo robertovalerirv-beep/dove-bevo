@@ -110,7 +110,7 @@ internal sealed class BookmarkPriceClient
         string? after = null;
         for (var index = 0; index < 10; index++)
         {
-            var endpoint = $"https://www.dovebevo.com/api/mobile/v2/menu/venues/{action.VenueKey}?cell={action.Cell}&limit=100" +
+            var endpoint = $"https://www.dovebevo.com/api/mobile/v2/menu/venues/{action.VenueKey}?cell={action.Cell}&limit=100&minimum_spend=1" +
                 (after is null ? "" : "&after=" + Uri.EscapeDataString(after));
             using var page = await ReadAsync(endpoint, cancellation);
             var result = ParseOffer(page, action);
@@ -135,13 +135,15 @@ internal sealed class BookmarkPriceClient
         string? price = null;
         string? category = null;
         string? serving = null;
+        var minimum = DiscoveryClient.MinimumSpendNotice(root);
         foreach (var offer in root.GetProperty("offers").EnumerateArray())
         {
             if (offer.GetProperty("id").GetString() != action.Item) continue;
             if (price is not null) throw new InvalidDataException("Duplicate menu offer");
             price = Money(offer.GetProperty("amount_minor").GetInt64(),
                 offer.GetProperty("currency").GetString()!,
-                offer.GetProperty("currency_exponent").GetInt32()) + " · prezzo da menu, supplementi separati";
+                offer.GetProperty("currency_exponent").GetInt32()) + " · prezzo da menu, supplementi separati" +
+                (minimum.Length == 0 ? "" : " · " + minimum);
             category = VerifiedOfferCategory(offer);
             serving = VerifiedOfferServing(offer);
         }

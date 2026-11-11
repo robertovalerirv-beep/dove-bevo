@@ -97,6 +97,8 @@ final class DiscoveryScreen {
         selectedCity=choice;
         try{area=choice==null?sourceArea:choice.area();}
         catch(IOException unavailable){selectedCity=null;area=sourceArea;cityStatus.setText("Città non disponibile. Scegline un'altra.");return;}
+        if(cityStatus.getText().toString().startsWith("La città selezionata"))
+            cityStatus.setText(cityRetry.getVisibility()==View.VISIBLE?"Elenco città parziale. Riprova per altre città.":"");
         view.scrollTo(0,0);refresh();
     }
     private void loadCities(){
@@ -111,12 +113,23 @@ final class DiscoveryScreen {
                 cityOptions=result.cities;citySelector.setOnItemSelectedListener(null);cityAdapter.clear();cityAdapter.add("Area della mappa");
                 for(DiscoveryCities.City city:cityOptions)cityAdapter.add(city.label());
                 cityAdapter.notifyDataSetChanged();
-                int position=0;if(selectedCity!=null)for(int i=0;i<cityOptions.size();i++)if(cityOptions.get(i).key().equals(selectedCity.key())){position=i+1;selectedCity=cityOptions.get(i);break;}
+                int position=0;boolean areaChanged=false,missingCity=false;
+                if(selectedCity!=null){
+                    for(int i=0;i<cityOptions.size();i++)if(cityOptions.get(i).key().equals(selectedCity.key())){position=i+1;break;}
+                    if(position==0){selectedCity=null;area=sourceArea;areaChanged=true;missingCity=true;}
+                    else{
+                        selectedCity=cityOptions.get(position-1);
+                        try{DiscoveryArea updated=selectedCity.area();if(!sameArea(area,updated)){area=updated;areaChanged=true;}}
+                        catch(IOException unavailable){selectedCity=null;area=sourceArea;areaChanged=true;missingCity=true;position=0;}
+                    }
+                }
                 citySelector.setSelection(position,false);
                 citySelector.setOnItemSelectedListener(selection(()->chooseCity(citySelector.getSelectedItemPosition())));
                 boolean partial=result.italianUnavailable||result.europeanUnavailable;
-                cityStatus.setText(cityOptions.isEmpty()?"Elenco città non disponibile. Riprova.":partial?"Elenco città parziale. Riprova per altre città.":"");
+                cityStatus.setText(missingCity?"La città selezionata non è nell'elenco aggiornato. Mostro l'area della mappa.":
+                        cityOptions.isEmpty()?"Elenco città non disponibile. Riprova.":partial?"Elenco città parziale. Riprova per altre città.":"");
                 cityRetry.setVisibility(partial||cityOptions.isEmpty()?View.VISIBLE:View.GONE);
+                if(areaChanged)refresh();
             });
         });
     }

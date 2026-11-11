@@ -1440,7 +1440,12 @@ test("customer-report failure is compact beside existing prices and retries with
 });
 
 test("customer-report outage remains clear and retryable when no price is visible", async () => {
-  const options = { noLegacyPrices: true, customerEmpty: true, failCustomerGets: 1, customerGets: [] };
+  const options = {
+    noLegacyPrices: true,
+    customerEmpty: true,
+    failCustomerGets: 1,
+    customerGets: [],
+  };
   const f = await fixture({ width: 390, height: 700 }, options);
   f.page.setDefaultTimeout(5000);
   try {

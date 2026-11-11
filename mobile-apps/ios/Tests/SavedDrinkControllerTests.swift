@@ -139,13 +139,41 @@ final class SavedDrinkControllerTests: XCTestCase {
                 let cell = controller.tableView(controller.tableView, cellForRowAt: index)
                 let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
                 XCTAssertTrue(content.secondaryText?.hasPrefix("Menu del locale: 7,50 € · Con condizioni · Da riverificare") == true)
+                XCTAssertTrue(content.secondaryText?.contains("Servizio escluso") == true)
                 XCTAssertTrue(content.secondaryText?.contains("EUR · calice · 250 ml") == true)
-                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 3)
+                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 4)
                 XCTAssertTrue(cell.accessibilityValue?.contains("Solo dopo le 18") == true)
+                XCTAssertTrue(cell.accessibilityValue?.contains("Servizio escluso") == true)
                 controller.tableView(controller.tableView, accessoryButtonTappedForRowWith: index)
                 guard waitUntil("Full menu warning details", { controller.presentedViewController is UIAlertController }) else { return }
                 XCTAssertTrue((controller.presentedViewController as? UIAlertController)?.message?.contains("Menu da riverificare: oltre 90 giorni") == true)
                 controller.dismiss(animated: false)
+            }
+            let exactFee = "Spese separate: Coperto 2,50 € / person (tutti gli ordini). Copertura delle spese parziale."
+            let recent = MenuV2Price(id: source.id, venueName: source.venueName, itemName: source.itemName,
+                                     category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+                                     servingLabel: "calice", servingML: 250,
+                                     origin: .ownerMenu(URL(string: "https://example.org/menu")!, ComparisonJSON.today()),
+                                     feeNotice: exactFee)
+            let recentSnapshot = MenuV2Snapshot(venues: [url: MenuV2Venue(key: "n123", cell: "u0nd9", name: "Bar Milano",
+                                                                              offers: [recent], feeNotice: exactFee)], unavailable: [])
+            let recentController = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore, offerStore: offerStore,
+                                                              menuClient: DrinkPaneMenuFixture(snapshot: recentSnapshot),
+                                                              activityCheck: { true }) { _ in }
+            try withMounted(recentController) { _ in
+                let index = IndexPath(row: 0, section: 0)
+                let cell = recentController.tableView(recentController.tableView, cellForRowAt: index)
+                let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
+                let visibleLines = Array((content.secondaryText ?? "").components(separatedBy: "\n").prefix(3))
+                XCTAssertTrue(visibleLines.contains { $0.contains("Spese separate · Copertura parziale") })
+                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 3)
+                XCTAssertTrue(content.secondaryText?.hasPrefix("Menu del locale: 5,50 €") == true)
+                XCTAssertFalse(visibleLines.contains { $0.contains("Da riverificare") || $0.contains("Con condizioni") })
+                XCTAssertTrue(cell.accessibilityValue?.contains(exactFee) == true)
+                recentController.tableView(recentController.tableView, accessoryButtonTappedForRowWith: index)
+                guard waitUntil("Exact fee scope in details", { recentController.presentedViewController is UIAlertController }) else { return }
+                XCTAssertTrue((recentController.presentedViewController as? UIAlertController)?.message?.contains(exactFee) == true)
+                recentController.dismiss(animated: false)
             }
         }
     }

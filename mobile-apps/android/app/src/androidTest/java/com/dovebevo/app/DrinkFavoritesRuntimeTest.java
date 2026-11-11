@@ -79,7 +79,7 @@ public final class DrinkFavoritesRuntimeTest {
             assertTrue("Third favourite should be on screen without scrolling",third.getGlobalVisibleRect(visible));
             assertTrue("Third compact row should fit on the test phone",visible.height()>=third.getHeight()-dp(4));
             String summary=visibleText(third);
-            assertTrue(summary.contains("Negroni"));assertTrue(summary.contains("Saved name"));
+            assertTrue(summary.contains("Negroni"));assertTrue(summary.contains("Locale attuale"));
             assertTrue(summary.contains("8,00"));assertTrue(summary.contains("EUR"));
             View detail=third.findViewWithTag("details_content_"+third.getTag());
             assertEquals(View.GONE,detail.getVisibility());
@@ -126,13 +126,31 @@ public final class DrinkFavoritesRuntimeTest {
                 View card=screen.view().findViewWithTag("menu_offer_favourite_"+saved.key());
                 assertNotNull(card);
                 String compact=visibleText(card);
-                for(String expected:new String[]{"Spritz della casa","Saved name","7,50 €","EUR","calice · 250 ml","Con condizioni","Da riverificare"})
+                for(String expected:new String[]{"Spritz della casa","Saved name","7,50 €","EUR","calice · 250 ml","Con condizioni","Da riverificare","Servizio escluso"})
                     assertTrue(expected+" missing from compact row",compact.contains(expected));
                 View detail=card.findViewWithTag("details_content_"+card.getTag());
                 assertEquals(View.GONE,detail.getVisibility());
                 ((Button)card.findViewWithTag("details_toggle_"+card.getTag())).performClick();
                 assertTrue(visibleText(card).contains("Prezzo soggetto a condizioni: Solo dopo le 18"));
                 assertTrue(visibleText(card).contains("Menu da ricontrollare (oltre 90 giorni)"));
+            });
+            String exactFee="Spese separate: Coperto 2,50 € / person (tutti gli ordini). Copertura delle spese parziale.";
+            MenuV2Prices.Price feeOnly=new MenuV2Prices.Price("spritz.7","Saved name","Spritz della casa","spritz",0,
+                    550,"EUR",2,"calice",250,false,FavoriteDay.today(),exactFee);
+            onMain(()->{
+                try{
+                    java.lang.reflect.Field menuField=SavedDrinkScreen.class.getDeclaredField("menus");menuField.setAccessible(true);
+                    menuField.set(screen,java.util.Collections.singletonMap(venue.url,new MenuV2Prices.Venue("n123","u0nd9","Saved name",exactFee,java.util.Collections.singletonList(feeOnly))));
+                    java.lang.reflect.Method render=SavedDrinkScreen.class.getDeclaredMethod("render");render.setAccessible(true);render.invoke(screen);
+                }catch(ReflectiveOperationException error){throw new AssertionError(error);}
+                View card=screen.view().findViewWithTag("menu_offer_favourite_"+saved.key());
+                assertNotNull(card);
+                String compact=visibleText(card);
+                for(String expected:new String[]{"5,50 €","EUR","calice · 250 ml","Spese separate","Copertura parziale"})
+                    assertTrue(expected+" missing from fee-only row",compact.contains(expected));
+                assertFalse(compact.contains("Con condizioni"));assertFalse(compact.contains("Da riverificare"));
+                ((Button)card.findViewWithTag("details_toggle_"+card.getTag())).performClick();
+                assertTrue(visibleText(card).contains(exactFee));
             });
             assertEquals(saved.key(),offers.load().get(0).key());
             assertArrayEquals(before,file.get());

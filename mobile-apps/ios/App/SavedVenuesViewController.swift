@@ -45,9 +45,10 @@ final class SavedVenuesViewController: UITableViewController {
     private var favouriteDetailLineLimit: Int {
         traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 0 : 2
     }
-    private func detailLineLimit(showing warning: String) -> Int {
-        warning.isEmpty ? favouriteDetailLineLimit :
-            (traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 0 : 3)
+    private func detailLineLimit(showing warning: String, feeCue: String = "") -> Int {
+        if traitCollection.preferredContentSizeCategory.isAccessibilityCategory { return 0 }
+        if !warning.isEmpty && !feeCue.isEmpty { return 4 }
+        return warning.isEmpty && feeCue.isEmpty ? 2 : 3
     }
     private func isStale(_ day: String?) -> Bool {
         day.flatMap(ComparisonJSON.day).map { date in
@@ -60,6 +61,18 @@ final class SavedVenuesViewController: UITableViewController {
     private func warningLabels(conditional: Bool = false, stale: Bool = false) -> String {
         [conditional ? "Con condizioni" : "", stale ? "Da riverificare" : ""]
             .filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+    /// A source-derived cue; exact fee amount and applicability remain in the detail text.
+    private func feeScopeCue(_ notice: String) -> String {
+        let words = notice.lowercased()
+        if words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || words.hasPrefix("nessuna spesa obbligatoria") { return "" }
+        let separate = words.contains("spese separate:")
+        let partial = words.contains("copertura delle spese parziale") || words.contains("documentate solo in parte")
+        let unknown = words.contains("non verificate")
+        let scope = partial ? "Copertura parziale" : unknown ? "Spese non verificate" : ""
+        if separate { return "Spese separate" + (scope.isEmpty ? "" : " · \(scope)") }
+        if words.contains("servizio escluso") { return "Servizio escluso" }
+        return scope.isEmpty ? "Spese: vedi dettagli" : scope
     }
     var isDestinationSelected: (() -> Bool)?
     private let drinkButton = UIButton(type: .system)
@@ -478,9 +491,11 @@ final class SavedVenuesViewController: UITableViewController {
             content.text = "\(live?.itemName ?? item.name) - \(live?.venueName ?? item.venue.label)"
             let serving = live?.serving ?? MenuV2Price.displayServing(label: item.servingLabel, ml: item.servingML)
             let warning = live.map { warningLabels(stale: isStale(menuDay($0))) } ?? ""
+            let feeCue = live.map { feeScopeCue($0.feeNotice) } ?? ""
             if let live {
                 let detail = isStale(menuDay(live)) ? "Da riconfermare: oltre 90 giorni" : ""
                 content.secondaryText = [live.amount + (warning.isEmpty ? "" : " · \(warning)"),
+                                         feeCue,
                                          [live.currency, serving].filter { !$0.isEmpty }.joined(separator: " · "),
                                          live.evidence, detail]
                     .filter { !$0.isEmpty }.joined(separator: "\n")
@@ -489,7 +504,7 @@ final class SavedVenuesViewController: UITableViewController {
                 content.secondaryText = [serving, state].filter { !$0.isEmpty }.joined(separator: "\n")
             }
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning)
+            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning, feeCue: feeCue)
             content.textToSecondaryTextVerticalPadding = 4
             content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
@@ -505,8 +520,10 @@ final class SavedVenuesViewController: UITableViewController {
             var content = cell.defaultContentConfiguration()
             content.text = "\(live?.itemName ?? item.name) - \(live?.venueName ?? item.venue.label)"
             let warning = live.map { warningLabels(conditional: $0.band == nil, stale: isStale(menuDay($0))) } ?? ""
+            let feeCue = live.map { feeScopeCue($0.feeNotice) } ?? ""
             if let live {
                 var details = ["Menu del locale: \(live.amount)" + (warning.isEmpty ? "" : " · \(warning)"),
+                               feeCue,
                                [live.currency, live.serving].filter { !$0.isEmpty }.joined(separator: " · "),
                                live.evidence]
                 if live.band == nil {
@@ -535,7 +552,7 @@ final class SavedVenuesViewController: UITableViewController {
                 content.secondaryText = [savedServing, state].filter { !$0.isEmpty }.joined(separator: "\n")
             }
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning)
+            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning, feeCue: feeCue)
             content.textToSecondaryTextVerticalPadding = 4
             content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
@@ -551,15 +568,17 @@ final class SavedVenuesViewController: UITableViewController {
             var content = cell.defaultContentConfiguration()
             content.text = menuPrice.venueName
             let warning = warningLabels(conditional: menuPrice.band == nil, stale: isStale(menuDay(menuPrice)))
+            let feeCue = feeScopeCue(menuPrice.feeNotice)
             content.secondaryText = "\(menuPrice.amount) · \(saved.band.name)" +
                 (warning.isEmpty ? "" : " · \(warning)") + "\n" +
+                (feeCue.isEmpty ? "" : "\(feeCue)\n") +
                 [menuPrice.itemName, menuPrice.currency, menuPrice.serving].filter { !$0.isEmpty }.joined(separator: " · ") +
                 "\n" + [menuPrice.evidence,
                           isStale(menuDay(menuPrice)) ? "Menu da riverificare: oltre 90 giorni." : ""]
                     .filter { !$0.isEmpty }.joined(separator: "\n")
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
             content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning)
+            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning, feeCue: feeCue)
             content.textToSecondaryTextVerticalPadding = 4
             content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content

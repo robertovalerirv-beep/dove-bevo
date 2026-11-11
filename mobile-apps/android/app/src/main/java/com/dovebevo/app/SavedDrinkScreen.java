@@ -131,7 +131,7 @@ final class SavedDrinkScreen {
             String amount=named!=null?named.amount():!busy&&!menuBusy&&price.available()?NativePricePresentation.amount(price.price,price.mobilePrice):"Prezzo non disponibile";
             String format=named!=null?named.currency+(named.serving().isEmpty()?"":" · "+named.serving())
                     :price.available()?NativePricePresentation.groupLabel(price.price,price.mobilePrice):"";
-            String warnings=named!=null?warningLabels(named.band<0,oldMenuDay(named.day))
+            String warnings=named!=null?warningLabels(named.band<0,oldMenuDay(named.day),named.feeNotice)
                     :warningLabels(false,price.available()&&(price.mobilePrice!=null?price.mobilePrice.old:price.price.old));
             compactCard(card,named!=null?named.name:NativePricePresentation.category(item.drink),venueName,amount,format,warnings,open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
@@ -180,7 +180,7 @@ final class SavedDrinkScreen {
             if(current!=null)format=current.currency+(format.isEmpty()?"":" · "+format);
             compactCard(card,item.name,menu==null?item.venue.label:menu.name,
                     current==null?"Prezzo non disponibile":current.amount(),format,
-                    current==null?"":warningLabels(current.band<0,oldMenuDay(current.day)),open,remove);
+                    current==null?"":warningLabels(current.band<0,oldMenuDay(current.day),current.feeNotice),open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleCustomers=0;
@@ -211,7 +211,7 @@ final class SavedDrinkScreen {
             if(current!=null)format=current.currency+(format.isEmpty()?"":" · "+format);
             compactCard(card,item.name,menu==null?item.venue.label:menu.name,
                     current==null?"Prezzo non disponibile":current.amount(),format,
-                    current==null?"":warningLabels(false,oldMenuDay(current.day)),open,remove);
+                    current==null?"":warningLabels(false,oldMenuDay(current.day),current.feeNotice),open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleEurope=0;
@@ -283,6 +283,23 @@ final class SavedDrinkScreen {
     private boolean containsEurope(String key){for(SavedEuropeDrinkStore.Entry item:europe)if(item.key().equals(key))return true;return false;}
     private static String warningLabels(boolean conditional,boolean old){
         return (conditional?"Con condizioni":"")+(conditional&&old?" · ":"")+(old?"Da riverificare":"");
+    }
+    private static String warningLabels(boolean conditional,boolean old,String feeNotice){
+        String ageAndCondition=warningLabels(conditional,old),fee=feeScopeCue(feeNotice);
+        return ageAndCondition.isEmpty()?fee:fee.isEmpty()?ageAndCondition:ageAndCondition+" · "+fee;
+    }
+    /** Short, source-derived cue only; the exact fee amount and scope stay in expanded evidence. */
+    private static String feeScopeCue(String notice){
+        if(notice==null||notice.trim().isEmpty())return "";
+        String words=notice.toLowerCase(java.util.Locale.ROOT);
+        if(words.startsWith("nessuna spesa obbligatoria"))return "";
+        boolean separate=words.contains("spese separate:");
+        boolean partial=words.contains("copertura delle spese parziale")||words.contains("documentate solo in parte");
+        boolean unknown=words.contains("non verificate");
+        String scope=partial?"Copertura parziale":unknown?"Spese non verificate":"";
+        if(separate)return "Spese separate"+(scope.isEmpty()?"":" · "+scope);
+        if(words.contains("servizio escluso"))return "Servizio escluso";
+        return scope.isEmpty()?"Spese: vedi dettagli":scope;
     }
     private static boolean oldMenuDay(String day){
         try{return FavoriteDay.milliseconds(FavoriteDay.today())-FavoriteDay.milliseconds(day)>90L*86400000L;}

@@ -64,23 +64,23 @@ final class DiscoveryViewController: UITableViewController {
         // Mappa is already in the bottom navigation; reload lives in the
         // parent's ellipsis, leaving this header clear of duplicate actions.
         navigationItem.rightBarButtonItems = [moreOverlaySpace]
-        let heading = label("Esplora i drink", style: .headline)
+        let heading = label("Scegli cosa bere", style: .headline)
         heading.accessibilityTraits = .header
-        let introduction = label("I prezzi nella zona della mappa", style: .footnote)
-        introduction.textColor = NativeAppearance.muted
         let illustration = label("Immagini illustrative dei drink, non foto dei locali", style: .caption2)
         illustration.textColor = NativeAppearance.muted
+        let bandLabel = label("Fascia di prezzo", style: .caption1)
+        bandLabel.textColor = NativeAppearance.muted
         drinkSelector.accessibilityIdentifier = "discovery.drinkSelector"
         drinkSelector.accessibilityLabel = "Scegli cosa bere"
         drinkSelector.accessibilityHint = "Apre l'elenco dei drink disponibili"
         drinkSelector.showsMenuAsPrimaryAction = true
         drinkSelector.contentHorizontalAlignment = .leading
-        drinkSelector.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
+        drinkSelector.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
         var drinkConfiguration = UIButton.Configuration.bordered()
         // The button's intrinsic size must be large enough even before its
         // table header is laid out; a height constraint alone is ignored by
         // systemLayoutSizeFitting on an unmounted UIButton.
-        drinkConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
+        drinkConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
         drinkSelector.configuration = drinkConfiguration
         bands.accessibilityIdentifier = "discovery.band"
         bands.accessibilityLabel = "Fascia di prezzo"
@@ -90,13 +90,13 @@ final class DiscoveryViewController: UITableViewController {
         statusLabel.textColor = NativeAppearance.muted
         statusLabel.adjustsFontForContentSizeCategory = true
         let header = UIView()
-        let stack = UIStackView(arrangedSubviews: [heading, introduction, illustration,
-                                                   drinkSelector, bands, statusLabel])
-        stack.axis = .vertical; stack.spacing = 8; stack.translatesAutoresizingMaskIntoConstraints = false
+        let stack = UIStackView(arrangedSubviews: [heading, drinkSelector, bandLabel, bands,
+                                                   statusLabel, illustration])
+        stack.axis = .vertical; stack.spacing = 5; stack.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: header.topAnchor, constant: 8),
-            stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -8),
+            stack.topAnchor.constraint(equalTo: header.topAnchor, constant: 5),
+            stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -5),
             stack.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20)
         ])

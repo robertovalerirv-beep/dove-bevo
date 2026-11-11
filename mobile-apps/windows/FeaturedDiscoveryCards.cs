@@ -13,6 +13,7 @@ internal sealed record FeaturedDiscoveryCard(DiscoveryRow Row)
         (Row.Context == "happy_hour" ? " · Happy hour" : Row.Context == "conditional" ? " · Condizione" : "") +
         (Row.Condition is null ? "" : " · " + Row.Condition) +
         " · " + Row.CheckedOn.ToString("dd/MM/yyyy", CultureInfo.GetCultureInfo("it-IT"));
+    public string MinimumSpend => Row.MinimumSpendNotice;
     public Uri? Target => Row.FocusedVenue();
 }
 

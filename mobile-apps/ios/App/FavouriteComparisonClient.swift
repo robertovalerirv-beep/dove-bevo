@@ -21,7 +21,7 @@ enum ComparisonEndpoint: Equatable {
                 throw ComparisonReadError.invalidData
             }
             let suffix = after.map { "&after=\($0)" } ?? ""
-            return URL(string: "https://www.dovebevo.com/api/mobile/v2/menu/cells/\(cell)?categories=\(categories.joined(separator: ","))\(suffix)")!
+            return URL(string: "https://www.dovebevo.com/api/mobile/v2/menu/cells/\(cell)?categories=\(categories.joined(separator: ","))&minimum_spend=1\(suffix)")!
         case .menuV2(let key, let cell, let after), .customerV2(let key, let cell, let after):
             let cursorPattern: String
             switch self {
@@ -34,7 +34,8 @@ enum ComparisonEndpoint: Equatable {
             let family: String
             switch self { case .menuV2: family = "menu"; default: family = "customer-prices" }
             let suffix = after.map { "&after=\($0)" } ?? ""
-            return URL(string: "https://www.dovebevo.com/api/mobile/v2/\(family)/venues/\(key)?cell=\(cell)&limit=\(family == "menu" ? 100 : 50)\(suffix)")!
+            let minimum = family == "menu" ? "&minimum_spend=1" : ""
+            return URL(string: "https://www.dovebevo.com/api/mobile/v2/\(family)/venues/\(key)?cell=\(cell)&limit=\(family == "menu" ? 100 : 50)\(minimum)\(suffix)")!
         case .mobileCatalog: return URL(string: "https://www.dovebevo.com/mobile-data/catalog.json")!
         case .mobilePrices(let cell):
             guard ComparisonJSON.matches(cell, "^[0-9b-hjkmnp-z]{5}$") else { throw ComparisonReadError.invalidData }

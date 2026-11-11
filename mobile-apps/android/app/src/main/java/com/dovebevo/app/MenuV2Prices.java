@@ -24,15 +24,15 @@ final class MenuV2Prices {
     static boolean allowed(String url) {
         if(url==null)return false;
         String root="https://www\\.dovebevo\\.com/api/mobile/v2/";
-        return url.matches(root+"menu/venues/"+KEY+"\\?cell="+CELL+"&limit=100(?:&after="+CURSOR+")?")
+        return url.matches(root+"menu/venues/"+KEY+"\\?cell="+CELL+"&limit=100&minimum_spend=1(?:&after="+CURSOR+")?")
                 ||url.matches(root+"customer-prices/venues/"+KEY+"\\?cell="+CELL+"&limit=50(?:&after="+ITEM_KEY+")?")
-                ||url.matches(root+"menu/cells/"+CELL+"\\?categories="+DISCOVERY_CATEGORIES+"(?:&after="+CELL_KEY+")?");
+                ||url.matches(root+"menu/cells/"+CELL+"\\?categories="+DISCOVERY_CATEGORIES+"&minimum_spend=1(?:&after="+CELL_KEY+")?");
     }
     private final FavoritePricesClient.Transport transport;
     MenuV2Prices(FavoritePricesClient.Transport transport){this.transport=transport;}
     MenuV2Prices(){this(new FavoritePricesClient.HttpsTransport());}
     static final class Price {
-        final String id,venueName,name,category,currency,servingLabel,day,feeNotice,linkedOfferId,condition;
+        final String id,venueName,name,category,currency,servingLabel,day,feeNotice,linkedOfferId,condition,minimumSpendNotice;
         final String sourceUrl;
         final int band,amountMinor,exponent;final Integer servingML;final boolean customer;
         Price(String id,String venueName,String name,String category,int band,int amountMinor,String currency,int exponent,
@@ -45,10 +45,14 @@ final class MenuV2Prices {
         }
         Price(String id,String venueName,String name,String category,int band,int amountMinor,String currency,int exponent,
               String servingLabel,Integer servingML,boolean customer,String day,String feeNotice,String linkedOfferId,String condition,String sourceUrl){
+            this(id,venueName,name,category,band,amountMinor,currency,exponent,servingLabel,servingML,customer,day,feeNotice,linkedOfferId,condition,sourceUrl,"");
+        }
+        Price(String id,String venueName,String name,String category,int band,int amountMinor,String currency,int exponent,
+              String servingLabel,Integer servingML,boolean customer,String day,String feeNotice,String linkedOfferId,String condition,String sourceUrl,String minimumSpendNotice){
             this.id=id;this.venueName=venueName;this.name=name;this.category=category;this.band=band;
             this.amountMinor=amountMinor;this.currency=currency;this.exponent=exponent;
             this.servingLabel=servingLabel;this.servingML=servingML;this.customer=customer;this.day=day;this.feeNotice=feeNotice;
-            this.linkedOfferId=linkedOfferId;this.condition=condition;this.sourceUrl=sourceUrl;
+            this.linkedOfferId=linkedOfferId;this.condition=condition;this.sourceUrl=sourceUrl;this.minimumSpendNotice=minimumSpendNotice;
         }
         String group(){return currency+"|"+exponent+"|"+(servingLabel==null?"":servingLabel.toLowerCase(Locale.ROOT))+"|"+(servingML==null?0:servingML);}
         String amount(){int factor=new int[]{1,10,100,1000}[exponent];String minor=Integer.toString(amountMinor%factor);
@@ -61,7 +65,7 @@ final class MenuV2Prices {
             if(normalized.equals("drink")||normalized.equals("drink singolo"))return ml==null?"":ml+" ml";
             return label+(ml==null?"":" · "+ml+" ml");
         }
-        String evidence(){return (customer?"Segnalato da un cliente il ":"Da menu online · Fonte verificata il ")+day+" · Prezzo del drink. "+feeNotice;}
+        String evidence(){return (customer?"Segnalato da un cliente il ":"Da menu online · Fonte verificata il ")+day+" · Prezzo del drink. "+minimumSpendNotice+" "+feeNotice;}
     }
     static final class Venue {
         final String key,cell,name,feeNotice;final List<Price> prices,linkedReports,customerPrices;
@@ -98,7 +102,7 @@ final class MenuV2Prices {
     }
     static String cellEndpoint(String cell,String after)throws IOException{
         if(cell==null||!cell.matches(CELL)||after!=null&&!after.matches(CELL_KEY))throw NativeJson.invalid();
-        return FavoritePricesClient.ORIGIN+"/api/mobile/v2/menu/cells/"+cell+"?categories="+DISCOVERY_CATEGORIES
+        return FavoritePricesClient.ORIGIN+"/api/mobile/v2/menu/cells/"+cell+"?categories="+DISCOVERY_CATEGORIES+"&minimum_spend=1"
                 +(after==null?"":"&after="+after);
     }
     Cell loadCell(String cell,FavoritePricesClient.Call call)throws IOException{
@@ -115,8 +119,8 @@ final class MenuV2Prices {
         throw NativeJson.invalid();
     }
     private static final class MenuPage {
-        final String name,next,fees;final int count;final List<Price> prices;
-        MenuPage(String name,String next,String fees,int count,List<Price> prices){this.name=name;this.next=next;this.fees=fees;this.count=count;this.prices=prices;}
+        final String name,next,fees,minimum;final int count;final List<Price> prices;
+        MenuPage(String name,String next,String fees,String minimum,int count,List<Price> prices){this.name=name;this.next=next;this.fees=fees;this.minimum=minimum;this.count=count;this.prices=prices;}
     }
     private static final class Customer {
         final String id,offerId,name,category,currency,servingLabel,day;final int amount,exponent;final Integer ml;
@@ -130,11 +134,11 @@ final class MenuV2Prices {
     Venue load(SavedVenueStore.Venue saved,FavoritePricesClient.Call call)throws IOException{
         String key=FavoriteComparison.key(saved.url),cell=FavoriteComparison.cell(saved.url);
         if(!key.matches(KEY)||!cell.matches(CELL))throw NativeJson.invalid();
-        String after=null,name=null,feeNotice=null;Integer expected=null;List<Price> offers=new ArrayList<>();Set<String> ids=new HashSet<>();
+        String after=null,name=null,feeNotice=null,minimumNotice=null;Integer expected=null;List<Price> offers=new ArrayList<>();Set<String> ids=new HashSet<>();
         for(int page=0;page<10;page++){
             MenuPage value=menuPage(get(endpoint(true,key,cell,after),call),key,cell);
-            if(name!=null&&(!name.equals(value.name)||!feeNotice.equals(value.fees)||!expected.equals(value.count)))throw NativeJson.invalid();
-            if(name==null){name=value.name;feeNotice=value.fees;expected=value.count;}
+            if(name!=null&&(!name.equals(value.name)||!feeNotice.equals(value.fees)||!minimumNotice.equals(value.minimum)||!expected.equals(value.count)))throw NativeJson.invalid();
+            if(name==null){name=value.name;feeNotice=value.fees;minimumNotice=value.minimum;expected=value.count;}
             for(Price price:value.prices)if(!ids.add(price.id))throw NativeJson.invalid();else offers.add(price);
             if(offers.size()>1000)throw NativeJson.invalid();
             if(value.next==null){if(offers.size()!=expected)throw NativeJson.invalid();break;}
@@ -158,7 +162,7 @@ final class MenuV2Prices {
                 Price source=byId.get(customer.offerId);
                 Price report=new Price(customer.id,name,customer.name,customer.category,source==null?0:source.band,customer.amount,customer.currency,
                         customer.exponent,customer.servingLabel,customer.ml,true,customer.day,
-                        "Spese del locale secondo il menu: "+feeNotice,customer.offerId,null);
+                        "Spese del locale secondo il menu: "+feeNotice,customer.offerId,null,null,minimumNotice);
                 customerPrices.add(report);
                 if(source==null)continue;
                 linked.add(report);
@@ -173,7 +177,7 @@ final class MenuV2Prices {
         byte[] bytes=transport.get(url,BYTES,call);call.check();if(bytes==null||bytes.length>BYTES)throw NativeJson.invalid();return bytes;}
     static String endpoint(boolean menu,String key,String cell,String after)throws IOException{
         if(key==null||!key.matches(KEY)||cell==null||!cell.matches(CELL)||after!=null&&!after.matches(menu?CURSOR:ITEM_KEY))throw NativeJson.invalid();
-        String family=menu?"menu":"customer-prices";return FavoritePricesClient.ORIGIN+"/api/mobile/v2/"+family+"/venues/"+key+"?cell="+cell+"&limit="+(menu?100:50)+(after==null?"":"&after="+after);
+        String family=menu?"menu":"customer-prices";return FavoritePricesClient.ORIGIN+"/api/mobile/v2/"+family+"/venues/"+key+"?cell="+cell+"&limit="+(menu?100:50)+(menu?"&minimum_spend=1":"")+(after==null?"":"&after="+after);
     }
     private static CellPage cellPage(byte[] bytes,String cell,String previous)throws IOException{
         Map<?,?> root=obj(NativeJson.read(bytes,BYTES));NativeJson.integer(root.get("schema_version"),2,2);
@@ -204,9 +208,10 @@ final class MenuV2Prices {
             Map<?,?> fees=obj(row.get("fee_coverage"));String status=text(fees.get("status"),32,null);
             if(!status.equals("unknown")&&!status.equals("documented_partial")&&!status.equals("explicit_no_fee"))throw NativeJson.invalid();
             if(fees.get("source")!=null)sourceDay(fees.get("source"));
-            String feeNotice=status.equals("explicit_no_fee")?"Nessuna spesa obbligatoria dichiarata dalla fonte.":
+            String feeNotice=status.equals("explicit_no_fee")?"Nessun supplemento obbligatorio dichiarato dalla fonte.":
                     status.equals("documented_partial")?"Le spese del locale sono documentate solo in parte; controlla la scheda del locale.":
                             "Altre spese del locale non verificate; controlla la scheda del locale.";
+            String minimum=minimumSpendNotice(row.get("minimum_spends"));
             List<?> samples=array(row.get("sample_offers"),100);
             int count=(int)NativeJson.integer(row.get("matching_offer_count"),0,100000);
             if(samples.size()>count)throw NativeJson.invalid();
@@ -223,7 +228,7 @@ final class MenuV2Prices {
                 Map<?,?> source=obj(offer.get("source"));String sourceURL=httpsURL(source.get("url"));
                 String day=sourceDay(source);
                 prices.add(new Price(id,name,item,category,band,money.amount,money.currency,money.exponent,
-                        serving.label,serving.ml,false,day,feeNotice,null,band<0?condition:null,sourceURL));
+                        serving.label,serving.ml,false,day,feeNotice,null,band<0?condition:null,sourceURL,minimum));
             }
             venues.add(new CellVenue(key,cell,name,address,city,lat,lon,prices));
         }
@@ -248,7 +253,7 @@ final class MenuV2Prices {
         if(schema!=2||!"menu_item_only".equals(root.get("price_scope")))throw NativeJson.invalid();
         Map<?,?> coverage=obj(root.get("coverage"));if(!Boolean.FALSE.equals(coverage.get("complete"))||!"verified_source_items_only".equals(coverage.get("basis")))throw NativeJson.invalid();
         String name=venueName(root.get("venue"),key,cell);int count=(int)NativeJson.integer(root.get("stored_offer_count"),0,100000);
-        String fees=feeNotice(root);List<?> raw=array(root.get("offers"),100);String next=optional(root.get("next_after"),CURSOR);
+        String fees=feeNotice(root),minimum=minimumSpendNotice(root.get("minimum_spends"));List<?> raw=array(root.get("offers"),100);String next=optional(root.get("next_after"),CURSOR);
         List<Price> prices=new ArrayList<>();Set<String> ids=new HashSet<>();
         for(Object value:raw){Map<?,?> offer=obj(value);String id=text(offer.get("id"),128,CURSOR);if(!ids.add(id))throw NativeJson.invalid();
             String item=text(offer.get("name"),512,null),category=offer.get("category")==null?"":text(offer.get("category"),32,null);
@@ -258,10 +263,10 @@ final class MenuV2Prices {
             String condition=context.get("condition")==null?null:text(context.get("condition"),500,null);
             String day=sourceDay(offer.get("source"));
             prices.add(new Price(id,name,item,category,band,money.amount,money.currency,money.exponent,serving.label,serving.ml,false,day,fees,
-                    null,band<0?condition:null));
+                    null,band<0?condition:null,null,minimum));
         }
         if(next!=null&&(prices.isEmpty()||!next.equals(prices.get(prices.size()-1).id)))throw NativeJson.invalid();
-        return new MenuPage(name,next,fees,count,prices);
+        return new MenuPage(name,next,fees,minimum,count,prices);
     }
     private static CustomerPage customerPage(byte[] bytes,String key,String cell)throws IOException{
         Map<?,?> root=obj(NativeJson.read(bytes,BYTES));NativeJson.integer(root.get("schema_version"),1,1);
@@ -297,9 +302,29 @@ final class MenuV2Prices {
             else throw NativeJson.invalid();
             if(lines.size()<3)lines.add(label+" "+amount+" / "+basis+" ("+scope+")");
         }
-        if(status.equals("explicit_no_fee"))return "Nessuna spesa obbligatoria dichiarata dalla fonte.";
+        if(status.equals("explicit_no_fee"))return "Nessun supplemento obbligatorio dichiarato dalla fonte.";
         return (lines.isEmpty()?"":"Spese separate: "+String.join("; ",lines)+(fees.size()>3?"; altre spese nel dettaglio":"")+". ")
                 +(status.equals("unknown")?"Altre spese non verificate.":"Copertura delle spese parziale.");
+    }
+    private static String minimumSpendNotice(Object value)throws IOException{
+        if(value==null)return "";
+        List<?> entries=array(value,100);List<String> notices=new ArrayList<>();
+        for(Object raw:entries){
+            Map<?,?> item=obj(raw);
+            text(item.get("id"),128,CURSOR);text(item.get("label"),512,null);
+            Money amount=money(item);
+            if(!"person".equals(item.get("basis")))throw NativeJson.invalid();
+            String applicability=text(item.get("applicability"),32,null);
+            if(!applicability.equals("all_orders")&&!applicability.equals("conditional"))throw NativeJson.invalid();
+            String condition=item.get("condition")==null?null:text(item.get("condition"),500,null);
+            if(applicability.equals("conditional")!=(condition!=null))throw NativeJson.invalid();
+            Map<?,?> source=obj(item.get("source"));text(source.get("id"),128,CURSOR);sourceDay(source);
+            Price sample=new Price("","","","",0,amount.amount,amount.currency,amount.exponent,null,null,false,"","");
+            if(notices.size()<3)notices.add("Consumazione minima "+sample.amount()+" a persona"
+                    +(condition==null?"":", solo se "+condition)+".");
+        }
+        if(entries.size()>3)notices.add("Altre condizioni nel dettaglio del locale.");
+        return String.join(" ",notices);
     }
     private static final class Money{final int amount,exponent;final String currency;Money(int amount,String currency,int exponent){this.amount=amount;this.currency=currency;this.exponent=exponent;}}
     private static Money money(Map<?,?> value)throws IOException{return new Money((int)NativeJson.integer(value.get("amount_minor"),1,100000000),

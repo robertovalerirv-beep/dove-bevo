@@ -43,12 +43,12 @@ private final class MenuV2Load: RecommendationRequest {
         guard completion != nil else { return }
         while active < 3 && !queued.isEmpty {
             let venue = queued.removeFirst(); active += 1
-            readMenu(venue, after: nil, pages: 0, accumulated: [], expectedCount: nil, expectedName: nil, expectedFees: nil)
+            readMenu(venue, after: nil, pages: 0, accumulated: [], expectedCount: nil, expectedName: nil, expectedFees: nil, expectedMinimum: nil)
         }
         if active == 0 && queued.isEmpty { finish() }
     }
     private func readMenu(_ venue: SavedVenue, after: String?, pages: Int, accumulated: [MenuV2Price],
-                          expectedCount: Int?, expectedName: String?, expectedFees: String?) {
+                          expectedCount: Int?, expectedName: String?, expectedFees: String?, expectedMinimum: String?) {
         guard let cell = ComparisonJSON.cell(from: venue) else { completed(venue, result: nil); return }
         fetch(.menuV2(key: venue.url.lastPathComponent, cell: cell, after: after)) { [weak self] result in
             guard let self else { return }
@@ -57,21 +57,24 @@ private final class MenuV2Load: RecommendationRequest {
                   expectedCount == nil || expectedCount == page.count,
                   expectedName == nil || expectedName == page.name,
                   expectedFees == nil || expectedFees == page.feeNotice,
+                  expectedMinimum == nil || expectedMinimum == page.minimumSpendNotice,
                   Set(accumulated.map(\.id)).isDisjoint(with: page.offers.map(\.id)),
                   accumulated.count + page.offers.count <= 1000 else { self.completed(venue, result: nil); return }
             let all = accumulated + page.offers
             if let next = page.next {
                 guard pages < 9, next != after, !page.offers.isEmpty else { self.completed(venue, result: nil); return }
                 self.readMenu(venue, after: next, pages: pages + 1, accumulated: all,
-                              expectedCount: page.count, expectedName: page.name, expectedFees: page.feeNotice)
+                              expectedCount: page.count, expectedName: page.name, expectedFees: page.feeNotice,
+                              expectedMinimum: page.minimumSpendNotice)
             } else {
                 guard all.count == page.count else { self.completed(venue, result: nil); return }
-                self.readCustomers(venue, name: page.name, fees: page.feeNotice, offers: all,
+                self.readCustomers(venue, name: page.name, fees: page.feeNotice,
+                                   minimum: page.minimumSpendNotice, offers: all,
                                    after: nil, pages: 0, accumulated: [])
             }
         }
     }
-    private func readCustomers(_ venue: SavedVenue, name: String, fees: String, offers: [MenuV2Price],
+    private func readCustomers(_ venue: SavedVenue, name: String, fees: String, minimum: String, offers: [MenuV2Price],
                                after: String?, pages: Int, accumulated: [MenuV2Customer]) {
         guard let cell = ComparisonJSON.cell(from: venue) else { completed(venue, result: nil); return }
         fetch(.customerV2(key: venue.url.lastPathComponent, cell: cell, after: after)) { [weak self] result in
@@ -80,15 +83,15 @@ private final class MenuV2Load: RecommendationRequest {
                   let page = MenuV2JSON.customerPage(data, key: venue.url.lastPathComponent, cell: cell),
                   page.name == name, Set(accumulated.map(\.id)).isDisjoint(with: page.rows.map(\.id)),
                   accumulated.count + page.rows.count <= 500 else {
-                self.completed(venue, result: MenuV2Venue(key: venue.url.lastPathComponent, cell: cell, name: name, offers: offers, feeNotice: fees))
+                self.completed(venue, result: MenuV2Venue(key: venue.url.lastPathComponent, cell: cell, name: name, offers: offers, feeNotice: fees, minimumSpendNotice: minimum))
                 return
             }
             let all = accumulated + page.rows
             if let next = page.next {
                 guard pages < 9, next != after, !page.rows.isEmpty else {
-                    self.completed(venue, result: MenuV2Venue(key: venue.url.lastPathComponent, cell: cell, name: name, offers: offers, feeNotice: fees)); return
+                    self.completed(venue, result: MenuV2Venue(key: venue.url.lastPathComponent, cell: cell, name: name, offers: offers, feeNotice: fees, minimumSpendNotice: minimum)); return
                 }
-                self.readCustomers(venue, name: name, fees: fees, offers: offers, after: next, pages: pages + 1, accumulated: all)
+                self.readCustomers(venue, name: name, fees: fees, minimum: minimum, offers: offers, after: next, pages: pages + 1, accumulated: all)
             } else {
                 let byID = Dictionary(uniqueKeysWithValues: offers.map { ($0.id, $0) })
                 let linked: [MenuV2Price] = all.compactMap { item in
@@ -99,15 +102,18 @@ private final class MenuV2Load: RecommendationRequest {
                                              servingLabel: item.servingLabel, servingML: item.servingML,
                                              origin: .customer(item.observedOn), feeNotice: "Spese del locale secondo il menu: \(fees)")
                     report.linkedOfferID = id
+                    report.minimumSpendNotice = minimum
                     return report
                 }
                 let customerReports: [MenuV2Price] = all.map { item in
-                    MenuV2Price(id: item.id, venueName: name, itemName: item.name,
+                    var report = MenuV2Price(id: item.id, venueName: name, itemName: item.name,
                                 category: item.category ?? "", band: item.offerID.flatMap { byID[$0]?.band },
                                 amountMinor: item.amountMinor, currency: item.currency, exponent: item.exponent,
                                 servingLabel: item.servingLabel, servingML: item.servingML,
                                 origin: .customer(item.observedOn),
                                 feeNotice: "Spese del locale secondo il menu: \(fees)")
+                    report.minimumSpendNotice = minimum
+                    return report
                 }
                 let comparable = linked.filter { report in
                     guard let id = report.linkedOfferID, let source = byID[id] else { return false }
@@ -117,6 +123,7 @@ private final class MenuV2Load: RecommendationRequest {
                 }
                 self.completed(venue, result: MenuV2Venue(key: venue.url.lastPathComponent, cell: cell,
                                                           name: name, offers: offers + comparable, feeNotice: fees,
+                                                          minimumSpendNotice: minimum,
                                                           linkedReports: linked, customerReports: customerReports))
             }
         }

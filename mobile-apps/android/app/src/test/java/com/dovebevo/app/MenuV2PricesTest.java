@@ -114,6 +114,23 @@ public final class MenuV2PricesTest {
         String invalid=page.replace("\"condition\":\"Dopo le 20:00\"","\"condition\":null");
         MenuV2Prices broken=new MenuV2Prices((url,max,call)->bytes(invalid));assertThrows(IOException.class,()->broken.load(venue,call()));
     }
+    @Test public void conditionalMinimumRemainsSeparateFromDrinkAndFeeAndIsRequiredByClientRoute()throws Exception {
+        String minimum="{\"id\":\"minimum-1\",\"label\":\"Consumazione minima\",\"amount_minor\":1500,\"currency\":\"EUR\",\"currency_exponent\":2,\"basis\":\"person\",\"applicability\":\"conditional\",\"condition\":\"durante le partite in diretta\",\"source\":"+source()+"}";
+        String page=menu(offer("a2","regular",450).replace("\"currency\":\"GBP\"","\"currency\":\"EUR\""),1,null)
+                .replace("\"fees\":[]", "\"minimum_spends\":["+minimum+"],\"fees\":[]");
+        MenuV2Prices client=new MenuV2Prices((url,max,call)->bytes(url.contains("customer-prices")?customer(200):page));
+        MenuV2Prices.Venue loaded=client.load(SavedVenueStore.reference(VENUE,"Saved"),call());
+        assertEquals("4,50 €",loaded.prices.get(0).amount());
+        assertTrue(loaded.prices.get(0).minimumSpendNotice.contains("15,00 € a persona"));
+        assertTrue(loaded.prices.get(0).minimumSpendNotice.contains("durante le partite in diretta"));
+        assertFalse(loaded.feeNotice.contains("15,00"));
+        assertTrue(loaded.prices.get(0).evidence().contains("Consumazione minima"));
+        assertTrue(MenuV2Prices.endpoint(true,"n123","u0nd9",null).contains("minimum_spend=1"));
+        assertFalse(MenuV2Prices.allowed(MenuV2Prices.endpoint(true,"n123","u0nd9",null).replace("&minimum_spend=1","")));
+        String invalid=page.replace("\"condition\":\"durante le partite in diretta\"","\"condition\":null");
+        assertThrows(IOException.class,()->new MenuV2Prices((url,max,call)->bytes(invalid))
+                .load(SavedVenueStore.reference(VENUE,"Saved"),call()));
+    }
     @Test public void v2TransportOnlyAllowsExactPinnedPublicGetRoutes()throws Exception {
         String valid=MenuV2Prices.endpoint(true,"m"+"0".repeat(24),"u0nd9",null);
         assertTrue(MenuV2Prices.allowed(valid));assertTrue(FavoritePricesClient.allowed(valid));

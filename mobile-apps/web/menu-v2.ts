@@ -87,6 +87,19 @@ const FeeCoverage = z.object({
   status: z.enum(["unknown", "documented_partial", "explicit_no_fee"]),
   source: Source.nullable(),
 });
+const MinimumSpend = z
+  .object({
+    id: Id,
+    label: z.string().min(1).max(512),
+    amount_minor: z.number().int().min(1).max(100000000),
+    currency: Currency,
+    currency_exponent: z.number().int().min(0).max(3),
+    basis: z.literal("person"),
+    applicability: z.enum(["all_orders", "conditional"]),
+    condition: z.string().min(1).max(500).nullable(),
+    source: Source,
+  })
+  .refine((minimum) => (minimum.applicability === "conditional") === (minimum.condition !== null));
 const MenuPageSchema = z.object({
   schema_version: z.literal(2),
   coverage: z.object({
@@ -100,10 +113,12 @@ const MenuPageSchema = z.object({
   next_after: Cursor.nullable(),
   fees: z.array(Fee).max(100),
   fee_coverage: FeeCoverage,
+  minimum_spends: z.array(MinimumSpend).max(100).default([]),
 });
 export type MenuPage = z.infer<typeof MenuPageSchema>;
 export type MenuOffer = MenuPage["offers"][number];
 export type MenuFee = MenuPage["fees"][number];
+export type MenuMinimumSpend = MenuPage["minimum_spends"][number];
 export type MenuVenue = MenuPage["venue"];
 
 async function json(response: Response): Promise<unknown> {
@@ -127,7 +142,7 @@ export async function loadMenuPage(
     (after && !Cursor.safeParse(after).success)
   )
     throw new Error("Invalid menu identity");
-  const params = new URLSearchParams({ cell, limit: "100" });
+  const params = new URLSearchParams({ cell, limit: "100", minimum_spend: "1" });
   if (after) params.set("after", after);
   const response = await fetch(`/api/mobile/v2/menu/venues/${encodeURIComponent(key)}?${params}`, {
     cache: "no-store",
@@ -185,6 +200,7 @@ const CellVenue = VenueSchema.extend({
   matching_offer_count: z.number().int().min(0),
   sample_offers: z.array(Offer).max(100),
   fee_coverage: FeeCoverage,
+  minimum_spends: z.array(MinimumSpend).max(100).default([]),
 });
 const CellPageSchema = z.object({
   schema_version: z.literal(2),
@@ -201,7 +217,11 @@ const CellPageSchema = z.object({
   unresolved_venues: z.number().int().min(0),
 });
 type CellVenue = z.infer<typeof CellVenue>;
-type WithMenu = Venue & { mobileMenuSamples?: MenuOffer[]; mobileMenuCount?: number };
+type WithMenu = Venue & {
+  mobileMenuSamples?: MenuOffer[];
+  mobileMenuCount?: number;
+  mobileMinimumSpends?: MenuMinimumSpend[];
+};
 
 async function cellPage(
   cell: string,
@@ -209,7 +229,7 @@ async function cellPage(
   after: string | null,
   signal: AbortSignal,
 ): Promise<z.infer<typeof CellPageSchema> | null> {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ minimum_spend: "1" });
   if (categories.length) params.set("categories", categories.join(","));
   if (after) params.set("after", after);
   const response = await fetch(`/api/mobile/v2/menu/cells/${cell}?${params}`, {
@@ -366,6 +386,9 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
                 (identityVenues ?? []).map((venue) => [venue.key, venue.matching_offer_count]),
               );
               const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
+              const minimumSpends = new Map(
+                filtered.map((venue) => [venue.key, venue.minimum_spends]),
+              );
               const merged = new Map<string, Venue>(
                 legacy.map((venue) => [venue.key, { ...venue }]),
               );
@@ -381,6 +404,7 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
                   ...venue,
                   mobileMenuSamples: samples.get(row.key) ?? [],
                   mobileMenuCount: counts.get(row.key) ?? 0,
+                  mobileMinimumSpends: minimumSpends.get(row.key) ?? [],
                 } as WithMenu);
               }
               current = Promise.resolve([...merged.values()]);
@@ -456,6 +480,13 @@ export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean
   if (!label) return false;
   if (labelledMl !== null) return labelledMl >= 400 && labelledMl <= 600;
   return /\b(?:media|medium)\b/u.test(label);
+}
+
+export function mobileMinimumPin(venue: Venue): string | null {
+  const minimum = (venue as WithMenu).mobileMinimumSpends?.[0];
+  return minimum
+    ? `Min. ${menuMoney(minimum.amount_minor, minimum.currency, minimum.currency_exponent)} / persona · vedi condizioni`
+    : null;
 }
 
 export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string | null {

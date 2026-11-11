@@ -17,12 +17,19 @@ final class MenuV2ComparisonTests: XCTestCase {
          "amount_minor": cents, "currency": "GBP", "currency_exponent": 2,
          "context": ["kind": context, "condition": NSNull()], "source": source()]
     }
-    private func menu(_ offers: [[String: Any]], count: Int, next: String?) throws -> Data {
+    private func minimumSpend() -> [String: Any] {
+        ["id": "minimum-1", "label": "Consumazione minima", "amount_minor": 1500,
+         "currency": "EUR", "currency_exponent": 2, "basis": "person",
+         "applicability": "conditional", "condition": "durante le partite in diretta",
+         "source": source()]
+    }
+    private func menu(_ offers: [[String: Any]], count: Int, next: String?, minimum: Bool = false) throws -> Data {
         try JSONSerialization.data(withJSONObject: [
             "schema_version": 2, "coverage": ["complete": false, "basis": "verified_source_items_only"],
             "price_scope": "menu_item_only", "venue": ["key": venueKey, "cell": cell, "name": "Current venue"],
             "stored_offer_count": count, "offers": offers, "next_after": next as Any? ?? NSNull(),
-            "fees": [], "fee_coverage": ["status": "unknown", "source": NSNull()]
+            "fees": [], "fee_coverage": ["status": "unknown", "source": NSNull()],
+            "minimum_spends": minimum ? [minimumSpend()] : []
         ] as [String: Any])
     }
     private func customer(ml: Int = 200) throws -> Data {
@@ -39,7 +46,8 @@ final class MenuV2ComparisonTests: XCTestCase {
         ] as [String: Any])
     }
 
-    private func cellPage(_ sample: [String: Any], extraSamples: [[String: Any]] = [], unresolved: Int = 0) throws -> Data {
+    private func cellPage(_ sample: [String: Any], extraSamples: [[String: Any]] = [], unresolved: Int = 0,
+                          minimum: Bool = false) throws -> Data {
         let categories = DrinkCategory.all.map(\.code)
         return try JSONSerialization.data(withJSONObject: [
             "schema_version": 2, "coverage": ["complete": false, "basis": "verified_source_items_only"],
@@ -48,7 +56,8 @@ final class MenuV2ComparisonTests: XCTestCase {
                         "lat": 45.4642, "lon": 9.19, "address": "Via reale 1", "city": "Milano", "country": "IT",
                         "identity_url": "https://www.openstreetmap.org/node/123", "identity_kind": "osm",
                         "matching_offer_count": 1 + extraSamples.count, "sample_offers": [sample] + extraSamples,
-                        "fee_coverage": ["status": "unknown", "source": NSNull()]]],
+                        "fee_coverage": ["status": "unknown", "source": NSNull()],
+                        "minimum_spends": minimum ? [minimumSpend()] : []]],
             "next_after": NSNull(), "unresolved_venues": unresolved
         ] as [String: Any])
     }
@@ -68,7 +77,33 @@ final class MenuV2ComparisonTests: XCTestCase {
         XCTAssertTrue(venue.samples.first?.evidence.contains("menu online") == true)
         XCTAssertTrue(venue.samples.first?.feeNotice.contains("spese non verificate") == true)
         XCTAssertEqual(try ComparisonEndpoint.menuV2Cell(cell: cell, categories: categories, after: nil).url().absoluteString,
-                       "https://www.dovebevo.com/api/mobile/v2/menu/cells/u0nd9?categories=\(categories.joined(separator: ","))")
+                       "https://www.dovebevo.com/api/mobile/v2/menu/cells/u0nd9?categories=\(categories.joined(separator: ","))&minimum_spend=1")
+    }
+
+    func testConditionalMinimumIsSeparateFromDrinkAndFeeAndVisibleInDiscovery() throws {
+        var sample = offer("spritz-1", context: "regular", cents: 450)
+        sample["currency"] = "EUR"
+        let page = try XCTUnwrap(MenuV2JSON.menuPage(menu([sample], count: 1, next: nil, minimum: true),
+                                                    key: venueKey, cell: cell))
+        XCTAssertEqual(page.offers[0].amount, "4,50 €")
+        XCTAssertEqual(page.minimumSpendNotice,
+                       "Consumazione minima 15,00 € a persona, solo se durante le partite in diretta.")
+        XCTAssertTrue(page.offers[0].minimumSpendNotice.contains("15,00 €"))
+        XCTAssertFalse(page.feeNotice.contains("15,00"))
+        let categories = DrinkCategory.all.map(\.code)
+        let cell = try XCTUnwrap(MenuV2JSON.cellPage(cellPage(sample, minimum: true),
+                                                     cell: self.cell, categories: categories, after: nil))
+        let visible = try XCTUnwrap(cell.venues.first?.samples.first)
+        XCTAssertTrue(DiscoveryPriceCaveat.visible(for: .menuV2(visible))?.contains("15,00 €") == true)
+        XCTAssertTrue(visible.evidence.contains("durante le partite in diretta"))
+        XCTAssertTrue(try ComparisonEndpoint.menuV2(key: venueKey, cell: self.cell, after: nil)
+            .url().absoluteString.contains("minimum_spend=1"))
+        var invalid = try XCTUnwrap(JSONSerialization.jsonObject(with: menu([sample], count: 1, next: nil,
+                                                                              minimum: true)) as? [String: Any])
+        var rows = try XCTUnwrap(invalid["minimum_spends"] as? [[String: Any]])
+        rows[0]["condition"] = NSNull(); invalid["minimum_spends"] = rows
+        XCTAssertNil(MenuV2JSON.menuPage(try JSONSerialization.data(withJSONObject: invalid),
+                                         key: venueKey, cell: self.cell))
     }
 
     func testGenericMenuDrinkRetainsExactIdentityWithoutRedundantDisplay() throws {

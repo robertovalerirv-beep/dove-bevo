@@ -38,7 +38,7 @@ const compiled = await build({
     },
   ],
 });
-const { isMediumDraftBeerServing, mobileMenuPin, mobileCoverage } = await import(
+const { isMediumDraftBeerServing, mobileMenuPin, mobileMinimumPin, mobileCoverage } = await import(
   `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString("base64")}`
 );
 
@@ -102,6 +102,25 @@ test("250 ml or unknown draft beer never becomes a medium map price or coverage"
     assert.equal(mobileMenuPin(row, ["beer_draft"]), null, JSON.stringify(serving));
     assert.deepEqual(mobileCoverage([row], ["beer_draft"]), { withPrice: 0, total: 1 });
   }
+});
+
+test("conditional minimum spend remains separate from the drink price on map pins", () => {
+  const row = venue([offer(500, "Media", 450)]);
+  row.mobileMinimumSpends = [
+    {
+      id: "minimum-1",
+      label: "Consumazione minima",
+      amount_minor: 1500,
+      currency: "EUR",
+      currency_exponent: 2,
+      basis: "person",
+      applicability: "conditional",
+      condition: "durante le partite in diretta",
+    },
+  ];
+  assert.match(mobileMenuPin(row, ["beer_draft"]), /4,50.*€ MENU/);
+  assert.match(mobileMinimumPin(row), /15,00.*€ \/ persona/);
+  assert.equal(mobileMinimumPin(venue([offer(500, "Media", 450)])), null);
 });
 
 test("400–600 ml and explicit medium labels show their sourced menu amount", () => {

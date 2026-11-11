@@ -17,6 +17,7 @@ struct MenuV2Price: Equatable {
     let feeNotice: String
     var linkedOfferID: String? = nil
     var condition: String? = nil
+    var minimumSpendNotice: String = ""
 
     var group: String { "\(currency)|\(exponent)|\(servingLabel?.lowercased() ?? "")|\(servingML ?? 0)" }
     var amount: String {
@@ -37,8 +38,8 @@ struct MenuV2Price: Equatable {
     }
     var evidence: String {
         switch origin {
-        case .ownerMenu(_, let day): return "Da menu online · Fonte verificata il \(day) · Prezzo del drink. \(feeNotice)"
-        case .customer(let day): return "Segnalato da un cliente il \(day) · Prezzo del drink. \(feeNotice)"
+        case .ownerMenu(_, let day): return "Da menu online · Fonte verificata il \(day) · Prezzo del drink. \(minimumSpendNotice) \(feeNotice)"
+        case .customer(let day): return "Segnalato da un cliente il \(day) · Prezzo del drink. \(minimumSpendNotice) \(feeNotice)"
         }
     }
 }
@@ -49,12 +50,15 @@ struct MenuV2Venue: Equatable {
     let name: String
     let offers: [MenuV2Price]
     let feeNotice: String
+    var minimumSpendNotice: String = ""
     let linkedReports: [MenuV2Price]
     let customerReports: [MenuV2Price]
     init(key: String, cell: String, name: String, offers: [MenuV2Price], feeNotice: String,
+         minimumSpendNotice: String = "",
          linkedReports: [MenuV2Price] = [], customerReports: [MenuV2Price] = []) {
         self.key = key; self.cell = cell; self.name = name; self.offers = offers
-        self.feeNotice = feeNotice; self.linkedReports = linkedReports; self.customerReports = customerReports
+        self.feeNotice = feeNotice; self.minimumSpendNotice = minimumSpendNotice
+        self.linkedReports = linkedReports; self.customerReports = customerReports
     }
 }
 struct MenuV2Snapshot {
@@ -67,6 +71,7 @@ struct MenuV2Page {
     let offers: [MenuV2Price]
     let next: String?
     let feeNotice: String
+    var minimumSpendNotice: String = ""
 }
 struct MenuV2CustomerPage {
     let name: String
@@ -175,9 +180,35 @@ enum MenuV2JSON {
             } else { return nil }
             if descriptions.count < 3 { descriptions.append("\(label) \(value) / \(basis) (\(scope))") }
         }
-        if status == "explicit_no_fee" { return "Nessuna spesa obbligatoria dichiarata dalla fonte." }
+        if status == "explicit_no_fee" { return "Nessun supplemento obbligatorio dichiarato dalla fonte." }
         let known = descriptions.isEmpty ? "" : "Spese separate: " + descriptions.joined(separator: "; ") + (fees.count > 3 ? "; altre spese nel dettaglio" : "") + ". "
         return known + (status == "unknown" ? "Altre spese non verificate." : "Copertura delle spese parziale.")
+    }
+    private static func minimumSpendNotice(_ root: [String: Any]) -> String? {
+        if root["minimum_spends"] != nil && !(root["minimum_spends"] is [Any]) { return nil }
+        let entries = root["minimum_spends"] as? [Any] ?? []
+        guard entries.count <= 100 else { return nil }
+        var notices: [String] = []
+        for value in entries {
+            guard let item = object(value), let id = text(item["id"], maximum: 128),
+                  ComparisonJSON.matches(id, "^[A-Za-z0-9._:-]{1,128}$"),
+                  text(item["label"]) != nil, let amount = money(item),
+                  item["basis"] as? String == "person",
+                  let applicability = item["applicability"] as? String,
+                  ["all_orders", "conditional"].contains(applicability),
+                  source(item["source"]) != nil else { return nil }
+            let condition = item["condition"] is NSNull ? nil : text(item["condition"], maximum: 500)
+            guard (applicability == "conditional") == (condition != nil) else { return nil }
+            let sample = MenuV2Price(id: "", venueName: "", itemName: "", category: "", band: nil,
+                                     amountMinor: amount.0, currency: amount.1, exponent: amount.2,
+                                     servingLabel: nil, servingML: nil, origin: .customer(""), feeNotice: "")
+            if notices.count < 3 {
+                notices.append("Consumazione minima \(sample.amount) a persona" +
+                               (condition.map { ", solo se \($0)" } ?? "") + ".")
+            }
+        }
+        if entries.count > 3 { notices.append("Altre condizioni nel dettaglio del locale.") }
+        return notices.joined(separator: " ")
     }
 
     /// The public cell route provides one verified lowest sample per category,
@@ -233,7 +264,8 @@ enum MenuV2JSON {
                 "schema_version": 2, "coverage": coverage, "price_scope": "menu_item_only",
                 "venue": ["key": key, "cell": cell, "name": name],
                 "stored_offer_count": count, "offers": samples, "next_after": NSNull(),
-                "fees": [], "fee_coverage": feeCoverage
+                "fees": [], "fee_coverage": feeCoverage,
+                "minimum_spends": row["minimum_spends"] ?? []
             ]
             guard let sampleData = try? JSONSerialization.data(withJSONObject: sampleEnvelope),
                   let decoded = menuPage(sampleData, key: key, cell: cell),
@@ -260,7 +292,7 @@ enum MenuV2JSON {
               let count = ComparisonJSON.integer(root["stored_offer_count"], minimum: 0, maximum: 100_000),
               let raw = root["offers"] as? [Any], raw.count <= 100,
               let next = cursor(root["next_after"], pattern: "^[A-Za-z0-9._:-]{1,128}$"),
-              let fee = feeNotice(root) else { return nil }
+              let fee = feeNotice(root), let minimum = minimumSpendNotice(root) else { return nil }
         var offers: [MenuV2Price] = [], seen = Set<String>()
         for value in raw {
             guard let item = object(value), let id = text(item["id"], maximum: 128),
@@ -279,10 +311,12 @@ enum MenuV2JSON {
                                     servingLabel: serving.0, servingML: serving.1,
                                     origin: .ownerMenu(evidence.0, evidence.1), feeNotice: fee)
             offer.condition = kind == "conditional" ? condition : nil
+            offer.minimumSpendNotice = minimum
             offers.append(offer)
         }
         if let after = next, after != offers.last?.id { return nil }
-        return MenuV2Page(name: name, count: count, offers: offers, next: next, feeNotice: fee)
+        return MenuV2Page(name: name, count: count, offers: offers, next: next, feeNotice: fee,
+                          minimumSpendNotice: minimum)
     }
 
     static func customerPage(_ data: Data, key: String, cell: String) -> MenuV2CustomerPage? {

@@ -63,6 +63,18 @@ public final class DiscoveryMenuV2Test {
         assertFalse(result.partial);assertTrue(result.menuSamples);
         assertEquals(1,result.cells.get("u0nd9").menu.get("n123").size());
     }
+    @Test public void cellSampleCarriesConditionalMinimumWithoutInflatingDrinkPrice()throws Exception {
+        String source="{\"id\":\"s-min\",\"url\":\"https://bar.example/menu\",\"text_sha256\":\""
+                +"a".repeat(64)+"\",\"checked_on\":\"2026-11-02\"}";
+        String minimum="{\"id\":\"minimum-1\",\"label\":\"Consumazione minima\",\"amount_minor\":1500,\"currency\":\"EUR\",\"currency_exponent\":2,\"basis\":\"person\",\"applicability\":\"conditional\",\"condition\":\"durante le partite in diretta\",\"source\":"+source+"}";
+        String page=one().replace("\"sample_offers\":", "\"minimum_spends\":["+minimum+"],\"sample_offers\":");
+        MenuV2Prices.Price price=load(page).venues.get(0).samples.get(0);
+        assertEquals("5,50 £",price.amount());
+        assertTrue(price.minimumSpendNotice.contains("15,00 € a persona"));
+        assertTrue(price.evidence().contains("durante le partite in diretta"));
+        assertTrue(MenuV2Prices.cellEndpoint("u0nd9",null).contains("minimum_spend=1"));
+        assertFalse(MenuV2Prices.allowed(MenuV2Prices.cellEndpoint("u0nd9",null).replace("&minimum_spend=1","")));
+    }
     @Test public void wrongIdentityOrSourceIsExcludedWhileLegacyCanRemain()throws Exception {
         assertThrows(IOException.class,()->load(one().replace("\"country\":\"IT\"","\"country\":\"FR\"")));
         assertThrows(IOException.class,()->load(one().replace("https://source.example/menu","http://source.example/menu")));

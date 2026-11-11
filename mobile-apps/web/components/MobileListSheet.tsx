@@ -6,7 +6,7 @@ import { isStale } from "@site/app/lib/tiers";
 import { Sheet } from "@site/app/components/Sheet";
 import { VerifiedBadge } from "@site/app/components/Verified";
 import { distanceMeters } from "@site/shared/venue";
-import { mobileAllCount, mobileMenuPin } from "../menu-v2";
+import { mobileAllCount, mobileMenuPin, mobileMinimumPin } from "../menu-v2";
 
 interface Props {
   venues: Venue[];
@@ -23,11 +23,13 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
     .map((venue) => {
       const price = bestPrice(venue, drinks);
       const menuPrice = drinks.length && !price ? mobileMenuPin(venue, drinks) : null;
+      const minimum = price || menuPrice ? mobileMinimumPin(venue) : null;
       const count = drinks.length === 0 ? mobileAllCount(venue) : null;
       return {
         venue,
         price,
         menuPrice,
+        minimum,
         count,
         meters: position ? distanceMeters(position.lat, position.lon, venue.lat, venue.lon) : null,
       };
@@ -52,8 +54,8 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
     <Sheet title={it.list.title} onClose={onClose}>
       {rows.length === 0 && <p class="hint">{it.list.empty}</p>}
       <ul class="rows">
-        {rows.map(({ venue, price, menuPrice, count, meters }) => {
-          const summary = price
+        {rows.map(({ venue, price, menuPrice, minimum, count, meters }) => {
+          const priceSummary = price
             ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`
             : count
               ? count.kind === "menu"
@@ -62,6 +64,7 @@ export function ListSheet({ venues, drinks, position, onOpen, onClose }: Props) 
               : menuPrice
                 ? menuPrice.replace(/ MENU$/, " · menu")
                 : it.list.noPrice;
+          const summary = minimum ? `${priceSummary} · ${minimum}` : priceSummary;
           return (
             <li key={venue.key}>
               <a

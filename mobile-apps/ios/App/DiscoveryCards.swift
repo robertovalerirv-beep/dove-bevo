@@ -115,7 +115,8 @@ enum DiscoveryFeaturedEvidence {
     private let servingLabel = UILabel()
     private let evidenceLabel = UILabel()
 
-    init(row: DiscoveryPresentedRow, category: DrinkCategory, today: String = ComparisonJSON.today()) {
+    init(row: DiscoveryPresentedRow, category: DrinkCategory, today: String = ComparisonJSON.today(),
+         artworkHeight: CGFloat = 64) {
         super.init(frame: .zero)
         accessibilityIdentifier = "discovery.featured.\(row.key)"
         isAccessibilityElement = true
@@ -131,7 +132,7 @@ enum DiscoveryFeaturedEvidence {
         artwork.contentMode = .scaleAspectFit
         artwork.backgroundColor = NativeAppearance.secondary
         artwork.isAccessibilityElement = false
-        artwork.heightAnchor.constraint(equalToConstant: 82).isActive = true
+        artwork.heightAnchor.constraint(equalToConstant: artworkHeight).isActive = true
         let item: String
         switch row.price {
         case .legacy: item = category.name
@@ -160,9 +161,9 @@ enum DiscoveryFeaturedEvidence {
         }
         let copy = UIStackView(arrangedSubviews: [drinkLabel, venueLabel, priceLabel, servingLabel, evidenceLabel])
         copy.axis = .vertical
-        copy.spacing = 3
+        copy.spacing = 2
         copy.isLayoutMarginsRelativeArrangement = true
-        copy.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 10, leading: 12, bottom: 12, trailing: 12)
+        copy.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 10, bottom: 10, trailing: 10)
         let stack = UIStackView(arrangedSubviews: [artwork, copy])
         stack.axis = .vertical
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -194,7 +195,7 @@ enum DiscoveryFeaturedEvidence {
         cards.alignment = .fill
         cards.translatesAutoresizingMaskIntoConstraints = false
         addSubview(cards)
-        height = heightAnchor.constraint(equalToConstant: 290)
+        height = heightAnchor.constraint(equalToConstant: 232)
         height.priority = .defaultHigh
         NSLayoutConstraint.activate([
             cards.topAnchor.constraint(equalTo: contentLayoutGuide.topAnchor),
@@ -212,13 +213,17 @@ enum DiscoveryFeaturedEvidence {
                    traits: UITraitCollection, target: Any?, action: Selector) {
         cards.arrangedSubviews.forEach { cards.removeArrangedSubview($0); $0.removeFromSuperview() }
         cardWidths.removeAll()
-        // The next card remains visible as a scroll cue on compact iPhones;
-        // accessibility text sizes get more room and a taller card.
+        // Two cards fit at standard iPhone widths; narrower screens retain a
+        // scroll cue. Larger text gets wider, taller cards without truncation.
         let largeText = traits.preferredContentSizeCategory.isAccessibilityCategory
-        let cardWidth = max(180, min(largeText ? 280 : 220, availableWidth - 24))
-        height.constant = largeText ? 440 : 290
+        let cardWidth = largeText ? max(180, min(280, availableWidth - 24))
+                                  : max(156, min(172, (availableWidth - cards.spacing) / 2))
+        let scaledHeight = UIFontMetrics(forTextStyle: .body).scaledValue(for: 232, compatibleWith: traits)
+        height.constant = largeText ? max(440, scaledHeight) : scaledHeight
+        let artworkHeight = min(82, UIFontMetrics(forTextStyle: .caption1)
+            .scaledValue(for: 64, compatibleWith: traits))
         for (index, row) in rows.enumerated() {
-            let card = DiscoveryFeaturedCard(row: row, category: category)
+            let card = DiscoveryFeaturedCard(row: row, category: category, artworkHeight: artworkHeight)
             card.tag = index
             card.addTarget(target, action: action, for: .touchUpInside)
             cards.addArrangedSubview(card)

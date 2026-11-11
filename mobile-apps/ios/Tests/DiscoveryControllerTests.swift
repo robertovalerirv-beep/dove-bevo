@@ -34,8 +34,17 @@ final class DiscoveryControllerTests: XCTestCase {
         defer { mounted.close() }
         let cards = descendants(controller.view).compactMap { $0 as? DiscoveryFeaturedCard }
         XCTAssertEqual(cards.count, 3)
+        let strip = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? DiscoveryFeaturedStrip }.first)
         let first = try XCTUnwrap(cards.first)
         XCTAssertTrue(first.window === mounted.window)
+        XCTAssertLessThanOrEqual(strip.bounds.height, 260, "Featured prices should not fill most of the Discover screen")
+        XCTAssertLessThanOrEqual(first.bounds.width, 176)
+        XCTAssertLessThanOrEqual(cards[1].frame.maxX, strip.bounds.width + 1,
+                                 "Two complete prices should fit before horizontal scrolling on a regular iPhone")
+        for label in descendants(first).compactMap({ $0 as? UILabel }).filter({ !($0.text ?? "").isEmpty }) {
+            let needed = label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)).height
+            XCTAssertLessThanOrEqual(needed, label.bounds.height + 1, label.text ?? "")
+        }
         XCTAssertEqual(first.accessibilityIdentifier, "discovery.featured.n901")
         XCTAssertTrue(first.accessibilityLabel?.contains("Locale fixture A") == true)
         XCTAssertTrue(first.accessibilityValue?.contains("5,50 €") == true)
@@ -61,6 +70,12 @@ final class DiscoveryControllerTests: XCTestCase {
         XCTAssertGreaterThan(name.font.pointSize, 30, "A trait parameter alone does not prove actual Dynamic Type fonts")
         for label in labels {
             XCTAssertFalse(label.isHidden)
+            XCTAssertGreaterThan(label.bounds.width, 0)
+            let needed = label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)).height
+            XCTAssertLessThanOrEqual(needed, label.bounds.height + 1, label.text ?? "")
+        }
+        let featured = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? DiscoveryFeaturedCard }.first)
+        for label in descendants(featured).compactMap({ $0 as? UILabel }).filter({ !($0.text ?? "").isEmpty }) {
             XCTAssertGreaterThan(label.bounds.width, 0)
             let needed = label.sizeThatFits(CGSize(width: label.bounds.width, height: .greatestFiniteMagnitude)).height
             XCTAssertLessThanOrEqual(needed, label.bounds.height + 1, label.text ?? "")

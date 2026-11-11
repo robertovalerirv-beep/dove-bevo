@@ -11,7 +11,9 @@ permissions:
 
 # A newer push cancels the CI of a pull request, but never a run on main: the deploy starts only when the CI of
 # main ends green, and with pushes closer than one CI run every merge was cancelled and none was deployed. On main
-# the group keeps one run going and one waiting (a newer push replaces the waiting one).
+# the group keeps one run going and one waiting (a newer push replaces the waiting one). Since a run on main is
+# never cancelled, every job has a time limit: a job stuck on the network (apt, browsers) would otherwise hold the
+# queue, and the deploy, for GitHub's default of 6 hours. The limits are about twice the usual duration.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -23,6 +25,7 @@ jobs:
   checks:
     name: Lint, typecheck, unit, guards, audit
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -51,6 +54,7 @@ jobs:
   e2e:
     name: E2E (Chromium, WebKit) and security tests
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,6 +64,12 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # Temporary (11/11/2026): Canonical's nameservers (ns*.canonical.com) do not answer, so *.ubuntu.com does not
+      # resolve and apt fails. The runner's mirror list holds only the kernel.org Ubuntu mirror (a line without a
+      # priority would be tried last); apt still checks every index against the Ubuntu archive key. Remove once
+      # ubuntu.com resolves again.
+      - name: Ubuntu mirror outside ubuntu.com (temporary)
+        run: echo 'https://mirrors.edge.kernel.org/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt
       - run: npx playwright install --with-deps chromium webkit
       - name: App presentation interaction regressions
         run: node --test mobile-apps/presentation/tests/*.test.mjs
@@ -73,6 +83,7 @@ jobs:
   osm-import:
     name: OSM import on a test PBF
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -80,6 +91,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+      # Temporary (11/11/2026): Canonical's nameservers (ns*.canonical.com) do not answer, so *.ubuntu.com does not
+      # resolve and apt fails. The runner's mirror list holds only the kernel.org Ubuntu mirror (a line without a
+      # priority would be tried last); apt still checks every index against the Ubuntu archive key. Remove once
+      # ubuntu.com resolves again.
+      - name: Ubuntu mirror outside ubuntu.com (temporary)
+        run: echo 'https://mirrors.edge.kernel.org/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt
       - run: sudo apt-get update && sudo apt-get install -y osmium-tool
       - run: osmium cat tests/fixtures/osm/sample.osm -o "$RUNNER_TEMP/sample.osm.pbf"
       - run: scripts/osm-import/import.sh "$RUNNER_TEMP/sample.osm.pbf" "$RUNNER_TEMP/data" fixture
@@ -89,6 +106,7 @@ jobs:
   lighthouse:
     name: Lighthouse CI
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -111,6 +129,7 @@ jobs:
   secrets:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: read

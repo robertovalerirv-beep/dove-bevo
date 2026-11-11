@@ -109,7 +109,8 @@
                              BorderBrush="#E2D3BE" DisplayMemberPath="Display" MouseDoubleClick="OpenRecommendedVenue_Click" />
                 </DockPanel>
             </Border>
-            <Border x:Name="DiscoveryPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="16">
+            <Border x:Name="DiscoveryPanel" Background="#FFF4E4" Visibility="Collapsed" Padding="16"
+                    SizeChanged="DiscoveryPanel_SizeChanged">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock Text="Scopri i prezzi" FontSize="22" FontWeight="Bold" />
@@ -125,6 +126,44 @@
                                       SelectionChanged="DiscoveryDrink_SelectionChanged" />
                             <Button Style="{StaticResource NavButton}" Content="Aggiorna" Margin="12,0,0,0" Click="ReloadDiscovery_Click" />
                         </StackPanel>
+                        </ScrollViewer>
+                        <TextBlock x:Name="FeaturedTitle" Text="Prezzi della zona" FontSize="17" FontWeight="Bold"
+                                   Margin="0,3,0,2" Visibility="Collapsed" />
+                        <TextBlock x:Name="FeaturedSubtitle" Text="I primi prezzi disponibili per il drink scelto"
+                                   FontSize="12" Foreground="#5E554B" Margin="0,0,0,8" Visibility="Collapsed" />
+                        <ScrollViewer x:Name="FeaturedScroller" HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Disabled" Margin="0,0,0,10"
+                                      Visibility="Collapsed">
+                            <ItemsControl x:Name="FeaturedCards">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Tag="{Binding}" ToolTip="{Binding Row.Display}"
+                                                Click="OpenFeaturedVenue_Click" Cursor="Hand"
+                                                Background="Transparent" BorderThickness="0" Padding="0"
+                                                Margin="0,0,10,0" HorizontalContentAlignment="Stretch">
+                                            <Border Background="#FFFBF4" BorderBrush="#E2D3BE"
+                                                    BorderThickness="1" CornerRadius="16" Padding="13"
+                                                    Width="220" MinHeight="128">
+                                                <StackPanel>
+                                                    <TextBlock Text="●  DOVE BEVO" FontSize="10" FontWeight="Bold"
+                                                               Foreground="#DD4B1B" />
+                                                    <TextBlock Text="{Binding Drink}" FontSize="17" FontWeight="Bold"
+                                                               TextTrimming="CharacterEllipsis" Margin="0,5,0,0" />
+                                                    <TextBlock Text="{Binding Venue}" FontSize="13" Foreground="#5E554B"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding Price}" FontSize="20" FontWeight="Bold"
+                                                               Foreground="#1B1611" Margin="0,7,0,0" />
+                                                    <TextBlock Text="{Binding Details}" FontSize="11" Foreground="#5E554B"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </ScrollViewer>
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">

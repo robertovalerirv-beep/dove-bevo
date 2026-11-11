@@ -112,6 +112,6 @@ test("M5-05 the page can be used with the keyboard alone: Tab reaches the main a
       }),
     );
   }
-  for (const name of ["Aggiungi prezzo", "Aggiungi locale mancante", "Elenco"])
+  for (const name of ["Aggiungi prezzo", "Aggiungi locale", "Elenco"])
     expect([...reached].some((n) => n.startsWith(name))).toBe(true);
 });

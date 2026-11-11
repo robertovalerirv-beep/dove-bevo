@@ -1709,6 +1709,82 @@ test("a stale identity failure cannot discard a successful new selected drink", 
   }
 });
 
+test("a selected sourced price appears while full identity recovery is still pending", async () => {
+  const options = {
+    menu: true,
+    holdFirstIdentity: true,
+    holdRecoveryIdentity: true,
+    cellRequests: [],
+  };
+  const recoveryHeld = new Promise((resolve) => {
+    options.noteRecoveryIdentityHeld = resolve;
+  });
+  const f = await fixture({ width: 390, height: 844 }, options);
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true }).click();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
+    );
+    assert.equal(typeof options.releaseOldIdentity, "function");
+    await (
+      await openDrinks(f.page)
+    )
+      .getByRole("checkbox", { name: "Gin tonic", exact: true })
+      .check({ force: true });
+    options.releaseOldIdentity();
+    await recoveryHeld;
+    const selectedSample = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
+        new URL(response.url()).searchParams.get("categories") === "gin_tonic,spritz" &&
+        response.status() === 200,
+      { timeout: 15000 },
+    );
+    await (
+      await openDrinks(f.page)
+    )
+      .getByRole("checkbox", { name: "Spritz", exact: true })
+      .check({ force: true });
+    await selectedSample;
+    await f.page.waitForFunction(
+      () =>
+        document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+      null,
+      { timeout: 3000 },
+    );
+    assert.match(
+      await f.page.locator("section.map").getAttribute("data-prices-shown"),
+      /7,50.*MENU/,
+    );
+    assert.equal(
+      options.cellRequests.filter(
+        (request) => request.cell === "u0nd9" && request.categories.length === 0,
+      ).length,
+      2,
+    );
+    const recoveryFailure = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
+        !new URL(response.url()).searchParams.get("categories") &&
+        response.status() === 503,
+      { timeout: 8000 },
+    );
+    options.releaseRecoveryIdentity();
+    await recoveryFailure;
+    assert.match(
+      await f.page.locator("section.map").getAttribute("data-prices-shown"),
+      /7,50.*MENU/,
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    options.releaseOldIdentity?.();
+    options.releaseRecoveryIdentity?.();
+    await f.close();
+  }
+});
+
 test("a selected sourced price survives an unavailable full-menu identity retry", async () => {
   const options = { menu: true, holdFirstIdentity: true, failNextIdentity: 1, cellRequests: [] };
   const f = await fixture({ width: 390, height: 844 }, options);
@@ -1775,16 +1851,18 @@ test("concurrent drink selections share one failed full-menu recovery read", asy
       .getByRole("checkbox", { name: "Spritz", exact: true })
       .check({ force: true });
     await combinedSampleHeld;
-    await f.page.evaluate(() => {
-      globalThis.__menuRetryReady = false;
-      globalThis.addEventListener("dovebevo:menu-cell-ready", (event) => {
-        if (event.detail?.cell === "u0nd9") globalThis.__menuRetryReady = true;
-      });
-    });
+    const recoveryFailure = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
+        !new URL(response.url()).searchParams.get("categories") &&
+        response.status() === 503 &&
+        options.cellRequests.filter(
+          (request) => request.cell === "u0nd9" && request.categories.length === 0,
+        ).length === 2,
+      { timeout: 8000 },
+    );
     options.releaseOldIdentity();
-    await f.page.waitForFunction(() => globalThis.__menuRetryReady === true, null, {
-      timeout: 8000,
-    });
+    await recoveryFailure;
     assert.equal(
       options.cellRequests.filter(
         (request) => request.cell === "u0nd9" && request.categories.length === 0,
@@ -2098,7 +2176,7 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     for (const width of [320, 390, 430]) {
       await f.page.setViewportSize({ width, height: 700 });
       const addVenue = await choices
-        .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+        .getByRole("button", { name: "Aggiungi locale", exact: true })
         .boundingBox();
       const locateButton = await f.page.locator(".top__row > .icon-btn").boundingBox();
       const searchButton = await f.page.locator(".top__row > .search-field").boundingBox();
@@ -2113,7 +2191,7 @@ test("app map actions reclaim the footer and retain both contribution routes", a
           document.elementFromPoint(x, y)?.closest(".mobile-map-actions__menu > .btn")?.textContent,
         { x: addVenue.x + addVenue.width - 8, y: addVenue.y + addVenue.height / 2 },
       );
-      assert.match(hit ?? "", /Aggiungi locale mancante/);
+      assert.match(hit ?? "", /Aggiungi locale/);
     }
     await f.page.setViewportSize({ width: 430, height: 700 });
     await f.page.keyboard.press("Escape");
@@ -2131,7 +2209,7 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     await f.page.keyboard.press("Tab");
     assert.equal(
       await choices
-        .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+        .getByRole("button", { name: "Aggiungi locale", exact: true })
         .evaluate((element) => element === document.activeElement),
       true,
     );
@@ -2152,7 +2230,7 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     await again.getByRole("button", { name: "Aggiungi", exact: true }).click();
     await again
       .getByRole("group", { name: "Aggiungi" })
-      .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+      .getByRole("button", { name: "Aggiungi locale", exact: true })
       .click();
     await f.page.getByRole("dialog").waitFor();
     assert.deepEqual(f.writes, []);

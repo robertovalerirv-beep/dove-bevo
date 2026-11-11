@@ -863,9 +863,11 @@ export function App({ loadMap }: Props) {
             <img class="brand__mark" src="/brand/simbolo.svg" alt="" width="28" height="34" />
             <span class="sr-only">{APP_NAME}</span>
           </h1>
+          {/* The words on the button are short; its name is the whole phrase (WCAG 2.5.3: it starts with them). */}
           <button
             type="button"
-            class="btn search-field"
+            class="btn btn--slim search-field"
+            aria-label={it.search.open}
             onClick={() => {
               setSearchHint(undefined);
               setSheet("search");
@@ -873,18 +875,18 @@ export function App({ loadMap }: Props) {
             }}
           >
             <Icon name="search" />
-            {it.search.open}
+            <span class="search-field__text">{it.search.title}</span>
           </button>
+          <DrinkMenu selected={drinks} onChange={setDrinks} />
           <button
             type="button"
-            class="btn icon-btn"
+            class="btn btn--slim icon-btn"
             aria-label={it.map.nearMe}
             onClick={() => void nearMe()}
           >
             <Icon name="locate" />
           </button>
         </div>
-        <DrinkMenu selected={drinks} onChange={setDrinks} />
       </header>
 
       <main class="main">
@@ -935,7 +937,7 @@ export function App({ loadMap }: Props) {
           {!pinning && (
             <button
               type="button"
-              class="btn icon-btn map__list"
+              class="btn btn--slim icon-btn map__list"
               aria-label={it.map.list}
               onClick={() => {
                 setSheet("list");
@@ -1037,7 +1039,7 @@ export function App({ loadMap }: Props) {
           {/* Always these two, whatever the view shows: the map never changes height (M1-16). */}
           <button
             type="button"
-            class="btn btn--primary bottom__primary"
+            class="btn btn--slim btn--primary bottom__primary"
             onClick={() => {
               openAdd(null);
             }}
@@ -1046,7 +1048,7 @@ export function App({ loadMap }: Props) {
           </button>
           <button
             type="button"
-            class="btn btn--secondary"
+            class="btn btn--slim btn--secondary"
             onClick={() => {
               startProposal();
             }}

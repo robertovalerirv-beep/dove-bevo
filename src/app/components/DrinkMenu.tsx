@@ -56,7 +56,7 @@ export function DrinkMenu({ selected, onChange }: Props) {
     >
       <button
         type="button"
-        class="chip drink-menu__button"
+        class="chip btn--slim drink-menu__button"
         ref={button}
         aria-expanded={open}
         aria-controls="drink-menu-list"
@@ -66,7 +66,7 @@ export function DrinkMenu({ selected, onChange }: Props) {
       >
         <Icon name={drinkIcon(selected[0] ?? "")} />
         <span class="drink-menu__text">
-          <span class="drink-menu__title">{it.map.pickDrinks}</span>
+          <span class="sr-only">{it.map.pickDrinks}</span>
           <span class="drink-menu__summary" data-testid="drink-summary">
             {names.join(", ")}
           </span>

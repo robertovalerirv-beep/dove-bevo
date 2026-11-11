@@ -77,6 +77,167 @@ final class SavedDrinkControllerTests: XCTestCase {
         }
     }
 
+    @MainActor func testThreeSavedPricesFitAndKeepFullEvidenceInNativeDetails() throws {
+        try withStores { venueStore, drinkStore in
+            let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+            for code in ["beer_draft", "spritz", "negroni"] {
+                try drinkStore.save(SavedDrink.validated(url: url, label: "Bar Milano", drink: code, band: .normal))
+            }
+            let client = DrinkPaneFixture()
+            let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
+                                                        client: client, activityCheck: { true }) { _ in }
+            try withMounted(controller) { _ in
+                guard waitUntil("Saved drinks should refresh", { client.last != nil }) else { return }
+                let current = CurrentFavouriteVenue(key: "n123", name: "Bar Milano", prices: [
+                    FavouritePrice(drink: "beer_draft", band: .normal, cents: 500, observedOn: "2026-11-02", confirmations: 1, quarantined: false),
+                    FavouritePrice(drink: "spritz", band: .normal, cents: 650, observedOn: "2026-11-02", confirmations: 1, quarantined: false),
+                    FavouritePrice(drink: "negroni", band: .normal, cents: 800, observedOn: "2026-11-02", confirmations: 1, quarantined: false)
+                ])
+                client.complete(FavouriteComparisonSnapshot(venues: [url: current], unavailable: []))
+                controller.tableView.layoutIfNeeded()
+                XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 3)
+                let last = IndexPath(row: 2, section: 0)
+                XCTAssertLessThanOrEqual(controller.tableView.rectForRow(at: last).maxY,
+                                         controller.tableView.bounds.height + controller.tableView.contentOffset.y + 8,
+                                         "Three priced favourites should be visible on the 402 x 800 test phone")
+                let cell = controller.tableView(controller.tableView, cellForRowAt: last)
+                XCTAssertEqual(cell.accessoryType, .detailDisclosureButton)
+                XCTAssertEqual((cell.contentConfiguration as? UIListContentConfiguration)?.secondaryTextProperties.numberOfLines, 2)
+                XCTAssertTrue(cell.accessibilityValue?.contains("€") == true)
+                controller.tableView(controller.tableView, accessoryButtonTappedForRowWith: last)
+                guard waitUntil("Native details should open", { controller.presentedViewController is UIAlertController }) else { return }
+                let details = controller.presentedViewController as? UIAlertController
+                XCTAssertTrue(details?.message?.contains("2026") == true)
+                details?.dismiss(animated: false)
+            }
+        }
+    }
+
+    @MainActor func testConditionalStaleMenuFavouriteKeepsWarningsVisibleAndFullDetailsAccessible() throws {
+        try withStores { venueStore, drinkStore in
+            let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+            let venue = try SavedVenuePolicy.venue(url: url, label: "Bar Milano")
+            let source = MenuV2Price(id: "spritz.7", venueName: "Bar Milano", itemName: "Spritz della casa",
+                                     category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+                                     servingLabel: "calice", servingML: 250,
+                                     origin: .ownerMenu(URL(string: "https://example.org/menu")!, "2020-01-01"), feeNotice: "Servizio escluso")
+            let offerStore = SavedMenuOfferStore(directoryURL: drinkStore.fileURL.deletingLastPathComponent().appendingPathComponent("offers"))
+            try offerStore.save(try XCTUnwrap(SavedMenuOffer.verified(venue: venue, price: source)))
+            var conditional = MenuV2Price(id: source.id, venueName: source.venueName, itemName: source.itemName,
+                                          category: "spritz", band: nil, amountMinor: 750, currency: "EUR", exponent: 2,
+                                          servingLabel: "calice", servingML: 250,
+                                          origin: .ownerMenu(URL(string: "https://example.org/menu")!, "2020-01-01"), feeNotice: "Servizio escluso")
+            conditional.condition = "Solo dopo le 18"
+            let snapshot = MenuV2Snapshot(venues: [url: MenuV2Venue(key: "n123", cell: "u0nd9", name: "Bar Milano",
+                                                                        offers: [conditional], feeNotice: "Servizio escluso")], unavailable: [])
+            let client = DrinkPaneMenuFixture(snapshot: snapshot)
+            let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore, offerStore: offerStore,
+                                                        menuClient: client, activityCheck: { true }) { _ in }
+            try withMounted(controller) { _ in
+                guard waitForLiveMenuRow(controller, client: client, amount: "7,50 €") else { return }
+                XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 1)
+                let index = IndexPath(row: 0, section: 0)
+                let cell = controller.tableView(controller.tableView, cellForRowAt: index)
+                let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
+                XCTAssertTrue(content.secondaryText?.hasPrefix("Menu del locale: 7,50 € · Con condizioni · Da riverificare") == true)
+                XCTAssertTrue(content.secondaryText?.contains("Servizio escluso") == true)
+                XCTAssertTrue(content.secondaryText?.contains("EUR · calice · 250 ml") == true)
+                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 4)
+                XCTAssertTrue(cell.accessibilityValue?.contains("Solo dopo le 18") == true)
+                XCTAssertTrue(cell.accessibilityValue?.contains("Servizio escluso") == true)
+                controller.tableView(controller.tableView, accessoryButtonTappedForRowWith: index)
+                guard waitUntil("Full menu warning details", { controller.presentedViewController is UIAlertController }) else { return }
+                XCTAssertTrue((controller.presentedViewController as? UIAlertController)?.message?.contains("Menu da riverificare: oltre 90 giorni") == true)
+                controller.dismiss(animated: false)
+            }
+            let exactFee = "Spese separate: Coperto 2,50 € / person (tutti gli ordini). Copertura delle spese parziale."
+            let recent = MenuV2Price(id: source.id, venueName: source.venueName, itemName: source.itemName,
+                                     category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+                                     servingLabel: "calice", servingML: 250,
+                                     origin: .ownerMenu(URL(string: "https://example.org/menu")!, ComparisonJSON.today()),
+                                     feeNotice: exactFee)
+            let recentSnapshot = MenuV2Snapshot(venues: [url: MenuV2Venue(key: "n123", cell: "u0nd9", name: "Bar Milano",
+                                                                              offers: [recent], feeNotice: exactFee)], unavailable: [])
+            let recentClient = DrinkPaneMenuFixture(snapshot: recentSnapshot)
+            let recentController = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore, offerStore: offerStore,
+                                                              menuClient: recentClient,
+                                                              activityCheck: { true }) { _ in }
+            try withMounted(recentController) { _ in
+                guard waitForLiveMenuRow(recentController, client: recentClient, amount: "5,50 €") else { return }
+                let index = IndexPath(row: 0, section: 0)
+                let cell = recentController.tableView(recentController.tableView, cellForRowAt: index)
+                let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
+                let visibleLines = Array((content.secondaryText ?? "").components(separatedBy: "\n").prefix(3))
+                XCTAssertTrue(visibleLines.contains { $0.contains("Spese separate · Copertura parziale") })
+                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 3)
+                XCTAssertTrue(content.secondaryText?.hasPrefix("Menu del locale: 5,50 €") == true)
+                XCTAssertFalse(visibleLines.contains { $0.contains("Da riverificare") || $0.contains("Con condizioni") })
+                XCTAssertTrue(cell.accessibilityValue?.contains(exactFee) == true)
+                recentController.tableView(recentController.tableView, accessoryButtonTappedForRowWith: index)
+                guard waitUntil("Exact fee scope in details", { recentController.presentedViewController is UIAlertController }) else { return }
+                XCTAssertTrue((recentController.presentedViewController as? UIAlertController)?.message?.contains(exactFee) == true)
+                recentController.dismiss(animated: false)
+            }
+            let customerKey = "o" + String(repeating: "a", count: 64)
+            let customerFee = "Spese del locale secondo il menu: Nessuna spesa obbligatoria dichiarata dalla fonte."
+            let customerPrice = MenuV2Price(id: customerKey, venueName: "Bar Milano", itemName: "Spritz del cliente",
+                                            category: "spritz", band: .normal, amountMinor: 600, currency: "EUR", exponent: 2,
+                                            servingLabel: "calice", servingML: 250,
+                                            origin: .customer(ComparisonJSON.today()), feeNotice: customerFee)
+            let customerStore = SavedCustomerItemStore(directoryURL: drinkStore.fileURL.deletingLastPathComponent().appendingPathComponent("customers"))
+            try customerStore.save(try XCTUnwrap(SavedCustomerItem.verified(venue: venue, price: customerPrice)))
+            let emptyOffers = SavedMenuOfferStore(directoryURL: drinkStore.fileURL.deletingLastPathComponent().appendingPathComponent("empty-offers"))
+            let customerSnapshot = MenuV2Snapshot(venues: [url: MenuV2Venue(key: "n123", cell: "u0nd9", name: "Bar Milano",
+                                                                                offers: [], feeNotice: customerFee,
+                                                                                customerReports: [customerPrice])], unavailable: [])
+            let customerClient = DrinkPaneMenuFixture(snapshot: customerSnapshot)
+            let customerController = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
+                                                                offerStore: emptyOffers, customerStore: customerStore,
+                                                                menuClient: customerClient,
+                                                                activityCheck: { true }) { _ in }
+            try withMounted(customerController) { _ in
+                guard waitForLiveMenuRow(customerController, client: customerClient, amount: "6,00 €") else { return }
+                let index = IndexPath(row: 0, section: 0)
+                XCTAssertEqual(customerController.tableView.numberOfRows(inSection: 0), 1)
+                let cell = customerController.tableView(customerController.tableView, cellForRowAt: index)
+                let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
+                XCTAssertEqual(cell.accessibilityIdentifier, "savedCustomer.\(customerKey)")
+                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 2)
+                XCTAssertTrue(content.secondaryText?.hasPrefix("6,00 €\nEUR · calice · 250 ml") == true)
+                XCTAssertFalse(content.secondaryText?.contains("Spese: vedi dettagli") == true)
+                XCTAssertTrue(cell.accessibilityValue?.contains(customerFee) == true)
+                customerController.tableView(customerController.tableView, accessoryButtonTappedForRowWith: index)
+                guard waitUntil("Exact explicit no-fee scope in details", { customerController.presentedViewController is UIAlertController }) else { return }
+                XCTAssertTrue((customerController.presentedViewController as? UIAlertController)?.message?.contains(customerFee) == true)
+                customerController.dismiss(animated: false)
+            }
+        }
+    }
+
+    @MainActor func testOldCommunityPriceDisplaysRecheckWarningBeforeDetails() throws {
+        try withStores { venueStore, drinkStore in
+            let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+            try drinkStore.save(SavedDrink.validated(url: url, label: "Bar Milano", drink: "spritz", band: .normal))
+            let client = DrinkPaneFixture()
+            let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
+                                                        client: client, activityCheck: { true }) { _ in }
+            try withMounted(controller) { _ in
+                guard waitUntil("Saved price refresh", { client.last != nil }) else { return }
+                let current = CurrentFavouriteVenue(key: "n123", name: "Bar Milano", prices: [
+                    FavouritePrice(drink: "spritz", band: .normal, cents: 650,
+                                   observedOn: "2020-01-01", confirmations: 1, quarantined: false)
+                ])
+                client.complete(FavouriteComparisonSnapshot(venues: [url: current], unavailable: []))
+                let index = IndexPath(row: 0, section: 0)
+                let cell = controller.tableView(controller.tableView, cellForRowAt: index)
+                let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
+                XCTAssertTrue(content.secondaryAttributedText?.string.contains("6,50 € · Da riverificare") == true)
+                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 3)
+                XCTAssertTrue(cell.accessibilityValue?.contains("oltre 90 giorni") == true)
+            }
+        }
+    }
+
     @MainActor func testOldSavedPlaceConvertsOnlyAfterExplicitDrinkChoiceInSameTab() throws {
         try withStores { venueStore, drinkStore in
             let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
@@ -149,6 +310,16 @@ final class SavedDrinkControllerTests: XCTestCase {
         XCTAssertTrue(mounted, "\(label); waiter=\(result.rawValue)")
         return mounted
     }
+    @MainActor private func waitForLiveMenuRow(_ controller: SavedVenuesViewController,
+                                                client: DrinkPaneMenuFixture, amount: String) -> Bool {
+        return waitUntil("Live menu request and exact \(amount) row must render") {
+            guard client.requests > 0, controller.tableView.numberOfSections > 0,
+                  controller.tableView.numberOfRows(inSection: 0) > 0 else { return false }
+            let index = IndexPath(row: 0, section: 0)
+            let cell = controller.tableView(controller.tableView, cellForRowAt: index)
+            return (cell.contentConfiguration as? UIListContentConfiguration)?.secondaryText?.contains(amount) == true
+        }
+    }
     private func withStores(_ body: (SavedVenueStore, SavedDrinkStore) throws -> Void) throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -174,4 +345,15 @@ private final class DrinkPaneFixture: FavouriteComparisonServing {
         last = saved; self.completion = completion; return TestRecommendationRequest()
     }
     func complete(_ snapshot: FavouriteComparisonSnapshot) { completion?(snapshot) }
+}
+
+private final class DrinkPaneMenuFixture: MenuV2Serving {
+    let snapshot: MenuV2Snapshot
+    private(set) var requests = 0
+    init(snapshot: MenuV2Snapshot) { self.snapshot = snapshot }
+    func load(_ saved: [SavedVenue], completion: @escaping (MenuV2Snapshot) -> Void) -> RecommendationRequest {
+        requests += 1
+        completion(snapshot)
+        return TestRecommendationRequest()
+    }
 }

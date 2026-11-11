@@ -298,6 +298,7 @@ test("happy-hour and longer amounts retain separate readable price and HH cues",
 test("mobile price art draws the original currency and keeps menu counts currency-free", () => {
   const previousDocument = globalThis.document;
   const rendered = [];
+  const fills = [];
   const context = {
     scale() {},
     beginPath() {},
@@ -305,7 +306,9 @@ test("mobile price art draws the original currency and keeps menu counts currenc
     bezierCurveTo() {},
     arc() {},
     closePath() {},
-    fill() {},
+    fill() {
+      fills.push(this.fillStyle);
+    },
     stroke() {},
     setLineDash() {},
     fillText(value) {
@@ -325,6 +328,19 @@ test("mobile price art draws the original currency and keeps menu counts currenc
     rendered.length = 0;
     mobilePinImage("neutro", false, "30 VOCI");
     assert.deepEqual(rendered, ["30", "MENU"]);
+    assert.equal(fills.at(-1), "#f6e9d6", "menu-entry counts must not look like priced pins");
+    rendered.length = 0;
+    mobilePinImage("neutro", false, "2 PREZZI");
+    assert.deepEqual(rendered, ["2", "PREZZI"]);
+    assert.equal(fills.at(-1), "#f6e9d6", "price counts must not look like priced pins");
+    rendered.length = 0;
+    mobilePinImage("neutro", false, "7,50 € MENU");
+    assert.deepEqual(rendered, ["7,50", "€", "MENU"]);
+    assert.equal(fills.at(-1), "#ff5a1f", "actual euro prices use the branded price fill");
+    rendered.length = 0;
+    mobilePinImage("neutro", false, "£7.50");
+    assert.deepEqual(rendered, ["7.50", "£", ""]);
+    assert.equal(fills.at(-1), "#ff5a1f", "actual pound prices use the branded price fill");
   } finally {
     if (previousDocument === undefined) delete globalThis.document;
     else globalThis.document = previousDocument;

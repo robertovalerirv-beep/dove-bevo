@@ -64,9 +64,11 @@ export function mobilePinImage(tier: Tier, stale: boolean, label: string): Image
   context.setLineDash(stale ? [3, 2] : []);
   context.stroke();
   context.setLineDash([]);
+  const text = mobilePinLabel(label);
   context.beginPath();
   context.arc(28, 27, 20, 0, Math.PI * 2);
-  context.fillStyle = FILL[tier];
+  // A menu-entry count is not an actual drink price: keep its neutral fill pale.
+  context.fillStyle = tier === "neutro" && !text.currency ? "#f6e9d6" : FILL[tier];
   context.fill();
   context.strokeStyle = stale ? "#5e554b" : "#1b1611";
   context.lineWidth = 1;
@@ -74,7 +76,6 @@ export function mobilePinImage(tier: Tier, stale: boolean, label: string): Image
   context.fillStyle = tier === "salato" ? "#fffbf4" : "#1b1611";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  const text = mobilePinLabel(label);
   context.font = `${stale ? "italic " : ""}700 14px -apple-system, BlinkMacSystemFont, sans-serif`;
   context.fillText(text.amount, 28, text.currency ? 22 : 28, 38);
   if (text.currency) {

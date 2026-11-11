@@ -239,6 +239,12 @@ test("compile-time seams preserve original source and reject upstream drift", ()
     transformMap(map, '"/assets/mobile/test.json"'),
     /id: "venue-price"[\s\S]*?minzoom: 12/,
   );
+  // The website hides its bars under zoom 13 (SPEC 5.4); the app keeps dots and clusters at any zoom.
+  assert.match(transformMap(map, '"/assets/mobile/test.json"'), /const BARS_FROM_ZOOM = 0;/);
+  assert.doesNotMatch(
+    transformMap(map, '"/assets/mobile/test.json"'),
+    /BARS_FROM_ZOOM = MIN_ZOOM_CELLS/,
+  );
   assert.match(transformApp(app), /useState\(true\)/);
   assert.match(transformApp(app), /mapAttempt/);
   assert.match(transformMap(map, '"/assets/mobile/test.json"'), /\[0, -25\]/);

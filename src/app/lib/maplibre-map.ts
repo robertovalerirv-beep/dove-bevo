@@ -4,6 +4,7 @@ import { Map as MapLibre, setWorkerUrl, type GeoJSONSource } from "maplibre-gl";
 import type { ExpressionSpecification, StyleSpecification } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
+import { MIN_ZOOM_CELLS } from "../../shared/config";
 import { it } from "../i18n/lang";
 import { MAP_STYLES } from "./map-styles.generated";
 import { currentTheme, THEME_EVENT } from "./theme";
@@ -19,6 +20,9 @@ const ITALY: [[number, number], [number, number]] = [
 ];
 const FONT = ["Noto Sans Bold"];
 const TEXT_SIZE = 14; // MASTER: no text under 14 px
+// Under this zoom no bar is drawn: prices, dots, numbered circles and their touch targets (SPEC 5.4).
+// The position dot is not a bar and stays (D-33).
+const BARS_FROM_ZOOM = MIN_ZOOM_CELLS;
 
 export interface MapView {
   zoom: number;
@@ -277,8 +281,8 @@ export class VenueMap {
     const border = token("--map-pill-border");
     const dotFill = token("--map-pill-bg");
     const empty = { type: "FeatureCollection" as const, features: [] };
-    // Bars without a price are clustered; priced bars never are, so prices stay readable at any
-    // zoom (SPEC 1: the map must not look empty) and are drawn above the clusters.
+    // Bars without a price are clustered; priced bars never are, so prices stay readable wherever
+    // bars are drawn (SPEC 1: the map must not look empty) and are drawn above the clusters.
     map.addSource("venues", {
       type: "geojson",
       data: empty,
@@ -292,6 +296,7 @@ export class VenueMap {
     map.addLayer({
       id: "clusters",
       type: "circle",
+      minzoom: BARS_FROM_ZOOM,
       source: "venues",
       filter: isCluster,
       paint: {
@@ -304,6 +309,7 @@ export class VenueMap {
     map.addLayer({
       id: "cluster-count",
       type: "symbol",
+      minzoom: BARS_FROM_ZOOM,
       source: "venues",
       filter: isCluster,
       layout: {
@@ -319,6 +325,7 @@ export class VenueMap {
     map.addLayer({
       id: "venue-dot",
       type: "circle",
+      minzoom: BARS_FROM_ZOOM,
       source: "venues",
       filter: isVenue,
       paint: {
@@ -351,6 +358,7 @@ export class VenueMap {
     map.addLayer({
       id: "venue-price",
       type: "symbol",
+      minzoom: BARS_FROM_ZOOM,
       source: "prices",
       layout: { "icon-image": ["get", "pin"] },
     });
@@ -359,6 +367,7 @@ export class VenueMap {
     map.addLayer({
       id: "venue-selected",
       type: "symbol",
+      minzoom: BARS_FROM_ZOOM,
       source: "selected",
       layout: {
         "icon-image": ["get", "pin"],
@@ -377,6 +386,7 @@ export class VenueMap {
       map.addLayer({
         id,
         type: "circle",
+        minzoom: BARS_FROM_ZOOM,
         source,
         ...(filter ? { filter } : {}),
         paint: { "circle-radius": 24, "circle-opacity": 0 },
@@ -421,19 +431,28 @@ export class VenueMap {
     });
   }
 
-  /** Price labels actually drawn after each render settles (exposed in the DOM for tests). */
-  onRendered(listener: (labels: string[]) => void) {
+  /**
+   * Price labels actually drawn after each render settles, and how many other bar marks (dots,
+   * clusters, the selected cork) are drawn with them (exposed in the DOM for tests).
+   */
+  onRendered(listener: (labels: string[], marks: number) => void) {
     this.renderedListener = listener;
     this.map.on("idle", () => {
       this.reportRendered();
     });
   }
 
-  private renderedListener: ((labels: string[]) => void) | null = null;
+  private renderedListener: ((labels: string[], marks: number) => void) | null = null;
 
   private reportRendered() {
     const features = this.map.queryRenderedFeatures({ layers: ["venue-price"] });
-    this.renderedListener?.([...new Set(features.map((f) => String(f.properties.label)))].sort());
+    const marks = this.map.queryRenderedFeatures({
+      layers: ["clusters", "venue-dot", "venue-selected"],
+    }).length;
+    this.renderedListener?.(
+      [...new Set(features.map((f) => String(f.properties.label)))].sort(),
+      marks,
+    );
     const drawn =
       this.me && this.map.queryRenderedFeatures({ layers: ["me-ring", "me-dot"] }).length === 2;
     const at = drawn && this.me ? this.map.project([this.me.lon, this.me.lat]) : null;

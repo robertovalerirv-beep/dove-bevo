@@ -212,6 +212,11 @@ function PriceItem({
         hidden={featured}
         aria-expanded={expanded}
         aria-controls={actionsId}
+        aria-label={
+          currentLang() === "en"
+            ? `${expanded ? "Hide" : "Show"} price actions for ${name}: ${inReview ? "confirm or report" : "confirm, change or report"}`
+            : `${expanded ? "Nascondi" : "Mostra"} le azioni per ${name}: ${inReview ? "conferma o segnala" : "conferma, modifica o segnala"} il prezzo`
+        }
         onClick={() => {
           setExpanded(!expanded);
         }}
@@ -221,9 +226,9 @@ function PriceItem({
             ? "Hide actions"
             : "Price actions"
           : expanded
-            ? "Nascondi azioni"
-            : "Azioni sul prezzo"}
-        <span class="sr-only"> · {name}</span>
+            ? "Chiudi azioni"
+            : "Azioni prezzo"}
+        <span class="mobile-price__chevron" aria-hidden="true" />
       </button>
       <span ref={controls} id={actionsId} class="price__actions" hidden={!showActions}>
         <button
@@ -609,6 +614,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           venue={{ key: venueKey, cell, country: "IT" }}
           focus={savedFocus}
           offerFocus={savedOfferFocus}
+          spotlightOfferId={featuredOffer?.id ?? null}
           mapFocus={focus}
           mapOfferId={mapSample?.id ?? null}
           hasLegacyPrices={active.length > 0}

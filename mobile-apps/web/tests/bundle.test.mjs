@@ -3,7 +3,7 @@ import { readFileSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath, URL } from "node:url";
 import path from "node:path";
 import { before, after, test } from "node:test";
-import { chromium } from "@playwright/test";
+import { chromium, webkit } from "@playwright/test";
 import { contrastRatio } from "./contrast.mjs";
 import { pageCsp } from "../../../src/worker/lib/security-headers.ts";
 /* global document, getComputedStyle, history, location */
@@ -18,10 +18,11 @@ before(async () => {
     "Build the complete production bundle first",
   );
   mkdirSync(output, { recursive: true });
-  browser = await chromium.launch({
+  const isWebKit = process.env.DOVEBEVO_BROWSER_ENGINE === "webkit";
+  browser = await (isWebKit ? webkit : chromium).launch({
     headless: true,
     ...(process.env.DOVEBEVO_BROWSER ? { executablePath: process.env.DOVEBEVO_BROWSER } : {}),
-    args: ["--enable-unsafe-swiftshader"],
+    ...(!isWebKit ? { args: ["--enable-unsafe-swiftshader"] } : {}),
   });
 });
 after(async () => {
@@ -46,6 +47,16 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
   await page.route("**/*", async (route) => {
     const request = route.request(),
       url = new URL(request.url());
+    if (
+      request.method() === "POST" &&
+      url.origin === "https://mobile.fixture.test" &&
+      url.pathname === "/api/events"
+    ) {
+      // WebKit sends the anonymous unload beacon during fixture navigation.
+      // Block it locally without classifying a counter as a public price write.
+      options.eventBeacons?.push(url.pathname);
+      return route.abort();
+    }
     if (request.method() !== "GET") {
       writes.push(url.pathname);
       return route.abort();
@@ -1259,8 +1270,12 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
     await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
     assert.match(await f.page.locator(".bar__kind").innerText(), /Locale · Milano/);
     assert.match(
+      await f.page.getByTestId("featured-menu-price").innerText(),
+      /Spritz speciale[\s\S]*7,50\s€/,
+    );
+    assert.match(
       await f.page.getByRole("region", { name: "Prezzi dal menu online" }).innerText(),
-      /Spritz speciale[\s\S]*7,50\s€[\s\S]*costi aggiuntivi non sono stati verificati/,
+      /costi aggiuntivi non sono stati verificati/,
     );
     assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
     assert.deepEqual(f.errors, []);
@@ -1293,13 +1308,21 @@ test("the selected map menu price leads venue detail ahead of unrelated customer
       await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
       const featured = f.page.getByTestId("featured-menu-price");
       await featured.waitFor();
-      const selected = f.page.getByTestId("map-selected-menu-offer");
-      await selected.waitFor();
+      const selectedMenuActions = f.page.getByTestId("selected-menu-actions");
+      await selectedMenuActions.waitFor();
       assert.match(
         await featured.innerText(),
         /Spritz speciale[\s\S]*Prezzo da menu[\s\S]*7,50\s*€[\s\S]*Menu verificato/,
       );
-      assert.match(await selected.innerText(), /Drink scelto sulla mappa[\s\S]*7,50\s*€/);
+      assert.equal(await f.page.getByTestId("map-selected-menu-offer").count(), 0);
+      assert.equal(
+        await f.page
+          .getByRole("region", { name: "Prezzi dal menu online" })
+          .locator(".mobile-menu-v2__offer")
+          .filter({ hasText: "Spritz speciale" })
+          .count(),
+        0,
+      );
       assert.equal(
         await f.page.evaluate(() => {
           const selected = document.querySelector('[data-testid="featured-menu-price"]');
@@ -1344,14 +1367,8 @@ test("the map's exact menu offer is found on a later venue page before it is fea
     await featured.waitFor();
     assert.match(await featured.innerText(), /Spritz speciale[\s\S]*7,50\s*€/);
     assert.deepEqual(options.menuDetailRequests, [null, "offer-water-first"]);
-    assert.equal(
-      await f.page
-        .getByRole("region", { name: "Prezzi dal menu online" })
-        .locator(".mobile-menu-v2__offers > li")
-        .first()
-        .getAttribute("data-testid"),
-      "map-selected-menu-offer",
-    );
+    assert.equal(await f.page.getByTestId("map-selected-menu-offer").count(), 0);
+    assert.equal(await f.page.getByTestId("selected-menu-actions").count(), 1);
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {
@@ -1409,18 +1426,11 @@ test("an exact saved offer stays ahead of map drink ordering", async () => {
     await f.page.goto(
       "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&offer=offer-water-first",
     );
-    const saved = f.page.getByTestId("saved-exact-offer");
+    const saved = f.page.getByTestId("featured-menu-price");
     await saved.waitFor();
     assert.match(await saved.innerText(), /Still water 75cl[\s\S]*4,00\s*€/);
-    assert.match(await f.page.getByTestId("featured-menu-price").innerText(), /Still water 75cl/);
-    assert.equal(
-      await f.page
-        .getByRole("region", { name: "Prezzi dal menu online" })
-        .locator(".mobile-menu-v2__offers > li")
-        .first()
-        .getAttribute("data-testid"),
-      "saved-exact-offer",
-    );
+    assert.equal(await f.page.getByTestId("saved-exact-offer").count(), 0);
+    assert.equal(await f.page.getByTestId("selected-menu-actions").count(), 1);
     assert.equal(await f.page.getByTestId("map-selected-menu-offer").count(), 0);
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
@@ -1455,10 +1465,7 @@ test("empty menu-linked customer section does not deny an existing legacy price"
       await customer.getByText(/Nessun prezzo segnalato per i drink del menu/).count(),
       0,
     );
-    assert.match(
-      await f.page.getByRole("region", { name: "Prezzi dal menu online" }).innerText(),
-      /7,50/,
-    );
+    assert.match(await f.page.getByTestId("featured-menu-price").innerText(), /7,50/);
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {

@@ -192,20 +192,28 @@ internal sealed class DiscoveryClient
         var europe = await europeTask;
         var legacy = await legacyTask;
         cancellation.ThrowIfCancellationRequested();
-        var rows = pages.Where(page => page is not null).SelectMany(page => page!)
+        var rows = SortRows(pages.Where(page => page is not null).SelectMany(page => page!)
             .Concat(europe.Rows)
-            .Concat(legacy.Rows.Where(europe.AllowsLegacy))
-            .GroupBy(row => (row.Key, row.Cell, row.DrinkCode, row.Currency,
-                row.Context, row.AmountMinor, row.Serving, row.Drink, row.SourceUrl))
-            .Select(group => group.First())
-            .OrderBy(row => row.Currency, StringComparer.Ordinal)
-            .ThenBy(row => row.AmountMinor / Math.Pow(10, row.Exponent))
-            .ThenBy(row => row.Venue, StringComparer.CurrentCultureIgnoreCase)
-            .ToArray();
+            .Concat(legacy.Rows.Where(europe.AllowsLegacy)));
         return new DiscoverySnapshot(rows, pages.Count(page => page is null) + europe.UnavailableCells +
             legacy.UnavailableSources,
             europe.CatalogUnavailable);
     }
+
+    internal static DiscoveryRow[] SortRows(IEnumerable<DiscoveryRow> values) =>
+        values
+            .GroupBy(row => (row.Key, row.Cell, row.DrinkCode, row.Currency,
+                row.Exponent, row.Context, row.Condition, row.AmountMinor,
+                row.Serving, row.Drink, row.SourceUrl))
+            .Select(group => group.First())
+            .OrderBy(row => row.Currency, StringComparer.Ordinal)
+            .ThenBy(row => row.AmountMinor * (row.Exponent switch
+            {
+                0 => 1000L, 1 => 100L, 2 => 10L, 3 => 1L,
+                _ => throw new InvalidDataException("Invalid currency exponent"),
+            }))
+            .ThenBy(row => row.Venue, StringComparer.CurrentCultureIgnoreCase)
+            .ToArray();
 
     private static async Task<IReadOnlyList<DiscoveryRow>> LoadCellAsync(string cell, string category,
         CancellationToken cancellation)
@@ -289,8 +297,13 @@ internal sealed class DiscoveryClient
                     !DateOnly.TryParseExact(source.GetProperty("checked_on").GetString(), "yyyy-MM-dd",
                         CultureInfo.InvariantCulture, DateTimeStyles.None, out var day))
                     throw new InvalidDataException("Invalid menu offer source");
+                if (category == "beer_draft" &&
+                    (!offer.TryGetProperty("serving", out var beerServing) ||
+                     !BookmarkPriceClient.IsMediumDraftBeer(beerServing))) continue;
+                var serving = BookmarkPriceClient.VerifiedOfferServing(offer);
+                if (serving == "Formato non dichiarato") serving = null;
                 rows.Add(new DiscoveryRow(key, cell, name, city, category, drink, amount,
-                    currency, exponent, kind, condition, sourceUrl, day));
+                    currency, exponent, kind, condition, sourceUrl, day, serving));
             }
         }
         var next = root.GetProperty("next_after").ValueKind == JsonValueKind.Null

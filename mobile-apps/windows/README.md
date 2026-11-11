@@ -30,14 +30,18 @@ their live price is shown on the venue page until an exact row is saved anew.
 
 Scopri combines current public Italian customer reports and reviewed menu
 offers with the app-only European catalogue and price cells near the selected
-city or zoomed-in map. The latter
-preserves EUR or GBP and the actual serving, and excludes hidden or
-legacy-overridden venues. Menu rows show their source and check date; customer
-rows are labelled as reports. A failed source is reported as unavailable,
-without inventing a price or converting currencies. Selecting a European row
-opens its venue without an ambiguous drink-only focus. This is a bounded
-view of actual public prices, not a claim of complete city coverage; full menu
-details and fees remain in the venue sheet.
+city or zoomed-in map. Prices are grouped and sorted numerically within their
+original currency; EUR and GBP are never converted or ranked against each
+other. An Italian menu's serving is shown when specified, and Birra media
+excludes small, large, pint, conflicting and unknown servings. The app-only
+European source follows the same size rule. Menu rows show their source and
+check date; customer rows are labelled as reports. A visible notice explains
+that menu samples are incomplete and that servings, currencies and possible
+cover charges need checking. Hidden and legacy-overridden venues stay out of
+the European source. A failed source is reported as unavailable, without
+inventing a price. Selecting a European row opens its venue without an
+ambiguous drink-only focus. Full menu details and fees remain in the venue
+sheet.
 
 The Scopri city selector reads the current Italian places and app venue
 catalogue. It previews major Italian cities before European choices; typing

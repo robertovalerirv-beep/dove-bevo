@@ -861,7 +861,7 @@ public final class MainActivity extends ComponentActivity {
             europeVerifyBatch=null;
             if(verified==null){Toast.makeText(this,"Prezzo non disponibile ora. Nessun preferito salvato; riprova quando sei online.",Toast.LENGTH_LONG).show();return;}
             SavedEuropeDrinkStore.Entry saved=verified.entry;
-            String detail=NativePricePresentation.category(saved.drink)+" · "+saved.serving.label()+" · "+saved.currency;
+            String detail=NativePricePresentation.category(saved.drink)+(saved.serving.label().isEmpty()?"":" · "+saved.serving.label())+" · "+saved.currency;
             AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Salva nei Preferiti?")
                 .setMessage(detail+" · "+saved.venue.label+". Il prezzo si aggiorna online e non viene salvato sul telefono.")
                 .setNegativeButton("Annulla",(d,w)->{}).setPositiveButton("Salva",(d,w)->{

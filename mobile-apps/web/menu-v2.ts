@@ -328,60 +328,86 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
     const sampleRequest = categories.length ? menuCellVenues(cell, categories) : identityRequest;
     // Attach rejection handlers before the legacy cell read can resolve. A fast
     // v2 503 must never surface as an unhandled browser error.
-    const menuRequest = Promise.allSettled([identityRequest, sampleRequest]);
+    let identityReady = false;
+    let identityVenues: CellVenue[] | null = null;
+    const identityResult = identityRequest.then(
+      (venues) => {
+        identityReady = true;
+        identityVenues = venues;
+        return venues;
+      },
+      () => {
+        identityReady = true;
+        return null;
+      },
+    );
+    const sampleResult = sampleRequest.then(
+      (venues) => venues,
+      () => null,
+    );
     request = loadCell(cell).then(
       (legacy) => {
-        void menuRequest
-          .then(async ([identity, sampled]) => {
-            if (mobileCellCache.get(cacheKey) !== request) return;
-            let all = identity.status === "fulfilled" ? identity.value : null;
-            const filtered = sampled.status === "fulfilled" ? sampled.value : null;
-            // A selection can inherit an older pending identity read. Recover
-            // that stale failure once; a request started by this selection or
-            // inherited from another selection's recovery is already fresh.
-            if (categories.length > 0 && all === null && filtered !== null && identityWasCached) {
-              try {
-                all = await retryMenuIdentityVenues(cell, identityRequest);
-              } catch {
-                all = null;
-              }
-              if (mobileCellCache.get(cacheKey) !== request) return;
-            }
-            // A selected-category response carries its own validated venue identity.
-            // If the separate all-drinks identity read is still unavailable, show
-            // that sourced selection without claiming a complete menu count.
-            const fullIdentity = all !== null;
-            if (all === null && categories.length > 0 && filtered !== null) all = filtered;
+        void sampleResult
+          .then((filtered) => {
+            let current = request;
+            if (mobileCellCache.get(cacheKey) !== current) return;
             // A temporary v2 failure does not hold or erase legacy venues. Evict the
             // selection so a later map view retries the bounded menu request.
-            if (all === null || filtered === null) {
+            if (filtered === null) {
               mobileCellCache.delete(cacheKey);
               return;
             }
-            const counts = new Map(
-              (fullIdentity ? all : []).map((venue) => [venue.key, venue.matching_offer_count]),
-            );
-            const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
-            const merged = new Map<string, Venue>(legacy.map((venue) => [venue.key, { ...venue }]));
-            for (const row of [
-              ...new Map([...all, ...filtered].map((venue) => [venue.key, venue])).values(),
-            ]) {
-              if (row.country !== "IT") continue;
-              const known = merged.get(row.key);
-              if (!known && (row.identity_kind !== "owner_verified" || !row.key.startsWith("m")))
-                continue;
-              const venue = known ?? mobileMenuVenue(row);
-              merged.set(row.key, {
-                ...venue,
-                mobileMenuSamples: samples.get(row.key) ?? [],
-                mobileMenuCount: counts.get(row.key) ?? 0,
-              } as WithMenu);
-            }
-            mobileCellCache.set(cacheKey, Promise.resolve([...merged.values()]));
-            if (typeof window !== "undefined")
-              window.dispatchEvent(
-                new CustomEvent("dovebevo:menu-cell-ready", { detail: { cell } }),
+            const publish = (identityVenues: CellVenue[] | null) => {
+              if (mobileCellCache.get(cacheKey) !== current) return;
+              // The selected-category response has a validated venue identity and
+              // sourced prices. An unavailable full-menu read affects counts only.
+              const venues = identityVenues ?? filtered;
+              const counts = new Map(
+                (identityVenues ?? []).map((venue) => [venue.key, venue.matching_offer_count]),
               );
+              const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
+              const merged = new Map<string, Venue>(
+                legacy.map((venue) => [venue.key, { ...venue }]),
+              );
+              for (const row of [
+                ...new Map([...venues, ...filtered].map((venue) => [venue.key, venue])).values(),
+              ]) {
+                if (row.country !== "IT") continue;
+                const known = merged.get(row.key);
+                if (!known && (row.identity_kind !== "owner_verified" || !row.key.startsWith("m")))
+                  continue;
+                const venue = known ?? mobileMenuVenue(row);
+                merged.set(row.key, {
+                  ...venue,
+                  mobileMenuSamples: samples.get(row.key) ?? [],
+                  mobileMenuCount: counts.get(row.key) ?? 0,
+                } as WithMenu);
+              }
+              current = Promise.resolve([...merged.values()]);
+              mobileCellCache.set(cacheKey, current);
+              if (typeof window !== "undefined")
+                window.dispatchEvent(
+                  new CustomEvent("dovebevo:menu-cell-ready", { detail: { cell } }),
+                );
+            };
+            // A selected response is already sourced and validated. Show it even
+            // while an older all-drinks identity request is pending; only its
+            // count and additional venue identities depend on that request.
+            const initialIdentity = identityReady ? identityVenues : null;
+            publish(initialIdentity);
+            if (categories.length > 0)
+              void identityResult
+                .then(async (settled) => {
+                  let all = settled;
+                  if (all === null && identityWasCached)
+                    try {
+                      all = await retryMenuIdentityVenues(cell, identityRequest);
+                    } catch {
+                      all = null;
+                    }
+                  if (all !== null && all !== initialIdentity) publish(all);
+                })
+                .catch(() => {});
           })
           .catch(() => {
             if (mobileCellCache.get(cacheKey) === request) mobileCellCache.delete(cacheKey);

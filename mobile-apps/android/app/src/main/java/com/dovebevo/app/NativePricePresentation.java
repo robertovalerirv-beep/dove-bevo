@@ -9,7 +9,7 @@ import java.util.Locale;
 final class NativePricePresentation {
     static String category(RecommendationDrink drink){return drink==RecommendationDrink.BEER_DRAFT?"Birra alla spina":drink.label;}
     static String group(FavoriteComparison.Price legacy,EuropePrices.Price mobile){return mobile!=null?mobile.group():legacy!=null?"EUR/legacy_unknown":"unavailable";}
-    static String groupLabel(FavoriteComparison.Price legacy,EuropePrices.Price mobile){return mobile!=null?mobile.currency+" · "+mobile.serving.label():legacy!=null?"EUR · formato non indicato (dati precedenti)":"";}
+    static String groupLabel(FavoriteComparison.Price legacy,EuropePrices.Price mobile){return mobile!=null?mobile.currency+(mobile.serving.label().isEmpty()?"":" · "+mobile.serving.label()):legacy!=null?"EUR · formato non indicato (dati precedenti)":"";}
     static String amount(FavoriteComparison.Price legacy,EuropePrices.Price mobile){String currency=mobile==null?"EUR":mobile.currency;NumberFormat format=NumberFormat.getCurrencyInstance(currency.equals("GBP")?Locale.UK:Locale.ITALY);format.setCurrency(Currency.getInstance(currency));return format.format(BigDecimal.valueOf(mobile==null?legacy.cents:mobile.amountMinor,2));}
     static String context(EuropePrices.Price price){
         String confirmations=price.confirmations+" "+(price.confirmations==1?"conferma":"conferme");

@@ -109,9 +109,9 @@ final class SavedDrinkScreen {
             TextView name=text(venueName,18);NativeAppearance.title(name);if(Build.VERSION.SDK_INT>=28)name.setAccessibilityHeading(true);card.addView(name);
             card.addView(text(NativePricePresentation.category(item.drink)+" · "+(item.band==1?"Happy hour":"Prezzo normale"),16));
             if(named!=null){
-                card.addView(text(named.name+" · "+named.serving(),16));
+                card.addView(text(named.name+(named.serving().isEmpty()?"":" · "+named.serving()),16));
                 TextView amount=text(named.amount(),22);NativeAppearance.price(amount);card.addView(amount);
-                card.addView(text(named.currency+" · "+named.serving(),14));
+                card.addView(text(named.currency+(named.serving().isEmpty()?"":" · "+named.serving()),14));
                 card.addView(text(named.evidence(),15));
             }
             else if(busy||menuBusy)card.addView(text("Aggiornamento prezzi…",16));
@@ -137,7 +137,7 @@ final class SavedDrinkScreen {
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);NativeAppearance.card(card);card.setTag("menu_offer_favourite_"+item.key());
             TextView title=text(item.name+" - "+(menu==null?item.venue.label:menu.name),18);NativeAppearance.title(title);card.addView(title);
             if(current!=null){
-                card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
+                if(!current.serving().isEmpty())card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
                 card.addView(text(current.evidence(),15));
                 if(current.band<0)card.addView(text("Prezzo soggetto a condizioni: "+(current.condition==null?"verifica il menu del locale":current.condition)+".",15));
                 if(current.servingLabel==null&&current.servingML==null)
@@ -146,7 +146,7 @@ final class SavedDrinkScreen {
                 for(MenuV2Prices.Price report:menu.linkedReports)if(item.id.equals(report.linkedOfferId)){
                     linkedCount++;
                     if(linkedCount<=3){
-                        card.addView(text("Segnalazione cliente distinta: "+report.amount()+" - "+report.serving(),15));
+                        card.addView(text("Segnalazione cliente distinta: "+report.amount()+(report.serving().isEmpty()?"":" - "+report.serving()),15));
                         card.addView(text(report.evidence(),14));
                         if(!report.currency.equals(current.currency)||report.exponent!=current.exponent
                                 ||!report.category.equals(current.category)||!java.util.Objects.equals(report.servingLabel,current.servingLabel)
@@ -156,8 +156,8 @@ final class SavedDrinkScreen {
                 }
                 if(linkedCount>3)card.addView(text("Altre "+(linkedCount-3)+" segnalazioni cliente nel locale.",14));
             }else{
-                String serving=(item.serving==null?"Formato non dichiarato":item.serving)+(item.ml==null?"":" - "+item.ml+" ml");
-                card.addView(text(serving,15));
+                String serving=MenuV2Prices.Price.displayServing(item.serving,item.ml);
+                if(!serving.isEmpty())card.addView(text(serving,15));
                 card.addView(text(menuBusy?"Caricamento del prezzo online...":"Offerta del menu non disponibile ora. Il preferito resta salvato; riprova piu tardi.",15));
             }
             Button open=button("Apri "+item.name,()->{if(usable()&&containsOffer(item.key()))navigate.accept(item.focusedUrl());});
@@ -178,10 +178,11 @@ final class SavedDrinkScreen {
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);NativeAppearance.card(card);card.setTag("customer_drink_favourite_"+item.key());
             TextView title=text(item.name+" - "+(menu==null?item.venue.label:menu.name),18);NativeAppearance.title(title);card.addView(title);
             if(current!=null){
-                card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
+                if(!current.serving().isEmpty())card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
                 card.addView(text(current.evidence(),15));
             }else{
-                card.addView(text((item.serving==null?"Formato non dichiarato":item.serving)+(item.ml==null?"":" · "+item.ml+" ml"),15));
+                String serving=MenuV2Prices.Price.displayServing(item.serving,item.ml);
+                if(!serving.isEmpty())card.addView(text(serving,15));
                 card.addView(text(menuBusy?"Caricamento del prezzo online...":"Segnalazione non disponibile ora. Il preferito resta salvato; riprova piu tardi.",15));
             }
             Button open=button("Apri "+item.name,()->{if(usable()&&containsCustomer(item.key()))navigate.accept(MobileEntry.venueDocument(item.venue.url));});
@@ -201,7 +202,7 @@ final class SavedDrinkScreen {
             EuropePrices.Price current=SavedEuropeDrinkStore.current(item,cell);
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);NativeAppearance.card(card);card.setTag("europe_drink_favourite_"+item.key());
             TextView title=text(NativePricePresentation.category(item.drink)+" - "+item.venue.label,18);NativeAppearance.title(title);card.addView(title);
-            card.addView(text((item.band==1?"Happy hour":"Prezzo normale")+" · "+item.serving.label()+" · "+item.currency,15));
+            card.addView(text((item.band==1?"Happy hour":"Prezzo normale")+(item.serving.label().isEmpty()?"":" · "+item.serving.label())+" · "+item.currency,15));
             if(current!=null){
                 TextView amount=text(NativePricePresentation.amount(null,current),22);NativeAppearance.price(amount);card.addView(amount);
                 card.addView(text(NativePricePresentation.context(current),15));
@@ -213,7 +214,7 @@ final class SavedDrinkScreen {
                 retire();SavedEuropeDrinkStore.Result result=europeStore.remove(item);
                 if(result==SavedEuropeDrinkStore.Result.REMOVED||result==SavedEuropeDrinkStore.Result.NOT_FOUND)refresh();
                 else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});
-            remove.setTag("europe_drink_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+NativePricePresentation.category(item.drink)+" - "+item.venue.label+" - "+item.serving.label());card.addView(remove);
+            remove.setTag("europe_drink_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+NativePricePresentation.category(item.drink)+" - "+item.venue.label+(item.serving.label().isEmpty()?"":" - "+item.serving.label()));card.addView(remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
         }
         if(values.isEmpty()&&visibleOffers==0&&visibleCustomers==0&&visibleEurope==0&&(!saved.isEmpty()||!offers.isEmpty()||!customerOffers.isEmpty()||!europe.isEmpty()))rows.addView(text("Nessun drink salvato per questa scelta.",15));

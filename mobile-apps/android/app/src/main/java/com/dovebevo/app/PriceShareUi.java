@@ -54,8 +54,9 @@ final class PriceShareUi {
     }
     static Bitmap poster(Activity activity,PriceShareSnapshot price) {
         TextPaint body=new TextPaint(Paint.ANTI_ALIAS_FLAG);body.setColor(0xff27313a);body.setTextSize(28);
-        String details=(price.serving.isEmpty()?"Formato non indicato (dati precedenti)":price.serving)
-            +(price.hh==1?" · Happy hour":" · Prezzo normale")+"\n"+price.provenance+"\n"+price.confirmations+" "+(price.confirmations==1?"conferma":"conferme");
+        String serving=price.servingLabel();
+        String details=(serving.isEmpty()?"":serving+" · ")
+            +(price.hh==1?"Happy hour":"Prezzo normale")+"\n"+price.provenance+"\n"+price.confirmations+" "+(price.confirmations==1?"conferma":"conferme");
         StaticLayout provenance=layout(details,body,780);
         TextPaint title=new TextPaint(body);title.setTextSize(44);title.setTypeface(Typeface.DEFAULT_BOLD);
         StaticLayout name=layout(price.name,title,780);

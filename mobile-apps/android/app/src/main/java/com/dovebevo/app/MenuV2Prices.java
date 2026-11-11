@@ -54,7 +54,13 @@ final class MenuV2Prices {
         String amount(){int factor=new int[]{1,10,100,1000}[exponent];String minor=Integer.toString(amountMinor%factor);
             while(minor.length()<exponent)minor="0"+minor;
             return (amountMinor/factor)+(exponent==0?"":","+minor)+" "+(currency.equals("EUR")?"\u20ac":currency.equals("GBP")?"\u00a3":currency);}
-        String serving(){return (servingLabel==null?"Formato non dichiarato":servingLabel)+(servingML==null?"":" · "+servingML+" ml");}
+        String serving(){return displayServing(servingLabel,servingML);}
+        static String displayServing(String rawLabel,Integer ml){
+            String label=rawLabel==null?"Formato non dichiarato":rawLabel;
+            String normalized=label.trim().toLowerCase(Locale.ROOT);
+            if(normalized.equals("drink")||normalized.equals("drink singolo"))return ml==null?"":ml+" ml";
+            return label+(ml==null?"":" · "+ml+" ml");
+        }
         String evidence(){return (customer?"Segnalato da un cliente il ":"Da menu online · Fonte verificata il ")+day+" · Prezzo del drink. "+feeNotice;}
     }
     static final class Venue {

@@ -1060,7 +1060,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                 self.showBookmarkError("Questo prezzo non e piu disponibile nella valuta e nel formato selezionati. Nessun preferito e stato salvato.")
                 return
             }
-            let name = "\(saved.category.name) · \(band.name) · \(serving.label) · \(currency)"
+            let name = [saved.category.name, band.name, serving.label, currency].filter { !$0.isEmpty }.joined(separator: " · ")
             self.presentExactDrinkSave(name: name, venue: venue, token: token, venueURL: venueURL) {
                 try self.savedEuropeDrinks.save(saved)
             }

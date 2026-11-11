@@ -28,7 +28,8 @@ final class PriceShareSnapshot {
         if(!url.substring(url.indexOf("/bar/")+5,url.indexOf('?')).equals(venue))throw NativeJson.invalid();
     }
     String amountLabel(){NumberFormat f=NumberFormat.getCurrencyInstance(currency.equals("GBP")?Locale.UK:Locale.ITALY);f.setCurrency(Currency.getInstance(currency));return f.format(BigDecimal.valueOf(amount,2));}
-    String accessibilityDescription(){return "Dove Bevo. "+drinkName+" · "+amountLabel()+" · "+name+". "+(serving.isEmpty()?"Formato non indicato (dati precedenti)":serving)+". "+(hh==1?"Happy hour":"Prezzo normale")+". "+(location.isEmpty()?"":location+". ")+provenance+". "+confirmations+" "+(confirmations==1?"conferma":"conferme")+". "+(tier.equals("neutro")?"":"Confronto: "+tier+". ")+"Illustrazione del drink, non foto del locale.";}
+    String servingLabel(){return serving.isEmpty()?"Formato non indicato (dati precedenti)":serving.trim().equalsIgnoreCase("drink")||serving.trim().equalsIgnoreCase("drink singolo")?"":serving;}
+    String accessibilityDescription(){String format=servingLabel();return "Dove Bevo. "+drinkName+" · "+amountLabel()+" · "+name+". "+(format.isEmpty()?"":format+". ")+(hh==1?"Happy hour":"Prezzo normale")+". "+(location.isEmpty()?"":location+". ")+provenance+". "+confirmations+" "+(confirmations==1?"conferma":"conferme")+". "+(tier.equals("neutro")?"":"Confronto: "+tier+". ")+"Illustrazione del drink, non foto del locale.";}
     static PriceShareSnapshot decode(String raw,String captured,String current,long epoch,long now) {
         if(raw==null||raw.length()>8192||epoch!=now||!MobileEntry.isDocument(captured)||!MobileEntry.isDocument(current))return null;
         String url=SavedVenueUrl.canonicalize(captured);if(url==null||!url.equals(SavedVenueUrl.canonicalize(current)))return null;

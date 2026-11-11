@@ -17,6 +17,9 @@ final class PriceShareTests: XCTestCase {
         let value = try XCTUnwrap(PriceShareSnapshot.parse(fields(), currentURL: document))
         XCTAssertEqual(value.amount, "6,50 £"); XCTAssertTrue(value.happyHour)
         XCTAssertEqual(value.venueKey, "n123"); XCTAssertEqual(value.venueName, "Actual venue")
+        XCTAssertEqual(value.serving, "Drink singolo", "Share data retains the original marker")
+        XCTAssertEqual(value.servingLabel, "")
+        XCTAssertFalse(value.accessibilityDescription.contains("Drink singolo"))
         XCTAssertTrue(value.provenance.contains("Fonte verificata il 2026-11-02"))
         XCTAssertTrue(value.provenance.contains("17:00–19:00")); XCTAssertFalse(value.provenance.contains("Pagato"))
         var legacy = fields(); legacy["currency"] = "EUR"; legacy["serving"] = ""; legacy["location"] = ""
@@ -30,6 +33,8 @@ final class PriceShareTests: XCTestCase {
         XCTAssertTrue(normal.accessibilityDescription.contains("Prezzo normale"))
         XCTAssertTrue(normal.accessibilityDescription.contains("0 conferme"))
         XCTAssertTrue(value.accessibilityDescription.contains("London"))
+        var measured = fields(); measured["serving"] = "500 ml"
+        XCTAssertEqual(try XCTUnwrap(PriceShareSnapshot.parse(measured, currentURL: document)).servingLabel, "500 ml")
     }
 
     func testEveryCategoryUsesExistingCurrencyBoundsAndRejectsValuesOutsideThem() {
@@ -118,9 +123,10 @@ final class PriceShareTests: XCTestCase {
         defer { mounted.close() }
         let image = try XCTUnwrap(descendants(controller.view).first { $0.accessibilityIdentifier == "share.poster" })
         XCTAssertTrue(image.window === mounted.window)
-        for expected in ["6,50 £", "Drink singolo", "Happy hour", "0 conferme", "London", "Affare", snapshot.provenance] {
+        for expected in ["6,50 £", "Happy hour", "0 conferme", "London", "Affare", snapshot.provenance] {
             XCTAssertTrue(image.accessibilityLabel?.contains(expected) == true, expected)
         }
+        XCTAssertFalse(image.accessibilityLabel?.contains("Drink singolo") == true)
         mounted.attach(to: self, name: "Share-poster-GBP-HH")
     }
 

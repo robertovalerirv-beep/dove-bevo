@@ -71,6 +71,21 @@ final class MenuV2ComparisonTests: XCTestCase {
                        "https://www.dovebevo.com/api/mobile/v2/menu/cells/u0nd9?categories=\(categories.joined(separator: ","))")
     }
 
+    func testGenericMenuDrinkRetainsExactIdentityWithoutRedundantDisplay() throws {
+        var sample = offer("spritz-1", context: "regular", cents: 550)
+        sample["serving"] = ["label": "drink", "ml": NSNull()]
+        let page = try XCTUnwrap(MenuV2JSON.menuPage(menu([sample], count: 1, next: nil), key: venueKey, cell: cell))
+        let price = try XCTUnwrap(page.offers.first)
+        XCTAssertEqual(price.servingLabel, "drink")
+        XCTAssertEqual(price.group, "GBP|2|drink|0", "Saved and comparable prices retain the exact source serving")
+        XCTAssertEqual(price.serving, "")
+        XCTAssertEqual(NativeComparablePrice.menuV2(price).groupLabel, "GBP · Da menu online")
+        XCTAssertEqual(MenuV2Price.displayServing(label: "drink", ml: 200), "200 ml")
+        XCTAssertEqual(MenuV2Price.displayServing(label: "Drink singolo", ml: nil), "")
+        XCTAssertEqual(MenuV2Price.displayServing(label: "Calice", ml: 200), "Calice · 200 ml")
+        XCTAssertEqual(MenuV2Price.displayServing(label: nil, ml: nil), "Formato non dichiarato")
+    }
+
     func testCellSamplesPreserveMixedCurrencyAndExponentWithoutRejectingTheCell() throws {
         var sample = offer("spritz-1", context: "regular", cents: 550)
         let categories = DrinkCategory.all.map(\.code)

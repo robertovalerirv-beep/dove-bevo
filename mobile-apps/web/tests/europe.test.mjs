@@ -416,7 +416,7 @@ test("European venue preserves identity, explicit pounds and source-check proven
   }
 });
 
-test("European saved drink links feature only the requested category and band", async () => {
+test("European focused deep links feature exact band and describe an unsaved missing row neutrally", async () => {
   const f = await fixture();
   try {
     await f.page.goto(origin + "/mobile/?path=%2Fbar%2Fn1001&c=gcpvj&drink=spritz&hh=0");
@@ -426,6 +426,14 @@ test("European saved drink links feature only the requested category and band", 
 
     await f.page.goto(origin + "/mobile/?path=%2Fbar%2Fn1001&c=gcpvj&drink=spritz&hh=1");
     await f.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.match(
+      await f.page.getByTestId("saved-drink-unavailable").innerText(),
+      /prezzo selezionato/,
+    );
+    assert.doesNotMatch(
+      await f.page.getByTestId("saved-drink-unavailable").innerText(),
+      /prezzo salvato/,
+    );
     assert.equal(await f.page.locator(".mobile-price--featured").count(), 0);
     assert.deepEqual(f.writes, []);
   } finally {

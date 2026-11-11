@@ -769,8 +769,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           )}
           {savedMissing && (
             <p class="hint" role="status" data-testid="saved-drink-unavailable">
-              Il prezzo salvato per questo drink e orario non è più disponibile. Gli altri prezzi
-              del locale sono qui sotto.
+              Il prezzo {focusedIsSaved ? "salvato" : "selezionato"} per questo drink e orario non è
+              più disponibile. Gli altri prezzi del locale sono qui sotto.
             </p>
           )}
           {savedOfferMissing && (

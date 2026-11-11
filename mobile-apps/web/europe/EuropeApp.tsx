@@ -868,7 +868,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
               {venueRows.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
               {selectedFocus && !savedFound && (
                 <p class="hint" role="status" data-testid="saved-drink-unavailable">
-                  Il prezzo salvato per questo drink e orario non è più disponibile. Gli altri
+                  Il prezzo selezionato per questo drink e orario non è più disponibile. Gli altri
                   prezzi del locale sono qui sotto.
                 </p>
               )}

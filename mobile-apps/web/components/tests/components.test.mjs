@@ -735,13 +735,21 @@ test("saved legacy drink opens the exact price and band without creating a contr
   }
 });
 
-test("missing saved happy-hour price is explicit and never features a different band", async () => {
+test("unsaved missing happy-hour deep link is neutral and never features a different band", async () => {
   const f = await fixture({
     url: "https://sheets.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9&drink=spritz&hh=1",
   });
   try {
     await f.page.evaluate(() => window.sheetFixture.bar());
     await f.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.match(
+      await f.page.getByTestId("saved-drink-unavailable").innerText(),
+      /prezzo selezionato/,
+    );
+    assert.doesNotMatch(
+      await f.page.getByTestId("saved-drink-unavailable").innerText(),
+      /prezzo salvato/,
+    );
     assert.equal(await f.page.locator(".mobile-price--featured").count(), 0);
     assert.equal(await f.page.getByTestId("saved-menu-offer").count(), 0);
     assert.deepEqual(f.writes, []);

@@ -212,6 +212,11 @@ function PriceItem({
         hidden={featured}
         aria-expanded={expanded}
         aria-controls={actionsId}
+        aria-label={
+          currentLang() === "en"
+            ? `${expanded ? "Hide" : "Show"} price actions for ${name}: ${inReview ? "confirm or report" : "confirm, change or report"}`
+            : `${expanded ? "Nascondi" : "Mostra"} le azioni per ${name}: ${inReview ? "conferma o segnala" : "conferma, modifica o segnala"} il prezzo`
+        }
         onClick={() => {
           setExpanded(!expanded);
         }}
@@ -221,9 +226,9 @@ function PriceItem({
             ? "Hide actions"
             : "Price actions"
           : expanded
-            ? "Nascondi azioni"
-            : "Azioni sul prezzo"}
-        <span class="sr-only"> · {name}</span>
+            ? "Chiudi azioni"
+            : "Azioni prezzo"}
+        <span class="mobile-price__chevron" aria-hidden="true" />
       </button>
       <span ref={controls} id={actionsId} class="price__actions" hidden={!showActions}>
         <button
@@ -609,6 +614,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           venue={{ key: venueKey, cell, country: "IT" }}
           focus={savedFocus}
           offerFocus={savedOfferFocus}
+          spotlightOfferId={featuredOffer?.id ?? null}
           mapFocus={focus}
           mapOfferId={mapSample?.id ?? null}
           hasLegacyPrices={active.length > 0}
@@ -718,9 +724,6 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                         .filter(Boolean)
                         .join(" · ")}
                     </small>
-                    <small class="mobile-menu-v2__meta">
-                      Prezzo del drink da menu, non totale pagato. Supplementi separati.
-                    </small>
                     <div class="mobile-menu-v2__quick-actions">
                       {nativeOfferSave && mobileOfferIdPattern.test(featuredOffer.id) && (
                         <NativeSaveAction
@@ -737,6 +740,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                         />
                       )}
                     </div>
+                    <small class="mobile-menu-v2__meta">
+                      Prezzo del drink da menu, non totale pagato. Supplementi separati.
+                    </small>
                     <a
                       class="mobile-menu-v2__source"
                       href={featuredOffer.source.url}
@@ -781,7 +787,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           )}
           <ul class="prices">
             {shown.flatMap((row, index) => [
-              index === 1 && (
+              index === 1 && !featuredOffer && (
                 <li key="other-prices" class="mobile-price-section" role="presentation">
                   {currentLang() === "en" ? "Other prices" : "Altri prezzi"}
                 </li>
@@ -795,7 +801,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 tier={tier(row)}
                 nativeDrinkSave={nativeDrinkSave}
                 savedDrinkKeys={savedDrinkKeys}
-                featured={index === 0 && (!savedFocus || savedFound)}
+                featured={index === 0 && !featuredOffer && (!savedFocus || savedFound)}
               />,
             ])}
           </ul>

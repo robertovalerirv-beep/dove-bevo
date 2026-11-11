@@ -84,6 +84,7 @@ export function CustomerPricesV2({
   venue,
   focus,
   offerFocus,
+  spotlightOfferId = null,
   mapFocus,
   mapOfferId,
   hasLegacyPrices,
@@ -92,6 +93,7 @@ export function CustomerPricesV2({
   venue: { key: string; cell: string; country: string };
   focus: DrinkFocus | null;
   offerFocus: string | null;
+  spotlightOfferId?: string | null;
   mapFocus: readonly string[];
   mapOfferId: string | null;
   hasLegacyPrices: boolean;
@@ -362,7 +364,14 @@ export function CustomerPricesV2({
       a.id.localeCompare(b.id)
     );
   });
-  const compactMenu = orderedOffers.length > 6;
+  const spotlightMenuOffer =
+    spotlightOfferId === null
+      ? undefined
+      : orderedOffers.find((offer) => offer.id === spotlightOfferId);
+  const listedOffers = spotlightMenuOffer
+    ? orderedOffers.filter((offer) => offer.id !== spotlightMenuOffer.id)
+    : orderedOffers;
+  const compactMenu = listedOffers.length > 6;
   const observations = new Map(
     rows
       .filter((row) => row.kind === "menu_offer" && row.offer_id)
@@ -608,8 +617,39 @@ export function CustomerPricesV2({
     );
   }
 
-  function offerRow(offer: MenuOffer, compact: boolean) {
+  function offerActions(offer: MenuOffer, includeSource: boolean) {
     const customer = observations.get(offer.id);
+    return (
+      <>
+        {includeSource && (
+          <a
+            href={offer.source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mobile-menu-v2__source"
+          >
+            Menu verificato il {offer.source.checked_on}
+          </a>
+        )}
+        {customer && observation(customer)}
+        {loadState === "ready" && (
+          <button
+            type="button"
+            class="btn btn--secondary mobile-customer-v2__update"
+            disabled={resolvingOffer !== null || saving || moreBusy}
+            onClick={() => {
+              void beginOffer(offer);
+            }}
+          >
+            Prezzo diverso? Aggiorna
+          </button>
+        )}
+        {editor?.kind === "menu_offer" && editor.offer.id === offer.id && priceForm}
+      </>
+    );
+  }
+
+  function offerRow(offer: MenuOffer, compact: boolean) {
     const exactSaved = offerFocus === offer.id;
     const offerSaved =
       mobileOfferIdPattern.test(offer.id) &&
@@ -674,32 +714,7 @@ export function CustomerPricesV2({
         )}
       </div>
     );
-    const actions = (
-      <>
-        <a
-          href={offer.source.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          class="mobile-menu-v2__source"
-        >
-          Menu verificato il {offer.source.checked_on}
-        </a>
-        {customer && observation(customer)}
-        {loadState === "ready" && (
-          <button
-            type="button"
-            class="btn btn--secondary mobile-customer-v2__update"
-            disabled={resolvingOffer !== null || saving || moreBusy}
-            onClick={() => {
-              void beginOffer(offer);
-            }}
-          >
-            Prezzo diverso? Aggiorna
-          </button>
-        )}
-        {editor?.kind === "menu_offer" && editor.offer.id === offer.id && priceForm}
-      </>
-    );
+    const actions = offerActions(offer, true);
     return (
       <li
         key={offer.id}
@@ -740,23 +755,40 @@ export function CustomerPricesV2({
 
   return (
     <>
-      {offers.length > 0 && (
+      {spotlightMenuOffer && (
+        <details
+          class="mobile-menu-v2__more-offers mobile-menu-v2__selected-details"
+          data-testid="selected-menu-actions"
+        >
+          <summary>
+            {english ? "Updates for the selected drink" : "Aggiorna il drink selezionato"}
+            <span>{english ? "Details" : "Dettagli"}</span>
+          </summary>
+          <div class="mobile-menu-v2__offer-actions">{offerActions(spotlightMenuOffer, false)}</div>
+        </details>
+      )}
+      {listedOffers.length > 0 && (
         <>
-          <ul class="mobile-menu-v2__offers">
-            {(compactMenu ? orderedOffers.slice(0, 1) : orderedOffers).map((offer) =>
-              offerRow(offer, false),
-            )}
-          </ul>
-          {compactMenu && (
+          {!spotlightMenuOffer && (
+            <ul class="mobile-menu-v2__offers">
+              {(compactMenu ? listedOffers.slice(0, 1) : listedOffers).map((offer) =>
+                offerRow(offer, false),
+              )}
+            </ul>
+          )}
+          {(compactMenu || spotlightMenuOffer) && (
             <details class="mobile-menu-v2__more-offers">
               <summary>
                 {english ? "Other menu prices" : "Altri prezzi dal menu"}
                 <span>
-                  {String(orderedOffers.length - 1)} {english ? "drinks" : "drink"}
+                  {String(spotlightMenuOffer ? listedOffers.length : listedOffers.length - 1)}{" "}
+                  {english ? "drinks" : "drink"}
                 </span>
               </summary>
               <ul class="mobile-menu-v2__offers mobile-menu-v2__offers--compact">
-                {orderedOffers.slice(1).map((offer) => offerRow(offer, true))}
+                {(spotlightMenuOffer ? listedOffers : listedOffers.slice(1)).map((offer) =>
+                  offerRow(offer, true),
+                )}
               </ul>
             </details>
           )}

@@ -5,8 +5,10 @@ enum MapReturnRoute {
     static func forArea(_ area: DiscoveryArea?) -> URL? {
         guard let area else { return nil }
         let locale = Locale(identifier: "en_US_POSIX")
-        let latitude = String(format: "%.5f", locale: locale, arguments: [area.latitude])
-        let longitude = String(format: "%.5f", locale: locale, arguments: [area.longitude])
+        // A first-party return URL only needs city-level position. Keep raw
+        // map/Locate coordinates out of the website URL and browser history.
+        let latitude = String(format: "%.2f", locale: locale, arguments: [area.latitude])
+        let longitude = String(format: "%.2f", locale: locale, arguments: [area.longitude])
         var parts = URLComponents(url: MobileEntry.homeURL, resolvingAgainstBaseURL: false)!
         parts.queryItems = [URLQueryItem(name: "at", value: "\(latitude),\(longitude)")]
         guard let url = parts.url, valid(url) else { return nil }

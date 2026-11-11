@@ -476,7 +476,8 @@ final class BottomNavigationControllerTests: XCTestCase {
         let restored = browser.currentTargetURL
         XCTAssertTrue(MapReturnRoute.valid(restored))
         XCTAssertEqual(URLComponents(url: restored, resolvingAgainstBaseURL: false)?.queryItems?.first?.value,
-                       "45.46420,9.19000")
+                       "45.46,9.19")
+        XCTAssertFalse(restored.absoluteString.contains("45.46420"))
     }
 
     @MainActor

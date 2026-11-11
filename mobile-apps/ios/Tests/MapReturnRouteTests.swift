@@ -3,16 +3,20 @@ import XCTest
 
 final class MapReturnRouteTests: XCTestCase {
     func testCapturedDiscoveryAreaReturnsToTheSameCityWithLocaleIndependentCoordinates() throws {
-        let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
+        let area = try XCTUnwrap(DiscoveryArea(latitude: 45.46427, longitude: 9.19033, zoom: 14))
         let route = try XCTUnwrap(MapReturnRoute.forArea(area))
         XCTAssertTrue(MapReturnRoute.valid(route))
         XCTAssertEqual(URLComponents(url: route, resolvingAgainstBaseURL: false)?.queryItems?.first?.value,
-                       "45.46420,9.19000")
-        let london = try XCTUnwrap(DiscoveryArea(latitude: 51.5074, longitude: -0.1278, zoom: 14))
+                       "45.46,9.19")
+        XCTAssertFalse(route.absoluteString.contains("45.46427"))
+        XCTAssertFalse(route.absoluteString.contains("9.19033"))
+        let london = try XCTUnwrap(DiscoveryArea(latitude: 51.50745, longitude: -0.12783, zoom: 14))
         let foreignRoute = try XCTUnwrap(MapReturnRoute.forArea(london))
         XCTAssertTrue(MapReturnRoute.valid(foreignRoute))
         XCTAssertEqual(URLComponents(url: foreignRoute, resolvingAgainstBaseURL: false)?.queryItems?.first?.value,
-                       "51.50740,-0.12780")
+                       "51.51,-0.13")
+        XCTAssertFalse(foreignRoute.absoluteString.contains("51.50745"))
+        XCTAssertFalse(foreignRoute.absoluteString.contains("-0.12783"))
         XCTAssertNil(MapReturnRoute.forArea(nil))
     }
 

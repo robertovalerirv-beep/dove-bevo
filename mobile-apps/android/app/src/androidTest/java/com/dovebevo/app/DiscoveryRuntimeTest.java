@@ -82,6 +82,28 @@ public final class DiscoveryRuntimeTest {
             assertTrue(text(rows()).contains("8,00"));
         });
     }
+    @Test public void featuredCardsPreviewRealRowsAndOpenTheirActualVenueAtCompactWidths()throws Exception {
+        menuOne=true;show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();
+        onMain(()->{
+            LinearLayout featured=featured();assertEquals(2,featured.getChildCount());assertEquals(3,rows().getChildCount());
+            for(int i=0;i<2;i++)assertEquals("Preview must preserve the first row for each venue",rows().getChildAt(i).getTag(),featured.getChildAt(i).getTag());
+            String preview=text(featured);assertTrue(preview.contains("6,00"));assertTrue(preview.contains("8,00"));
+            assertFalse("The third row belongs to an already featured venue",preview.contains("5,50 £"));
+            assertTrue("The complete list retains the distinct GBP menu row",text(rows()).contains("5,50 £"));assertTrue(preview.contains("Spritz"));assertFalse(preview.contains("Affare"));
+            for(int width:new int[]{320,393,411}){
+                float density=activity.getResources().getDisplayMetrics().density;int pixels=Math.round(width*density);
+                View root=screen.view();root.measure(View.MeasureSpec.makeMeasureSpec(pixels,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(700*density),View.MeasureSpec.EXACTLY));root.layout(0,0,pixels,Math.round(700*density));
+                View scroller=root.findViewWithTag("discovery.featuredScroll");assertTrue(scroller.getWidth()<=pixels);assertEquals(2,featured.getChildCount());
+                for(int i=0;i<featured.getChildCount();i++){
+                    View card=featured.getChildAt(i);assertTrue(card.getWidth()<=scroller.getWidth());assertTrue(card.getHeight()>=Math.round(48*density));
+                    assertTrue(card.getContentDescription().toString().contains("Apri Spritz da "));assertTrue(card.getContentDescription().toString().contains("€")||card.getContentDescription().toString().contains("£"));
+                }
+            }
+            View chosen=featured.getChildAt(1);String target=(String)chosen.getTag();chosen.performClick();assertEquals(target,opened.get());
+            ((Spinner)activity.findViewById(R.id.discovery_drink)).setSelection(RecommendationDrink.NEGRONI.ordinal());
+        });
+        onMain(()->{assertEquals(0,featured().getChildCount());assertEquals(0,rows().getChildCount());assertEquals(View.GONE,screen.view().findViewWithTag("discovery.featuredScroll").getVisibility());});
+    }
     @Test public void bandLabelsNeverEllipsizeOrOverflowAt320393And411Dp() {
         android.content.res.Resources resources=activity.getResources();android.content.res.Configuration saved=new android.content.res.Configuration(resources.getConfiguration());
         try{
@@ -117,7 +139,7 @@ public final class DiscoveryRuntimeTest {
         screen=new DiscoveryScreen(activity,opened::set,active::get,new DiscoveryLoader(client,task->activity.runOnUiThread(task)));assertEquals("beer_draft",screen.selectedDrink());screen.restoreSelection("spritz",0);activity.setContentView(screen.view());screen.show(area);
     });}
     private void awaitLoaded()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(!status().contains("Caricamento")&&(rows().getChildCount()==0||rows().getChildAt(0).getHeight()>0)));if(loaded.get())return;Thread.sleep(10);}fail("Owned discovery did not complete");}
-    private LinearLayout rows(){return activity.findViewById(R.id.discovery_rows);}private String status(){return((TextView)activity.findViewById(R.id.discovery_status)).getText().toString();}
+    private LinearLayout rows(){return activity.findViewById(R.id.discovery_rows);}private LinearLayout featured(){return screen.view().findViewWithTag("discovery.featured");}private String status(){return((TextView)activity.findViewById(R.id.discovery_status)).getText().toString();}
     private String text(View view){StringBuilder s=new StringBuilder();if(view instanceof TextView)s.append(((TextView)view).getText());if(view instanceof android.view.ViewGroup){android.view.ViewGroup g=(android.view.ViewGroup)view;for(int i=0;i<g.getChildCount();i++)s.append(' ').append(text(g.getChildAt(i)));}return s.toString();}
     private void onMain(Runnable action){instrumentation.runOnMainSync(action);instrumentation.waitForIdleSync();}
 }

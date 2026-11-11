@@ -394,7 +394,7 @@ class AndroidSmokeTests(unittest.TestCase):
             self.assertEqual(m.live_map_search_destination().get('text'), 'Milano · Cerca città o bar')
 
     def test_registered_source_inventory_is_exact_and_checked_before_emulator_start(self):
-        self.assertEqual(m.OWNED_TEST_COUNT, 60)
+        self.assertEqual(m.OWNED_TEST_COUNT, 61)
         m.verify_owned_test_sources()
         directory = self.base / 'registered-tests'
         directory.mkdir()

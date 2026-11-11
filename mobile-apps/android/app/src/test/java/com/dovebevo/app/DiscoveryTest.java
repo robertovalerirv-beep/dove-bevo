@@ -4,6 +4,7 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -53,5 +54,34 @@ public final class DiscoveryTest {
         Map<String,DiscoveryData.Cell> cells=new HashMap<>();for(int i=0;i<10;i++)cells.put("cell"+i,null);
         assertThrows(IOException.class,()->DiscoveryData.rows(cells,new DiscoveryArea(45,9,14),RecommendationDrink.SPRITZ,0));
         assertThrows(IOException.class,()->DiscoveryData.rows(Collections.emptyMap(),null,RecommendationDrink.SPRITZ,0));
+    }
+    @Test public void previewUsesFirstRealRowPerVenueWithoutRemovingAnyFullListRow()throws Exception {
+        DiscoveryArea area=new DiscoveryArea(45.4642,9.19,14);
+        DiscoveryData.Venue first=new DiscoveryData.Venue("n1","Primo","u0nd9","","Milano",45.4642,9.19);
+        DiscoveryData.Venue second=new DiscoveryData.Venue("n2","Secondo","u0nd9","","Milano",45.4642,9.19);
+        DiscoveryData.Venue third=new DiscoveryData.Venue("n3","Terzo","u0nd9","","Milano",45.4642,9.19);
+        DiscoveryData.Venue fourth=new DiscoveryData.Venue("n4","Quarto","u0nd9","","Milano",45.4642,9.19);
+        List<DiscoveryData.Row> full=Arrays.asList(
+                new DiscoveryData.Row(first,new FavoriteComparison.Price(500,"2026-11-01",0,false),area),
+                new DiscoveryData.Row(first,new FavoriteComparison.Price(600,"2026-11-01",0,false),area),
+                new DiscoveryData.Row(second,new FavoriteComparison.Price(700,"2026-11-01",0,false),area),
+                new DiscoveryData.Row(third,new FavoriteComparison.Price(800,"2026-11-01",0,false),area),
+                new DiscoveryData.Row(fourth,new FavoriteComparison.Price(900,"2026-11-01",0,false),area));
+        List<DiscoveryData.Row> preview=DiscoveryScreen.featuredRows(full);
+        assertEquals(3,preview.size());assertSame(full.get(0),preview.get(0));assertSame(full.get(2),preview.get(1));assertSame(full.get(3),preview.get(2));
+        assertEquals("Full result list is unchanged",5,full.size());
+        assertEquals(1,DiscoveryScreen.featuredRows(full.subList(0,2)).size());
+    }
+    @Test public void previewUsesExactEuropeMenuItemRatherThanItsBroadDrinkCategory()throws Exception {
+        DiscoveryArea area=new DiscoveryArea(45.4642,9.19,14);
+        DiscoveryData.Venue venue=new DiscoveryData.Venue("n1","Primo","u0nd9","","Milano",45.4642,9.19);
+        EuropePrices.Price menu=new EuropePrices.Price("n1","u0nd9","spritz","EUR",0,550,new EuropePrices.Serving("drink",null),
+                null,null,0,"revision","online_menu","https://example.com/menu","2026-11-01","hash","Spritz della casa","catalog",false);
+        DiscoveryData.Row row=new DiscoveryData.Row(venue,null,menu,area);
+        assertEquals("Spritz della casa",DiscoveryScreen.featuredDrinkName(row,RecommendationDrink.SPRITZ));
+        assertTrue(row.amountLabel().contains("5,50"));assertTrue(row.amountLabel().contains("€"));
+        EuropePrices.Price customer=new EuropePrices.Price("n1","u0nd9","spritz","EUR",0,550,new EuropePrices.Serving("drink",null),
+                "2026-11-01",null,0,"revision","customer",null,null,null,null,"catalog",false);
+        assertEquals("Spritz",DiscoveryScreen.featuredDrinkName(new DiscoveryData.Row(venue,null,customer,area),RecommendationDrink.SPRITZ));
     }
 }

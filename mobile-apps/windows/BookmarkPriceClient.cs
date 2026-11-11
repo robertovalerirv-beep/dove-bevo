@@ -150,7 +150,7 @@ internal sealed class BookmarkPriceClient
             category, serving);
     }
 
-    private static string? VerifiedOfferServing(JsonElement offer)
+    internal static string? VerifiedOfferServing(JsonElement offer)
     {
         if (!offer.TryGetProperty("serving", out var serving) ||
             serving.ValueKind != JsonValueKind.Object) return null;
@@ -181,14 +181,26 @@ internal sealed class BookmarkPriceClient
 
     // A quantified 400–600 ml serving or an explicit medium label can be
     // compared as Birra media; small, conflicting and unknown sizes cannot.
-    private static bool IsMediumDraftBeer(JsonElement serving)
+    internal static bool IsMediumDraftBeer(JsonElement serving)
     {
         if (serving.ValueKind != JsonValueKind.Object) return false;
         string? label = null;
         if (serving.TryGetProperty("label", out var labelValue) &&
             labelValue.ValueKind == JsonValueKind.String)
-            label = labelValue.GetString()?.Normalize(NormalizationForm.FormKC).ToLowerInvariant();
-        if (label is not null && SmallBeer.IsMatch(label)) return false;
+            label = labelValue.GetString();
+        int? ml = null;
+        if (serving.TryGetProperty("ml", out var mlValue) && mlValue.ValueKind != JsonValueKind.Null)
+        {
+            if (mlValue.ValueKind != JsonValueKind.Number || !mlValue.TryGetInt32(out var amount)) return false;
+            ml = amount;
+        }
+        return IsMediumDraftBeer(label, ml);
+    }
+
+    internal static bool IsMediumDraftBeer(string? servingLabel, int? ml)
+    {
+        var label = servingLabel?.Normalize(NormalizationForm.FormKC).ToLowerInvariant();
+        if (label is not null && (SmallBeer.IsMatch(label) || LargeBeer.IsMatch(label))) return false;
         var quantities = label is null ? Match.Empty : Quantity.Match(label);
         if (quantities.Success && quantities.NextMatch().Success) return false;
         decimal? labelledMl = null;
@@ -204,17 +216,16 @@ internal sealed class BookmarkPriceClient
                 _ => value,
             };
         }
-        if (serving.TryGetProperty("ml", out var mlValue) &&
-            mlValue.ValueKind != JsonValueKind.Null)
+        if (ml is int servingMl)
         {
-            if (mlValue.ValueKind != JsonValueKind.Number || !mlValue.TryGetInt32(out var ml) ||
-                ml is < 1 or > 100_000 ||
-                labelledMl is not null && Math.Abs(labelledMl.Value - ml) > 1) return false;
-            return ml is >= 400 and <= 600;
+            if (servingMl is < 1 or > 100_000 ||
+                labelledMl is not null && Math.Abs(labelledMl.Value - servingMl) > 1) return false;
+            // The European catalogue stores a pint as 568 ml without a label.
+            return servingMl is >= 400 and <= 600 and not 568;
         }
-        if (label is null || LargeBeer.IsMatch(label)) return false;
+        if (label is null) return false;
         return labelledMl is null ? MediumBeer.IsMatch(label)
-            : labelledMl is >= 400 and <= 600;
+            : labelledMl is >= 400 and <= 600 && labelledMl != 568;
     }
 
     private static async Task<string?> CustomerAsync(SaveAction action, CancellationToken cancellation)

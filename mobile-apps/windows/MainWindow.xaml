@@ -119,8 +119,11 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock Text="Scopri i prezzi" FontSize="22" FontWeight="Bold" />
-                        <TextBlock Text="Menu verificati e segnalazioni nella zona · eventuali costi di servizio esclusi"
-                                   TextWrapping="Wrap" Margin="0,3,0,8" Foreground="#5E554B" />
+                        <TextBlock x:Name="DiscoveryScopeNote"
+                                   Text="Prezzi da menu: selezione, non elenco completo. Le segnalazioni dei clienti sono indicate."
+                                   TextWrapping="Wrap" Margin="0,3,0,2" Foreground="#5E554B" />
+                        <TextBlock Text="Valute e formati diversi non sono direttamente confrontabili; coperto e supplementi possono aggiungersi."
+                                   TextWrapping="Wrap" Margin="0,0,0,8" Foreground="#5E554B" />
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Zona" VerticalAlignment="Center" Margin="0,0,10,0" />
@@ -157,7 +160,7 @@
                         </ScrollViewer>
                         <TextBlock x:Name="FeaturedTitle" Text="Prezzi della zona" FontSize="17" FontWeight="Bold"
                                    Margin="0,3,0,2" Visibility="Collapsed" />
-                        <TextBlock x:Name="FeaturedSubtitle" Text="I primi prezzi disponibili per il drink scelto"
+                        <TextBlock x:Name="FeaturedSubtitle" Text="Selezione di prezzi per il drink scelto"
                                    FontSize="12" Foreground="#5E554B" Margin="0,0,0,8" Visibility="Collapsed" />
                         <ScrollViewer x:Name="FeaturedScroller" HorizontalScrollBarVisibility="Auto"
                                       VerticalScrollBarVisibility="Disabled" Margin="0,0,0,10"
@@ -200,7 +203,23 @@
                     </StackPanel>
                     <ListBox x:Name="DiscoveryList" FontSize="15" Background="#FFFBF4"
                              BorderBrush="#E2D3BE" DisplayMemberPath="Display"
-                             MouseDoubleClick="OpenDiscoveryVenue_Click" />
+                             VirtualizingPanel.IsVirtualizingWhenGrouping="True"
+                             MouseDoubleClick="OpenDiscoveryVenue_Click">
+                        <ListBox.GroupStyle>
+                            <GroupStyle>
+                                <GroupStyle.HeaderTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#FFF4E4" Padding="8,5" Margin="0,5,0,3">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="Prezzi in " FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </GroupStyle.HeaderTemplate>
+                            </GroupStyle>
+                        </ListBox.GroupStyle>
+                    </ListBox>
                 </DockPanel>
             </Border>
         </Grid>

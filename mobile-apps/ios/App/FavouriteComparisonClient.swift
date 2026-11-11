@@ -1,12 +1,12 @@
 import Foundation
 
 enum ComparisonEndpoint: Equatable {
-    case health, venues(version: String, cell: String), prices(cell: String), mobileCatalog, mobilePrices(cell: String)
+    case health, places(version: String), venues(version: String, cell: String), prices(cell: String), mobileCatalog, mobilePrices(cell: String)
     case menuV2(key: String, cell: String, after: String?), customerV2(key: String, cell: String, after: String?)
     case menuV2Cell(cell: String, categories: [String], after: String?)
 
     var maximumBytes: Int {
-        switch self { case .health: return 8192; case .venues, .mobileCatalog, .mobilePrices: return 2 * 1024 * 1024; case .prices: return 512 * 1024
+        switch self { case .health: return 8192; case .places, .venues, .mobileCatalog, .mobilePrices: return 2 * 1024 * 1024; case .prices: return 512 * 1024
         case .menuV2, .customerV2, .menuV2Cell: return 1_048_576 }
     }
 
@@ -40,6 +40,9 @@ enum ComparisonEndpoint: Equatable {
             guard ComparisonJSON.matches(cell, "^[0-9b-hjkmnp-z]{5}$") else { throw ComparisonReadError.invalidData }
             return URL(string: "https://www.dovebevo.com/api/mobile/prices/cells/\(cell)")!
         case .health: return URL(string: "https://www.dovebevo.com/api/health")!
+        case .places(let version):
+            guard ComparisonJSON.matches(version, "^[0-9]{8}$") else { throw ComparisonReadError.invalidData }
+            return URL(string: "https://www.dovebevo.com/data/\(version)/places.json")!
         case .venues(let version, let cell):
             guard ComparisonJSON.matches(version, "^[0-9]{8}$"), ComparisonJSON.matches(cell, "^[0-9b-hjkmnp-z]{5}$") else { throw ComparisonReadError.invalidData }
             return URL(string: "https://www.dovebevo.com/data/\(version)/v/\(cell).json")!

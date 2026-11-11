@@ -97,7 +97,7 @@ final class DiscoveryTests: XCTestCase {
                 XCTAssertEqual(categories, DrinkCategory.all.map(\.code))
                 try transport.complete(index, .success(menuCellFixture(cell: cell, categories: categories,
                     includeOffer: cell == "u0nd9")))
-            case .health, .mobileCatalog, .mobilePrices, .menuV2, .customerV2:
+            case .health, .places, .mobileCatalog, .mobilePrices, .menuV2, .customerV2:
                 XCTFail("Unexpected public read in bounded Italian discovery")
             }
             index += 1
@@ -223,7 +223,7 @@ final class DiscoveryTests: XCTestCase {
             case .prices(let cell):
                 try transport.complete(index, .success(ComparisonFixtures.prices(cell == "u0nd9" ? [["n123", "spritz", 0, 600, "2026-10-28", 0, 0]] : [])))
             case .health: XCTFail("Health must be read only once")
-            case .mobileCatalog, .mobilePrices, .menuV2, .customerV2, .menuV2Cell: XCTFail("This explicit legacy-only fixture must not request the Europe adapter")
+            case .places, .mobileCatalog, .mobilePrices, .menuV2, .customerV2, .menuV2Cell: XCTFail("This explicit legacy-only fixture must not request the Europe adapter")
             }
             index += 1
         }
@@ -279,7 +279,7 @@ final class DiscoveryTests: XCTestCase {
                         (cell == area.cells[0] ? [["n456", "spritz", 0, 900, "2026-10-28", 0, 0]] : [])
                     try transport.complete(index, .success(ComparisonFixtures.prices(rows)))
                 case .health: XCTFail("Only the first request may be health")
-                case .mobileCatalog, .mobilePrices, .menuV2, .customerV2, .menuV2Cell: XCTFail("Explicit legacy-only fixture")
+                case .places, .mobileCatalog, .mobilePrices, .menuV2, .customerV2, .menuV2Cell: XCTFail("Explicit legacy-only fixture")
                 }
             }
             XCTAssertEqual(output?.venues.map(\.key), ["n456"])

@@ -4,10 +4,10 @@ This is a **source-only, unseeded** mobile-menu-v2 candidate for one existing ve
 
 ## Identity and source
 
-- Existing Dove Bevo static venue: `n5410425433`, cell `sqc2z`, Palermo city ID `67253662`, `Via Giuseppe Piazzi 19`. [OSM node](https://www.openstreetmap.org/node/5410425433); the public `/api/mobile/v2/menu/venues/n5410425433?cell=sqc2z` returned `stored_offer_count: 0` during research.
+- Existing Dove Bevo static venue: `n5410425433`, cell `sqc2z`, Palermo city ID `67253662`, `Via Giuseppe Piazzi 19`, and exact published static coordinates `38.12423, 13.34737`. [OSM node](https://www.openstreetmap.org/node/5410425433); the public `/api/mobile/v2/menu/venues/n5410425433?cell=sqc2z` returned `stored_offer_count: 0` during research.
 - [Vinile Pub owner homepage](https://vinilepub.it/) says `Via Giuseppe Piazzi 19, 90141 Palermo PA` and directly links [this drink-menu PDF](https://vinilepub.it/wp-content/uploads/menu-vinilepub_online.pdf).
 - The PDF was directly fetched twice on 11 November 2026: HTTP 200, `application/pdf`, 1,115,042 bytes, SHA-256 `c82fd401193a0a1e25e5c681327b050d94f64765f81998d8ac9c2be1bca547a3` both times. It has 16 image-only pages. `pdfinfo` reports title `menu-vinilepub-26+cartavini_P3`, creation 19 October 2026 16:55:10, modification 19 October 2026 16:55:11. The owner site linked it on the check date. No effective price date or current receipt is stated.
-- [Source manifest](../data/mobile-menu-v2-seeds/3f173702de95964546a3002be7d3a2503ecc10f22a0524d2042bc2c269920728.json) binds each reviewed item to the exact PDF hash, PDF page, printed name, and normalized EUR amount. The page-evidence digest is `adc20bb8dd22e179571e897a9e107b9c71a27ad6265674bee1ac8d585759c21b`.
+- [Source manifest](../data/mobile-menu-v2-seeds/aa3ceeb4f83a8932ee05b5a25b7ca66c2d3046dde65c095dfdf2d4eb012c7d9f.json) binds each reviewed item to the exact PDF hash, PDF page, printed name, and normalized EUR amount. The page-evidence digest is `adc20bb8dd22e179571e897a9e107b9c71a27ad6265674bee1ac8d585759c21b`.
 
 ## Scope and interpretation
 

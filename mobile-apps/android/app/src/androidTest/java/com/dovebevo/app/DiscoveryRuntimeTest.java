@@ -127,7 +127,9 @@ public final class DiscoveryRuntimeTest {
             assertEquals(View.VISIBLE,caveats.getVisibility());
             assertTrue(caveats.getText().toString().contains(activity.getString(R.string.discovery_menu_samples)));
             assertTrue(caveats.getText().toString().contains("Immagini illustrative"));
-            assertFalse("The long menu caveat must not delay featured prices",status().contains("Prezzi da menu"));
+            assertTrue("A sampled menu must be disclosed before the cards",status().contains("prezzi da menu: selezione"));
+            assertFalse("The long menu caveat must not delay featured prices",
+                    status().contains(activity.getString(R.string.discovery_menu_samples)));
             assertEquals("Altre spese non verificate",DiscoveryScreen.priceCaveat(new MenuV2Prices.Price(
                     "fixture","Bar","Spritz","spritz",0,550,"GBP",2,"Calice",200,false,"2026-11-03",
                     "Altre spese del locale non verificate; controlla la scheda del locale.",null,null,null)));
@@ -150,11 +152,17 @@ public final class DiscoveryRuntimeTest {
                 DiscoveryScreen.priceCaveat(conditional));
         assertEquals("5,50 €",conditional.amount());
         assertTrue(conditional.feeNotice.contains("2,50 €"));
+        assertEquals("EUR · €",DiscoveryScreen.currencyHeading("EUR"));
+        assertEquals("GBP · £",DiscoveryScreen.currencyHeading("GBP"));
+        assertEquals("CHF",DiscoveryScreen.currencyHeading("CHF"));
+        assertEquals("USD",DiscoveryScreen.currencyHeading("USD"));
     }
     @Test public void mixedSourcePricesRiseWithinEachCurrencyAcrossServingsWithStableTies()throws Exception {
         DiscoveryArea area=new DiscoveryArea(45.4642,9.19,14);
         DiscoveryData.Venue venue=new DiscoveryData.Venue("n123","Bar","u0nd9","Via A","Milano",45.4642,9.19);
         MenuV2Prices.Price menu=new MenuV2Prices.Price("a","Bar","Spritz","spritz",0,600,"EUR",2,
+                "Calice",200,false,"2026-11-01","Altre spese non verificate.");
+        MenuV2Prices.Price oneDigit=new MenuV2Prices.Price("exp1","Bar","Spritz","spritz",0,65,"EUR",1,
                 "Calice",200,false,"2026-11-01","Altre spese non verificate.");
         EuropePrices.Price europe=new EuropePrices.Price("n123","u0nd9","spritz","EUR",0,650,
                 new EuropePrices.Serving("glass",200),"2026-11-01",null,0,"r1","user",
@@ -167,18 +175,21 @@ public final class DiscoveryRuntimeTest {
                 null,null,null,null,"v1",false);
         DiscoveryData.Row sixFifty=new DiscoveryData.Row(venue,null,europe,area);
         DiscoveryData.Row six=new DiscoveryData.Row(venue,menu,area);
+        DiscoveryData.Row sixFiftyOneDigit=new DiscoveryData.Row(venue,oneDigit,area);
         DiscoveryData.Row eight=new DiscoveryData.Row(venue,new FavoriteComparison.Price(800,"2026-11-01",0,false),area);
         DiscoveryData.Row fiveFiftyEuro=new DiscoveryData.Row(venue,null,cheaperEuro,area);
         DiscoveryData.Row fourFiftyPounds=new DiscoveryData.Row(venue,null,pounds,area);
         java.util.List<DiscoveryData.Row> sorted=DiscoveryData.rankRows(new java.util.ArrayList<>(
-                java.util.Arrays.asList(sixFifty,six,eight,fiveFiftyEuro,fourFiftyPounds)));
+                java.util.Arrays.asList(sixFifty,sixFiftyOneDigit,six,eight,fiveFiftyEuro,fourFiftyPounds)));
         assertEquals(six.group(),sixFifty.group());
         assertNotEquals(fiveFiftyEuro.group(),six.group());
         assertEquals(550,sorted.get(0).amount());assertEquals(600,sorted.get(1).amount());
-        assertEquals(650,sorted.get(2).amount());assertEquals(800,sorted.get(3).amount());
-        assertEquals(450,sorted.get(4).amount());
+        assertEquals(65,sorted.get(2).amount());assertEquals(650,sorted.get(3).amount());
+        assertEquals(800,sorted.get(4).amount());assertEquals(450,sorted.get(5).amount());
         assertTrue(sorted.get(0).amountLabel().contains("5,50"));assertEquals("6,00 €",sorted.get(1).amountLabel());
-        assertTrue(sorted.get(4).amountLabel().contains("£"));assertNotEquals(sorted.get(0).currency(),sorted.get(4).currency());
+        assertEquals("6,5 €",sorted.get(2).amountLabel());
+        assertEquals(sorted.get(2).normalizedAmount(),sorted.get(3).normalizedAmount());
+        assertTrue(sorted.get(5).amountLabel().contains("£"));assertNotEquals(sorted.get(0).currency(),sorted.get(5).currency());
         MenuV2Prices.Price later=new MenuV2Prices.Price("b","Bar","Spritz","spritz",0,600,"EUR",2,
                 "Calice",200,false,"2026-11-01","Altre spese non verificate.");
         java.util.List<DiscoveryData.Row> ties=DiscoveryData.rankRows(new java.util.ArrayList<>(

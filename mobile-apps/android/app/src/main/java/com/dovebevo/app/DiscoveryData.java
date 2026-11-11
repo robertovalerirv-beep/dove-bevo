@@ -53,6 +53,8 @@ final class DiscoveryData {
         }
         String currency(){return menuPrice!=null?menuPrice.currency:mobilePrice!=null?mobilePrice.currency:"EUR";}
         int amount(){return menuPrice!=null?menuPrice.amountMinor:mobilePrice==null?price.cents:mobilePrice.amountMinor;}
+        long normalizedAmount(){int exponent=menuPrice==null?2:menuPrice.exponent;
+            return (long)amount()*new int[]{1000,100,10,1}[exponent];}
         String amountLabel(){return menuPrice==null?NativePricePresentation.amount(price,mobilePrice):menuPrice.amount();}
         String groupLabel(){return menuPrice==null?NativePricePresentation.groupLabel(price,mobilePrice):menuPrice.currency+(menuPrice.serving().isEmpty()?"":" · "+menuPrice.serving());}
         String day(){return menuPrice!=null?menuPrice.day:mobilePrice==null?price.day:mobilePrice.sourceKind.equals("online_menu")?mobilePrice.sourceCheckedOn:mobilePrice.observedOn;}
@@ -134,7 +136,7 @@ final class DiscoveryData {
     static List<Row> rankRows(List<Row> rows){
         Collections.sort(rows,(a,b)->{
             int currency=a.currency().compareTo(b.currency());if(currency!=0)return currency;
-            int amount=Integer.compare(a.amount(),b.amount());if(amount!=0)return amount;
+            int amount=Long.compare(a.normalizedAmount(),b.normalizedAmount());if(amount!=0)return amount;
             int group=a.group().compareTo(b.group());if(group!=0)return group;
             int distance=Double.compare(a.metres,b.metres);if(distance!=0)return distance;
             int name=a.venue.name.compareToIgnoreCase(b.venue.name);if(name!=0)return name;

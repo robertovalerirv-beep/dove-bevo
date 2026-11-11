@@ -87,6 +87,38 @@ final class DiscoveryControllerTests: XCTestCase {
         XCTAssertFalse(artworkNote.isHidden)
     }
 
+    @MainActor func testSelectedMenuSampleIsDisclosedAboveRealPriceCards() throws {
+        let client = DelayedDiscoveryService()
+        let controller = DiscoveryViewController(client: client, activityCheck: { true }, onOpen: { _ in }, onMap: {})
+        let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
+        controller.setArea(area)
+        controller.selectDrink("spritz")
+        let mounted = try OwnedReferenceWindow(root: UINavigationController(rootViewController: controller), category: .large)
+        defer { mounted.close() }
+        let requested = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in client.calls.count == 1 }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [requested], timeout: 5), .completed)
+        guard client.calls.count == 1 else { throw ComparisonReadError.unavailable }
+        let price = MenuV2Price(id: "sample", venueName: "Locale vero", itemName: "Spritz",
+            category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+            servingLabel: "Calice", servingML: 200,
+            origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu")), "2026-11-01"),
+            feeNotice: "Altre spese del locale non verificate.")
+        let menuVenue = MenuV2CellVenue(key: "n123", cell: "u0nd9", name: "Locale vero",
+            latitude: 45.4642, longitude: 9.19, address: "Via A", city: "Milano",
+            matchingOfferCount: 1, samples: [price])
+        var snapshot = DiscoverySnapshot(area: area, venues: [], unavailableCells: [])
+        snapshot.menu = ["n123": menuVenue]
+        client.complete(0, snapshot)
+        mounted.layout()
+        let status = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? UILabel }.first {
+            $0.accessibilityIdentifier == "discovery.loaded"
+        })
+        let strip = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? DiscoveryFeaturedStrip }.first)
+        XCTAssertTrue(status.text?.contains("prezzi da menu: selezione") == true)
+        XCTAssertLessThan(status.frame.maxY, strip.frame.minY)
+        XCTAssertEqual(descendants(controller.view).compactMap { $0 as? DiscoveryFeaturedCard }.count, 1)
+    }
+
     @MainActor func testMenuPriceShowsStalenessAndSeparateFeeScopeBesidePrice() throws {
         let fee = "Spese separate: Coperto 2,50 € / persona (tutti gli ordini). Altre spese del locale non verificate."
         let price = MenuV2Price(id: "fixture", venueName: "Locale vero", itemName: "Spritz",
@@ -124,9 +156,9 @@ final class DiscoveryControllerTests: XCTestCase {
             DiscoveryPresentedRow(key: key, name: "Bar", url: URL(string: "https://www.dovebevo.com/bar/\(key)?c=u0nd9")!,
                                   latitude: 45.4642, longitude: 9.19, location: "Milano", price: price)
         }
-        func menu(_ id: String) -> MenuV2Price {
+        func menu(_ id: String, amount: Int = 600, exponent: Int = 2) -> MenuV2Price {
             MenuV2Price(id: id, venueName: "Bar", itemName: "Spritz", category: "spritz", band: .normal,
-                        amountMinor: 600, currency: "EUR", exponent: 2, servingLabel: "Calice", servingML: 200,
+                        amountMinor: amount, currency: "EUR", exponent: exponent, servingLabel: "Calice", servingML: 200,
                         origin: .ownerMenu(menuURL, "2026-11-01"), feeNotice: "Altre spese non verificate.")
         }
         func europe(_ amount: Int, currency: String, serving: EuropeServing = EuropeServing(unit: "glass", ml: 200)) -> EuropePrice {
@@ -137,22 +169,27 @@ final class DiscoveryControllerTests: XCTestCase {
         }
         let sixFifty = row("n101", .europe(europe(650, currency: "EUR")))
         let six = row("n102", .menuV2(menu("a")))
+        let sixFiftyOneDigit = row("n106", .menuV2(menu("exp1", amount: 65, exponent: 1)))
         let eight = row("n103", .legacy(FavouritePrice(drink: "spritz", band: .normal,
                          cents: 800, observedOn: "2026-11-01", confirmations: 0, quarantined: false)))
         let fiveFiftyEuro = row("n104", .europe(europe(550, currency: "EUR", serving: EuropeServing(unit: "ml", ml: 250))))
         let fourFiftyPounds = row("n105", .europe(europe(450, currency: "GBP")))
-        let sorted = DiscoverySnapshot.rankRows([sixFifty, six, eight, fiveFiftyEuro, fourFiftyPounds], around: area)
+        let sorted = DiscoverySnapshot.rankRows([sixFifty, sixFiftyOneDigit, six, eight, fiveFiftyEuro, fourFiftyPounds], around: area)
         XCTAssertEqual(six.price.discoveryGroup, sixFifty.price.discoveryGroup)
         XCTAssertNotEqual(fiveFiftyEuro.price.discoveryGroup, six.price.discoveryGroup)
-        XCTAssertEqual(sorted.map(\.price.amount), ["5,50 €", "6,00 €", "6,50 €", "8,00 €", "4,50 £"])
-        XCTAssertEqual(sorted.prefix(4).map { DiscoverySnapshot.currency($0.price) }, ["EUR", "EUR", "EUR", "EUR"])
-        XCTAssertEqual(DiscoverySnapshot.currency(sorted[4].price), "GBP")
+        XCTAssertEqual(sorted.map(\.price.amount), ["5,50 €", "6,00 €", "6,5 €", "6,50 €", "8,00 €", "4,50 £"])
+        XCTAssertEqual(sorted.prefix(5).map { DiscoverySnapshot.currency($0.price) }, ["EUR", "EUR", "EUR", "EUR", "EUR"])
+        XCTAssertEqual(DiscoverySnapshot.currency(sorted[5].price), "GBP")
+        XCTAssertEqual(DiscoveryViewController.currencyHeading("EUR"), "EUR · €")
+        XCTAssertEqual(DiscoveryViewController.currencyHeading("GBP"), "GBP · £")
+        XCTAssertEqual(DiscoveryViewController.currencyHeading("CHF"), "CHF")
+        XCTAssertEqual(DiscoveryViewController.currencyHeading("USD"), "USD")
         let category = try XCTUnwrap(DrinkCategory.all.first { $0.code == "spritz" })
         let euroCell = DiscoveryVenueCell(style: .default, reuseIdentifier: nil)
         euroCell.configure(row: sorted[0], category: category, band: .normal, rank: 1,
                            distance: "0 m", today: "2026-11-11", traits: .current, currencyHeading: "EUR · €")
         let poundCell = DiscoveryVenueCell(style: .default, reuseIdentifier: nil)
-        poundCell.configure(row: sorted[4], category: category, band: .normal, rank: 1,
+        poundCell.configure(row: sorted[5], category: category, band: .normal, rank: 1,
                             distance: "0 m", today: "2026-11-11", traits: .current, currencyHeading: "GBP · £")
         XCTAssertTrue(descendants(euroCell).compactMap { ($0 as? UILabel)?.text }.contains("EUR · €"))
         XCTAssertTrue(descendants(poundCell).compactMap { ($0 as? UILabel)?.text }.contains("GBP · £"))

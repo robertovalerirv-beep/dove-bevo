@@ -193,16 +193,19 @@ final class DiscoveryScreen {
         if(snapshot==null){status.setText(R.string.favorites_paused);return;}
         if(snapshot.cells.isEmpty()){status.setText(R.string.discovery_unavailable);return;}
         List<DiscoveryData.Row> values;try{values=DiscoveryData.rows(snapshot.cells,area,drink,band);}catch(IOException unavailable){status.setText(R.string.discovery_unavailable);return;}
+        boolean selectedMenuSample=false;
+        for(DiscoveryData.Row row:values)if(row.menuPrice!=null){selectedMenuSample=true;break;}
         status.setText(activity.getString(R.string.discovery_status_format,
-                values.isEmpty()?activity.getString(R.string.discovery_empty):Math.min(values.size(),DiscoveryData.MAX_ROWS)+" prezzi · formati non confrontabili",
+                values.isEmpty()?activity.getString(R.string.discovery_empty):Math.min(values.size(),DiscoveryData.MAX_ROWS)+" prezzi"+
+                        (selectedMenuSample?" · prezzi da menu: selezione":"")+" · formati non confrontabili",
                 snapshot.partial?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_partial)):"",
                 values.size()>DiscoveryData.MAX_ROWS?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_limit)):""));
         if(!values.isEmpty()){
-            featuredTitle.setText(snapshot.menuSamples?"Prezzi disponibili · selezione":"Prezzi disponibili");
+            featuredTitle.setText(selectedMenuSample?"Prezzi disponibili · selezione":"Prezzi disponibili");
             featuredTitle.setVisibility(View.VISIBLE);((View)featured.getParent()).setVisibility(View.VISIBLE);
             for(DiscoveryData.Row row:featuredRows(values))addFeatured(row);
             disclosure.setText("Valute e formati diversi non sono confrontabili. "+
-                    (snapshot.menuSamples?activity.getString(R.string.discovery_menu_samples)+" ":"")+
+                    (selectedMenuSample?activity.getString(R.string.discovery_menu_samples)+" ":"")+
                     "Immagini illustrative dei drink, non foto dei locali.");
             featuredTitle.setContentDescription(featuredTitle.getText()+". "+disclosure.getText());
             disclosure.setVisibility(View.VISIBLE);
@@ -215,7 +218,7 @@ final class DiscoveryScreen {
             if(!row.currency().equals(currency)){currency=row.currency();rank=0;}rank++;
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.discoveryCard(card);card.setPadding(dp(8),dp(4),dp(8),dp(4));
             if(multipleCurrencies&&rank==1){
-                TextView currencyTitle=text(currency+" · "+(currency.equals("GBP")?"£":"€"),14);
+                TextView currencyTitle=text(currencyHeading(currency),14);
                 currencyTitle.setTag("discovery.currencyHeading");
                 NativeAppearance.title(currencyTitle);heading(currencyTitle);currencyTitle.setPadding(0,0,0,dp(3));card.addView(currencyTitle);
             }
@@ -277,6 +280,7 @@ final class DiscoveryScreen {
         String visible=appendScope(condition,scope);return visible.isEmpty()?null:visible;
     }
     private static String appendScope(String first,String next){return first.isEmpty()?next:next.isEmpty()?first:first+" · "+next;}
+    static String currencyHeading(String currency){return currency.equals("EUR")?"EUR · €":currency.equals("GBP")?"GBP · £":currency;}
     /** An ordered preview of the same read-only rows shown below, never a synthetic deal. */
     private void addFeatured(DiscoveryData.Row row){
         LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.discoveryCard(card);card.setPadding(dp(8),dp(8),dp(8),dp(8));

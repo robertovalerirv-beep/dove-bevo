@@ -89,11 +89,12 @@ struct DiscoverySnapshot {
     /// like-for-like comparison. A total tie has a stable source identity.
     static func rankRows(_ values: [DiscoveryPresentedRow], around area: DiscoveryArea) -> [DiscoveryPresentedRow] {
         values.sorted { first, second in
-            if currency(first.price) != currency(second.price) {
-                return currency(first.price) < currency(second.price)
+            if Self.currency(first.price) != Self.currency(second.price) {
+                return Self.currency(first.price) < Self.currency(second.price)
             }
-            if first.price.amountMinor != second.price.amountMinor {
-                return first.price.amountMinor < second.price.amountMinor
+            let firstAmount = Self.normalizedAmount(first.price), secondAmount = Self.normalizedAmount(second.price)
+            if firstAmount != secondAmount {
+                return firstAmount < secondAmount
             }
             if first.price.discoveryGroup != second.price.discoveryGroup {
                 return first.price.discoveryGroup < second.price.discoveryGroup
@@ -115,6 +116,18 @@ struct DiscoverySnapshot {
         case .europe(let value): return value.currency
         case .menuV2(let value): return value.currency
         }
+    }
+
+    /// Thousandths of the original currency unit. Every accepted menu
+    /// exponent is 0...3, so this stays exact and within Int64 bounds.
+    private static func normalizedAmount(_ price: NativeComparablePrice) -> Int64 {
+        let exponent: Int
+        switch price {
+        case .legacy, .europe: exponent = 2
+        case .menuV2(let value): exponent = value.exponent
+        }
+        let scale: [Int64] = [1000, 100, 10, 1]
+        return Int64(price.amountMinor) * scale[exponent]
     }
 
     private static func tieKey(_ price: NativeComparablePrice) -> String {

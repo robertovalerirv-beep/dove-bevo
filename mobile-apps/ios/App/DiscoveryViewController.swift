@@ -234,18 +234,23 @@ final class DiscoveryViewController: UITableViewController {
             statusLabel.accessibilityIdentifier = "discovery.loading"
         } else if let snapshot {
             let suffix = allRows.count > 200 ? " Mostrati i primi 200 prezzi." : ""
+            let selectedMenuSample = allRows.contains { row in
+                if case .menuV2 = row.price { return true }
+                return false
+            }
+            let sampleCue = selectedMenuSample ? " · prezzi da menu: selezione" : ""
             if snapshot.unavailableCells.count == snapshot.area.cells.count && snapshot.venues.isEmpty &&
                 snapshot.europe?.venues.isEmpty != false && snapshot.menu.isEmpty {
                 statusLabel.text = "Prezzi della zona non disponibili. Controlla la connessione, poi apri Altre opzioni e scegli Ricarica."
                 statusLabel.accessibilityIdentifier = "discovery.unavailable"
             } else if !snapshot.partialCells.isEmpty {
-                statusLabel.text = "\(allRows.count) prezzi · formati non confrontabili. Alcune parti della zona non sono disponibili: scegli Ricarica in Altre opzioni.\(suffix)"
+                statusLabel.text = "\(allRows.count) prezzi\(sampleCue) · formati non confrontabili. Alcune parti della zona non sono disponibili: scegli Ricarica in Altre opzioni.\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.partial"
             } else if allRows.isEmpty {
                 statusLabel.text = "Nessun prezzo disponibile per \(drink.name) · \(band.name) nei dati caricati di questa zona. Prova un altro drink o scegli un'altra città."
                 statusLabel.accessibilityIdentifier = "discovery.empty"
             } else {
-                statusLabel.text = "\(allRows.count) prezzi · formati non confrontabili.\(suffix)"
+                statusLabel.text = "\(allRows.count) prezzi\(sampleCue) · formati non confrontabili.\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.loaded"
             }
         } else {
@@ -300,6 +305,13 @@ final class DiscoveryViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "Prezzi crescenti per valuta" }
+    static func currencyHeading(_ currency: String) -> String {
+        switch currency {
+        case "EUR": return "EUR · €"
+        case "GBP": return "GBP · £"
+        default: return currency
+        }
+    }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         "I prezzi da menu qui sono un campione per drink: apri il locale per vedere il listino disponibile. Valute e formati diversi non sono confrontabili; i prezzi italiani precedenti non dichiarano il formato. Prezzi nella zona del centro selezionato, non una classifica personale. Le distanze sono dal centro selezionato. Mappa e prezzi richiedono internet."
     }
@@ -315,7 +327,7 @@ final class DiscoveryViewController: UITableViewController {
         let rank = rows.prefix(indexPath.row + 1).filter { DiscoverySnapshot.currency($0.price) == currency }.count
         let multipleCurrencies = Set(rows.map { DiscoverySnapshot.currency($0.price) }).count > 1
         let firstOfCurrency = indexPath.row == 0 || DiscoverySnapshot.currency(rows[indexPath.row - 1].price) != currency
-        let currencyHeading = multipleCurrencies && firstOfCurrency ? "\(currency) · \(currency == "GBP" ? "£" : "€")" : nil
+        let currencyHeading = multipleCurrencies && firstOfCurrency ? Self.currencyHeading(currency) : nil
         cell.configure(row: row, category: drink, band: band, rank: rank, distance: distance,
                        today: ComparisonJSON.today(), traits: traitCollection, currencyHeading: currencyHeading)
         cell.accessibilityIdentifier = "discovery.venue.\(row.key)"

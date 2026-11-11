@@ -109,13 +109,17 @@ enum DiscoveryFeaturedEvidence {
 
 @MainActor final class DiscoveryFeaturedCard: UIControl {
     private let artwork = UIImageView()
+    private let copy = UIStackView()
     private let drinkLabel = UILabel()
     private let venueLabel = UILabel()
     private let priceLabel = UILabel()
     private let servingLabel = UILabel()
     private let evidenceLabel = UILabel()
+    private let artworkHeight: CGFloat
 
-    init(row: DiscoveryPresentedRow, category: DrinkCategory, today: String = ComparisonJSON.today()) {
+    init(row: DiscoveryPresentedRow, category: DrinkCategory, today: String = ComparisonJSON.today(),
+         artworkHeight: CGFloat = 64, traits: UITraitCollection = .current) {
+        self.artworkHeight = artworkHeight
         super.init(frame: .zero)
         accessibilityIdentifier = "discovery.featured.\(row.key)"
         isAccessibilityElement = true
@@ -131,7 +135,7 @@ enum DiscoveryFeaturedEvidence {
         artwork.contentMode = .scaleAspectFit
         artwork.backgroundColor = NativeAppearance.secondary
         artwork.isAccessibilityElement = false
-        artwork.heightAnchor.constraint(equalToConstant: 82).isActive = true
+        artwork.heightAnchor.constraint(equalToConstant: artworkHeight).isActive = true
         let item: String
         switch row.price {
         case .legacy: item = category.name
@@ -143,26 +147,30 @@ enum DiscoveryFeaturedEvidence {
         priceLabel.text = row.price.amount
         servingLabel.text = row.price.groupLabel
         evidenceLabel.text = DiscoveryFeaturedEvidence.text(for: row.price, today: today)
-        drinkLabel.font = .preferredFont(forTextStyle: .subheadline)
+        drinkLabel.font = .preferredFont(forTextStyle: .subheadline, compatibleWith: traits)
         drinkLabel.textColor = NativeAppearance.ink
-        venueLabel.font = .preferredFont(forTextStyle: .caption1)
+        venueLabel.font = .preferredFont(forTextStyle: .caption1, compatibleWith: traits)
         venueLabel.textColor = NativeAppearance.muted
-        priceLabel.font = .preferredFont(forTextStyle: .headline)
+        priceLabel.font = .preferredFont(forTextStyle: .headline, compatibleWith: traits)
         priceLabel.textColor = NativeAppearance.ink
-        servingLabel.font = .preferredFont(forTextStyle: .caption2)
+        servingLabel.font = .preferredFont(forTextStyle: .caption2, compatibleWith: traits)
         servingLabel.textColor = NativeAppearance.muted
-        evidenceLabel.font = .preferredFont(forTextStyle: .caption2)
+        evidenceLabel.font = .preferredFont(forTextStyle: .caption2, compatibleWith: traits)
         evidenceLabel.textColor = NativeAppearance.muted
         for label in [drinkLabel, venueLabel, priceLabel, servingLabel, evidenceLabel] {
             label.numberOfLines = 0
+            label.lineBreakMode = .byWordWrapping
             label.adjustsFontForContentSizeCategory = true
             label.isAccessibilityElement = false
+            label.setContentCompressionResistancePriority(.required, for: .vertical)
         }
-        let copy = UIStackView(arrangedSubviews: [drinkLabel, venueLabel, priceLabel, servingLabel, evidenceLabel])
+        for label in [drinkLabel, venueLabel, priceLabel, servingLabel, evidenceLabel] {
+            copy.addArrangedSubview(label)
+        }
         copy.axis = .vertical
-        copy.spacing = 3
+        copy.spacing = 2
         copy.isLayoutMarginsRelativeArrangement = true
-        copy.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 10, leading: 12, bottom: 12, trailing: 12)
+        copy.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 10, bottom: 10, trailing: 10)
         let stack = UIStackView(arrangedSubviews: [artwork, copy])
         stack.axis = .vertical
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -174,6 +182,20 @@ enum DiscoveryFeaturedEvidence {
         ])
         accessibilityLabel = "\(item), \(row.name)"
         accessibilityValue = "\(row.price.amount). \(row.price.groupLabel). \(evidenceLabel.text ?? ""). Immagine illustrativa del drink."
+    }
+
+    /// Size the shared strip for the longest real item instead of cropping its
+    /// name, serving or source inside a fixed-height scroll view.
+    func requiredHeight(for width: CGFloat) -> CGFloat {
+        let margins = copy.directionalLayoutMargins
+        let labelWidth = max(1, width - margins.leading - margins.trailing)
+        let textHeight = [drinkLabel, venueLabel, priceLabel, servingLabel, evidenceLabel]
+            .reduce(CGFloat.zero) { total, label in
+                total + ceil(label.sizeThatFits(CGSize(width: labelWidth,
+                                                       height: .greatestFiniteMagnitude)).height) + 1
+            }
+        return ceil(artworkHeight + margins.top + margins.bottom + textHeight
+                    + copy.spacing * CGFloat(copy.arrangedSubviews.count - 1) + 4)
     }
 
     required init?(coder: NSCoder) { return nil }
@@ -194,7 +216,7 @@ enum DiscoveryFeaturedEvidence {
         cards.alignment = .fill
         cards.translatesAutoresizingMaskIntoConstraints = false
         addSubview(cards)
-        height = heightAnchor.constraint(equalToConstant: 290)
+        height = heightAnchor.constraint(equalToConstant: 232)
         height.priority = .defaultHigh
         NSLayoutConstraint.activate([
             cards.topAnchor.constraint(equalTo: contentLayoutGuide.topAnchor),
@@ -212,19 +234,25 @@ enum DiscoveryFeaturedEvidence {
                    traits: UITraitCollection, target: Any?, action: Selector) {
         cards.arrangedSubviews.forEach { cards.removeArrangedSubview($0); $0.removeFromSuperview() }
         cardWidths.removeAll()
-        // The next card remains visible as a scroll cue on compact iPhones;
-        // accessibility text sizes get more room and a taller card.
+        // Two cards fit at standard iPhone widths; narrower screens retain a
+        // scroll cue. Larger text gets wider, taller cards without truncation.
         let largeText = traits.preferredContentSizeCategory.isAccessibilityCategory
-        let cardWidth = max(180, min(largeText ? 280 : 220, availableWidth - 24))
-        height.constant = largeText ? 440 : 290
+        let cardWidth = largeText ? max(180, min(280, availableWidth - 24))
+                                  : max(156, min(172, (availableWidth - cards.spacing) / 2))
+        let scaledHeight = UIFontMetrics(forTextStyle: .body).scaledValue(for: 232, compatibleWith: traits)
+        height.constant = largeText ? max(440, scaledHeight) : scaledHeight
+        let artworkHeight = min(82, UIFontMetrics(forTextStyle: .caption1)
+            .scaledValue(for: 64, compatibleWith: traits))
         for (index, row) in rows.enumerated() {
-            let card = DiscoveryFeaturedCard(row: row, category: category)
+            let card = DiscoveryFeaturedCard(row: row, category: category,
+                                             artworkHeight: artworkHeight, traits: traits)
             card.tag = index
             card.addTarget(target, action: action, for: .touchUpInside)
             cards.addArrangedSubview(card)
             let width = card.widthAnchor.constraint(equalToConstant: cardWidth)
             width.isActive = true
             cardWidths.append(width)
+            height.constant = max(height.constant, card.requiredHeight(for: cardWidth))
         }
         isHidden = rows.isEmpty
     }

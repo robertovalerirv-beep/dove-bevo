@@ -4,6 +4,12 @@ export const APP_DOMAIN = "www.dovebevo.com";
 /** Where owners and users write (rules, privacy): the mailbox of the project, not a personal address. */
 export const CONTACT_EMAIL = "dovebevo@gmail.com";
 
+/**
+ * From this zoom the map loads the cells and draws their bars; under it, tiles and the invitation
+ * only (SPEC 5.4). One value for the loading, the message and the layers, so they cannot disagree.
+ */
+export const MIN_ZOOM_CELLS = 13;
+
 /** "Annulla" after Salva (SPEC D-15): the price is sent when this runs out. One value for the timer, the progress bar and the texts. */
 export const UNDO_MS = 5_000;
 

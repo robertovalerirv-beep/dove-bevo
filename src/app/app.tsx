@@ -2,7 +2,7 @@ import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
 import { CATALOG, DEFAULT_DRINK } from "../shared/catalog";
-import { APP_NAME, UNDO_MS } from "../shared/config";
+import { APP_NAME, MIN_ZOOM_CELLS, UNDO_MS } from "../shared/config";
 import { encodeGeohash, visibleCells } from "../shared/geohash";
 import type { PriceRow } from "../shared/api-types";
 import { CELL_PATTERN, distanceMeters, searchKey, VENUE_KEY_PATTERN } from "../shared/venue";
@@ -30,8 +30,6 @@ import { addPrices, dayBucket, priceCount, stampReached } from "./lib/usage";
 import { cellMedian, coverage, isStale, tierOf } from "./lib/tiers";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
-
-const MIN_ZOOM_CELLS = 13;
 
 /** The topmost open sheet: while a modal sheet is open, everything outside it is inert. */
 function topLayer(): HTMLElement {
@@ -114,6 +112,7 @@ export function App({ loadMap }: Props) {
   const pendingMove = useRef<[number, number, number] | null>(initialAt);
   const [ready, setReady] = useState(false);
   const [pricesShown, setPricesShown] = useState<string[]>([]);
+  const [marksShown, setMarksShown] = useState(0);
   const [meShown, setMeShown] = useState<{ x: number; y: number } | null>(null);
   const [view, setView] = useState<MapView | null>(null);
   const [route, setRoute] = useState<Route>(parseRoute);
@@ -179,7 +178,10 @@ export function App({ loadMap }: Props) {
       .then((created) => {
         if (!created || cancelled) return;
         created.onMove(setView);
-        created.onRendered(setPricesShown);
+        created.onRendered((labels, marks) => {
+          setPricesShown(labels);
+          setMarksShown(marks);
+        });
         created.onMeRendered(setMeShown);
         created.onVenueClick((key, cell) => {
           navigate(`/bar/${key}?c=${cell}`);
@@ -894,6 +896,7 @@ export function App({ loadMap }: Props) {
           data-ready={ready ? "true" : "false"}
           data-selected={route.name === "bar" ? route.key : ""}
           data-prices-shown={pricesShown.join("|")}
+          data-marks-shown={marksShown}
           data-me={meShown ? `${meShown.x.toFixed(0)},${meShown.y.toFixed(0)}` : ""}
           onPointerDown={() => {
             if (pinning && !pinning.touched) setProposing({ ...pinning, touched: true });

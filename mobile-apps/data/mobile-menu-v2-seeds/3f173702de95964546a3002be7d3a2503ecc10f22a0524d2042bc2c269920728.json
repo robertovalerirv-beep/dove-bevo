@@ -550,22 +550,6 @@
       "venue_key": "n5410425433"
     },
     {
-      "amount_minor": 700,
-      "category": null,
-      "cell": "sqc2z",
-      "condition_text": null,
-      "currency": "EUR",
-      "currency_exponent": 2,
-      "evidence_ref": "PDF page 4: Tequila Sunrise | EUR 7.00",
-      "id": "vinile-palermo-20261111-035",
-      "name": "Tequila Sunrise",
-      "price_context": "regular",
-      "serving_label": null,
-      "serving_ml": null,
-      "source_id": "src-vinile-palermo-c82fd401193a",
-      "venue_key": "n5410425433"
-    },
-    {
       "amount_minor": 600,
       "category": "spritz",
       "cell": "sqc2z",
@@ -573,7 +557,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Venturo Spritz | EUR 6.00",
-      "id": "vinile-palermo-20261111-036",
+      "id": "vinile-palermo-20261111-035",
       "name": "Venturo Spritz",
       "price_context": "regular",
       "serving_label": null,
@@ -589,7 +573,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Vinile | EUR 7.00",
-      "id": "vinile-palermo-20261111-037",
+      "id": "vinile-palermo-20261111-036",
       "name": "Vinile",
       "price_context": "regular",
       "serving_label": null,
@@ -605,7 +589,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Vodka Lemon | EUR 7.00",
-      "id": "vinile-palermo-20261111-038",
+      "id": "vinile-palermo-20261111-037",
       "name": "Vodka Lemon",
       "price_context": "regular",
       "serving_label": null,
@@ -621,7 +605,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Vodka Martini | EUR 7.00",
-      "id": "vinile-palermo-20261111-039",
+      "id": "vinile-palermo-20261111-038",
       "name": "Vodka Martini",
       "price_context": "regular",
       "serving_label": null,
@@ -637,7 +621,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Whiskey Sour | EUR 7.00",
-      "id": "vinile-palermo-20261111-040",
+      "id": "vinile-palermo-20261111-039",
       "name": "Whiskey Sour",
       "price_context": "regular",
       "serving_label": null,
@@ -653,7 +637,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: White Lady | EUR 7.50",
-      "id": "vinile-palermo-20261111-041",
+      "id": "vinile-palermo-20261111-040",
       "name": "White Lady",
       "price_context": "regular",
       "serving_label": null,
@@ -669,7 +653,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Caipirinha | EUR 8.00",
-      "id": "vinile-palermo-20261111-042",
+      "id": "vinile-palermo-20261111-041",
       "name": "Caipirinha",
       "price_context": "regular",
       "serving_label": null,
@@ -685,7 +669,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Caipiroska | EUR 8.00",
-      "id": "vinile-palermo-20261111-043",
+      "id": "vinile-palermo-20261111-042",
       "name": "Caipiroska",
       "price_context": "regular",
       "serving_label": null,
@@ -701,7 +685,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Daiquiri Frozen | EUR 8.00",
-      "id": "vinile-palermo-20261111-044",
+      "id": "vinile-palermo-20261111-043",
       "name": "Daiquiri Frozen",
       "price_context": "regular",
       "serving_label": null,
@@ -717,7 +701,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Mojito | EUR 7.50",
-      "id": "vinile-palermo-20261111-045",
+      "id": "vinile-palermo-20261111-044",
       "name": "Mojito",
       "price_context": "regular",
       "serving_label": null,
@@ -733,7 +717,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Pina Colada | EUR 8.00",
-      "id": "vinile-palermo-20261111-046",
+      "id": "vinile-palermo-20261111-045",
       "name": "Pina Colada",
       "price_context": "regular",
       "serving_label": null,
@@ -749,7 +733,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Bellini | EUR 5.00",
-      "id": "vinile-palermo-20261111-047",
+      "id": "vinile-palermo-20261111-046",
       "name": "Bellini",
       "price_context": "regular",
       "serving_label": null,
@@ -765,7 +749,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Mimosa | EUR 5.00",
-      "id": "vinile-palermo-20261111-048",
+      "id": "vinile-palermo-20261111-047",
       "name": "Mimosa",
       "price_context": "regular",
       "serving_label": null,
@@ -781,7 +765,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 4: Rossini | EUR 5.00",
-      "id": "vinile-palermo-20261111-049",
+      "id": "vinile-palermo-20261111-048",
       "name": "Rossini",
       "price_context": "regular",
       "serving_label": null,
@@ -797,7 +781,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Beck’s | EUR 3.00",
-      "id": "vinile-palermo-20261111-050",
+      "id": "vinile-palermo-20261111-049",
       "name": "Beck’s",
       "price_context": "regular",
       "serving_label": null,
@@ -813,7 +797,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Birra dello stretto | EUR 3.50",
-      "id": "vinile-palermo-20261111-051",
+      "id": "vinile-palermo-20261111-050",
       "name": "Birra dello stretto",
       "price_context": "regular",
       "serving_label": null,
@@ -829,7 +813,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Ceres | EUR 4.00",
-      "id": "vinile-palermo-20261111-052",
+      "id": "vinile-palermo-20261111-051",
       "name": "Ceres",
       "price_context": "regular",
       "serving_label": null,
@@ -845,7 +829,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Chimay Tappo Rosso | EUR 6.00",
-      "id": "vinile-palermo-20261111-053",
+      "id": "vinile-palermo-20261111-052",
       "name": "Chimay Tappo Rosso",
       "price_context": "regular",
       "serving_label": null,
@@ -861,7 +845,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Corona | EUR 4.00",
-      "id": "vinile-palermo-20261111-054",
+      "id": "vinile-palermo-20261111-053",
       "name": "Corona",
       "price_context": "regular",
       "serving_label": null,
@@ -877,7 +861,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Daura | EUR 4.00",
-      "id": "vinile-palermo-20261111-055",
+      "id": "vinile-palermo-20261111-054",
       "name": "Daura",
       "price_context": "regular",
       "serving_label": null,
@@ -893,7 +877,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Guinness | EUR 6.00",
-      "id": "vinile-palermo-20261111-056",
+      "id": "vinile-palermo-20261111-055",
       "name": "Guinness",
       "price_context": "regular",
       "serving_label": null,
@@ -909,7 +893,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Ichnusa | EUR 3.50",
-      "id": "vinile-palermo-20261111-057",
+      "id": "vinile-palermo-20261111-056",
       "name": "Ichnusa",
       "price_context": "regular",
       "serving_label": null,
@@ -925,7 +909,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Menabrea | EUR 3.50",
-      "id": "vinile-palermo-20261111-058",
+      "id": "vinile-palermo-20261111-057",
       "name": "Menabrea",
       "price_context": "regular",
       "serving_label": null,
@@ -941,7 +925,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Messina cristalli di sale | EUR 4.00",
-      "id": "vinile-palermo-20261111-059",
+      "id": "vinile-palermo-20261111-058",
       "name": "Messina cristalli di sale",
       "price_context": "regular",
       "serving_label": null,
@@ -957,7 +941,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Tennent’s | EUR 4.00",
-      "id": "vinile-palermo-20261111-060",
+      "id": "vinile-palermo-20261111-059",
       "name": "Tennent’s",
       "price_context": "regular",
       "serving_label": null,
@@ -973,7 +957,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Weiss Franziskaner | EUR 5.00",
-      "id": "vinile-palermo-20261111-061",
+      "id": "vinile-palermo-20261111-060",
       "name": "Weiss Franziskaner",
       "price_context": "regular",
       "serving_label": null,
@@ -989,7 +973,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Weiss Paulaner | EUR 5.00",
-      "id": "vinile-palermo-20261111-062",
+      "id": "vinile-palermo-20261111-061",
       "name": "Weiss Paulaner",
       "price_context": "regular",
       "serving_label": null,
@@ -1005,7 +989,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Forst analcolica | EUR 3.50",
-      "id": "vinile-palermo-20261111-063",
+      "id": "vinile-palermo-20261111-062",
       "name": "Forst analcolica",
       "price_context": "regular",
       "serving_label": null,
@@ -1021,7 +1005,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 5: Punk IPA | EUR 6.00",
-      "id": "vinile-palermo-20261111-064",
+      "id": "vinile-palermo-20261111-063",
       "name": "Punk IPA",
       "price_context": "regular",
       "serving_label": null,
@@ -1037,7 +1021,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 7: LUCIDO RESILIENCE | EUR 6.00",
-      "id": "vinile-palermo-20261111-065",
+      "id": "vinile-palermo-20261111-064",
       "name": "LUCIDO RESILIENCE",
       "price_context": "regular",
       "serving_label": null,
@@ -1053,7 +1037,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 7: GRILLO RESILIENCE | EUR 6.00",
-      "id": "vinile-palermo-20261111-066",
+      "id": "vinile-palermo-20261111-065",
       "name": "GRILLO RESILIENCE",
       "price_context": "regular",
       "serving_label": null,
@@ -1069,7 +1053,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 7: CARATERRA | EUR 6.00",
-      "id": "vinile-palermo-20261111-067",
+      "id": "vinile-palermo-20261111-066",
       "name": "CARATERRA",
       "price_context": "regular",
       "serving_label": null,
@@ -1085,7 +1069,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 8: PROSECCO | Bicchiere | EUR 5.00",
-      "id": "vinile-palermo-20261111-068",
+      "id": "vinile-palermo-20261111-067",
       "name": "PROSECCO",
       "price_context": "regular",
       "serving_label": "Bicchiere",
@@ -1101,7 +1085,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 9: Acqua frizzante | EUR 1.50",
-      "id": "vinile-palermo-20261111-069",
+      "id": "vinile-palermo-20261111-068",
       "name": "Acqua frizzante",
       "price_context": "regular",
       "serving_label": null,
@@ -1117,7 +1101,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 9: Acqua naturale | EUR 1.50",
-      "id": "vinile-palermo-20261111-070",
+      "id": "vinile-palermo-20261111-069",
       "name": "Acqua naturale",
       "price_context": "regular",
       "serving_label": null,
@@ -1133,7 +1117,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 9: Coca Cola | EUR 3.00",
-      "id": "vinile-palermo-20261111-071",
+      "id": "vinile-palermo-20261111-070",
       "name": "Coca Cola",
       "price_context": "regular",
       "serving_label": null,
@@ -1149,7 +1133,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 9: Coca Cola Zero | EUR 3.00",
-      "id": "vinile-palermo-20261111-072",
+      "id": "vinile-palermo-20261111-071",
       "name": "Coca Cola Zero",
       "price_context": "regular",
       "serving_label": null,
@@ -1165,7 +1149,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 9: Ginger Beer | EUR 3.50",
-      "id": "vinile-palermo-20261111-073",
+      "id": "vinile-palermo-20261111-072",
       "name": "Ginger Beer",
       "price_context": "regular",
       "serving_label": null,
@@ -1181,7 +1165,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 9: Crodino | EUR 3.00",
-      "id": "vinile-palermo-20261111-074",
+      "id": "vinile-palermo-20261111-073",
       "name": "Crodino",
       "price_context": "regular",
       "serving_label": null,
@@ -1197,7 +1181,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 9: Tanqueray 0.0 | EUR 7.00",
-      "id": "vinile-palermo-20261111-075",
+      "id": "vinile-palermo-20261111-074",
       "name": "Tanqueray 0.0",
       "price_context": "regular",
       "serving_label": null,
@@ -1213,7 +1197,7 @@
       "currency": "EUR",
       "currency_exponent": 2,
       "evidence_ref": "PDF page 9: Virgin Mojito | EUR 6.00",
-      "id": "vinile-palermo-20261111-076",
+      "id": "vinile-palermo-20261111-075",
       "name": "Virgin Mojito",
       "price_context": "regular",
       "serving_label": null,
@@ -1399,213 +1383,208 @@
           "page": 3
         },
         {
-          "line": "Tequila Sunrise | EUR 7.00",
+          "line": "Venturo Spritz | EUR 6.00",
           "offer_id": "vinile-palermo-20261111-035",
           "page": 4
         },
         {
-          "line": "Venturo Spritz | EUR 6.00",
+          "line": "Vinile | EUR 7.00",
           "offer_id": "vinile-palermo-20261111-036",
           "page": 4
         },
         {
-          "line": "Vinile | EUR 7.00",
+          "line": "Vodka Lemon | EUR 7.00",
           "offer_id": "vinile-palermo-20261111-037",
           "page": 4
         },
         {
-          "line": "Vodka Lemon | EUR 7.00",
+          "line": "Vodka Martini | EUR 7.00",
           "offer_id": "vinile-palermo-20261111-038",
           "page": 4
         },
         {
-          "line": "Vodka Martini | EUR 7.00",
+          "line": "Whiskey Sour | EUR 7.00",
           "offer_id": "vinile-palermo-20261111-039",
           "page": 4
         },
         {
-          "line": "Whiskey Sour | EUR 7.00",
+          "line": "White Lady | EUR 7.50",
           "offer_id": "vinile-palermo-20261111-040",
           "page": 4
         },
         {
-          "line": "White Lady | EUR 7.50",
+          "line": "Caipirinha | EUR 8.00",
           "offer_id": "vinile-palermo-20261111-041",
           "page": 4
         },
         {
-          "line": "Caipirinha | EUR 8.00",
+          "line": "Caipiroska | EUR 8.00",
           "offer_id": "vinile-palermo-20261111-042",
           "page": 4
         },
         {
-          "line": "Caipiroska | EUR 8.00",
+          "line": "Daiquiri Frozen | EUR 8.00",
           "offer_id": "vinile-palermo-20261111-043",
           "page": 4
         },
         {
-          "line": "Daiquiri Frozen | EUR 8.00",
+          "line": "Mojito | EUR 7.50",
           "offer_id": "vinile-palermo-20261111-044",
           "page": 4
         },
         {
-          "line": "Mojito | EUR 7.50",
+          "line": "Pina Colada | EUR 8.00",
           "offer_id": "vinile-palermo-20261111-045",
           "page": 4
         },
         {
-          "line": "Pina Colada | EUR 8.00",
+          "line": "Bellini | EUR 5.00",
           "offer_id": "vinile-palermo-20261111-046",
           "page": 4
         },
         {
-          "line": "Bellini | EUR 5.00",
+          "line": "Mimosa | EUR 5.00",
           "offer_id": "vinile-palermo-20261111-047",
           "page": 4
         },
         {
-          "line": "Mimosa | EUR 5.00",
+          "line": "Rossini | EUR 5.00",
           "offer_id": "vinile-palermo-20261111-048",
           "page": 4
         },
         {
-          "line": "Rossini | EUR 5.00",
-          "offer_id": "vinile-palermo-20261111-049",
-          "page": 4
-        },
-        {
           "line": "Beck’s | EUR 3.00",
-          "offer_id": "vinile-palermo-20261111-050",
+          "offer_id": "vinile-palermo-20261111-049",
           "page": 5
         },
         {
           "line": "Birra dello stretto | EUR 3.50",
-          "offer_id": "vinile-palermo-20261111-051",
+          "offer_id": "vinile-palermo-20261111-050",
           "page": 5
         },
         {
           "line": "Ceres | EUR 4.00",
-          "offer_id": "vinile-palermo-20261111-052",
+          "offer_id": "vinile-palermo-20261111-051",
           "page": 5
         },
         {
           "line": "Chimay Tappo Rosso | EUR 6.00",
-          "offer_id": "vinile-palermo-20261111-053",
+          "offer_id": "vinile-palermo-20261111-052",
           "page": 5
         },
         {
           "line": "Corona | EUR 4.00",
-          "offer_id": "vinile-palermo-20261111-054",
+          "offer_id": "vinile-palermo-20261111-053",
           "page": 5
         },
         {
           "line": "Daura | EUR 4.00",
-          "offer_id": "vinile-palermo-20261111-055",
+          "offer_id": "vinile-palermo-20261111-054",
           "page": 5
         },
         {
           "line": "Guinness | EUR 6.00",
-          "offer_id": "vinile-palermo-20261111-056",
+          "offer_id": "vinile-palermo-20261111-055",
           "page": 5
         },
         {
           "line": "Ichnusa | EUR 3.50",
-          "offer_id": "vinile-palermo-20261111-057",
+          "offer_id": "vinile-palermo-20261111-056",
           "page": 5
         },
         {
           "line": "Menabrea | EUR 3.50",
-          "offer_id": "vinile-palermo-20261111-058",
+          "offer_id": "vinile-palermo-20261111-057",
           "page": 5
         },
         {
           "line": "Messina cristalli di sale | EUR 4.00",
-          "offer_id": "vinile-palermo-20261111-059",
+          "offer_id": "vinile-palermo-20261111-058",
           "page": 5
         },
         {
           "line": "Tennent’s | EUR 4.00",
-          "offer_id": "vinile-palermo-20261111-060",
+          "offer_id": "vinile-palermo-20261111-059",
           "page": 5
         },
         {
           "line": "Weiss Franziskaner | EUR 5.00",
-          "offer_id": "vinile-palermo-20261111-061",
+          "offer_id": "vinile-palermo-20261111-060",
           "page": 5
         },
         {
           "line": "Weiss Paulaner | EUR 5.00",
-          "offer_id": "vinile-palermo-20261111-062",
+          "offer_id": "vinile-palermo-20261111-061",
           "page": 5
         },
         {
           "line": "Forst analcolica | EUR 3.50",
-          "offer_id": "vinile-palermo-20261111-063",
+          "offer_id": "vinile-palermo-20261111-062",
           "page": 5
         },
         {
           "line": "Punk IPA | EUR 6.00",
-          "offer_id": "vinile-palermo-20261111-064",
+          "offer_id": "vinile-palermo-20261111-063",
           "page": 5
         },
         {
           "line": "LUCIDO RESILIENCE | EUR 6.00",
-          "offer_id": "vinile-palermo-20261111-065",
+          "offer_id": "vinile-palermo-20261111-064",
           "page": 7
         },
         {
           "line": "GRILLO RESILIENCE | EUR 6.00",
-          "offer_id": "vinile-palermo-20261111-066",
+          "offer_id": "vinile-palermo-20261111-065",
           "page": 7
         },
         {
           "line": "CARATERRA | EUR 6.00",
-          "offer_id": "vinile-palermo-20261111-067",
+          "offer_id": "vinile-palermo-20261111-066",
           "page": 7
         },
         {
           "line": "PROSECCO | Bicchiere | EUR 5.00",
-          "offer_id": "vinile-palermo-20261111-068",
+          "offer_id": "vinile-palermo-20261111-067",
           "page": 8
         },
         {
           "line": "Acqua frizzante | EUR 1.50",
-          "offer_id": "vinile-palermo-20261111-069",
+          "offer_id": "vinile-palermo-20261111-068",
           "page": 9
         },
         {
           "line": "Acqua naturale | EUR 1.50",
-          "offer_id": "vinile-palermo-20261111-070",
+          "offer_id": "vinile-palermo-20261111-069",
           "page": 9
         },
         {
           "line": "Coca Cola | EUR 3.00",
-          "offer_id": "vinile-palermo-20261111-071",
+          "offer_id": "vinile-palermo-20261111-070",
           "page": 9
         },
         {
           "line": "Coca Cola Zero | EUR 3.00",
-          "offer_id": "vinile-palermo-20261111-072",
+          "offer_id": "vinile-palermo-20261111-071",
           "page": 9
         },
         {
           "line": "Ginger Beer | EUR 3.50",
-          "offer_id": "vinile-palermo-20261111-073",
+          "offer_id": "vinile-palermo-20261111-072",
           "page": 9
         },
         {
           "line": "Crodino | EUR 3.00",
-          "offer_id": "vinile-palermo-20261111-074",
+          "offer_id": "vinile-palermo-20261111-073",
           "page": 9
         },
         {
           "line": "Tanqueray 0.0 | EUR 7.00",
-          "offer_id": "vinile-palermo-20261111-075",
+          "offer_id": "vinile-palermo-20261111-074",
           "page": 9
         },
         {
           "line": "Virgin Mojito | EUR 6.00",
-          "offer_id": "vinile-palermo-20261111-076",
+          "offer_id": "vinile-palermo-20261111-075",
           "page": 9
         }
       ],
@@ -1613,7 +1592,7 @@
       "source_checked_on": "2026-11-11",
       "source_format": "pdf_image_v1",
       "source_sha256": "c82fd401193a0a1e25e5c681327b050d94f64765f81998d8ac9c2be1bca547a3",
-      "source_text_sha256": "73c75502c33a05ce4d287bba8592264d87ad1752199975374b7404438e4a324f",
+      "source_text_sha256": "adc20bb8dd22e179571e897a9e107b9c71a27ad6265674bee1ac8d585759c21b",
       "source_url": "https://vinilepub.it/wp-content/uploads/menu-vinilepub_online.pdf",
       "use_review_basis": "The venue-owned site directly links this 16-page image-only PDF. Its metadata says modified 19 October 2026; the exact PDF was fetched and every included named EUR amount visually checked. Only factual names, categories and prices are transcribed; no images or descriptions are copied. This is a partial menu, not a receipt or fee guarantee. The PDF prints anomalous draft-beer units as 0,20/0,40 cl; those four offers are excluded rather than converted. No mandatory fee is stated.",
       "use_review_reference": "https://vinilepub.it/",

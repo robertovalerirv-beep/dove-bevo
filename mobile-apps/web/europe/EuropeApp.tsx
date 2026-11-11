@@ -15,6 +15,7 @@ import { LangMenu } from "@site/app/components/LangMenu";
 import { Sheet } from "@site/app/components/Sheet";
 import { AppLegalLinks } from "../components/AppLegalLinks";
 import { DrinkHero } from "../components/DrinkHero";
+import { MapHomeButton } from "../components/MapHomeButton";
 import { sharePresentation } from "../share-presentation";
 import type * as MapModule from "@site/app/lib/maplibre-map";
 import type { VenueMap, MapView } from "@site/app/lib/maplibre-map";
@@ -631,6 +632,18 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
         >
           <Icon name="search" />
         </button>
+        <MapHomeButton
+          className="europe-home"
+          onClick={() => {
+            if (venueKey !== null) {
+              history.replaceState(null, "", cityURL(city));
+              setVenueKey(null);
+              setSavedFocus(null);
+            }
+            setNotice("");
+            map?.moveTo(city.lat, city.lon, 14);
+          }}
+        />
         <button
           class="europe-locate"
           aria-label={it.map.nearMe}

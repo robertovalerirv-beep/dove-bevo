@@ -889,11 +889,13 @@ test("European map coverage remains one line at phone widths", async () => {
       );
       assert.ok((await coverage.boundingBox()).height <= 48);
       const search = await f.page.locator(".europe-search").boundingBox();
+      const home = await f.page.locator(".europe-home").boundingBox();
       const locate = await f.page.locator(".europe-locate").boundingBox();
       const add = await f.page.locator(".europe-map-add").boundingBox();
       const summary = await coverage.boundingBox();
-      assert.ok(search && locate && add && summary);
-      assert.ok(search.x + search.width + 8 <= locate.x, `Search clears Locate at ${width}px`);
+      assert.ok(search && home && locate && add && summary);
+      assert.ok(search.x + search.width + 8 <= home.x, `Search clears Home at ${width}px`);
+      assert.ok(home.x + home.width + 8 <= locate.x, `Home clears Locate at ${width}px`);
       assert.ok(locate.x + locate.width + 8 <= add.x, `Locate clears Add at ${width}px`);
       assert.ok(Math.abs(search.y - locate.y) <= 2 && Math.abs(locate.y - add.y) <= 2);
       assert.ok(
@@ -903,6 +905,115 @@ test("European map coverage remains one line at phone widths", async () => {
       if (width === 320)
         await f.page.screenshot({ path: path.join(output, "europe-coverage-320-fixture.png") });
     }
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("European map Home returns to the current city after zoom and a city switch", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f, false);
+    const map = f.page.locator(".europe-map");
+    const home = f.page.getByRole("button", { name: "Vista iniziale della città" });
+    await f.page.waitForFunction(
+      () => document.querySelector(".europe-map")?.getAttribute("data-ready") === "true",
+    );
+    const box = await map.boundingBox();
+    assert.ok(box);
+    await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await f.page.mouse.wheel(0, 650);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector(".europe-map")?.getAttribute("data-zoom")) < 14,
+    );
+    await home.click();
+    await f.page.waitForFunction(() => {
+      const element = document.querySelector(".europe-map");
+      const [lat, lon] = (element?.getAttribute("data-center") ?? "").split(",").map(Number);
+      return (
+        Math.abs(lat - 51.5079) < 0.0001 &&
+        Math.abs(lon + 0.1278) < 0.0001 &&
+        Math.abs(Number(element?.getAttribute("data-zoom")) - 14) < 0.1
+      );
+    });
+    assert.equal(await map.getAttribute("data-zoom"), "14.0");
+    await changeCity(f.page, "Paris");
+    await f.page.waitForFunction(() => {
+      const [lat, lon] = (document.querySelector(".europe-map")?.getAttribute("data-center") ?? "")
+        .split(",")
+        .map(Number);
+      return Math.abs(lat - 48.8566) < 0.0001 && Math.abs(lon - 2.3522) < 0.0001;
+    });
+    await f.page.getByRole("button", { name: "Elenco locali", exact: true }).click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("button", { name: /^Paris fixture bar/ })
+      .click();
+    await f.page.locator("h2.scontrino__name").waitFor();
+    await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi" }).click();
+    await f.page.locator("h2.scontrino__name").waitFor({ state: "hidden" });
+    await f.page.waitForFunction(
+      () => document.querySelector(".europe-map")?.getAttribute("data-selected") === "",
+    );
+    await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await f.page.mouse.wheel(0, 650);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector(".europe-map")?.getAttribute("data-zoom")) < 14,
+    );
+    await home.click();
+    await f.page.waitForFunction(() => {
+      const element = document.querySelector(".europe-map");
+      const [lat, lon] = (element?.getAttribute("data-center") ?? "").split(",").map(Number);
+      return (
+        Math.abs(lat - 48.8566) < 0.0001 &&
+        Math.abs(lon - 2.3522) < 0.0001 &&
+        Math.abs(Number(element?.getAttribute("data-zoom")) - 14) < 0.1
+      );
+    });
+    assert.equal(await map.getAttribute("data-zoom"), "14.0");
+    assert.equal(
+      await f.page.getByRole("combobox", { name: "Scegli cosa bere", exact: true }).inputValue(),
+      "spritz",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("European map Home command clears an open venue and restores its city view", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f);
+    const map = f.page.locator(".europe-map");
+    const historyLength = await f.page.evaluate(() => history.length);
+    await f.page.waitForFunction(() =>
+      Boolean(document.querySelector(".europe-map")?.getAttribute("data-center")),
+    );
+    // The venue dialog covers the map row, so dispatch the same Home command directly.
+    await f.page.evaluate(() => document.querySelector(".europe-home").click());
+    await f.page.waitForFunction(() => {
+      const element = document.querySelector(".europe-map");
+      return (
+        element?.getAttribute("data-selected") === "" &&
+        element.getAttribute("data-center") === "51.50790,-0.12780" &&
+        element.getAttribute("data-zoom") === "14.0"
+      );
+    });
+    const route = new URL(f.page.url());
+    assert.equal(route.pathname, "/mobile/");
+    assert.equal(route.searchParams.get("at"), "51.50790,-0.12780");
+    assert.equal(route.searchParams.has("path"), false);
+    assert.equal(await f.page.evaluate(() => history.length), historyLength);
+    assert.equal(await map.getAttribute("data-selected"), "");
+    assert.equal(await f.page.locator("h2.scontrino__name").count(), 0);
+    assert.equal(
+      await f.page.getByRole("combobox", { name: "Scegli cosa bere", exact: true }).inputValue(),
+      "spritz",
+    );
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
   } finally {

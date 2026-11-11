@@ -278,9 +278,9 @@ test("happy-hour and longer amounts retain separate readable price and HH cues",
   assert.deepEqual(mobilePinLabel("7,50 € MENU"), {
     amount: "7,50",
     currency: "€",
-    detail: "MENU",
+    detail: "",
   });
-  assert.deepEqual(mobilePinLabel("30 VOCI"), { amount: "30", currency: "", detail: "MENU" });
+  assert.deepEqual(mobilePinLabel("30 VOCI"), { amount: "30", currency: "", detail: "VOCI" });
   assert.deepEqual(mobilePinLabel("2 PREZZI"), { amount: "2", currency: "", detail: "PREZZI" });
   assert.deepEqual(mobilePinLabel("£7.50"), { amount: "7.50", currency: "£", detail: "" });
   assert.deepEqual(mobilePinLabel("7,50 £ HH"), {
@@ -321,13 +321,13 @@ test("mobile price art draws the original currency and keeps menu counts currenc
   globalThis.document = { createElement: () => ({ getContext: () => context }) };
   try {
     mobilePinImage("affare", false, "6,00 € MENU");
-    assert.deepEqual(rendered, ["6,00", "€", "↓ MENU"]);
+    assert.deepEqual(rendered, ["6,00", "€", "↓"]);
     rendered.length = 0;
     mobilePinImage("salato", false, "£7.50 HH");
     assert.deepEqual(rendered, ["7.50", "£", "↑ HH"]);
     rendered.length = 0;
     mobilePinImage("neutro", false, "30 VOCI");
-    assert.deepEqual(rendered, ["30", "MENU"]);
+    assert.deepEqual(rendered, ["30", "VOCI"]);
     assert.equal(fills.at(-1), "#f6e9d6", "menu-entry counts must not look like priced pins");
     rendered.length = 0;
     mobilePinImage("neutro", false, "2 PREZZI");
@@ -335,7 +335,7 @@ test("mobile price art draws the original currency and keeps menu counts currenc
     assert.equal(fills.at(-1), "#f6e9d6", "price counts must not look like priced pins");
     rendered.length = 0;
     mobilePinImage("neutro", false, "7,50 € MENU");
-    assert.deepEqual(rendered, ["7,50", "€", "MENU"]);
+    assert.deepEqual(rendered, ["7,50", "€", ""]);
     assert.equal(fills.at(-1), "#ff5a1f", "actual euro prices use the branded price fill");
     rendered.length = 0;
     mobilePinImage("neutro", false, "£7.50");

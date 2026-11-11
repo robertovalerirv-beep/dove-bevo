@@ -132,13 +132,29 @@
 .europe-locate {
   position: absolute;
   z-index: 4;
-  left: calc(50% - 24px);
+  left: calc(50% - 4px);
   bottom: calc(var(--attribution-h, 24px) + 8px);
   display: grid;
   place-items: center;
   width: 48px;
   height: 48px;
   border: 1px solid var(--ink, #1b1611);
+  border-radius: 50%;
+  background: var(--surface, #fffbf4);
+  color: var(--ink, #1b1611);
+  box-shadow: 0 2px 8px rgb(27 22 17 / 13%);
+}
+.europe-home {
+  position: absolute;
+  z-index: 4;
+  left: calc(50% - 68px);
+  bottom: calc(var(--attribution-h, 24px) + 8px);
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+  border: 1px solid var(--line-soft, #e2d3be);
   border-radius: 50%;
   background: var(--surface, #fffbf4);
   color: var(--ink, #1b1611);
@@ -169,10 +185,25 @@
   opacity: 0.5;
 }
 .europe-search:focus-visible,
+.europe-home:focus-visible,
 .europe-locate:focus-visible,
 .europe-map-add:focus-visible {
   outline: 2px solid var(--ink, #1b1611);
   outline-offset: 2px;
+}
+@media (max-width: 359px) {
+  .europe-map-add {
+    justify-content: center;
+    gap: 0;
+    width: 48px;
+    min-width: 48px;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+  }
+  .europe-map-add > span {
+    font-size: 22px;
+  }
 }
 .europe-coverage {
   position: absolute;

@@ -51,7 +51,7 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 **Prove**
 - Il test fallisce senza la correzione e per il motivo giusto: sotto zoom 13 `{"marks": 55, "prices": "12,00 €"}` invece di `{"marks": 0, "prices": ""}`, nei due temi (prova fatta con la soglia dei layer a 0, cioè il comportamento di prima).
-- Con la correzione: Playwright su Chromium, sei file della mappa (`map`, `map-stability`, `map-start`, `position-dot`, `brand-map`, `brand-tiers`): 54 passati, 0 falliti, compresi M1-07 e M1-16.
+- Con la correzione: Playwright su Chromium, sei file della mappa (`map`, `map-stability`, `map-start`, `position-dot`, `brand-map`, `brand-tiers`): 54 passati, 0 falliti, compresi M1-07 e M1-16. Suite completa su Chromium (`chromium`, `-writes`, `-proposals`, `security`): 245 passati, 0 falliti.
 - Lint, Prettier, `tsc -b` verdi; Vitest 878/878; `routes-and-build.test.mjs` 13/13.
 - Screenshot 390×844 nei due temi, sopra e sotto zoom 13: prodotti dal test (`m1-07-zoom-vicino-*.png`, `m1-07-zoom-lontano-*.png` in `test-results/`); nei test le tessere sono finte, quindi sotto zoom 13 si vede il fondo senza alcun pin.
 - `spec-reviewer` sul diff: OK to close; le sue richieste (tocco sotto zoom 13, test del contratto delle app) sono state aggiunte.

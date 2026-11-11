@@ -32,6 +32,12 @@ MOSTO_SOURCE_URL = "https://mo5.it/m/alvino"
 MOSTO_OWNER_URL = "https://www.mosto.beer/sedi/alvino/"
 FUORILUOGO_MENU_URL = "https://www.fuoriluogo.org/menu"
 FUORILUOGO_OWNER_URL = "https://www.fuoriluogo.org/"
+YELLOW_BAR_MENU_URL = ("https://drive.usercontent.google.com/download?"
+                       "id=15wX_FusoJscsC_S4WMUJhoukDx6ligee&export=download")
+YELLOW_BAR_OWNER_URL = ("https://yellowsquare.com/rome/eat-and-party/"
+                        "welcome-to-the-yellow-bar-the-heart-of-yellowsquare-2/")
+YELLOW_BAR_RAW_SHA256 = "3940016abcce0dbe8a5bb81227719f21fe7558fc0efc8ad12bcf6890a93384a2"
+YELLOW_BAR_TEXT_SHA256 = "39ba0703790f3a1b8c099ea5b99599f036a7246435382fc7b3ad51de37c6834a"
 # Google Sites appends this exact optional footer in some regions. It is not
 # venue menu text, and its presence is the only variance this format permits.
 GOOGLE_SITES_COOKIE_NOTICE = (
@@ -130,7 +136,8 @@ def https(value,source=False):
         or port not in (None,443) or parsed.fragment or "." not in host
         or host.startswith(".") or host.endswith(".")
         or not re.fullmatch(r"[A-Za-z0-9.-]+",host)
-        or (source and any(host==bad or host.endswith("."+bad) for bad in BLOCKED))):
+        or (source and value!=YELLOW_BAR_MENU_URL
+            and any(host==bad or host.endswith("."+bad) for bad in BLOCKED))):
         raise Error("invalid or restricted URL")
     try:
         ipaddress.ip_address(host)
@@ -159,6 +166,10 @@ def public_fetch(transport,address,maximum,content_kind=None,resolver=None):
         raise Error(str(exc)) from None
     if type(raw) is not bytes or not 1<=len(raw)<=maximum:
         raise Error("invalid public response size")
+    if address==YELLOW_BAR_MENU_URL:
+        media_type=(getattr(transport,"last_fetch_content_type",None) or "").split(";",1)[0].strip().lower()
+        if content_kind!="pdf" or media_type not in ("application/pdf","application/octet-stream"):
+            raise Error("unexpected Yellow Bar PDF media type")
     header=raw[:8192].lower().lstrip()
     if content_kind=="html" and b"<html" not in header and b"<!doctype html" not in header:
         raise Error("unexpected HTML source content")
@@ -311,6 +322,13 @@ def validate_source(row,venues,checked):
         row["source_url"]!=FUORILUOGO_MENU_URL
         or row["use_review_reference"]!=FUORILUOGO_OWNER_URL):
         raise Error("unreviewed FuoriLuogo Google Sites source")
+    if row["source_url"]==YELLOW_BAR_MENU_URL and (
+        row["venue_key"]!="n2244964954" or row["cell"]!="sr2yk"
+        or row["source_format"]!="pdf_text_v1"
+        or row["use_review_reference"]!=YELLOW_BAR_OWNER_URL
+        or row["source_sha256"]!=YELLOW_BAR_RAW_SHA256
+        or row["source_text_sha256"]!=YELLOW_BAR_TEXT_SHA256):
+        raise Error("unreviewed Yellow Bar PDF source")
     digest(row["source_sha256"]);digest(row["source_text_sha256"])
     if row["source_format"]=="pdf_image_v1":
         integer(row["page_count"],1,MAX_IMAGE_PAGES)

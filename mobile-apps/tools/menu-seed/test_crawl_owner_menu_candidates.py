@@ -64,6 +64,61 @@ class CandidateCrawlerTests(unittest.TestCase):
                  ("/about", "About")]
         self.assertEqual(c.menu_links(links, "https://bar-uno.it/", "bar-uno.it"),
                          ["https://bar-uno.it/menu.pdf"])
+        local, foreign = c.linked_pdfs([("/files/drinks.pdf", "Scarica"),
+            ("https://cdn.bar-uno.it/carta.pdf", "PDF"), ("https://bar-uno.it:8443/x.pdf", "bad"),
+            ("/other", "not pdf")], "https://bar-uno.it/menu", "bar-uno.it")
+        self.assertEqual(local, ["https://bar-uno.it/files/drinks.pdf"])
+        self.assertEqual(foreign, ["https://cdn.bar-uno.it/carta.pdf"])
+
+    def test_one_owner_linked_pdf_is_fetched_and_foreign_pdf_is_held(self):
+        calls = []
+        now = [0.0]
+        def fetch(url):
+            calls.append(url)
+            if url.endswith("robots.txt"):
+                raise c.Held("http_404")
+            if url == "https://bar-uno.it/":
+                return c.Page(url, "html", b'<h1>Bar Uno</h1><a href="/menu">Drink menu</a>')
+            if url == "https://bar-uno.it/menu":
+                return c.Page(url, "html", b'<h1>Bar Uno</h1><a href="/files/drinks.pdf">PDF</a>'
+                              b'<a href="/files/second.pdf">PDF</a>'
+                              b'<a href="https://cdn.bar-uno.it/carta.pdf">PDF</a>')
+            if url == "https://bar-uno.it/files/drinks.pdf":
+                return c.Page(url, "pdf", b"%PDF-test")
+            self.fail("unapproved request " + url)
+        def sleep(seconds): now[0] += seconds
+        report, sources = c.crawl(queue(row("w2")), maximum=1, max_requests=4, max_seconds=30,
+                                  fetch=fetch, convert_pdf=lambda raw, _: "Spritz 5,50 €",
+                                  clock=lambda: now[0], sleep=sleep)
+        self.assertEqual(calls, ["https://bar-uno.it/robots.txt", "https://bar-uno.it/",
+                                 "https://bar-uno.it/menu", "https://bar-uno.it/files/drinks.pdf"])
+        self.assertEqual(report["candidate_venues"], 1)
+        record = report["records"][0]
+        self.assertEqual(record["venue_key"], "w2")
+        self.assertTrue(any(s.get("link_depth") == 2 and s.get("format") == "pdf" for s in record["sources"]))
+        held = [s for s in record["sources"] if s.get("reason") == "cross_host_pdf_requires_manual_review"]
+        self.assertEqual([s["url"] for s in held], ["https://cdn.bar-uno.it/carta.pdf"])
+        self.assertFalse(any("cdn.bar-uno.it" in url for url in calls))
+        self.assertEqual(report["public_imports"], 0)
+        self.assertTrue(report["publication_blocked"])
+        self.assertEqual(len(sources), 3)
+
+    def test_second_hop_pdf_still_obeys_robots(self):
+        calls = []
+        def fetch(url):
+            calls.append(url)
+            if url.endswith("robots.txt"):
+                return c.Page(url, "robots", b"User-agent: *\nDisallow: /files\n")
+            if url == "https://bar-uno.it/":
+                return c.Page(url, "html", b'<h1>Bar Uno</h1><a href="/menu">Drink menu</a>')
+            if url == "https://bar-uno.it/menu":
+                return c.Page(url, "html", b'<a href="/files/drinks.pdf">PDF</a>')
+            self.fail("blocked PDF was fetched")
+        report, _ = c.crawl(queue(row()), maximum=1, max_requests=4, max_seconds=30,
+                            fetch=fetch, sleep=lambda _: None)
+        self.assertEqual(len(calls), 3)
+        self.assertTrue(any(s.get("url") == "https://bar-uno.it/files/drinks.pdf" and
+                            s.get("reason") == "robots_disallow" for s in report["records"][0]["sources"]))
 
     def test_price_candidates_are_explicit_and_uncertain(self):
         prices = c.prices_from("Spritz 5,50 € 20 cl\nCoperto 2,00 €\nBirra 4,00 € / 6,00 €\nGin tonic without amount")

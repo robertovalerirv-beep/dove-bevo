@@ -326,6 +326,24 @@ def menu_links(links: list[tuple[str, str]], base: str, owner: str) -> list[str]
     return sorted(found, key=lambda link: (not link.lower().split("?", 1)[0].endswith(".pdf"), link))
 
 
+def linked_pdfs(links: list[tuple[str, str]], base: str, owner: str) -> tuple[list[str], list[str]]:
+    """Only PDF URLs linked by an owner menu page; foreign hosts are leads, not fetches."""
+    local, foreign = [], []
+    for href, _ in links:
+        try:
+            host, clean = host_for(urljoin(base, href))
+        except (Held, ValueError):
+            continue
+        if not urlsplit(clean).path.lower().endswith(".pdf"):
+            continue
+        target = local if same_host(host, owner) else foreign
+        if clean not in target:
+            target.append(clean)
+        if len(local) + len(foreign) >= 12:
+            break
+    return local, foreign
+
+
 def queue_rows(raw: bytes) -> tuple[dict, list[dict]]:
     if len(raw) > QUEUE_LIMIT:
         raise Held("queue_limit")
@@ -348,7 +366,7 @@ def queue_rows(raw: bytes) -> tuple[dict, list[dict]]:
         raise Held("bad_queue")
     seen = set()
     for row in rows:
-        if (not isinstance(row, dict) or not re.fullmatch(r"n[1-9][0-9]{0,14}", str(row.get("key", "")))
+        if (not isinstance(row, dict) or not re.fullmatch(r"[nwr][1-9][0-9]{0,14}", str(row.get("key", "")))
                 or row["key"] in seen or row.get("state") != "candidate" or row.get("city") not in CITY_ORDER
                 or not isinstance(row.get("name"), str) or not row["name"] or not isinstance(row.get("url_tags"), dict)
                 or not isinstance(row.get("cell"), str) or not re.fullmatch(r"[0123456789bcdefghjkmnpqrstuvwxyz]{5}", row["cell"])):
@@ -484,11 +502,12 @@ def crawl(raw_queue: bytes, *, maximum: int = 12, offset: int = 0, max_requests:
                 if same_host(direct_host, host) and direct_url not in links:
                     links.insert(0, direct_url)
             candidates = [landing_url] + links[:2]
+            followed_pdf = False
             for url in candidates:
                 try:
                     robots_allows(url)
                     page = landing if url == landing_url else bounded_fetch(url)
-                    body_text, _ = html_text(page.raw) if page.kind == "html" else (convert_pdf(page.raw, pdf_converter), [])
+                    body_text, page_links = html_text(page.raw) if page.kind == "html" else (convert_pdf(page.raw, pdf_converter), [])
                     digest = sha(page.raw)
                     if digest in source_bytes and source_bytes[digest] != page.raw:
                         raise Held("hash_collision")
@@ -497,7 +516,19 @@ def crawl(raw_queue: bytes, *, maximum: int = 12, offset: int = 0, max_requests:
                     result["sources"].append({"url": page.url, "format": page.kind, "raw_sha256": digest,
                                               "raw_bytes": len(page.raw), "text_sha256": sha(body_text.encode("utf-8")),
                                               "checked_on": today().isoformat(), "first_party_basis": "same_host_and_venue_name_on_landing",
+                                              "link_depth": 0 if url == landing_url else 2 if url not in links else 1,
                                               "review_state": "candidate_only", "price_candidates": prices})
+                    if url != landing_url and page.kind == "html" and url in links:
+                        local_pdfs, foreign_pdfs = linked_pdfs(page_links, page.url, host)
+                        for pdf in foreign_pdfs[:6]:
+                            result["sources"].append({"url": pdf, "linked_from": page.url, "status": "held",
+                                                      "reason": "cross_host_pdf_requires_manual_review",
+                                                      "review_state": "manual_source_review_required"})
+                        if not followed_pdf:
+                            next_pdf = next((pdf for pdf in local_pdfs if pdf not in candidates), None)
+                            if next_pdf:
+                                candidates.append(next_pdf)
+                                followed_pdf = True
                 except RunLimit:
                     result["status"] = "incomplete"
                     result["reason"] = "run_limit"

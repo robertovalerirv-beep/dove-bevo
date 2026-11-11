@@ -33,6 +33,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - **Testo nascosto**: usa `.sr-only` o `display: none` (i controlli di overflow li escludono); non inventare una variante.
 - **Stato locale sporco**: dopo i test di scrittura (`contribute`, `propose`) il D1 locale tiene i prezzi e i bar inseriti e i test di sola lettura si contano diversamente. Prima di rieseguire test mirati: `rm -rf .wrangler/state` (non è tracciato), e prova che un fallimento non sia questo prima di toccare il codice.
 - **Finito è il deploy, non il merge**: dopo un merge controlla la CI di `main` e il «Deploy staging»; una CI «cancelled» non fa partire il deploy. Dichiara chiuso solo con il deploy verde.
+- **Togliere una protezione scopre ciò che copriva**: prima di rimuovere un comportamento (es. la cancellazione delle CI su `main`) chiediti quale guasto evitava e coprilo in altro modo (es. `timeout-minutes` su ogni job, o una CI bloccata tiene ferma la coda per 6 ore).
 - **Misura il caso reale**, non uno di comodo: il nome del drink predefinito, le due lingue, 390/360/320 px, i due temi.
 
 ## Feature list

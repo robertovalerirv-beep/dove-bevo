@@ -946,6 +946,17 @@ test("European map Home returns to the current city after zoom and a city switch
         .map(Number);
       return Math.abs(lat - 48.8566) < 0.0001 && Math.abs(lon - 2.3522) < 0.0001;
     });
+    await f.page.getByRole("button", { name: "Elenco locali", exact: true }).click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("button", { name: /^Paris fixture bar/ })
+      .click();
+    await f.page.locator("h2.scontrino__name").waitFor();
+    await f.page.getByRole("dialog").getByRole("button", { name: "Chiudi" }).click();
+    await f.page.locator("h2.scontrino__name").waitFor({ state: "hidden" });
+    await f.page.waitForFunction(
+      () => document.querySelector(".europe-map")?.getAttribute("data-selected") === "",
+    );
     await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await f.page.mouse.wheel(0, 650);
     await f.page.waitForFunction(

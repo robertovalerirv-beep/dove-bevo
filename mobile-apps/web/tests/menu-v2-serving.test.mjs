@@ -88,6 +88,10 @@ test("250 ml or unknown draft beer never becomes a medium map price or coverage"
     { ml: null, label: "Media / Grande" },
     { ml: null, label: "Medium / Large" },
     { ml: null, label: "Media 25 cl" },
+    { ml: null, label: "25 cl" },
+    { ml: null, label: "70 cl" },
+    { ml: null, label: "Grande 50 cl" },
+    { ml: null, label: "50 cl / 25 cl" },
     { ml: null, label: "multimedia" },
   ]) {
     assert.equal(isMediumDraftBeerServing(serving), false, JSON.stringify(serving));
@@ -108,6 +112,11 @@ test("400–600 ml and explicit medium labels show their sourced menu amount", (
     { ml: null, label: "Media" },
     { ml: null, label: "medium" },
     { ml: null, label: "Media 0,5 l" },
+    { ml: null, label: "40 cl" },
+    { ml: null, label: "50 cl" },
+    { ml: null, label: "0,5 l" },
+    { ml: null, label: "500 ml" },
+    { ml: null, label: "60 cl" },
   ]) {
     assert.equal(isMediumDraftBeerServing(serving), true, JSON.stringify(serving));
     const row = venue([offer(serving.ml, serving.label, 550)]);

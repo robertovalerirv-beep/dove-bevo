@@ -899,6 +899,21 @@ test("map Home restores the selected city viewport after zoom without clearing t
       );
     });
     assert.equal(await map.getAttribute("data-center"), start);
+    await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await f.page.mouse.down();
+    await f.page.mouse.move(box.x + box.width / 2 + 70, box.y + box.height / 2 + 35, {
+      steps: 8,
+    });
+    await f.page.mouse.up();
+    await f.page.waitForFunction(
+      () =>
+        document.querySelector("section.map")?.getAttribute("data-center") !== "45.46420,9.19000",
+    );
+    await f.page.getByRole("button", { name: "Vista iniziale della città" }).click();
+    await f.page.waitForFunction(
+      () =>
+        document.querySelector("section.map")?.getAttribute("data-center") === "45.46420,9.19000",
+    );
     assert.equal(await f.page.locator(".mobile-drink-menu__summary").innerText(), drink);
     assert.equal(new URL(f.page.url()).searchParams.get("at"), "45.4642,9.19");
     assert.deepEqual(f.errors, []);

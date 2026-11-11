@@ -452,10 +452,10 @@ export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean
     if (labelledMl !== null && Math.abs(labelledMl - serving.ml) > 1) return false;
     return serving.ml >= 400 && serving.ml <= 600;
   }
-  if (!label || !/\b(?:media|medium)\b/u.test(label)) return false;
+  if (!label) return false;
   if (/\b(?:grande|large|pinta|pint)\b/u.test(label)) return false;
   if (labelledMl !== null) return labelledMl >= 400 && labelledMl <= 600;
-  return true;
+  return /\b(?:media|medium)\b/u.test(label);
 }
 
 export function mobileMenuPin(venue: Venue, drinks: readonly string[]): string | null {

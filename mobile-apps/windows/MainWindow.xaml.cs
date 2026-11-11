@@ -11,6 +11,8 @@ namespace DoveBevo.Windows;
 public partial class MainWindow : Window
 {
     private enum NativeReturnDestination { None, Favourites, Recommendations, Discovery }
+    private sealed record FavouriteDrinkOption(string Key, string Label);
+    private sealed record FavouriteListRow(Bookmark Bookmark, string Display);
     private readonly BookmarkStore bookmarks = new();
     private readonly BookmarkPriceClient bookmarkPrices = new();
     private readonly AreaVotesClient areaVotes = new();
@@ -32,6 +34,8 @@ public partial class MainWindow : Window
     private DiscoveryArea? recommendationArea;
     private CancellationTokenSource? recommendationCancellation;
     private CancellationTokenSource? favouritesCancellation;
+    private BookmarkView[] favouriteViews = [];
+    private bool updatingFavouriteDrink;
     private bool saveBusy;
     private string? pendingExactBookmark;
     private string lastTrustedUrl = NavigationPolicy.Home;
@@ -454,14 +458,87 @@ public partial class MainWindow : Window
         favouritesCancellation = request;
         var views = bookmarks.Items.Select(item =>
             new BookmarkView(item, "Prezzo in verifica online")).ToArray();
-        FavouriteList.ItemsSource = views;
+        favouriteViews = views;
+        UpdateFavouriteDrinkChoices();
         ErrorPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         FavouritesPanel.Visibility = Visibility.Visible;
+        RenderFavouriteViews();
         ShowWebsiteIfNoOverlay();
         UpdateButtons();
-        StatusText.Text = bookmarks.Items.Count == 0 ? "Nessun drink salvato." : "Drink preferiti su questo PC.";
         await RefreshFavouritePricesAsync(views, request);
+    }
+
+    private void UpdateFavouriteDrinkChoices()
+    {
+        var selected = (FavouriteDrink.SelectedItem as FavouriteDrinkOption)?.Key ?? "all";
+        var options = new List<FavouriteDrinkOption> { new("all", "Tutti i drink") };
+        options.AddRange(DiscoveryClient.Categories.Select(category =>
+            new FavouriteDrinkOption("code:" + category.Code, category.Name)));
+        options.AddRange(bookmarks.Items.Select(FavouriteDrinkKey)
+            .Where(key => key.StartsWith("name:", StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(key => key[5..], StringComparer.CurrentCultureIgnoreCase)
+            .Select(key => new FavouriteDrinkOption(key, key[5..])));
+        updatingFavouriteDrink = true;
+        try
+        {
+            FavouriteDrink.ItemsSource = options;
+            FavouriteDrink.SelectedItem = options.FirstOrDefault(option => option.Key == selected) ?? options[0];
+        }
+        finally { updatingFavouriteDrink = false; }
+    }
+
+    private static string FavouriteDrinkKey(Bookmark bookmark)
+    {
+        if (bookmark.ActionUrl is not null &&
+            NavigationPolicy.TrySaveAction(bookmark.ActionUrl, bookmark.Url, out var action) &&
+            action is { Kind: "legacy" or "europe" })
+            return "code:" + action.Item;
+        var namedCategory = DiscoveryClient.Categories.FirstOrDefault(category =>
+            category.Name.Equals(bookmark.DrinkName, StringComparison.OrdinalIgnoreCase));
+        return namedCategory is null ? "name:" + bookmark.DrinkName : "code:" + namedCategory.Code;
+    }
+
+    private static string FavouriteServing(Bookmark bookmark)
+    {
+        if (bookmark.ActionUrl is null ||
+            !NavigationPolicy.TrySaveAction(bookmark.ActionUrl, bookmark.Url, out var action) ||
+            action is not { Kind: "europe", Currency: not null, Serving: not null }) return "";
+        var serving = action.Serving.StartsWith("ml:", StringComparison.Ordinal)
+            ? action.Serving[3..] + " ml"
+            : action.Serving == "glass:" ? "calice" : "drink";
+        return action.Currency + " · " + serving;
+    }
+
+    private void RenderFavouriteViews()
+    {
+        var selected = (FavouriteDrink.SelectedItem as FavouriteDrinkOption)?.Key ?? "all";
+        var selectedBookmark = (FavouriteList.SelectedItem as FavouriteListRow)?.Bookmark.Identity;
+        var rows = favouriteViews
+            .Where(view => selected == "all" || FavouriteDrinkKey(view.Bookmark) == selected)
+            .OrderBy(view => FavouriteServing(view.Bookmark), StringComparer.Ordinal)
+            .ThenBy(view => view.Bookmark.VenueName, StringComparer.CurrentCultureIgnoreCase)
+            .Select(view =>
+            {
+                var serving = FavouriteServing(view.Bookmark);
+                var display = view.Bookmark.Display + (serving.Length == 0 ? "" : " · " + serving)
+                    + "\n" + view.Price;
+                return new FavouriteListRow(view.Bookmark, display);
+            }).ToArray();
+        FavouriteList.ItemsSource = rows;
+        if (selectedBookmark is not null)
+            FavouriteList.SelectedItem = rows.FirstOrDefault(row => row.Bookmark.Identity == selectedBookmark);
+        if (FavouritesPanel.Visibility == Visibility.Visible)
+            StatusText.Text = rows.Length == 0
+                ? "Nessun drink salvato per questa scelta."
+                : $"{rows.Length} drink salvati per questa scelta; prezzi mostrati nella valuta originale.";
+    }
+
+    private void FavouriteDrink_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!updatingFavouriteDrink && FavouritesPanel.Visibility == Visibility.Visible)
+            RenderFavouriteViews();
     }
 
     private async Task RefreshFavouritePricesAsync(BookmarkView[] views, CancellationTokenSource request)
@@ -476,7 +553,7 @@ public partial class MainWindow : Window
                 if (request.IsCancellationRequested || FavouritesPanel.Visibility != Visibility.Visible)
                     return;
                 views[index] = new BookmarkView(view.Bookmark, price);
-                FavouriteList.ItemsSource = views.ToArray();
+                if (ReferenceEquals(request, favouritesCancellation)) RenderFavouriteViews();
             }
             catch (OperationCanceledException) { }
             finally { gate.Release(); }
@@ -621,7 +698,7 @@ public partial class MainWindow : Window
 
     private void OpenFavourite_Click(object sender, RoutedEventArgs e)
     {
-        if (FavouriteList.SelectedItem is not BookmarkView item) return;
+        if (FavouriteList.SelectedItem is not FavouriteListRow item) return;
         var bookmark = item.Bookmark;
         if (bookmark.ActionUrl is not null &&
             NavigationPolicy.TryExactEuropeVenue(bookmark.ActionUrl, bookmark.Url, out var exactVenue) &&
@@ -632,7 +709,7 @@ public partial class MainWindow : Window
 
     private void RemoveFavourite_Click(object sender, RoutedEventArgs e)
     {
-        if (FavouriteList.SelectedItem is not BookmarkView view) return;
+        if (FavouriteList.SelectedItem is not FavouriteListRow view) return;
         var item = view.Bookmark;
         try
         {

@@ -9,9 +9,12 @@ on:
 permissions:
   contents: read
 
+# A newer push cancels the CI of a pull request, but never a run on main: the deploy starts only when the CI of
+# main ends green, and with pushes closer than one CI run every merge was cancelled and none was deployed. On main
+# the group keeps one run going and one waiting (a newer push replaces the waiting one).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   WRANGLER_SEND_METRICS: "false"

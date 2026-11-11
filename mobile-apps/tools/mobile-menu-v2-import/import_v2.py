@@ -17,7 +17,8 @@ import socket
 import subprocess
 import sys
 import unicodedata
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
+from urllib.request import Request, build_opener
 
 LEGACY_PATH = Path(__file__).resolve().parents[1] / "menu-seed" / "live_import.py"
 _spec = importlib.util.spec_from_file_location("_dovebevo_v1_transport", LEGACY_PATH)
@@ -27,6 +28,13 @@ _spec.loader.exec_module(legacy)
 SITE = legacy.SITE
 CARICO_RENDERER_URL = "https://www.carico.io/js/app.js"
 CARICO_RENDERER_SHA256 = "02f10b32d3e52033d57d30ab6ce3e321dc1da4849a70c3380cfbcbf4626fbe05"
+MOSTO_SOURCE_URL = "https://mo5.it/m/alvino"
+MOSTO_OWNER_URL = "https://www.mosto.beer/sedi/alvino/"
+MOSTO_API_URL = "https://bdgwzhqdystjucjetrfs.supabase.co"
+MOSTO_BRANCH_ID = 2
+MOSTO_SELECT = ("id,numero,tipo,taplist(birra_id,birre("
+                "id,nome,nome_visualizzato_mobile,no_alcol,"
+                "prezzo_s,prezzo_m,prezzo_l))")
 HEX = re.compile(r"^[0-9a-f]{64}$")
 OSM = re.compile(r"^[nwr][1-9][0-9]{0,17}$")
 OWNER = re.compile(r"^m[0-9a-f]{24}$")
@@ -274,6 +282,8 @@ def validate_source(row,venues,checked):
         required+=("page_count","image_evidence")
     if isinstance(row,dict) and row.get("source_format")=="jpeg_image_v1":
         required+=("image_evidence",)
+    if isinstance(row,dict) and row.get("source_format")=="mosto_taplist_v1":
+        required+=("renderer_sha256",)
     fields(row,required)
     identifier(row["id"])
     key=venue_key(row["venue_key"])
@@ -284,7 +294,7 @@ def validate_source(row,venues,checked):
         parsed=urlsplit(row["source_url"])
         if parsed.query or not parsed.path.lower().endswith((".jpg",".jpeg")):
             raise Error("JPEG source must be a direct image URL")
-    if row["source_format"] not in ("html_text_v1","pdf_text_v1","pdf_image_v1","jpeg_image_v1","json_menu_v1"):
+    if row["source_format"] not in ("html_text_v1","pdf_text_v1","pdf_image_v1","jpeg_image_v1","json_menu_v1","mosto_taplist_v1"):
         raise Error("unsupported source format")
     digest(row["source_sha256"]);digest(row["source_text_sha256"])
     if row["source_format"]=="pdf_image_v1":
@@ -299,7 +309,11 @@ def validate_source(row,venues,checked):
     if row["source_format"]=="json_menu_v1" and (row["source_url"]!="https://www.carico.io/api/menu"
         or row["use_review_reference"]!=CARICO_RENDERER_URL):
         raise Error("unreviewed JSON menu endpoint or renderer")
-    if row["source_format"] in ("html_text_v1","json_menu_v1") and row["source_sha256"]!=row["source_text_sha256"]:
+    if row["source_format"]=="mosto_taplist_v1":
+        digest(row["renderer_sha256"])
+        if row["source_url"]!=MOSTO_SOURCE_URL or row["use_review_reference"]!=MOSTO_OWNER_URL:
+            raise Error("unreviewed Mosto branch or owner reference")
+    if row["source_format"] in ("html_text_v1","json_menu_v1","mosto_taplist_v1") and row["source_sha256"]!=row["source_text_sha256"]:
         raise Error("HTML text hashes differ")
     if day(row["source_checked_on"])>checked or day(row["use_reviewed_on"])>checked:
         raise Error("future source review")
@@ -466,6 +480,9 @@ def validate(raw):
             verify_image_pdf_offers(src,doc["offers"],doc["fees"],doc["fee_coverage"])
         if src["source_format"]=="jpeg_image_v1":
             verify_jpeg_image_offers(src,doc["offers"],doc["fees"],doc["fee_coverage"])
+        if src["source_format"]=="mosto_taplist_v1" and any(
+            row["source_id"]==src["id"] for row in doc["fees"]+doc["fee_coverage"]):
+            raise Error("Mosto fees need separate reviewed evidence")
     for src in sources.values():
         if src["use_review_status"]=="approved" and not any(
             row["source_id"]==src["id"]
@@ -650,6 +667,156 @@ def verify_json_menu_offers(raw,source,offers):
             raise Error("JSON offer/source mismatch")
     if matched!=set(entries): raise Error("JSON priced drink coverage incomplete")
 
+def mosto_public_snapshot(renderer, *, opener=None, resolver=None):
+    """Read the owner-linked Alvino tap data; never persist its public API key."""
+    if not isinstance(renderer,bytes) or len(renderer)>MAX_SOURCE:
+        raise Error("Mosto renderer invalid")
+    url=re.search(rb"const\s+SUPABASE_URL\s*=\s*(['\"])([^'\"\r\n]+)\1",renderer)
+    key=re.search(rb"const\s+SUPABASE_ANON_KEY\s*=\s*(['\"])([^'\"\r\n]+)\1",renderer)
+    if (not url or url.group(2).decode("ascii","ignore")!=MOSTO_API_URL
+        or not key or not re.fullmatch(rb"sb_publishable_[A-Za-z0-9_]{16,128}",key.group(2))):
+        raise Error("Mosto renderer API binding changed")
+    host=urlsplit(MOSTO_API_URL).hostname
+    try:
+        answers=(resolver or socket.getaddrinfo)(host,443,type=socket.SOCK_STREAM)
+        ips=[answer[4][0] for answer in answers]
+        if not ips or any(not ipaddress.ip_address(ip).is_global for ip in ips):
+            raise Error("Mosto API resolves to non-public address")
+    except (OSError,ValueError,IndexError,TypeError) as exc:
+        raise Error("Mosto API DNS validation failed") from exc
+    opener=opener or build_opener(legacy.NoRedirect())
+    headers={"apikey":key.group(2).decode("ascii"),"Accept":"application/json",
+             "User-Agent":"DoveBevoMenuAudit/1"}
+    def read(path,data=None):
+        request=Request(MOSTO_API_URL+path,data=data,headers={**headers,
+                        **({"Content-Type":"application/json"} if data is not None else {})},
+                        method="POST" if data is not None else "GET")
+        try:
+            with opener.open(request,timeout=45) as response:
+                media=(response.headers.get("Content-Type") or "").split(";",1)[0].lower()
+                if media!="application/json": raise Error("Mosto API returned non-JSON")
+                raw=response.read(MAX_SOURCE+1)
+            if not 1<=len(raw)<=MAX_SOURCE: raise Error("Mosto API response size")
+            return raw
+        except Error:
+            raise
+        except Exception:
+            # The request contains a public key in a header. Never put the
+            # underlying URL/request exception or its headers in a receipt.
+            raise Error("Mosto public data unavailable") from None
+    locali=read("/rest/v1/rpc/lista_locali",b"{}")
+    query=urlencode({"select":MOSTO_SELECT,"locale_id":f"eq.{MOSTO_BRANCH_ID}",
+                     "order":"numero.asc"})
+    taps=read("/rest/v1/spine?"+query)
+    return locali,taps
+
+def mosto_entries(locali_raw,taps_raw):
+    """Canonicalize the actual branch rows, including empty taps and null prices."""
+    try:
+        locali=json.loads(locali_raw.decode("utf-8"),object_pairs_hook=pairs,parse_constant=constant)
+        taps=json.loads(taps_raw.decode("utf-8"),object_pairs_hook=pairs,parse_constant=constant)
+    except (UnicodeError,ValueError) as exc:
+        raise Error("invalid Mosto public JSON") from exc
+    if (not isinstance(locali,list) or not 1<=len(locali)<=100
+        or len([row for row in locali if isinstance(row,dict) and row.get("nome")=="ALVINO"])!=1
+        or next(row for row in locali if isinstance(row,dict) and row.get("nome")=="ALVINO").get("id")!=MOSTO_BRANCH_ID):
+        raise Error("Mosto branch identity changed")
+    if not isinstance(taps,list) or not 1<=len(taps)<=64:
+        raise Error("invalid Mosto tap list")
+    rows=[]; entries={}; spine_ids=set(); numbers=set()
+    for spine in taps:
+        if not isinstance(spine,dict): raise Error("invalid Mosto tap")
+        spine_id=integer(spine.get("id"),1,1000000000)
+        number=integer(spine.get("numero"),1,64)
+        kind=spine.get("tipo")
+        if kind not in ("co2","carboazoto","handpump"):
+            raise Error("unreviewed Mosto tap type")
+        if spine_id in spine_ids or number in numbers: raise Error("duplicate Mosto tap")
+        spine_ids.add(spine_id);numbers.add(number)
+        tap=spine.get("taplist")
+        fact={"spine_id":spine_id,"number":number,"type":kind,"beer":None}
+        if tap is not None:
+            if not isinstance(tap,dict) or not isinstance(tap.get("birre"),dict):
+                raise Error("ambiguous Mosto tap entry")
+            beer=tap["birre"]
+            beer_id=integer(tap.get("birra_id"),1,1000000000)
+            if beer.get("id")!=beer_id: raise Error("Mosto beer identity mismatch")
+            raw_name=text(beer.get("nome"),1,512)
+            display=beer.get("nome_visualizzato_mobile")
+            if display is not None and display!="": text(display,1,512)
+            name=display or raw_name
+            no_alcol=beer.get("no_alcol")
+            if no_alcol is not None and type(no_alcol) is not bool:
+                raise Error("invalid Mosto alcohol marker")
+            prices={}
+            for size in ("s","m","l"):
+                value=beer.get("prezzo_"+size)
+                if value is None:
+                    prices[size]=None
+                    continue  # The owner's renderer displays a fallback; it is not a stored price.
+                if type(value) not in (int,float,str): raise Error("invalid Mosto price")
+                try: amount=decimal.Decimal(str(value))*100
+                except decimal.InvalidOperation as exc: raise Error("invalid Mosto price") from exc
+                if not amount.is_finite() or amount!=amount.to_integral_value() or not 1<=amount<=100000000:
+                    raise Error("invalid Mosto price")
+                prices[size]=int(amount)
+                entry=f"{spine_id}:{beer_id}:{size.upper()}"
+                entries[entry]=(name,int(amount),"alcohol_free" if no_alcol else "beer_draft",
+                                size.upper(),number,beer_id)
+            fact["beer"]={"id":beer_id,"raw_name":raw_name,"display_name":display,
+                          "no_alcol":no_alcol,"prices":prices}
+        rows.append(fact)
+    if not entries: raise Error("Mosto tap list has no explicit prices")
+    canonical=json.dumps({"branch_id":MOSTO_BRANCH_ID,"branch_name":"ALVINO",
+                          "taps":sorted(rows,key=lambda row:row["number"])},
+                         ensure_ascii=False,sort_keys=True,separators=(",",":")).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest(),entries
+
+def verify_mosto_offers(snapshot,source,offers):
+    _,entries=mosto_entries(*snapshot)
+    prefix="Mosto Alvino tap "
+    matched=set()
+    for row in offers:
+        if row["source_id"]!=source["id"]: continue
+        evidence=row["evidence_ref"]
+        if not evidence.startswith(prefix): raise Error("Mosto offer evidence absent")
+        match=re.fullmatch(r"Mosto Alvino tap ([1-9][0-9]*) beer ([1-9][0-9]*) ([SML])",evidence)
+        if not match: raise Error("Mosto offer evidence invalid")
+        number,beer_id,size=match.groups()
+        keys=[key for key,value in entries.items()
+              if value[4:]==(int(number),int(beer_id)) and key.endswith(":"+size)]
+        if len(keys)!=1 or keys[0] in matched: raise Error("Mosto offer missing or duplicated")
+        matched.add(keys[0])
+        name,amount,category,serving,_,_=entries[keys[0]]
+        if (row["name"]!=name or row["amount_minor"]!=amount
+            or row["category"]!=category or row["serving_label"]!=serving
+            or row["serving_ml"] is not None or row["currency"]!="EUR"
+            or row["currency_exponent"]!=2 or row["price_context"]!="regular"
+            or row["condition_text"] is not None):
+            raise Error("Mosto offer/source mismatch")
+    if matched!=set(entries): raise Error("Mosto explicit price coverage incomplete")
+
+def mosto_source_identity(row,transport,cache,offers):
+    """Pin the live Alvino branch data, not the static renderer shell."""
+    key=(row["source_url"],row["source_format"],row["source_sha256"],
+         row["renderer_sha256"])
+    if key not in cache:
+        renderer=public_fetch(transport,MOSTO_SOURCE_URL,MAX_SOURCE,"html")
+        if hashlib.sha256(renderer).hexdigest()!=row["renderer_sha256"]:
+            raise Error("Mosto renderer hash mismatch")
+        owner=public_fetch(transport,MOSTO_OWNER_URL,MAX_SOURCE,"html")
+        if not re.search(rb"<a\b[^>]*\bhref\s*=\s*[\x22\x27]https://mo5\.it/m/alvino/?[\x22\x27]",
+                         owner,re.I):
+            raise Error("Mosto owner page no longer links Alvino tap list")
+        snapshot=mosto_public_snapshot(renderer)
+        source_hash,_=mosto_entries(*snapshot)
+        cache[key]=(source_hash,snapshot)
+    source_hash,snapshot=cache[key]
+    if source_hash!=row["source_sha256"]:
+        raise Error("source hash mismatch")
+    verify_mosto_offers(snapshot,row,offers)
+    return "verified"
+
 def osm_node_v1(raw):
     """Hash semantic OSM node evidence, excluding server generator and XML ordering."""
     import decimal
@@ -770,6 +937,8 @@ def public_identity(row,transport,version,cells):
 
 def source_identity(row,transport,cache,offers,diagnostics=None):
     if row["use_review_status"]=="held": return "held"
+    if row["source_format"]=="mosto_taplist_v1":
+        return mosto_source_identity(row,transport,cache,offers)
     key=(row["source_url"],row["source_format"],row.get("source_text_sha256"))
     if key not in cache:
         content_kind={"html_text_v1":"html","pdf_text_v1":"pdf",

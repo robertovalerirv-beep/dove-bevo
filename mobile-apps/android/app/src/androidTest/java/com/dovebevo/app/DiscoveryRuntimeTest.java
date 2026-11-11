@@ -5,7 +5,10 @@ import android.app.Instrumentation;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -137,24 +140,36 @@ public final class DiscoveryRuntimeTest {
     @Test public void cityPickerLoadsActualAreaWithoutMapAndKeepsDrinkSelection()throws Exception {
         show(false,null);awaitCities();
         onMain(()->{
-            Spinner cities=screen.view().findViewWithTag("discovery.citySelector");
-            assertEquals("Area della mappa",cities.getItemAtPosition(0));
-            assertEquals("Milano, Italia",cities.getItemAtPosition(1));
-            assertEquals("Roma, Italia",cities.getItemAtPosition(2));
-            assertEquals("Scegli una città per Scopri",cities.getContentDescription());
-            cities.setSelection(1);
+            Button cities=screen.view().findViewWithTag("discovery.citySelector");
+            assertTrue(cities.getText().toString().contains("Area della mappa"));
+            assertTrue(cities.getContentDescription().toString().contains("Scegli una città per Scopri"));
+            cities.performClick();assertNotNull(screen.cityDialog());
+            ListView list=screen.cityDialog().getWindow().getDecorView().findViewWithTag("discovery.cityList");
+            assertEquals(3,list.getCount());assertEquals("Area della mappa",list.getItemAtPosition(0));
+            assertEquals("Milano, Italia",list.getItemAtPosition(1));assertEquals("Roma, Italia",list.getItemAtPosition(2));
+            EditText search=screen.cityDialog().getWindow().getDecorView().findViewWithTag("discovery.citySearch");
+            search.setText("ro");assertEquals(1,list.getCount());assertEquals("Roma, Italia",list.getItemAtPosition(0));
+            search.setText("not-a-city");assertEquals(0,list.getCount());
+            search.setText("mIl");assertEquals(1,list.getCount());assertEquals("Milano, Italia",list.getItemAtPosition(0));
+            list.performItemClick(null,0,0);
         });
         awaitLoaded();
         onMain(()->{
             assertNotNull(screen.area());assertEquals(45.4642,screen.area().lat,0.00001);
+            assertTrue(((Button)screen.view().findViewWithTag("discovery.citySelector")).getText().toString().contains("Milano"));
             assertEquals("spritz",screen.selectedDrink());assertEquals(2,rows().getChildCount());
-            ((Spinner)screen.view().findViewWithTag("discovery.citySelector")).setSelection(2);
+            ((Button)screen.view().findViewWithTag("discovery.citySelector")).performClick();
+            EditText search=screen.cityDialog().getWindow().getDecorView().findViewWithTag("discovery.citySearch");
+            search.setText("Roma");ListView list=screen.cityDialog().getWindow().getDecorView().findViewWithTag("discovery.cityList");
+            assertEquals(1,list.getCount());list.performItemClick(null,0,0);
         });
         awaitLoaded();
         onMain(()->{
             assertEquals(41.9028,screen.area().lat,0.00001);
             assertEquals(0,rows().getChildCount());assertTrue(status().contains("Nessun prezzo"));
-            ((Spinner)screen.view().findViewWithTag("discovery.citySelector")).setSelection(0);
+            ((Button)screen.view().findViewWithTag("discovery.citySelector")).performClick();
+            ListView list=screen.cityDialog().getWindow().getDecorView().findViewWithTag("discovery.cityList");
+            list.performItemClick(null,0,0);
         });
         onMain(()->{assertNull(screen.area());assertTrue(status().contains("Apri una città"));});
     }
@@ -174,30 +189,34 @@ public final class DiscoveryRuntimeTest {
         };
         show(false,new DiscoveryArea(41.9028,12.4964,14),changingSource);awaitCities();
         onMain(()->{
-            Spinner cities=screen.view().findViewWithTag("discovery.citySelector");
-            assertEquals("Milano, Italia",cities.getItemAtPosition(1));
+            Button cities=screen.view().findViewWithTag("discovery.citySelector");
             assertEquals(View.VISIBLE,screen.view().findViewWithTag("discovery.cityRetry").getVisibility());
-            cities.setSelection(1);
+            cities.performClick();ListView list=screen.cityDialog().getWindow().getDecorView().findViewWithTag("discovery.cityList");
+            assertEquals("Milano, Italia",list.getItemAtPosition(1));list.performItemClick(null,1,1);
         });
         awaitLoaded();onMain(()->{assertEquals(45.4642,screen.area().lat,0.00001);assertEquals(2,rows().getChildCount());
             screen.view().findViewWithTag("discovery.cityRetry").performClick();});
         long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean refreshed=new AtomicBoolean();
         while(System.nanoTime()<deadline){onMain(()->{
-            Spinner cities=screen.view().findViewWithTag("discovery.citySelector");
-            refreshed.set(placeReads.get()>=2&&cities.getCount()==2&&cities.getSelectedItemPosition()==0);
+            Button cities=screen.view().findViewWithTag("discovery.citySelector");
+            refreshed.set(placeReads.get()>=2&&screen.cityCount()==1&&cities.getText().toString().contains("Area della mappa"));
         });if(refreshed.get())break;Thread.sleep(10);}
         assertTrue("Owned city retry did not finish",refreshed.get());awaitLoaded();
         onMain(()->{
-            assertEquals("Area della mappa",((Spinner)screen.view().findViewWithTag("discovery.citySelector")).getSelectedItem());
+            assertTrue(((Button)screen.view().findViewWithTag("discovery.citySelector")).getText().toString().contains("Area della mappa"));
             assertEquals(41.9028,screen.area().lat,0.00001);
             assertEquals(0,rows().getChildCount());assertTrue(status().contains("Nessun prezzo"));
             assertTrue(text(screen.view().findViewWithTag("discovery.cityStatus")).contains("non è nell'elenco aggiornato"));
-            ((Spinner)screen.view().findViewWithTag("discovery.citySelector")).setSelection(1);
+            ((Button)screen.view().findViewWithTag("discovery.citySelector")).performClick();
+            EditText search=screen.cityDialog().getWindow().getDecorView().findViewWithTag("discovery.citySearch");
+            ListView list=screen.cityDialog().getWindow().getDecorView().findViewWithTag("discovery.cityList");
+            search.setText("Milano");assertEquals(0,list.getCount());
+            search.setText("Roma");assertEquals(1,list.getCount());list.performItemClick(null,0,0);
         });
         onMain(()->{assertEquals(41.9028,screen.area().lat,0.00001);
             assertFalse(text(screen.view().findViewWithTag("discovery.cityStatus")).contains("non è nell'elenco aggiornato"));});
     }
-    private void awaitCities()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->{Spinner cities=screen.view().findViewWithTag("discovery.citySelector");loaded.set(cities.getCount()>=3);});if(loaded.get())return;Thread.sleep(10);}fail("Owned city choices did not load");}
+    private void awaitCities()throws Exception{long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);AtomicBoolean loaded=new AtomicBoolean();while(System.nanoTime()<deadline){onMain(()->loaded.set(screen.cityCount()>=2));if(loaded.get())return;Thread.sleep(10);}fail("Owned city choices did not load");}
     private void show(boolean unavailable,DiscoveryArea area){show(unavailable,area,(url,maximum)->{
         String body;
         if(url.endsWith("/api/health"))body="{\"status\":\"ok\",\"data_version\":\"20261030\"}";

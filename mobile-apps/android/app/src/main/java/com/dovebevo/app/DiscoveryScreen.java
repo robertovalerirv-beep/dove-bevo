@@ -1,16 +1,22 @@
 package com.dovebevo.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.view.Gravity;
 import android.widget.HorizontalScrollView;
+import android.widget.ListView;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -30,8 +36,10 @@ import java.util.function.Supplier;
 /** Native nearby price discovery, independent of the website's controls and private bookmarks. */
 final class DiscoveryScreen {
     private final Activity activity;private final Consumer<String> navigate;private final Supplier<Boolean> foreground;private final DiscoveryLoader loader;
-    private final ScrollView view;private final LinearLayout rows,featured;private final TextView status,featuredTitle,cityStatus;private final Spinner bands,drinks,citySelector;
-    private final Button cityRetry;private final ArrayAdapter<String> cityAdapter;private final DiscoveryCities.Source citySource;
+    private final ScrollView view;private final LinearLayout rows,featured;private final TextView status,featuredTitle,cityStatus;private final Spinner bands,drinks;
+    private final Button cityRetry,cityButton;private final DiscoveryCities.Source citySource;
+    private AlertDialog cityDialog;private EditText cityQuery;private ListView cityList;private TextView cityEmpty;
+    private ArrayAdapter<String> cityMatchesAdapter;private List<DiscoveryCities.City> cityMatches=Collections.emptyList();
     private final ExecutorService cityNetwork=Executors.newSingleThreadExecutor();
     private RecommendationDrink drink=RecommendationDrink.BEER_DRAFT;private int band;private DiscoveryArea area,sourceArea;private DiscoveryLoader.Result snapshot;
     private List<DiscoveryCities.City> cityOptions=Collections.emptyList();private DiscoveryCities.City selectedCity;
@@ -51,11 +59,8 @@ final class DiscoveryScreen {
         bandOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);bands.setAdapter(bandOptions);bands.setMinimumHeight(dp(48));bands.setOnItemSelectedListener(selection(()->{band=bands.getSelectedItemPosition();render();}));
         body.addView(new DiscoveryHeader(activity,title,bands),new LinearLayout.LayoutParams(-1,-2));
         TextView cityTitle=text("Scegli una città",13);NativeAppearance.muted(cityTitle);cityTitle.setPadding(0,dp(4),0,0);body.addView(cityTitle);
-        citySelector=new Spinner(activity);citySelector.setTag("discovery.citySelector");citySelector.setContentDescription("Scegli una città per Scopri");citySelector.setMinimumHeight(dp(48));
-        cityAdapter=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,new ArrayList<>(Collections.singletonList("Area della mappa")));
-        cityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);citySelector.setAdapter(cityAdapter);
-        citySelector.setOnItemSelectedListener(selection(()->chooseCity(citySelector.getSelectedItemPosition())));
-        body.addView(citySelector,new LinearLayout.LayoutParams(-1,-2));
+        cityButton=new Button(activity);cityButton.setTag("discovery.citySelector");cityButton.setMinimumHeight(dp(48));NativeAppearance.button(cityButton,false);
+        cityButton.setOnClickListener(v->openCityPicker());updateCityButton();body.addView(cityButton,new LinearLayout.LayoutParams(-1,-2));
         cityStatus=text("",12);cityStatus.setTag("discovery.cityStatus");NativeAppearance.muted(cityStatus);cityStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(cityStatus);
         cityRetry=new Button(activity);cityRetry.setTag("discovery.cityRetry");cityRetry.setText("Riprova elenco città");NativeAppearance.button(cityRetry,false);
         cityRetry.setVisibility(View.GONE);cityRetry.setOnClickListener(v->loadCities());body.addView(cityRetry,new LinearLayout.LayoutParams(-1,-2));
@@ -74,33 +79,77 @@ final class DiscoveryScreen {
         rows=new LinearLayout(activity);rows.setId(R.id.discovery_rows);rows.setOrientation(LinearLayout.VERTICAL);rows.setPadding(0,dp(4),0,0);body.addView(rows);
     }
     View view(){return view;}
+    AlertDialog cityDialog(){return cityDialog;}
+    int cityCount(){return cityOptions.size();}
     DiscoveryArea area(){return area;}
     void show(DiscoveryArea area){
         if(closed)return;visible=true;
         if(selectedCity!=null&&sameArea(sourceArea,area)){
             try{this.area=selectedCity.area();}catch(IOException impossible){selectedCity=null;this.area=area;}
-        }else{selectedCity=null;sourceArea=area;this.area=area;citySelector.setSelection(0,false);}
+        }else{selectedCity=null;sourceArea=area;this.area=area;}
+        updateCityButton();
         loadCities();refresh();
     }
-    void hide(){visible=false;retire();retireCities();snapshot=null;}
-    void pause(){retire();retireCities();snapshot=null;if(visible)render();}
+    void hide(){visible=false;dismissCityPicker();retire();retireCities();snapshot=null;}
+    void pause(){dismissCityPicker();retire();retireCities();snapshot=null;if(visible)render();}
     void resume(){if(visible&&!closed&&foreground.get()){loadCities();refresh();}}
     void close(){closed=true;hide();loader.close();cityNetwork.shutdownNow();}
     private boolean usable(){return visible&&!closed&&foreground.get()&&!activity.isFinishing()&&!activity.isDestroyed();}
     private void retire(){generation++;if(request!=null)request.cancel();request=null;busy=false;}
     private void retireCities(){cityGeneration++;if(cityRequest!=null)cityRequest.cancel(true);cityRequest=null;cityLoading=false;if(citySource instanceof DiscoveryCities.PublicSource)((DiscoveryCities.PublicSource)citySource).cancel();}
     private static boolean sameArea(DiscoveryArea first,DiscoveryArea second){return first==second||first!=null&&second!=null&&first.lat==second.lat&&first.lon==second.lon&&first.zoom==second.zoom;}
-    private void chooseCity(int position){
-        if(position<0||position>cityOptions.size()||!visible||closed)return;
-        DiscoveryCities.City choice=position==0?null:cityOptions.get(position-1);
+    private void chooseCity(DiscoveryCities.City choice){
+        if(!visible||closed)return;
         if(choice==selectedCity)return;
         selectedCity=choice;
         try{area=choice==null?sourceArea:choice.area();}
         catch(IOException unavailable){selectedCity=null;area=sourceArea;cityStatus.setText("Città non disponibile. Scegline un'altra.");return;}
+        updateCityButton();
         if(cityStatus.getText().toString().startsWith("La città selezionata"))
             cityStatus.setText(cityRetry.getVisibility()==View.VISIBLE?"Elenco città parziale. Riprova per altre città.":"");
         view.scrollTo(0,0);refresh();
     }
+    private void updateCityButton(){
+        String label=selectedCity==null?"Area della mappa":selectedCity.label();
+        cityButton.setText(label+"  ⌄");cityButton.setContentDescription("Scegli una città per Scopri. "+label);
+    }
+    private void openCityPicker(){
+        if(!usable()||cityDialog!=null)return;
+        LinearLayout content=new LinearLayout(activity);content.setOrientation(LinearLayout.VERTICAL);content.setPadding(dp(16),0,dp(16),0);
+        cityQuery=new EditText(activity);cityQuery.setTag("discovery.citySearch");cityQuery.setSingleLine(true);cityQuery.setHint("Cerca città");
+        cityQuery.setContentDescription("Cerca città per Scopri");cityQuery.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        content.addView(cityQuery,new LinearLayout.LayoutParams(-1,dp(56)));
+        cityList=new ListView(activity);cityList.setTag("discovery.cityList");cityList.setMinimumHeight(dp(160));
+        cityMatchesAdapter=new ArrayAdapter<>(activity,android.R.layout.simple_list_item_1,new ArrayList<>());cityList.setAdapter(cityMatchesAdapter);
+        content.addView(cityList,new LinearLayout.LayoutParams(-1,dp(360)));
+        cityEmpty=text("Nessuna città trovata.",14);cityEmpty.setTag("discovery.cityEmpty");NativeAppearance.muted(cityEmpty);
+        content.addView(cityEmpty,new LinearLayout.LayoutParams(-1,-2));cityList.setEmptyView(cityEmpty);
+        AlertDialog dialog=new AlertDialog.Builder(activity).setTitle("Scegli una città").setView(content).setNegativeButton("Chiudi",null).create();
+        cityDialog=dialog;
+        cityQuery.addTextChangedListener(new TextWatcher(){
+            @Override public void beforeTextChanged(CharSequence value,int start,int count,int after){}
+            @Override public void onTextChanged(CharSequence value,int start,int before,int count){refreshCityDialog();}
+            @Override public void afterTextChanged(Editable value){}
+        });
+        cityList.setOnItemClickListener((parent,row,position,id)->{
+            boolean map=cityQuery.getText().toString().trim().isEmpty();
+            DiscoveryCities.City chosen=map&&position==0?null:cityMatches.get(position-(map?1:0));
+            dialog.dismiss();chooseCity(chosen);
+        });
+        dialog.setOnDismissListener(ignored->{cityDialog=null;cityQuery=null;cityList=null;cityEmpty=null;cityMatchesAdapter=null;cityMatches=Collections.emptyList();});
+        dialog.show();if(dialog.getWindow()!=null)dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE|WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        refreshCityDialog();cityQuery.requestFocus();
+    }
+    private void refreshCityDialog(){
+        if(cityDialog==null||cityQuery==null||cityMatchesAdapter==null)return;
+        String query=cityQuery.getText().toString();boolean blank=query.trim().isEmpty();
+        cityMatches=DiscoveryCities.visible(cityOptions,query);cityMatchesAdapter.clear();
+        if(blank)cityMatchesAdapter.add("Area della mappa");
+        for(DiscoveryCities.City city:cityMatches)cityMatchesAdapter.add(city.label());
+        cityMatchesAdapter.notifyDataSetChanged();
+        cityEmpty.setText(cityLoading?"Caricamento città…":"Nessuna città trovata.");
+    }
+    private void dismissCityPicker(){if(cityDialog!=null)cityDialog.dismiss();}
     private void loadCities(){
         if(closed||!visible||!foreground.get()||cityLoaded||cityLoading)return;
         cityLoading=true;cityStatus.setText("Caricamento città…");cityRetry.setVisibility(View.GONE);
@@ -110,21 +159,18 @@ final class DiscoveryScreen {
             activity.runOnUiThread(()->{
                 if(closed||token!=cityGeneration)return;
                 cityRequest=null;cityLoading=false;cityLoaded=!result.italianUnavailable&&!result.europeanUnavailable&&!result.cities.isEmpty();
-                cityOptions=result.cities;citySelector.setOnItemSelectedListener(null);cityAdapter.clear();cityAdapter.add("Area della mappa");
-                for(DiscoveryCities.City city:cityOptions)cityAdapter.add(city.label());
-                cityAdapter.notifyDataSetChanged();
-                int position=0;boolean areaChanged=false,missingCity=false;
+                cityOptions=result.cities;boolean areaChanged=false,missingCity=false;
                 if(selectedCity!=null){
-                    for(int i=0;i<cityOptions.size();i++)if(cityOptions.get(i).key().equals(selectedCity.key())){position=i+1;break;}
-                    if(position==0){selectedCity=null;area=sourceArea;areaChanged=true;missingCity=true;}
+                    DiscoveryCities.City updatedCity=null;
+                    for(DiscoveryCities.City candidate:cityOptions)if(candidate.key().equals(selectedCity.key())){updatedCity=candidate;break;}
+                    if(updatedCity==null){selectedCity=null;area=sourceArea;areaChanged=true;missingCity=true;}
                     else{
-                        selectedCity=cityOptions.get(position-1);
+                        selectedCity=updatedCity;
                         try{DiscoveryArea updated=selectedCity.area();if(!sameArea(area,updated)){area=updated;areaChanged=true;}}
-                        catch(IOException unavailable){selectedCity=null;area=sourceArea;areaChanged=true;missingCity=true;position=0;}
+                        catch(IOException unavailable){selectedCity=null;area=sourceArea;areaChanged=true;missingCity=true;}
                     }
                 }
-                citySelector.setSelection(position,false);
-                citySelector.setOnItemSelectedListener(selection(()->chooseCity(citySelector.getSelectedItemPosition())));
+                updateCityButton();refreshCityDialog();
                 boolean partial=result.italianUnavailable||result.europeanUnavailable;
                 cityStatus.setText(missingCity?"La città selezionata non è nell'elenco aggiornato. Mostro l'area della mappa.":
                         cityOptions.isEmpty()?"Elenco città non disponibile. Riprova.":partial?"Elenco città parziale. Riprova per altre città.":"");

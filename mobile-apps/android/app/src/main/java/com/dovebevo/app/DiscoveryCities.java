@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.text.Normalizer;
 import javax.net.ssl.HttpsURLConnection;
 
 /** City choices come only from the current public Italian places and European venue catalogue. */
@@ -118,5 +119,22 @@ final class DiscoveryCities {
         Comparator<City> alphabetical=Comparator.comparing((City city)->city.name,java.text.Collator.getInstance(Locale.ITALY));
         italy.sort(alphabetical);europe.sort(alphabetical);italy.addAll(europe);return italy;
     }
+    /** A short Italian-first preview; typing searches every loaded city without inventing locations. */
+    static List<City> visible(List<City> cities,String query){
+        String search=fold(query).trim();List<City> shown=new ArrayList<>();
+        if(search.isEmpty()){
+            int italian=0,european=0;
+            for(City city:cities){
+                if(city.country.equals("IT")){if(italian++<10)shown.add(city);}
+                else if(european++<8)shown.add(city);
+            }
+        }else{
+            for(City city:cities)if(fold(city.name).startsWith(search)&&shown.size()<40)shown.add(city);
+            for(City city:cities)if(!fold(city.name).startsWith(search)&&fold(city.name).contains(search)&&shown.size()<40)shown.add(city);
+        }
+        return Collections.unmodifiableList(shown);
+    }
+    private static String fold(String text){return Normalizer.normalize(text==null?"":text,Normalizer.Form.NFD)
+            .replaceAll("\\p{M}+","").toLowerCase(Locale.ROOT);}
     private static String countryName(String code){switch(code){case"IT":return"Italia";case"GB":return"Regno Unito";case"FR":return"Francia";case"ES":return"Spagna";case"DE":return"Germania";default:return code;}}
 }

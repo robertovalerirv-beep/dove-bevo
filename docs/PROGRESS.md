@@ -33,6 +33,28 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
+## 2026-11-11 · Elenco per prezzo e passo Prezzo compatto (ramo `claude/lista-prezzi-input-f76h1g`) · SPEC 1.19 · ADR 0049
+
+**Richiesta di Roberto (screenshot da iPhone):** (1) l'Elenco sempre ordinato per prezzo, con i gestori verificati in cima; (2) il passo «Quanto l'hai pagato?» ha troppi spazi e caratteri troppo grandi. Scelte in chat: ordine **crescente** (economico in alto), solo sito (app native invariate), «Indietro» con la sola freccia, testi più piccoli; il tag `spec-approved-16` lo pubblico io.
+
+**Fatto**
+1. `compareListRowsByPrice` (`src/app/lib/list-order.ts`), usata da `ListSheet.tsx`: verificati in cima, poi prezzo mostrato crescente (il minimo dei drink scelti), senza prezzo in fondo, a parità distanza se nota e poi nome. `compareListRows` resta per `MobileListSheet` (app native).
+2. Passo Prezzo compatto (`.price-form` in `app.css`): domanda 44 → 26 px, cifre 48 → 32 px (token nuovo `price-lg` da `docs/brand/tokens.json`), campo 112 → 56 px, margini più stretti; bersagli da 48 px invariati.
+3. `Sheet` con `iconBack`: nei passi Drink e Prezzo di «Aggiungi prezzo» «Indietro» è la sola freccia (nome accessibile in `.sr-only`, 48×48) e il nome del bar è un sottotitolo (19 px).
+4. `/regole` (it, en): «poi gli altri, dal prezzo più basso al più alto; i locali senza prezzo stanno in fondo».
+5. SPEC 1.19 (intestazione, registro, D-34, 7.1, 7.3, riga MD-07), `feature_list.json` (solo il testo della verifica MD-07), guardia sul tag `spec-approved-16` (`check-feature-list.mjs`, `ci.yml`, `CLAUDE.md`), ADR 0049, CHANGELOG.
+
+**Test cambiati e perché:** `tests/e2e/verified.spec.ts` MD-07 controlla anche l'ordine per prezzo e «Nessun prezzo» in fondo, MD-09 il nuovo testo di `/regole` (requisito cambiato con la 1.19). Nuovi: 4 casi in `tests/unit/list-order.test.ts` e `tests/e2e/price-step.spec.ts` (6 test × 2 browser: «Salva» visibile senza scorrere, nome del bar intero, «Indietro» 48 px senza testo, misure dei caratteri, bersagli, axe; it/en, due temi; 360 e 320 px). Erano rossi prima del codice per il motivo giusto (funzione assente; titolo «Terra…» e «Save» visibile al 60%).
+
+**Prove**
+- Misura dell'intestazione prima: titolo 169 px disponibili contro 194 necessari → dopo, «Terrazza Aperol» intero a 390 px.
+- Vitest 883/883; Playwright `verified`, `map`, `drink-menu` 80/80 e `price-step` 12/12 su Chromium e WebKit; `tsc -b`, ESLint, Prettier verdi; `node scripts/check-feature-list.mjs` ok con il tag `spec-approved-16` (129/134).
+- `npm run verify` completo (Chromium e WebKit): in corso, esito nella prossima riga di questa voce.
+
+**Da verificare a mano (Roberto, iPhone)**
+- Elenco a Milano con Birra media: verificati in cima, poi dal prezzo più basso, «Nessun prezzo» in fondo; con «Vicino a me» a parità di prezzo il più vicino prima.
+- Aggiungi prezzo → bar → drink: «Salva» visibile senza scorrere con la tastiera chiusa; con la tastiera aperta di Safari il campo resta in vista.
+
 ## 2026-11-11 · Più mappa sul telefono (ramo `claude/kind-gates-e6ahqz`) · SPEC 1.18 · ADR 0048
 
 **Richiesta di Roberto:** su iPhone in Safari la mappa ha troppo poco spazio. Ricerca, «Scegli cosa bere» e «Vicino a me» su una riga, pulsanti più bassi, tasto «Aggiungi locale», prezzi un po' più piccoli per coprirsi meno, logo tenuto, SPEC aggiornata nello stesso commit. Mockup e piano approvati in chat l'11/11/2026.

@@ -81,6 +81,9 @@ test("250 ml or unknown draft beer never becomes a medium map price or coverage"
   for (const serving of [
     { ml: 250, label: "Piccola" },
     { ml: 500, label: "Piccola" },
+    { ml: 500, label: "Grande 50 cl" },
+    { ml: 500, label: "Large 500 ml" },
+    { ml: 568, label: "Pint" },
     { ml: 330, label: null },
     { ml: null, label: null },
     { ml: null, label: "Birra alla spina" },
@@ -108,7 +111,6 @@ test("400–600 ml and explicit medium labels show their sourced menu amount", (
     { ml: 500, label: "50 cl" },
     { ml: 500, label: "Media 0.50LT" },
     { ml: 600, label: "60 cl" },
-    { ml: 568, label: "Pint" },
     { ml: null, label: "Media" },
     { ml: null, label: "medium" },
     { ml: null, label: "Media 0,5 l" },

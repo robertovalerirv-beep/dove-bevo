@@ -433,10 +433,11 @@ export function mobileAllCount(venue: Venue): { count: number; kind: "menu" | "r
 
 /** A menu's smallest draft beer is not evidence of the selected "Birra media" price. */
 export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean {
-  // A contradictory small label makes even a structured volume ambiguous.
+  // An explicit small or large label makes even a structured volume ambiguous.
   // Explicit quantities in the label and structured field must also agree.
   const label = serving.label?.normalize("NFKC").toLowerCase();
-  if (label && /\b(?:piccola|piccolo|small|mini)\b/u.test(label)) return false;
+  if (label && /\b(?:piccola|piccolo|small|mini|grande|large|pinta|pint)\b/u.test(label))
+    return false;
   const quantities = label ? [...label.matchAll(/\b(\d+(?:[.,]\d+)?)\s*(ml|cl|lt|l)\b/gu)] : [];
   if (quantities.length > 1) return false;
   const quantity = quantities[0];
@@ -453,7 +454,6 @@ export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean
     return serving.ml >= 400 && serving.ml <= 600;
   }
   if (!label) return false;
-  if (/\b(?:grande|large|pinta|pint)\b/u.test(label)) return false;
   if (labelledMl !== null) return labelledMl >= 400 && labelledMl <= 600;
   return /\b(?:media|medium)\b/u.test(label);
 }

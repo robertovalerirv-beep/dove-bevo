@@ -923,6 +923,44 @@ test("map Home restores the selected city viewport after zoom without clearing t
   }
 });
 
+test("Italian map Home command closes a selected venue and returns to the chosen city", async () => {
+  const f = await fixture();
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const map = f.page.locator("section.map");
+    await f.page.waitForFunction(() =>
+      Boolean(document.querySelector("section.map")?.getAttribute("data-center")),
+    );
+    const drink = await f.page.locator(".mobile-drink-menu__summary").innerText();
+    await f.page.locator(".map__list").click();
+    await f.page
+      .getByRole("dialog")
+      .getByRole("link", { name: /^Locale di prova/ })
+      .click();
+    await f.page.locator("h2.scontrino__name").waitFor();
+    const historyLength = await f.page.evaluate(() => history.length);
+    // The venue dialog covers the map row, so dispatch the same Home command directly.
+    await f.page.evaluate(() => document.querySelector(".mobile-map-home").click());
+    await f.page.waitForFunction(() => {
+      const element = document.querySelector("section.map");
+      return (
+        element?.getAttribute("data-selected") === "" &&
+        element.getAttribute("data-center") === "45.46420,9.19000" &&
+        Math.abs(Number(element.getAttribute("data-zoom")) - 14) < 0.1
+      );
+    });
+    assert.equal(new URL(f.page.url()).searchParams.has("path"), false);
+    assert.equal(await f.page.evaluate(() => history.length), historyLength);
+    assert.equal(await map.getAttribute("data-selected"), "");
+    assert.equal(await f.page.locator("h2.scontrino__name").count(), 0);
+    assert.equal(await f.page.locator(".mobile-drink-menu__summary").innerText(), drink);
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("denied location opens the existing city search without hiding map search", async () => {
   const f = await fixture({ width: 390, height: 700 });
   try {

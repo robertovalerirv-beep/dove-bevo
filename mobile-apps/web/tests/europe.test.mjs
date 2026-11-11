@@ -984,6 +984,43 @@ test("European map Home returns to the current city after zoom and a city switch
   }
 });
 
+test("European map Home command clears an open venue and restores its city view", async () => {
+  const f = await fixture();
+  try {
+    await openLondon(f);
+    const map = f.page.locator(".europe-map");
+    const historyLength = await f.page.evaluate(() => history.length);
+    await f.page.waitForFunction(() =>
+      Boolean(document.querySelector(".europe-map")?.getAttribute("data-center")),
+    );
+    // The venue dialog covers the map row, so dispatch the same Home command directly.
+    await f.page.evaluate(() => document.querySelector(".europe-home").click());
+    await f.page.waitForFunction(() => {
+      const element = document.querySelector(".europe-map");
+      return (
+        element?.getAttribute("data-selected") === "" &&
+        element.getAttribute("data-center") === "51.50790,-0.12780" &&
+        element.getAttribute("data-zoom") === "14.0"
+      );
+    });
+    const route = new URL(f.page.url());
+    assert.equal(route.pathname, "/mobile/");
+    assert.equal(route.searchParams.get("at"), "51.50790,-0.12780");
+    assert.equal(route.searchParams.has("path"), false);
+    assert.equal(await f.page.evaluate(() => history.length), historyLength);
+    assert.equal(await map.getAttribute("data-selected"), "");
+    assert.equal(await f.page.locator("h2.scontrino__name").count(), 0);
+    assert.equal(
+      await f.page.getByRole("combobox", { name: "Scegli cosa bere", exact: true }).inputValue(),
+      "spritz",
+    );
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
 test("Cerca closes a London venue to the same city map before opening the picker", async () => {
   const f = await fixture();
   try {

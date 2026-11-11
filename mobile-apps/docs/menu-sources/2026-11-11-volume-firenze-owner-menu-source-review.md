@@ -29,8 +29,8 @@ Checked 11 November 2026. This is a source-only candidate for the apps. No custo
 | 13 | BEER – BIRRE | BLANCE – MC 77 | Large | 6.50 |
 | 14 | BEER – BIRRE | SUPER B – BALADIN | Small | 5.50 |
 | 15 | BEER – BIRRE | SUPER B – BALADIN | Large | 6.50 |
-| 16 | BEER – BIRRE | MENABREA– LAGER | Small | 5.00 |
-| 17 | BEER – BIRRE | MENABREA– LAGER | Large | 6.00 |
+| 16 | BEER – BIRRE | MENABREA – LAGER | Small | 5.00 |
+| 17 | BEER – BIRRE | MENABREA – LAGER | Large | 6.00 |
 | 18 | BEER – BIRRE | ITALIAN BOCK – RITUAL LAB | Small | 5.50 |
 | 19 | BEER – BIRRE | ITALIAN BOCK – RITUAL LAB | Large | 6.50 |
 | 20 | BEER – BIRRE | AMERICAN IPA – OPPERBACCO | Small | 5.50 |

@@ -37,6 +37,11 @@ export function transformApp(source) {
     "useState<string[]>([DEFAULT_DRINK])",
     "useState<string[]>(mobileInitialDrinks())",
   );
+  result = once(
+    result,
+    "  const pendingMove = useRef<[number, number, number] | null>(initialAt);",
+    "  const pendingMove = useRef<[number, number, number] | null>(initialAt);\n  const mobileHomeView = useRef<[number, number, number] | null>(initialAt);",
+  );
   // The native Map tab starts its Italy map immediately; the static preview covers tile loading.
   result = once(result, "useState(initialAt !== null)", "useState(true)");
   result = once(
@@ -45,6 +50,11 @@ export function transformApp(source) {
     "  const [mapAttempt, setMapAttempt] = useState(0);\n  const ensureMap = () => {\n    if (mapFailed) {\n      setMapFailed(false);\n      setReady(false);\n      setMapAttempt((value) => value + 1);\n    }\n    setMapWanted(true);\n  };",
   );
   result = once(result, "  }, [mapWanted]);", "  }, [mapWanted, mapAttempt]);");
+  result = once(
+    result,
+    "        setView(created.view());",
+    "        const startingView = created.view();\n        if (!mobileHomeView.current) mobileHomeView.current = [startingView.lat, startingView.lon, startingView.zoom];\n        setView(startingView);",
+  );
   result = once(
     result,
     "const picture = !mapWanted && !ready;",
@@ -107,6 +117,16 @@ export function transformApp(source) {
     "  function openAdd(prefill: Prefill | null) {",
     '  function openAdd(prefill: Prefill | null) {\n    if (prefill?.venue.key.startsWith("m")) {\n      navigate(`/bar/${prefill.venue.key}?c=${prefill.venue.cell}`);\n      return;\n    }',
   );
+  result = once(
+    result,
+    "  async function nearMe() {",
+    '  function resetMobileMapHome() {\n    if (route.name === "bar") {\n      history.replaceState(null, "", mobileURL("/"));\n      setRoute(parseRoute());\n    }\n    setMessage(null);\n    const target = mobileHomeView.current;\n    if (target) moveTo(...target);\n    else ensureMap();\n  }\n\n  async function nearMe() {',
+  );
+  result = once(
+    result,
+    "    moveTo(place[2], place[3], 14);",
+    "    mobileHomeView.current = [place[2], place[3], 14];\n    moveTo(place[2], place[3], 14);",
+  );
   result = once(result, "venues={everyVenue}", "venues={legacyPriceVenues(everyVenue)}");
   result = once(
     result,
@@ -138,7 +158,7 @@ export function transformApp(source) {
   result = once(
     result,
     "          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}",
-    "          {!pinning && <MobileMapActions onAddPrice={() => openAdd(null)} onAddVenue={() => startProposal()} />}\n          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}",
+    '          {!pinning && <MobileMapHomeButton className="mobile-map-home" onClick={resetMobileMapHome} />}\n          {!pinning && <MobileMapActions onAddPrice={() => openAdd(null)} onAddVenue={() => startProposal()} />}\n          {/* Attributions in the shell: always visible, even before MapLibre loads (SPEC 2.8). */}',
   );
   const tree = ts.createSourceFile(
     "app.tsx",
@@ -169,7 +189,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { if (route.name === "bar") { history.replaceState(null, "", mobileURL("/")); setRoute(parseRoute()); } setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, mobileCoverageText, mobileZoomHint, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
+    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapHomeButton as MobileMapHomeButton } from "@mobile/components/MapHomeButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, mobileCoverageText, mobileZoomHint, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }

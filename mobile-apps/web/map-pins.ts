@@ -8,7 +8,7 @@ const FILL: Record<Tier, string> = {
 };
 const GLYPH: Record<Tier, string> = { affare: "↓", giusto: "=", salato: "↑", neutro: "" };
 
-/** Keep source and currency visible without mistaking a menu count for a drink price. */
+/** Keep currency and count labels distinct; source details remain in the venue card. */
 export function mobilePinLabel(label: string): {
   amount: string;
   currency: string;
@@ -16,7 +16,8 @@ export function mobilePinLabel(label: string): {
 } {
   const cue = (suffix?: string) => {
     const value = suffix?.trim().toUpperCase();
-    if (value === "MENU") return "MENU";
+    // The venue card identifies an online menu; repeating MENU below every price pin crowds the map.
+    if (value === "MENU") return "";
     if (value === "HH" || value === "HAPPY HOUR") return "HH";
     return "";
   };
@@ -25,7 +26,7 @@ export function mobilePinLabel(label: string): {
     return {
       amount: count[1] ?? "",
       currency: "",
-      detail: count[2] === "VOCE" || count[2] === "VOCI" ? "MENU" : "PREZZI",
+      detail: count[2] === "VOCE" || count[2] === "VOCI" ? count[2] : "PREZZI",
     };
   const pounds =
     /^£\s*([0-9]+[.,][0-9]{2})(?:\s+(.+))?$/.exec(label.trim()) ??

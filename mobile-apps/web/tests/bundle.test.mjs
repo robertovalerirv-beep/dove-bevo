@@ -855,13 +855,54 @@ test("map search stays usable above a short keyboard viewport and after closing"
     await dialog.waitFor({ state: "hidden" });
     await f.page.setViewportSize({ width: 320, height: 700 });
     const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
+    const home = await f.page.getByTestId("mobile-map-home").boundingBox();
     const add = await f.page.locator(".mobile-map-actions__toggle").boundingBox();
     const searchAfter = await search.boundingBox();
-    assert.ok(searchAfter && locate && add);
-    assert.ok(searchAfter.x + searchAfter.width + 8 <= locate.x);
+    assert.ok(searchAfter && home && locate && add);
+    assert.ok(searchAfter.x + searchAfter.width + 8 <= home.x);
+    assert.ok(home.x + home.width + 8 <= locate.x);
     assert.ok(locate.x + locate.width + 8 <= add.x);
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("map Home restores the selected city viewport after zoom without clearing the drink", async () => {
+  const f = await fixture({ width: 390, height: 700 });
+  try {
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    const map = f.page.locator("section.map");
+    await f.page.waitForFunction(() => {
+      const element = document.querySelector("section.map");
+      return (
+        element?.getAttribute("data-ready") === "true" &&
+        Math.abs(Number(element.getAttribute("data-zoom")) - 14) < 0.1
+      );
+    });
+    const start = await map.getAttribute("data-center");
+    const drink = await f.page.locator(".mobile-drink-menu__summary").innerText();
+    const box = await map.boundingBox();
+    assert.ok(box);
+    await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await f.page.mouse.wheel(0, 650);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) < 14,
+    );
+    await f.page.getByRole("button", { name: "Vista iniziale della città" }).click();
+    await f.page.waitForFunction(() => {
+      const element = document.querySelector("section.map");
+      return (
+        element?.getAttribute("data-center") === "45.46420,9.19000" &&
+        Math.abs(Number(element.getAttribute("data-zoom")) - 14) < 0.1
+      );
+    });
+    assert.equal(await map.getAttribute("data-center"), start);
+    assert.equal(await f.page.locator(".mobile-drink-menu__summary").innerText(), drink);
+    assert.equal(new URL(f.page.url()).searchParams.get("at"), "45.4642,9.19");
+    assert.deepEqual(f.errors, []);
+    assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
   }

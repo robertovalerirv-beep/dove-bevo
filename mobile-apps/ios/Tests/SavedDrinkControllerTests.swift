@@ -113,6 +113,67 @@ final class SavedDrinkControllerTests: XCTestCase {
         }
     }
 
+    @MainActor func testConditionalStaleMenuFavouriteKeepsWarningsVisibleAndFullDetailsAccessible() throws {
+        try withStores { venueStore, drinkStore in
+            let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+            let venue = try SavedVenuePolicy.venue(url: url, label: "Bar Milano")
+            let source = MenuV2Price(id: "spritz.7", venueName: "Bar Milano", itemName: "Spritz della casa",
+                                     category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+                                     servingLabel: "calice", servingML: 250,
+                                     origin: .ownerMenu(URL(string: "https://example.org/menu")!, "2020-01-01"), feeNotice: "Servizio escluso")
+            let offerStore = SavedMenuOfferStore(directoryURL: drinkStore.fileURL.deletingLastPathComponent().appendingPathComponent("offers"))
+            try offerStore.save(try XCTUnwrap(SavedMenuOffer.verified(venue: venue, price: source)))
+            var conditional = MenuV2Price(id: source.id, venueName: source.venueName, itemName: source.itemName,
+                                          category: "spritz", band: nil, amountMinor: 750, currency: "EUR", exponent: 2,
+                                          servingLabel: "calice", servingML: 250,
+                                          origin: .ownerMenu(URL(string: "https://example.org/menu")!, "2020-01-01"), feeNotice: "Servizio escluso")
+            conditional.condition = "Solo dopo le 18"
+            let snapshot = MenuV2Snapshot(venues: [url: MenuV2Venue(key: "n123", cell: "u0nd9", name: "Bar Milano",
+                                                                        offers: [conditional], feeNotice: "Servizio escluso")], unavailable: [])
+            let client = DrinkPaneMenuFixture(snapshot: snapshot)
+            let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore, offerStore: offerStore,
+                                                        menuClient: client, activityCheck: { true }) { _ in }
+            try withMounted(controller) { _ in
+                XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 1)
+                let index = IndexPath(row: 0, section: 0)
+                let cell = controller.tableView(controller.tableView, cellForRowAt: index)
+                let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
+                XCTAssertTrue(content.secondaryText?.hasPrefix("Menu del locale: 7,50 € · Con condizioni · Da riverificare") == true)
+                XCTAssertTrue(content.secondaryText?.contains("EUR · calice · 250 ml") == true)
+                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 3)
+                XCTAssertTrue(cell.accessibilityValue?.contains("Solo dopo le 18") == true)
+                controller.tableView(controller.tableView, accessoryButtonTappedForRowWith: index)
+                guard waitUntil("Full menu warning details", { controller.presentedViewController is UIAlertController }) else { return }
+                XCTAssertTrue((controller.presentedViewController as? UIAlertController)?.message?.contains("Menu da riverificare: oltre 90 giorni") == true)
+                controller.dismiss(animated: false)
+            }
+        }
+    }
+
+    @MainActor func testOldCommunityPriceDisplaysRecheckWarningBeforeDetails() throws {
+        try withStores { venueStore, drinkStore in
+            let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+            try drinkStore.save(SavedDrink.validated(url: url, label: "Bar Milano", drink: "spritz", band: .normal))
+            let client = DrinkPaneFixture()
+            let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
+                                                        client: client, activityCheck: { true }) { _ in }
+            try withMounted(controller) { _ in
+                guard waitUntil("Saved price refresh", { client.last != nil }) else { return }
+                let current = CurrentFavouriteVenue(key: "n123", name: "Bar Milano", prices: [
+                    FavouritePrice(drink: "spritz", band: .normal, cents: 650,
+                                   observedOn: "2020-01-01", confirmations: 1, quarantined: false)
+                ])
+                client.complete(FavouriteComparisonSnapshot(venues: [url: current], unavailable: []))
+                let index = IndexPath(row: 0, section: 0)
+                let cell = controller.tableView(controller.tableView, cellForRowAt: index)
+                let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
+                XCTAssertTrue(content.secondaryAttributedText?.string.contains("6,50 € · Da riverificare") == true)
+                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 3)
+                XCTAssertTrue(cell.accessibilityValue?.contains("oltre 90 giorni") == true)
+            }
+        }
+    }
+
     @MainActor func testOldSavedPlaceConvertsOnlyAfterExplicitDrinkChoiceInSameTab() throws {
         try withStores { venueStore, drinkStore in
             let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
@@ -210,4 +271,13 @@ private final class DrinkPaneFixture: FavouriteComparisonServing {
         last = saved; self.completion = completion; return TestRecommendationRequest()
     }
     func complete(_ snapshot: FavouriteComparisonSnapshot) { completion?(snapshot) }
+}
+
+private final class DrinkPaneMenuFixture: MenuV2Serving {
+    let snapshot: MenuV2Snapshot
+    init(snapshot: MenuV2Snapshot) { self.snapshot = snapshot }
+    func load(_ saved: [SavedVenue], completion: @escaping (MenuV2Snapshot) -> Void) -> RecommendationRequest {
+        completion(snapshot)
+        return TestRecommendationRequest()
+    }
 }

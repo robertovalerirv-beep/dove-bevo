@@ -93,6 +93,51 @@ public final class DrinkFavoritesRuntimeTest {
         });
         assertArrayEquals(before,new SavedVenueFile(directory,"saved-drinks-v1").read());
     }
+    @Test public void conditionalStaleMenuPriceShowsBothWarningsBeforeDetailsAndKeepsExactOffer()throws Exception {
+        SavedVenueStore.Venue venue=SavedVenueStore.reference(URL,"Saved name");
+        MenuV2Prices.Price source=new MenuV2Prices.Price("spritz.7","Saved name","Spritz della casa","spritz",0,
+                550,"EUR",2,"calice",250,false,"2020-01-01","Servizio escluso");
+        SavedMenuOfferStore.Entry saved=SavedMenuOfferStore.verified(venue,source);
+        assertNotNull(saved);
+        AtomicReference<byte[]> file=new AtomicReference<>();
+        SavedMenuOfferStore offers=new SavedMenuOfferStore(new SavedVenueStore.Storage(){
+            public byte[] read(){return file.get();}
+            public void write(byte[] bytes){file.set(bytes);}
+        });
+        assertEquals(SavedMenuOfferStore.Result.SAVED,offers.save(saved));
+        byte[] before=file.get().clone();
+        MenuV2Prices.Price live=new MenuV2Prices.Price("spritz.7","Saved name","Spritz della casa","spritz",-1,
+                750,"EUR",2,"calice",250,false,"2020-01-01","Servizio escluso",null,"Solo dopo le 18");
+        FavoritePricesClient offline=new FavoritePricesClient((url,max,call)->{throw new IOException("No network in warning fixture");},()->"2026-11-11");
+        onMain(()->{
+            screen=new SavedDrinkScreen(activity,drinks,new FavoritesLoader(offline,activity::runOnUiThread),url->{},()->true,
+                    null,null,offers);
+            activity.setContentView(screen.view());
+            try{
+                java.lang.reflect.Field offerField=SavedDrinkScreen.class.getDeclaredField("offers");offerField.setAccessible(true);
+                offerField.set(screen,java.util.Collections.singletonList(saved));
+                java.lang.reflect.Field menuField=SavedDrinkScreen.class.getDeclaredField("menus");menuField.setAccessible(true);
+                menuField.set(screen,java.util.Collections.singletonMap(venue.url,new MenuV2Prices.Venue("n123","u0nd9","Saved name","Servizio escluso",java.util.Collections.singletonList(live))));
+                java.lang.reflect.Method render=SavedDrinkScreen.class.getDeclaredMethod("render");render.setAccessible(true);render.invoke(screen);
+            }catch(ReflectiveOperationException error){throw new AssertionError(error);}
+        });
+        try{
+            onMain(()->{
+                View card=screen.view().findViewWithTag("menu_offer_favourite_"+saved.key());
+                assertNotNull(card);
+                String compact=visibleText(card);
+                for(String expected:new String[]{"Spritz della casa","Saved name","7,50 €","EUR","calice · 250 ml","Con condizioni","Da riverificare"})
+                    assertTrue(expected+" missing from compact row",compact.contains(expected));
+                View detail=card.findViewWithTag("details_content_"+card.getTag());
+                assertEquals(View.GONE,detail.getVisibility());
+                ((Button)card.findViewWithTag("details_toggle_"+card.getTag())).performClick();
+                assertTrue(visibleText(card).contains("Prezzo soggetto a condizioni: Solo dopo le 18"));
+                assertTrue(visibleText(card).contains("Menu da ricontrollare (oltre 90 giorni)"));
+            });
+            assertEquals(saved.key(),offers.load().get(0).key());
+            assertArrayEquals(before,file.get());
+        }finally{onMain(()->screen.close());}
+    }
     @Test public void oldPlaceConversionKeepsOldRecordUntilDrinkWriteSucceeds()throws Exception {
         assertEquals(SavedVenueStore.Result.SAVED,venues.save(URL,"Old saved place"));
         String savedUrl=venues.load().get(0).url;

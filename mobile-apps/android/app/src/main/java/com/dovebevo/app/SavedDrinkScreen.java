@@ -113,6 +113,8 @@ final class SavedDrinkScreen {
                 TextView amount=text(named.amount(),22);NativeAppearance.price(amount);card.addView(amount);
                 card.addView(text(named.currency+(named.serving().isEmpty()?"":" · "+named.serving()),14));
                 card.addView(text(named.evidence(),15));
+                if(oldMenuDay(named.day))card.addView(text(named.customer?activity.getString(R.string.favorites_old):NativePricePresentation.menuWarning(),15));
+                if(named.band<0)card.addView(text("Prezzo soggetto a condizioni: "+(named.condition==null?"verifica il menu del locale":named.condition)+".",15));
             }
             else if(busy||menuBusy)card.addView(text("Aggiornamento prezzi…",16));
             else if(!price.available())card.addView(text("Prezzo non disponibile",16));
@@ -129,7 +131,9 @@ final class SavedDrinkScreen {
             String amount=named!=null?named.amount():!busy&&!menuBusy&&price.available()?NativePricePresentation.amount(price.price,price.mobilePrice):"Prezzo non disponibile";
             String format=named!=null?named.currency+(named.serving().isEmpty()?"":" · "+named.serving())
                     :price.available()?NativePricePresentation.groupLabel(price.price,price.mobilePrice):"";
-            compactCard(card,named!=null?named.name:NativePricePresentation.category(item.drink),venueName,amount,format,open,remove);
+            String warnings=named!=null?warningLabels(named.band<0,oldMenuDay(named.day))
+                    :warningLabels(false,price.available()&&(price.mobilePrice!=null?price.mobilePrice.old:price.price.old));
+            compactCard(card,named!=null?named.name:NativePricePresentation.category(item.drink),venueName,amount,format,warnings,open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleOffers=0;
@@ -144,6 +148,7 @@ final class SavedDrinkScreen {
                 if(!current.serving().isEmpty())card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
                 card.addView(text(current.evidence(),15));
                 if(current.band<0)card.addView(text("Prezzo soggetto a condizioni: "+(current.condition==null?"verifica il menu del locale":current.condition)+".",15));
+                if(oldMenuDay(current.day))card.addView(text(NativePricePresentation.menuWarning(),15));
                 if(current.servingLabel==null&&current.servingML==null)
                     card.addView(text("Formato non dichiarato: prezzi con formati diversi non sono confrontabili.",15));
                 int linkedCount=0;
@@ -174,7 +179,8 @@ final class SavedDrinkScreen {
             String format=current==null?MenuV2Prices.Price.displayServing(item.serving,item.ml):current.serving();
             if(current!=null)format=current.currency+(format.isEmpty()?"":" · "+format);
             compactCard(card,item.name,menu==null?item.venue.label:menu.name,
-                    current==null?"Prezzo non disponibile":current.amount(),format,open,remove);
+                    current==null?"Prezzo non disponibile":current.amount(),format,
+                    current==null?"":warningLabels(current.band<0,oldMenuDay(current.day)),open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleCustomers=0;
@@ -188,6 +194,7 @@ final class SavedDrinkScreen {
             if(current!=null){
                 if(!current.serving().isEmpty())card.addView(text(current.serving(),16));TextView amount=text(current.amount(),22);NativeAppearance.price(amount);card.addView(amount);
                 card.addView(text(current.evidence(),15));
+                if(oldMenuDay(current.day))card.addView(text(activity.getString(R.string.favorites_old),15));
             }else{
                 String serving=MenuV2Prices.Price.displayServing(item.serving,item.ml);
                 if(!serving.isEmpty())card.addView(text(serving,15));
@@ -203,7 +210,8 @@ final class SavedDrinkScreen {
             String format=current==null?MenuV2Prices.Price.displayServing(item.serving,item.ml):current.serving();
             if(current!=null)format=current.currency+(format.isEmpty()?"":" · "+format);
             compactCard(card,item.name,menu==null?item.venue.label:menu.name,
-                    current==null?"Prezzo non disponibile":current.amount(),format,open,remove);
+                    current==null?"Prezzo non disponibile":current.amount(),format,
+                    current==null?"":warningLabels(false,oldMenuDay(current.day)),open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleEurope=0;
@@ -229,7 +237,8 @@ final class SavedDrinkScreen {
             remove.setTag("europe_drink_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+NativePricePresentation.category(item.drink)+" - "+item.venue.label+(item.serving.label().isEmpty()?"":" - "+item.serving.label()));card.addView(remove);
             compactCard(card,NativePricePresentation.category(item.drink),item.venue.label,
                     current==null?"Prezzo non disponibile":NativePricePresentation.amount(null,current),
-                    item.currency+(item.serving.label().isEmpty()?"":" · "+item.serving.label()),open,remove);
+                    item.currency+(item.serving.label().isEmpty()?"":" · "+item.serving.label()),
+                    current!=null&&current.old?warningLabels(false,true):"",open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         if(values.isEmpty()&&visibleOffers==0&&visibleCustomers==0&&visibleEurope==0&&(!saved.isEmpty()||!offers.isEmpty()||!customerOffers.isEmpty()||!europe.isEmpty()))rows.addView(text("Nessun drink salvato per questa scelta.",15));
@@ -272,8 +281,15 @@ final class SavedDrinkScreen {
     private boolean containsOffer(String key){for(SavedMenuOfferStore.Entry item:offers)if(item.key().equals(key))return true;return false;}
     private boolean containsCustomer(String key){for(SavedMenuOfferStore.Entry item:customerOffers)if(item.key().equals(key))return true;return false;}
     private boolean containsEurope(String key){for(SavedEuropeDrinkStore.Entry item:europe)if(item.key().equals(key))return true;return false;}
-    /** Keep the price and exact serving visible; source detail and removal expand on demand. */
-    private void compactCard(LinearLayout card,String drinkName,String venueName,String amount,String format,Button open,Button remove){
+    private static String warningLabels(boolean conditional,boolean old){
+        return (conditional?"Con condizioni":"")+(conditional&&old?" · ":"")+(old?"Da riverificare":"");
+    }
+    private static boolean oldMenuDay(String day){
+        try{return FavoriteDay.milliseconds(FavoriteDay.today())-FavoriteDay.milliseconds(day)>90L*86400000L;}
+        catch(IOException invalid){return true;}
+    }
+    /** Keep the price, exact serving and material warnings visible; source detail and removal expand on demand. */
+    private void compactCard(LinearLayout card,String drinkName,String venueName,String amount,String format,String warnings,Button open,Button remove){
         List<View> original=new ArrayList<>();for(int i=0;i<card.getChildCount();i++)original.add(card.getChildAt(i));
         card.removeAllViews();card.setPadding(dp(12),dp(8),dp(12),dp(8));
         LinearLayout summary=new LinearLayout(activity);
@@ -289,6 +305,10 @@ final class SavedDrinkScreen {
         if(!large)priceSize.leftMargin=dp(8);
         summary.addView(price,priceSize);
         card.addView(summary);
+        if(!warnings.isEmpty()){
+            TextView notice=text(warnings,13);notice.setTextColor(activity.getColor(R.color.brand_text));notice.setTypeface(null,android.graphics.Typeface.BOLD);
+            notice.setTag("price_warnings_"+card.getTag());card.addView(notice);
+        }
         LinearLayout actions=new LinearLayout(activity);actions.setOrientation(LinearLayout.HORIZONTAL);
         open.setText("Apri");open.setMinimumHeight(dp(48));
         LinearLayout.LayoutParams openSize=new LinearLayout.LayoutParams(0,dp(48),1);openSize.rightMargin=dp(8);

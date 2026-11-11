@@ -778,7 +778,7 @@ test("saved owner menu drink matches regular context but never conditional or an
   }
 });
 
-test("exact named favorite reloads its menu page and native save link uses only the live offer id", async () => {
+test("exact named favourite reflects native save and removal without mistaking URL focus for saved state", async () => {
   const key = "maaaaaaaaaaaaaaaaaaaaaaaa";
   const f = await fixture({
     url: `https://sheets.fixture.test/mobile/?path=%2Fbar%2F${key}&c=u0nd9&offer=third`,
@@ -787,26 +787,49 @@ test("exact named favorite reloads its menu page and native save link uses only 
     await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
     const saved = f.page.getByTestId("saved-exact-offer");
     await saved.waitFor();
-    assert.match(await saved.innerText(), /Analcolico[\s\S]*Questo drink è nei tuoi preferiti/);
+    assert.doesNotMatch(await saved.innerText(), /Questo drink è nei tuoi preferiti/);
     assert.equal(await f.page.getByTestId("saved-offer-unavailable").count(), 0);
     assert.equal(await f.page.getByTestId("saved-menu-offer").count(), 0);
     assert.equal(await f.page.locator(".mobile-menu-v2__save").count(), 0);
     await f.page.evaluate(() => {
       window.DoveBevoNativeOfferSave = true;
+      window.DoveBevoNativeSavedDrinkKeys = [];
       window.dispatchEvent(new window.Event("dovebevo-native-ready"));
     });
     const links = f.page.locator(".mobile-menu-v2__save");
     await links.first().waitFor();
     assert.equal(await links.count(), 4);
+    assert.match(await saved.locator(".mobile-menu-v2__save").innerText(), /Salva/);
     assert.equal(
       await saved.locator(".mobile-menu-v2__save").getAttribute("href"),
       `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=third`,
     );
+    await f.page.evaluate((venueKey) => {
+      window.DoveBevoNativeSavedDrinkKeys = [`${venueKey}|u0nd9|offer|third`];
+      window.dispatchEvent(new window.Event("dovebevo-native-favourites-changed"));
+    }, key);
+    await saved.locator('.mobile-menu-v2__save[data-saved="true"]').waitFor();
+    assert.match(await saved.innerText(), /Questo drink è nei tuoi preferiti/);
+    assert.match(
+      await f.page.getByRole("heading", { name: "Drink salvato" }).innerText(),
+      /Drink salvato/,
+    );
+    assert.equal(await saved.locator(".mobile-menu-v2__save").getAttribute("href"), null);
     assert.equal(
       await f.page
         .getByTestId("featured-menu-price")
         .locator(".mobile-menu-v2__save")
         .getAttribute("href"),
+      null,
+    );
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeSavedDrinkKeys = [];
+      window.dispatchEvent(new window.Event("dovebevo-native-favourites-changed"));
+    });
+    await saved.locator('.mobile-menu-v2__save[data-saved="false"]').waitFor();
+    assert.doesNotMatch(await saved.innerText(), /Questo drink è nei tuoi preferiti/);
+    assert.equal(
+      await saved.locator(".mobile-menu-v2__save").getAttribute("href"),
       `/mobile/?path=%2Fbar%2F${key}&c=u0nd9&save_offer=third`,
     );
     assert.deepEqual(f.writes, []);
@@ -892,6 +915,26 @@ test("exact private saves and one public vote read identify each visible drink",
     }
     if (process.env.DOVEBEVO_ACTION_CAPTURE)
       await f.page.screenshot({ path: process.env.DOVEBEVO_ACTION_CAPTURE });
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeSavedDrinkKeys = [
+        "n123|u0nd9|legacy|spritz|0",
+        `n123|u0nd9|customer|o${"a".repeat(64)}`,
+      ];
+      window.dispatchEvent(new window.Event("dovebevo-native-favourites-changed"));
+    });
+    await legacyActions.locator('.mobile-menu-v2__save[data-saved="true"]').waitFor();
+    await customer.locator('.mobile-menu-v2__save[data-saved="true"]').waitFor();
+    assert.equal(await legacyActions.locator(".mobile-menu-v2__save").getAttribute("href"), null);
+    assert.equal(await customer.locator(".mobile-menu-v2__save").getAttribute("href"), null);
+    assert.equal(
+      await additional.locator(".mobile-menu-v2__save").getAttribute("data-saved"),
+      "false",
+    );
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeSavedDrinkKeys = [];
+      window.dispatchEvent(new window.Event("dovebevo-native-favourites-changed"));
+    });
+    await legacyActions.locator('.mobile-menu-v2__save[data-saved="false"]').waitFor();
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();
@@ -1039,6 +1082,7 @@ test("long owner menus keep the saved drink prominent and reveal sourced seconda
     await f.page.evaluate((venueKey) => window.sheetFixture.bar([], venueKey), key);
     await f.page.evaluate(() => {
       window.DoveBevoNativeOfferSave = true;
+      window.DoveBevoNativeSavedDrinkKeys = ["maaaaaaaaaaaaaaaaaaaaaaaa|u0nd9|offer|extra-8"];
       window.dispatchEvent(new window.Event("dovebevo-native-ready"));
     });
     const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });

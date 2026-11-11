@@ -1127,6 +1127,18 @@ test("European drink rows expose exact native saves only after the native bridge
       );
     }
     await f.page.screenshot({ path: path.join(output, "europe-exact-drink-actions-320.png") });
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeSavedDrinkKeys = ["n1001|gcpvj|europe|beer_draft|0|GBP|ml:568"];
+      window.dispatchEvent(new Event("dovebevo-native-favourites-changed"));
+    });
+    await beer568.locator('.europe-price__save[data-saved="true"]').waitFor();
+    assert.equal(await beer568.locator(".europe-price__save").getAttribute("href"), null);
+    assert.equal(await beer400.locator(".europe-price__save").getAttribute("data-saved"), "false");
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeSavedDrinkKeys = [];
+      window.dispatchEvent(new Event("dovebevo-native-favourites-changed"));
+    });
+    await beer568.locator('.europe-price__save[data-saved="false"]').waitFor();
     assert.deepEqual(f.writes, [], "A private Save link does not post a public contribution");
     assert.deepEqual(f.errors, []);
   } finally {

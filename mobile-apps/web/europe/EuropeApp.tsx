@@ -48,6 +48,7 @@ import {
 import { PriceForm, ReportForm } from "./PriceForm";
 import { EuropeDrinkVoteButton, EuropeDrinkVotesProvider } from "./EuropeDrinkVotes";
 import { europeDrinkSaveURL } from "./europe-save";
+import { NativeSaveAction, useNativeSavedDrinks } from "../native-saved-drinks";
 import "./europe.css";
 
 const t = (italian: string, english: string) => (currentLang() === "en" ? english : italian);
@@ -71,6 +72,7 @@ const defaultServing = (drink: string): Serving | null =>
 
 export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props) {
   useLang();
+  const savedDrinkKeys = useNativeSavedDrinks();
   const groups = useMemo(() => cities(catalog), [catalog]);
   const [city, setCity] = useState(initialCity),
     [venueKey, setVenueKey] = useState<string | null>(initialVenue?.key ?? null);
@@ -883,6 +885,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
                       featured={index === 0 && (!selectedFocus || savedFound)}
                       tier={priceTier(row, rows)}
                       nativeSave={nativeEuropeSave}
+                      savedDrinkKeys={savedDrinkKeys}
                       busy={busy || queued}
                       onConfirm={() => {
                         void confirm(selectedVenue, row);
@@ -982,6 +985,7 @@ function PriceItem({
   featured,
   tier,
   nativeSave,
+  savedDrinkKeys,
   busy,
   onConfirm,
   onChanged,
@@ -992,6 +996,7 @@ function PriceItem({
   featured: boolean;
   tier: Tier;
   nativeSave: boolean;
+  savedDrinkKeys: ReadonlySet<string>;
   busy: boolean;
   onConfirm: () => void;
   onChanged: () => void;
@@ -1093,13 +1098,14 @@ function PriceItem({
       </span>
       <span class="mobile-menu-v2__quick-actions mobile-price__quick-actions europe-price__quick-actions">
         {nativeSave && (
-          <a
-            class="btn btn--secondary mobile-menu-v2__save europe-price__save"
+          <NativeSaveAction
             href={europeDrinkSaveURL(venue, row)}
-            aria-label={`${t("Salva", "Save")} ${it.drinks[row.drink] ?? row.drink} ${servingLabel(row.serving)} ${t("da", "at")} ${venue.name} ${t("nei preferiti", "to favourites")}`}
-          >
-            {t("Salva questo drink", "Save this drink")}
-          </a>
+            name={`${it.drinks[row.drink] ?? row.drink} ${servingLabel(row.serving)}`}
+            venue={venue.name}
+            keys={savedDrinkKeys}
+            english={currentLang() === "en"}
+            className="europe-price__save"
+          />
         )}
         <EuropeDrinkVoteButton row={row} venue={venue} />
       </span>

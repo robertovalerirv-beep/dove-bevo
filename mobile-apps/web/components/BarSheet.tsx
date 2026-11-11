@@ -23,6 +23,7 @@ import {
   type MenuOffer,
 } from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
+import { NativeSaveAction, savedDrinkKey, useNativeSavedDrinks } from "../native-saved-drinks";
 import {
   menuOfferMatchesFocus,
   mobileFocus,
@@ -89,6 +90,7 @@ function PriceItem({
   inReview,
   tier,
   nativeDrinkSave,
+  savedDrinkKeys,
   featured = false,
 }: {
   row: PriceRow;
@@ -97,6 +99,7 @@ function PriceItem({
   inReview: boolean;
   tier: Tier;
   nativeDrinkSave: boolean;
+  savedDrinkKeys: ReadonlySet<string>;
   featured?: boolean;
 }) {
   const [, drink, hh, cents, day, confirmations] = row;
@@ -186,13 +189,12 @@ function PriceItem({
       {!inReview && validCategory(drink) && (
         <span class="mobile-menu-v2__quick-actions mobile-price__quick-actions">
           {nativeDrinkSave && (
-            <a
-              class="btn btn--secondary mobile-menu-v2__save"
+            <NativeSaveAction
               href={mobileDrinkSaveURL(venue.key, venue.cell, drink, hh ? "happy_hour" : "normal")}
-              aria-label={`Salva ${name} da ${venue.name} nei preferiti`}
-            >
-              ☆ Salva
-            </a>
+              name={name}
+              venue={venue.name}
+              keys={savedDrinkKeys}
+            />
           )}
           <DrinkVoteButton
             target={{ kind: "legacy", drink, band: hh ? "happy_hour" : "normal" }}
@@ -291,6 +293,7 @@ function menuFeeAmount(fee: MenuFee): string {
 }
 
 export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
+  const savedDrinkKeys = useNativeSavedDrinks();
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
   const [nativeOfferSave, setNativeOfferSave] = useState(
     () =>
@@ -559,6 +562,19 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
     (venueKey.startsWith("m") || prices !== null);
   const savedOfferMissing =
     savedOfferFocus !== null && !menuLoading && !menuFailed && !menuFound && !menu?.next_after;
+  const focusedSaveAction =
+    savedOfferFocus !== null
+      ? mobileOfferSaveURL(venueKey, cell, savedOfferFocus)
+      : savedFocus !== null
+        ? mobileDrinkSaveURL(
+            venueKey,
+            cell,
+            savedFocus.drink,
+            savedFocus.hh ? "happy_hour" : "normal",
+          )
+        : null;
+  const focusedKey = focusedSaveAction === null ? null : savedDrinkKey(focusedSaveAction);
+  const focusedIsSaved = focusedKey !== null && savedDrinkKeys.has(focusedKey);
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
   const venueKind = venueKey.startsWith("m") && venue.kind === 0 ? "Locale" : it.kinds[venue.kind];
@@ -665,7 +681,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             {featuredOffer && (
               <section class="mobile-menu-v2" aria-label="Prezzo selezionato dal menu online">
                 <h3 class="section-title">
-                  {savedOfferFocus || savedFocus ? "Drink salvato" : "Drink scelto sulla mappa"}
+                  {focusedIsSaved ? "Drink salvato" : "Drink selezionato"}
                 </h3>
                 <ul class="mobile-menu-v2__offers">
                   <li
@@ -707,13 +723,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                     </small>
                     <div class="mobile-menu-v2__quick-actions">
                       {nativeOfferSave && mobileOfferIdPattern.test(featuredOffer.id) && (
-                        <a
+                        <NativeSaveAction
                           href={mobileOfferSaveURL(venueKey, cell, featuredOffer.id)}
-                          class="btn btn--secondary mobile-menu-v2__save"
-                          aria-label={`Salva ${featuredOffer.name} da ${venue.name} nei preferiti`}
-                        >
-                          ☆ Salva
-                        </a>
+                          name={featuredOffer.name}
+                          venue={venue.name}
+                          keys={savedDrinkKeys}
+                        />
                       )}
                       {mobileOfferIdPattern.test(featuredOffer.id) && (
                         <DrinkVoteButton
@@ -760,8 +775,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           )}
           {savedOfferMissing && (
             <p class="hint" role="status" data-testid="saved-offer-unavailable">
-              Questo drink salvato non è più disponibile nel menu verificato. Gli altri prezzi del
-              locale sono qui sotto.
+              Questo drink selezionato non è più disponibile nel menu verificato. Gli altri prezzi
+              del locale sono qui sotto.
             </p>
           )}
           <ul class="prices">
@@ -779,6 +794,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 inReview={false}
                 tier={tier(row)}
                 nativeDrinkSave={nativeDrinkSave}
+                savedDrinkKeys={savedDrinkKeys}
                 featured={index === 0 && (!savedFocus || savedFound)}
               />,
             ])}
@@ -861,8 +877,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             <p class="hint">{it.bar.inReviewHelp}</p>
             {savedOfferMissing && (
               <p class="hint" role="status" data-testid="saved-offer-unavailable">
-                Questo drink salvato non è più disponibile nel menu verificato. Gli altri prezzi del
-                locale sono qui sotto.
+                Questo drink selezionato non è più disponibile nel menu verificato. Gli altri prezzi
+                del locale sono qui sotto.
               </p>
             )}
             <ul class="prices">
@@ -875,6 +891,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   inReview
                   tier="neutro"
                   nativeDrinkSave={nativeDrinkSave}
+                  savedDrinkKeys={savedDrinkKeys}
                 />
               ))}
             </ul>

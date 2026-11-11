@@ -31,6 +31,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - **Un cambio di altezza muove ciò che è ancorato a quel bordo**: dopo ogni cambio di layout controlla timbro, anello di focus (5 px fuori dalla scatola), attribuzioni, fogli aperti e controlli posizionati in assoluto.
 - **Prima di dare la colpa al codice mio o altrui**: costruisci il commit precedente in un worktree a parte e lancia lo stesso test; se fallisce uguale, è preesistente.
 - **Testo nascosto**: usa `.sr-only` o `display: none` (i controlli di overflow li escludono); non inventare una variante.
+- **Stato locale sporco**: dopo i test di scrittura (`contribute`, `propose`) il D1 locale tiene i prezzi e i bar inseriti e i test di sola lettura si contano diversamente. Prima di rieseguire test mirati: `rm -rf .wrangler/state` (non è tracciato), e prova che un fallimento non sia questo prima di toccare il codice.
 - **Misura il caso reale**, non uno di comodo: il nome del drink predefinito, le due lingue, 390/360/320 px, i due temi.
 
 ## Feature list

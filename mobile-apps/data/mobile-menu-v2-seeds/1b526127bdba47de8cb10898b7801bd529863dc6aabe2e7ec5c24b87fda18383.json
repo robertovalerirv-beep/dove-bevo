@@ -1001,7 +1001,7 @@
   ],
   "venues": [
     {
-      "address": "Via Francesco Fracanzano 13",
+      "address": null,
       "cell": "sr607",
       "city": "Napoli",
       "country": "IT",

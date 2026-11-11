@@ -1,0 +1,14 @@
+# Camponeschi Roma: reviewed restaurant drink-price candidate
+
+This is an **app-only source candidate**, not a customer report or a public import. It changes no venue, website, legacy price or customer contribution.
+
+## Existing venue and current source
+
+- The [published Rome cell](https://www.dovebevo.com/data/20261108/v/sr2y7.json) and [app-only venue read](https://www.dovebevo.com/api/mobile/v2/menu/venues/n12020666308?cell=sr2y7&limit=100) identify existing `n12020666308`, **Camponeschi**, kind `1`, at `41.89475, 12.47144`, with **zero stored menu offers** on 11 November 2026. The [OSM node](https://www.openstreetmap.org/node/12020666308) has the same name and coordinates. The owner's [restaurant menu page](https://www.ristorantecamponeschi.it/menu) identifies **Piazza Farnese 50/50A, Roma** and links the exact PDF below. Its separate wine-bar page says its drink list is “Presto in arrivo”; this candidate does not reuse an older unlinked wine-bar PDF.
+- The direct [owner Italian menu PDF](https://www.ristorantecamponeschi.it/menu_R_WB/menu_italiano.pdf) returned HTTP 200, `application/pdf`, no redirect, **171,152 bytes** on two identical 11 November fetches with the importer user agent. Raw SHA-256: `6ca65172dc87756f8b3f6d86dc44067030cfa5f11b6777fd86c62cc09e0eba6b`. `pdf_text_v1` normalized text SHA-256: `cda09c8c8b54692dbc096e75e674ba324ac0c78248eb30fc7b23c81dfd6c6239`. It is an eight-page PDF with a July 2026 creation date; the owner currently links it. The check date records source availability, not a customer-paid price.
+
+## Proposed facts and limits
+
+- The [immutable manifest](../../data/mobile-menu-v2-seeds/8de5da207bceb6b599ea70a35fe6cdf1426b93c267653856dc2d676e4436243c.json) stages **seven exact EUR drink prices** from physical page 7: Caffè €5, Cappuccino €5, Acqua minerale €5, Birra €7, Soft drink €7, Flûte di Champagne €18 and Flûte di spumante €12. The menu gives no beer size or draft/bottle type; neither is invented. `Cocktail bar €12/€20`, `Distillati €10/€30`, and grouped `Tè e tisane €5` are excluded because they do not identify one unambiguous priced drink. No descriptions, photos or restaurant food are copied.
+- Physical page 2 prints **Coperto €6 per person**. The manifest stores this separately as a documented fee with **unknown applicability to drinks-only orders** and partial fee coverage. A listed drink amount is not represented as an all-in bill.
+- An independent reviewer should compare all seven offers and the coperto against the exact linked PDF, verify the restaurant/bar identity and source use, then approve or reject the source-only PR. Only after merge may the protected production dry-run audit be considered. A guarded seed requires its successful pinned audit at the same reviewed main commit, zero customer/report conflicts and exact public readback. No public write is authorized by this note.

@@ -267,14 +267,17 @@ class TransportTests(unittest.TestCase):
                 setattr(response, attr, old)
 
     def test_only_exact_published_empty_cell_shell_means_no_venues(self):
-        shell = (b'<!doctype html>\n<html lang="it"><head>'
-                 b'<title>Dove bevo</title></head><body id="app"></body></html>')
+        shell = (b'<!doctype html>\n<html lang="it"><head><title>Dove bevo</title>'
+                 b'<script type="module" crossorigin src="/assets/index-test.js"></script>'
+                 b'</head><body><div id="app"></div></body></html>')
         cell = core.ORIGIN + "/data/20261108/v/u0n6j.json"
 
         class Response:
             status = 200
-            url = cell
-            body = shell
+
+            def __init__(self, url, body):
+                self.url = url
+                self.body = body
 
             def __enter__(self): return self
             def __exit__(self, *args): pass
@@ -287,28 +290,38 @@ class TransportTests(unittest.TestCase):
                 header["Content-Type"] = "text/html; charset=utf-8"
                 return header
 
-        response = Response()
-
         class Opener:
-            def open(self, request, timeout): return response
+            body = shell
+            control = shell
 
-        with patch.object(core, "build_opener", return_value=Opener()):
+            def open(self, request, timeout):
+                body = self.control if request.full_url.endswith("/v/zzzzz.json") else self.body
+                return Response(request.full_url, body)
+
+        opener = Opener()
+        core.empty_cell_shell.cache_clear()
+        with patch.object(core, "build_opener", return_value=opener):
             self.assertEqual(core.public_json(cell), {"c": [], "v": []})
             for path in ("/api/health", "/api/prices/u0n6j",
                          "/data/20261108/places.json"):
-                response.url = core.ORIGIN + path
                 with self.subTest(path=path), self.assertRaisesRegex(core.Invalid, "non_json_response"):
-                    core.public_json(response.url)
-            response.url = cell
+                    core.public_json(core.ORIGIN + path)
             for body in (b'<html lang="it"><title>Dove bevo</title></html>',
                          b'<!doctype html><html lang="it"><title>Service error</title></html>',
-                         b'<!doctype html><html lang="en"><title>Dove bevo</title></html>'):
-                response.body = body
+                         b'<!doctype html><html lang="en"><title>Dove bevo</title></html>',
+                         shell.replace(b'</body>', b'<p>Service error</p></body>')):
+                opener.body = body
                 with self.subTest(body=body), self.assertRaisesRegex(core.Invalid, "non_json_response"):
                     core.public_json(cell)
-            response.body = shell + b" " * (core.LIMIT + 1)
+            opener.body = shell + b" " * (core.LIMIT + 1)
             with self.assertRaisesRegex(core.Invalid, "body_limit"):
                 core.public_json(cell)
+            opener.body = shell
+            opener.control = shell.replace(b'</body>', b'<p>Service error</p></body>')
+            core.empty_cell_shell.cache_clear()
+            with self.assertRaisesRegex(core.Invalid, "non_json_response"):
+                core.public_json(cell)
+        core.empty_cell_shell.cache_clear()
 
 
 if __name__ == "__main__":

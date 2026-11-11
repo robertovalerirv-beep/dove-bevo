@@ -249,11 +249,11 @@ final class DiscoveryScreen {
     }
     /** An ordered preview of the same read-only rows shown below, never a synthetic deal. */
     private void addFeatured(DiscoveryData.Row row){
-        LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.discoveryCard(card);card.setPadding(dp(10),dp(10),dp(10),dp(10));
-        LinearLayout.LayoutParams cardSize=new LinearLayout.LayoutParams(dp(208),-2);cardSize.rightMargin=dp(10);cardSize.bottomMargin=dp(8);featured.addView(card,cardSize);
-        DrinkArtwork art=new DrinkArtwork(activity,drink);art.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);card.addView(art,new LinearLayout.LayoutParams(-1,dp(88)));
+        LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.discoveryCard(card);card.setPadding(dp(8),dp(8),dp(8),dp(8));
+        LinearLayout.LayoutParams cardSize=new LinearLayout.LayoutParams(dp(200),-2);cardSize.rightMargin=dp(8);cardSize.bottomMargin=dp(6);featured.addView(card,cardSize);
+        DrinkArtwork art=new DrinkArtwork(activity,drink);art.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);card.addView(art,new LinearLayout.LayoutParams(-1,dp(64)));
         String drinkName=featuredDrinkName(row,drink);
-        TextView name=text(drinkName,15);NativeAppearance.title(name);name.setPadding(0,dp(6),0,0);card.addView(name);
+        TextView name=text(drinkName,15);NativeAppearance.title(name);name.setPadding(0,dp(4),0,0);card.addView(name);
         TextView venue=text(row.venue.name,13);card.addView(venue);
         TextView price=text(row.amountLabel(),18);NativeAppearance.title(price);card.addView(price);
         TextView serving=text(row.groupLabel(),12);NativeAppearance.muted(serving);card.addView(serving);

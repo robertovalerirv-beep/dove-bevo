@@ -135,7 +135,7 @@ export const en: Dict = {
   },
   add: {
     open: "Add a price",
-    addMissing: "Add a missing place",
+    addMissing: "Add a place",
     back: "Back",
     chooseBar: "Choose the bar",
     nearBars: "Nearby bars",

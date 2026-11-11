@@ -188,7 +188,7 @@ test("ME-04 the map screen and the drink menu are in English", async ({ page }, 
   await expect(page.getByRole("button", { name: "List" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Explore the map" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Add a price" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add a missing place" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add a place" })).toBeVisible();
   // The picture speaks from the centre; the message of the top comes after the first tap (D-37).
   await expect(mapStatus(page)).toHaveCount(0);
   await page.getByRole("button", { name: "Tap the map or search for a city" }).click();
@@ -305,7 +305,7 @@ test("ME-04 search, list, bar page, report, add a price and a missing bar are in
   await page.getByRole("button", { name: "Close" }).first().click();
 
   // A missing bar.
-  await page.getByRole("button", { name: "Add a missing place" }).click();
+  await page.getByRole("button", { name: "Add a place" }).click();
   const propose = page.getByRole("dialog", { name: "Add a bar" });
   await expect(propose.getByLabel("Bar name")).toBeVisible();
   await expect(propose.getByText("What kind of place is it?")).toBeVisible();

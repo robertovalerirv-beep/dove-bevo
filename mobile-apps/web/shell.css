@@ -43,8 +43,12 @@ html[data-dovebevo-mobile-shell="1"] .top {
 }
 html[data-dovebevo-mobile-shell="1"] .top__row {
   gap: 8px;
-  /* Search and Locate live on the map; only the drink picker uses header space. */
-  height: 0;
+  /* Search and Locate live on the map; only the drink picker uses header space. The website puts the
+     picker in the same row as its search and locate buttons (SPEC 1.18): here it fills the row alone. */
+}
+html[data-dovebevo-mobile-shell="1"] .top__row > .mobile-drink-menu {
+  flex: 1 1 0;
+  min-width: 0;
 }
 html[data-dovebevo-mobile-shell="1"] .brand {
   position: absolute;

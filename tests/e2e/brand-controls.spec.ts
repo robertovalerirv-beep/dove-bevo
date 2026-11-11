@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { test } from "./fixtures";
 import { atHour, THEME_HOURS } from "./helpers";
 
-// MB-04: the controls of the kit. Buttons and fields have a 2 px `ink` border; buttons carry the
+// MB-04: the controls of the kit (those of the map are drawn by their ::before, SPEC 1.18). Buttons and fields have a 2 px `ink` border; buttons carry the
 // `shadow-stampa` and go down by 3 px when pressed; every focused control has a 3 px outline 2 px away.
 
 /** The computed rgb of a token, resolved by the browser (the CSS holds hexadecimals only in tokens.css). */
@@ -19,6 +19,10 @@ const tokenColor = (page: Page, token: string) =>
 const css = (el: Locator, property: string) =>
   el.evaluate((node, p) => getComputedStyle(node).getPropertyValue(p), property);
 
+// SPEC 1.18: the controls of the map are drawn by their ::before (40 px tall inside a 48 px target).
+const face = (el: Locator, property: string) =>
+  el.evaluate((node, p) => getComputedStyle(node, "::before").getPropertyValue(p), property);
+
 for (const scheme of ["light", "dark"] as const) {
   test(`MB-04 ${scheme}: border, shadow, press and focus of the controls`, async ({ page }) => {
     await atHour(page, THEME_HOURS[scheme]);
@@ -27,19 +31,19 @@ for (const scheme of ["light", "dark"] as const) {
     const ink = await tokenColor(page, "--ink");
 
     const primary = page.getByRole("button", { name: "Aggiungi prezzo" });
-    const secondary = page.getByRole("button", { name: "Aggiungi locale mancante" });
+    const secondary = page.getByRole("button", { name: "Aggiungi locale" });
     const search = page.getByRole("button", { name: "Cerca città o bar" });
     const menu = page.getByRole("button", { name: /^Scegli cosa bere/ });
 
     for (const control of [primary, secondary, search, menu]) {
       await expect(control).toBeVisible();
-      expect(await css(control, "border-top-width")).toBe("2px");
-      expect(await css(control, "border-top-color")).toBe(ink);
-      expect(await css(control, "border-top-style")).toBe("solid");
+      expect(await face(control, "border-top-width")).toBe("2px");
+      expect(await face(control, "border-top-color")).toBe(ink);
+      expect(await face(control, "border-top-style")).toBe("solid");
     }
     // The stamp shadow: 3 px right and down, hard edge, in the ink colour of the theme.
     for (const control of [primary, secondary, search]) {
-      const box = await css(control, "box-shadow");
+      const box = await face(control, "box-shadow");
       expect(box).toMatch(/ 3px 3px 0px/);
       expect(box.startsWith("rgb")).toBe(true);
     }

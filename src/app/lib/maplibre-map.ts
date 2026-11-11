@@ -96,8 +96,10 @@ async function loadStyle(): Promise<StyleSpecification> {
 
 const GLYPH: Record<Tier, string> = { affare: "↓", giusto: "=", salato: "↑", neutro: "" };
 const PIN_RATIO = 2;
-const PIN_HEIGHT = 32;
-const PIN_FONT_SIZE = 15;
+// SPEC 1.18: a little smaller than before (32 px, 15 px figures) so neighbouring prices cover each other less;
+// 14 px is still the smallest text of the MASTER.
+const PIN_HEIGHT = 28;
+const PIN_FONT_SIZE = 14;
 
 /** Pin image names carry everything they depend on: `pin-<tier>-<stale 0|1>-<theme>-<label>`. */
 function pinName(tier: Tier, stale: boolean, label: string): string {
@@ -114,7 +116,7 @@ function pinImage(tier: Tier, stale: boolean, label: string): ImageData {
   if (probe) probe.font = font;
   const textWidth = probe ? probe.measureText(text).width : text.length * 9;
   const shadow = stale ? 0 : 3; // --shadow-stampa
-  const w = Math.ceil(textWidth + 28 + shadow);
+  const w = Math.ceil(textWidth + 24 + shadow);
   const h = PIN_HEIGHT + shadow;
   const canvas = document.createElement("canvas");
   canvas.width = w * PIN_RATIO;
@@ -298,7 +300,7 @@ export class VenueMap {
         "circle-color": ink,
         "circle-stroke-color": border,
         "circle-stroke-width": 2,
-        "circle-radius": ["step", ["get", "point_count"], 16, 20, 20, 100, 24],
+        "circle-radius": ["step", ["get", "point_count"], 14, 20, 17, 100, 20],
       },
     });
     map.addLayer({

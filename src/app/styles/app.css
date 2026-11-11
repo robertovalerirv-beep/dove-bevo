@@ -21,20 +21,20 @@
   flex: none;
 }
 
-/* Header: brand, search, drink chips */
+/* Header: one row, brand, search, drink menu, near me (SPEC 1.18). The controls are 48 px boxes whose drawn
+   face is 40 px (.btn--slim), so the row is 48 px tall plus the hairline. */
 .top {
   position: relative; /* the drink list opens over the map */
   z-index: 5;
   background: var(--bg);
   border-bottom: var(--border-hair) solid var(--line-soft);
-  padding: var(--space-2) var(--space-4) var(--space-3);
-  padding-top: max(var(--space-2), env(safe-area-inset-top));
+  padding: 0 var(--space-3);
+  padding-top: env(safe-area-inset-top);
 }
 .top__row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 .brand {
   display: flex;
@@ -52,12 +52,15 @@
 }
 /* «Scegli cosa bere»: one button, a list of check boxes under it. */
 .drink-menu {
-  position: relative;
-  margin-top: var(--space-2);
+  /* Not positioned: the open list is placed against the header, so it is as wide as the screen. */
+  flex: 1 1 0;
+  min-width: 0;
 }
 .drink-menu__button {
   width: 100%;
   justify-content: flex-start;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
   text-align: left;
 }
 .drink-menu__text {
@@ -67,13 +70,13 @@
   min-width: 0;
   line-height: 1.2;
 }
+/* The title is only the accessible name now: what the button says is the drink chosen (SPEC 7.1). */
 .drink-menu__summary {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ink-muted);
-  font-size: var(--size-caption);
-  font-weight: var(--weight-regular);
+  color: var(--ink);
+  font: var(--type-label);
 }
 .drink-menu__chevron {
   flex: none;
@@ -88,8 +91,8 @@
 }
 .drink-menu__list {
   position: absolute;
-  inset-inline: 0;
-  top: calc(100% + var(--space-2));
+  inset-inline: var(--space-3);
+  top: calc(100% + var(--space-1));
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -203,8 +206,10 @@
 }
 /* Search opens the search sheet; it looks like a field (pages/mappa.md). */
 .search-field {
-  flex: 1;
+  flex: none;
   justify-content: flex-start;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
   border-radius: var(--radius-pill);
   color: var(--ink-muted);
   font-weight: var(--weight-regular);
@@ -239,13 +244,13 @@
   position: absolute;
   top: var(--space-3);
   /* Starts after the language menu and stops before the list button: one corner each (SPEC 7.11). */
-  left: calc(2 * var(--space-3) + var(--target));
+  left: calc(var(--space-2) + var(--target) + var(--space-1));
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  max-width: calc(100% - 4 * var(--space-3) - 2 * var(--target));
+  max-width: calc(100% - 2 * (var(--space-2) + var(--target) + var(--space-1)));
   margin: 0;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-pill);
   border: var(--border-strong) solid var(--map-pill-border);
   background: var(--map-pill-bg);
@@ -347,11 +352,11 @@
 /* Bottom bar */
 .bottom {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: var(--space-2);
   align-items: stretch;
-  padding: var(--space-2) var(--space-4);
-  padding-bottom: max(var(--space-2), env(safe-area-inset-bottom));
+  padding: 0 var(--space-3);
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--bg);
   border-top: var(--border-hair) solid var(--line-soft);
 }
@@ -361,6 +366,7 @@
   padding-inline: var(--space-2);
   line-height: 1.15;
   text-align: center;
+  white-space: nowrap; /* "Aggiungi locale" fits beside "Aggiungi prezzo" down to 320 px */
 }
 /* Round icon button beside the search (locate): the label is its aria-label. */
 .icon-btn {
@@ -1703,4 +1709,97 @@
 }
 .hours-form .field:disabled {
   opacity: 0.5;
+}
+
+/* Slim controls (SPEC 1.18, ADR 0048): the button is the 48 px target, the face you see is 40 px tall. The border,
+   the fill and the stamp shadow are drawn by ::before, 4 px in from the top and the bottom; the focus ring and the
+   press (3 px down) stay on the 48 px box. Placed last so it wins over the colours set on each variant above. The
+   website only: the app presentation (mobile-apps/web) and the Europe app keep their own controls. */
+:root:not([data-dovebevo-mobile-shell="1"]) .btn--slim,
+:root:not([data-dovebevo-mobile-shell="1"]) .map .lang-menu__button {
+  position: relative;
+  isolation: isolate;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  --face-bg: var(--surface);
+  --face-border: var(--ink);
+}
+:root:not([data-dovebevo-mobile-shell="1"]) .chip.btn--slim {
+  --face-bg: var(--surface-2);
+}
+:root:not([data-dovebevo-mobile-shell="1"]) .btn--primary.btn--slim {
+  --face-bg: var(--spritz);
+}
+:root:not([data-dovebevo-mobile-shell="1"]) .map__list.btn--slim,
+:root:not([data-dovebevo-mobile-shell="1"]) .map .lang-menu__button {
+  --face-bg: var(--map-pill-bg);
+  --face-border: var(--map-pill-border);
+}
+:root:not([data-dovebevo-mobile-shell="1"]) .btn--slim::before,
+:root:not([data-dovebevo-mobile-shell="1"]) .map .lang-menu__button::before {
+  content: "";
+  position: absolute;
+  inset: var(--space-1) 0;
+  z-index: -1;
+  border: var(--border-strong) solid var(--face-border);
+  border-radius: inherit;
+  background: var(--face-bg);
+  box-shadow: var(--shadow-stampa);
+  transition: box-shadow var(--duration-tap) var(--ease-out);
+}
+:root:not([data-dovebevo-mobile-shell="1"]) .icon-btn.btn--slim::before,
+:root:not([data-dovebevo-mobile-shell="1"]) .map .lang-menu__button::before {
+  inset: var(--space-1);
+}
+:root:not([data-dovebevo-mobile-shell="1"])
+  .btn--slim:active:not(:disabled, [aria-disabled="true"])::before,
+:root:not([data-dovebevo-mobile-shell="1"]) .map .lang-menu__button:active::before {
+  box-shadow: var(--shadow-premuto);
+}
+/* The coverage bar (Copertura) is only a drawing beside the sentence: on a phone there is no room for both on one
+   line between the two icons, and the sentence is what says it. */
+@media (max-width: 479px) {
+  :root:not([data-dovebevo-mobile-shell="1"]) .map__status .meter {
+    display: none;
+  }
+}
+/* The list icon is placed on the map; the slim rule above must not make it relative. */
+:root:not([data-dovebevo-mobile-shell="1"]) .map__list.btn--slim {
+  position: absolute;
+}
+/* The two icons of the map sit 4 px from the top: their face is 4 px in from the 48 px box. */
+:root:not([data-dovebevo-mobile-shell="1"]) .map__lang,
+:root:not([data-dovebevo-mobile-shell="1"]) .map__list {
+  top: var(--space-1);
+}
+:root:not([data-dovebevo-mobile-shell="1"]) .map__lang {
+  left: var(--space-2);
+}
+:root:not([data-dovebevo-mobile-shell="1"]) .map__list {
+  right: var(--space-2);
+}
+/* A very narrow phone (320 px): the search is its icon, 48 px; the words stay as the name of the button. */
+@media (max-width: 359px) {
+  :root:not([data-dovebevo-mobile-shell="1"]) .search-field {
+    padding-inline: 0;
+    justify-content: center;
+  }
+  :root:not([data-dovebevo-mobile-shell="1"]) .search-field__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+/* Fuori orario: the strip of the attribution is dark too (the licences ask for the text, not for a colour), the
+   same 85% over the map as by day. */
+:root[data-theme="dark"]:not([data-dovebevo-mobile-shell="1"]) .map__attribution {
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  color: var(--ink);
+}
+:root[data-theme="dark"]:not([data-dovebevo-mobile-shell="1"]) .map__attribution a {
+  color: var(--ink);
 }

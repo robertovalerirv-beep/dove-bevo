@@ -11,13 +11,13 @@ test("MB-13 a zone without prices changes nothing: the bar keeps two buttons and
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Azioni della mappa" });
   const buttons = nav.getByRole("button");
-  await expect(buttons).toHaveText(["Aggiungi prezzo", "Aggiungi locale mancante"]);
+  await expect(buttons).toHaveText(["Aggiungi prezzo", "Aggiungi locale"]);
   const barBefore = await nav.boundingBox();
   await goToMilano(page);
   await chooseDrinks(page, "Negroni");
   // No invitation anywhere: the zone without prices is the same screen, the bar is exactly what it was.
   await expect(page.getByText("Qui nessuno ha ancora segnato un prezzo")).toHaveCount(0);
-  await expect(buttons).toHaveText(["Aggiungi prezzo", "Aggiungi locale mancante"]);
+  await expect(buttons).toHaveText(["Aggiungi prezzo", "Aggiungi locale"]);
   await expect(page.getByRole("button", { name: "Manda la mappa a un amico" })).toHaveCount(0);
   expect(await nav.boundingBox()).toEqual(barBefore);
   const boxes = await Promise.all([0, 1].map((i) => buttons.nth(i).boundingBox()));
@@ -26,7 +26,7 @@ test("MB-13 a zone without prices changes nothing: the bar keeps two buttons and
   const viewport = page.viewportSize()?.height ?? 844;
   expect((await mapRegion(page).boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(viewport * 0.7);
   await page.screenshot({ path: info.outputPath("mb-13-zona-vuota.png") });
-  await nav.getByRole("button", { name: "Aggiungi locale mancante" }).click();
+  await nav.getByRole("button", { name: "Aggiungi locale" }).click();
   await expect(page.getByRole("textbox", { name: "Nome del bar" })).toBeVisible();
 });
 

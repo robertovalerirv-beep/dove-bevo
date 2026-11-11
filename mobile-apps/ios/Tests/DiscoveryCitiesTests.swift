@@ -81,17 +81,19 @@ final class DiscoveryCitiesTests: XCTestCase {
         let directory = DelayedDiscoveryCityDirectory()
         let controller = DiscoveryViewController(client: CityDiscoveryService(), cityDirectory: directory,
                                                  activityCheck: { true }, onOpen: { _ in }, onMap: {})
-        let mounted = try OwnedReferenceWindow(root: UINavigationController(rootViewController: controller))
+        let owner = UINavigationController(rootViewController: controller)
+        let mounted = try OwnedReferenceWindow(root: owner)
         defer { mounted.close() }
         let button = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? UIButton }
             .first { $0.accessibilityIdentifier == "discovery.citySelector" })
         XCTAssertGreaterThanOrEqual(button.bounds.height, 48)
+        XCTAssertTrue(button.window === mounted.window, "The tapped selector must be mounted in the owned window")
         button.sendActions(for: .touchUpInside)
         let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            controller.presentedViewController is UINavigationController
+            owner.presentedViewController is UINavigationController
         }, object: nil)
         XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 5), .completed)
-        let navigation = try XCTUnwrap(controller.presentedViewController as? UINavigationController)
+        let navigation = try XCTUnwrap(owner.presentedViewController as? UINavigationController)
         let picker = try XCTUnwrap(navigation.topViewController as? DiscoveryCityPickerController)
         XCTAssertEqual(picker.navigationItem.leftBarButtonItem?.title, "Annulla")
         XCTAssertEqual(directory.requests.count, 1)

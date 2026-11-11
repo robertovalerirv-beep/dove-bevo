@@ -264,13 +264,17 @@ final class DiscoveryViewController: UITableViewController {
     @objc private func bandChanged() { band = bands.selectedBand; render() }
     @objc private func showMap() { onMap() }
     @objc private func showCityPicker() {
-        guard visible, presentedViewController == nil else { return }
+        // UIKit can attach a sheet to the owning navigation controller rather
+        // than this child. Present there explicitly and only while on screen.
+        guard view.window != nil else { return }
+        let presenter = navigationController ?? self
+        guard presenter.presentedViewController == nil else { return }
         let picker = DiscoveryCityPickerController(directory: cityDirectory, selected: selectedCity) { [weak self] city in
             self?.selectCity(city)
         }
         let navigation = UINavigationController(rootViewController: picker)
         navigation.modalPresentationStyle = .pageSheet
-        present(navigation, animated: true)
+        presenter.present(navigation, animated: true)
     }
     private func configureFeatured(width: CGFloat) {
         featuredWidth = width

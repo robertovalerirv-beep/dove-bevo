@@ -30,6 +30,8 @@ class YellowBarDriveSourceTests(unittest.TestCase):
         rejected_urls = (
             core.YELLOW_BAR_MENU_URL + "&extra=1",
             core.YELLOW_BAR_MENU_URL.replace("drive.usercontent.google.com", "drive.google.com"),
+            "https://drive.googleusercontent.com/download?id=other",
+            "https://docs.googleusercontent.com/download?id=other",
             core.YELLOW_BAR_MENU_URL.replace("15wX_FusoJscsC_S4WMUJhoukDx6ligee", "other-id"),
             "https://drive.usercontent.google.com/download?id=another&export=download",
             "https://www.google.com/menus/yellow-bar.pdf",

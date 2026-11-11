@@ -58,7 +58,8 @@ ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 CATEGORIES = {"beer_draft","spritz","negroni","sbagliato","gin_tonic",
               "gin_lemon","wine_glass","alcohol_free","water"}
 BLOCKED = ("leggimenu.it","yhop.beer","metropolita.it",
-           "junglejuicebrewing.com","google.com","googleapis.com")
+           "junglejuicebrewing.com","google.com","googleapis.com",
+           "googleusercontent.com")
 TABLES = ("mobile_menu_v2_venues","mobile_menu_v2_sources","mobile_menu_v2_offers",
           "mobile_menu_v2_fees","mobile_menu_v2_fee_coverage","venues_hidden",
           "mobile_venues_moderation","reports","prices_current","price_obs",

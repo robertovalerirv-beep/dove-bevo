@@ -3,6 +3,7 @@ import { formatDate } from "@site/app/lib/format";
 import { currentLang } from "@site/app/i18n/lang";
 import { drinkImage } from "@mobile/drink-images";
 import { DrinkVoteButton } from "./DrinkVotes";
+import { NativeSaveAction, savedDrinkKey, useNativeSavedDrinks } from "../native-saved-drinks";
 import {
   CustomerPriceHttpError,
   customerCurrency,
@@ -100,6 +101,7 @@ export function CustomerPricesV2({
   const [rows, setRows] = useState<CustomerRow[]>([]);
   const [nativeOfferSave, setNativeOfferSave] = useState(nativeOfferSaveEnabled);
   const [nativeCustomerSave, setNativeCustomerSave] = useState(false);
+  const savedDrinkKeys = useNativeSavedDrinks();
   const [nextAfter, setNextAfter] = useState<string | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [moreBusy, setMoreBusy] = useState(false);
@@ -579,13 +581,12 @@ export function CustomerPricesV2({
         {(nativeCustomerSave || voteVisible) && (
           <div class="mobile-menu-v2__quick-actions mobile-customer-v2__quick-actions">
             {nativeCustomerSave && mobileCustomerItemKeyPattern.test(row.item_key) && (
-              <a
+              <NativeSaveAction
                 href={mobileCustomerSaveURL(key, cell, row.item_key)}
-                class="btn btn--secondary mobile-menu-v2__save"
-                aria-label={`Salva ${row.name} da ${menu?.venue.name ?? key} nei preferiti`}
-              >
-                ☆ Salva
-              </a>
+                name={row.name}
+                venue={menu?.venue.name ?? key}
+                keys={savedDrinkKeys}
+              />
             )}
             {voteVisible && (
               <DrinkVoteButton
@@ -610,6 +611,9 @@ export function CustomerPricesV2({
   function offerRow(offer: MenuOffer, compact: boolean) {
     const customer = observations.get(offer.id);
     const exactSaved = offerFocus === offer.id;
+    const offerSaved =
+      mobileOfferIdPattern.test(offer.id) &&
+      savedDrinkKeys.has(savedDrinkKey(mobileOfferSaveURL(key, cell, offer.id)) ?? "");
     const categorySaved = focus !== null && menuOfferMatchesFocus(offer, focus);
     const mapSelected =
       !exactSaved && !categorySaved && !offerFocus && !focus && mapOfferId === offer.id;
@@ -623,12 +627,12 @@ export function CustomerPricesV2({
               {english ? "Selected on the map" : "Drink scelto sulla mappa"}
             </small>
           )}
-          {exactSaved ? (
+          {offerSaved ? (
             <small class="mobile-menu-v2__saved">Questo drink è nei tuoi preferiti</small>
           ) : (
             categorySaved && (
               <small class="mobile-menu-v2__saved">
-                Stesso tipo di drink salvato · {focus.hh ? "Happy hour" : "Prezzo normale"}
+                Stesso tipo di drink selezionato · {focus.hh ? "Happy hour" : "Prezzo normale"}
               </small>
             )
           )}
@@ -655,13 +659,12 @@ export function CustomerPricesV2({
     const quickActions = (
       <div class="mobile-menu-v2__quick-actions">
         {nativeOfferSave && mobileOfferIdPattern.test(offer.id) && (
-          <a
+          <NativeSaveAction
             href={mobileOfferSaveURL(key, cell, offer.id)}
-            class="btn btn--secondary mobile-menu-v2__save"
-            aria-label={`Salva ${offer.name} da ${menu?.venue.name ?? key} nei preferiti`}
-          >
-            ☆ Salva
-          </a>
+            name={offer.name}
+            venue={menu?.venue.name ?? key}
+            keys={savedDrinkKeys}
+          />
         )}
         {mobileOfferIdPattern.test(offer.id) && (
           <DrinkVoteButton

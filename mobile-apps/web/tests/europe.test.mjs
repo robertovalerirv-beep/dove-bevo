@@ -416,7 +416,7 @@ test("European venue preserves identity, explicit pounds and source-check proven
   }
 });
 
-test("European saved drink links feature only the requested category and band", async () => {
+test("European focused deep links feature exact band and describe an unsaved missing row neutrally", async () => {
   const f = await fixture();
   try {
     await f.page.goto(origin + "/mobile/?path=%2Fbar%2Fn1001&c=gcpvj&drink=spritz&hh=0");
@@ -426,6 +426,14 @@ test("European saved drink links feature only the requested category and band", 
 
     await f.page.goto(origin + "/mobile/?path=%2Fbar%2Fn1001&c=gcpvj&drink=spritz&hh=1");
     await f.page.getByTestId("saved-drink-unavailable").waitFor();
+    assert.match(
+      await f.page.getByTestId("saved-drink-unavailable").innerText(),
+      /prezzo selezionato/,
+    );
+    assert.doesNotMatch(
+      await f.page.getByTestId("saved-drink-unavailable").innerText(),
+      /prezzo salvato/,
+    );
     assert.equal(await f.page.locator(".mobile-price--featured").count(), 0);
     assert.deepEqual(f.writes, []);
   } finally {
@@ -1127,6 +1135,18 @@ test("European drink rows expose exact native saves only after the native bridge
       );
     }
     await f.page.screenshot({ path: path.join(output, "europe-exact-drink-actions-320.png") });
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeSavedDrinkKeys = ["n1001|gcpvj|europe|beer_draft|0|GBP|ml:568"];
+      window.dispatchEvent(new Event("dovebevo-native-favourites-changed"));
+    });
+    await beer568.locator('.europe-price__save[data-saved="true"]').waitFor();
+    assert.equal(await beer568.locator(".europe-price__save").getAttribute("href"), null);
+    assert.equal(await beer400.locator(".europe-price__save").getAttribute("data-saved"), "false");
+    await f.page.evaluate(() => {
+      window.DoveBevoNativeSavedDrinkKeys = [];
+      window.dispatchEvent(new Event("dovebevo-native-favourites-changed"));
+    });
+    await beer568.locator('.europe-price__save[data-saved="false"]').waitFor();
     assert.deepEqual(f.writes, [], "A private Save link does not post a public contribution");
     assert.deepEqual(f.errors, []);
   } finally {

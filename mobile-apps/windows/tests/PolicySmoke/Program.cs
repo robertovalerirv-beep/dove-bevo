@@ -236,7 +236,12 @@ foreach (var (label, ml, expected) in new (string? Label, int? Ml, string? Categ
     ("Media", null, "beer_draft"),
     ("50 cl", null, "beer_draft"),
     ("50 cl", 500, "beer_draft"),
-    ("Pint", 568, "beer_draft"),
+    ("500 ml", 500, "beer_draft"),
+    ("Pint", 568, null),
+    (null, 568, null),
+    ("568 ml", null, null),
+    ("Grande 50 cl", 500, null),
+    ("Large 500 ml", 500, null),
     ("25 cl", null, null),
     ("Piccola", 250, null),
     ("Piccola", 500, null),
@@ -278,9 +283,9 @@ using var poundDraft = JsonDocument.Parse(JsonSerializer.Serialize(new {
     next_after = (string?)null,
 }));
 var pound = BookmarkPriceClient.ParseOffer(poundDraft, offerAction!);
-Require(pound.Category == "beer_draft" && pound.Price?.Contains("6,50 £") == true &&
+Require(pound.Category is null && pound.Price?.Contains("6,50 £") == true &&
     pound.Serving == "Pint · 568 ml",
-    "named draft must retain GBP and its verified 568 ml serving");
+    "a GBP pint must retain its own price and serving but not enter Birra media");
 using var malformedCategory = JsonDocument.Parse(JsonSerializer.Serialize(new {
     schema_version = 2, price_scope = "menu_item_only",
     venue = new { key = "n123", cell = "u0nd9" },
@@ -356,6 +361,34 @@ var offer = DiscoveryClient.ParsePage(menuBytes, "u0nd9", "spritz").Rows.Single(
 Require(offer.Display.Contains("18,00 EUR") && offer.Display.Contains("menu.example") &&
     offer.FocusedVenue()?.AbsoluteUri.EndsWith("&drink=spritz&hh=0") == true,
     "verified discovery offer/focus mismatch");
+var draftSamples = new (string Name, string? Label, int? Ml)[] {
+    ("Media", "Media", null), ("50 cl", "50 cl", 500),
+    ("500 ml", "500 ml", 500), ("Piccola", "Piccola", 250),
+    ("Pint", "Pint", 568), ("Grande", "Grande 50 cl", 500),
+    ("Ignoto", "Alla spina", null), ("Conflitto", "Media 25 cl", 500),
+};
+var draftPage = JsonSerializer.SerializeToUtf8Bytes(new {
+    schema_version = 2,
+    coverage = new { complete = false, basis = "verified_source_items_only" },
+    price_scope = "menu_item_only", cell = "u0nd9", category = "beer_draft",
+    categories = new[] { "beer_draft" },
+    venues = new[] { new {
+        key = "n123", cell = "u0nd9", name = "Test Bar", city = "Milano",
+        matching_offer_count = draftSamples.Length,
+        sample_offers = draftSamples.Select(sample => new {
+            name = sample.Name, category = "beer_draft", amount_minor = 650,
+            currency = "EUR", currency_exponent = 2,
+            serving = new { label = sample.Label, ml = sample.Ml },
+            context = new { kind = "regular", condition = (string?)null },
+            source = new { url = "https://menu.example/draft", text_sha256 = new string('b', 64),
+                checked_on = "2026-11-03" },
+        }).ToArray(),
+    } }, next_after = (string?)null,
+});
+var verifiedDraft = DiscoveryClient.ParsePage(draftPage, "u0nd9", "beer_draft").Rows;
+Require(verifiedDraft.Select(row => row.Drink).SequenceEqual(["Media", "50 cl", "500 ml"]) &&
+    verifiedDraft.All(row => row.Serving is { Length: > 0 } && row.Display.Contains("6,50 EUR")),
+    "Italian Scopri must show only source-verified medium draft sizes and preserve their serving");
 var legacyStatic = JsonSerializer.SerializeToUtf8Bytes(new {
     c = new object[][] { new object[] { 62505581, "Milano" } },
     v = new object[][] { new object[] { "n123", "Test Bar", 1, 45.4635, 9.18839, "Via Test", 0 } },
@@ -497,6 +530,20 @@ var londonPrices = new[] {
             source_checked_on = checkedDay, source_sha256 = new string('a', 64),
             menu_item = "Draft beer" },
     },
+    new { venue = "n123", cell = "gcpvj", drink = "beer_draft", hh = 0,
+        currency = "GBP", amount_minor = 700, serving = new { unit = "ml", ml = 500 },
+        observed_on = (string?)null, status = "active", provenance = new {
+            kind = "online_menu", source_url = "https://example.com/menu",
+            source_checked_on = checkedDay, source_sha256 = new string('a', 64),
+            menu_item = "Draft beer" },
+    },
+    new { venue = "n123", cell = "gcpvj", drink = "beer_draft", hh = 0,
+        currency = "GBP", amount_minor = 500, serving = new { unit = "ml", ml = 250 },
+        observed_on = (string?)null, status = "active", provenance = new {
+            kind = "online_menu", source_url = "https://example.com/menu",
+            source_checked_on = checkedDay, source_sha256 = new string('a', 64),
+            menu_item = "Draft beer" },
+    },
 };
 using var londonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
     schema_version = 1, catalog_version = "test-v1", rows = londonPrices,
@@ -505,10 +552,22 @@ using var londonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
 var londonRows = EuropeDiscoveryClient.ParseCell(londonPage, "gcpvj", "beer_draft",
     parsedCatalog.Version, parsedCatalog.Venues);
 Require(londonRows.Count == 2 && londonRows.All(row => row.Currency == "GBP" && row.IsEurope) &&
-    londonRows.Any(row => row.Display.Contains("6,50 GBP") && row.Display.Contains("568 ml")) &&
+    londonRows.Any(row => row.Display.Contains("6,50 GBP") && row.Display.Contains("400 ml")) &&
+    londonRows.Any(row => row.Display.Contains("7,00 GBP") && row.Display.Contains("500 ml")) &&
+    londonRows.All(row => !row.Display.Contains("568 ml") && !row.Display.Contains("250 ml")) &&
     londonRows[0].FocusedVenue()?.AbsoluteUri ==
         "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=gcpvj",
-    "London GBP servings must stay distinct and reopen the app venue without wrong serving focus");
+    "London Birra media must exclude small and pint servings without changing GBP or venue focus");
+var sortedCurrencies = DiscoveryClient.SortRows([
+    offer with { Key = "n1", Currency = "GBP", AmountMinor = 550, Exponent = 2 },
+    offer with { Key = "n2", Currency = "EUR", AmountMinor = 650, Exponent = 2 },
+    offer with { Key = "n3", Currency = "EUR", AmountMinor = 6, Exponent = 0 },
+    offer with { Key = "n3", Currency = "EUR", AmountMinor = 6, Exponent = 2 },
+    offer with { Key = "n4", Currency = "EUR", AmountMinor = 55, Exponent = 1 },
+]);
+Require(sortedCurrencies.Select(row => $"{row.Currency}:{row.AmountMinor}:{row.Exponent}")
+        .SequenceEqual(["EUR:6:2", "EUR:55:1", "EUR:6:0", "EUR:650:2", "GBP:550:2"]),
+    "Scopri must preserve distinct exponents and sort numeric prices within original-currency sections");
 var localOffer = legacyRows.Single(row => row.Key == "n123");
 var localCustomer = legacyRows.Single(row => row.Key == "u1");
 var featured = FeaturedDiscoveryCards.FromRows([

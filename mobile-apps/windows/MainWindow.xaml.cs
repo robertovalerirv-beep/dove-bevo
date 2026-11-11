@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Web.WebView2.Core;
 
@@ -499,7 +500,8 @@ public partial class MainWindow : Window
             // The catalogue's beer_draft code alone does not mean a medium beer.
             if (action.Kind == "europe" && action.Item == "beer_draft" &&
                 (action.Serving is null || !action.Serving.StartsWith("ml:", StringComparison.Ordinal) ||
-                 !int.TryParse(action.Serving[3..], out var ml) || ml is < 400 or > 600))
+                 !int.TryParse(action.Serving[3..], out var ml) ||
+                 !BookmarkPriceClient.IsMediumDraftBeer(bookmark.DrinkName, ml)))
                 return "name:" + bookmark.DrinkName;
             return "code:" + action.Item;
         }
@@ -896,6 +898,13 @@ public partial class MainWindow : Window
         return request;
     }
 
+    private static ListCollectionView GroupDiscoveryRows(IReadOnlyList<DiscoveryRow> rows)
+    {
+        var view = new ListCollectionView(rows.ToArray());
+        view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(DiscoveryRow.Currency)));
+        return view;
+    }
+
     private async Task LoadDiscovery()
     {
         var area = discoveryResults.Area;
@@ -909,7 +918,7 @@ public partial class MainWindow : Window
             var snapshot = await discovery.LoadAsync(area, category.Code, request.Token);
             if (request.IsCancellationRequested || DiscoveryPanel.Visibility != Visibility.Visible ||
                 !discoveryResults.Publish(generation, area, snapshot.Rows)) return;
-            DiscoveryList.ItemsSource = discoveryResults.Rows;
+            DiscoveryList.ItemsSource = GroupDiscoveryRows(discoveryResults.Rows);
             featuredCards = FeaturedDiscoveryCards.FromRows(snapshot.Rows);
             FeaturedCards.ItemsSource = featuredCards;
             UpdateFeaturedVisibility();

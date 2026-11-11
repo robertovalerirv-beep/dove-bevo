@@ -141,10 +141,12 @@ internal static class EuropeDiscoveryClient
             if (hh is not (0 or 1) || amount is < 1 or > 100_000 ||
                 status is not ("active" or "quarantined"))
                 throw new InvalidDataException("European price value mismatch");
-            var serving = Serving(row.GetProperty("serving"), drink);
+            var servingValue = row.GetProperty("serving");
+            var serving = Serving(servingValue, drink);
             if (!identities.Add($"{key}|{drink}|{hh}|{venue.Currency}|{serving.Key}"))
                 throw new InvalidDataException("Duplicate European price identity");
-            if (hidden.Contains(key) || legacy.Contains(key) || drink != category) continue;
+            if (hidden.Contains(key) || legacy.Contains(key) || drink != category ||
+                (drink == "beer_draft" && !BookmarkPriceClient.IsMediumDraftBeer(servingValue))) continue;
             var provenance = row.GetProperty("provenance");
             var kind = provenance.GetProperty("kind").GetString();
             string name;

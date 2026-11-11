@@ -516,7 +516,7 @@ export const it = {
           paragraphs: [
             "Un gestore può firmare con noi un accordo a pagamento: il suo locale mostra la spunta blu «Gestore verificato» con «Sponsorizzato», gli orari nella scheda e il primo posto nell'Elenco.",
             "«Gestore verificato» vuol dire che abbiamo controllato chi gestisce il locale, non che garantiamo il locale o i prezzi. «Sponsorizzato» vuol dire che quel primo posto è pagato.",
-            "L'Elenco mostra prima i locali sponsorizzati, poi gli altri, nell'ordine di sempre: per distanza se la posizione è attiva, altrimenti prima quelli con un prezzo, poi alfabetico. Mappa, ricerca, «I più economici qui», colori e prezzi non cambiano: i prezzi non si comprano.",
+            "Sul sito l'Elenco mostra prima i locali sponsorizzati, poi gli altri, dal prezzo più basso al più alto; i locali senza prezzo stanno in fondo. Mappa, ricerca, «I più economici qui», colori e prezzi non cambiano: i prezzi non si comprano.",
           ],
         },
         {

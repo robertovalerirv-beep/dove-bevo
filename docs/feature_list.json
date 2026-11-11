@@ -661,7 +661,7 @@
     "id": "MD-07",
     "milestone": "MD",
     "descrizione": "Elenco con i verificati in cima",
-    "verifica": "e2e: nell'Elenco i bar verificati vengono prima degli altri, con spunta, «Gestore verificato» e «Sponsorizzato»; tra loro e tra gli altri l'ordine resta quello di prima (distanza, poi nome); pin, ricerca, «I più economici qui», mediane e colori invariati; dopo il salvataggio in admin il bar compare verificato alla lettura successiva della cella",
+    "verifica": "e2e: nell'Elenco i bar verificati vengono prima degli altri, con spunta, «Gestore verificato» e «Sponsorizzato»; tra loro e tra gli altri l'ordine è per prezzo crescente (il prezzo mostrato), i bar senza prezzo in fondo, a parità di prezzo distanza se nota e poi nome (SPEC 1.19); pin, ricerca, «I più economici qui», mediane e colori invariati; dopo il salvataggio in admin il bar compare verificato alla lettura successiva della cella",
     "passes": true
   },
   {

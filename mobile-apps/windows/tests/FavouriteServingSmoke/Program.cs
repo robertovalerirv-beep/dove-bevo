@@ -29,6 +29,10 @@ CheckFilter("Guinness Draught", "&save_offer=menu-123", null, "name:Guinness Dra
 CheckFilter("Guinness Draught", "&save_offer=menu-123", "beer_drafts", "name:Guinness Draught");
 CheckFilter("Birra piccola", "&save_europe=beer_draft&band=normal&currency=EUR&serving=ml%3A250",
     null, "name:Birra piccola");
+CheckFilter("Guinness Draught", "&save_europe=beer_draft&band=normal&currency=GBP&serving=ml%3A568",
+    null, "name:Guinness Draught");
+CheckFilter("Pint artigianale", "&save_europe=beer_draft&band=normal&currency=GBP&serving=ml%3A500",
+    null, "name:Pint artigianale");
 CheckFilter("Birra media", "&save_europe=beer_draft&band=normal&currency=EUR&serving=ml%3A500",
     null, "code:beer_draft");
 Console.WriteLine("Windows favourite serving labels, exact identities and category filters passed.");

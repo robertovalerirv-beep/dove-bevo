@@ -45,6 +45,16 @@ test("shared Consigliati is a read-only area view and native saves wait for the 
   assert.match(window, /core\.HistoryChanged \+=/);
 });
 
+test("Scopri separates original currencies and explains sample menu and serving limits", () => {
+  const xaml = read("MainWindow.xaml");
+  const window = read("MainWindow.xaml.cs");
+  assert.match(xaml, /Prezzi da menu: selezione, non elenco completo/);
+  assert.match(xaml, /Valute e formati diversi non sono direttamente confrontabili/);
+  assert.match(xaml, /<ListBox\.GroupStyle>[\s\S]*?Prezzi in [\s\S]*?\{Binding Name\}/);
+  assert.match(window, /new PropertyGroupDescription\(nameof\(DiscoveryRow\.Currency\)\)/);
+  assert.match(window, /DiscoveryList\.ItemsSource = GroupDiscoveryRows\(discoveryResults\.Rows\)/);
+});
+
 test("source Back wins over web history and Mappa cancels a pending venue load", () => {
   const window = read("MainWindow.xaml.cs");
   const back = window.slice(

@@ -7,6 +7,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/it-IT/1.1.0/). Versioni `
 Il sito vivo è l'ambiente `staging` su `www.dovebevo.com` (ADR 0035 e 0036): il tag `v0.1.0` segna la versione su `main`, senza un secondo deploy.
 
 ### Aggiunto
+- Specifica 1.19 e ADR 0049: l'Elenco della mappa è ordinato per prezzo, dal più basso, con i gestori verificati sempre in cima e i bar senza prezzo in fondo; il passo Prezzo di «Aggiungi prezzo» è più compatto (domanda e cifre più piccole, «Indietro» con la sola freccia, nome del bar leggibile) e «Salva» si vede senza scorrere. Nuovo tag di guardia `spec-approved-16`.
 - Specifica 1.18 e ADR 0048: più mappa sul telefono: ricerca, «Scegli cosa bere» e «Vicino a me» su una riga, controlli disegnati bassi (40 px) su bersagli da 48 px, secondo tasto «Aggiungi locale» («Add a place»), segnaposto dei prezzi e cerchi dei gruppi più piccoli, attribuzioni scure in Fuori orario, frase della copertura su una riga. Nuovo tag di guardia `spec-approved-15`.
 - Specifica 1.15 e ADR 0045: le segnalazioni di Google Search Console chiuse in un intervento: pagine con un nonce per richiesta, tema e CSS dentro la pagina (nessuna richiesta blocca il primo disegno), CSP con `strict-dynamic`, Trusted Types, HSTS con `preload`, 404 su `/.well-known/*`, download della mappa dopo l'LCP e immagini in WebP. In prova: primo disegno 1,56 → 1,22 s, immagine principale 2,41 → 1,98 s, Performance 0,95 → 0,99.
 - Verificati a mano su iPhone e Android: pulsante centrale, menu della lingua, traduzione inglese e riga di stato su telefono stretto.

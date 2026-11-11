@@ -1240,6 +1240,12 @@ public final class MainActivity extends ComponentActivity {
             if(MapReturnRoute.valid(url))lastMapRoute=url;
             if (!loading && !failed) lastTrustedUrl = url;
             publishNativeSavedKeys(url);
+            // A same-document history notification can arrive before the
+            // renderer has committed location.href. Retry only for this exact
+            // retained page, so a later route cannot receive stale keys.
+            view.postDelayed(() -> {
+                if (view == website && url.equals(view.getUrl())) publishNativeSavedKeys(url);
+            }, 120);
             updateToolbar();
         }
         @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {

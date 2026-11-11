@@ -880,9 +880,18 @@ public final class NativeUsabilityRuntimeTest {
     @Test public void sameDocumentVenueRouteRepublishesSavedDrinkState() throws Exception {
         String city=APP_HOME+"?at=45.46420%2C9.19000";
         navigate(city);
-        fixtureJavascript("window.addEventListener('dovebevo-native-favourites-changed',()=>document.title='saved-key-refreshed')");
-        fixtureJavascript("history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')");
-        await(()->APP_ONE.equals(web.getUrl()) && "saved-key-refreshed".equals(web.getTitle()));
+        fixtureJavascript("window.addEventListener('dovebevo-native-favourites-changed',()=>{if(location.href==='"+APP_ONE+"')document.title='saved-key-refreshed'})");
+        fixtureJavascript("document.title='before-venue';history.pushState({inApp:true},'', '/mobile/?path=%2Fbar%2Fn123&c=u0nd9')");
+        await(()->APP_ONE.equals(web.getUrl()));
+        String title;
+        long deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5);
+        do {
+            title=fixtureValue("document.title");
+            if("\"saved-key-refreshed\"".equals(title))break;
+            Thread.sleep(50);
+        } while(System.nanoTime()<deadline);
+        String renderer=fixtureValue("JSON.stringify({href:location.href,title:document.title,marker:document.documentElement.getAttribute('data-dovebevo-mobile-shell'),keys:window.DoveBevoNativeSavedDrinkKeys})");
+        assertEquals(renderer,"\"saved-key-refreshed\"",title);
         onMain(()->assertEquals(city,get("lastMapRoute")));
     }
 
@@ -1372,6 +1381,14 @@ public final class NativeUsabilityRuntimeTest {
         CountDownLatch ready = new CountDownLatch(1);
         onMain(() -> web.evaluateJavascript("(() => {" + script + "})()", ignored -> ready.countDown()));
         assertTrue("Owned fixture update missing", ready.await(5, TimeUnit.SECONDS));
+    }
+
+    private String fixtureValue(String script) throws Exception {
+        CountDownLatch ready = new CountDownLatch(1);
+        AtomicReference<String> value = new AtomicReference<>();
+        onMain(() -> web.evaluateJavascript(script, result -> { value.set(result); ready.countDown(); }));
+        assertTrue("Owned fixture value missing", ready.await(5, TimeUnit.SECONDS));
+        return value.get();
     }
 
     private void awaitOwnedResponse(int token) throws Exception {

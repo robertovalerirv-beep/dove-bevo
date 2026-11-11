@@ -175,6 +175,37 @@ final class SavedDrinkControllerTests: XCTestCase {
                 XCTAssertTrue((recentController.presentedViewController as? UIAlertController)?.message?.contains(exactFee) == true)
                 recentController.dismiss(animated: false)
             }
+            let customerKey = "o" + String(repeating: "a", count: 64)
+            let customerFee = "Spese del locale secondo il menu: Nessuna spesa obbligatoria dichiarata dalla fonte."
+            let customerPrice = MenuV2Price(id: customerKey, venueName: "Bar Milano", itemName: "Spritz del cliente",
+                                            category: "spritz", band: .normal, amountMinor: 600, currency: "EUR", exponent: 2,
+                                            servingLabel: "calice", servingML: 250,
+                                            origin: .customer(ComparisonJSON.today()), feeNotice: customerFee)
+            let customerStore = SavedCustomerItemStore(directoryURL: drinkStore.fileURL.deletingLastPathComponent().appendingPathComponent("customers"))
+            try customerStore.save(try XCTUnwrap(SavedCustomerItem.verified(venue: venue, price: customerPrice)))
+            let emptyOffers = SavedMenuOfferStore(directoryURL: drinkStore.fileURL.deletingLastPathComponent().appendingPathComponent("empty-offers"))
+            let customerSnapshot = MenuV2Snapshot(venues: [url: MenuV2Venue(key: "n123", cell: "u0nd9", name: "Bar Milano",
+                                                                                offers: [], feeNotice: customerFee,
+                                                                                customerReports: [customerPrice])], unavailable: [])
+            let customerController = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
+                                                                offerStore: emptyOffers, customerStore: customerStore,
+                                                                menuClient: DrinkPaneMenuFixture(snapshot: customerSnapshot),
+                                                                activityCheck: { true }) { _ in }
+            try withMounted(customerController) { _ in
+                let index = IndexPath(row: 0, section: 0)
+                XCTAssertEqual(customerController.tableView.numberOfRows(inSection: 0), 1)
+                let cell = customerController.tableView(customerController.tableView, cellForRowAt: index)
+                let content = try XCTUnwrap(cell.contentConfiguration as? UIListContentConfiguration)
+                XCTAssertEqual(cell.accessibilityIdentifier, "savedCustomer.\(customerKey)")
+                XCTAssertEqual(content.secondaryTextProperties.numberOfLines, 2)
+                XCTAssertTrue(content.secondaryText?.hasPrefix("6,00 €\nEUR · calice · 250 ml") == true)
+                XCTAssertFalse(content.secondaryText?.contains("Spese: vedi dettagli") == true)
+                XCTAssertTrue(cell.accessibilityValue?.contains(customerFee) == true)
+                customerController.tableView(customerController.tableView, accessoryButtonTappedForRowWith: index)
+                guard waitUntil("Exact explicit no-fee scope in details", { customerController.presentedViewController is UIAlertController }) else { return }
+                XCTAssertTrue((customerController.presentedViewController as? UIAlertController)?.message?.contains(customerFee) == true)
+                customerController.dismiss(animated: false)
+            }
         }
     }
 

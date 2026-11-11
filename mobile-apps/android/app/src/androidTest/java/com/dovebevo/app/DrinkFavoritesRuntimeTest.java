@@ -104,6 +104,11 @@ public final class DrinkFavoritesRuntimeTest {
             public byte[] read(){return file.get();}
             public void write(byte[] bytes){file.set(bytes);}
         });
+        AtomicReference<byte[]> customerFile=new AtomicReference<>();
+        SavedMenuOfferStore customers=new SavedMenuOfferStore(new SavedVenueStore.Storage(){
+            public byte[] read(){return customerFile.get();}
+            public void write(byte[] bytes){customerFile.set(bytes);}
+        });
         assertEquals(SavedMenuOfferStore.Result.SAVED,offers.save(saved));
         byte[] before=file.get().clone();
         MenuV2Prices.Price live=new MenuV2Prices.Price("spritz.7","Saved name","Spritz della casa","spritz",-1,
@@ -111,7 +116,7 @@ public final class DrinkFavoritesRuntimeTest {
         FavoritePricesClient offline=new FavoritePricesClient((url,max,call)->{throw new IOException("No network in warning fixture");},()->"2026-11-11");
         onMain(()->{
             screen=new SavedDrinkScreen(activity,drinks,new FavoritesLoader(offline,activity::runOnUiThread),url->{},()->true,
-                    null,null,offers);
+                    null,null,offers,customers);
             activity.setContentView(screen.view());
             try{
                 java.lang.reflect.Field offerField=SavedDrinkScreen.class.getDeclaredField("offers");offerField.setAccessible(true);
@@ -152,6 +157,34 @@ public final class DrinkFavoritesRuntimeTest {
                 ((Button)card.findViewWithTag("details_toggle_"+card.getTag())).performClick();
                 assertTrue(visibleText(card).contains(exactFee));
             });
+            char[] keyChars=new char[64];java.util.Arrays.fill(keyChars,'a');String customerKey="o"+new String(keyChars);
+            String customerFee="Spese del locale secondo il menu: Nessuna spesa obbligatoria dichiarata dalla fonte.";
+            MenuV2Prices.Price customerPrice=new MenuV2Prices.Price(customerKey,"Saved name","Spritz del cliente","spritz",0,
+                    600,"EUR",2,"calice",250,true,FavoriteDay.today(),customerFee);
+            SavedMenuOfferStore.Entry savedCustomer=SavedMenuOfferStore.verifiedCustomer(venue,customerPrice);
+            assertNotNull(savedCustomer);
+            assertEquals(SavedMenuOfferStore.Result.SAVED,customers.save(savedCustomer));
+            byte[] customerBefore=customerFile.get().clone();
+            onMain(()->{
+                try{
+                    java.lang.reflect.Field customerField=SavedDrinkScreen.class.getDeclaredField("customerOffers");customerField.setAccessible(true);
+                    customerField.set(screen,java.util.Collections.singletonList(savedCustomer));
+                    java.lang.reflect.Field menuField=SavedDrinkScreen.class.getDeclaredField("menus");menuField.setAccessible(true);
+                    menuField.set(screen,java.util.Collections.singletonMap(venue.url,new MenuV2Prices.Venue("n123","u0nd9","Saved name",customerFee,
+                            java.util.Collections.singletonList(feeOnly),java.util.Collections.emptyList(),java.util.Collections.singletonList(customerPrice))));
+                    java.lang.reflect.Method render=SavedDrinkScreen.class.getDeclaredMethod("render");render.setAccessible(true);render.invoke(screen);
+                }catch(ReflectiveOperationException error){throw new AssertionError(error);}
+                View card=screen.view().findViewWithTag("customer_drink_favourite_"+savedCustomer.key());
+                assertNotNull(card);
+                String compact=visibleText(card);
+                assertTrue(compact.contains("6,00 €"));assertTrue(compact.contains("EUR · calice · 250 ml"));
+                assertFalse(compact.contains("Spese: vedi dettagli"));
+                assertFalse(compact.contains("Spese separate"));
+                ((Button)card.findViewWithTag("details_toggle_"+card.getTag())).performClick();
+                assertTrue(visibleText(card).contains(customerFee));
+            });
+            assertEquals(savedCustomer.key(),customers.load().get(0).key());
+            assertArrayEquals(customerBefore,customerFile.get());
             assertEquals(saved.key(),offers.load().get(0).key());
             assertArrayEquals(before,file.get());
         }finally{onMain(()->screen.close());}

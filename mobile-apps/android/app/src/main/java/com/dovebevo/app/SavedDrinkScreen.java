@@ -291,8 +291,10 @@ final class SavedDrinkScreen {
     /** Short, source-derived cue only; the exact fee amount and scope stay in expanded evidence. */
     private static String feeScopeCue(String notice){
         if(notice==null||notice.trim().isEmpty())return "";
-        String words=notice.toLowerCase(java.util.Locale.ROOT);
-        if(words.startsWith("nessuna spesa obbligatoria"))return "";
+        String words=notice.trim().toLowerCase(java.util.Locale.ROOT);
+        String customerPrefix="spese del locale secondo il menu:";
+        if(words.startsWith(customerPrefix))words=words.substring(customerPrefix.length()).trim();
+        if(words.equals("nessuna spesa obbligatoria dichiarata dalla fonte."))return "";
         boolean separate=words.contains("spese separate:");
         boolean partial=words.contains("copertura delle spese parziale")||words.contains("documentate solo in parte");
         boolean unknown=words.contains("non verificate");

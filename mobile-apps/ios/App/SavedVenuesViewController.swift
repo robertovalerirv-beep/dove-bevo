@@ -64,8 +64,10 @@ final class SavedVenuesViewController: UITableViewController {
     }
     /// A source-derived cue; exact fee amount and applicability remain in the detail text.
     private func feeScopeCue(_ notice: String) -> String {
-        let words = notice.lowercased()
-        if words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || words.hasPrefix("nessuna spesa obbligatoria") { return "" }
+        var words = notice.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let customerPrefix = "spese del locale secondo il menu:"
+        if words.hasPrefix(customerPrefix) { words = String(words.dropFirst(customerPrefix.count)).trimmingCharacters(in: .whitespacesAndNewlines) }
+        if words.isEmpty || words == "nessuna spesa obbligatoria dichiarata dalla fonte." { return "" }
         let separate = words.contains("spese separate:")
         let partial = words.contains("copertura delle spese parziale") || words.contains("documentate solo in parte")
         let unknown = words.contains("non verificate")

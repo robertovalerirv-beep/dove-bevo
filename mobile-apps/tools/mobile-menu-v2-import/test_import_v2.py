@@ -312,6 +312,18 @@ class ImportTests(unittest.TestCase):
         self.assertTrue(receipt["complete"],receipt["errors"])
         self.assertEqual(receipt["source_diagnostics"],[])
 
+    def test_html_mismatch_discards_oversized_valid_media_type(self):
+        transport=Fake()
+        transport.public["https://example.org/menu"]=b"<html><body>Changed price</body></html>"
+        transport.last_fetch_content_type="text/"+("a"*500)+"; boundary=private"
+        receipt=core.execute(raw(manifest()),transport)
+        self.assertFalse(receipt["complete"])
+        self.assertEqual(receipt["errors"],[{"phase":"source","code":"source hash mismatch"}])
+        self.assertEqual(receipt["source_diagnostics"][0]["content_type"],None)
+        self.assertNotIn("a"*500,json.dumps(receipt))
+        self.assertEqual(transport.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_sources").fetchone()[0],0)
+
     def test_transport_captures_content_type_without_response_body(self):
         class Response:
             headers={"Content-Type":"application/pdf"}

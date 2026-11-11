@@ -961,7 +961,7 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
     if hashes!=(row["source_sha256"],row["source_text_sha256"]):
         if diagnostics is not None and row["source_format"] in ("html_text_v1","pdf_text_v1"):
             media_type=(content_type or "").split(";",1)[0].strip().lower()
-            if not re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+",media_type):
+            if len(media_type)>128 or not re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+",media_type):
                 media_type=None
             if row["source_format"]=="html_text_v1":
                 # A text pin deliberately ignores variable HTML markup. Record

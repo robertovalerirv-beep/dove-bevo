@@ -742,22 +742,6 @@
       "venue_key": "n1253235860"
     },
     {
-      "amount_minor": 700,
-      "category": "beer_draft",
-      "cell": "sr2yk",
-      "condition_text": null,
-      "currency": "EUR",
-      "currency_exponent": 2,
-      "evidence_ref": "PDF p.3, BIRRE ALLA SPINA PICCOLA/MEDIA: MORETTI BAFFO ORO LAGER €4/€7",
-      "id": "trinity-rome-20261111-047",
-      "name": "Moretti Baffo Oro Lager",
-      "price_context": "regular",
-      "serving_label": "Media",
-      "serving_ml": null,
-      "source_id": "src-trinity-rome-bc733feaa499",
-      "venue_key": "n1253235860"
-    },
-    {
       "amount_minor": 400,
       "category": "beer_draft",
       "cell": "sr2yk",
@@ -774,22 +758,6 @@
       "venue_key": "n1253235860"
     },
     {
-      "amount_minor": 700,
-      "category": "beer_draft",
-      "cell": "sr2yk",
-      "condition_text": null,
-      "currency": "EUR",
-      "currency_exponent": 2,
-      "evidence_ref": "PDF p.3, BIRRE ALLA SPINA PICCOLA/MEDIA: HEINEKEN LAGER €4/€7",
-      "id": "trinity-rome-20261111-049",
-      "name": "Heineken Lager",
-      "price_context": "regular",
-      "serving_label": "Media",
-      "serving_ml": null,
-      "source_id": "src-trinity-rome-bc733feaa499",
-      "venue_key": "n1253235860"
-    },
-    {
       "amount_minor": 400,
       "category": "beer_draft",
       "cell": "sr2yk",
@@ -801,22 +769,6 @@
       "name": "Harp Lager",
       "price_context": "regular",
       "serving_label": "Piccola",
-      "serving_ml": null,
-      "source_id": "src-trinity-rome-bc733feaa499",
-      "venue_key": "n1253235860"
-    },
-    {
-      "amount_minor": 750,
-      "category": "beer_draft",
-      "cell": "sr2yk",
-      "condition_text": null,
-      "currency": "EUR",
-      "currency_exponent": 2,
-      "evidence_ref": "PDF p.3, BIRRE ALLA SPINA PICCOLA/MEDIA: HARP LAGER €4/€7.5",
-      "id": "trinity-rome-20261111-051",
-      "name": "Harp Lager",
-      "price_context": "regular",
-      "serving_label": "Media",
       "serving_ml": null,
       "source_id": "src-trinity-rome-bc733feaa499",
       "venue_key": "n1253235860"
@@ -1079,7 +1031,7 @@
     },
     {
       "amount_minor": 550,
-      "category": "beer_draft",
+      "category": null,
       "cell": "sr2yk",
       "condition_text": null,
       "currency": "EUR",
@@ -1095,7 +1047,7 @@
     },
     {
       "amount_minor": 950,
-      "category": "beer_draft",
+      "category": null,
       "cell": "sr2yk",
       "condition_text": null,
       "currency": "EUR",

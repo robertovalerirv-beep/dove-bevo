@@ -83,7 +83,12 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
                         <TextBlock Text="Preferiti" FontSize="26" FontWeight="Bold" />
-                        <TextBlock Text="I drink salvati su questo PC. Mappa e prezzi richiedono internet." Margin="0,5,0,16" Foreground="#5E554B" />
+                        <TextBlock Text="Confronta i drink salvati su questo PC. Valuta e formato restano distinti; i prezzi richiedono internet." Margin="0,5,0,10" Foreground="#5E554B" TextWrapping="Wrap" />
+                        <TextBlock Text="Filtra per drink" Foreground="#5E554B" />
+                        <ComboBox x:Name="FavouriteDrink" MinWidth="210" MinHeight="44"
+                                  HorizontalAlignment="Left" Margin="0,4,0,14"
+                                  DisplayMemberPath="Label" AutomationProperties.Name="Filtra i drink preferiti"
+                                  SelectionChanged="FavouriteDrink_SelectionChanged" />
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
                         <Button Style="{StaticResource NavButton}" Content="Apri sulla mappa" Click="OpenFavourite_Click" />

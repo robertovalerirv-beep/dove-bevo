@@ -462,6 +462,25 @@ final class BottomNavigationControllerTests: XCTestCase {
     }
 
     @MainActor
+    func testDiscoveryVenueRestoresCapturedCityInsteadOfDefaultMapURL() throws {
+        let browser = BrowserViewController(websiteLoader: { _, _ in nil })
+        let tabs = NativeTabsController(browser: browser)
+        tabs.loadViewIfNeeded()
+        let venue = try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9"))
+        let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
+        XCTAssertEqual(browser.lastMapRoute, MobileEntry.homeURL)
+
+        tabs.openVenueFromNative(venue, source: 2, area: area)
+        XCTAssertEqual(tabs.selectedIndex, 0)
+        tabs.selectedIndex = 0
+        let restored = browser.currentTargetURL
+        XCTAssertTrue(MapReturnRoute.valid(restored))
+        XCTAssertEqual(URLComponents(url: restored, resolvingAgainstBaseURL: false)?.queryItems?.first?.value,
+                       "45.46,9.19")
+        XCTAssertFalse(restored.absoluteString.contains("45.46420"))
+    }
+
+    @MainActor
     func testVenueBackReturnsToTheNativeSourceAndExplicitMapClearsIt() throws {
         let browser = BrowserViewController(websiteLoader: { _, _ in nil })
         let tabs = NativeTabsController(browser: browser)

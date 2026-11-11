@@ -36,7 +36,7 @@ import java.util.function.Supplier;
 /** Native nearby price discovery, independent of the website's controls and private bookmarks. */
 final class DiscoveryScreen {
     private final Activity activity;private final Consumer<String> navigate;private final Supplier<Boolean> foreground;private final DiscoveryLoader loader;
-    private final ScrollView view;private final LinearLayout rows,featured;private final TextView status,featuredTitle,cityStatus;private final Spinner bands,drinks;
+    private final ScrollView view;private final LinearLayout rows,featured;private final TextView status,featuredTitle,cityStatus,disclosure;private final Spinner bands,drinks;
     private final Button cityRetry,cityButton;private final DiscoveryCities.Source citySource;
     private AlertDialog cityDialog;private EditText cityQuery;private ListView cityList;private TextView cityEmpty;
     private ArrayAdapter<String> cityMatchesAdapter;private List<DiscoveryCities.City> cityMatches=Collections.emptyList();
@@ -58,25 +58,25 @@ final class DiscoveryScreen {
         };
         bandOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);bands.setAdapter(bandOptions);bands.setMinimumHeight(dp(48));bands.setOnItemSelectedListener(selection(()->{band=bands.getSelectedItemPosition();render();}));
         body.addView(new DiscoveryHeader(activity,title,bands),new LinearLayout.LayoutParams(-1,-2));
-        TextView cityTitle=text("Scegli una città",13);NativeAppearance.muted(cityTitle);cityTitle.setPadding(0,dp(4),0,0);body.addView(cityTitle);
+        // Selected values are visible in the 48dp controls. Their accessible
+        // names retain the instructions without spending a row on each label.
         cityButton=new Button(activity);cityButton.setTag("discovery.citySelector");cityButton.setMinimumHeight(dp(48));NativeAppearance.button(cityButton,false);
         cityButton.setOnClickListener(v->openCityPicker());updateCityButton();body.addView(cityButton,new LinearLayout.LayoutParams(-1,-2));
         cityStatus=text("",12);cityStatus.setTag("discovery.cityStatus");NativeAppearance.muted(cityStatus);cityStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(cityStatus);
         cityRetry=new Button(activity);cityRetry.setTag("discovery.cityRetry");cityRetry.setText("Riprova elenco città");NativeAppearance.button(cityRetry,false);
         cityRetry.setVisibility(View.GONE);cityRetry.setOnClickListener(v->loadCities());body.addView(cityRetry,new LinearLayout.LayoutParams(-1,-2));
         status=text("",12);status.setId(R.id.discovery_status);NativeAppearance.muted(status);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);status.setPadding(0,0,0,dp(4));
-        TextView featureTitle=text("Scegli cosa bere",13);NativeAppearance.muted(featureTitle);featureTitle.setPadding(0,dp(2),0,0);body.addView(featureTitle);
         drinks=new Spinner(activity);drinks.setId(R.id.discovery_drink);drinks.setContentDescription("Scegli cosa bere");
         RecommendationDrink[] options=RecommendationDrink.values();String[] names=new String[options.length];for(int index=0;index<options.length;index++)names[index]=NativePricePresentation.category(options[index]);
         ArrayAdapter<String> drinkOptions=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,names);drinkOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);drinks.setAdapter(drinkOptions);drinks.setMinimumHeight(dp(48));drinks.setSelection(drink.ordinal(),false);
         drinks.setOnItemSelectedListener(selection(()->{drink=options[drinks.getSelectedItemPosition()];render();}));body.addView(drinks,new LinearLayout.LayoutParams(-1,-2));
         body.addView(status);
-        TextView artworkNote=text("Immagini illustrative dei drink, non foto dei locali",12);NativeAppearance.muted(artworkNote);artworkNote.setPadding(0,dp(2),0,dp(2));body.addView(artworkNote);
         featuredTitle=text("Prezzi disponibili",18);NativeAppearance.title(featuredTitle);heading(featuredTitle);featuredTitle.setVisibility(View.GONE);featuredTitle.setPadding(0,dp(4),0,dp(4));body.addView(featuredTitle);
         HorizontalScrollView featuredScroll=new HorizontalScrollView(activity);featuredScroll.setTag("discovery.featuredScroll");featuredScroll.setHorizontalScrollBarEnabled(false);featuredScroll.setFillViewport(false);featuredScroll.setVisibility(View.GONE);
         featured=new LinearLayout(activity);featured.setTag("discovery.featured");featured.setOrientation(LinearLayout.HORIZONTAL);featuredScroll.addView(featured,new ScrollView.LayoutParams(-2,-2));body.addView(featuredScroll,new LinearLayout.LayoutParams(-1,-2));
-        TextView resultsTitle=text("I prezzi nella zona",18);NativeAppearance.title(resultsTitle);heading(resultsTitle);resultsTitle.setPadding(0,dp(2),0,dp(3));body.addView(resultsTitle);
+        TextView resultsTitle=text("Prezzi crescenti per valuta",18);NativeAppearance.title(resultsTitle);heading(resultsTitle);resultsTitle.setPadding(0,dp(2),0,dp(3));body.addView(resultsTitle);
         rows=new LinearLayout(activity);rows.setId(R.id.discovery_rows);rows.setOrientation(LinearLayout.VERTICAL);rows.setPadding(0,dp(4),0,0);body.addView(rows);
+        disclosure=text("",12);disclosure.setTag("discovery.disclosure");NativeAppearance.muted(disclosure);disclosure.setPadding(0,dp(8),0,dp(2));disclosure.setVisibility(View.GONE);body.addView(disclosure);
     }
     View view(){return view;}
     AlertDialog cityDialog(){return cityDialog;}
@@ -188,27 +188,43 @@ final class DiscoveryScreen {
     String selectedDrink(){return drink.code;}int selectedBand(){return band;}
     void restoreSelection(String code,int selectedBand){RecommendationDrink value=RecommendationDrink.from(code);if(value!=null){drink=value;drinks.setSelection(drink.ordinal(),false);}if(selectedBand==0||selectedBand==1){band=selectedBand;bands.setSelection(band);}render();}
     private void render(){
-        if(rows==null||status==null||featured==null)return;rows.removeAllViews();featured.removeAllViews();featuredTitle.setVisibility(View.GONE);((View)featured.getParent()).setVisibility(View.GONE);
+        if(rows==null||status==null||featured==null||disclosure==null)return;rows.removeAllViews();featured.removeAllViews();featuredTitle.setVisibility(View.GONE);((View)featured.getParent()).setVisibility(View.GONE);disclosure.setVisibility(View.GONE);
         if(area==null){status.setText(R.string.discovery_unready);return;}if(busy){status.setText(R.string.favorites_loading);return;}
         if(snapshot==null){status.setText(R.string.favorites_paused);return;}
         if(snapshot.cells.isEmpty()){status.setText(R.string.discovery_unavailable);return;}
         List<DiscoveryData.Row> values;try{values=DiscoveryData.rows(snapshot.cells,area,drink,band);}catch(IOException unavailable){status.setText(R.string.discovery_unavailable);return;}
+        boolean selectedMenuSample=false;
+        for(DiscoveryData.Row row:values)if(row.menuPrice!=null){selectedMenuSample=true;break;}
         status.setText(activity.getString(R.string.discovery_status_format,
-                values.isEmpty()?activity.getString(R.string.discovery_empty):Math.min(values.size(),DiscoveryData.MAX_ROWS)+" prezzi · valuta e formato separati",
+                values.isEmpty()?activity.getString(R.string.discovery_empty):Math.min(values.size(),DiscoveryData.MAX_ROWS)+" prezzi"+
+                        (selectedMenuSample?" · prezzi da menu: selezione":"")+" · formati non confrontabili",
                 snapshot.partial?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_partial)):"",
-                (snapshot.menuSamples?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_menu_samples)):"")+
-                        (values.size()>DiscoveryData.MAX_ROWS?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_limit)):"")));
+                values.size()>DiscoveryData.MAX_ROWS?activity.getString(R.string.discovery_status_line,activity.getString(R.string.discovery_limit)):""));
         if(!values.isEmpty()){
+            featuredTitle.setText(selectedMenuSample?"Prezzi disponibili · selezione":"Prezzi disponibili");
             featuredTitle.setVisibility(View.VISIBLE);((View)featured.getParent()).setVisibility(View.VISIBLE);
             for(DiscoveryData.Row row:featuredRows(values))addFeatured(row);
+            disclosure.setText("Valute e formati diversi non sono confrontabili. "+
+                    (selectedMenuSample?activity.getString(R.string.discovery_menu_samples)+" ":"")+
+                    "Immagini illustrative dei drink, non foto dei locali.");
+            featuredTitle.setContentDescription(featuredTitle.getText()+". "+disclosure.getText());
+            disclosure.setVisibility(View.VISIBLE);
         }
-        int count=0,rank=0;String group=null;
+        Set<String> currencies=new HashSet<>();
+        for(int index=0;index<Math.min(values.size(),DiscoveryData.MAX_ROWS);index++)currencies.add(values.get(index).currency());
+        boolean multipleCurrencies=currencies.size()>1;
+        int count=0,rank=0;String currency=null;
         for(DiscoveryData.Row row:values){if(count++==DiscoveryData.MAX_ROWS)break;
-            if(!row.group().equals(group)){group=row.group();rank=0;}rank++;
+            if(!row.currency().equals(currency)){currency=row.currency();rank=0;}rank++;
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.discoveryCard(card);card.setPadding(dp(8),dp(4),dp(8),dp(4));
+            if(multipleCurrencies&&rank==1){
+                TextView currencyTitle=text(currencyHeading(currency),14);
+                currencyTitle.setTag("discovery.currencyHeading");
+                NativeAppearance.title(currencyTitle);heading(currencyTitle);currencyTitle.setPadding(0,0,0,dp(3));card.addView(currencyTitle);
+            }
             boolean large=activity.getResources().getConfiguration().fontScale>=1.3f;
             LinearLayout headline=new LinearLayout(activity);headline.setGravity(Gravity.CENTER_VERTICAL);headline.setOrientation(large?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
-            TextView order=text(Integer.toString(rank),12);NativeAppearance.title(order);headline.addView(order,new LinearLayout.LayoutParams(dp(20),-2));
+            TextView order=text(Integer.toString(rank),12);order.setTag("discovery.rank");NativeAppearance.title(order);headline.addView(order,new LinearLayout.LayoutParams(dp(20),-2));
             DrinkArtwork art=new DrinkArtwork(activity,drink);LinearLayout.LayoutParams artSize=new LinearLayout.LayoutParams(dp(32),dp(40));artSize.rightMargin=dp(8);headline.addView(art,artSize);
             LinearLayout identity=new LinearLayout(activity);identity.setOrientation(LinearLayout.VERTICAL);headline.addView(identity,large?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-2,1));
             TextView name=text(row.venue.name,15);heading(name);NativeAppearance.title(name);identity.addView(name);
@@ -229,7 +245,10 @@ final class DiscoveryScreen {
             else{String confirmations=activity.getResources().getQuantityString(R.plurals.favorites_confirmations,row.price.confirmations==1?1:2,row.price.confirmations);details.addView(text(activity.getString(R.string.favorites_observed,formatted)+" · "+confirmations,13));}
             if(row.menuPrice!=null&&row.menuPrice.sourceUrl!=null)details.addView(text("Fonte: "+row.menuPrice.sourceUrl,12));
             if(old)details.addView(text(menu?NativePricePresentation.menuWarning():activity.getString(R.string.favorites_old),13));
-            Button disclosure=new Button(activity);disclosure.setId(R.id.discovery_details);disclosure.setText("⌄");disclosure.setContentDescription("Dettagli prezzo per "+row.venue.name);NativeAppearance.button(disclosure,false);disclosure.setMinWidth(dp(44));disclosure.setMinimumWidth(dp(44));disclosure.setOnClickListener(v->{boolean expand=details.getVisibility()!=View.VISIBLE;details.setVisibility(expand?View.VISIBLE:View.GONE);disclosure.setText(expand?"⌃":"⌄");disclosure.setContentDescription((expand?"Nascondi dettagli prezzo per ":"Dettagli prezzo per ")+row.venue.name);});summary.addView(disclosure,new LinearLayout.LayoutParams(-2,-2));card.addView(summary);card.addView(details);
+            Button disclosure=new Button(activity);disclosure.setId(R.id.discovery_details);disclosure.setText("⌄");disclosure.setContentDescription("Dettagli prezzo per "+row.venue.name);NativeAppearance.button(disclosure,false);disclosure.setMinWidth(dp(44));disclosure.setMinimumWidth(dp(44));disclosure.setOnClickListener(v->{boolean expand=details.getVisibility()!=View.VISIBLE;details.setVisibility(expand?View.VISIBLE:View.GONE);disclosure.setText(expand?"⌃":"⌄");disclosure.setContentDescription((expand?"Nascondi dettagli prezzo per ":"Dettagli prezzo per ")+row.venue.name);});summary.addView(disclosure,new LinearLayout.LayoutParams(-2,-2));card.addView(summary);
+            String caveat=priceCaveat(row.menuPrice);
+            if(caveat!=null){TextView warning=text(caveat,12);NativeAppearance.muted(warning);card.addView(warning);}
+            card.addView(details);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(6);rows.addView(card,size);
         }
     }
@@ -247,6 +266,21 @@ final class DiscoveryScreen {
         if(row.mobilePrice!=null&&row.mobilePrice.menuItem!=null)return row.mobilePrice.menuItem;
         return NativePricePresentation.category(selected);
     }
+    /** Keep the material fee/condition scope beside its drink price. Exact fee
+     * wording remains in the expanded row and the featured TalkBack label. */
+    static String priceCaveat(MenuV2Prices.Price price){
+        if(price==null)return null;
+        String lower=price.feeNotice.toLowerCase(Locale.ROOT),scope="";
+        if(lower.contains("spese separate"))scope="Spese separate indicate dal menu";
+        if(lower.contains("nessuna spesa obbligatoria"))scope=appendScope(scope,"Nessuna spesa obbligatoria dichiarata");
+        if(lower.contains("non verificate")||lower.contains("non verificati"))scope=appendScope(scope,"Altre spese non verificate");
+        if(lower.contains("documentate solo in parte")||lower.contains("copertura delle spese parziale"))scope=appendScope(scope,"Spese documentate solo in parte");
+        if(scope.isEmpty()&&!lower.isEmpty())scope="Spese del locale: vedi dettaglio";
+        String condition=price.condition==null||price.condition.isEmpty()?"":"Condizioni: "+price.condition;
+        String visible=appendScope(condition,scope);return visible.isEmpty()?null:visible;
+    }
+    private static String appendScope(String first,String next){return first.isEmpty()?next:next.isEmpty()?first:first+" · "+next;}
+    static String currencyHeading(String currency){return currency.equals("EUR")?"EUR · €":currency.equals("GBP")?"GBP · £":currency;}
     /** An ordered preview of the same read-only rows shown below, never a synthetic deal. */
     private void addFeatured(DiscoveryData.Row row){
         LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.discoveryCard(card);card.setPadding(dp(8),dp(8),dp(8),dp(8));
@@ -259,7 +293,10 @@ final class DiscoveryScreen {
         TextView serving=text(row.groupLabel(),12);NativeAppearance.muted(serving);card.addView(serving);
         String date=row.day();String formatted=date.substring(8)+"/"+date.substring(5,7)+"/"+date.substring(0,4);
         TextView source=text((row.menuSource()?"Menu verificato ":"Segnalato ")+formatted+(row.old()?row.menuSource()?" · Menu da ricontrollare":" · Datato":""),11);NativeAppearance.muted(source);card.addView(source);
-        card.setClickable(true);card.setFocusable(true);card.setMinimumHeight(dp(48));card.setContentDescription("Apri "+drinkName+" da "+row.venue.name+", "+row.amountLabel()+", "+row.groupLabel()+", "+source.getText());
+        String caveat=priceCaveat(row.menuPrice);
+        if(caveat!=null){TextView warning=text(caveat,11);NativeAppearance.muted(warning);card.addView(warning);}
+        card.setClickable(true);card.setFocusable(true);card.setMinimumHeight(dp(48));card.setContentDescription("Apri "+drinkName+" da "+row.venue.name+", "+row.amountLabel()+", "+row.groupLabel()+", "+source.getText()+
+                (row.menuPrice==null?"":", "+(row.menuPrice.condition==null?"":"Prezzo soggetto a condizioni: "+row.menuPrice.condition+". ")+row.menuPrice.feeNotice));
         card.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         card.setOnClickListener(v->{if(usable()&&!busy&&snapshot!=null)navigate.accept(row.venue.url());});
     }

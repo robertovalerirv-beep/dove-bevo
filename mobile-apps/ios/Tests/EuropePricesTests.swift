@@ -252,10 +252,14 @@ final class EuropePricesTests: XCTestCase {
         discovery.setArea(area); discovery.loadViewIfNeeded(); discovery.beginAppearanceTransition(true, animated: false); discovery.endAppearanceTransition()
         discovery.selectDrink("wine_glass")
         XCTAssertEqual(discovery.tableView(discovery.tableView, numberOfRowsInSection: 0), 2)
-        let wine = discovery.tableView(discovery.tableView, cellForRowAt: IndexPath(row: 0, section: 0))
-        let wineText = visibleLabels(wine).joined(separator: "\n")
-        XCTAssertTrue(wineText.contains("175 ml"))
-        XCTAssertTrue(wineText.contains("9,00 £"))
+        let cheaperWine = discovery.tableView(discovery.tableView, cellForRowAt: IndexPath(row: 0, section: 0))
+        let cheaperText = visibleLabels(cheaperWine).joined(separator: "\n")
+        XCTAssertTrue(cheaperText.contains("250 ml"))
+        XCTAssertTrue(cheaperText.contains("7,00 £"))
+        let dearerWine = discovery.tableView(discovery.tableView, cellForRowAt: IndexPath(row: 1, section: 0))
+        let dearerText = visibleLabels(dearerWine).joined(separator: "\n")
+        XCTAssertTrue(dearerText.contains("175 ml"))
+        XCTAssertTrue(dearerText.contains("9,00 £"))
         discovery.beginAppearanceTransition(false, animated: false); discovery.endAppearanceTransition()
     }
     @MainActor private func visibleLabels(_ view: UIView) -> [String] {

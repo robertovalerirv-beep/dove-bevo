@@ -25,6 +25,7 @@ final class DiscoveryViewController: UITableViewController {
     private let citySelector = UIButton(type: .system)
     private let bands = ComparisonBandSelector()
     private let statusLabel = UILabel()
+    private let illustrationLabel = UILabel()
     private let featuredHeading = UILabel()
     private let featuredStrip = DiscoveryFeaturedStrip()
     private var featuredWidth: CGFloat = 0
@@ -73,14 +74,13 @@ final class DiscoveryViewController: UITableViewController {
         // Mappa is already in the bottom navigation; reload lives in the
         // parent's ellipsis, leaving this header clear of duplicate actions.
         navigationItem.rightBarButtonItems = [moreOverlaySpace]
-        let cityHeading = label("Città", style: .caption1)
-        cityHeading.textColor = NativeAppearance.muted
-        let heading = label("Scegli cosa bere", style: .headline)
-        heading.accessibilityTraits = .header
-        let illustration = label("Immagini illustrative dei drink, non foto dei locali", style: .caption2)
-        illustration.textColor = NativeAppearance.muted
-        let bandLabel = label("Fascia di prezzo", style: .caption1)
-        bandLabel.textColor = NativeAppearance.muted
+        illustrationLabel.text = "Immagini illustrative dei drink, non foto dei locali"
+        illustrationLabel.font = .preferredFont(forTextStyle: .caption2)
+        illustrationLabel.adjustsFontForContentSizeCategory = true
+        illustrationLabel.numberOfLines = 0
+        illustrationLabel.textColor = NativeAppearance.muted
+        // The controls announce their purpose to VoiceOver; their selected
+        // values make repeated visible headings unnecessary on a small phone.
         drinkSelector.accessibilityIdentifier = "discovery.drinkSelector"
         drinkSelector.accessibilityLabel = "Scegli cosa bere"
         drinkSelector.accessibilityHint = "Apre l'elenco dei drink disponibili"
@@ -92,6 +92,9 @@ final class DiscoveryViewController: UITableViewController {
         // table header is laid out; a height constraint alone is ignored by
         // systemLayoutSizeFitting on an unmounted UIButton.
         drinkConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
+        drinkConfiguration.image = UIImage(systemName: "chevron.down")
+        drinkConfiguration.imagePlacement = .trailing
+        drinkConfiguration.imagePadding = 8
         drinkSelector.configuration = drinkConfiguration
         citySelector.accessibilityIdentifier = "discovery.citySelector"
         citySelector.accessibilityLabel = "Scegli città"
@@ -100,6 +103,9 @@ final class DiscoveryViewController: UITableViewController {
         citySelector.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
         var cityConfiguration = UIButton.Configuration.bordered()
         cityConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
+        cityConfiguration.image = UIImage(systemName: "chevron.down")
+        cityConfiguration.imagePlacement = .trailing
+        cityConfiguration.imagePadding = 8
         citySelector.configuration = cityConfiguration
         citySelector.addTarget(self, action: #selector(showCityPicker), for: .touchUpInside)
         bands.accessibilityIdentifier = "discovery.band"
@@ -116,13 +122,13 @@ final class DiscoveryViewController: UITableViewController {
         featuredHeading.accessibilityTraits = .header
         featuredHeading.accessibilityIdentifier = "discovery.featuredHeading"
         let header = UIView()
-        let stack = UIStackView(arrangedSubviews: [cityHeading, citySelector, heading, drinkSelector, bandLabel, bands,
-                                                   statusLabel, illustration, featuredHeading, featuredStrip])
-        stack.axis = .vertical; stack.spacing = 5; stack.translatesAutoresizingMaskIntoConstraints = false
+        let stack = UIStackView(arrangedSubviews: [citySelector, drinkSelector, bands, statusLabel,
+                                                   featuredHeading, featuredStrip, illustrationLabel])
+        stack.axis = .vertical; stack.spacing = 4; stack.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(stack)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: header.topAnchor, constant: 5),
-            stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -5),
+            stack.topAnchor.constraint(equalTo: header.topAnchor, constant: 4),
+            stack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -4),
             stack.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -20)
         ])
@@ -201,13 +207,6 @@ final class DiscoveryViewController: UITableViewController {
         if isViewLoaded { render() }
     }
 
-    private func label(_ text: String, style: UIFont.TextStyle) -> UILabel {
-        let value = UILabel(); value.text = text; value.numberOfLines = 0
-        value.font = .preferredFont(forTextStyle: style); value.adjustsFontForContentSizeCategory = true
-        value.textColor = NativeAppearance.ink
-        return value
-    }
-
     private func render() {
         guard isViewLoaded else { return }
         let allRows = snapshot?.displayRows(drink: drink.code, band: band) ?? []
@@ -235,18 +234,23 @@ final class DiscoveryViewController: UITableViewController {
             statusLabel.accessibilityIdentifier = "discovery.loading"
         } else if let snapshot {
             let suffix = allRows.count > 200 ? " Mostrati i primi 200 prezzi." : ""
+            let selectedMenuSample = allRows.contains { row in
+                if case .menuV2 = row.price { return true }
+                return false
+            }
+            let sampleCue = selectedMenuSample ? " · prezzi da menu: selezione" : ""
             if snapshot.unavailableCells.count == snapshot.area.cells.count && snapshot.venues.isEmpty &&
                 snapshot.europe?.venues.isEmpty != false && snapshot.menu.isEmpty {
                 statusLabel.text = "Prezzi della zona non disponibili. Controlla la connessione, poi apri Altre opzioni e scegli Ricarica."
                 statusLabel.accessibilityIdentifier = "discovery.unavailable"
             } else if !snapshot.partialCells.isEmpty {
-                statusLabel.text = "\(allRows.count) prezzi per \(drink.name). Alcune parti della zona non sono disponibili: scegli Ricarica in Altre opzioni.\(suffix)"
+                statusLabel.text = "\(allRows.count) prezzi\(sampleCue) · formati non confrontabili. Alcune parti della zona non sono disponibili: scegli Ricarica in Altre opzioni.\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.partial"
             } else if allRows.isEmpty {
                 statusLabel.text = "Nessun prezzo disponibile per \(drink.name) · \(band.name) nei dati caricati di questa zona. Prova un altro drink o scegli un'altra città."
                 statusLabel.accessibilityIdentifier = "discovery.empty"
             } else {
-                statusLabel.text = "\(allRows.count) prezzi per \(drink.name) · \(band.name).\(suffix)"
+                statusLabel.text = "\(allRows.count) prezzi\(sampleCue) · formati non confrontabili.\(suffix)"
                 statusLabel.accessibilityIdentifier = "discovery.loaded"
             }
         } else {
@@ -279,6 +283,7 @@ final class DiscoveryViewController: UITableViewController {
     private func configureFeatured(width: CGFloat) {
         featuredWidth = width
         featuredHeading.isHidden = featuredRows.isEmpty
+        illustrationLabel.isHidden = featuredRows.isEmpty
         featuredStrip.configure(rows: featuredRows, category: drink, availableWidth: width,
                                 traits: traitCollection, target: self, action: #selector(openFeatured(_:)))
     }
@@ -299,7 +304,14 @@ final class DiscoveryViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "I più convenienti qui · per valuta e formato" }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "Prezzi crescenti per valuta" }
+    static func currencyHeading(_ currency: String) -> String {
+        switch currency {
+        case "EUR": return "EUR · €"
+        case "GBP": return "GBP · £"
+        default: return currency
+        }
+    }
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {
         "I prezzi da menu qui sono un campione per drink: apri il locale per vedere il listino disponibile. Valute e formati diversi non sono confrontabili; i prezzi italiani precedenti non dichiarano il formato. Prezzi nella zona del centro selezionato, non una classifica personale. Le distanze sono dal centro selezionato. Mappa e prezzi richiedono internet."
     }
@@ -311,9 +323,13 @@ final class DiscoveryViewController: UITableViewController {
         let row = rows[indexPath.row]
         let metres = snapshot?.area.distance(latitude: row.latitude, longitude: row.longitude) ?? 0
         let distance = metres < 1000 ? "\(Int(metres.rounded())) m" : String(format: "%.1f km", metres / 1000)
-        let rank = rows.prefix(indexPath.row + 1).filter { $0.price.discoveryGroup == row.price.discoveryGroup }.count
+        let currency = DiscoverySnapshot.currency(row.price)
+        let rank = rows.prefix(indexPath.row + 1).filter { DiscoverySnapshot.currency($0.price) == currency }.count
+        let multipleCurrencies = Set(rows.map { DiscoverySnapshot.currency($0.price) }).count > 1
+        let firstOfCurrency = indexPath.row == 0 || DiscoverySnapshot.currency(rows[indexPath.row - 1].price) != currency
+        let currencyHeading = multipleCurrencies && firstOfCurrency ? Self.currencyHeading(currency) : nil
         cell.configure(row: row, category: drink, band: band, rank: rank, distance: distance,
-                       today: ComparisonJSON.today(), traits: traitCollection)
+                       today: ComparisonJSON.today(), traits: traitCollection, currencyHeading: currencyHeading)
         cell.accessibilityIdentifier = "discovery.venue.\(row.key)"
         switch row.price {
         case .legacy: break

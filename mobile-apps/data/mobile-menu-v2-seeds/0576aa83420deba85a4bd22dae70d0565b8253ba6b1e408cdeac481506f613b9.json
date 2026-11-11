@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "batch_id": "ruby-bea-firenze-owner-aperitivo-20261111",
+  "checked_on": "2026-11-11",
+  "data_version": "20261108",
+  "venues": [
+    {
+      "venue_key": "n750017299",
+      "cell": "srb10",
+      "name": "Ruby BEA",
+      "kind": 1,
+      "lat": 43.78349,
+      "lon": 11.26294,
+      "address": null,
+      "city": "Firenze",
+      "country": "IT",
+      "identity_kind": "osm_static",
+      "identity_url": "https://www.openstreetmap.org/node/750017299",
+      "identity_checked_on": "2026-11-11",
+      "identity_fingerprint": null,
+      "owner_page_sha256": null,
+      "geo_reference_url": null,
+      "geo_reference_sha256": null,
+      "geo_reference_hash_basis": null,
+      "static_city_id": 61753360
+    }
+  ],
+  "sources": [
+    {
+      "id": "src-ruby-bea-firenze-9cb5c7f54d35",
+      "venue_key": "n750017299",
+      "cell": "srb10",
+      "source_url": "https://www.ruby-hotels.com/en/bars/florence/ruby-bea-bar",
+      "source_format": "html_text_v1",
+      "source_sha256": "9cb5c7f54d3546acb73990cad6c9dc21c7065ac9de6adc27067531a63c343bec",
+      "source_text_sha256": "9cb5c7f54d3546acb73990cad6c9dc21c7065ac9de6adc27067531a63c343bec",
+      "source_checked_on": "2026-11-11",
+      "use_review_status": "approved",
+      "use_review_basis": "The current venue-owned public page names three EUR 8 Aperitivo Hour drinks and explicitly limits the price to daily 16:00-19:00 with snacks. Only factual names, amount and conditions are transcribed. No regular price, photo, recipe, customer observation or fee is inferred. Independent protected audit remains required before seeding.",
+      "use_review_reference": "https://www.ruby-hotels.com/en/destinations/florence/ruby-bea",
+      "use_reviewed_on": "2026-11-11"
+    }
+  ],
+  "offers": [
+    {
+      "id": "ruby-bea-firenze-20261111-001",
+      "venue_key": "n750017299",
+      "cell": "srb10",
+      "source_id": "src-ruby-bea-firenze-9cb5c7f54d35",
+      "name": "Aperol Spritz",
+      "category": "spritz",
+      "serving_label": null,
+      "serving_ml": null,
+      "amount_minor": 800,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "happy_hour",
+      "condition_text": "Aperitivo Hour, daily 16:00-19:00; includes olives, grissini and crisps",
+      "evidence_ref": "Owner Ruby Bea Bar > Aperitivo Hour: Aperol Spritz EUR 8 each, daily 4-7 pm, with snacks"
+    },
+    {
+      "id": "ruby-bea-firenze-20261111-002",
+      "venue_key": "n750017299",
+      "cell": "srb10",
+      "source_id": "src-ruby-bea-firenze-9cb5c7f54d35",
+      "name": "Limoncello Spritz",
+      "category": "spritz",
+      "serving_label": null,
+      "serving_ml": null,
+      "amount_minor": 800,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "happy_hour",
+      "condition_text": "Aperitivo Hour, daily 16:00-19:00; includes olives, grissini and crisps",
+      "evidence_ref": "Owner Ruby Bea Bar > Aperitivo Hour: Limoncello Spritz EUR 8 each, daily 4-7 pm, with snacks"
+    },
+    {
+      "id": "ruby-bea-firenze-20261111-003",
+      "venue_key": "n750017299",
+      "cell": "srb10",
+      "source_id": "src-ruby-bea-firenze-9cb5c7f54d35",
+      "name": "Negroni Sbagliato",
+      "category": "sbagliato",
+      "serving_label": null,
+      "serving_ml": null,
+      "amount_minor": 800,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "happy_hour",
+      "condition_text": "Aperitivo Hour, daily 16:00-19:00; includes olives, grissini and crisps",
+      "evidence_ref": "Owner Ruby Bea Bar > Aperitivo Hour: Negroni Sbagliato EUR 8 each, daily 4-7 pm, with snacks"
+    }
+  ],
+  "fees": [],
+  "fee_coverage": []
+}

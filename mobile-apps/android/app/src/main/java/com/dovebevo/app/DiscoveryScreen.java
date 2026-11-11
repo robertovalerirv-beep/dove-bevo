@@ -34,7 +34,7 @@ final class DiscoveryScreen {
         TextView title=text(activity.getString(R.string.discovery_title),24);NativeAppearance.title(title);heading(title);title.setContentDescription(activity.getString(R.string.discovery_title)+". "+activity.getString(R.string.discovery_explanation));
         bands=new Spinner(activity);bands.setId(R.id.discovery_band);bands.setContentDescription(activity.getString(R.string.favorites_band));
         ArrayAdapter<String> bandOptions=new ArrayAdapter<String>(activity,android.R.layout.simple_spinner_item,new String[]{activity.getString(R.string.favorites_normal),activity.getString(R.string.favorites_happy_hour)}){
-            @Override public View getView(int position,View converted,android.view.ViewGroup parent){TextView label=(TextView)super.getView(position,converted,parent);label.setText("Fascia · "+getItem(position));label.setTextSize(14);label.setPadding(dp(4),0,dp(4),0);label.setSingleLine(true);label.setEllipsize(android.text.TextUtils.TruncateAt.END);label.setGravity(Gravity.CENTER_VERTICAL);return label;}
+            @Override public View getView(int position,View converted,android.view.ViewGroup parent){TextView label=(TextView)super.getView(position,converted,parent);label.setTextSize(14);label.setPadding(dp(4),0,dp(4),0);label.setSingleLine(true);label.setEllipsize(null);label.setGravity(Gravity.CENTER_VERTICAL);return label;}
         };
         bandOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);bands.setAdapter(bandOptions);bands.setMinimumHeight(dp(48));bands.setOnItemSelectedListener(selection(()->{band=bands.getSelectedItemPosition();render();}));
         body.addView(new DiscoveryHeader(activity,title,bands),new LinearLayout.LayoutParams(-1,-2));

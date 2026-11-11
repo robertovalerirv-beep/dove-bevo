@@ -107,6 +107,40 @@ public final class DiscoveryRuntimeTest {
         });
         onMain(()->{assertEquals(0,featured().getChildCount());assertEquals(0,rows().getChildCount());assertEquals(View.GONE,screen.view().findViewWithTag("discovery.featuredScroll").getVisibility());});
     }
+    @Test public void compactFeaturedCardsExpandToFitRealPriceAndSourceAtLargeText()throws Exception {
+        android.content.res.Resources resources=activity.getResources();
+        android.content.res.Configuration saved=new android.content.res.Configuration(resources.getConfiguration());
+        try{
+            onMain(()->{
+                android.content.res.Configuration large=new android.content.res.Configuration(saved);
+                large.fontScale=1.5f;
+                resources.updateConfiguration(large,resources.getDisplayMetrics());
+            });
+            menuOne=true;show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();
+            onMain(()->{
+                float density=resources.getDisplayMetrics().density;
+                int width=Math.round(320*density);View root=screen.view();
+                root.measure(View.MeasureSpec.makeMeasureSpec(width,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(Math.round(700*density),View.MeasureSpec.EXACTLY));
+                root.layout(0,0,width,Math.round(700*density));
+                for(int index=0;index<featured().getChildCount();index++){
+                    LinearLayout card=(LinearLayout)featured().getChildAt(index);
+                    String words=text(card);
+                    assertTrue(words.contains("€")||words.contains("£"));
+                    assertTrue(words.contains("Menu verificato")||words.contains("Segnalato"));
+                    assertTrue(words.contains("EUR")||words.contains("GBP"));
+                    int requiredHeight=card.getPaddingTop()+card.getPaddingBottom();
+                    for(int child=0;child<card.getChildCount();child++){
+                        View content=card.getChildAt(child);requiredHeight+=content.getMeasuredHeight();
+                        if(content instanceof TextView){
+                            android.text.Layout layout=((TextView)content).getLayout();assertNotNull(layout);
+                            for(int line=0;line<layout.getLineCount();line++)assertEquals(0,layout.getEllipsisCount(line));
+                        }
+                    }
+                    assertTrue("Large text must expand the card instead of clipping the source",card.getHeight()>=requiredHeight);
+                }
+            });
+        }finally{onMain(()->resources.updateConfiguration(saved,resources.getDisplayMetrics()));}
+    }
     @Test public void bandLabelsNeverEllipsizeOrOverflowAt320393And411Dp() {
         android.content.res.Resources resources=activity.getResources();android.content.res.Configuration saved=new android.content.res.Configuration(resources.getConfiguration());
         try{

@@ -83,6 +83,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+      # Temporary (11/11/2026): same reason as in the e2e job: *.ubuntu.com does not resolve, apt uses the
+      # kernel.org Ubuntu mirror. Remove once ubuntu.com resolves again.
+      - name: Ubuntu mirror outside ubuntu.com (temporary)
+        run: echo 'https://mirrors.edge.kernel.org/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt
       - run: sudo apt-get update && sudo apt-get install -y osmium-tool
       - run: osmium cat tests/fixtures/osm/sample.osm -o "$RUNNER_TEMP/sample.osm.pbf"
       - run: scripts/osm-import/import.sh "$RUNNER_TEMP/sample.osm.pbf" "$RUNNER_TEMP/data" fixture

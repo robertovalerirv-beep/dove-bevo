@@ -75,12 +75,12 @@ final class DiscoveryViewController: UITableViewController {
         drinkSelector.accessibilityHint = "Apre l'elenco dei drink disponibili"
         drinkSelector.showsMenuAsPrimaryAction = true
         drinkSelector.contentHorizontalAlignment = .leading
-        drinkSelector.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        drinkSelector.heightAnchor.constraint(greaterThanOrEqualToConstant: 48).isActive = true
         var drinkConfiguration = UIButton.Configuration.bordered()
         // The button's intrinsic size must be large enough even before its
         // table header is laid out; a height constraint alone is ignored by
         // systemLayoutSizeFitting on an unmounted UIButton.
-        drinkConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14)
+        drinkConfiguration.contentInsets = NSDirectionalEdgeInsets(top: 16, leading: 16, bottom: 16, trailing: 16)
         drinkSelector.configuration = drinkConfiguration
         bands.accessibilityIdentifier = "discovery.band"
         bands.accessibilityLabel = "Fascia di prezzo"

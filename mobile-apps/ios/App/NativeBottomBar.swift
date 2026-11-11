@@ -158,7 +158,7 @@ final class NativeBottomBar: UIView {
             let button = button(for: action)
             let selected = (action == .map && destination == 0) || (action == .favourites && destination == 1) || (action == .home && destination == 2) || (action == .recommendations && destination == 3)
             var configuration = UIButton.Configuration.plain()
-            let fill = selected ? NativeAppearance.surface : NativeAppearance.chrome
+            let fill = selected ? NativeAppearance.accent : NativeAppearance.chrome
             configuration.baseBackgroundColor = fill
             configuration.background.backgroundColor = fill
             configuration.title = action.title
@@ -167,17 +167,18 @@ final class NativeBottomBar: UIView {
             let titleFont = UIFont.preferredFont(forTextStyle: .caption2, compatibleWith: traitCollection)
             configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
                 var attributes = incoming
-                attributes.font = .systemFont(ofSize: titleFont.pointSize, weight: selected ? .semibold : .regular)
+                attributes.font = titleFont
                 return attributes
             }
             let symbol = selected && (action == .map || action == .favourites || action == .home || action == .recommendations) ? "\(action.symbol).fill" : action.symbol
             configuration.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 20))
             configuration.imagePlacement = .top
             configuration.imagePadding = 4
-            configuration.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 4, bottom: 4, trailing: 4)
-            configuration.baseForegroundColor = selected ? NativeAppearance.ink : NativeAppearance.muted
+            configuration.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 4, bottom: 6, trailing: 4)
+            configuration.baseForegroundColor = selected ? NativeAppearance.onAccent : NativeAppearance.muted
             configuration.background.cornerRadius = NativeAppearance.radius
-            configuration.background.strokeWidth = 0
+            configuration.background.strokeColor = NativeAppearance.ink
+            configuration.background.strokeWidth = selected ? 2 : 0
             configuration.cornerStyle = .fixed
             button.configuration = configuration
             button.titleLabel?.numberOfLines = 0

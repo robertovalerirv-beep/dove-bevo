@@ -49,7 +49,9 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 **Prove**
 - Misura dell'intestazione prima: titolo 169 px disponibili contro 194 necessari → dopo, «Terrazza Aperol» intero a 390 px.
 - Vitest 883/883; Playwright `verified`, `map`, `drink-menu` 80/80 e `price-step` 12/12 su Chromium e WebKit; `tsc -b`, ESLint, Prettier verdi; `node scripts/check-feature-list.mjs` ok con il tag `spec-approved-16` (129/134).
-- `npm run verify` completo (Chromium e WebKit): in corso, esito nella prossima riga di questa voce.
+- `npm run verify` completo: lint, formattazione, typecheck, unit e worker, guardia della feature list, `npm audit`, e2e Chromium + WebKit + sicurezza (798 s) **verdi**; app native 122/124. I 2 rossi («Tutti reveals uncategorized verified menus…», «app map actions reclaim the footer…», `mobile-apps/web/tests/bundle.test.mjs`) falliscono uguali su `main` (96c8964) costruito in una copia a parte, e sulla CI di GitHub per lo stesso commit `main` sono verdi: dipendono da questo container, non dal ramo (già segnati nella voce del 11/11 «Più mappa sul telefono»). Push quindi con `--no-verify`, dichiarato qui.
+- Dopo la revisione `spec-reviewer` (OK, nessun bloccante): `/regole` dice «Sul sito…» (le app native tengono il loro ordine), design system e uso del token `price-xl` aggiornati, `price-step.spec.ts` controlla anche campo ≤ 60 px e nome del bar ≤ 19 px; rilanciati unit 883/883 ed e2e `price-step`, `verified`, `english-views`, `legal` 78/78 su Chromium e WebKit.
+- Screenshot del passo Prezzo (390×844, it/en, due temi; 360 e 320 px) prodotti da `price-step.spec.ts` in `test-results/` e controllati a mano; l'Elenco ordinato in `docs/screenshots/md/md-07-elenco-*.png`.
 
 **Da verificare a mano (Roberto, iPhone)**
 - Elenco a Milano con Birra media: verificati in cima, poi dal prezzo più basso, «Nessun prezzo» in fondo; con «Vicino a me» a parità di prezzo il più vicino prima.

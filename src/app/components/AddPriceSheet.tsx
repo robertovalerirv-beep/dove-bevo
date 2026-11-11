@@ -134,6 +134,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
         title={venue.name}
         onClose={onClose}
         step="drink"
+        iconBack
         onBack={
           prefill?.venue
             ? undefined
@@ -174,6 +175,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
       title={venue.name}
       onClose={onClose}
       step="price"
+      iconBack
       onBack={
         prefill?.drink
           ? undefined
@@ -183,6 +185,7 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
       }
     >
       <form
+        class="price-form"
         onSubmit={(e) => {
           e.preventDefault();
           save();

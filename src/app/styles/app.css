@@ -1323,6 +1323,45 @@
   font-family: var(--font-mono);
 }
 
+/* The «Prezzo» step of the website, compact (SPEC 7.3, 1.19): «Salva» in view without scrolling on a
+   phone. Scoped to .price-form: the native apps style their own form (.mobile-price-form). */
+.price-form .context-tag {
+  margin-bottom: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+}
+.price-form .question {
+  margin-bottom: var(--space-2);
+  font: var(--type-title);
+}
+.price-form .price-input,
+.price-form .price-input input {
+  font: var(--type-price-lg);
+  letter-spacing: var(--tracking-price-lg);
+}
+.price-form .price-input input {
+  min-height: var(--target-primary);
+}
+.price-form .error {
+  margin: var(--space-1) 0;
+}
+.price-form .seen__label {
+  margin: 0 0 var(--space-2);
+}
+.price-form .zone-range {
+  margin: 0 0 var(--space-2);
+}
+.price-form .switch {
+  margin-bottom: var(--space-3);
+}
+/* «Indietro» as an arrow only: a 48 px square, the name stays for screen readers. */
+.sheet__back--icon {
+  padding: 0;
+}
+.sheet__head--steps .sheet__title {
+  font: var(--type-subtitle);
+  letter-spacing: var(--tracking-subtitle);
+}
+
 /* Timbro (MB-11): a postmark with today's date, pressed in with a bounce */
 .stamp {
   display: flex;

@@ -81,7 +81,7 @@ async function mapState(page: Page) {
   return { pins, legend, coverage, cheapestHere, search };
 }
 
-test("MD-07 the verified bar comes first in the list; the others, the map and the search do not change", async ({
+test("MD-07 the verified bar comes first in the list, the others by price; the map and the search do not change", async ({
   page,
 }) => {
   await page.goto("/");
@@ -110,6 +110,15 @@ test("MD-07 the verified bar comes first in the list; the others, the map and th
   // Only that row, and the check never without «Sponsorizzato».
   await expect(sheet.getByText("Gestore verificato")).toHaveCount(1);
   await expect(sheet.getByText("Sponsorizzato")).toHaveCount(1);
+  // After the verified bar: the cheapest price first, «Nessun prezzo» last (SPEC 1.19, MD-07).
+  const others = (await sheet.locator(".row__price").allTextContents()).slice(1);
+  const cents = others.map((t) => {
+    const m = /(\d+),(\d{2}) €/.exec(t);
+    return m ? Number(m[1]) * 100 + Number(m[2]) : Infinity;
+  });
+  expect(cents.some((c) => c !== Infinity)).toBe(true);
+  expect(cents.some((c) => c === Infinity)).toBe(true);
+  expect(cents).toEqual([...cents].sort((a, b) => a - b));
   await page.keyboard.press("Escape");
   // Pins, colours, coverage, «I più economici qui» (a price ranking, art. 23 m-bis) and the search:
   // exactly as before.
@@ -193,6 +202,7 @@ test("MD-09 /regole explains «Gestore verificato», «Sponsorizzato» and the o
   await expect(section).toContainText("abbiamo controllato chi gestisce il locale");
   await expect(section).toContainText("«Sponsorizzato» vuol dire che quel primo posto è pagato");
   await expect(section).toContainText("prima i locali sponsorizzati, poi gli altri");
+  await expect(section).toContainText("dal prezzo più basso al più alto");
   await expect(section).toContainText("i prezzi non si comprano");
 });
 

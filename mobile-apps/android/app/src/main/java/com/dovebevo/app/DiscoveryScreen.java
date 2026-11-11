@@ -21,18 +21,26 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /** Native nearby price discovery, independent of the website's controls and private bookmarks. */
 final class DiscoveryScreen {
     private final Activity activity;private final Consumer<String> navigate;private final Supplier<Boolean> foreground;private final DiscoveryLoader loader;
-    private final ScrollView view;private final LinearLayout rows,featured;private final TextView status,featuredTitle;private final Spinner bands,drinks;
-    private RecommendationDrink drink=RecommendationDrink.BEER_DRAFT;private int band;private DiscoveryArea area;private DiscoveryLoader.Result snapshot;
+    private final ScrollView view;private final LinearLayout rows,featured;private final TextView status,featuredTitle,cityStatus;private final Spinner bands,drinks,citySelector;
+    private final Button cityRetry;private final ArrayAdapter<String> cityAdapter;private final DiscoveryCities.Source citySource;
+    private final ExecutorService cityNetwork=Executors.newSingleThreadExecutor();
+    private RecommendationDrink drink=RecommendationDrink.BEER_DRAFT;private int band;private DiscoveryArea area,sourceArea;private DiscoveryLoader.Result snapshot;
+    private List<DiscoveryCities.City> cityOptions=Collections.emptyList();private DiscoveryCities.City selectedCity;
+    private boolean cityLoaded,cityLoading;private long cityGeneration;private Future<?> cityRequest;
     private boolean visible,closed,busy;private long generation;private DiscoveryLoader.Batch request;
     DiscoveryScreen(Activity activity,Consumer<String> navigate,Supplier<Boolean> foreground){this(activity,navigate,foreground,new DiscoveryLoader(new FavoritePricesClient(),task->new Handler(Looper.getMainLooper()).post(task)));}
-    DiscoveryScreen(Activity activity,Consumer<String> navigate,Supplier<Boolean> foreground,DiscoveryLoader loader){
-        this.activity=activity;this.navigate=navigate;this.foreground=foreground;this.loader=loader;
+    DiscoveryScreen(Activity activity,Consumer<String> navigate,Supplier<Boolean> foreground,DiscoveryLoader loader){this(activity,navigate,foreground,loader,new DiscoveryCities.PublicSource());}
+    DiscoveryScreen(Activity activity,Consumer<String> navigate,Supplier<Boolean> foreground,DiscoveryLoader loader,DiscoveryCities.Source citySource){
+        this.activity=activity;this.navigate=navigate;this.foreground=foreground;this.loader=loader;this.citySource=citySource;
         view=new ScrollView(activity);view.setId(R.id.discovery_screen);view.setBackgroundColor(activity.getColor(R.color.shell_background));
         LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(16),dp(6),dp(16),dp(16));view.addView(body);
         TextView title=text(activity.getString(R.string.discovery_title),24);NativeAppearance.title(title);heading(title);title.setContentDescription(activity.getString(R.string.discovery_title)+". "+activity.getString(R.string.discovery_explanation));
@@ -42,6 +50,15 @@ final class DiscoveryScreen {
         };
         bandOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);bands.setAdapter(bandOptions);bands.setMinimumHeight(dp(48));bands.setOnItemSelectedListener(selection(()->{band=bands.getSelectedItemPosition();render();}));
         body.addView(new DiscoveryHeader(activity,title,bands),new LinearLayout.LayoutParams(-1,-2));
+        TextView cityTitle=text("Scegli una città",13);NativeAppearance.muted(cityTitle);cityTitle.setPadding(0,dp(4),0,0);body.addView(cityTitle);
+        citySelector=new Spinner(activity);citySelector.setTag("discovery.citySelector");citySelector.setContentDescription("Scegli una città per Scopri");citySelector.setMinimumHeight(dp(48));
+        cityAdapter=new ArrayAdapter<>(activity,android.R.layout.simple_spinner_item,new ArrayList<>(Collections.singletonList("Area della mappa")));
+        cityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);citySelector.setAdapter(cityAdapter);
+        citySelector.setOnItemSelectedListener(selection(()->chooseCity(citySelector.getSelectedItemPosition())));
+        body.addView(citySelector,new LinearLayout.LayoutParams(-1,-2));
+        cityStatus=text("",12);cityStatus.setTag("discovery.cityStatus");NativeAppearance.muted(cityStatus);cityStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(cityStatus);
+        cityRetry=new Button(activity);cityRetry.setTag("discovery.cityRetry");cityRetry.setText("Riprova elenco città");NativeAppearance.button(cityRetry,false);
+        cityRetry.setVisibility(View.GONE);cityRetry.setOnClickListener(v->loadCities());body.addView(cityRetry,new LinearLayout.LayoutParams(-1,-2));
         status=text("",12);status.setId(R.id.discovery_status);NativeAppearance.muted(status);status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);status.setPadding(0,0,0,dp(4));
         TextView featureTitle=text("Scegli cosa bere",13);NativeAppearance.muted(featureTitle);featureTitle.setPadding(0,dp(2),0,0);body.addView(featureTitle);
         drinks=new Spinner(activity);drinks.setId(R.id.discovery_drink);drinks.setContentDescription("Scegli cosa bere");
@@ -58,13 +75,51 @@ final class DiscoveryScreen {
     }
     View view(){return view;}
     DiscoveryArea area(){return area;}
-    void show(DiscoveryArea area){if(closed)return;visible=true;this.area=area;refresh();}
-    void hide(){visible=false;retire();snapshot=null;}
-    void pause(){retire();snapshot=null;if(visible)render();}
-    void resume(){if(visible&&!closed&&foreground.get())refresh();}
-    void close(){closed=true;hide();loader.close();}
+    void show(DiscoveryArea area){
+        if(closed)return;visible=true;
+        if(selectedCity!=null&&sameArea(sourceArea,area)){
+            try{this.area=selectedCity.area();}catch(IOException impossible){selectedCity=null;this.area=area;}
+        }else{selectedCity=null;sourceArea=area;this.area=area;citySelector.setSelection(0,false);}
+        loadCities();refresh();
+    }
+    void hide(){visible=false;retire();retireCities();snapshot=null;}
+    void pause(){retire();retireCities();snapshot=null;if(visible)render();}
+    void resume(){if(visible&&!closed&&foreground.get()){loadCities();refresh();}}
+    void close(){closed=true;hide();loader.close();cityNetwork.shutdownNow();}
     private boolean usable(){return visible&&!closed&&foreground.get()&&!activity.isFinishing()&&!activity.isDestroyed();}
     private void retire(){generation++;if(request!=null)request.cancel();request=null;busy=false;}
+    private void retireCities(){cityGeneration++;if(cityRequest!=null)cityRequest.cancel(true);cityRequest=null;cityLoading=false;if(citySource instanceof DiscoveryCities.PublicSource)((DiscoveryCities.PublicSource)citySource).cancel();}
+    private static boolean sameArea(DiscoveryArea first,DiscoveryArea second){return first==second||first!=null&&second!=null&&first.lat==second.lat&&first.lon==second.lon&&first.zoom==second.zoom;}
+    private void chooseCity(int position){
+        if(position<0||position>cityOptions.size()||!visible||closed)return;
+        DiscoveryCities.City choice=position==0?null:cityOptions.get(position-1);
+        if(choice==selectedCity)return;
+        selectedCity=choice;
+        try{area=choice==null?sourceArea:choice.area();}
+        catch(IOException unavailable){selectedCity=null;area=sourceArea;cityStatus.setText("Città non disponibile. Scegline un'altra.");return;}
+        view.scrollTo(0,0);refresh();
+    }
+    private void loadCities(){
+        if(closed||!visible||!foreground.get()||cityLoaded||cityLoading)return;
+        cityLoading=true;cityStatus.setText("Caricamento città…");cityRetry.setVisibility(View.GONE);
+        long token=++cityGeneration;
+        cityRequest=cityNetwork.submit(()->{
+            DiscoveryCities.Result result=DiscoveryCities.load(citySource,FavoriteDay.today());
+            activity.runOnUiThread(()->{
+                if(closed||token!=cityGeneration)return;
+                cityRequest=null;cityLoading=false;cityLoaded=!result.italianUnavailable&&!result.europeanUnavailable&&!result.cities.isEmpty();
+                cityOptions=result.cities;citySelector.setOnItemSelectedListener(null);cityAdapter.clear();cityAdapter.add("Area della mappa");
+                for(DiscoveryCities.City city:cityOptions)cityAdapter.add(city.label());
+                cityAdapter.notifyDataSetChanged();
+                int position=0;if(selectedCity!=null)for(int i=0;i<cityOptions.size();i++)if(cityOptions.get(i).key().equals(selectedCity.key())){position=i+1;selectedCity=cityOptions.get(i);break;}
+                citySelector.setSelection(position,false);
+                citySelector.setOnItemSelectedListener(selection(()->chooseCity(citySelector.getSelectedItemPosition())));
+                boolean partial=result.italianUnavailable||result.europeanUnavailable;
+                cityStatus.setText(cityOptions.isEmpty()?"Elenco città non disponibile. Riprova.":partial?"Elenco città parziale. Riprova per altre città.":"");
+                cityRetry.setVisibility(partial||cityOptions.isEmpty()?View.VISIBLE:View.GONE);
+            });
+        });
+    }
     void refresh(){
         if(!usable())return;retire();snapshot=null;if(area==null){render();return;}long token=generation;busy=true;render();
         try{request=loader.load(area,result->{if(token!=generation||!usable())return;request=null;busy=false;snapshot=result;render();});}

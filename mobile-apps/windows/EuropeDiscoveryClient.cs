@@ -142,7 +142,7 @@ internal static class EuropeDiscoveryClient
                 status is not ("active" or "quarantined"))
                 throw new InvalidDataException("European price value mismatch");
             var serving = Serving(row.GetProperty("serving"), drink);
-            if (!identities.Add($"{key}|{drink}|{hh}|{venue.Currency}|{serving}"))
+            if (!identities.Add($"{key}|{drink}|{hh}|{venue.Currency}|{serving.Key}"))
                 throw new InvalidDataException("Duplicate European price identity");
             if (hidden.Contains(key) || legacy.Contains(key) || drink != category) continue;
             var provenance = row.GetProperty("provenance");
@@ -170,7 +170,7 @@ internal static class EuropeDiscoveryClient
             result.Add(new DiscoveryRow(key, cell, venue.Name, venue.City, drink, name, amount,
                 venue.Currency, 2, hh == 1 ? "happy_hour" : "regular",
                 status == "quarantined" ? "Da confermare" : null, source, day,
-                serving, true));
+                serving.Label, true));
         }
         return result;
     }
@@ -189,7 +189,7 @@ internal static class EuropeDiscoveryClient
         return result;
     }
 
-    private static string Serving(JsonElement value, string drink)
+    private static (string Key, string Label) Serving(JsonElement value, string drink)
     {
         var unit = value.GetProperty("unit").GetString();
         var ml = value.TryGetProperty("ml", out var count) && count.ValueKind != JsonValueKind.Null
@@ -200,13 +200,14 @@ internal static class EuropeDiscoveryClient
             (drink is not ("beer_draft" or "water" or "wine_glass") &&
                 (unit != "drink" || ml is not null)))
             throw new InvalidDataException("Invalid European serving");
-        return unit switch
+        var label = unit switch
         {
             "ml" => $"{ml} ml",
             "glass" => ml is null ? "Calice" : $"Calice · {ml} ml",
-            "drink" => "Drink singolo",
+            "drink" => "",
             _ => throw new InvalidDataException("Invalid European serving unit"),
         };
+        return ($"{unit}:{ml?.ToString(CultureInfo.InvariantCulture) ?? ""}", label);
     }
 
     private static bool Day(JsonElement value, out DateOnly day) =>

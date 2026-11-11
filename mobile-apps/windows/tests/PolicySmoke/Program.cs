@@ -189,6 +189,19 @@ var areaPayload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new {
 var areaPage = AreaVotesClient.Parse(areaPayload, cells);
 Require(areaPage.Rows.Count == 1 && areaPage.Rows[0].Count == 2 &&
     areaPage.Rows[0].VenueName == "Test Bar", "read-only area totals mismatch");
+var europeVotePayload = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new {
+    schema_version = 1, scope = new { cells }, items = new[] { new {
+        venue = new { key = "n123", cell = "u0nd9", name = "Test Bar", city = "Milano" },
+        target = new { kind = "europe", drink = "spritz", band = "normal", currency = "EUR",
+            serving = new { unit = "drink" } },
+        drink = new { name = "Spritz", category = "spritz", serving_label = "Drink singolo" },
+        count = 2,
+    } }, next_after = (string?)null,
+}));
+var europeVote = AreaVotesClient.Parse(europeVotePayload, cells).Rows.Single();
+Require(europeVote.TargetKey.EndsWith("/EUR/drink:", StringComparison.Ordinal) &&
+    europeVote.Serving is null && !europeVote.Display.Contains("Drink singolo"),
+    "generic European serving must stay in vote identity but leave the visible count clean");
 ExpectInvalid(() => AreaVotesClient.Parse(areaPayload, new[] { "u33db" }));
 using var legacyPriceJson = JsonDocument.Parse("{\"p\":[[\"n123\",\"spritz\",0,550,\"2026-11-10\",0,0]]}");
 Require(BookmarkPriceClient.ParseLegacy(legacyPriceJson, legacyAction!)?.Contains("5,50 €") == true,
@@ -464,7 +477,9 @@ var customerLondon = EuropeDiscoveryClient.ParseCell(customerLondonPage, "gcpvj"
     parsedCatalog.Version, parsedCatalog.Venues).Single();
 Require(customerLondon.Display.Contains("9,00 GBP") &&
     customerLondon.Display.Contains("Segnalato da un cliente") &&
-    customerLondon.Display.Contains("Da confermare") && customerLondon.SourceUrl is null,
+    customerLondon.Display.Contains("Da confermare") && customerLondon.SourceUrl is null &&
+    customerLondon.Serving == "" && !customerLondon.Display.Contains("Drink singolo") &&
+    !customerLondon.Display.Contains(" ·  · "),
     "customer-reported European price must retain provenance and review state");
 using var hiddenLondonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
     schema_version = 1, catalog_version = "test-v1", rows = londonPrices,

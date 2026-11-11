@@ -8,7 +8,7 @@ struct EuropeServing: Equatable {
     var label: String {
         if unit == "ml" { return "\(ml ?? 0) ml" }
         if unit == "glass" { return "Calice" + (ml.map { " · \($0) ml" } ?? " · volume non dichiarato") }
-        return "Drink singolo"
+        return ""
     }
 }
 
@@ -28,7 +28,7 @@ struct EuropePrice: Equatable {
     let sourceCheckedOn: String?
     let menuItem: String?
     var group: String { "\(currency)|\(serving.key)" }
-    var groupLabel: String { "\(currency) · \(serving.label)" }
+    var groupLabel: String { serving.label.isEmpty ? currency : "\(currency) · \(serving.label)" }
     var amount: String { String(format: "%d,%02d %@", amountMinor / 100, amountMinor % 100, currency == "GBP" ? "£" : "€") }
     func details(today: String) -> String {
         let evidence: String

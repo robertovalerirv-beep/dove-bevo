@@ -435,7 +435,7 @@ final class SavedVenuesViewController: UITableViewController {
             let (item, live) = europeRows[indexPath.row - drinkRows.count - offerRows.count - customerRows.count]
             var content = cell.defaultContentConfiguration()
             content.text = "\(item.category.name) · \(item.venue.label)"
-            let context = "\(item.band.name) · \(item.currency) · \(item.serving.label)"
+            let context = [item.band.name, item.currency, item.serving.label].filter { !$0.isEmpty }.joined(separator: " · ")
             let state = live.map { "\($0.amount)\n\($0.details(today: ComparisonJSON.today()))" }
                 ?? (busy ? "Caricamento del prezzo online…" : "Prezzo non disponibile ora. Il preferito resta salvato.")
             content.secondaryText = "\(context)\n\(state)"

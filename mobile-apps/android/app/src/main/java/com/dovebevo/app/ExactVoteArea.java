@@ -71,6 +71,7 @@ final class ExactVoteArea {
             if(!url.equals(SavedVenueUrl.canonicalize(url)))throw NativeJson.invalid();
             String name=text(venue.get("name"),512,null),city=display(venue.get("city"),200);
             String kind=text(target.get("kind"),16,null),identity;
+            boolean genericEuropeDrink=false;
             if("offer".equals(kind))identity=text(target.get("id"),128,OFFER);
             else if("customer".equals(kind))identity=text(target.get("id"),65,CUSTOMER);
             else if("legacy".equals(kind)){
@@ -84,6 +85,7 @@ final class ExactVoteArea {
                 Map<?,?> rawServing=object(target.get("serving"));
                 if(!rawServing.keySet().equals(Set.of("unit"))&&!rawServing.keySet().equals(Set.of("unit","ml")))throw NativeJson.invalid();
                 String unit=text(rawServing.get("unit"),5,"(?:drink|glass|ml)");
+                genericEuropeDrink="drink".equals(unit);
                 Integer ml=rawServing.containsKey("ml")?(int)NativeJson.integer(rawServing.get("ml"),1,2000):null;
                 EuropePrices.Serving serving=new EuropePrices.Serving(unit,ml);
                 if(SavedEuropeDrinkStore.validated(SavedVenueStore.reference(url,name),category,"happy_hour".equals(band)?1:0,currency,serving)==null)throw NativeJson.invalid();
@@ -95,6 +97,7 @@ final class ExactVoteArea {
             String drinkName=text(drink.get("name"),512,null),category=optional(drink.get("category"),32,null);
             if(category!=null&&RecommendationDrink.from(category)==null)throw NativeJson.invalid();
             String serving=display(drink.get("serving_label"),256);
+            if(genericEuropeDrink&&serving!=null&&(serving.equalsIgnoreCase("drink")||serving.equalsIgnoreCase("Drink singolo")))serving=null;
             long count=NativeJson.integer(item.get("count"),1,SAFE_INTEGER);
             rows.add(new Row(url,name,city,drinkName,category,serving,targetKey,count));
         }

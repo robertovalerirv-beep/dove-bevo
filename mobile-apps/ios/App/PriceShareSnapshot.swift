@@ -17,7 +17,11 @@ struct PriceShareSnapshot: Equatable {
     let location: String
 
     var amount: String { String(format: "%d,%02d %@", amountMinor / 100, amountMinor % 100, currency == "GBP" ? "£" : "€") }
-    var servingLabel: String { serving.isEmpty ? "Formato non dichiarato (dati precedenti)" : serving }
+    var servingLabel: String {
+        if serving.isEmpty { return "Formato non dichiarato (dati precedenti)" }
+        if ["drink", "drink singolo"].contains(serving.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) { return "" }
+        return serving
+    }
     var bandLabel: String { happyHour ? "Happy hour" : "Prezzo normale" }
     var confirmationLabel: String { confirmations == 1 ? "1 conferma" : "\(confirmations) conferme" }
     var tierLabel: String? { ["affare": "Affare", "giusto": "Giusto", "salato": "Salato"][tier] }

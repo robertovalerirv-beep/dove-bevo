@@ -201,7 +201,7 @@ final class SavedDrinkScreen {
             EuropePrices.Price current=SavedEuropeDrinkStore.current(item,cell);
             LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);NativeAppearance.card(card);card.setTag("europe_drink_favourite_"+item.key());
             TextView title=text(NativePricePresentation.category(item.drink)+" - "+item.venue.label,18);NativeAppearance.title(title);card.addView(title);
-            card.addView(text((item.band==1?"Happy hour":"Prezzo normale")+" · "+item.serving.label()+" · "+item.currency,15));
+            card.addView(text((item.band==1?"Happy hour":"Prezzo normale")+(item.serving.label().isEmpty()?"":" · "+item.serving.label())+" · "+item.currency,15));
             if(current!=null){
                 TextView amount=text(NativePricePresentation.amount(null,current),22);NativeAppearance.price(amount);card.addView(amount);
                 card.addView(text(NativePricePresentation.context(current),15));
@@ -213,7 +213,7 @@ final class SavedDrinkScreen {
                 retire();SavedEuropeDrinkStore.Result result=europeStore.remove(item);
                 if(result==SavedEuropeDrinkStore.Result.REMOVED||result==SavedEuropeDrinkStore.Result.NOT_FOUND)refresh();
                 else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});
-            remove.setTag("europe_drink_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+NativePricePresentation.category(item.drink)+" - "+item.venue.label+" - "+item.serving.label());card.addView(remove);
+            remove.setTag("europe_drink_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+NativePricePresentation.category(item.drink)+" - "+item.venue.label+(item.serving.label().isEmpty()?"":" - "+item.serving.label()));card.addView(remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
         }
         if(values.isEmpty()&&visibleOffers==0&&visibleCustomers==0&&visibleEurope==0&&(!saved.isEmpty()||!offers.isEmpty()||!customerOffers.isEmpty()||!europe.isEmpty()))rows.addView(text("Nessun drink salvato per questa scelta.",15));

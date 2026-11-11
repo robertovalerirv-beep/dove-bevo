@@ -38,7 +38,7 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 **Richiesta di Roberto:** su iPhone in Safari la mappa ha troppo poco spazio. Ricerca, «Scegli cosa bere» e «Vicino a me» su una riga, pulsanti più bassi, tasto «Aggiungi locale», prezzi un po' più piccoli per coprirsi meno, logo tenuto, SPEC aggiornata nello stesso commit. Mockup e piano approvati in chat l'11/11/2026.
 
 **Fatto**
-1. Intestazione su una riga (`app.tsx`, `DrinkMenu.tsx`): «Cerca» (nome «Cerca città o bar», solo icona sotto 360 px), menu dei drink col solo drink scelto («Scegli cosa bere» resta il nome accessibile), «Vicino a me».
+1. Intestazione su una riga (`app.tsx`, `DrinkMenu.tsx`): «Cerca» (nome «Cerca città o bar», solo icona sotto 420 px: con la parola il nome del drink si troncava), margine di 5 px sopra e sotto per l'anello di focus, menu dei drink col solo drink scelto («Scegli cosa bere» resta il nome accessibile), «Vicino a me».
 2. Controlli «slim» (`app.css`, solo sito): bersaglio 48 px, disegno 40 px con bordo, fondo e ombra su `::before`.
 3. Barra in basso: «Aggiungi prezzo» e «Aggiungi locale» (inglese «Add a place») su una riga fino a 320 px.
 4. Pin 28 px con cifre da 14 px, cerchi dei gruppi di raggio 14/17/20 (`maplibre-map.ts`).
@@ -50,10 +50,11 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 **Test cambiati e perché:** nome del tasto in `brand-map`, `brand-controls`, `a11y-views`, `english`, `bundle.test.mjs` (requisito cambiato); MB-04 legge il disegno (`::before`) dei controlli della mappa; il test della ricerca di `brand-search.spec.ts` diventa due (testo «Cerca» a 390 px, sola icona a 320 px, requisito cambiato). Nuovo `tests/e2e/map-space.spec.ts` (14 test, rossi prima del codice per il motivo giusto).
 
 **Prove**
-- Misure prima → dopo a 390×844: intestazione 125 → 49 px, barra 65 → 49 px, mappa 654 → 746 px (+92, +14%); a 402×713 (iPhone di Roberto): 523 → 615 px (+18%).
+- Misure prima → dopo a 390×844: intestazione 125 → 54 px, barra 65 → 54 px, mappa 654 → 736 px (+82, +13%); a 402×713 (iPhone di Roberto): 523 → 605 px (+16%).
 - Vitest 879/879; Playwright su Chromium (`chromium`, `-writes`, `-proposals`, `security`) 257/257; `eslint`, `prettier`, `tsc -b` e `tsc -p mobile-apps/web` verdi; `node scripts/check-feature-list.mjs` ok con il tag `spec-approved-15`.
 - Test nativi `mobile-apps/web`: 120/122; i due che falliscono («Tutti reveals…», «app map actions reclaim the footer…», layout a 320 px) falliscono uguali, con gli stessi numeri, sulla versione precedente `089f529` costruita a parte: preesistenti, non li ho toccati.
 - Screenshot 390×844 e 320×568, tema chiaro e scuro, con Spritz su Milano controllati a mano.
+- Revisori: `spec-reviewer` OK to close; `ux-a11y-reviewer` OK con tre note: anello di focus tagliato in alto e in basso e nome del drink troncato («Birra m…») corretti (margine di 5 px, ricerca a sola icona sotto 420 px, test nuovi); il messaggio «Avvicinati…» su due righe è accettato e scritto nell'ADR 0048. WebKit e Chromium 1248 installati nel container solo per l'hook `pre-push`.
 - Due errori miei trovati dai test e corretti: `position: relative` della regola «slim» spostava «Elenco» di 16 px; il selettore con `="1"` metteva il marcatore dell'app nella pagina del sito (test `headers.spec.ts`).
 
 **Da verificare a mano (Roberto)**

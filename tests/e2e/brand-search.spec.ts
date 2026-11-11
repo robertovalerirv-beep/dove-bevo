@@ -326,9 +326,10 @@ test("M4-13 results: exact name first, then the start of the name, nearest first
 });
 
 // SPEC 1.18: the search button says «Cerca» after its icon and keeps the whole phrase «Cerca città o bar» as its
-// name. On a very narrow phone (under 360 px, like 320) it is the icon alone, still a 48 px target with that name.
-test("the search button says «Cerca» after its icon at 390 px", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+// name. Under 420 px (every iPhone but the Max models) it is the icon alone, still a 48 px target with that name,
+// so the drink name keeps its room.
+test("the search button says «Cerca» after its icon at 430 px", async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 932 });
   await page.goto("/");
   const field = page.getByRole("button", { name: "Cerca città o bar" });
   await expect(field).toHaveText("Cerca");
@@ -343,15 +344,17 @@ test("the search button says «Cerca» after its icon at 390 px", async ({ page 
   expect((await field.boundingBox())?.height).toBe(48);
 });
 
-test("the search button is its icon alone at 320 px, with the same name and a 48 px target", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 320, height: 844 });
-  await page.goto("/");
-  const field = page.getByRole("button", { name: "Cerca città o bar" });
-  const box = await field.boundingBox();
-  expect(box?.width).toBe(48);
-  expect(box?.height).toBe(48);
-  const text = await field.locator(".search-field__text").boundingBox();
-  expect(text?.width ?? 0).toBeLessThanOrEqual(1); // visually hidden, still read by a screen reader
-});
+for (const width of [320, 390, 402]) {
+  test(`the search button is its icon alone at ${String(width)} px, with the same name and a 48 px target`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/");
+    const field = page.getByRole("button", { name: "Cerca città o bar" });
+    const box = await field.boundingBox();
+    expect(box?.width).toBe(48);
+    expect(box?.height).toBe(48);
+    const text = await field.locator(".search-field__text").boundingBox();
+    expect(text?.width ?? 0).toBeLessThanOrEqual(1); // visually hidden, still read by a screen reader
+  });
+}

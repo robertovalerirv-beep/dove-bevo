@@ -29,7 +29,8 @@
   background: var(--bg);
   border-bottom: var(--border-hair) solid var(--line-soft);
   padding: 0 var(--space-3);
-  padding-top: env(safe-area-inset-top);
+  /* The focus ring of a 48 px box is 5 px outside it (3 px wide, 2 px away): room on the top edge, or it is cut. */
+  padding-top: max(calc(var(--focus-width) + var(--focus-offset)), env(safe-area-inset-top));
 }
 .top__row {
   display: flex;
@@ -356,7 +357,8 @@
   gap: var(--space-2);
   align-items: stretch;
   padding: 0 var(--space-3);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Same room below for the focus ring of the two buttons. */
+  padding-bottom: max(calc(var(--focus-width) + var(--focus-offset)), env(safe-area-inset-bottom));
   background: var(--bg);
   border-top: var(--border-hair) solid var(--line-soft);
 }
@@ -1785,8 +1787,9 @@
 :root:not([data-dovebevo-mobile-shell]) .map__list {
   right: var(--space-2);
 }
-/* A very narrow phone (320 px): the search is its icon, 48 px; the words stay as the name of the button. */
-@media (max-width: 359px) {
+/* Under 420 px (every iPhone but the Max models) the search is its icon, 48 px: the word «Cerca» would leave the
+   drink name only 160 px and cut it («Birra m…»). The words stay as the name of the button. */
+@media (max-width: 419px) {
   :root:not([data-dovebevo-mobile-shell]) .search-field {
     padding-inline: 0;
     justify-content: center;

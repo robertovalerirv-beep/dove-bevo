@@ -180,3 +180,27 @@ test("SPEC 1.18 the coverage sentence is one line at 390 px", async ({ page }) =
   const status = await box(mapStatus(page));
   expect(status.height, "one line of text plus the pill").toBeLessThanOrEqual(38);
 });
+
+// The default drink is read in full where there is room (360 px and more), and the focus ring of a control of the
+// header or of the bar is never cut by the edge of the screen.
+for (const width of [390, 360]) {
+  test(`SPEC 1.18 ${String(width)} px: the drink name is not cut`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await open(page, "light", "it");
+    const summary = page.getByTestId("drink-summary");
+    await expect(summary).toHaveText("Birra media");
+    expect(await summary.evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
+  });
+}
+
+test("SPEC 1.18 the focus ring of the header and of the bar stays inside the screen", async ({
+  page,
+}) => {
+  await open(page, "dark", "it");
+  const ring = 5; // 3 px wide, 2 px away (MB-04)
+  const top = page.getByRole("button", { name: "Cerca città o bar" });
+  const bottom = page.getByRole("button", { name: "Aggiungi prezzo" });
+  expect((await box(top)).y).toBeGreaterThanOrEqual(ring);
+  const b = await box(bottom);
+  expect(b.y + b.height + ring).toBeLessThanOrEqual(844);
+});

@@ -179,8 +179,8 @@ internal sealed class BookmarkPriceClient
             ? null : category;
     }
 
-    // Keep the app's Birra media meaning aligned with the mobile menu: a small
-    // or unknown-size draft must stay under its exact saved name.
+    // A quantified 400–600 ml serving or an explicit medium label can be
+    // compared as Birra media; small, conflicting and unknown sizes cannot.
     private static bool IsMediumDraftBeer(JsonElement serving)
     {
         if (serving.ValueKind != JsonValueKind.Object) return false;
@@ -212,8 +212,9 @@ internal sealed class BookmarkPriceClient
                 labelledMl is not null && Math.Abs(labelledMl.Value - ml) > 1) return false;
             return ml is >= 400 and <= 600;
         }
-        if (label is null || !MediumBeer.IsMatch(label) || LargeBeer.IsMatch(label)) return false;
-        return labelledMl is null || labelledMl is >= 400 and <= 600;
+        if (label is null || LargeBeer.IsMatch(label)) return false;
+        return labelledMl is null ? MediumBeer.IsMatch(label)
+            : labelledMl is >= 400 and <= 600;
     }
 
     private static async Task<string?> CustomerAsync(SaveAction action, CancellationToken cancellation)

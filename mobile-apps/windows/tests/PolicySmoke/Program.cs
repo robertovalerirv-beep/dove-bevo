@@ -234,11 +234,15 @@ Require(BookmarkPriceClient.ParseOffer(offerPriceJson, offerAction!).Price?.Cont
     "exact menu offer price missing");
 foreach (var (label, ml, expected) in new (string? Label, int? Ml, string? Category)[] {
     ("Media", null, "beer_draft"),
+    ("50 cl", null, "beer_draft"),
     ("50 cl", 500, "beer_draft"),
     ("Pint", 568, "beer_draft"),
+    ("25 cl", null, null),
     ("Piccola", 250, null),
     ("Piccola", 500, null),
     (null, null, null),
+    ("Birra alla spina", null, null),
+    ("Media / Grande 50 cl", null, null),
     ("Media 25 cl", null, null),
     ("Media 25 cl", 500, null),
 })

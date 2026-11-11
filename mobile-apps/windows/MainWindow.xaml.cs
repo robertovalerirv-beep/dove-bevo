@@ -500,7 +500,8 @@ public partial class MainWindow : Window
             // The catalogue's beer_draft code alone does not mean a medium beer.
             if (action.Kind == "europe" && action.Item == "beer_draft" &&
                 (action.Serving is null || !action.Serving.StartsWith("ml:", StringComparison.Ordinal) ||
-                 !int.TryParse(action.Serving[3..], out var ml) || ml is < 400 or > 600))
+                 !int.TryParse(action.Serving[3..], out var ml) ||
+                 !BookmarkPriceClient.IsMediumDraftBeer(bookmark.DrinkName, ml)))
                 return "name:" + bookmark.DrinkName;
             return "code:" + action.Item;
         }

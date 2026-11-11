@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Web.WebView2.Core;
 
 namespace DoveBevo.Windows;
@@ -15,8 +16,15 @@ public partial class MainWindow : Window
     private readonly AreaVotesClient areaVotes = new();
     private readonly MapRouteTracker mapRoutes = new();
     private readonly DiscoveryClient discovery = new();
+    private readonly DiscoveryCityDirectory cityDirectory = new();
     private FeaturedDiscoveryCard[] featuredCards = [];
     private DiscoveryArea? discoveryArea;
+    private DiscoveryArea? discoveryMapArea;
+    private DiscoveryLocation? selectedDiscoveryCity;
+    private IReadOnlyList<DiscoveryLocation> discoveryCities = [];
+    private CancellationTokenSource? cityCancellation;
+    private int cityLoadGeneration;
+    private bool changingCityChoices;
     private CancellationTokenSource? discoveryCancellation;
     private bool starting;
     private bool ready;
@@ -290,6 +298,7 @@ public partial class MainWindow : Window
             discoveryCancellation?.Cancel();
             discoveryCancellation?.Dispose();
             discoveryCancellation = null;
+            RetireCities();
             DiscoveryPanel.Visibility = Visibility.Collapsed;
         }
         else CloseDiscovery();
@@ -350,19 +359,19 @@ public partial class MainWindow : Window
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ErrorPanel.Visibility = Visibility.Collapsed;
         DiscoveryPanel.Visibility = Visibility.Collapsed;
-        DiscoveryCity.ItemsSource = mapArea is null
-            ? DiscoveryClient.Cities
-            : new[] { new DiscoveryLocation("Zona della mappa", mapArea) }
-                .Concat(DiscoveryClient.Cities).ToArray();
-        DiscoveryCity.SelectedIndex = mapArea is null
-            ? mapRoutes.PreferredCityIndex(DiscoveryClient.Cities) : 0;
-        discoveryArea = ((DiscoveryLocation)DiscoveryCity.SelectedItem).Area;
+        discoveryMapArea = mapArea;
+        discoveryArea = mapArea;
+        selectedDiscoveryCity = null;
+        DiscoveryCity.Content = mapArea is null ? "Scegli città ⌄" : "Zona della mappa ⌄";
+        DiscoveryCityPopup.IsOpen = false;
         DiscoveryDrink.ItemsSource = DiscoveryClient.Categories;
         DiscoveryDrink.SelectedIndex = 1;
         DiscoveryPanel.Visibility = Visibility.Visible;
         ShowWebsiteIfNoOverlay();
         UpdateButtons();
-        await LoadDiscovery();
+        if (discoveryArea is null) StatusText.Text = "Caricamento città per Scopri…";
+        _ = LoadDiscoveryCities();
+        if (discoveryArea is not null) await LoadDiscovery();
     }
     private void Privacy_Click(object sender, RoutedEventArgs e) => Navigate(NavigationPolicy.Privacy);
 
@@ -394,7 +403,11 @@ public partial class MainWindow : Window
             returnDestination = NativeReturnDestination.None;
             if (source == NativeReturnDestination.Favourites) FavouritesPanel.Visibility = Visibility.Visible;
             else if (source == NativeReturnDestination.Recommendations) RecommendationsPanel.Visibility = Visibility.Visible;
-            else DiscoveryPanel.Visibility = Visibility.Visible;
+            else
+            {
+                DiscoveryPanel.Visibility = Visibility.Visible;
+                if (discoveryCities.Count == 0) _ = LoadDiscoveryCities();
+            }
             ShowWebsiteIfNoOverlay();
             UpdateButtons();
             return;
@@ -639,11 +652,127 @@ public partial class MainWindow : Window
         if (DiscoveryPanel.Visibility == Visibility.Visible) await LoadDiscovery();
     }
 
-    private async void DiscoveryCity_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void DiscoveryCity_Click(object sender, RoutedEventArgs e)
     {
-        if (DiscoveryCity.SelectedItem is not DiscoveryLocation location) return;
-        discoveryArea = location.Area;
+        DiscoveryCitySearch.Text = "";
+        RefreshDiscoveryCityChoices();
+        DiscoveryCityPopup.IsOpen = true;
+        DiscoveryCitySearch.Focus();
+    }
+
+    private void DiscoveryCitySearch_TextChanged(object sender, TextChangedEventArgs e) =>
+        RefreshDiscoveryCityChoices();
+
+    private void DiscoveryCitySearch_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape) { DiscoveryCityPopup.IsOpen = false; e.Handled = true; }
+        if (e.Key != Key.Enter || DiscoveryCityChoices.Items.Count == 0) return;
+        if (DiscoveryCityChoices.Items[0] is DiscoveryLocation first)
+        {
+            DiscoveryCityChoices.SelectedItem = first;
+            e.Handled = true;
+        }
+    }
+
+    private async void DiscoveryCityChoices_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (changingCityChoices || DiscoveryCityPopup.IsOpen != true ||
+            DiscoveryCityChoices.SelectedItem is not DiscoveryLocation choice) return;
+        selectedDiscoveryCity = choice.Country.Length == 0 ? null : choice;
+        discoveryArea = choice.Area;
+        DiscoveryCity.Content = choice + " ⌄";
+        DiscoveryCityPopup.IsOpen = false;
         if (DiscoveryPanel.Visibility == Visibility.Visible) await LoadDiscovery();
+    }
+
+    private void DiscoveryCityRetry_Click(object sender, RoutedEventArgs e) => _ = LoadDiscoveryCities();
+
+    private void RefreshDiscoveryCityChoices()
+    {
+        if (DiscoveryCityChoices is null || DiscoveryCitySearch is null) return;
+        var blank = DiscoveryCitySearch.Text.Trim().Length == 0;
+        var choices = DiscoveryCityDirectory.Visible(discoveryCities, DiscoveryCitySearch.Text);
+        changingCityChoices = true;
+        DiscoveryCityChoices.ItemsSource = blank && discoveryMapArea is not null
+            ? new[] { new DiscoveryLocation("Zona della mappa", discoveryMapArea) }.Concat(choices).ToArray()
+            : choices;
+        DiscoveryCityChoices.SelectedIndex = -1;
+        changingCityChoices = false;
+        if (DiscoveryCityMessage is not null && DiscoveryCityChoices.Items.Count == 0 &&
+            DiscoveryCityRetry?.Visibility != Visibility.Visible)
+            DiscoveryCityMessage.Text = "Nessuna città trovata.";
+    }
+
+    private async Task LoadDiscoveryCities()
+    {
+        RetireCities();
+        var request = new CancellationTokenSource();
+        cityCancellation = request;
+        var generation = cityLoadGeneration;
+        DiscoveryCityMessage.Text = "Caricamento città…";
+        DiscoveryCityRetry.Visibility = Visibility.Collapsed;
+        try
+        {
+            var result = await cityDirectory.LoadAsync(request.Token);
+            if (request.IsCancellationRequested || generation != cityLoadGeneration ||
+                DiscoveryPanel.Visibility != Visibility.Visible) return;
+            discoveryCities = result.Cities;
+            DiscoveryCityRetry.Visibility = result.ItalianUnavailable || result.EuropeanUnavailable ||
+                result.Cities.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            DiscoveryCityMessage.Text = result.Cities.Count == 0 ? "Elenco città non disponibile. Riprova."
+                : result.ItalianUnavailable || result.EuropeanUnavailable ?
+                    "Elenco città parziale. Riprova per altre città." : "";
+            var previous = selectedDiscoveryCity;
+            var missingSelectedCity = false;
+            if (previous is not null)
+            {
+                var updated = result.Cities.FirstOrDefault(city => city.Key == previous.Key);
+                if (updated is not null)
+                {
+                    selectedDiscoveryCity = updated;
+                    discoveryArea = updated.Area;
+                    DiscoveryCity.Content = updated + " ⌄";
+                }
+                else if (!(previous.Country == "IT" ? result.ItalianUnavailable : result.EuropeanUnavailable))
+                {
+                    selectedDiscoveryCity = null;
+                    discoveryArea = discoveryMapArea;
+                    missingSelectedCity = true;
+                    DiscoveryCity.Content = discoveryMapArea is null ? "Scegli città ⌄" : "Zona della mappa ⌄";
+                    DiscoveryCityMessage.Text = discoveryMapArea is null
+                        ? "La città selezionata non è più disponibile. Scegline un'altra."
+                        : "La città selezionata non è più disponibile. Mostro la zona della mappa.";
+                }
+            }
+            if (discoveryArea is null && !missingSelectedCity && result.Cities.Count > 0)
+            {
+                var preferred = result.Cities[mapRoutes.PreferredCityIndex(result.Cities)];
+                selectedDiscoveryCity = preferred;
+                discoveryArea = preferred.Area;
+                DiscoveryCity.Content = preferred + " ⌄";
+            }
+            RefreshDiscoveryCityChoices();
+            if (discoveryArea is null) StatusText.Text = result.Cities.Count == 0
+                ? "Elenco città non disponibile. Riprova per cercare i prezzi."
+                : "Scegli una città per cercare i prezzi.";
+            if (discoveryArea is not null && (previous is null || previous.Area != discoveryArea))
+                await LoadDiscovery();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            if (request.IsCancellationRequested || generation != cityLoadGeneration) return;
+            DiscoveryCityMessage.Text = "Elenco città non disponibile. Riprova.";
+            DiscoveryCityRetry.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void RetireCities()
+    {
+        cityLoadGeneration++;
+        cityCancellation?.Cancel();
+        cityCancellation?.Dispose();
+        cityCancellation = null;
     }
 
     private async void ReloadDiscovery_Click(object sender, RoutedEventArgs e) => await LoadDiscovery();
@@ -685,11 +814,15 @@ public partial class MainWindow : Window
 
     private void CloseDiscovery()
     {
+        DiscoveryCityPopup.IsOpen = false;
+        RetireCities();
         discoveryCancellation?.Cancel();
         discoveryCancellation?.Dispose();
         discoveryCancellation = null;
         DiscoveryPanel.Visibility = Visibility.Collapsed;
         discoveryArea = null;
+        discoveryMapArea = null;
+        selectedDiscoveryCity = null;
         featuredCards = [];
         FeaturedCards.ItemsSource = featuredCards;
         UpdateFeaturedVisibility();

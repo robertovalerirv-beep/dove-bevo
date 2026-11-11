@@ -65,10 +65,11 @@ jobs:
           cache: npm
       - run: npm ci
       # Temporary (11/11/2026): Canonical's nameservers (ns*.canonical.com) do not answer, so *.ubuntu.com does not
-      # resolve and apt fails. The kernel.org Ubuntu mirror goes first in the runner's mirror list; apt still checks
-      # every index against the Ubuntu archive key. Remove once ubuntu.com resolves again.
+      # resolve and apt fails. The runner's mirror list holds only the kernel.org Ubuntu mirror (a line without a
+      # priority would be tried last); apt still checks every index against the Ubuntu archive key. Remove once
+      # ubuntu.com resolves again.
       - name: Ubuntu mirror outside ubuntu.com (temporary)
-        run: sudo sed -i '1i https://mirrors.edge.kernel.org/ubuntu' /etc/apt/apt-mirrors.txt && cat /etc/apt/apt-mirrors.txt
+        run: echo 'https://mirrors.edge.kernel.org/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt
       - run: npx playwright install --with-deps chromium webkit
       - name: App presentation interaction regressions
         run: node --test mobile-apps/presentation/tests/*.test.mjs
@@ -91,10 +92,11 @@ jobs:
         with:
           node-version: 24
       # Temporary (11/11/2026): Canonical's nameservers (ns*.canonical.com) do not answer, so *.ubuntu.com does not
-      # resolve and apt fails. The kernel.org Ubuntu mirror goes first in the runner's mirror list; apt still checks
-      # every index against the Ubuntu archive key. Remove once ubuntu.com resolves again.
+      # resolve and apt fails. The runner's mirror list holds only the kernel.org Ubuntu mirror (a line without a
+      # priority would be tried last); apt still checks every index against the Ubuntu archive key. Remove once
+      # ubuntu.com resolves again.
       - name: Ubuntu mirror outside ubuntu.com (temporary)
-        run: sudo sed -i '1i https://mirrors.edge.kernel.org/ubuntu' /etc/apt/apt-mirrors.txt && cat /etc/apt/apt-mirrors.txt
+        run: echo 'https://mirrors.edge.kernel.org/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt
       - run: sudo apt-get update && sudo apt-get install -y osmium-tool
       - run: osmium cat tests/fixtures/osm/sample.osm -o "$RUNNER_TEMP/sample.osm.pbf"
       - run: scripts/osm-import/import.sh "$RUNNER_TEMP/sample.osm.pbf" "$RUNNER_TEMP/data" fixture

@@ -48,7 +48,11 @@ final class DiscoveryCitiesTests: XCTestCase {
     @MainActor func testPickerShowsItalianThenEuropeanCitiesSearchesAndSelectsAtLargeText() throws {
         let directory = DelayedDiscoveryCityDirectory()
         var selected: DiscoveryCity?
-        let picker = DiscoveryCityPickerController(directory: directory, selected: nil) { selected = $0 }
+        // The same source-backed city can have a slightly different averaged
+        // centre after catalogue ordering changes; its checkmark must remain.
+        let previouslySelected = DiscoveryCity(id: "catalog-FR|paris", name: "Paris", country: "FR",
+                                               latitude: 48.8566000001, longitude: 2.3522000001)
+        let picker = DiscoveryCityPickerController(directory: directory, selected: previouslySelected) { selected = $0 }
         let mounted = try OwnedReferenceWindow(root: UINavigationController(rootViewController: picker),
                                                category: .accessibilityExtraExtraExtraLarge)
         defer { mounted.close() }
@@ -66,9 +70,35 @@ final class DiscoveryCitiesTests: XCTestCase {
         if let search = picker.navigationItem.searchController { picker.updateSearchResults(for: search) }
         XCTAssertEqual(picker.tableView.numberOfRows(inSection: 0), 0)
         XCTAssertEqual(picker.tableView.numberOfRows(inSection: 1), 1)
+        let paris = picker.tableView(picker.tableView, cellForRowAt: IndexPath(row: 0, section: 1))
+        XCTAssertEqual(paris.accessoryType, .checkmark)
         picker.tableView(picker.tableView, didSelectRowAt: IndexPath(row: 0, section: 1))
         XCTAssertEqual(selected?.name, "Paris")
         mounted.attach(to: self, name: "Scopri-city-picker-XXXL")
+    }
+
+    @MainActor func testCityButtonOpensNativePickerAndCancelKeepsCurrentArea() throws {
+        let directory = DelayedDiscoveryCityDirectory()
+        let controller = DiscoveryViewController(client: CityDiscoveryService(), cityDirectory: directory,
+                                                 activityCheck: { true }, onOpen: { _ in }, onMap: {})
+        let mounted = try OwnedReferenceWindow(root: UINavigationController(rootViewController: controller))
+        defer { mounted.close() }
+        let button = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? UIButton }
+            .first { $0.accessibilityIdentifier == "discovery.citySelector" })
+        XCTAssertGreaterThanOrEqual(button.bounds.height, 48)
+        button.sendActions(for: .touchUpInside)
+        let opened = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            controller.presentedViewController is UINavigationController
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [opened], timeout: 5), .completed)
+        let navigation = try XCTUnwrap(controller.presentedViewController as? UINavigationController)
+        let picker = try XCTUnwrap(navigation.topViewController as? DiscoveryCityPickerController)
+        XCTAssertEqual(picker.navigationItem.leftBarButtonItem?.title, "Annulla")
+        XCTAssertEqual(directory.requests.count, 1)
+        directory.complete(0, .success(cityFixture()))
+        XCTAssertEqual(picker.tableView.numberOfRows(inSection: 0), 2)
+        navigation.dismiss(animated: false)
+        XCTAssertNil(controller.area)
     }
 
     @MainActor func testPickerShowsRetryOnReadErrorAndCitySelectionLoadsAreaWithoutMap() throws {

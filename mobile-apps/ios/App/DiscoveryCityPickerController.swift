@@ -110,7 +110,9 @@ final class DiscoveryCityPickerController: UITableViewController, UISearchResult
         cell.detailTextLabel?.text = city.countryName
         cell.detailTextLabel?.font = .preferredFont(forTextStyle: .caption1)
         cell.detailTextLabel?.adjustsFontForContentSizeCategory = true
-        cell.accessoryType = city == selected ? .checkmark : .disclosureIndicator
+        // A catalogue centre is averaged from venue coordinates, whose
+        // iteration order can vary. The source-backed city ID is stable.
+        cell.accessoryType = city.id == selected?.id ? .checkmark : .disclosureIndicator
         cell.accessibilityIdentifier = "discovery.city.\(city.id)"
         cell.accessibilityLabel = "\(city.name), \(city.countryName)"
         cell.accessibilityHint = "Mostra i prezzi dei drink nella zona centrale di \(city.name)"

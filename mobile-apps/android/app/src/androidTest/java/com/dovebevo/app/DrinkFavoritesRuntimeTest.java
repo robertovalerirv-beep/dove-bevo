@@ -65,6 +65,34 @@ public final class DrinkFavoritesRuntimeTest {
         onMain(()->{assertEquals(1,countTag(screen.view(),"drink_favourite_open"));screen.view().findViewWithTag("drink_favourite_open").performClick();});
         assertEquals(URL+"&drink=spritz&hh=1",opened.get());
     }
+    @Test public void threeCompactPricesFitAndSourceDetailsExpandWithoutChangingSavedIdentity()throws Exception {
+        drinks.save(URL,"Saved name",RecommendationDrink.BEER_DRAFT,0);
+        drinks.save(URL,"Saved name",RecommendationDrink.SPRITZ,0);
+        drinks.save(URL,"Saved name",RecommendationDrink.NEGRONI,0);
+        byte[] before=new SavedVenueFile(directory,"saved-drinks-v1").read();
+        showScreen(new AtomicReference<>(),false);awaitRows("8,00");
+        onMain(()->{
+            assertEquals(3,countTag(screen.view(),"drink_favourite_open"));
+            View third=screen.view().findViewWithTag("drink_favourite_n123/negroni/0");
+            assertNotNull(third);
+            android.graphics.Rect visible=new android.graphics.Rect();
+            assertTrue("Third favourite should be on screen without scrolling",third.getGlobalVisibleRect(visible));
+            assertTrue("Third compact row should fit on the test phone",visible.height()>=third.getHeight()-dp(4));
+            String summary=visibleText(third);
+            assertTrue(summary.contains("Negroni"));assertTrue(summary.contains("Saved name"));
+            assertTrue(summary.contains("8,00"));assertTrue(summary.contains("EUR"));
+            View detail=third.findViewWithTag("details_content_"+third.getTag());
+            assertEquals(View.GONE,detail.getVisibility());
+            Button toggle=(Button)third.findViewWithTag("details_toggle_"+third.getTag());
+            assertNotNull(toggle);assertTrue(toggle.getMinimumHeight()>=dp(48));
+            assertFalse(summary.contains("02/11/2026"));
+            toggle.performClick();
+            assertEquals(View.VISIBLE,detail.getVisibility());
+            assertTrue(visibleText(third).contains("02/11/2026"));
+            toggle.performClick();assertEquals(View.GONE,detail.getVisibility());
+        });
+        assertArrayEquals(before,new SavedVenueFile(directory,"saved-drinks-v1").read());
+    }
     @Test public void oldPlaceConversionKeepsOldRecordUntilDrinkWriteSucceeds()throws Exception {
         assertEquals(SavedVenueStore.Result.SAVED,venues.save(URL,"Old saved place"));
         String savedUrl=venues.load().get(0).url;
@@ -106,7 +134,7 @@ public final class DrinkFavoritesRuntimeTest {
             if(url.endsWith("health"))return bytes("{\"status\":\"ok\",\"data_version\":\"20261031\"}");
             if(url.endsWith("catalog.json"))throw new IOException("No foreign fixture");
             if(url.contains("/data/"))return bytes("{\"c\":[[1,\"Milano\"]],\"v\":[[\"n123\",\"Locale attuale\",1,45.4642,9.19,\"\",0]]}");
-            if(url.endsWith("/api/prices/u0nd9"))return bytes(hidden?"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[\"n123\"]}":"{\"p\":[[\"n123\",\"beer_draft\",0,400,\"2026-11-02\",0,0],[\"n123\",\"spritz\",1,700,\"2026-11-02\",0,0]],\"u\":[],\"pend\":[],\"h\":[]}");
+            if(url.endsWith("/api/prices/u0nd9"))return bytes(hidden?"{\"p\":[],\"u\":[],\"pend\":[],\"h\":[\"n123\"]}":"{\"p\":[[\"n123\",\"beer_draft\",0,400,\"2026-11-02\",0,0],[\"n123\",\"spritz\",1,700,\"2026-11-02\",0,0],[\"n123\",\"spritz\",0,650,\"2026-11-02\",0,0],[\"n123\",\"negroni\",0,800,\"2026-11-02\",0,0]],\"u\":[],\"pend\":[],\"h\":[]}");
             throw new IOException("Unexpected owned URL");
         },()->"2026-11-02");
         onMain(()->{favorites=new FavoritesScreen(activity,venues,opened::set,()->true,new FavoritesLoader(client,activity::runOnUiThread),drinks,new FavoritesLoader(client,activity::runOnUiThread));activity.setContentView(favorites.view());favorites.show();try{java.lang.reflect.Field f=FavoritesScreen.class.getDeclaredField("drinkPane");f.setAccessible(true);screen=(SavedDrinkScreen)f.get(favorites);}catch(ReflectiveOperationException error){throw new AssertionError(error);}});
@@ -119,6 +147,8 @@ public final class DrinkFavoritesRuntimeTest {
     private Button confirm(){return (Button)dialog().getWindow().getDecorView().findViewWithTag("save_drink_confirm");}
     private int countTag(View root,String tag){int count=tag.equals(root.getTag())?1:0;if(root instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)root;for(int i=0;i<group.getChildCount();i++)count+=countTag(group.getChildAt(i),tag);}return count;}
     private String allText(View view){StringBuilder text=new StringBuilder();if(view instanceof android.widget.TextView)text.append(((android.widget.TextView)view).getText());if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++)text.append(' ').append(allText(group.getChildAt(i)));}return text.toString();}
+    private String visibleText(View view){if(view.getVisibility()!=View.VISIBLE)return "";StringBuilder text=new StringBuilder();if(view instanceof android.widget.TextView)text.append(((android.widget.TextView)view).getText());if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++)text.append(' ').append(visibleText(group.getChildAt(i)));}return text.toString();}
+    private int dp(int value){return Math.round(value*activity.getResources().getDisplayMetrics().density);}
     private void onMain(Runnable action){instrumentation.runOnMainSync(action);instrumentation.waitForIdleSync();}
     private static byte[] bytes(String value){return value.getBytes(StandardCharsets.UTF_8);}
 }

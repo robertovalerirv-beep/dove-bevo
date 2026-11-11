@@ -77,6 +77,42 @@ final class SavedDrinkControllerTests: XCTestCase {
         }
     }
 
+    @MainActor func testThreeSavedPricesFitAndKeepFullEvidenceInNativeDetails() throws {
+        try withStores { venueStore, drinkStore in
+            let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!
+            for code in ["beer_draft", "spritz", "negroni"] {
+                try drinkStore.save(SavedDrink.validated(url: url, label: "Bar Milano", drink: code, band: .normal))
+            }
+            let client = DrinkPaneFixture()
+            let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
+                                                        client: client, activityCheck: { true }) { _ in }
+            try withMounted(controller) { _ in
+                guard waitUntil("Saved drinks should refresh", { client.last != nil }) else { return }
+                let current = CurrentFavouriteVenue(key: "n123", name: "Bar Milano", prices: [
+                    FavouritePrice(drink: "beer_draft", band: .normal, cents: 500, observedOn: "2026-11-02", confirmations: 1, quarantined: false),
+                    FavouritePrice(drink: "spritz", band: .normal, cents: 650, observedOn: "2026-11-02", confirmations: 1, quarantined: false),
+                    FavouritePrice(drink: "negroni", band: .normal, cents: 800, observedOn: "2026-11-02", confirmations: 1, quarantined: false)
+                ])
+                client.complete(FavouriteComparisonSnapshot(venues: [url: current], unavailable: []))
+                controller.tableView.layoutIfNeeded()
+                XCTAssertEqual(controller.tableView.numberOfRows(inSection: 0), 3)
+                let last = IndexPath(row: 2, section: 0)
+                XCTAssertLessThanOrEqual(controller.tableView.rectForRow(at: last).maxY,
+                                         controller.tableView.bounds.height + controller.tableView.contentOffset.y + 8,
+                                         "Three priced favourites should be visible on the 402 x 800 test phone")
+                let cell = controller.tableView(controller.tableView, cellForRowAt: last)
+                XCTAssertEqual(cell.accessoryType, .detailDisclosureButton)
+                XCTAssertEqual((cell.contentConfiguration as? UIListContentConfiguration)?.secondaryTextProperties.numberOfLines, 2)
+                XCTAssertTrue(cell.accessibilityValue?.contains("€") == true)
+                controller.tableView(controller.tableView, accessoryButtonTappedForRowWith: last)
+                guard waitUntil("Native details should open", { controller.presentedViewController is UIAlertController }) else { return }
+                let details = controller.presentedViewController as? UIAlertController
+                XCTAssertTrue(details?.message?.contains("2026") == true)
+                details?.dismiss(animated: false)
+            }
+        }
+    }
+
     @MainActor func testOldSavedPlaceConvertsOnlyAfterExplicitDrinkChoiceInSameTab() throws {
         try withStores { venueStore, drinkStore in
             let url = URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")!

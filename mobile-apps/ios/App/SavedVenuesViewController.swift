@@ -42,6 +42,9 @@ final class SavedVenuesViewController: UITableViewController {
     private var drink = DrinkCategory.all[0]
     private var band = ComparisonBand.normal
     private var renderedCategory: UIContentSizeCategory?
+    private var favouriteDetailLineLimit: Int {
+        traitCollection.preferredContentSizeCategory.isAccessibilityCategory ? 0 : 2
+    }
     var isDestinationSelected: (() -> Bool)?
     private let drinkButton = UIButton(type: .system)
     private let bandControl = ComparisonBandSelector()
@@ -440,11 +443,12 @@ final class SavedVenuesViewController: UITableViewController {
                 ?? (busy ? "Caricamento del prezzo online…" : "Prezzo non disponibile ora. Il preferito resta salvato.")
             content.secondaryText = "\(context)\n\(state)"
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = 0
-            content.textToSecondaryTextVerticalPadding = 8
+            content.secondaryTextProperties.numberOfLines = favouriteDetailLineLimit
+            content.textToSecondaryTextVerticalPadding = 4
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
             cell.backgroundConfiguration = NativeAppearance.card()
-            cell.accessoryType = .disclosureIndicator
+            cell.accessoryType = .detailDisclosureButton
             cell.accessibilityIdentifier = "savedEurope.\(item.identity)"
             cell.accessibilityLabel = "\(item.category.name), \(item.venue.label), \(context)"
             cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
@@ -459,11 +463,12 @@ final class SavedVenuesViewController: UITableViewController {
                 ?? (menuBusy ? "Caricamento del prezzo online…" : "Segnalazione non disponibile ora. Il preferito resta salvato.")
             content.secondaryText = [serving, state].filter { !$0.isEmpty }.joined(separator: "\n")
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = 0
-            content.textToSecondaryTextVerticalPadding = 8
+            content.secondaryTextProperties.numberOfLines = favouriteDetailLineLimit
+            content.textToSecondaryTextVerticalPadding = 4
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
             cell.backgroundConfiguration = NativeAppearance.card()
-            cell.accessoryType = .disclosureIndicator
+            cell.accessoryType = .detailDisclosureButton
             cell.accessibilityIdentifier = "savedCustomer.\(item.itemKey)"
             cell.accessibilityLabel = "\(live?.itemName ?? item.name), \(live?.venueName ?? item.venue.label)"
             cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
@@ -500,11 +505,12 @@ final class SavedVenuesViewController: UITableViewController {
                 content.secondaryText = [savedServing, state].filter { !$0.isEmpty }.joined(separator: "\n")
             }
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = 0
-            content.textToSecondaryTextVerticalPadding = 8
+            content.secondaryTextProperties.numberOfLines = favouriteDetailLineLimit
+            content.textToSecondaryTextVerticalPadding = 4
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
             cell.backgroundConfiguration = NativeAppearance.card()
-            cell.accessoryType = .disclosureIndicator
+            cell.accessoryType = .detailDisclosureButton
             cell.accessibilityIdentifier = "savedOffer.\(item.offerID)"
             cell.accessibilityLabel = "\(live?.itemName ?? item.name), \(live?.venueName ?? item.venue.label)"
             cell.accessibilityValue = content.secondaryText?.replacingOccurrences(of: "\n", with: ", ")
@@ -514,17 +520,17 @@ final class SavedVenuesViewController: UITableViewController {
             let saved = drinkRows[indexPath.row].saved
             var content = cell.defaultContentConfiguration()
             content.text = menuPrice.venueName
-            content.secondaryText = "\(saved.category.name) · \(saved.band.name)\n" +
+            content.secondaryText = "\(menuPrice.amount) · \(saved.band.name)\n" +
                 [menuPrice.itemName, menuPrice.serving].filter { !$0.isEmpty }.joined(separator: " · ") +
-                "\n\(menuPrice.amount)\n\(menuPrice.evidence)"
+                "\n\(menuPrice.evidence)"
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
             content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = 0
-            content.textToSecondaryTextVerticalPadding = 8
-            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 12)
+            content.secondaryTextProperties.numberOfLines = favouriteDetailLineLimit
+            content.textToSecondaryTextVerticalPadding = 4
+            content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
             cell.backgroundConfiguration = NativeAppearance.card()
-            cell.accessoryType = .disclosureIndicator
+            cell.accessoryType = .detailDisclosureButton
             cell.accessibilityIdentifier = "savedDrink.\(saved.identity).menu.\(menuPrice.id)"
             cell.accessibilityLabel = "\(saved.category.name), \(saved.band.name), \(menuPrice.itemName), \(menuPrice.venueName)"
             cell.accessibilityValue = [menuPrice.amount, menuPrice.serving, menuPrice.evidence].filter { !$0.isEmpty }.joined(separator: ", ")
@@ -561,12 +567,12 @@ final class SavedVenuesViewController: UITableViewController {
         content.text = row.name; content.secondaryAttributedText = visual
         content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection); content.textProperties.numberOfLines = 0
         content.textProperties.color = NativeAppearance.ink
-        content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection); content.secondaryTextProperties.numberOfLines = 0
-        content.textToSecondaryTextVerticalPadding = 8
-        content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 12)
+        content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection); content.secondaryTextProperties.numberOfLines = showingDrinks ? favouriteDetailLineLimit : 0
+        content.textToSecondaryTextVerticalPadding = showingDrinks ? 4 : 8
+        content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: showingDrinks ? 8 : 20, leading: 16, bottom: showingDrinks ? 8 : 20, trailing: 12)
         cell.backgroundConfiguration = NativeAppearance.card()
         cell.tintColor = NativeAppearance.muted
-        cell.contentConfiguration = content; cell.accessoryType = .disclosureIndicator
+        cell.contentConfiguration = content; cell.accessoryType = showingDrinks ? .detailDisclosureButton : .disclosureIndicator
         cell.accessibilityIdentifier = "savedVenue.\(row.saved.url.lastPathComponent)"
         if let price = row.europePrice { cell.accessibilityIdentifier = "savedVenue.\(row.saved.url.lastPathComponent).\(price.group)" }
         if let savedDrink { cell.accessibilityIdentifier = "savedDrink.\(savedDrink.identity).\(row.displayPrice?.group ?? "unavailable")" }
@@ -574,6 +580,16 @@ final class SavedVenuesViewController: UITableViewController {
         cell.accessibilityValue = "\(category.name), \(details)"
         cell.accessibilityHint = "Apre il locale nella mappa"
         return cell
+    }
+
+    override func tableView(_ tableView: UITableView, accessoryButtonTappedForRowWith indexPath: IndexPath) {
+        guard showingDrinks, !(unifiedDrinks && indexPath.section == 1),
+              let cell = tableView.cellForRow(at: indexPath) else { return }
+        let alert = UIAlertController(title: cell.accessibilityLabel ?? "Dettagli del prezzo",
+                                      message: cell.accessibilityValue ?? "Prezzo non disponibile ora.",
+                                      preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Chiudi", style: .cancel))
+        present(alert, animated: true)
     }
 
     override func tableView(_ tableView: UITableView, titleForFooterInSection section: Int) -> String? {

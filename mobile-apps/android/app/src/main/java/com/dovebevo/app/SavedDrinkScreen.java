@@ -126,7 +126,11 @@ final class SavedDrinkScreen {
             Button open=button("Apri "+NativePricePresentation.category(item.drink),()->{if(usable()&&contains(item.key()))navigate.accept(item.focusedUrl());});open.setTag("drink_favourite_open");NativeAppearance.button(open,true);card.addView(open);
             Button remove=button("Rimuovi questo drink",()->{if(!usable()||!contains(item.key()))return;retire();SavedDrinkStore.Result result=store.remove(item);if(result==SavedDrinkStore.Result.REMOVED||result==SavedDrinkStore.Result.NOT_FOUND)refresh();else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});remove.setTag("drink_favourite_remove");card.addView(remove);
             String context=NativePricePresentation.category(item.drink)+" · "+venueName+" · "+(item.band==1?"Happy hour":"Prezzo normale");open.setContentDescription("Apri "+context);remove.setContentDescription("Rimuovi dai preferiti "+context+", tutti i formati");
-            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
+            String amount=named!=null?named.amount():!busy&&!menuBusy&&price.available()?NativePricePresentation.amount(price.price,price.mobilePrice):"Prezzo non disponibile";
+            String format=named!=null?named.currency+(named.serving().isEmpty()?"":" · "+named.serving())
+                    :price.available()?NativePricePresentation.groupLabel(price.price,price.mobilePrice):"";
+            compactCard(card,named!=null?named.name:NativePricePresentation.category(item.drink),venueName,amount,format,open,remove);
+            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleOffers=0;
         for(SavedMenuOfferStore.Entry item:offers){
@@ -167,7 +171,11 @@ final class SavedDrinkScreen {
                 if(result==SavedMenuOfferStore.Result.REMOVED||result==SavedMenuOfferStore.Result.NOT_FOUND)refresh();
                 else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});
             remove.setTag("menu_offer_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+item.name+" - "+item.venue.label);card.addView(remove);
-            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
+            String format=current==null?MenuV2Prices.Price.displayServing(item.serving,item.ml):current.serving();
+            if(current!=null)format=current.currency+(format.isEmpty()?"":" · "+format);
+            compactCard(card,item.name,menu==null?item.venue.label:menu.name,
+                    current==null?"Prezzo non disponibile":current.amount(),format,open,remove);
+            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleCustomers=0;
         for(SavedMenuOfferStore.Entry item:customerOffers){
@@ -192,7 +200,11 @@ final class SavedDrinkScreen {
                 if(result==SavedMenuOfferStore.Result.REMOVED||result==SavedMenuOfferStore.Result.NOT_FOUND)refresh();
                 else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});
             remove.setTag("customer_drink_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+item.name+" - "+item.venue.label);card.addView(remove);
-            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
+            String format=current==null?MenuV2Prices.Price.displayServing(item.serving,item.ml):current.serving();
+            if(current!=null)format=current.currency+(format.isEmpty()?"":" · "+format);
+            compactCard(card,item.name,menu==null?item.venue.label:menu.name,
+                    current==null?"Prezzo non disponibile":current.amount(),format,open,remove);
+            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleEurope=0;
         for(SavedEuropeDrinkStore.Entry item:europe){
@@ -215,7 +227,10 @@ final class SavedDrinkScreen {
                 if(result==SavedEuropeDrinkStore.Result.REMOVED||result==SavedEuropeDrinkStore.Result.NOT_FOUND)refresh();
                 else{render();status.setText("Impossibile rimuovere il drink. Nessun dato modificato.");}});
             remove.setTag("europe_drink_favourite_remove");remove.setContentDescription("Rimuovi dai preferiti "+NativePricePresentation.category(item.drink)+" - "+item.venue.label+(item.serving.label().isEmpty()?"":" - "+item.serving.label()));card.addView(remove);
-            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(12);rows.addView(card,size);
+            compactCard(card,NativePricePresentation.category(item.drink),item.venue.label,
+                    current==null?"Prezzo non disponibile":NativePricePresentation.amount(null,current),
+                    item.currency+(item.serving.label().isEmpty()?"":" · "+item.serving.label()),open,remove);
+            LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         if(values.isEmpty()&&visibleOffers==0&&visibleCustomers==0&&visibleEurope==0&&(!saved.isEmpty()||!offers.isEmpty()||!customerOffers.isEmpty()||!europe.isEmpty()))rows.addView(text("Nessun drink salvato per questa scelta.",15));
         if(legacyFailed)rows.addView(text("Vecchi locali non disponibili. Riprova piu tardi; nessun dato e stato modificato.",15));
@@ -257,6 +272,48 @@ final class SavedDrinkScreen {
     private boolean containsOffer(String key){for(SavedMenuOfferStore.Entry item:offers)if(item.key().equals(key))return true;return false;}
     private boolean containsCustomer(String key){for(SavedMenuOfferStore.Entry item:customerOffers)if(item.key().equals(key))return true;return false;}
     private boolean containsEurope(String key){for(SavedEuropeDrinkStore.Entry item:europe)if(item.key().equals(key))return true;return false;}
+    /** Keep the price and exact serving visible; source detail and removal expand on demand. */
+    private void compactCard(LinearLayout card,String drinkName,String venueName,String amount,String format,Button open,Button remove){
+        List<View> original=new ArrayList<>();for(int i=0;i<card.getChildCount();i++)original.add(card.getChildAt(i));
+        card.removeAllViews();card.setPadding(dp(12),dp(8),dp(12),dp(8));
+        LinearLayout summary=new LinearLayout(activity);
+        boolean large=activity.getResources().getConfiguration().fontScale>=1.3f||amount.length()>20;
+        summary.setOrientation(large?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);
+        LinearLayout labels=new LinearLayout(activity);labels.setOrientation(LinearLayout.VERTICAL);
+        TextView title=text(drinkName,16);NativeAppearance.title(title);if(Build.VERSION.SDK_INT>=28)title.setAccessibilityHeading(true);labels.addView(title);
+        TextView venue=text(venueName,14);NativeAppearance.muted(venue);labels.addView(venue);
+        if(format!=null&&!format.isEmpty()){TextView serving=text(format,13);NativeAppearance.muted(serving);labels.addView(serving);}
+        summary.addView(labels,large?new LinearLayout.LayoutParams(-1,-2):new LinearLayout.LayoutParams(0,-2,1));
+        TextView price=text(amount,large?18:17);NativeAppearance.price(price);
+        LinearLayout.LayoutParams priceSize=new LinearLayout.LayoutParams(-2,-2);
+        if(!large)priceSize.leftMargin=dp(8);
+        summary.addView(price,priceSize);
+        card.addView(summary);
+        LinearLayout actions=new LinearLayout(activity);actions.setOrientation(LinearLayout.HORIZONTAL);
+        open.setText("Apri");open.setMinimumHeight(dp(48));
+        LinearLayout.LayoutParams openSize=new LinearLayout.LayoutParams(0,dp(48),1);openSize.rightMargin=dp(8);
+        actions.addView(open,openSize);
+        LinearLayout detailContent=new LinearLayout(activity);detailContent.setOrientation(LinearLayout.VERTICAL);
+        detailContent.setVisibility(View.GONE);detailContent.setTag("details_content_"+card.getTag());
+        Button details=button("Dettagli",()->{
+            boolean expanded=detailContent.getVisibility()!=View.VISIBLE;
+            detailContent.setVisibility(expanded?View.VISIBLE:View.GONE);
+            detailsToggleLabel(card,expanded);
+        });
+        details.setTag("details_toggle_"+card.getTag());
+        details.setContentDescription("Dettagli del prezzo di "+drinkName+" da "+venueName);
+        actions.addView(details,new LinearLayout.LayoutParams(0,dp(48),1));
+        card.addView(actions);
+        for(View child:original)if(child!=open&&child!=remove)detailContent.addView(child);
+        detailContent.addView(remove);
+        card.addView(detailContent);
+    }
+    private void detailsToggleLabel(LinearLayout card,boolean expanded){
+        Button button=(Button)card.findViewWithTag("details_toggle_"+card.getTag());
+        button.setText(expanded?"Meno dettagli":"Dettagli");
+        button.setSelected(expanded);
+        button.setContentDescription((expanded?"Nascondi":"Mostra")+" dettagli del prezzo");
+    }
     private TextView text(String value,int size){TextView t=new TextView(activity);t.setText(value);t.setTextSize(size);t.setTextColor(activity.getColor(R.color.shell_text));t.setPadding(0,dp(4),0,dp(4));return t;}
     private Button button(String label,Runnable action){Button b=new Button(activity);b.setText(label);b.setContentDescription(label);NativeAppearance.button(b,false);b.setOnClickListener(v->action.run());return b;}
     private int dp(int value){return Math.round(value*activity.getResources().getDisplayMetrics().density);}

@@ -269,6 +269,61 @@ class ImportTests(unittest.TestCase):
         self.assertEqual(transport.db.execute(
             "SELECT COUNT(*) FROM mobile_menu_v2_sources").fetchone()[0],0)
 
+    def test_html_hash_mismatch_reports_digests_without_content_or_writes(self):
+        payload=raw(manifest())
+        changed=b"<html><body>Private-looking menu token 12345 Spritz EUR 9.50</body></html>"
+        transport=Fake()
+        transport.public["https://example.org/menu"]=changed
+        transport.last_fetch_content_type="text/html; boundary=private-looking-header"
+        receipt=core.execute(payload,transport)
+        normalized=core.legacy.source_digest(changed,"html_text_v1")
+        self.assertFalse(receipt["complete"])
+        self.assertEqual(receipt["errors"],[{"phase":"source","code":"source hash mismatch"}])
+        self.assertEqual(receipt["source_diagnostics"],[{
+            "source_id":"src-test-1","bytes":len(changed),
+            "content_type":"text/html",
+            "raw_sha256":hashlib.sha256(changed).hexdigest(),
+            "normalized_sha256":normalized,
+            "normalized_matches_source_pin":False,
+            "normalized_matches_text_pin":False,
+        }])
+        self.assertNotIn("Private-looking",json.dumps(receipt))
+        self.assertNotIn("example.org",json.dumps(receipt))
+        self.assertEqual(receipt["rows"],[])
+        self.assertEqual(transport.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_sources").fetchone()[0],0)
+        guarded_apply=Fake()
+        guarded_apply.public["https://example.org/menu"]=changed
+        denied=core.execute(payload,guarded_apply,True,hashlib.sha256(payload).hexdigest())
+        self.assertFalse(denied["complete"])
+        self.assertEqual(denied["errors"],receipt["errors"])
+        self.assertEqual(guarded_apply.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_sources").fetchone()[0],0)
+        self.assertEqual(guarded_apply.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_offers").fetchone()[0],0)
+
+    def test_html_pin_accepts_variable_script_markup_without_diagnostics(self):
+        transport=Fake()
+        transport.public["https://example.org/menu"]=(
+            b"<html><script>nonce 12345</script><body>Classic Spritz EUR 7.50</body></html>")
+        self.assertNotEqual(hashlib.sha256(transport.public["https://example.org/menu"]).hexdigest(),
+                            hashlib.sha256(PAGE).hexdigest())
+        receipt=core.execute(raw(manifest()),transport)
+        self.assertTrue(receipt["complete"],receipt["errors"])
+        self.assertEqual(receipt["source_diagnostics"],[])
+
+    def test_html_mismatch_discards_oversized_valid_media_type(self):
+        transport=Fake()
+        transport.public["https://example.org/menu"]=b"<html><body>Changed price</body></html>"
+        transport.last_fetch_content_type="text/"+("a"*500)+"; boundary=private"
+        receipt=core.execute(raw(manifest()),transport)
+        self.assertFalse(receipt["complete"])
+        self.assertEqual(receipt["errors"],[{"phase":"source","code":"source hash mismatch"}])
+        self.assertEqual(receipt["source_diagnostics"][0]["content_type"],None)
+        self.assertNotIn("a"*500,json.dumps(receipt))
+        self.assertEqual(transport.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_sources").fetchone()[0],0)
+
     def test_transport_captures_content_type_without_response_body(self):
         class Response:
             headers={"Content-Type":"application/pdf"}

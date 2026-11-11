@@ -52,6 +52,8 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     var isMapDestinationSelected: (() -> Bool)?
     var onVenueActionsChanged: ((Bool) -> Void)?
     var onMoreMenuChanged: ((UIMenu) -> Void)?
+    var canReturnToNativeSource: (() -> Bool)?
+    var onReturnToNativeSource: (() -> Bool)?
 
     private lazy var backButton = item("Indietro", symbol: "chevron.backward", action: #selector(goBack), id: "browser.back")
     private lazy var forwardButton = item("Avanti", symbol: "chevron.forward", action: #selector(goForward), id: "browser.forward")
@@ -238,7 +240,32 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         return isMapDestinationSelected?() != false && webView.url.map(URLPolicy.isWebsite) == true
     }
 
-    func refreshNavigationControls() { updateMoreMenu() }
+    func refreshNavigationControls() {
+        if isViewLoaded {
+            let returning = canReturnToNativeSource?() == true
+            backButton.isEnabled = webView.canGoBack || returning
+            // WebKit's edge swipe bypasses the native Back action and would
+            // otherwise expose an old map/venue before returning to the source tab.
+            webView.allowsBackForwardNavigationGestures = !returning
+        }
+        updateMoreMenu()
+    }
+    func refreshSavedDrinkKeys() {
+        guard isViewLoaded, hasLoadedPage, MobileEntry.isDocument(webView.url) else { return }
+        let assignment = NativeSavedDrinkKeys.assignment(
+            current: webView.url, drinks: savedDrinks, offers: savedMenuOffers,
+            customers: savedCustomerItems, europe: savedEuropeDrinks)
+        let script = """
+        (() => {
+          if (location.origin !== 'https://www.dovebevo.com' ||
+              !['/mobile/', '/mobile/index.html'].includes(location.pathname) ||
+              document.documentElement.getAttribute('data-dovebevo-mobile-shell') !== '1') return;
+          \(assignment)
+          window.dispatchEvent(new Event('dovebevo-native-favourites-changed'));
+        })()
+        """
+        webView.evaluateJavaScript(script, in: nil, in: .page) { _ in }
+    }
     func retireVenueActions() { invalidateBookmarkCapture() }
 
     private func configureWebView() {
@@ -251,7 +278,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         AppPresentationTheme.install(in: configuration)
         configuration.userContentController.addUserScript(WKUserScript(
-            source: "if (location.origin === 'https://www.dovebevo.com' && location.pathname === '/mobile/') { window.DoveBevoNativeOfferSave = true; window.DoveBevoNativeDrinkSave = true; window.DoveBevoNativeCustomerSave = true; window.DoveBevoNativeEuropeSave = true; window.dispatchEvent(new Event('dovebevo-native-ready')); }",
+            source: "if (location.origin === 'https://www.dovebevo.com' && ['/mobile/', '/mobile/index.html'].includes(location.pathname)) { window.DoveBevoNativeSavedDrinkKeys = []; window.DoveBevoNativeOfferSave = true; window.DoveBevoNativeDrinkSave = true; window.DoveBevoNativeCustomerSave = true; window.DoveBevoNativeEuropeSave = true; window.dispatchEvent(new Event('dovebevo-native-ready')); }",
             injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page))
         webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
@@ -444,7 +471,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                 self?.invalidateBookmarkCapture()
             },
             webView.observe(\.canGoBack, options: [.new]) { [weak self] webView, _ in
-                self?.backButton.isEnabled = webView.canGoBack
+                self?.backButton.isEnabled = webView.canGoBack || self?.canReturnToNativeSource?() == true
             },
             webView.observe(\.canGoForward, options: [.new]) { [weak self] webView, _ in
                 self?.forwardButton.isEnabled = webView.canGoForward
@@ -487,6 +514,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     @objc private func goBack() {
+        if onReturnToNativeSource?() == true { return }
         guard webView.canGoBack else { return }
         searchCallbackGeneration = UUID()
         searchOpening = false
@@ -615,6 +643,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                       self.favouriteSave.consume(context, currentURL: self.webView?.url, active: self.isBookmarkInteractionActive) else { return }
                 do {
                     try self.savedDrinks.save(SavedDrink.validated(url: venue.url, label: venue.label, drink: drink, band: band))
+                    self.refreshSavedDrinkKeys()
                     let name = DrinkCategory.all.first { $0.code == drink }?.name ?? drink
                     let outcome = "\(name) · \(band.name) · \(venue.label) salvato nei Preferiti."
                     chooser.dismiss(animated: true) { [weak self] in
@@ -955,6 +984,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                 self.offerSaveAlert = nil
                 do {
                     try self.savedMenuOffers.save(saved)
+                    self.refreshSavedDrinkKeys()
                     self.showVenueReadError(title: "Preferito salvato", message: "\(saved.name) - \(saved.venue.label) e nei Preferiti.")
                 } catch {
                     self.showBookmarkError("Non riesco a salvare. Potresti aver raggiunto il limite di 50 drink del menu. I preferiti precedenti sono stati mantenuti.")
@@ -1056,6 +1086,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             self.offerSaveAlert = nil
             do {
                 try save()
+                self.refreshSavedDrinkKeys()
                 self.showVenueReadError(title: "Preferito salvato", message: "\(name) · \(venue.label) e nei Preferiti.")
             } catch {
                 self.showBookmarkError("Non riesco a salvare. Potresti aver raggiunto il limite di 50 drink. I preferiti precedenti sono stati mantenuti.")
@@ -1157,6 +1188,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
                 }
                 AppPresentationTheme.applyAfterFinish(to: webView)
                 self.completeDocumentLoad()
+                self.refreshSavedDrinkKeys()
             }
             return
         }

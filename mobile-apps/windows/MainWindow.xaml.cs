@@ -9,6 +9,7 @@ namespace DoveBevo.Windows;
 
 public partial class MainWindow : Window
 {
+    private enum NativeReturnDestination { None, Favourites, Recommendations, Discovery }
     private readonly BookmarkStore bookmarks = new();
     private readonly BookmarkPriceClient bookmarkPrices = new();
     private readonly AreaVotesClient areaVotes = new();
@@ -25,6 +26,7 @@ public partial class MainWindow : Window
     private bool saveBusy;
     private string? pendingExactBookmark;
     private string lastTrustedUrl = NavigationPolicy.Home;
+    private NativeReturnDestination returnDestination;
 
     public MainWindow() => InitializeComponent();
 
@@ -131,11 +133,30 @@ public partial class MainWindow : Window
         {
             if (!ready || Website.Source is not { AbsolutePath: "/mobile/" } source ||
                 !NavigationPolicy.IsTrusted(source)) return;
+            var assignment = "window.DoveBevoNativeSavedDrinkKeys=" +
+                JsonSerializer.Serialize(NativeSavedDrinkKeys.FromBookmarks(bookmarks.Items, Website.Source)) + ";";
             var enabled = await Website.CoreWebView2.ExecuteScriptAsync(
-                "(()=>{if(location.origin!=='https://www.dovebevo.com'||location.pathname!=='/mobile/'||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return false;window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeEuropeSave=true;window.dispatchEvent(new Event('dovebevo-native-ready'));return true})()");
+                "(()=>{if(location.origin!=='https://www.dovebevo.com'||location.pathname!=='/mobile/'||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return false;" +
+                assignment +
+                "window.DoveBevoNativeOfferSave=true;window.DoveBevoNativeDrinkSave=true;window.DoveBevoNativeCustomerSave=true;window.DoveBevoNativeEuropeSave=true;window.dispatchEvent(new Event('dovebevo-native-ready'));return true})()");
             if (enabled == "true") return;
             await Task.Delay(150);
         }
+    }
+
+    private async Task PublishSavedDrinkKeysAsync()
+    {
+        if (!ready || Website.Source is not { AbsolutePath: "/mobile/" } source ||
+            !NavigationPolicy.IsTrusted(source)) return;
+        try
+        {
+            var assignment = "window.DoveBevoNativeSavedDrinkKeys=" +
+                JsonSerializer.Serialize(NativeSavedDrinkKeys.FromBookmarks(bookmarks.Items, Website.Source)) + ";";
+            await Website.CoreWebView2.ExecuteScriptAsync(
+                "(()=>{if(location.origin!=='https://www.dovebevo.com'||location.pathname!=='/mobile/'||document.documentElement.getAttribute('data-dovebevo-mobile-shell')!=='1')return;" +
+                assignment + "window.dispatchEvent(new Event('dovebevo-native-favourites-changed'));})()");
+        }
+        catch (Exception) { /* The next trusted document load republishes the local snapshot. */ }
     }
 
     private async Task HighlightPendingBookmarkAsync()
@@ -232,6 +253,7 @@ public partial class MainWindow : Window
         BackButton.IsEnabled = DiscoveryPanel.Visibility == Visibility.Visible ||
             FavouritesPanel.Visibility == Visibility.Visible ||
             RecommendationsPanel.Visibility == Visibility.Visible ||
+            returnDestination != NativeReturnDestination.None ||
             ready && Website.CoreWebView2?.CanGoBack == true;
         ForwardButton.IsEnabled = ready && Website.CoreWebView2?.CanGoForward == true;
     }
@@ -247,26 +269,37 @@ public partial class MainWindow : Window
             ? Visibility.Visible : Visibility.Hidden;
     }
 
-    private void Navigate(string address, string? exactBookmark = null)
+    private void Navigate(string address, string? exactBookmark = null,
+        NativeReturnDestination source = NativeReturnDestination.None)
     {
+        if (!Uri.TryCreate(address, UriKind.Absolute, out var uri)
+            || !NavigationPolicy.IsTrusted(uri)) return;
         pendingExactBookmark = exactBookmark;
         favouritesCancellation?.Cancel();
         recommendationCancellation?.Cancel();
-        CloseDiscovery();
+        if (source == NativeReturnDestination.Discovery)
+        {
+            discoveryCancellation?.Cancel();
+            discoveryCancellation?.Dispose();
+            discoveryCancellation = null;
+            DiscoveryPanel.Visibility = Visibility.Collapsed;
+        }
+        else CloseDiscovery();
         FavouritesPanel.Visibility = Visibility.Collapsed;
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ErrorPanel.Visibility = Visibility.Collapsed;
         ShowWebsiteIfNoOverlay();
-        if (!Uri.TryCreate(address, UriKind.Absolute, out var uri)
-            || !NavigationPolicy.IsTrusted(uri)) return;
+        returnDestination = source;
         lastTrustedUrl = uri.AbsoluteUri;
         if (ready) Website.CoreWebView2.Navigate(lastTrustedUrl);
         else _ = StartBrowser();
+        UpdateButtons();
     }
 
     private void Home_Click(object sender, RoutedEventArgs e) => Discover_Click(sender, e);
     private void Map_Click(object sender, RoutedEventArgs e)
     {
+        returnDestination = NativeReturnDestination.None;
         var current = CurrentBrowserRoute();
         favouritesCancellation?.Cancel();
         recommendationCancellation?.Cancel();
@@ -289,6 +322,7 @@ public partial class MainWindow : Window
     }
     private async void Discover_Click(object sender, RoutedEventArgs e)
     {
+        returnDestination = NativeReturnDestination.None;
         if (DiscoveryPanel.Visibility == Visibility.Visible) { await LoadDiscovery(); return; }
         DiscoveryArea? mapArea = null;
         try
@@ -343,6 +377,17 @@ public partial class MainWindow : Window
             UpdateButtons();
             return;
         }
+        var source = returnDestination;
+        if (source != NativeReturnDestination.None)
+        {
+            returnDestination = NativeReturnDestination.None;
+            if (source == NativeReturnDestination.Favourites) FavouritesPanel.Visibility = Visibility.Visible;
+            else if (source == NativeReturnDestination.Recommendations) RecommendationsPanel.Visibility = Visibility.Visible;
+            else DiscoveryPanel.Visibility = Visibility.Visible;
+            ShowWebsiteIfNoOverlay();
+            UpdateButtons();
+            return;
+        }
         if (ready && Website.CoreWebView2.CanGoBack) Website.CoreWebView2.GoBack();
     }
 
@@ -377,6 +422,7 @@ public partial class MainWindow : Window
 
     private async void Favourites_Click(object sender, RoutedEventArgs e)
     {
+        returnDestination = NativeReturnDestination.None;
         CloseDiscovery();
         favouritesCancellation?.Cancel();
         favouritesCancellation?.Dispose();
@@ -458,9 +504,11 @@ public partial class MainWindow : Window
             if (!valid || focused is null) throw new InvalidDataException("Invalid drink destination");
             var item = new Bookmark(action.VenueKey, venueName, drinkName,
                 focused.AbsoluteUri, action.CommandUrl);
-            StatusText.Text = bookmarks.Add(item)
+            var saved = bookmarks.Add(item);
+            StatusText.Text = saved
                 ? $"{drinkName} da {venueName} salvato nei Preferiti di questo PC."
                 : "Drink già salvato o archivio dei Preferiti pieno.";
+            if (saved) await PublishSavedDrinkKeysAsync();
         }
         catch (Exception)
         {
@@ -471,6 +519,7 @@ public partial class MainWindow : Window
 
     private async void Recommendations_Click(object sender, RoutedEventArgs e)
     {
+        returnDestination = NativeReturnDestination.None;
         if (recommendationBusy) return;
         if (DiscoveryPanel.Visibility == Visibility.Visible) CloseDiscovery();
         if (RecommendationsPanel.Visibility != Visibility.Visible)
@@ -542,7 +591,8 @@ public partial class MainWindow : Window
 
     private void OpenRecommendedVenue_Click(object sender, RoutedEventArgs e)
     {
-        if (RecommendationList.SelectedItem is AreaVoteRow row) Navigate(row.VenueUrl);
+        if (RecommendationList.SelectedItem is AreaVoteRow row)
+            Navigate(row.VenueUrl, source: NativeReturnDestination.Recommendations);
     }
 
     private void OpenFavourite_Click(object sender, RoutedEventArgs e)
@@ -552,8 +602,8 @@ public partial class MainWindow : Window
         if (bookmark.ActionUrl is not null &&
             NavigationPolicy.TryExactEuropeVenue(bookmark.ActionUrl, bookmark.Url, out var exactVenue) &&
             exactVenue is not null)
-            Navigate(exactVenue.AbsoluteUri, bookmark.ActionUrl);
-        else Navigate(bookmark.Url);
+            Navigate(exactVenue.AbsoluteUri, bookmark.ActionUrl, NativeReturnDestination.Favourites);
+        else Navigate(bookmark.Url, source: NativeReturnDestination.Favourites);
     }
 
     private void RemoveFavourite_Click(object sender, RoutedEventArgs e)
@@ -563,6 +613,7 @@ public partial class MainWindow : Window
         try
         {
             if (!bookmarks.Remove(item)) return;
+            _ = PublishSavedDrinkKeysAsync();
             StatusText.Text = "Drink rimosso dai Preferiti.";
             Favourites_Click(sender, e);
         }
@@ -631,6 +682,6 @@ public partial class MainWindow : Window
         if (DiscoveryList.SelectedItem is not DiscoveryRow row) return;
         var target = row.FocusedVenue();
         if (target is null) { StatusText.Text = "Non riesco ad aprire questo locale."; return; }
-        Navigate(target.AbsoluteUri);
+        Navigate(target.AbsoluteUri, source: NativeReturnDestination.Discovery);
     }
 }

@@ -19,12 +19,18 @@ final class SavedDrinkUi {
     private final Supplier<String> eligible;
     private final Consumer<Consumer<SavedVenueCapture.Venue>> readVenue;
     private final LongSupplier epoch;
+    private final Runnable onSaved;
     private AlertDialog dialog;
     private long generation;
 
     SavedDrinkUi(Activity activity, SavedDrinkStore store, Supplier<String> eligible,
                  Consumer<Consumer<SavedVenueCapture.Venue>> readVenue, LongSupplier epoch) {
+        this(activity,store,eligible,readVenue,epoch,()->{});
+    }
+    SavedDrinkUi(Activity activity, SavedDrinkStore store, Supplier<String> eligible,
+                 Consumer<Consumer<SavedVenueCapture.Venue>> readVenue, LongSupplier epoch,Runnable onSaved) {
         this.activity=activity;this.store=store;this.eligible=eligible;this.readVenue=readVenue;this.epoch=epoch;
+        this.onSaved=onSaved;
     }
 
     void show() {
@@ -57,6 +63,7 @@ final class SavedDrinkUi {
                 .setPositiveButton("Salva",(dialog,which)->{
                     if(request!=generation||shownEpoch!=epoch.getAsLong()||!venue.url.equals(SavedVenueUrl.canonicalize(eligible.get())))return;
                     SavedDrinkStore.Result result=store.save(venue.url,venue.name,drink,band);
+                    if(result==SavedDrinkStore.Result.SAVED)onSaved.run();
                     message(result==SavedDrinkStore.Result.SAVED?"Drink salvato nei preferiti"
                             :result==SavedDrinkStore.Result.FULL?"Puoi salvare fino a 50 drink":"Impossibile salvare il drink. Riprova.");
                 }).setNegativeButton("Annulla",null).create();
@@ -105,6 +112,7 @@ final class SavedDrinkUi {
                 if(selected<=0){message("Scegli il drink da salvare.");return;}
                 RecommendationDrink drink=RecommendationDrink.values()[selected-1];
                 SavedDrinkStore.Result result=store.save(venue.url,venue.name,drink,bands.getSelectedItemPosition());
+                if(result==SavedDrinkStore.Result.SAVED)onSaved.run();
                 if(result==SavedDrinkStore.Result.SAVED)shown.dismiss();
                 message(result==SavedDrinkStore.Result.SAVED?"Drink salvato nei preferiti"
                         :result==SavedDrinkStore.Result.FULL?"Puoi salvare fino a 50 drink"

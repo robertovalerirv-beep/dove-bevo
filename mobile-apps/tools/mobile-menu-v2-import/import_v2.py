@@ -959,27 +959,40 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
                     source_raw,content_type)
     hashes,source_raw,content_type=cache[key]
     if hashes!=(row["source_sha256"],row["source_text_sha256"]):
-        if diagnostics is not None and row["source_format"]=="pdf_text_v1":
+        if diagnostics is not None and row["source_format"] in ("html_text_v1","pdf_text_v1"):
             media_type=(content_type or "").split(";",1)[0].strip().lower()
             if not re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+",media_type):
                 media_type=None
-            version=None
-            try:
-                proc=subprocess.run(["pdftotext","-v"],capture_output=True,
-                                    timeout=5,check=False)
-                match=re.search(rb"pdftotext version ([0-9]+(?:\.[0-9]+){1,3})",
-                                proc.stdout+proc.stderr)
-                if match: version=match.group(1).decode("ascii")
-            except (OSError,subprocess.SubprocessError):
-                pass
-            diagnostics.append({
-                "source_id":row["id"],"bytes":len(source_raw),
-                "content_type":media_type,
-                "raw_sha256":hashes[0],"pdf_magic":source_raw.startswith(b"%PDF-"),
-                "extractor_version":version,"text_sha256":hashes[1],
-                "raw_matches_manifest":hashes[0]==row["source_sha256"],
-                "text_matches_manifest":hashes[1]==row["source_text_sha256"],
-            })
+            if row["source_format"]=="html_text_v1":
+                # A text pin deliberately ignores variable HTML markup. Record
+                # only bounded metadata so a hosted mismatch can be diagnosed
+                # without exposing the fetched menu or changing the fail-closed gate.
+                diagnostics.append({
+                    "source_id":row["id"],"bytes":len(source_raw),
+                    "content_type":media_type,
+                    "raw_sha256":hashlib.sha256(source_raw).hexdigest(),
+                    "normalized_sha256":hashes[0],
+                    "normalized_matches_source_pin":hashes[0]==row["source_sha256"],
+                    "normalized_matches_text_pin":hashes[1]==row["source_text_sha256"],
+                })
+            else:
+                version=None
+                try:
+                    proc=subprocess.run(["pdftotext","-v"],capture_output=True,
+                                        timeout=5,check=False)
+                    match=re.search(rb"pdftotext version ([0-9]+(?:\.[0-9]+){1,3})",
+                                    proc.stdout+proc.stderr)
+                    if match: version=match.group(1).decode("ascii")
+                except (OSError,subprocess.SubprocessError):
+                    pass
+                diagnostics.append({
+                    "source_id":row["id"],"bytes":len(source_raw),
+                    "content_type":media_type,
+                    "raw_sha256":hashes[0],"pdf_magic":source_raw.startswith(b"%PDF-"),
+                    "extractor_version":version,"text_sha256":hashes[1],
+                    "raw_matches_manifest":hashes[0]==row["source_sha256"],
+                    "text_matches_manifest":hashes[1]==row["source_text_sha256"],
+                })
         raise Error("source hash mismatch")
     if row["source_format"]=="json_menu_v1":
         renderer=public_fetch(transport,CARICO_RENDERER_URL,MAX_SOURCE)

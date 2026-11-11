@@ -10,7 +10,7 @@ This is a source-only candidate for the already mapped venue `n3631760159` in ce
 
 ## Offer extraction and conservative exclusions
 
-The menu HTML has 712 rendered product-card copies representing 361 unique `data-prodotto-id` values. For each ID, the repeated cards agree on exact title, displayed price and Italian detail fields. The 266 staged offers are the unique cards in drink sections that have one individually paired amount containing a euro sign. Each manifest `evidence_ref` names the owner product ID, section, title, amount and any usable printed `Dimensione`. All card amounts also agree with their detail popup's price field.
+The menu HTML has 712 rendered product-card copies representing 361 unique `data-prodotto-id` values. For each ID, the repeated cards agree on exact title, displayed price and Italian detail fields. The 266 staged offers are the unique cards in drink sections that have one individually paired amount containing a euro sign. Each manifest `evidence_ref` names the owner product ID, section, title, amount and any usable printed `Dimensione`. Of these 266 cards, 131 also expose a detail-popup `prezzo` field that matches the visible card amount; the other 135 have no popup price field and use the individually paired visible card amount.
 
 - 80 food products are excluded using the menu's food branches, including the parent `CIBO` and its named subcategories.
 - 15 non-food products are excluded because their amount has either multiple unpaired prices (for example a wine glass/bottle string) or no printed euro symbol. No price range is split or assumed.

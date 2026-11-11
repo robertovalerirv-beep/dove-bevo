@@ -33,6 +33,35 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
+## 2026-11-11 · Più mappa sul telefono (ramo `claude/kind-gates-e6ahqz`) · SPEC 1.18 · ADR 0048
+
+**Richiesta di Roberto:** su iPhone in Safari la mappa ha troppo poco spazio. Ricerca, «Scegli cosa bere» e «Vicino a me» su una riga, pulsanti più bassi, tasto «Aggiungi locale», prezzi un po' più piccoli per coprirsi meno, logo tenuto, SPEC aggiornata nello stesso commit. Mockup e piano approvati in chat l'11/11/2026.
+
+**Fatto**
+1. Intestazione su una riga (`app.tsx`, `DrinkMenu.tsx`): «Cerca» (nome «Cerca città o bar», solo icona sotto 420 px: con la parola il nome del drink si troncava), margine di 5 px sopra e sotto per l'anello di focus, menu dei drink col solo drink scelto («Scegli cosa bere» resta il nome accessibile), «Vicino a me».
+2. Controlli «slim» (`app.css`, solo sito): bersaglio 48 px, disegno 40 px con bordo, fondo e ombra su `::before`.
+3. Barra in basso: «Aggiungi prezzo» e «Aggiungi locale» (inglese «Add a place») su una riga fino a 320 px.
+4. Pin 28 px con cifre da 14 px, cerchi dei gruppi di raggio 14/17/20 (`maplibre-map.ts`).
+5. Frase della copertura su una riga da 375 px (pillola più vicina alle icone, barretta nascosta sotto 480 px); attribuzioni scure in Fuori orario.
+6. Il timbro «Prezzo salvato» mantiene la quota dal fondo dello schermo (`translate` di 16 px), altrimenti coprirebbe le bevande del foglio di «Aggiungi un altro drink qui» (M3-16).
+7. App native: nuovi hash in `build-contract.mjs`, classe del tasto di ricerca, `shell.css` per il menu dei drink nella riga; regole nuove solo con `:root:not([data-dovebevo-mobile-shell])`.
+8. SPEC 1.18, ADR 0048, MB-13 (solo il testo), guardia sul tag `spec-approved-15`, CHANGELOG, design-system, user-test.
+
+**Test cambiati e perché:** nome del tasto in `brand-map`, `brand-controls`, `a11y-views`, `english`, `bundle.test.mjs` (requisito cambiato); MB-04 legge il disegno (`::before`) dei controlli della mappa; il test della ricerca di `brand-search.spec.ts` diventa due (testo «Cerca» a 390 px, sola icona a 320 px, requisito cambiato). Nuovo `tests/e2e/map-space.spec.ts` (14 test, rossi prima del codice per il motivo giusto).
+
+**Prove**
+- Misure prima → dopo a 390×844: intestazione 125 → 54 px, barra 65 → 54 px, mappa 654 → 736 px (+82, +13%); a 402×713 (iPhone di Roberto): 523 → 605 px (+16%).
+- Vitest 879/879; Playwright su Chromium (`chromium`, `-writes`, `-proposals`, `security`) 257/257; `eslint`, `prettier`, `tsc -b` e `tsc -p mobile-apps/web` verdi; `node scripts/check-feature-list.mjs` ok con il tag `spec-approved-15`.
+- Test nativi `mobile-apps/web`: 120/122; i due che falliscono («Tutti reveals…», «app map actions reclaim the footer…», layout a 320 px) falliscono uguali, con gli stessi numeri, sulla versione precedente `089f529` costruita a parte: preesistenti, non li ho toccati.
+- Screenshot 390×844 e 320×568, tema chiaro e scuro, con Spritz su Milano controllati a mano.
+- Revisori: `spec-reviewer` OK to close; `ux-a11y-reviewer` OK con tre note: anello di focus tagliato in alto e in basso e nome del drink troncato («Birra m…») corretti (margine di 5 px, ricerca a sola icona sotto 420 px, test nuovi); il messaggio «Avvicinati…» su due righe è accettato e scritto nell'ADR 0048. WebKit e Chromium 1248 installati nel container solo per l'hook `pre-push`.
+- Due errori miei trovati dai test e corretti: `position: relative` della regola «slim» spostava «Elenco» di 16 px; il selettore con `="1"` metteva il marcatore dell'app nella pagina del sito (test `headers.spec.ts`).
+
+**Da verificare a mano (Roberto)**
+- Su iPhone Safari dopo il deploy: riga unica, tocco dei pulsanti, leggibilità dei pin a 28 px con poca luce, barra in basso con la barra di Safari.
+- WebKit non è nel container: lo verifica la CI.
+- Le due prove native preesistenti e la versione di Chromium del container (1243, non quella attesa da Playwright 1.64) meritano uno sguardo in CI.
+- Sotto i 480 px la barretta della copertura non si vede più (scelta dichiarata nell'ADR 0048).
 ## 2026-11-11 · Sotto zoom 13 la mappa non disegna più i bar (ramo `claude/gracious-fermi-tnhqxu`) · SPEC 5.4, M1-07
 
 **Problema visto da Roberto su iPhone Safari:** dopo aver caricato una zona, allontanando la mappa sotto zoom 13 il messaggio diceva «Avvicinati per vedere i prezzi, o cerca una città.» ma i pin dei prezzi e i cerchi numerati restavano disegnati.

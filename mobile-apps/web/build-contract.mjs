@@ -3,8 +3,8 @@ import ts from "typescript";
 /* global structuredClone */
 
 const PINS = {
-  app: "9755b28e0b17edd0de961ffa8f4b0f77f156f79d32bf5a11def67651f33637d4",
-  map: "1d0bda25aebfb47ebb6699e55a82b608e485356a27f474a8ed8f87c87cc272fc",
+  app: "9ad927c8c8e72d5b7795bdbd43635339aee9906db67a6209acc2dc36215efc51",
+  map: "6cf9a2d5b015865f9ec7c3b4e48da8e16f574edf061d2c5826a48ee04bd1027e",
 };
 const normalized = (source) => source.replaceAll("\r\n", "\n");
 function pinned(source, name) {
@@ -156,7 +156,7 @@ export function transformApp(source) {
         (attribute) =>
           ts.isJsxAttribute(attribute) &&
           attribute.name.getText(tree) === "class" &&
-          attribute.initializer?.text === "btn search-field",
+          attribute.initializer?.text === "btn btn--slim search-field",
       )
     )
       buttons.push(node);

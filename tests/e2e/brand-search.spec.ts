@@ -325,24 +325,35 @@ test("M4-13 results: exact name first, then the start of the name, nearest first
   expect(rows[3]).toMatch(/^Bar Sport ?Centrale/);
 });
 
-// The search button looks like a field (pages/mappa.md): its text starts after the icon at every width,
-// also at 320 px where it wraps to two lines (a centred wrap read as a title, not as a field).
-for (const width of [390, 320]) {
-  test(`the search field text starts after its icon at ${String(width)} px`, async ({ page }) => {
+// SPEC 1.18: the search button says «Cerca» after its icon and keeps the whole phrase «Cerca città o bar» as its
+// name. Under 420 px (every iPhone but the Max models) it is the icon alone, still a 48 px target with that name,
+// so the drink name keeps its room.
+test("the search button says «Cerca» after its icon at 430 px", async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 932 });
+  await page.goto("/");
+  const field = page.getByRole("button", { name: "Cerca città o bar" });
+  await expect(field).toHaveText("Cerca");
+  const gap = await field.evaluate((button) => {
+    const icon = button.querySelector("svg");
+    const text = button.querySelector(".search-field__text");
+    if (!icon || !text) return Number.NaN;
+    return text.getBoundingClientRect().left - icon.getBoundingClientRect().right;
+  });
+  expect(gap).toBeGreaterThanOrEqual(0);
+  expect(gap).toBeLessThanOrEqual(12); // the button's gap, not leftover centring space
+  expect((await field.boundingBox())?.height).toBe(48);
+});
+
+for (const width of [320, 390, 402]) {
+  test(`the search button is its icon alone at ${String(width)} px, with the same name and a 48 px target`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto("/");
     const field = page.getByRole("button", { name: "Cerca città o bar" });
-    const gap = await field.evaluate((button) => {
-      const icon = button.querySelector("svg");
-      const text = [...button.childNodes].find((n) => n.nodeType === Node.TEXT_NODE);
-      if (!icon || !text) return Number.NaN;
-      const range = document.createRange();
-      range.selectNodeContents(text);
-      const left = Math.min(...[...range.getClientRects()].map((r) => r.left));
-      return left - icon.getBoundingClientRect().right;
-    });
-    expect(gap).toBeGreaterThanOrEqual(0);
-    expect(gap).toBeLessThanOrEqual(12); // the button's gap, not leftover centring space
-    expect((await field.boundingBox())?.height).toBe(48);
+    const box = await field.boundingBox();
+    expect(box?.width).toBe(48);
+    expect(box?.height).toBe(48);
+    await expect(field.locator(".search-field__text")).toBeHidden(); // the name comes from aria-label
   });
 }

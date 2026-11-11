@@ -2098,7 +2098,7 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     for (const width of [320, 390, 430]) {
       await f.page.setViewportSize({ width, height: 700 });
       const addVenue = await choices
-        .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+        .getByRole("button", { name: "Aggiungi locale", exact: true })
         .boundingBox();
       const locateButton = await f.page.locator(".top__row > .icon-btn").boundingBox();
       const searchButton = await f.page.locator(".top__row > .search-field").boundingBox();
@@ -2113,7 +2113,7 @@ test("app map actions reclaim the footer and retain both contribution routes", a
           document.elementFromPoint(x, y)?.closest(".mobile-map-actions__menu > .btn")?.textContent,
         { x: addVenue.x + addVenue.width - 8, y: addVenue.y + addVenue.height / 2 },
       );
-      assert.match(hit ?? "", /Aggiungi locale mancante/);
+      assert.match(hit ?? "", /Aggiungi locale/);
     }
     await f.page.setViewportSize({ width: 430, height: 700 });
     await f.page.keyboard.press("Escape");
@@ -2131,7 +2131,7 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     await f.page.keyboard.press("Tab");
     assert.equal(
       await choices
-        .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+        .getByRole("button", { name: "Aggiungi locale", exact: true })
         .evaluate((element) => element === document.activeElement),
       true,
     );
@@ -2152,7 +2152,7 @@ test("app map actions reclaim the footer and retain both contribution routes", a
     await again.getByRole("button", { name: "Aggiungi", exact: true }).click();
     await again
       .getByRole("group", { name: "Aggiungi" })
-      .getByRole("button", { name: "Aggiungi locale mancante", exact: true })
+      .getByRole("button", { name: "Aggiungi locale", exact: true })
       .click();
     await f.page.getByRole("dialog").waitFor();
     assert.deepEqual(f.writes, []);

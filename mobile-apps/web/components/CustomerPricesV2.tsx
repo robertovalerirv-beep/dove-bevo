@@ -792,7 +792,7 @@ export function CustomerPricesV2({
             <p>
               {hasVisiblePrices
                 ? "Altre segnalazioni dei clienti non disponibili."
-                : "Non riusciamo a caricare i prezzi segnalati dai clienti."}
+                : "Le segnalazioni dei clienti sono temporaneamente indisponibili. Riprova tra poco."}
             </p>
             <button
               type="button"

@@ -513,7 +513,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
       return (
         <Sheet title="Menu temporaneamente non disponibile" onClose={onClose}>
           <div class="mobile-menu-v2__error" role="alert">
-            <p>Non riusciamo a caricare questo locale al momento.</p>
+            <p>I dettagli del locale sono temporaneamente indisponibili. Riprova tra poco.</p>
             <button
               type="button"
               class="btn btn--secondary"

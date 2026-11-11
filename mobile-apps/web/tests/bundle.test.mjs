@@ -1440,10 +1440,13 @@ test("customer-report failure is compact beside existing prices and retries with
 });
 
 test("customer-report outage remains clear and retryable when no price is visible", async () => {
-  const f = await fixture(
-    { width: 390, height: 700 },
-    { noLegacyPrices: true, failCustomerGets: 1 },
-  );
+  const options = {
+    noLegacyPrices: true,
+    customerEmpty: true,
+    failCustomerGets: 1,
+    customerGets: [],
+  };
+  const f = await fixture({ width: 390, height: 700 }, options);
   f.page.setDefaultTimeout(5000);
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
@@ -1452,9 +1455,11 @@ test("customer-report outage remains clear and retryable when no price is visibl
     await error.waitFor();
     assert.match(
       await error.innerText(),
-      /Non riusciamo a caricare i prezzi segnalati dai clienti/,
+      /Le segnalazioni dei clienti sono temporaneamente indisponibili/,
     );
-    assert.equal(await error.getByRole("button", { name: "Riprova" }).isEnabled(), true);
+    await error.getByRole("button", { name: "Riprova" }).click();
+    await error.waitFor({ state: "hidden" });
+    assert.equal(options.customerGets.length, 2);
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);
   } finally {
@@ -1896,6 +1901,10 @@ test("m-key detail outage offers retry instead of saying the venue does not exis
     );
     await f.page.getByRole("button", { name: "Riprova", exact: true }).waitFor();
     assert.equal(await f.page.getByText("Locale non trovato").count(), 0);
+    assert.match(
+      await f.page.getByRole("alert").innerText(),
+      /I dettagli del locale sono temporaneamente indisponibili/,
+    );
     options.detailUnavailable = false;
     await f.page.getByRole("button", { name: "Riprova", exact: true }).click();
     await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();

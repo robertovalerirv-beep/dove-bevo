@@ -27,12 +27,19 @@ public final class ExactVoteAreaTest {
         assertEquals(12,result.rows.get(0).count);assertEquals("offer/spritz.7",result.rows.get(0).targetKey);
         assertEquals("https://www.dovebevo.com/bar/n123?c=u0nd9",result.rows.get(0).venueUrl);
         assertEquals("legacy/beer_draft/happy_hour",result.rows.get(1).targetKey);
+        ExactVoteArea.Row genericOffer=ExactVoteArea.parse(page(SCOPE,OFFER.replace("\"serving_label\":\"Calice\"","\"serving_label\":\"drink\""),"null"),cells).rows.get(0);
+        assertEquals("offer/spritz.7",genericOffer.targetKey);
+        assertNull(genericOffer.serving);
     }
 
     @Test public void europeanRecommendationsStayScopedAndKeepExactServingCurrencyAndCount()throws Exception {
         ExactVoteArea.Page result=ExactVoteArea.parse(page(SCOPE,EUROPE,"null"),List.of("u0nd9","sr2y7"));
         assertEquals(1,result.rows.size());assertEquals("europe/wine_glass/normal/EUR/glass:175",result.rows.get(0).targetKey);
         assertEquals(3,result.rows.get(0).count);assertEquals("Calice · 175 ml",result.rows.get(0).serving);
+        String spritz=EUROPE.replace("\"wine_glass\"","\"spritz\"").replace("\"unit\":\"glass\",\"ml\":175","\"unit\":\"drink\"").replace("Calice · 175 ml","Drink singolo");
+        ExactVoteArea.Row drink=ExactVoteArea.parse(page(SCOPE,spritz,"null"),List.of("u0nd9","sr2y7")).rows.get(0);
+        assertEquals("europe/spritz/normal/EUR/drink:",drink.targetKey);
+        assertNull(drink.serving);
         for(String invalid:new String[]{EUROPE.replace("\"EUR\"","\"USD\""),EUROPE.replace("\"ml\":175","\"ml\":0"),EUROPE.replace("\"wine_glass\"","\"spritz\""),EUROPE.replace("\"glass\"","\"ml\"")})
             assertThrows(IOException.class,()->ExactVoteArea.parse(page(SCOPE,invalid,"null"),List.of("u0nd9","sr2y7")));
         assertFalse(ExactVoteArea.allowed(ExactVoteArea.ROOT+"?cells=u0nd9&limit=50"));

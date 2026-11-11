@@ -36,7 +36,7 @@ internal sealed record DiscoveryRow(string Key, string Cell, string Venue, strin
             var price = value.ToString("N" + Exponent, CultureInfo.GetCultureInfo("it-IT"));
             var context = Context == "regular" ? "" : Context == "happy_hour" ? " · Happy hour" : " · Condizione";
             return $"{Venue} · {(City.Length == 0 ? "Località non indicata" : City)}\n{Drink} · {price} {Currency}{context}" +
-                   (Serving is null ? "" : $" · {Serving}") +
+                   (Serving is { Length: > 0 } ? $" · {Serving}" : "") +
                    (Condition is null ? "" : $" · {Condition}") +
                    (SourceUrl is null
                        ? $"\nSegnalato da un cliente il {CheckedOn:dd/MM/yyyy}"

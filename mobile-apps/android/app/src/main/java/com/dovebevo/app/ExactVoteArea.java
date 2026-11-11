@@ -95,6 +95,7 @@ final class ExactVoteArea {
             String drinkName=text(drink.get("name"),512,null),category=optional(drink.get("category"),32,null);
             if(category!=null&&RecommendationDrink.from(category)==null)throw NativeJson.invalid();
             String serving=display(drink.get("serving_label"),256);
+            if(serving!=null&&(serving.equalsIgnoreCase("drink")||serving.equalsIgnoreCase("Drink singolo")))serving=null;
             long count=NativeJson.integer(item.get("count"),1,SAFE_INTEGER);
             rows.add(new Row(url,name,city,drinkName,category,serving,targetKey,count));
         }

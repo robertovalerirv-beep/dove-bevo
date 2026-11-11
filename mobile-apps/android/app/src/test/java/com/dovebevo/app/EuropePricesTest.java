@@ -33,6 +33,14 @@ public final class EuropePricesTest {
         assertEquals("£7.20",NativePricePresentation.amount(null,p));assertTrue(NativePricePresentation.context(p).contains("Dal menu online"));assertFalse(NativePricePresentation.context(p).contains("Segnalato il"));assertFalse(p.old);
         assertThrows(IOException.class,()->FavoriteComparison.parse(null,bytes(body(wine(175,720),"","")),"gcpvj",TODAY));
     }
+    @Test public void genericDrinkKeepsExactGroupButOmitsRedundantServingLabel()throws Exception {
+        EuropePrices.Price spritz=cell(row("n91","gcpvj","GBP","spritz",0,900,"{\"unit\":\"drink\"}")).prices.get(0);
+        assertEquals("drink:",spritz.serving.key());
+        assertEquals("GBP/drink:",NativePricePresentation.group(null,spritz));
+        assertEquals("GBP",NativePricePresentation.groupLabel(null,spritz));
+        assertEquals("",spritz.serving.label());
+        assertTrue(NativePricePresentation.groupLabel(null,cell(wine(175,720)).prices.get(0)).contains("calice"));
+    }
     @Test public void favouritesRetainAllWineVariantsAndDoNotSortDifferentVolumesByCheapest()throws Exception {
         EuropePrices.Cell mobile=cell(wine(250,400)+","+wine(175,720));FavoriteComparison.Cell cell=FavoriteComparison.withEurope(null,mobile);
         List<FavoriteComparison.Row> rows=FavoriteComparison.rows(saved(),Collections.singletonMap("gcpvj",cell),RecommendationDrink.WINE_GLASS,0);

@@ -29,7 +29,7 @@ final class EuropePrices {
         final String unit;final Integer ml;
         Serving(String unit,Integer ml){this.unit=unit;this.ml=ml;}
         String key(){return unit+":"+(ml==null?"":ml);}
-        String label(){return unit.equals("ml")?ml+" ml":unit.equals("glass")?"calice"+(ml==null?" (volume non indicato)":" "+ml+" ml"):"drink";}
+        String label(){return unit.equals("ml")?ml+" ml":unit.equals("glass")?"calice"+(ml==null?" (volume non indicato)":" "+ml+" ml"):"";}
     }
     static final class Price {
         final String venue,cell,drink,currency,observedOn,confirmedOn,revision,sourceKind,sourceUrl,sourceCheckedOn,sourceSha256,menuItem,catalogVersion;

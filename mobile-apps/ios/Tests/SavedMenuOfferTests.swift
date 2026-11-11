@@ -87,6 +87,32 @@ final class SavedMenuOfferTests: XCTestCase {
         controller.viewWillDisappear(false)
     }
 
+    @MainActor func testGenericMenuServingDoesNotAppearInSavedOffer() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let venueStore = SavedVenueStore(directoryURL: root.appendingPathComponent("venues"))
+        let drinkStore = SavedDrinkStore(directoryURL: root.appendingPathComponent("categories"))
+        let offerStore = SavedMenuOfferStore(directoryURL: root.appendingPathComponent("offers"))
+        let venue = try SavedVenuePolicy.venue(url: canonical, label: "Bar Milano")
+        let generic = MenuV2Price(id: "spritz.7", venueName: "Bar Milano", itemName: "Spritz della casa",
+            category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+            servingLabel: "drink", servingML: nil,
+            origin: .ownerMenu(URL(string: "https://example.org/menu")!, "2026-11-03"), feeNotice: "Servizio escluso")
+        try offerStore.save(try XCTUnwrap(SavedMenuOffer.verified(venue: venue, price: generic)))
+        let snapshot = MenuV2Snapshot(venues: [canonical: MenuV2Venue(key: canonical.lastPathComponent,
+            cell: "u0nd9", name: "Bar Milano", offers: [generic], feeNotice: "Servizio escluso")], unavailable: [])
+        let controller = SavedVenuesViewController(store: venueStore, drinkStore: drinkStore,
+            offerStore: offerStore, menuClient: ImmediateOwnerMenu(snapshot: snapshot),
+            activityCheck: { true }) { _ in }
+        controller.loadViewIfNeeded(); controller.viewWillAppear(false); controller.viewDidAppear(false)
+        let cell = controller.tableView(controller.tableView, cellForRowAt: IndexPath(row: 0, section: 0))
+        let details = (cell.contentConfiguration as? UIListContentConfiguration)?.secondaryText ?? ""
+        XCTAssertTrue(details.hasPrefix("Menu del locale: 5,50 €"))
+        XCTAssertFalse(details.contains("Drink singolo"))
+        XCTAssertFalse(details.contains("drink\n"))
+        controller.viewWillDisappear(false)
+    }
+
     func testVerifiedLongMenuMetadataFitsThePublicV2Bounds() throws {
         let venue = try SavedVenuePolicy.venue(url: canonical, label: "Bar Milano")
         let long = MenuV2Price(id: "long.1", venueName: "Bar Milano",

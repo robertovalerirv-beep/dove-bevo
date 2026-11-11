@@ -23,8 +23,8 @@
 
 .sheet:has(.scontrino.mobile-venue) > .sheet__grip {
   flex: none;
-  min-height: 34px;
-  padding-top: 8px;
+  min-height: 42px;
+  padding: 7px 0 0;
   background: var(--surface, #fffbf4);
 }
 
@@ -128,7 +128,8 @@
   margin: 8px 0 12px;
 }
 .scontrino.mobile-venue .section-title {
-  margin: 14px 0 8px;
+  margin: 10px 0 6px;
+  padding-top: 0;
   border: 0;
   color: var(--ink, #1b1611);
   font-size: 16px;
@@ -417,8 +418,8 @@
   position: relative;
   margin: -8px -16px 0;
   overflow: hidden;
-  height: 150px;
-  border-radius: 0 0 22px 22px;
+  height: 88px;
+  border-radius: 0 0 16px 16px;
   background: linear-gradient(135deg, var(--bg, #fff4e4), var(--surface-2, #f6e9d6));
 }
 .mobile-venue__hero img {
@@ -438,8 +439,8 @@
 }
 .mobile-venue__hero--neutral img {
   flex: none;
-  width: 64px;
-  height: 64px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
 }
 .mobile-venue__hero--neutral div {
@@ -448,7 +449,7 @@
 }
 .mobile-venue__hero--neutral strong {
   color: var(--ink, #1b1611);
-  font-size: 20px;
+  font-size: 17px;
   line-height: 1.2;
 }
 .mobile-venue__hero--neutral span {
@@ -458,8 +459,8 @@
 }
 .mobile-venue__hero figcaption {
   position: absolute;
-  right: 12px;
-  bottom: 26px;
+  right: 10px;
+  bottom: 15px;
   padding: 4px 7px;
   border-radius: 999px;
   background: var(--surface, #fffbf4);
@@ -470,15 +471,15 @@
 .scontrino.mobile-venue .mobile-venue__hero + .scontrino__paper {
   position: relative;
   z-index: 1;
-  margin: -18px -8px 0;
-  padding: 17px 14px 14px;
+  margin: -10px -8px 0;
+  padding: 12px 14px 14px;
   border: 1px solid var(--line-soft, #e2d3be);
   border-bottom: 0;
   border-radius: 22px 22px 0 0;
   box-shadow: 0 -4px 16px rgb(27 22 17 / 5%);
 }
 .scontrino.mobile-venue .mobile-venue__identity {
-  padding-bottom: 12px;
+  padding-bottom: 9px;
   border-bottom: 1px solid var(--line-soft, #e2d3be);
 }
 .scontrino.mobile-venue .scontrino__name {
@@ -490,7 +491,14 @@
   font-size: 14px;
 }
 .scontrino.mobile-venue .scontrino__paper > .section-title {
-  margin: 14px 0 9px;
+  margin: 11px 0 7px;
+}
+.scontrino.mobile-venue .mobile-menu-v2__spotlight-slot > .mobile-menu-v2 {
+  margin: 0;
+  border-top: 0;
+}
+.scontrino.mobile-venue .mobile-menu-v2__spotlight-slot .section-title {
+  margin: 9px 0 6px;
 }
 .scontrino.mobile-venue .mobile-price {
   position: relative;
@@ -556,7 +564,7 @@
 }
 @media (max-height: 620px) {
   .mobile-venue__hero {
-    height: 88px;
+    height: 76px;
   }
 }
 
@@ -980,24 +988,6 @@
 .mobile-menu-v2__quick-actions .mobile-drink-vote {
   min-width: 56px;
   padding: 7px 9px;
-}
-.scontrino.mobile-venue .mobile-venue__hero {
-  height: 112px;
-  border-radius: 0 0 16px 16px;
-}
-.scontrino.mobile-venue .mobile-venue__hero--neutral img {
-  width: 50px;
-  height: 50px;
-}
-.scontrino.mobile-venue .mobile-venue__hero--neutral strong {
-  font-size: 17px;
-}
-.scontrino.mobile-venue .mobile-venue__hero figcaption {
-  bottom: 20px;
-}
-.scontrino.mobile-venue .mobile-venue__hero + .scontrino__paper {
-  margin-top: -12px;
-  padding-top: 15px;
 }
 .scontrino.mobile-venue .mobile-price--featured {
   grid-template-columns: 48px minmax(0, 1fr) auto;

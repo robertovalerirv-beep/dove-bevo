@@ -1795,12 +1795,7 @@
     justify-content: center;
   }
   :root:not([data-dovebevo-mobile-shell]) .search-field__text {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+    display: none; /* the button keeps its name from aria-label */
   }
 }
 /* Fuori orario: the strip of the attribution is dark too (the licences ask for the text, not for a colour), the

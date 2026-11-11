@@ -354,7 +354,6 @@ for (const width of [320, 390, 402]) {
     const box = await field.boundingBox();
     expect(box?.width).toBe(48);
     expect(box?.height).toBe(48);
-    const text = await field.locator(".search-field__text").boundingBox();
-    expect(text?.width ?? 0).toBeLessThanOrEqual(1); // visually hidden, still read by a screen reader
+    await expect(field.locator(".search-field__text")).toBeHidden(); // the name comes from aria-label
   });
 }

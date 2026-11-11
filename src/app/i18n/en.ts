@@ -334,7 +334,7 @@ export const en: Dict = {
           paragraphs: [
             "A manager can sign a paid agreement with us: their venue shows the blue check “Verified manager” with “Sponsored”, the opening hours on its page and the first place in the List.",
             "“Verified manager” means we have checked who runs the venue, not that we guarantee the venue or the prices. “Sponsored” means that first place is paid for.",
-            "The List shows sponsored venues first, then the others, from the lowest price to the highest; venues without a price come last. Map, search, “Cheapest here”, colours and prices don't change: prices can't be bought.",
+            "On the website the List shows sponsored venues first, then the others, from the lowest price to the highest; venues without a price come last. Map, search, “Cheapest here”, colours and prices don't change: prices can't be bought.",
           ],
         },
         {

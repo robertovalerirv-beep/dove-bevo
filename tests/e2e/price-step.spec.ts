@@ -83,6 +83,9 @@ test.describe("price step", () => {
           sheet.locator(sel).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
         expect(await size(".question")).toBeLessThanOrEqual(26);
         expect(await size(".price-input input")).toBeLessThanOrEqual(32);
+        expect(await size(".sheet__title")).toBeLessThanOrEqual(19);
+        const field = await sheet.locator(".price-input input").boundingBox();
+        expect(field?.height).toBeLessThanOrEqual(60);
 
         expect(await smallTargets(page)).toEqual([]);
         const axe = await new AxeBuilder({ page }).include("dialog[open]").withTags(AXE).analyze();

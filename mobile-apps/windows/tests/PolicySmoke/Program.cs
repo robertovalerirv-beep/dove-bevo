@@ -39,6 +39,13 @@ Require(mapRoutes.PreferredCityIndex(DiscoveryClient.Cities) == 8,
     "Home discovery must start with the remembered London city");
 Require(mapRoutes.Destination(londonVenue) == londonMap.AbsoluteUri,
     "Home discovery must not replace the selected map city");
+mapRoutes.BeginNativeVenue(londonMap);
+// Back to Preferiti consumes the source tab, not this city. A quick Mappa tap
+// must still cancel the pending venue load while WebView2 reports the old map.
+Require(mapRoutes.ConsumeNativeReturn() == londonMap.AbsoluteUri,
+    "Back then Mappa lost the city during a pending venue load");
+Require(mapRoutes.ConsumeNativeReturn() is null,
+    "A consumed map return must not jump again on a later Mappa tap");
 
 var venues = new[]
 {

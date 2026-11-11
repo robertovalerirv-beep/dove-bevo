@@ -279,6 +279,8 @@ public partial class MainWindow : Window
     {
         if (!Uri.TryCreate(address, UriKind.Absolute, out var uri)
             || !NavigationPolicy.IsTrusted(uri)) return;
+        if (source != NativeReturnDestination.None)
+            mapRoutes.BeginNativeVenue(CurrentBrowserRoute());
         pendingExactBookmark = exactBookmark;
         favouritesCancellation?.Cancel();
         recommendationCancellation?.Cancel();
@@ -304,7 +306,9 @@ public partial class MainWindow : Window
     private void Home_Click(object sender, RoutedEventArgs e) => Discover_Click(sender, e);
     private void Map_Click(object sender, RoutedEventArgs e)
     {
-        var fromNativeVenue = returnDestination != NativeReturnDestination.None;
+        // Keep this return route across Back to a native list: CoreWebView2.Source
+        // can still show the old city while its venue navigation is in flight.
+        var pendingMapReturn = mapRoutes.ConsumeNativeReturn();
         returnDestination = NativeReturnDestination.None;
         var current = CurrentBrowserRoute();
         favouritesCancellation?.Cancel();
@@ -314,9 +318,8 @@ public partial class MainWindow : Window
         RecommendationsPanel.Visibility = Visibility.Collapsed;
         ErrorPanel.Visibility = Visibility.Collapsed;
         ShowWebsiteIfNoOverlay();
-        // Source can still show the old map while a venue navigation is in flight.
-        if (fromNativeVenue || !ready || !NavigationPolicy.IsMapRoute(current))
-            Navigate(mapRoutes.Destination(current));
+        if (pendingMapReturn is not null || !ready || !NavigationPolicy.IsMapRoute(current))
+            Navigate(pendingMapReturn ?? mapRoutes.Destination(current));
         UpdateButtons();
     }
     private void More_Click(object sender, RoutedEventArgs e)

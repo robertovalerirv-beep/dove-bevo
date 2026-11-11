@@ -289,6 +289,19 @@ Require(legacyRows.Count == 2 && legacyRows.All(row => row.SourceUrl is null && 
         row.Display.Contains("5,50 EUR") && row.FocusedVenue() is not null) &&
     legacyRows.Any(row => row.Key == "u1" && row.Venue == "Customer Bar"),
     "Italian customer prices missing from Windows discovery");
+var staleArea = new DiscoveryArea(45.4642, 9.1900, 14);
+var resultGate = new DiscoveryResultGate();
+var priorLoad = resultGate.Begin(staleArea);
+Require(resultGate.Publish(priorLoad, staleArea, legacyRows) && resultGate.Rows.Count == 2,
+    "a loaded selected city must show its own rows");
+resultGate.Begin(null); // Reopen Scopri without a readable map area.
+Require(resultGate.Area is null && resultGate.Rows.Count == 0 &&
+    !resultGate.Publish(priorLoad, staleArea, legacyRows),
+    "Scopri without an area must clear previously visible city prices");
+var inFlight = resultGate.Begin(staleArea);
+resultGate.Begin(null); // A refreshed directory removed the selected city.
+Require(resultGate.Rows.Count == 0 && !resultGate.Publish(inFlight, staleArea, legacyRows),
+    "a late old-city response must not repaint after city selection is cleared");
 Require(LegacyDiscoveryClient.ParseCell(null, legacyPrices, "u0nd9", "spritz",
     new DateOnly(2026, 11, 10)).Single().Key == "u1",
     "approved user venue must remain available when the OSM asset is unavailable");

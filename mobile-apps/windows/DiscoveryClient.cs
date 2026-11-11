@@ -132,6 +132,28 @@ internal sealed record DiscoveryArea(double Latitude, double Longitude, double Z
 internal sealed record DiscoverySnapshot(IReadOnlyList<DiscoveryRow> Rows, int UnavailableCells,
     bool EuropeUnavailable = false);
 
+/// <summary>Rejects results from an area that was replaced or cleared while loading.</summary>
+internal sealed class DiscoveryResultGate
+{
+    private long generation;
+    internal DiscoveryArea? Area { get; private set; }
+    internal IReadOnlyList<DiscoveryRow> Rows { get; private set; } = [];
+
+    internal long Begin(DiscoveryArea? area)
+    {
+        Area = area;
+        Rows = [];
+        return ++generation;
+    }
+
+    internal bool Publish(long request, DiscoveryArea area, IReadOnlyList<DiscoveryRow> rows)
+    {
+        if (request != generation || Area != area) return false;
+        Rows = rows;
+        return true;
+    }
+}
+
 internal sealed class DiscoveryClient
 {
     internal static readonly DiscoveryCategory[] Categories =

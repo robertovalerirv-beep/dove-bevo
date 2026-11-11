@@ -30,6 +30,15 @@ CARICO_RENDERER_URL = "https://www.carico.io/js/app.js"
 CARICO_RENDERER_SHA256 = "02f10b32d3e52033d57d30ab6ce3e321dc1da4849a70c3380cfbcbf4626fbe05"
 MOSTO_SOURCE_URL = "https://mo5.it/m/alvino"
 MOSTO_OWNER_URL = "https://www.mosto.beer/sedi/alvino/"
+FUORILUOGO_MENU_URL = "https://www.fuoriluogo.org/menu"
+FUORILUOGO_OWNER_URL = "https://www.fuoriluogo.org/"
+# Google Sites appends this exact optional footer in some regions. It is not
+# venue menu text, and its presence is the only variance this format permits.
+GOOGLE_SITES_COOKIE_NOTICE = (
+    "This site uses cookies from Google to deliver its services and to analyze traffic. "
+    "Information about your use of this site is shared with Google. "
+    "By using this site, you agree to its use of cookies. Learn more Got it"
+)
 MOSTO_API_URL = "https://bdgwzhqdystjucjetrfs.supabase.co"
 MOSTO_BRANCH_ID = 2
 MOSTO_SELECT = ("id,numero,tipo,taplist(birra_id,birre("
@@ -294,8 +303,14 @@ def validate_source(row,venues,checked):
         parsed=urlsplit(row["source_url"])
         if parsed.query or not parsed.path.lower().endswith((".jpg",".jpeg")):
             raise Error("JPEG source must be a direct image URL")
-    if row["source_format"] not in ("html_text_v1","pdf_text_v1","pdf_image_v1","jpeg_image_v1","json_menu_v1","mosto_taplist_v1"):
+    if row["source_format"] not in ("html_text_v1","fuoriluogo_google_sites_v1",
+                                    "pdf_text_v1","pdf_image_v1","jpeg_image_v1",
+                                    "json_menu_v1","mosto_taplist_v1"):
         raise Error("unsupported source format")
+    if row["source_format"]=="fuoriluogo_google_sites_v1" and (
+        row["source_url"]!=FUORILUOGO_MENU_URL
+        or row["use_review_reference"]!=FUORILUOGO_OWNER_URL):
+        raise Error("unreviewed FuoriLuogo Google Sites source")
     digest(row["source_sha256"]);digest(row["source_text_sha256"])
     if row["source_format"]=="pdf_image_v1":
         integer(row["page_count"],1,MAX_IMAGE_PAGES)
@@ -313,7 +328,8 @@ def validate_source(row,venues,checked):
         digest(row["renderer_sha256"])
         if row["source_url"]!=MOSTO_SOURCE_URL or row["use_review_reference"]!=MOSTO_OWNER_URL:
             raise Error("unreviewed Mosto branch or owner reference")
-    if row["source_format"] in ("html_text_v1","json_menu_v1","mosto_taplist_v1") and row["source_sha256"]!=row["source_text_sha256"]:
+    if row["source_format"] in ("html_text_v1","fuoriluogo_google_sites_v1",
+                                "json_menu_v1","mosto_taplist_v1") and row["source_sha256"]!=row["source_text_sha256"]:
         raise Error("HTML text hashes differ")
     if day(row["source_checked_on"])>checked or day(row["use_reviewed_on"])>checked:
         raise Error("future source review")
@@ -551,6 +567,20 @@ def source_digests(raw,fmt,image_evidence=None,page_count=None):
     if len(raw)>MAX_SOURCE: raise Error("source too large")
     if fmt=="html_text_v1":
         result=legacy.source_digest(raw,"html_text_v1")
+        return result,result
+    if fmt=="fuoriluogo_google_sites_v1":
+        try:
+            parser=legacy.HTMLTextV1()
+            parser.feed(raw.decode("utf-8",errors="strict"));parser.close()
+            canonical=re.sub(r"\s+"," "," ".join(parser.parts)).strip()
+        except (UnicodeError,ValueError) as exc:
+            raise Error("invalid FuoriLuogo HTML text") from exc
+        if not canonical or len(canonical.encode("utf-8"))>legacy.MAX_HTML_TEXT:
+            raise Error("invalid FuoriLuogo HTML text")
+        suffix=" "+GOOGLE_SITES_COOKIE_NOTICE
+        if canonical.endswith(suffix):
+            canonical=canonical[:-len(suffix)]
+        result=hashlib.sha256(canonical.encode("utf-8")).hexdigest()
         return result,result
     if fmt=="json_menu_v1":
         json_menu_entries(raw)
@@ -941,7 +971,8 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
         return mosto_source_identity(row,transport,cache,offers)
     key=(row["source_url"],row["source_format"],row.get("source_text_sha256"))
     if key not in cache:
-        content_kind={"html_text_v1":"html","pdf_text_v1":"pdf",
+        content_kind={"html_text_v1":"html","fuoriluogo_google_sites_v1":"html",
+                      "pdf_text_v1":"pdf",
                       "pdf_image_v1":"pdf","jpeg_image_v1":"jpeg",
                       "json_menu_v1":"json"}[row["source_format"]]
         # Re-resolve the public address on one bounded retry of a transport timeout.
@@ -959,11 +990,12 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
                     source_raw,content_type)
     hashes,source_raw,content_type=cache[key]
     if hashes!=(row["source_sha256"],row["source_text_sha256"]):
-        if diagnostics is not None and row["source_format"] in ("html_text_v1","pdf_text_v1"):
+        if diagnostics is not None and row["source_format"] in (
+            "html_text_v1","fuoriluogo_google_sites_v1","pdf_text_v1"):
             media_type=(content_type or "").split(";",1)[0].strip().lower()
             if len(media_type)>128 or not re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+",media_type):
                 media_type=None
-            if row["source_format"]=="html_text_v1":
+            if row["source_format"] in ("html_text_v1","fuoriluogo_google_sites_v1"):
                 # A text pin deliberately ignores variable HTML markup. Record
                 # only bounded metadata so a hosted mismatch can be diagnosed
                 # without exposing the fetched menu or changing the fail-closed gate.

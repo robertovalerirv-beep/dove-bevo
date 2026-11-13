@@ -3,9 +3,13 @@
 ## Segnalare una vulnerabilità
 Usa la segnalazione privata di GitHub (<https://github.com/robertovalerirv-beep/dove-bevo/security/advisories/new>), indicata anche in `/.well-known/security.txt` (RFC 9116, da rinnovare prima della scadenza). Non aprire issue pubbliche per le vulnerabilità.
 
+- **Cosa è in ambito:** il sito <https://www.dovebevo.com>, la sua API (`/api/*`, comprese le rotte `/api/mobile/*` usate dalle app Android e iOS) e il codice di questo repository. Vale solo la versione in produzione: non esistono versioni precedenti mantenute.
+- **Cosa scrivere:** l'indirizzo o la rotta, i passi per riprodurre il problema e l'effetto che hai osservato. Scrivi in italiano o in inglese.
+- **Cosa non fare:** niente prove che riempiono la mappa di prezzi, bar o voti falsi, niente test di carico e niente accesso a dati non tuoi. Per le prove di scrittura usa una copia locale (`./init.sh`).
+
 ## Modello di minaccia (STRIDE) — M2-01
 
-Riferimenti: SPEC 13–14, ADR 0005 (sessione e quote), 0006 (eventi), 0018 (niente AI), 0019 (bar proposti). Standard: OWASP ASVS 5.0 livello 1 (`docs/security/asvs-l1.md`, M5). OWASP Top 10 LLM 2025: non applicabile, nessun LLM.
+Riferimenti: SPEC 13–14, ADR 0005 (sessione e quote), 0006 (eventi), 0018 (niente AI), 0019 (bar proposti), 0021, 0029 e 0044 (correzioni dopo gli audit), 0033 (gestore verificato), 0041 (consigli dalle app), 0045 (nonce e Trusted Types); per le rotte delle app `docs/mobile-europe-price-contract.md`. Standard: OWASP ASVS 5.0 livello 1 (`docs/security/asvs-l1.md`, M5). OWASP Top 10 LLM 2025: non applicabile, nessun LLM.
 
 ### Asset
 | Asset | Perché conta |
@@ -27,11 +31,14 @@ Bot e script automatici · spammer di prezzi · concorrenti di un locale · uten
 | S | Sessione falsificata o rubata | Cookie `HttpOnly; Secure; SameSite=Strict`, prefisso `__Host-`; firma con `SESSION_HMAC_KEY`; nessun dato in chiaro nel cookie oltre a id casuale e scadenza; un Worker con le chiavi segnaposto di sviluppo rifiuta sessioni e scritture fuori da localhost (`env-guard`, ADR 0029) | M2-03 |
 | S | Richieste da siti terzi (CSRF) | Controllo `Origin` su tutte le POST; `SameSite=Strict`; `Content-Type: application/json` obbligatorio | M2-04 |
 | S | Accesso ad `/admin` | Cloudflare Access + verifica del JWT nel Worker (firma RS256, `aud`, scadenza); le chiavi di Access si riscaricano per un `kid` ignoto al massimo ogni 30 s e le GET admin hanno il limite sui picchi (ADR 0044) | M5-02 |
+| S | Richieste alle rotte delle app (`/api/mobile/*`) da chi non è l'app | Stessi controlli del sito: `Origin`, segreti veri, limite sui picchi su letture e scritture; prezzi, conferme e segnalazioni chiedono la stessa sessione anonima protetta da Turnstile; i consigli usano un identificativo casuale dell'installazione (UUIDv4), mai un cookie o una credenziale copiati dal browser (ADR 0041) | `tests/worker/mobile-*.test.ts` |
 | **T**ampering | Prezzi falsi o fuori scala | Catalogo e limiti per drink; quarantena oltre ±50 % dalla mediana con ≥ 5 prezzi; conferme da sessioni diverse | M2-08, M2-09 |
 | T | Bar inesistente o cella falsa nella richiesta | Il Worker legge il file della cella da `ASSETS` e verifica il bar; il client non è mai fonte di verità | M2-08 |
 | T | Campi extra o tipi sbagliati | zod `strict` su ogni ingresso; body ≤ 16 KB letto con limite anche senza `Content-Length` | M2-04 |
 | T | Prompt injection (LLM01) | Non applicabile: nessun LLM (ADR 0018) | — |
 | T | Bar falsi o spam di proposte | Un bar proposto è `pending` e diventa pubblico solo con l'approvazione dell'admin, mai in automatico; nome validato (2–80, NFC, niente URL, email, telefoni, link nascosti con full-width o spazi, caratteri di controllo, invisibili, di uso privato o non validi; ADR 0029); duplicati bloccati (nome uguale entro 50 m → 409); 5 proposte al giorno per sessione e per IP; massimo 200 in attesa; prezzi di bar non approvati mai pubblici (ADR 0019); i nomi che imitano un bar già noto con lettere cirilliche o greche simili a quelle latine contano come duplicato (ADR 0044) | M3-11, M3-12, M3-13 |
+| T | Spunta «Gestore verificato» o orari falsi | Si attivano e si scrivono solo da `/admin` (Cloudflare Access e JWT verificato); cella e nome vengono dal file del bar o da `venues_user`, mai dal client; orari validati da un solo modulo, senza testo libero; un bar nascosto o non approvato non mostra mai la spunta (ADR 0033) | MD-02, MD-03, MD-04 |
+| T | Consigli dei drink gonfiati dalle app | Un consiglio per installazione, bar e drink (chiave unica su un HMAC separato per scopo); 50 aggiunte al giorno per installazione e 200 per IP; bar e drink verificati dal Worker; né l'identificativo né l'IP sono salvati in chiaro (ADR 0041) | `tests/worker/mobile-recommendations.test.ts`, `mobile-exact-drink-votes.test.ts` |
 | T | Dati OSM manipolati | Validazione dell'import (riquadro Italia, nomi ≤ 120); deploy fallisce se l'import fallisce | M1-02, M1-03 |
 | T | Supply chain e CI | Lockfile e versioni esatte, `npm audit`, Dependabot, Actions fissate a SHA, niente `pull_request_target`, deploy solo da `main` con `workflow_run` filtrato, ruleset su `main` e sui tag `spec-approved*` (esteso il 22/10/2026, ADR 0029); approvazione di Roberto per i workflow dei fork esterni; `scripts/check-config.mjs` in CI: ogni ambiente di `wrangler.jsonc` senza segnaposto e ogni deploy con `CLOUDFLARE_ENV`; `npm audit` anche sulle sole dipendenze di produzione a qualsiasi gravità | M0-05, M0-08 |
 | **R**epudiation | Contributi non attribuibili | Accettato per scelta (anonimato, SPEC 14): si limita l'abuso con quote e conferme, non con l'identità. Log senza dati personali: codice, rotta, durata | M2-16 |
@@ -43,7 +50,8 @@ Bot e script automatici · spammer di prezzi · concorrenti di un locale · uten
 | **D**enial of service | Quote D1 esaurite, spam di scritture | Quote giornaliere per sessione e per IP; binding Rate Limiting per i picchi (ADR 0010); Cache API sulle celle; misure in ADR 0013; tetto giornaliero di eventi per IP su `/api/events` (ADR 0044) | M2-14 |
 | D | Budget AI consumato (LLM10) | Non applicabile: nessuna AI, nessuna spesa variabile (ADR 0018) | — |
 | D | Quote gratuite esaurite dal traffico | Con il limite del giorno raggiunto `/api/*` può rispondere con la pagina dell'app: il client lo riconosce e mostra «Il servizio è molto richiesto» senza perdere i dati già caricati (ADR 0020) | M3-19 |
-| **E**levation of privilege | XSS da nomi OSM, input utente o output del modello (LLM05) | Preact rende solo testo; `dangerouslySetInnerHTML` vietato dal lint; CSP senza `unsafe-inline`; nessun CORS | M0-03, M0-04, M3-05 |
+| **E**levation of privilege | XSS da nomi OSM o input utente | Preact rende solo testo; `dangerouslySetInnerHTML` vietato dal lint; CSP senza `unsafe-inline`: ogni pagina ha un nonce nuovo a ogni richiesta con `strict-dynamic`, i tag aggiunti dal Worker per i motori di ricerca restano senza nonce; Trusted Types con una sola regola che accetta come script solo `/assets/*`, `/sw.js` e Turnstile (ADR 0045); nessun CORS | M0-03, M0-04, `tests/security/csp-nonce.spec.ts` |
+| E | Clickjacking, downgrade a HTTP, pagina dell'app servita su percorsi riservati | `frame-ancestors 'none'`; HSTS di due anni con `includeSubDomains` e `preload`; `/.well-known/*` risponde 404 tranne `security.txt` (SPEC 13.1, 13.8) | M0-03, M5-09 |
 | E | Azioni del modello oltre il previsto (LLM06/09) | Non applicabile: nessun LLM (ADR 0018) | — |
 | E | SQL injection | Solo query con parametri in `src/worker/lib/db.ts`; chiavi e celle validate con regex | M1-08, M1-15 |
 
@@ -52,6 +60,7 @@ Bot e script automatici · spammer di prezzi · concorrenti di un locale · uten
 - Un attaccante con molte reti diverse può superare le quote per IP: limitato da Turnstile, rate limit, quarantena e conferme. Da rivalutare con i dati reali.
 - Il binding Rate Limiting è per località ed eventualmente consistente (ADR 0010): non è un contatore esatto, le quote esatte stanno in D1.
 - L'immagine statica e i dati OSM sono pubblici per definizione.
+- L'identificativo dell'installazione usato dai consigli delle app non prova che dietro ci sia una persona sola: reinstallando l'app o cambiando telefono se ne ottiene un altro. Accettato: i consigli non toccano prezzi, mediane e colori, e i limiti per installazione e per IP frenano l'abuso (ADR 0041).
 - Le segnalazioni sono uniche per bersaglio, per sessione e per IP (IPv6 ridotto al /64) **nel giorno**: la stessa persona può segnalare di nuovo nei giorni seguenti. Contare i segnalatori distinti su più giorni richiederebbe salvare un hash dell'IP accanto alla segnalazione, vietato da SPEC 14. Accettato: `review` toglie il prezzo dalla vista ma non lo cancella, e decide l'admin (M5).
 - L'autore di un prezzo è riconosciuto (per sessione e per IP, come HMAC) solo per 48 ore, la vita di `dedup` imposta da SPEC 8: dopo, da un IP diverso, potrebbe confermare il proprio prezzo in quarantena. Accettato: la quarantena serve a frenare valori anomali immediati, e i prezzi in `review` restano fermi finché non decide l'admin.
 - Pen test del 22/10/2026 (ADR 0029): restano da decidere, perché cambiano la SPEC, l'attivazione di un prezzo in quarantena con la conferma di una seconda identità (D-10), la rimozione con 4 segnalazioni distinte, il prezzo «ultimo vince» sotto i 5 prezzi in cella e le quote per IP aggirabili con molti prefissi IPv6 e sessioni. Ogni identità richiede una risoluzione Turnstile.

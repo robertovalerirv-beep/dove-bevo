@@ -5,6 +5,9 @@ DELETE FROM venues_user;
 DELETE FROM counters;
 DELETE FROM dedup;
 DELETE FROM reports;
+-- A run stopped halfway can leave a verified bar behind: the next run must start clean.
+DELETE FROM venues_verified;
+DELETE FROM cell_snapshot;
 INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source) VALUES
   ('n2420779240',  'spritz',   0, 'u0nd9', 62505581,  750, date('now', '-3 days'),  3, 'active',      'manual'),
   ('n2420779240',  'beer_draft', 0, 'u0nd9', 62505581,  600, date('now', '-3 days'),  0, 'active',      'manual'),

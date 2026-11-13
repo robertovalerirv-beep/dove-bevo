@@ -706,7 +706,8 @@ test("production mobile entry renders drink dropdown and preserves venue route a
 
 test("drink checkboxes stay inside the narrow dropdown and viewport", async () => {
   const f = await fixture({ width: 412, height: 540 });
-  f.page.setDefaultTimeout(5000);
+  // 5 s made the page load fail at random when the other test files were starting browsers too.
+  f.page.setDefaultTimeout(30000);
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     await openDrinks(f.page);
@@ -1548,7 +1549,7 @@ test("customer-report outage remains clear and retryable when no price is visibl
     customerGets: [],
   };
   const f = await fixture({ width: 390, height: 700 }, options);
-  f.page.setDefaultTimeout(5000);
+  f.page.setDefaultTimeout(30000);
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
     const customer = f.page.getByRole("region", { name: "Prezzi segnalati dai clienti" });
@@ -1852,7 +1853,7 @@ test("a selected sourced price appears while full identity recovery is still pen
       () =>
         document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
       null,
-      { timeout: 3000 },
+      { timeout: 30000 },
     );
     assert.match(
       await f.page.locator("section.map").getAttribute("data-prices-shown"),

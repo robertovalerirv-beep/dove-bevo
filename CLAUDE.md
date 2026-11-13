@@ -31,9 +31,15 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - **Un cambio di altezza muove ciò che è ancorato a quel bordo**: dopo ogni cambio di layout controlla timbro, anello di focus (5 px fuori dalla scatola), attribuzioni, fogli aperti e controlli posizionati in assoluto.
 - **Prima di dare la colpa al codice mio o altrui**: costruisci il commit precedente in un worktree a parte e lancia lo stesso test; se fallisce uguale, è preesistente.
 - **Testo nascosto**: usa `.sr-only` o `display: none` (i controlli di overflow li escludono); non inventare una variante.
-- **Stato locale sporco**: dopo i test di scrittura (`contribute`, `propose`) il D1 locale tiene i prezzi e i bar inseriti e i test di sola lettura si contano diversamente. Prima di rieseguire test mirati: `rm -rf .wrangler/state` (non è tracciato), e prova che un fallimento non sia questo prima di toccare il codice.
+- **Stato locale sporco**: dopo i test di scrittura (`contribute`, `propose`) il D1 locale tiene i prezzi e i bar inseriti e i test di sola lettura si contano diversamente. `npm run verify` lo svuota a ogni avvio; prima di rieseguire a mano test mirati: `rm -rf .wrangler/state` (non è tracciato), e prova che un fallimento non sia questo prima di toccare il codice.
 - **Finito è il deploy, non il merge**: dopo un merge controlla la CI di `main` e il «Deploy staging»; una CI «cancelled» non fa partire il deploy. Dichiara chiuso solo con il deploy verde.
 - **Togliere una protezione scopre ciò che copriva**: prima di rimuovere un comportamento (es. la cancellazione delle CI su `main`) chiediti quale guasto evitava e coprilo in altro modo (es. `timeout-minutes` su ogni job, o una CI bloccata tiene ferma la coda per 6 ore).
+- **Un push è riuscito solo se il ramo è su GitHub**: dopo `git push` controlla `git ls-remote --heads origin <ramo>`. Mai incanalare il push in `tail` (l'uscita è quella di `tail`) né dare «fatto» perché il comando in background è finito.
+- **Mentre gira il gate non si tocca nulla**: niente test paralleli, niente `rm -rf .wrangler/state`, niente processi `workerd` uccisi a mano (`verify` rifiuta di partire se un altro è in corso: `node_modules/.cache/verify/running.pid`). Prima di fermarlo, trova il suo albero di processi (`env … .githooks/pre-push`, `node scripts/verify.mjs`) e chiudi quello, non i `workerd`.
+- **Un test non ha limiti a tempo impliciti**: misura la durata del test da solo e dagli un limite esplicito di almeno 5 volte tanto (es. 40 richieste firmate durano 5 s: il limite predefinito di 5 s lo faceva fallire a caso). Test con browser: nessun `setDefaultTimeout` sotto 30 s. I test non si saltano e non si indeboliscono: si rende affidabile la misura.
+- **File di test con browser, a coppie**: `node --test` lancia i file in parallelo e Chromium e WebKit si contendono la CPU; il passo mobile usa `--test-concurrency=2` in `verify` e in CI.
+- **Misura persa non è voto basso**: se Lighthouse perde una traccia (`NO_NAVSTART`) `verify` misura di nuovo; un punteggio sotto soglia blocca sempre.
+- **`verify` e `ci.yml` sono la stessa lista**: i passi stanno in `scripts/verify-steps.ts` e `tests/unit/ci-parity.test.ts` fallisce se la CI ha un comando che `verify` non esegue (o il contrario, o una nuova azione di terzi). Cambiando `ci.yml`, cambia lo stesso commit `verify-steps.ts`. Un passo già verde sullo stesso albero git non si rifà dopo un fallimento successivo (`VERIFY_FRESH=1` rifà tutto); con modifiche non committate non si ricorda niente.
 - **Misura il caso reale**, non uno di comodo: il nome del drink predefinito, le due lingue, 390/360/320 px, i due temi.
 
 ## Feature list
@@ -48,7 +54,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - `npm run test:security` — `tests/security`
 - `npm run db:local` — migrazioni e dati di prova sul D1 locale
 - `node scripts/check-feature-list.mjs`
-- `npm run verify` — esegue in locale tutto ciò che esegue la CI; lo lancia il hook `pre-push` (`.githooks/`, attivato da `init.sh`): un push con un controllo rosso viene bloccato
+- `npm run verify` — esegue in locale tutto ciò che esegue la CI (stessa lista, controllata da un test); lo lancia il hook `pre-push` (`.githooks/`, attivato da `init.sh`): un push con un controllo rosso viene bloccato. Riprende dai passi già verdi sullo stesso codice; `VERIFY_FRESH=1` rifà tutto. gitleaks e osmium, se non installati, restano alla CI
 
 ## Vietato a Claude Code
 - Deploy, `wrangler secret`, comandi D1 `--remote`: solo Roberto o la CI.

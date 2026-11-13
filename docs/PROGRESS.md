@@ -33,6 +33,30 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
+## 2026-11-13 · README, SECURITY aggiornato e controllo del push affidabile (ramo `claude/missing-readme-discussion-a5dc8a`)
+
+**Richiesta di Roberto:** il repository pubblico non aveva un README e la scheda Security era vecchia; poi, dopo una mattinata persa sul push, un controllo che non ricada negli stessi errori, in locale e su GitHub. Tutto in un solo commit. Nessuna modifica a SPEC, schema, API, D1 e interfaccia.
+
+**Fatto**
+- `README.md` nuovo (circa 70 righe: cosa è, principi, stack, avvio, mappa dei documenti, attribuzioni OSM/OpenFreeMap, contatti). Nessuna licenza concessa: lo dice il README, la scelta è di Roberto.
+- `SECURITY.md`: ambito e regole della segnalazione, rotte `/api/mobile/*` e consigli dalle app (ADR 0041), «Gestore verificato» (ADR 0033), CSP con nonce e Trusted Types (ADR 0045), HSTS e `/.well-known`, rischio accettato sull'identificativo dell'installazione; tolto il riferimento a M3-05, che non esiste più.
+- `hono` 4.13.13 → 4.13.18: `npm audit --omit=dev` segnalava 5 avvisi moderati.
+- **Controllo del push** (`scripts/verify.mjs`, nuovo `scripts/verify-steps.ts`): i passi sono quelli di `ci.yml`, e `tests/unit/ci-parity.test.ts` fallisce se la CI e `verify` si disallineano (comando nuovo, comando tolto, azione di terzi nuova). Aggiunti i passi che mancavano: test Python del catalogo Europa, test della presentazione mobile, gitleaks e osmium quando installati. Un passo già verde sullo stesso albero git non si rifà dopo un fallimento successivo (`VERIFY_FRESH=1` per rifare tutto; `npm audit` non si ricorda mai). Un solo `verify` alla volta (blocco con pid), database locale svuotato a ogni avvio, un tentativo in più per Playwright come la CI e l'elenco dei test ballerini, Lighthouse rimisurato fino a 4 volte se perde la traccia (`NO_NAVSTART`), mai se il punteggio è basso.
+- **Test resi affidabili senza saltarne nessuno:** `access-refresh` (40 richieste firmate durano 4,9 s: limite esplicito di 60 s), test mobile (limiti a mano da 3–5 s portati a 30 s; `--test-concurrency=2` in `verify` e in CI), seed dei test che svuota `venues_verified` e `cell_snapshot`.
+
+**Cause dei fallimenti del 10–13/11 (tutte verificate nei log):** push mai riuscito e dato per riuscito (uscita incanalata in `tail`); ramo 110 commit dietro `main`; 5 avvisi `hono` nuovi; bar «verificato» lasciato nel D1 locale da prove interrotte; Lighthouse che perde una traccia una volta su tre; test mobile con limiti a tempo troppo corti sotto carico (rossi anche su `main` dal #379); `access-refresh` al filo del limite; un test WebKit della mappa che passa 9 volte su 9 da solo ma cade a caso con 2 worker, perché la CI ripete i test e il controllo locale no; e interventi miei mentre il controllo girava. Righe corrispondenti in `CLAUDE.md`, sezione «Lezioni dai fallimenti».
+
+**Prove**
+- `npx vitest run tests/unit/ci-parity.test.ts`: 6 test verdi, quattro dei quali devono fallire quando la CI cambia.
+- `node --test` della suite mobile, tre esecuzioni contemporanee: 39 su 39 in tutte (prima 1–2 rossi per esecuzione).
+- `npx vitest run tests/worker/access-refresh.test.ts`: 5 su 5.
+- `npm run verify` completo sul commit, poi il push: il hook riprende i passi verdi dallo stesso albero.
+
+**Cosa resta (non verificato qui)**
+- gitleaks e osmium non sono installati su questo computer: le due scansioni le fa solo la CI.
+- Il test mobile con attese da 30 s sull'identità dei prezzi dopo una selezione non si è più riprodotto dopo le correzioni, ma la causa di fondo, se è una gara dell'app, non è dimostrata assente.
+- Il merge e il «Deploy staging» sono di Roberto e della CI: dopo il merge si controlla la CI di `main` e il deploy.
+
 ## 2026-11-11 · Elenco per prezzo e passo Prezzo compatto (ramo `claude/lista-prezzi-input-f76h1g`) · SPEC 1.19 · ADR 0049
 
 **Richiesta di Roberto (screenshot da iPhone):** (1) l'Elenco sempre ordinato per prezzo, con i gestori verificati in cima; (2) il passo «Quanto l'hai pagato?» ha troppi spazi e caratteri troppo grandi. Scelte in chat: ordine **crescente** (economico in alto), solo sito (app native invariate), «Indietro» con la sola freccia, testi più piccoli; il tag `spec-approved-16` lo pubblico io.

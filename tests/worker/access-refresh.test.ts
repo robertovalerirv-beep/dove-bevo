@@ -38,18 +38,24 @@ afterEach(() => {
 });
 
 describe("Access keys are not downloaded again for every unknown kid", () => {
-  it("40 requests with unknown kids download the keys at most once", async () => {
-    const spy = vi.spyOn(globalThis, "fetch");
-    for (let i = 0; i < 40; i++) {
-      const res = await get(
-        "overview",
-        await unknownKid(`k-${String(i)}`),
-        `198.51.100.${String(i + 1)}`,
-      );
-      expect(res.status).toBe(403);
-    }
-    expect(certFetches(spy)).toBeLessThanOrEqual(1);
-  });
+  // 40 signed requests one after the other take about 5 s alone: the default 5 s limit made this test
+  // fail at random (it is a measure of downloads, not of speed), so it has its own limit.
+  it(
+    "40 requests with unknown kids download the keys at most once",
+    { timeout: 60_000 },
+    async () => {
+      const spy = vi.spyOn(globalThis, "fetch");
+      for (let i = 0; i < 40; i++) {
+        const res = await get(
+          "overview",
+          await unknownKid(`k-${String(i)}`),
+          `198.51.100.${String(i + 1)}`,
+        );
+        expect(res.status).toBe(403);
+      }
+      expect(certFetches(spy)).toBeLessThanOrEqual(1);
+    },
+  );
 
   it("a real key rotation is still picked up, once, after the minimum interval", async () => {
     const spy = vi.spyOn(globalThis, "fetch");

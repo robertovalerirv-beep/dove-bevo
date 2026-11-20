@@ -973,6 +973,7 @@ public partial class MainWindow : Window
     {
         var area = discoveryResults.Area;
         if (area is null || DiscoveryDrink.SelectedItem is not DiscoveryCategory category) return;
+        FeaturedTitle.Text = $"Per te · {category.Name}";
         var generation = InvalidateDiscoveryResults(area);
         var request = new CancellationTokenSource();
         discoveryCancellation = request;

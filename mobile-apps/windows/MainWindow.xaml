@@ -158,7 +158,7 @@
                             <Button Style="{StaticResource NavButton}" Content="Aggiorna" Margin="12,0,0,0" Click="ReloadDiscovery_Click" />
                         </StackPanel>
                         </ScrollViewer>
-                        <TextBlock x:Name="FeaturedTitle" Text="Prezzi della zona" FontSize="17" FontWeight="Bold"
+                        <TextBlock x:Name="FeaturedTitle" Text="Per te" FontSize="17" FontWeight="Bold"
                                    Margin="0,3,0,2" Visibility="Collapsed" />
                         <TextBlock x:Name="FeaturedSubtitle" Text="Selezione di prezzi per il drink scelto"
                                    FontSize="12" Foreground="#5E554B" Margin="0,0,0,8" Visibility="Collapsed" />
@@ -175,7 +175,7 @@
                                                 Click="OpenFeaturedVenue_Click" Cursor="Hand"
                                                 Background="Transparent" BorderThickness="0" Padding="0"
                                                 Margin="0,0,10,0" HorizontalContentAlignment="Stretch">
-                                            <Border Background="#FFFBF4" BorderBrush="#E2D3BE"
+                                            <Border Background="White" BorderBrush="#E2D3BE"
                                                     BorderThickness="1" CornerRadius="16" Padding="13"
                                                     Width="220" MinHeight="128">
                                                 <StackPanel>
@@ -185,8 +185,8 @@
                                                                TextTrimming="CharacterEllipsis" Margin="0,5,0,0" />
                                                     <TextBlock Text="{Binding Venue}" FontSize="13" Foreground="#5E554B"
                                                                TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{Binding Price}" FontSize="20" FontWeight="Bold"
-                                                               Foreground="#1B1611" Margin="0,7,0,0" />
+                                                    <TextBlock Text="{Binding Price}" FontSize="24" FontWeight="Bold"
+                                                               Foreground="#B93A0B" Margin="0,7,0,0" />
                                                     <TextBlock Text="{Binding MinimumSpend}" FontSize="11" Foreground="#8A421B"
                                                                TextWrapping="Wrap" Margin="0,3,0,0" />
                                                     <TextBlock Text="{Binding Details}" FontSize="11" Foreground="#5E554B"
@@ -198,15 +198,43 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
+                        <TextBlock Text="Prezzi disponibili · in ordine crescente per valuta" FontSize="17" FontWeight="Bold"
+                                   Margin="0,2,0,4" />
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">
                         <Button Style="{StaticResource NavButton}" Content="Apri locale" Click="OpenDiscoveryVenue_Click" />
                         <Button Style="{StaticResource NavButton}" Content="Torna alla mappa" Click="Map_Click" />
                     </StackPanel>
-                    <ListBox x:Name="DiscoveryList" FontSize="15" Background="#FFFBF4"
-                             BorderBrush="#E2D3BE" DisplayMemberPath="Display"
+                    <ListBox x:Name="DiscoveryList" FontSize="15" Background="#FFF4E4"
+                             BorderBrush="#E2D3BE" HorizontalContentAlignment="Stretch"
                              VirtualizingPanel.IsVirtualizingWhenGrouping="True"
                              MouseDoubleClick="OpenDiscoveryVenue_Click">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="White" BorderBrush="#E2D3BE" BorderThickness="1"
+                                        CornerRadius="12" Padding="12" Margin="0,4"
+                                        AutomationProperties.Name="{Binding Display}">
+                                    <StackPanel>
+                                        <DockPanel LastChildFill="True">
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding PriceLabel}"
+                                                       FontSize="20" FontWeight="Bold" Foreground="#B93A0B"
+                                                       Margin="12,0,0,0" />
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Venue}" FontWeight="Bold" TextWrapping="Wrap" />
+                                                <TextBlock Text="{Binding VenueLocation}" FontSize="12"
+                                                           Foreground="#5E554B" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding DrinkSummary}" FontSize="13"
+                                                   TextWrapping="Wrap" Margin="0,6,0,0" />
+                                        <TextBlock Text="{Binding SourceSummary}" FontSize="12"
+                                                   Foreground="#5E554B" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding ConditionsSummary}" FontSize="12"
+                                                   Foreground="#8A421B" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
                         <ListBox.GroupStyle>
                             <GroupStyle>
                                 <GroupStyle.HeaderTemplate>

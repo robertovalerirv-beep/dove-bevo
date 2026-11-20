@@ -386,9 +386,18 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
                 (identityVenues ?? []).map((venue) => [venue.key, venue.matching_offer_count]),
               );
               const samples = new Map(filtered.map((venue) => [venue.key, venue.sample_offers]));
-              const minimumSpends = new Map(
-                filtered.map((venue) => [venue.key, venue.minimum_spends]),
+              // The selected drink can have a legacy price but no matching owner
+              // menu offer. The unfiltered identity read still carries the venue's
+              // conditions, so retain those before applying selected-drink rows.
+              const minimumSpends = new Map<string, MenuMinimumSpend[]>(
+                (identityVenues ?? []).map((venue) => [venue.key, venue.minimum_spends]),
               );
+              for (const venue of filtered) {
+                // A selected page may add a minimum. An empty parallel page
+                // must not erase one already seen for the same venue.
+                if (!minimumSpends.get(venue.key)?.length || venue.minimum_spends.length)
+                  minimumSpends.set(venue.key, venue.minimum_spends);
+              }
               const merged = new Map<string, Venue>(
                 legacy.map((venue) => [venue.key, { ...venue }]),
               );
@@ -483,7 +492,11 @@ export function isMediumDraftBeerServing(serving: MenuOffer["serving"]): boolean
 }
 
 export function mobileMinimumPin(venue: Venue): string | null {
-  const minimum = (venue as WithMenu).mobileMinimumSpends?.[0];
+  const known = (venue as WithMenu).mobileMinimumSpends;
+  // A legacy price arrives before the app-only menu request and can survive a
+  // failed read. Until the venue's conditions are known, keep that price honest.
+  if (known === undefined) return "Condizioni del locale da verificare";
+  const minimum = known[0];
   return minimum
     ? `Min. ${menuMoney(minimum.amount_minor, minimum.currency, minimum.currency_exponent)} / persona · vedi condizioni`
     : null;

@@ -193,9 +193,10 @@ internal sealed class DiscoveryClient
         var europe = await europeTask;
         var legacy = await legacyTask;
         cancellation.ThrowIfCancellationRequested();
-        var rows = SortRows(pages.Where(page => page is not null).SelectMany(page => page!)
-            .Concat(europe.Rows)
-            .Concat(legacy.Rows.Where(europe.AllowsLegacy)));
+        var menuRows = pages.Where(page => page is not null).SelectMany(page => page!).ToArray();
+        var additional = QualifyAdditionalRows(menuRows,
+            europe.Rows.Concat(legacy.Rows.Where(europe.AllowsLegacy)));
+        var rows = SortRows(menuRows.Concat(additional));
         return new DiscoverySnapshot(rows, pages.Count(page => page is null) + europe.UnavailableCells +
             legacy.UnavailableSources,
             europe.CatalogUnavailable);
@@ -215,6 +216,26 @@ internal sealed class DiscoveryClient
             }))
             .ThenBy(row => row.Venue, StringComparer.CurrentCultureIgnoreCase)
             .ToArray();
+
+    internal const string UnverifiedConditionsNotice =
+        "Condizioni del locale non verificate: controlla il dettaglio prima di confrontare il prezzo.";
+
+    /// <summary>
+    /// A customer or older catalogue price is independent of an owner-menu offer.
+    /// Carry a known venue minimum onto it. A selected-category response can omit
+    /// the venue entirely, so an absent menu row does not establish no minimum.
+    /// </summary>
+    internal static DiscoveryRow[] QualifyAdditionalRows(IReadOnlyList<DiscoveryRow> menuRows,
+        IEnumerable<DiscoveryRow> additionalRows)
+    {
+        var known = menuRows.GroupBy(row => (row.Key, row.Cell))
+            .ToDictionary(group => group.Key, group => group.First().MinimumSpendNotice);
+        return additionalRows.Select(row => row with
+        {
+            MinimumSpendNotice = known.TryGetValue((row.Key, row.Cell), out var notice)
+                ? notice : UnverifiedConditionsNotice,
+        }).ToArray();
+    }
 
     private static async Task<IReadOnlyList<DiscoveryRow>> LoadCellAsync(string cell, string category,
         CancellationToken cancellation)

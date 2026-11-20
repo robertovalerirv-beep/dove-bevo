@@ -72,6 +72,13 @@ public final class DiscoveryMenuV2Test {
         assertEquals("5,50 £",price.amount());
         assertTrue(price.minimumSpendNotice.contains("15,00 € a persona"));
         assertTrue(price.evidence().contains("durante le partite in diretta"));
+        DiscoveryData.Venue venue=new DiscoveryData.Venue("n123","Uno","u0nd9","Via A","Milano",45.4642,9.19);
+        DiscoveryData.Row featured=new DiscoveryData.Row(venue,price,new DiscoveryArea(45.4642,9.19,14));
+        String spoken=DiscoveryScreen.featuredAccessibilityLabel(featured,RecommendationDrink.SPRITZ,"Menu verificato 03/11/2026");
+        assertTrue("Drink amount stays separate in TalkBack",spoken.contains("5,50 £"));
+        assertTrue("Conditional minimum is spoken",spoken.contains("15,00 € a persona"));
+        assertTrue("Applicability is spoken",spoken.contains("durante le partite in diretta"));
+        assertFalse("Minimum is not added to drink price",spoken.contains("20,50"));
         assertTrue(MenuV2Prices.cellEndpoint("u0nd9",null).contains("minimum_spend=1"));
         assertFalse(MenuV2Prices.allowed(MenuV2Prices.cellEndpoint("u0nd9",null).replace("&minimum_spend=1","")));
     }

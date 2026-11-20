@@ -282,6 +282,19 @@ final class DiscoveryScreen {
     }
     private static String appendScope(String first,String next){return first.isEmpty()?next:next.isEmpty()?first:first+" · "+next;}
     static String currencyHeading(String currency){return currency.equals("EUR")?"EUR · €":currency.equals("GBP")?"GBP · £":currency;}
+    /** The featured card is one TalkBack target, so its spoken label must include
+     * every material price condition hidden with its descendants. */
+    static String featuredAccessibilityLabel(DiscoveryData.Row row,RecommendationDrink selected,CharSequence source){
+        StringBuilder label=new StringBuilder("Apri ").append(featuredDrinkName(row,selected)).append(" da ").append(row.venue.name)
+                .append(", ").append(row.amountLabel()).append(", ").append(row.groupLabel()).append(", ").append(source);
+        if(row.menuPrice!=null){
+            MenuV2Prices.Price price=row.menuPrice;
+            if(price.condition!=null&&!price.condition.isEmpty())label.append(". Prezzo soggetto a condizioni: ").append(price.condition);
+            if(price.minimumSpendNotice!=null&&!price.minimumSpendNotice.isEmpty())label.append(". ").append(price.minimumSpendNotice);
+            if(price.feeNotice!=null&&!price.feeNotice.isEmpty())label.append(". ").append(price.feeNotice);
+        }
+        return label.toString();
+    }
     /** An ordered preview of the same read-only rows shown below, never a synthetic deal. */
     private void addFeatured(DiscoveryData.Row row){
         LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.discoveryCard(card);card.setPadding(dp(8),dp(8),dp(8),dp(8));
@@ -296,8 +309,7 @@ final class DiscoveryScreen {
         TextView source=text((row.menuSource()?"Menu verificato ":"Segnalato ")+formatted+(row.old()?row.menuSource()?" · Menu da ricontrollare":" · Datato":""),11);NativeAppearance.muted(source);card.addView(source);
         String caveat=priceCaveat(row.menuPrice);
         if(caveat!=null){TextView warning=text(caveat,11);NativeAppearance.muted(warning);card.addView(warning);}
-        card.setClickable(true);card.setFocusable(true);card.setMinimumHeight(dp(48));card.setContentDescription("Apri "+drinkName+" da "+row.venue.name+", "+row.amountLabel()+", "+row.groupLabel()+", "+source.getText()+
-                (row.menuPrice==null?"":", "+(row.menuPrice.condition==null?"":"Prezzo soggetto a condizioni: "+row.menuPrice.condition+". ")+row.menuPrice.feeNotice));
+        card.setClickable(true);card.setFocusable(true);card.setMinimumHeight(dp(48));card.setContentDescription(featuredAccessibilityLabel(row,drink,source.getText()));
         card.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         card.setOnClickListener(v->{if(usable()&&!busy&&snapshot!=null)navigate.accept(row.venue.url());});
     }

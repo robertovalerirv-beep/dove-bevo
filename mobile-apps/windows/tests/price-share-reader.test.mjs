@@ -9,18 +9,42 @@ const venue = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9";
 const offered = venue + "&offer=menu-123";
 const headingSelector = ":scope > .sheet__body > .scontrino > .scontrino__paper h2.scontrino__name";
 
-function capture({ url = venue, hidden = false, duplicate = false, selected = "n123",
-  headingName = "Bar Milano", save = "link", offerName = "Spritz della casa",
-  offerHidden = false, ownerSpotlight = false, bothVisible = false } = {}) {
+function capture({
+  url = venue,
+  hidden = false,
+  duplicate = false,
+  selected = "n123",
+  headingName = "Bar Milano",
+  save = "link",
+  offerName = "Spritz della casa",
+  offerHidden = false,
+  ownerSpotlight = false,
+  bothVisible = false,
+} = {}) {
   const offerRoute = ownerSpotlight || new URL(url).searchParams.has("offer");
   const element = (extra = {}) => ({
-    isConnected: true, hidden: false, inert: false, parentElement: null,
+    isConnected: true,
+    hidden: false,
+    inert: false,
+    parentElement: null,
     getAttribute: () => null,
     getClientRects: () => [{}],
-    getBoundingClientRect: () => ({ x: 0, y: 0, left: 0, top: 0, right: 200, bottom: 100, width: 200, height: 100 }),
+    getBoundingClientRect: () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 200,
+      bottom: 100,
+      width: 200,
+      height: 100,
+    }),
     ...extra,
   });
-  const sheet = element({ matches: (selector) => selector === ":modal", getAttribute: (key) => key === "aria-label" ? "Bar Milano" : null });
+  const sheet = element({
+    matches: (selector) => selector === ":modal",
+    getAttribute: (key) => (key === "aria-label" ? "Bar Milano" : null),
+  });
   const body = element({ parentElement: sheet });
   const receipt = element({ parentElement: body });
   const paper = element({ parentElement: receipt });
@@ -28,61 +52,102 @@ function capture({ url = venue, hidden = false, duplicate = false, selected = "n
   const heading = element({ parentElement: identity, textContent: headingName });
   const place = element({ parentElement: identity, textContent: "Bar · Milano" });
   const marker = element({
-    parentElement: paper, hidden,
+    parentElement: paper,
+    hidden,
     dataset: {
-      version: "1", venue: "n123", venueName: "Bar Milano", drink: "spritz", drinkName: "Spritz",
-      hh: "0", amountMinor: "550", currency: "EUR", serving: "drink",
-      provenance: "Prezzo segnalato dai clienti", confirmations: "4", tier: "affare", location: "Milano",
+      version: "1",
+      venue: "n123",
+      venueName: "Bar Milano",
+      drink: "spritz",
+      drinkName: "Spritz",
+      hh: "0",
+      amountMinor: "550",
+      currency: "EUR",
+      serving: "drink",
+      provenance: "Prezzo segnalato dai clienti",
+      confirmations: "4",
+      tier: "affare",
+      location: "Milano",
     },
   });
   const offerRow = element({ parentElement: paper, hidden: offerHidden });
-  const name = element({ parentElement: offerRow, childNodes: [
-    { nodeType: 3, textContent: offerName }, { nodeType: 1, textContent: "Prezzo da menu" },
-  ] });
+  const name = element({
+    parentElement: offerRow,
+    childNodes: [
+      { nodeType: 3, textContent: offerName },
+      { nodeType: 1, textContent: "Prezzo da menu" },
+    ],
+  });
   const amount = element({ parentElement: offerRow, textContent: "8,50 €" });
   const firstNote = element({ parentElement: offerRow, textContent: "50 cl · Happy hour" });
-  const secondNote = element({ parentElement: offerRow,
-    textContent: "Prezzo del drink da menu, non totale pagato. Supplementi separati." });
-  const menuSource = element({ parentElement: offerRow, textContent: "Menu verificato il 2026-11-19" });
-  const saveAction = element({ parentElement: offerRow, tagName: save === "saved" ? "SPAN" : "A",
+  const secondNote = element({
+    parentElement: offerRow,
+    textContent: "Prezzo del drink da menu, non totale pagato. Supplementi separati.",
+  });
+  const menuSource = element({
+    parentElement: offerRow,
+    textContent: "Menu verificato il 2026-11-19",
+  });
+  const saveAction = element({
+    parentElement: offerRow,
+    tagName: save === "saved" ? "SPAN" : "A",
     getAttribute(key) {
-      if (key === "href") return "/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_offer=" +
-        (save === "wrong" ? "menu-456" : "menu-123");
+      if (key === "href")
+        return (
+          "/mobile/?path=%2Fbar%2Fn123&c=u0nd9&save_offer=" +
+          (save === "wrong" ? "menu-456" : "menu-123")
+        );
       if (key === "data-saved") return "true";
       if (key === "aria-label") return `${offerName} da Bar Milano: nei preferiti`;
       return null;
     },
   });
-  offerRow.querySelectorAll = (selector) => ({
-    ":scope > .mobile-menu-v2__name": [name],
-    ":scope > .mobile-menu-v2__amount": [amount],
-    ":scope > .mobile-menu-v2__source": [menuSource],
-    ":scope > .mobile-menu-v2__meta": [firstNote, secondNote],
-    ":scope .mobile-menu-v2__quick-actions > .mobile-menu-v2__save": [saveAction],
-  }[selector] ?? []);
-  sheet.querySelectorAll = (selector) => ({
-    [headingSelector]: [heading],
-    'li.mobile-menu-v2__offer--focused[data-testid="featured-menu-price"]': offerRoute || bothVisible ? [offerRow] : [],
-  }[selector] ?? []);
-  sheet.querySelector = (selector) => selector === ".scontrino__paper .bar__kind" ? place : null;
+  offerRow.querySelectorAll = (selector) =>
+    ({
+      ":scope > .mobile-menu-v2__name": [name],
+      ":scope > .mobile-menu-v2__amount": [amount],
+      ":scope > .mobile-menu-v2__source": [menuSource],
+      ":scope > .mobile-menu-v2__meta": [firstNote, secondNote],
+      ":scope .mobile-menu-v2__quick-actions > .mobile-menu-v2__save": [saveAction],
+    })[selector] ?? [];
+  sheet.querySelectorAll = (selector) =>
+    ({
+      [headingSelector]: [heading],
+      'li.mobile-menu-v2__offer--focused[data-testid="featured-menu-price"]':
+        offerRoute || bothVisible ? [offerRow] : [],
+    })[selector] ?? [];
+  sheet.querySelector = (selector) => (selector === ".scontrino__paper .bar__kind" ? place : null);
   sheet.contains = (node) => node === marker;
-  const map = element({ getAttribute: (key) => key === "data-selected" ? selected : null });
+  const map = element({ getAttribute: (key) => (key === "data-selected" ? selected : null) });
   const document = {
     visibilityState: "visible",
-    documentElement: { getAttribute: (key) => key === "data-dovebevo-mobile-shell" ? "1" : null },
+    documentElement: { getAttribute: (key) => (key === "data-dovebevo-mobile-shell" ? "1" : null) },
     querySelectorAll(selector) {
       if (selector === "section.map[data-selected]") return [map];
-      if (selector === "dialog.sheet.sheet--bare[open]" || selector === "dialog[open]") return [sheet];
-      if (selector === '[data-dovebevo-share="1"]') return offerRoute && !bothVisible ? []
-        : duplicate ? [marker, element({ parentElement: paper })] : [marker];
+      if (selector === "dialog.sheet.sheet--bare[open]" || selector === "dialog[open]")
+        return [sheet];
+      if (selector === '[data-dovebevo-share="1"]')
+        return offerRoute && !bothVisible
+          ? []
+          : duplicate
+            ? [marker, element({ parentElement: paper })]
+            : [marker];
       return [];
     },
   };
   const window = { visualViewport: null, innerWidth: 800, innerHeight: 600 };
   window.top = window;
   return runInNewContext(source, {
-    window, document, URL, location: { href: url },
-    getComputedStyle: () => ({ display: "block", visibility: "visible", contentVisibility: "visible", opacity: "1" }),
+    window,
+    document,
+    URL,
+    location: { href: url },
+    getComputedStyle: () => ({
+      display: "block",
+      visibility: "visible",
+      contentVisibility: "visible",
+      opacity: "1",
+    }),
   });
 }
 

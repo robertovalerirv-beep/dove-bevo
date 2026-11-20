@@ -1,3 +1,4 @@
+/* global URL, location, document, window, getComputedStyle */
 /* Read only the single visible featured public price in the selected venue. */
 (() => {
   "use strict";

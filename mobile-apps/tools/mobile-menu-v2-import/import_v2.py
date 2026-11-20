@@ -72,7 +72,7 @@ TABLES = ("mobile_menu_v2_venues","mobile_menu_v2_sources","mobile_menu_v2_offer
           "venues_user")
 MAX_MANIFEST = 2*1024*1024
 MAX_SOURCE = 8*1024*1024
-MAX_PDF_SOURCE = 9*1024*1024
+MAX_PDF_SOURCE = 16*1024*1024
 MAX_IMAGE_PAGES = 100
 
 class Error(Exception):

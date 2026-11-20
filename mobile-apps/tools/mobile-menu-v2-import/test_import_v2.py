@@ -108,14 +108,25 @@ class Fake:
 class ImportTests(unittest.TestCase):
     def test_pdf_headroom_does_not_expand_html_json_or_image_source_limit(self):
         self.assertEqual(core.MAX_SOURCE,8*1024*1024)
-        self.assertEqual(core.MAX_PDF_SOURCE,9*1024*1024)
-        self.assertTrue(core.MAX_SOURCE<8_407_900<=core.MAX_PDF_SOURCE)
+        self.assertEqual(core.MAX_PDF_SOURCE,16*1024*1024)
+        # Smile Tree Torino's reviewed owner PDF has this exact byte length.
+        self.assertTrue(core.MAX_SOURCE<13_141_506<=core.MAX_PDF_SOURCE)
+        self.assertEqual(core.source_limit("pdf_image_v1"),core.MAX_PDF_SOURCE)
+        for source_format in ("html_text_v1","json_menu_v1","jpeg_image_v1"):
+            self.assertEqual(core.source_limit(source_format),core.MAX_SOURCE)
         with mock.patch.object(core,"MAX_SOURCE",32), mock.patch.object(core,"MAX_PDF_SOURCE",64):
-            pdf=b"%PDF-"+b"x"*40
+            pdf=b"%PDF-"+b"x"*59
             transport=Fake()
             transport.public["https://example.org/menu"]=pdf
             self.assertEqual(core.public_fetch(transport,"https://example.org/menu",
                                                core.source_limit("pdf_text_v1"),"pdf"),pdf)
+            self.assertEqual(core.public_fetch(transport,"https://example.org/menu",
+                                               core.source_limit("pdf_image_v1"),"pdf"),pdf)
+            transport.public["https://example.org/menu"]=b"<html"+b"x"*59
+            with self.assertRaisesRegex(core.Error,"unexpected PDF source content"):
+                core.public_fetch(transport,"https://example.org/menu",
+                                  core.source_limit("pdf_image_v1"),"pdf")
+            transport.public["https://example.org/menu"]=pdf
             with self.assertRaises(core.Error):
                 core.public_fetch(transport,"https://example.org/menu",
                                   core.source_limit("html_text_v1"),"pdf")
@@ -125,8 +136,13 @@ class ImportTests(unittest.TestCase):
             self.assertEqual(hashes[0],hashlib.sha256(pdf).hexdigest())
             with self.assertRaisesRegex(core.Error,"source too large"):
                 core.source_digests(pdf,"html_text_v1")
-            with self.assertRaisesRegex(core.Error,"source too large"):
-                core.source_digests(b"%PDF-"+b"x"*60,"pdf_text_v1")
+            transport.public["https://example.org/menu"]=pdf+b"x"
+            with self.assertRaisesRegex(core.Error,"oversized response"):
+                core.public_fetch(transport,"https://example.org/menu",
+                                  core.source_limit("pdf_text_v1"),"pdf")
+            for source_format in ("pdf_text_v1","pdf_image_v1"):
+                with self.assertRaisesRegex(core.Error,"source too large"):
+                    core.source_digests(pdf+b"x",source_format)
             source=copy.deepcopy(SOURCE)
             source.update({"source_format":"pdf_text_v1",
                            "source_sha256":hashes[0],"source_text_sha256":hashes[1]})
@@ -134,6 +150,24 @@ class ImportTests(unittest.TestCase):
                  mock.patch.object(core,"source_digests",return_value=hashes):
                 self.assertEqual(core.source_identity(source,transport,{},[OFFER]),"verified")
             self.assertEqual(fetched.call_args.args[2],64)
+
+    def test_image_pdf_page_limit_still_applies_at_pdf_byte_cap(self):
+        pdf=b"%PDF-"+b"x"*59
+        evidence=[{"offer_id":"offer-test-1","page":3,
+                   "line":"Classic Spritz EUR 5.50"}]
+        def run(args,**kwargs):
+            if args[0]=="pdftotext":
+                return subprocess.CompletedProcess(args,0,b"",b"")
+            return subprocess.CompletedProcess(args,0,b"Pages: 3\n",b"")
+        with mock.patch.object(core,"MAX_PDF_SOURCE",64), \
+             mock.patch.object(core.subprocess,"run",side_effect=run):
+            raw_hash,review_hash=core.source_digests(pdf,"pdf_image_v1",evidence,3)
+            self.assertEqual(raw_hash,hashlib.sha256(pdf).hexdigest())
+            self.assertEqual(review_hash,core.image_review_digest(raw_hash,evidence))
+        with mock.patch.object(core.subprocess,"run",return_value=subprocess.CompletedProcess(
+            ["pdfinfo"],0,b"Pages: 101\n",b"")):
+            with self.assertRaisesRegex(core.Error,"invalid image PDF page count"):
+                core.pdf_page_count(pdf)
 
     def test_conditional_minimum_spend_is_separate_source_bound_and_idempotent(self):
         doc=manifest()

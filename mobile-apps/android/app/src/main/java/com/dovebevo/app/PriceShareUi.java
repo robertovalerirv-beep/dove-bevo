@@ -56,7 +56,8 @@ final class PriceShareUi {
         TextPaint body=new TextPaint(Paint.ANTI_ALIAS_FLAG);body.setColor(0xff27313a);body.setTextSize(28);
         String serving=price.servingLabel();
         String details=(serving.isEmpty()?"":serving+" · ")
-            +(price.hh==1?"Happy hour":"Prezzo normale")+"\n"+price.provenance+"\n"+price.confirmations+" "+(price.confirmations==1?"conferma":"conferme");
+            +(price.menuPrice?"Prezzo da menu":price.hh==1?"Happy hour":"Prezzo normale")+"\n"+price.provenance
+            +(price.menuPrice?"":"\n"+price.confirmations+" "+(price.confirmations==1?"conferma":"conferme"));
         StaticLayout provenance=layout(details,body,780);
         TextPaint title=new TextPaint(body);title.setTextSize(44);title.setTypeface(Typeface.DEFAULT_BOLD);
         StaticLayout name=layout(price.name,title,780);
@@ -67,11 +68,13 @@ final class PriceShareUi {
         Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);paint.setColor(0xffff5a1f);
         try(java.io.InputStream input=activity.getAssets().open("reference-drinks/brand-mark.png")){Bitmap mark=android.graphics.BitmapFactory.decodeStream(input);if(mark!=null)canvas.drawBitmap(mark,null,new android.graphics.RectF(46,28,120,108),paint);}catch(IOException missing){/* Bundled brand image is optional only if an installation is damaged. */}
         paint.setColor(0xff111a21);paint.setTypeface(Typeface.DEFAULT_BOLD);paint.setTextSize(44);canvas.drawText("Dove Bevo",125,85,paint);
-        DrinkArtwork artwork=new DrinkArtwork(activity,price.drink);artwork.layout(0,0,780,390);canvas.save();canvas.translate(60,130);artwork.draw(canvas);canvas.restore();
-        paint.setTextSize(23);paint.setTypeface(Typeface.DEFAULT);canvas.drawText("Illustrazione del drink · non foto del locale",60,552,paint);
+        if(price.drink!=null){DrinkArtwork artwork=new DrinkArtwork(activity,price.drink);artwork.layout(0,0,780,390);canvas.save();canvas.translate(60,130);artwork.draw(canvas);canvas.restore();}
+        else {paint.setColor(0xffffead0);canvas.drawRoundRect(new android.graphics.RectF(60,130,840,520),32,32,paint);
+            try(java.io.InputStream input=activity.getAssets().open("reference-drinks/brand-mark.png")){Bitmap mark=android.graphics.BitmapFactory.decodeStream(input);if(mark!=null)canvas.drawBitmap(mark,null,new android.graphics.RectF(340,205,560,445),paint);}catch(IOException missing){/* Keep the safe branded background. */}}
+        paint.setColor(0xff111a21);paint.setTextSize(23);paint.setTypeface(Typeface.DEFAULT);canvas.drawText("Illustrazione del drink · non foto del locale",60,552,paint);
         canvas.save();canvas.translate(60,580);drink.draw(canvas);canvas.restore();
         paint.setTextSize(70);canvas.drawText(price.amountLabel(),60,amountY,paint);
-        if(!price.tier.equals("neutro")){paint.setTextSize(27);paint.setColor(price.tier.equals("affare")?0xff216831:price.tier.equals("salato")?0xffa12020:0xff735300);canvas.drawText(price.tier.substring(0,1).toUpperCase(java.util.Locale.ITALY)+price.tier.substring(1),590,amountY,paint);}
+        if(!price.menuPrice&&!price.tier.equals("neutro")){paint.setTextSize(27);paint.setColor(price.tier.equals("affare")?0xff216831:price.tier.equals("salato")?0xffa12020:0xff735300);canvas.drawText(price.tier.substring(0,1).toUpperCase(java.util.Locale.ITALY)+price.tier.substring(1),590,amountY,paint);}
         canvas.save();canvas.translate(60,nameY);name.draw(canvas);canvas.restore();
         if(!price.location.isEmpty()){canvas.save();canvas.translate(60,locationY);location.draw(canvas);canvas.restore();}
         canvas.save();canvas.translate(60,detailY);provenance.draw(canvas);canvas.restore();

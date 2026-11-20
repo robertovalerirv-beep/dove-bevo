@@ -1081,7 +1081,10 @@ test("late vote response from a closed venue cannot change another venue's thumb
     await firstThumb.click();
     await held;
     await f.page.evaluate((key) => window.sheetFixture.bar([], key), otherKey);
-    const otherThumb = f.page.locator(".mobile-menu-v2__offer .mobile-drink-vote").first();
+    const otherThumb = f.page
+      .locator(".mobile-menu-v2__offer")
+      .filter({ hasText: "Spritz <script>" })
+      .locator(".mobile-drink-vote");
     await otherThumb.getByText("7").waitFor();
     const response = f.page.waitForResponse(
       (value) =>
@@ -1120,7 +1123,8 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
     const menu = f.page.getByRole("region", { name: "Prezzi dal menu online" });
     await menu.getByText("Spritz <script>").waitFor();
     assert.equal(await menu.locator("script").count(), 0);
-    assert.match(await menu.innerText(), /7,50\s€[\s\S]*Solo con: dopo le 18/);
+    assert.match(await menu.innerText(), /5,50\s€[\s\S]*Solo con: dopo le 18/);
+    assert.match(await menu.innerText(), /Spritz <script>[\s\S]*7,50\s€/);
     assert.match(await menu.innerText(), /Coperto[\s\S]*1,00\s€ a persona[\s\S]*solo al tavolo/);
     assert.match(
       await menu.innerText(),
@@ -1233,9 +1237,8 @@ test("compact menu rows keep details and lower sheet content reachable at phone 
     const more = menu.locator(".mobile-menu-v2__more-offers");
     await more.locator(":scope > summary").click();
     const rows = more.locator(".mobile-menu-v2__offers--compact");
-    const row = rows
-      .locator(".mobile-menu-v2__offer--compact")
-      .filter({ hasText: "Spritz serale" });
+    const row = rows.locator(".mobile-menu-v2__offer--compact").filter({ hasText: "Cocktail 1" });
+    const leading = menu.locator(".mobile-menu-v2__offer").first();
     const fee = menu.getByText("Coperto", { exact: true });
     const customerAction = f.page.getByRole("button", { name: "Aggiungi un drink mancante" });
     for (const width of [390, 320]) {
@@ -1253,8 +1256,9 @@ test("compact menu rows keep details and lower sheet content reachable at phone 
       assert.equal(layout.overflowY, "visible");
       assert.ok(layout.contentHeight <= layout.ownHeight + 1, JSON.stringify(layout));
       assert.ok(layout.right <= layout.viewportWidth, JSON.stringify(layout));
+      assert.match(await row.locator("summary").innerText(), /Cocktail 1[\s\S]*6,00\s*€/);
       assert.match(
-        await row.locator("summary").innerText(),
+        await leading.innerText(),
         /Spritz serale[\s\S]*5,50\s*€[\s\S]*Solo con: dopo le 18/,
       );
       await fee.scrollIntoViewIfNeeded();
@@ -1292,7 +1296,9 @@ test("uncategorized sourced drinks use neutral venue art and menu prices do not 
     await hero.waitFor();
     assert.equal(await hero.locator('img[src="/brand/simbolo.svg"]').count(), 1);
     assert.equal(await f.page.locator(".mobile-venue__hero figcaption").count(), 0);
-    const first = f.page.locator(".mobile-menu-v2__offer").first();
+    const first = f.page
+      .locator(".mobile-menu-v2__offer")
+      .filter({ hasText: "Cocktail della casa" });
     assert.match(
       await first.innerText(),
       /Cocktail della casa[\s\S]*Prezzo da menu[\s\S]*7,50\s*€/,
@@ -1314,7 +1320,7 @@ test("owner-verified venue separates cited menu and customer price, and submits 
     await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
     await f.page.getByRole("heading", { name: "Locale nuovo" }).waitFor();
     assert.equal(await f.page.getByRole("button", { name: "Aggiungi un prezzo qui" }).count(), 0);
-    const owner = f.page.locator(".mobile-menu-v2__offer").first();
+    const owner = f.page.locator(".mobile-menu-v2__offer").filter({ hasText: "Spritz <script>" });
     await owner.getByText("Prezzo segnalato da un cliente").waitFor();
     assert.match(await owner.innerText(), /7,50\s€[\s\S]*6,50\s€/);
     assert.match(await owner.innerText(), /Menu verificato il 2026-11-02/);
@@ -1345,7 +1351,7 @@ test("menu price editor shows the real venue and serving, a large amount, and ca
   const f = await fixture({ customerEmpty: true });
   try {
     await f.page.evaluate(() => window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa"));
-    const owner = f.page.locator(".mobile-menu-v2__offer").first();
+    const owner = f.page.locator(".mobile-menu-v2__offer").filter({ hasText: "Spritz <script>" });
     await owner.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
     const form = owner.locator(".mobile-customer-v2__form--menu");
     await form.waitFor();
@@ -1389,7 +1395,7 @@ test("menu price editor keeps original GBP currency in display and customer subm
       await window.sheetFixture.setLang("en");
       window.sheetFixture.bar([], "maaaaaaaaaaaaaaaaaaaaaaaa");
     });
-    const owner = f.page.locator(".mobile-menu-v2__offer").first();
+    const owner = f.page.locator(".mobile-menu-v2__offer").filter({ hasText: "Spritz <script>" });
     await owner.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
     const form = owner.locator(".mobile-customer-v2__form--menu");
     assert.match(await form.innerText(), /Add a price[\s\S]*Menu price:/i);
@@ -1442,7 +1448,13 @@ test("a new named drink enters moderation without changing the cited menu", asyn
         expected_revision: null,
       },
     ]);
-    assert.match(await f.page.locator(".mobile-menu-v2__offer").first().innerText(), /7,50\s€/);
+    assert.match(
+      await f.page
+        .locator(".mobile-menu-v2__offer")
+        .filter({ hasText: "Spritz <script>" })
+        .innerText(),
+      /7,50\s€/,
+    );
   } finally {
     await f.close();
   }

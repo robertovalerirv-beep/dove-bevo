@@ -77,12 +77,15 @@ export function mobilePinImage(tier: Tier, stale: boolean, label: string): Image
   context.fillStyle = tier === "salato" ? "#fffbf4" : "#1b1611";
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.font = `${stale ? "italic " : ""}700 14px -apple-system, BlinkMacSystemFont, sans-serif`;
-  context.fillText(text.amount, 28, text.currency ? 22 : 28, 38);
-  if (text.currency) {
-    context.font = "700 11px -apple-system, BlinkMacSystemFont, sans-serif";
-    context.fillText(text.currency, 28, 38, 38);
-  }
+  // A price and its currency are one value. Fit even long prices inside the pin circle.
+  const value =
+    text.currency === "£"
+      ? `£${text.amount}`
+      : text.currency
+        ? `${text.amount} ${text.currency}`
+        : text.amount;
+  context.font = `${stale ? "italic " : ""}700 ${text.currency ? "11" : "14"}px -apple-system, BlinkMacSystemFont, sans-serif`;
+  context.fillText(value, 28, 28, 38);
   // Preserve the original non-colour tier cue for colour-blind readers.
   context.fillStyle = "#1b1611";
   context.font = "700 10px -apple-system, BlinkMacSystemFont, sans-serif";

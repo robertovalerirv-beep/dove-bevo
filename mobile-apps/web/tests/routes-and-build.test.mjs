@@ -280,7 +280,7 @@ test("mobile map preserves the licensed website style and palette exactly", () =
   assert.equal(original.layers[0].paint["fill-color"], "red");
 });
 
-test("happy-hour and longer amounts retain separate readable price and HH cues", () => {
+test("happy-hour and longer amounts retain currency and HH semantics", () => {
   assert.deepEqual(mobilePinLabel("6,00 € Happy hour"), {
     amount: "6,00",
     currency: "€",
@@ -308,7 +308,7 @@ test("happy-hour and longer amounts retain separate readable price and HH cues",
   });
 });
 
-test("mobile price art draws the original currency and keeps menu counts currency-free", () => {
+test("mobile price art keeps currency beside the amount and menu counts currency-free", () => {
   const previousDocument = globalThis.document;
   const rendered = [];
   const fills = [];
@@ -324,8 +324,8 @@ test("mobile price art draws the original currency and keeps menu counts currenc
     },
     stroke() {},
     setLineDash() {},
-    fillText(value) {
-      rendered.push(value);
+    fillText(value, x, y, maxWidth) {
+      rendered.push({ value, x, y, maxWidth, font: this.font });
     },
     getImageData() {
       return { width: 112, height: 136 };
@@ -334,25 +334,53 @@ test("mobile price art draws the original currency and keeps menu counts currenc
   globalThis.document = { createElement: () => ({ getContext: () => context }) };
   try {
     mobilePinImage("affare", false, "6,00 € MENU");
-    assert.deepEqual(rendered, ["6,00", "€", "↓"]);
+    assert.deepEqual(
+      rendered.map((item) => item.value),
+      ["6,00 €", "↓"],
+    );
+    assert.deepEqual([rendered[0].x, rendered[0].y, rendered[0].maxWidth], [28, 28, 38]);
+    assert.match(rendered[0].font, /11px/);
     rendered.length = 0;
     mobilePinImage("salato", false, "£7.50 HH");
-    assert.deepEqual(rendered, ["7.50", "£", "↑ HH"]);
+    assert.deepEqual(
+      rendered.map((item) => item.value),
+      ["£7.50", "↑ HH"],
+    );
+    assert.equal(rendered[0].maxWidth, 38);
+    rendered.length = 0;
+    mobilePinImage("giusto", false, "125,00 €");
+    assert.deepEqual(
+      rendered.map((item) => item.value),
+      ["125,00 €", "="],
+    );
+    assert.equal(rendered[0].maxWidth, 38, "long prices must fit within the pin circle");
     rendered.length = 0;
     mobilePinImage("neutro", false, "30 VOCI");
-    assert.deepEqual(rendered, ["30", "VOCI"]);
+    assert.deepEqual(
+      rendered.map((item) => item.value),
+      ["30", "VOCI"],
+    );
     assert.equal(fills.at(-1), "#f6e9d6", "menu-entry counts must not look like priced pins");
     rendered.length = 0;
     mobilePinImage("neutro", false, "2 PREZZI");
-    assert.deepEqual(rendered, ["2", "PREZZI"]);
+    assert.deepEqual(
+      rendered.map((item) => item.value),
+      ["2", "PREZZI"],
+    );
     assert.equal(fills.at(-1), "#f6e9d6", "price counts must not look like priced pins");
     rendered.length = 0;
     mobilePinImage("neutro", false, "7,50 € MENU");
-    assert.deepEqual(rendered, ["7,50", "€", ""]);
+    assert.deepEqual(
+      rendered.map((item) => item.value),
+      ["7,50 €", ""],
+    );
     assert.equal(fills.at(-1), "#ff5a1f", "actual euro prices use the branded price fill");
     rendered.length = 0;
     mobilePinImage("neutro", false, "£7.50");
-    assert.deepEqual(rendered, ["7.50", "£", ""]);
+    assert.deepEqual(
+      rendered.map((item) => item.value),
+      ["£7.50", ""],
+    );
     assert.equal(fills.at(-1), "#ff5a1f", "actual pound prices use the branded price fill");
   } finally {
     if (previousDocument === undefined) delete globalThis.document;

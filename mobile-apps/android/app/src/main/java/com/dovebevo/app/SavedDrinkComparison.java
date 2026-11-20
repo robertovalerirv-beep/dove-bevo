@@ -27,7 +27,9 @@ final class SavedDrinkComparison {
         for(SavedDrinkStore.Entry item:saved){
             List<FavoriteComparison.Row> base=FavoriteComparison.rows(List.of(item.venue),cells,item.drink,item.band);
             MenuV2Prices.Venue menu=menus.get(item.venue.url);
-            List<MenuV2Prices.Price> named=menu==null?Collections.emptyList():menu.selected(item.drink,item.band);
+            List<MenuV2Prices.Price> named=menu==null?Collections.emptyList():new ArrayList<>(menu.selected(item.drink,item.band));
+            if(item.drink==RecommendationDrink.BEER_DRAFT)
+                named.removeIf(price->!MediumBeerServing.matches(price.servingLabel,price.servingML));
             if(named.isEmpty())for(FavoriteComparison.Row price:base)rows.add(new Row(item,price));
             else{
                 FavoriteComparison.Row fallback=base.get(0);

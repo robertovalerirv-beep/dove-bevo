@@ -61,20 +61,71 @@ struct DiscoverySnapshot {
     var menu: [String: MenuV2CellVenue] = [:]
     var menuUnavailableCells: Set<String> = []
     var partialCells: Set<String> { unavailableCells.union(menuUnavailableCells) }
+    private static let beerQuantity = try! NSRegularExpression(pattern: #"\b(\d+(?:[.,]\d+)?)\s*(ml|cl|lt|l)\b"#)
+
+    /// Only an explicit medium or a consistent 400–600 ml serving belongs in
+    /// Birra media comparisons. A pint, small/large label, or unknown size does not.
+    static func isMediumDraftBeer(label rawLabel: String?, ml: Int?) -> Bool {
+        let label = rawLabel?.precomposedStringWithCompatibilityMapping.lowercased()
+        if let label, label.range(of: #"\b(piccola|piccolo|small|mini|grande|large|pinta|pint)\b"#,
+                                  options: .regularExpression) != nil { return false }
+        let quantities = label.map { text in
+            Self.beerQuantity.matches(in: text, range: NSRange(text.startIndex..., in: text))
+        } ?? []
+        if quantities.count > 1 { return false }
+        var labelledML: Double?
+        if let match = quantities.first, let label {
+            guard let amountRange = Range(match.range(at: 1), in: label),
+                  let unitRange = Range(match.range(at: 2), in: label),
+                  let amount = Double(label[amountRange].replacingOccurrences(of: ",", with: ".")),
+                  amount.isFinite else { return false }
+            let factor = ["l": 1000.0, "lt": 1000.0, "cl": 10.0, "ml": 1.0]
+            let measured = amount * (factor[String(label[unitRange])] ?? 1)
+            guard measured.isFinite else { return false }
+            labelledML = measured
+        }
+        if let ml {
+            guard (1...100_000).contains(ml),
+                  labelledML.map({ abs($0 - Double(ml)) <= 1 }) ?? true else { return false }
+            return (400...600).contains(ml) && ml != 568
+        }
+        guard let label else { return false }
+        if let amount = labelledML { return (400...600).contains(amount) && amount != 568 }
+        return label.range(of: #"\b(media|medium)\b"#, options: .regularExpression) != nil
+    }
+
+    /// A cell sample proves a venue's minimum only when its identity matches
+    /// the other price feed. Missing or ambiguous menu data stays explicit.
+    private func conditionNotice(key: String, cell: String, name: String,
+                                 latitude: Double, longitude: Double) -> String? {
+        guard let checked = menu[key], checked.cell == cell, checked.name == name,
+              abs(checked.latitude - latitude) <= 0.0005,
+              abs(checked.longitude - longitude) <= 0.0005 else {
+            return "Condizioni del locale non verificate nei dati menu disponibili."
+        }
+        return checked.minimumSpendNotice.isEmpty ? nil : checked.minimumSpendNotice
+    }
 
     func displayRows(drink: String, band: ComparisonBand) -> [DiscoveryPresentedRow] {
         let original = rows(drink: drink, band: band).filter { europe?.venues[$0.venue.key] == nil }.map { row in
             DiscoveryPresentedRow(key: row.venue.key, name: row.venue.name, url: row.venue.url, latitude: row.venue.latitude,
-                longitude: row.venue.longitude, location: [row.venue.address, row.venue.city ?? ""].filter { !$0.isEmpty }.joined(separator: " · "), price: .legacy(row.price))
+                longitude: row.venue.longitude, location: [row.venue.address, row.venue.city ?? ""].filter { !$0.isEmpty }.joined(separator: " · "),
+                price: .legacy(row.price),
+                venueConditionNotice: conditionNotice(key: row.venue.key, cell: row.venue.cell, name: row.venue.name,
+                                                      latitude: row.venue.latitude, longitude: row.venue.longitude))
         }
         let added = (europe?.venues.values.map { $0 } ?? []).flatMap { venue in
-            venue.prices.filter { $0.drink == drink && $0.band == band && !$0.quarantined }.map { price in
+            venue.prices.filter { $0.drink == drink && $0.band == band && !$0.quarantined &&
+                (drink != "beer_draft" || Self.isMediumDraftBeer(label: nil, ml: $0.serving.ml)) }.map { price in
                 DiscoveryPresentedRow(key: venue.key, name: venue.name, url: venue.url, latitude: venue.latitude, longitude: venue.longitude,
-                    location: venue.city, price: .europe(price))
+                    location: venue.city, price: .europe(price),
+                    venueConditionNotice: conditionNotice(key: venue.key, cell: venue.cell, name: venue.name,
+                                                          latitude: venue.latitude, longitude: venue.longitude))
             }
         }
         let ownerMenus = menu.values.flatMap { venue in
-            venue.samples.filter { $0.category == drink && $0.band == band }.map { price in
+            venue.samples.filter { $0.category == drink && $0.band == band &&
+                (drink != "beer_draft" || Self.isMediumDraftBeer(label: $0.servingLabel, ml: $0.servingML)) }.map { price in
                 DiscoveryPresentedRow(key: venue.key, name: venue.name, url: venue.url,
                     latitude: venue.latitude, longitude: venue.longitude,
                     location: [venue.address, venue.city].filter { !$0.isEmpty }.joined(separator: " · "),

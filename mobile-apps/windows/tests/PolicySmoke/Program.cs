@@ -232,6 +232,20 @@ using var offerPriceJson = JsonDocument.Parse(JsonSerializer.Serialize(new {
 }));
 Require(BookmarkPriceClient.ParseOffer(offerPriceJson, offerAction!).Price?.Contains("8,50 €") == true,
     "exact menu offer price missing");
+var minimumSpend = new {
+    id = "minimum-1", label = "Consumazione minima", amount_minor = 1500,
+    currency = "EUR", currency_exponent = 2, basis = "person",
+    applicability = "conditional", condition = "durante le partite in diretta",
+    source = new { id = "source-1", url = "https://bar.example/menu",
+        text_sha256 = new string('a', 64), checked_on = "2026-11-02" },
+};
+using var minimumOfferPage = JsonDocument.Parse(offerPriceJson.RootElement.GetRawText()
+    .Replace("\"offers\":", "\"minimum_spends\":[" + JsonSerializer.Serialize(minimumSpend) + "],\"offers\":"));
+var minimumOffer = BookmarkPriceClient.ParseOffer(minimumOfferPage, offerAction!).Price;
+Require(minimumOffer is not null && minimumOffer.Contains("8,50 €") &&
+    minimumOffer.Contains("Consumazione minima 15,00 EUR a persona") &&
+    minimumOffer.Contains("durante le partite in diretta"),
+    "saved exact menu price must show a distinct conditional minimum");
 foreach (var (label, ml, expected) in new (string? Label, int? Ml, string? Category)[] {
     ("Media", null, "beer_draft"),
     ("50 cl", null, "beer_draft"),
@@ -341,6 +355,7 @@ var menu = new
         new
         {
             key = "n10781209907", cell = "u0nd9", name = "The Dome", city = "Milano",
+            lat = 45.4635, lon = 9.18839,
             matching_offer_count = 1,
             sample_offers = new[]
             {
@@ -361,6 +376,17 @@ var offer = DiscoveryClient.ParsePage(menuBytes, "u0nd9", "spritz").Rows.Single(
 Require(offer.Display.Contains("18,00 EUR") && offer.Display.Contains("menu.example") &&
     offer.FocusedVenue()?.AbsoluteUri.EndsWith("&drink=spritz&hh=0") == true,
     "verified discovery offer/focus mismatch");
+var guardedMenu = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(menuBytes)
+    .Replace("\"matching_offer_count\":1",
+        "\"minimum_spends\":[" + JsonSerializer.Serialize(minimumSpend) + "],\"matching_offer_count\":1"));
+var guardedOffer = DiscoveryClient.ParsePage(guardedMenu, "u0nd9", "spritz").Rows.Single();
+Require(guardedOffer.AmountMinor == offer.AmountMinor &&
+    guardedOffer.Display.Contains("Consumazione minima 15,00 EUR a persona") &&
+    guardedOffer.Display.Contains("durante le partite in diretta"),
+    "discovery price must keep its drink amount and show the conditional minimum");
+Require(FeaturedDiscoveryCards.FromRows([guardedOffer]).Single().MinimumSpend ==
+    guardedOffer.MinimumSpendNotice,
+    "featured discovery card must visibly carry the conditional minimum");
 var draftSamples = new (string Name, string? Label, int? Ml)[] {
     ("Media", "Media", null), ("50 cl", "50 cl", 500),
     ("500 ml", "500 ml", 500), ("Piccola", "Piccola", 250),
@@ -374,6 +400,7 @@ var draftPage = JsonSerializer.SerializeToUtf8Bytes(new {
     categories = new[] { "beer_draft" },
     venues = new[] { new {
         key = "n123", cell = "u0nd9", name = "Test Bar", city = "Milano",
+        lat = 45.4635, lon = 9.18839,
         matching_offer_count = draftSamples.Length,
         sample_offers = draftSamples.Select(sample => new {
             name = sample.Name, category = "beer_draft", amount_minor = 650,
@@ -409,6 +436,38 @@ Require(legacyRows.Count == 2 && legacyRows.All(row => row.SourceUrl is null && 
         row.Display.Contains("5,50 EUR") && row.FocusedVenue() is not null) &&
     legacyRows.Any(row => row.Key == "u1" && row.Venue == "Customer Bar"),
     "Italian customer prices missing from Windows discovery");
+var guardedAtLegacy = guardedOffer with { Key = "n123", Venue = "Test Bar" };
+var qualifiedLegacy = DiscoveryClient.QualifyAdditionalRows([guardedAtLegacy], legacyRows);
+var sameVenueLegacy = qualifiedLegacy.Single(row => row.Key == "n123");
+Require(sameVenueLegacy.AmountMinor == 550 &&
+    sameVenueLegacy.MinimumSpendNotice == guardedAtLegacy.MinimumSpendNotice &&
+    sameVenueLegacy.Display.Contains("5,50 EUR") &&
+    sameVenueLegacy.Display.Contains("15,00 EUR a persona") &&
+    FeaturedDiscoveryCards.FromRows([sameVenueLegacy]).Single().MinimumSpend ==
+        guardedAtLegacy.MinimumSpendNotice,
+    "same-venue customer and featured prices must announce the separate owner minimum");
+Require(qualifiedLegacy.Single(row => row.Key == "u1").MinimumSpendNotice ==
+    DiscoveryClient.UnverifiedConditionsNotice &&
+    DiscoveryClient.QualifyAdditionalRows([], legacyRows).All(row =>
+        row.Display.Contains(DiscoveryClient.UnverifiedConditionsNotice)),
+    "a filtered-out venue or unavailable v2 read must not look free of other conditions");
+Require(DiscoveryClient.QualifyAdditionalRows([offer with { Key = "n123", Venue = "Test Bar" }], legacyRows)
+        .Single(row => row.Key == "n123").MinimumSpendNotice.Length == 0,
+    "an exact checked venue without a minimum must not get a fabricated caveat");
+foreach (var mismatched in new[] {
+    guardedAtLegacy with { Venue = "Another Bar" },
+    guardedAtLegacy with { Latitude = guardedAtLegacy.Latitude + 0.001 },
+    guardedAtLegacy with { Longitude = guardedAtLegacy.Longitude + 0.001 },
+    guardedAtLegacy with { Latitude = null },
+})
+    Require(DiscoveryClient.QualifyAdditionalRows([mismatched], legacyRows)
+            .Single(row => row.Key == "n123").MinimumSpendNotice ==
+            DiscoveryClient.UnverifiedConditionsNotice,
+        "mismatched menu identity must not qualify another venue's customer price");
+Require(DiscoveryClient.QualifyAdditionalRows([guardedAtLegacy],
+        [legacyRows.Single(row => row.Key == "n123") with { Cell = "u0ndb" }])
+        .Single().MinimumSpendNotice == DiscoveryClient.UnverifiedConditionsNotice,
+    "mismatched cell must not qualify a customer price");
 var staleArea = new DiscoveryArea(45.4642, 9.1900, 14);
 var resultGate = new DiscoveryResultGate();
 var priorLoad = resultGate.Begin(staleArea);

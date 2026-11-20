@@ -1197,6 +1197,42 @@
   border-radius: 14px;
   background: var(--surface-2, #f6e9d6);
 }
+.mobile-menu-v2__minimum {
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid var(--spritz-text, #b93a0b);
+  border-radius: 14px;
+  background: var(--surface-2, #f6e9d6);
+  overflow-wrap: anywhere;
+}
+.mobile-menu-v2__minimum h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.mobile-menu-v2__minimum p {
+  margin: 6px 0;
+  font-size: 13px;
+  color: var(--ink-muted, #5e554b);
+}
+.mobile-menu-v2__minimum ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mobile-menu-v2__minimum li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  padding-top: 8px;
+}
+.mobile-menu-v2__minimum strong {
+  text-align: right;
+  white-space: nowrap;
+}
+.mobile-menu-v2__minimum small,
+.mobile-menu-v2__minimum a {
+  grid-column: 1 / -1;
+}
 .mobile-menu-v2__fees li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

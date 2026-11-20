@@ -137,6 +137,43 @@ final class SavedDrinkTests: XCTestCase {
         XCTAssertEqual(offline.first?.comparison.name, "Automatic offline name")
     }
 
+    func testSavedBeerComparesMediumOnlyWithoutDeletingThePrivateChoiceOrMenuFacts() throws {
+        func beer(_ ml: Int, _ amount: Int) -> EuropePrice {
+            EuropePrice(drink: "beer_draft", band: .normal, currency: "GBP", amountMinor: amount,
+                        serving: EuropeServing(unit: "ml", ml: ml), observedOn: nil, confirmedOn: nil,
+                        confirmations: 0, quarantined: false, revision: "revision-\(ml)",
+                        sourceURL: URL(string: "https://bar.example/menu"), sourceSHA256: nil,
+                        sourceCheckedOn: "2026-11-03", menuItem: "Birra \(ml) ml")
+        }
+        let venue = EuropeVenue(key: "n1001", name: "London bar", cell: "gcpvj", latitude: 51.5074,
+                                 longitude: -0.1278, city: "London", country: "GB", currency: "GBP",
+                                 prices: [beer(250, 350), beer(500, 650), beer(568, 700)])
+        let saved = try SavedDrink.validated(url: venue.url, label: "London bar", drink: "beer_draft", band: .normal)
+        let snapshot = FavouriteComparisonSnapshot(venues: [:], unavailable: [],
+                                                   europe: EuropeSnapshot(venues: [venue.key: venue]))
+        let rows = SavedDrinkRow.rows([saved], snapshot: snapshot)
+        XCTAssertEqual(rows.compactMap { $0.comparison.europePrice?.serving.ml }, [500])
+        XCTAssertEqual(rows.first?.comparison.displayPrice?.amount, "6,50 £")
+        XCTAssertEqual(venue.prices.count, 3, "The original menu and saved item are unchanged")
+
+        func offer(_ id: String, _ label: String?, _ ml: Int?, _ amount: Int) -> MenuV2Price {
+            MenuV2Price(id: id, venueName: "London bar", itemName: "Birra alla spina", category: "beer_draft",
+                        band: .normal, amountMinor: amount, currency: "GBP", exponent: 2,
+                        servingLabel: label, servingML: ml,
+                        origin: .ownerMenu(URL(string: "https://bar.example/menu")!, "2026-11-03"),
+                        feeNotice: "Altre spese non verificate")
+        }
+        let offers = [offer("small", "Piccola", 250, 300), offer("medium", "Media", 400, 500),
+                      offer("pint", "Pint", 568, 700), offer("unknown", nil, nil, 200)]
+        let menu = MenuV2Snapshot(venues: [venue.url: MenuV2Venue(key: venue.key, cell: venue.cell,
+                         name: venue.name, offers: offers, feeNotice: "Altre spese non verificate")], unavailable: [])
+        let combined = SavedDrinkRow.rows([saved], snapshot: snapshot, menuSnapshot: menu)
+        XCTAssertEqual(combined.count, 2)
+        XCTAssertEqual(combined.compactMap { $0.menuPrice?.id }, ["medium"])
+        XCTAssertEqual(combined.compactMap { $0.comparison.europePrice?.serving.ml }, [500, 500])
+        XCTAssertEqual(menu.venues[venue.url]?.offers.count, 4)
+    }
+
     private func menuPrice(_ currency: String, ml: Int, cents: Int) -> EuropePrice {
         EuropePrice(drink: "wine_glass", band: .normal, currency: currency, amountMinor: cents,
                     serving: EuropeServing(unit: "glass", ml: ml), observedOn: nil, confirmedOn: nil, confirmations: 0,

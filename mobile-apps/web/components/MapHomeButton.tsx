@@ -1,8 +1,8 @@
 import { currentLang } from "@site/app/i18n/lang";
 
-/** Return to the selected city's starting viewport without asking for device location. */
+/** Return to the app map's starting viewport without asking for device location. */
 export function MapHomeButton({ className, onClick }: { className: string; onClick: () => void }) {
-  const label = currentLang() === "en" ? "Initial city map view" : "Vista iniziale della città";
+  const label = currentLang() === "en" ? "Initial map view" : "Vista iniziale della mappa";
   return (
     <button
       type="button"

@@ -66,6 +66,37 @@ var venues = new[]
 foreach (var (address, key, expected) in venues)
     Require(NavigationPolicy.TryVenue(address, key, out _) == expected, "venue route policy mismatch");
 
+var shareVenue = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9";
+var shareRaw = JsonSerializer.Serialize(new {
+    href = shareVenue, version = "1", venue = "n123", venueName = "Bar Milano 🍹",
+    drink = "spritz", drinkName = "Spritz", hh = "0", amountMinor = "550",
+    currency = "EUR", serving = "drink", provenance = "Prezzo segnalato dai clienti",
+    confirmations = "4", tier = "affare", location = "Milano"
+});
+var share = PriceShareSnapshot.Parse(shareRaw, shareVenue, shareVenue);
+Require(share is { AmountLabel: "5,50 €", VenueName: "Bar Milano 🍹", ConfirmationLabel: "4 conferme" },
+    "visible EUR share price did not retain original amount and provenance");
+Require(PriceShareSnapshot.Parse(shareRaw, shareVenue,
+    "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn124&c=u0nd9") is null,
+    "navigated venue must retire a price-image snapshot");
+Require(PriceShareSnapshot.Parse(shareRaw.Replace("\"n123\"", "\"n124\""), shareVenue, shareVenue) is null,
+    "cross-venue share marker accepted");
+Require(PriceShareSnapshot.Parse(shareRaw.Replace("\"550\"", "\"10\""), shareVenue, shareVenue) is null,
+    "out-of-bounds public price accepted for poster");
+Require(PriceShareSnapshot.Parse(shareRaw.Replace("\"Milano\"", "\"Milano\\u000a\""), shareVenue, shareVenue) is null,
+    "control character accepted in shared image");
+Require(PriceShareSnapshot.Parse(shareRaw[..^1] + ",\"venue\":\"n123\"}", shareVenue, shareVenue) is null,
+    "duplicate JSON field accepted for poster");
+var shareGbpVenue = "https://www.dovebevo.com/mobile/?path=%2Fbar%2Fm" + new string('a', 24) + "&c=u0nd9";
+var shareGbp = shareRaw.Replace("n123", "m" + new string('a', 24))
+    .Replace("\"EUR\"", "\"GBP\"")
+    .Replace("\"550\"", "\"1300\"");
+Require(PriceShareSnapshot.Parse(shareGbp, shareGbpVenue, shareGbpVenue)?.AmountLabel == "£13.00",
+    "GBP price image must preserve its original currency");
+var focusedShare = shareVenue + "&drink=negroni&hh=0";
+Require(PriceShareSnapshot.Parse(shareRaw.Replace(shareVenue, focusedShare), focusedShare, focusedShare) is null,
+    "focused drink route must not share a different featured row");
+
 Require(NavigationPolicy.TryFocusedVenue(
     "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", "spritz", 0, out var focusedItalian)
     && focusedItalian?.AbsoluteUri ==

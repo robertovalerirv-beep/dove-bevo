@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private bool saveBusy;
     private string? pendingExactBookmark;
     private string lastTrustedUrl = NavigationPolicy.Home;
+    private int shareCaptureGeneration;
     private NativeReturnDestination returnDestination;
 
     public MainWindow() => InitializeComponent();
@@ -86,6 +87,7 @@ public partial class MainWindow : Window
 
     private void Browser_NavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
+        shareCaptureGeneration++;
         if (e.Uri.Contains("save_offer=", StringComparison.Ordinal) ||
             e.Uri.Contains("save_drink=", StringComparison.Ordinal) ||
             e.Uri.Contains("save_customer=", StringComparison.Ordinal) ||
@@ -132,6 +134,7 @@ public partial class MainWindow : Window
 
     private void RememberMapRoute()
     {
+        shareCaptureGeneration++;
         if (!ready) return;
         mapRoutes.Observe(CurrentBrowserRoute());
         // SourceChanged/HistoryChanged also cover same-document venue navigation.
@@ -205,6 +208,7 @@ public partial class MainWindow : Window
 
     private void Browser_ProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
     {
+        shareCaptureGeneration++;
         ShowError("Il browser si è interrotto. Premi Riprova per riaprire Dove Bevo.");
         ready = false;
     }
@@ -281,11 +285,13 @@ public partial class MainWindow : Window
     // a native panel is open; otherwise the panel is interactive but invisible.
     private void ShowWebsiteIfNoOverlay()
     {
-        Website.Visibility = ready && ErrorPanel.Visibility != Visibility.Visible &&
+        var visibility = ready && ErrorPanel.Visibility != Visibility.Visible &&
             DiscoveryPanel.Visibility != Visibility.Visible &&
             FavouritesPanel.Visibility != Visibility.Visible &&
             RecommendationsPanel.Visibility != Visibility.Visible
             ? Visibility.Visible : Visibility.Hidden;
+        if (Website.Visibility != visibility) shareCaptureGeneration++;
+        Website.Visibility = visibility;
     }
 
     private void Navigate(string address, string? exactBookmark = null,
@@ -434,18 +440,39 @@ public partial class MainWindow : Window
         else await StartBrowser();
     }
 
-    private void Share_Click(object sender, RoutedEventArgs e)
+    private async void Share_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            var current = Website.Source;
+            var current = CurrentBrowserRoute();
+            if (ready && Website.Visibility == Visibility.Visible &&
+                NavigationPolicy.IsTrusted(current) && current is not null &&
+                current.AbsolutePath is "/mobile/" or "/mobile/index.html" &&
+                current.Query.Contains("path=", StringComparison.Ordinal))
+            {
+                var captured = current.AbsoluteUri;
+                var generation = ++shareCaptureGeneration;
+                var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory,
+                    "PriceShareReader.js"));
+                var raw = await Website.CoreWebView2.ExecuteScriptAsync(script);
+                if (generation != shareCaptureGeneration || Website.Visibility != Visibility.Visible ||
+                    CurrentBrowserRoute()?.AbsoluteUri != captured) return;
+                var snapshot = PriceShareSnapshot.Parse(raw, captured, CurrentBrowserRoute()?.AbsoluteUri);
+                if (snapshot is null)
+                {
+                    StatusText.Text = "Apri un locale con un prezzo visibile per creare l'immagine.";
+                    return;
+                }
+                new PriceShareWindow(snapshot, captured) { Owner = this }.ShowDialog();
+                return;
+            }
             Clipboard.SetText(ready && NavigationPolicy.IsTrusted(current)
                 ? current!.AbsoluteUri : lastTrustedUrl);
             StatusText.Text = "Link copiato. Puoi condividerlo.";
         }
         catch (Exception)
         {
-            StatusText.Text = "Non riesco a copiare il link.";
+            StatusText.Text = "Condivisione non disponibile. Riprova dopo aver aperto il prezzo.";
         }
     }
 

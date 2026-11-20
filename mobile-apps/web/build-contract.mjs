@@ -79,12 +79,7 @@ export function transformApp(source) {
   result = once(
     result,
     "              {status}\n            </p>",
-    '              {status}\n              {!pinning && inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n                <span class="mobile-menu-map-note">{drinks.length ? "M+ = prezzo del drink da menu; coperto e supplementi esclusi" : "Numeri sulla mappa = voci di menu verificate o prezzi segnalati; non sono prezzi medi"}</span>\n              )}\n            </p>',
-  );
-  result = once(
-    result,
-    "              {status}\n              {!pinning",
-    '              {rawStatus === it.map.zoomIn ? (\n                <button type="button" class="mobile-zoom-search" aria-label={it.search.open}\n                  onClick={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }}>\n                  {status}\n                </button>\n              ) : status}\n              {!pinning',
+    '              {rawStatus === it.map.zoomIn ? (\n                <button type="button" class="mobile-zoom-search" aria-label={it.search.open}\n                  onClick={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }}>\n                  {status}\n                </button>\n              ) : status}\n            </p>',
   );
   result = once(
     result,
@@ -153,7 +148,7 @@ export function transformApp(source) {
   result = once(
     result,
     '        const price = bestPrice(v, drinks);\n        const label = price\n          ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`\n          : "";',
-    '        const price = bestPrice(v, drinks);\n        const menuPin = price ? null : mobileMenuPin(v, drinks);\n        const label = price\n          ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`\n          : menuPin ?? "";',
+    '        const price = bestPrice(v, drinks);\n        const menuPin = price ? null : mobileMenuPin(v, drinks);\n        const minimumPin = price || menuPin ? mobileMinimumPin(v) : null;\n        const priceLabel = price\n          ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`\n          : menuPin ?? "";\n        const label = priceLabel + (minimumPin ? ` · ${minimumPin}` : "");',
   );
   result = once(
     result,
@@ -189,7 +184,7 @@ export function transformApp(source) {
     '<MobileSearchButton venues={inView} onOpen={() => { if (route.name === "bar") { history.replaceState(null, "", mobileURL("/")); setRoute(parseRoute()); } setSearchHint(undefined); setSheet("search"); ensureMap(); }} />' +
     result.slice(buttons[0].end);
   return (
-    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapHomeButton as MobileMapHomeButton } from "@mobile/components/MapHomeButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileCoverage, mobileCoverageText, mobileZoomHint, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
+    'import { mobilePath, mobileURL, mobileInitialDrinks, mobileVenueKeyPattern, mobileFocus } from "@mobile/routes";\nimport { MapSearchButton as MobileSearchButton } from "@mobile/components/MapSearchButton";\nimport { MapHomeButton as MobileMapHomeButton } from "@mobile/components/MapHomeButton";\nimport { MapContributeActions as MobileMapActions } from "@mobile/components/MapContributeActions";\nimport { loadMobileCell, mobileMenuPin, mobileMinimumPin, mobileCoverage, mobileCoverageText, mobileZoomHint, invalidateMobileCell, legacyPriceVenues } from "@mobile/menu-v2";\n' +
     result
   );
 }

@@ -290,7 +290,7 @@ final class DiscoveryControllerTests: XCTestCase {
             XCTAssertTrue(text.contains(expected), expected)
         }
         XCTAssertTrue(cell.accessibilityValue?.contains("Spritz · Normale") == true, "The selected global drink and band remain explicit to VoiceOver")
-        XCTAssertEqual(cell.backgroundConfiguration?.backgroundColor, NativeAppearance.surface)
+        XCTAssertEqual(cell.backgroundConfiguration?.backgroundColor, .white)
         XCTAssertFalse(text.contains("Affare"), "A disposable feed must not invent a price tier")
         controller.tableView(controller.tableView, didSelectRowAt: index)
         XCTAssertEqual(opened, URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9"))

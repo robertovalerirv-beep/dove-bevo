@@ -248,7 +248,8 @@ final class PriceShareTests: XCTestCase {
         let menu = try await evaluate(web, MenuShareReader.script)
         XCTAssertNotNil(MenuShareOffer.parse(menu, currentURL: offerDocument))
         _ = try await evaluate(web, "document.querySelector('[data-testid=featured-menu-price]').hidden=true;true")
-        XCTAssertTrue(try await evaluate(web, "(\(MenuShareReader.script))===null") as? Bool == true)
+        let hiddenMenu = try await evaluate(web, "(\(MenuShareReader.script))===null")
+        XCTAssertTrue(hiddenMenu as? Bool == true)
     }
 
     @MainActor private func evaluate(_ web: WKWebView, _ script: String) async throws -> Any {

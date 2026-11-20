@@ -6,6 +6,7 @@ import argparse
 import datetime as dt
 import decimal
 import hashlib
+from html.parser import HTMLParser
 import importlib.util
 import ipaddress
 import json
@@ -32,6 +33,10 @@ MOSTO_SOURCE_URL = "https://mo5.it/m/alvino"
 MOSTO_OWNER_URL = "https://www.mosto.beer/sedi/alvino/"
 FUORILUOGO_MENU_URL = "https://www.fuoriluogo.org/menu"
 FUORILUOGO_OWNER_URL = "https://www.fuoriluogo.org/"
+EDIT_PORTO_MENU_URL = "https://editspace.com/menu-edit-porto-urbano"
+EDIT_PORTO_OWNER_URL = "https://editspace.com/hubs/edit-porto-urbano"
+EDIT_PORTO_VENUE_KEY = "n11049343309"
+EDIT_PORTO_CELL = "u0j2r"
 YELLOW_BAR_MENU_URL = ("https://drive.usercontent.google.com/download?"
                        "id=15wX_FusoJscsC_S4WMUJhoukDx6ligee&export=download")
 YELLOW_BAR_OWNER_URL = ("https://yellowsquare.com/rome/eat-and-party/"
@@ -61,11 +66,13 @@ BLOCKED = ("leggimenu.it","yhop.beer","metropolita.it",
            "junglejuicebrewing.com","google.com","googleapis.com",
            "googleusercontent.com")
 TABLES = ("mobile_menu_v2_venues","mobile_menu_v2_sources","mobile_menu_v2_offers",
-          "mobile_menu_v2_fees","mobile_menu_v2_fee_coverage","venues_hidden",
+          "mobile_menu_v2_fees","mobile_menu_v2_fee_coverage",
+          "mobile_menu_v2_minimum_spends","venues_hidden",
           "mobile_venues_moderation","reports","prices_current","price_obs",
           "venues_user")
 MAX_MANIFEST = 2*1024*1024
 MAX_SOURCE = 8*1024*1024
+MAX_PDF_SOURCE = 9*1024*1024
 MAX_IMAGE_PAGES = 100
 
 class Error(Exception):
@@ -267,14 +274,18 @@ def image_review_digest(raw_pdf_sha256,entries):
         raise Error("invalid image PDF evidence")
     seen=set()
     for entry in entries:
-        fields(entry,("offer_id","page","line"))
-        offer_id=identifier(entry["offer_id"])
+        if not isinstance(entry,dict) or ("offer_id" in entry)==("fee_id" in entry):
+            raise Error("invalid image PDF evidence target")
+        target="offer_id" if "offer_id" in entry else "fee_id"
+        fields(entry,(target,"page","line"))
+        item_id=identifier(entry[target])
         integer(entry["page"],1,MAX_IMAGE_PAGES)
         text(entry["line"],3,220)
-        if offer_id in seen: raise Error("duplicate image PDF evidence")
-        seen.add(offer_id)
+        if (target,item_id) in seen: raise Error("duplicate image PDF evidence")
+        seen.add((target,item_id))
     canonical=json.dumps({"pdf_sha256":raw_pdf_sha256,
-                          "evidence":sorted(entries,key=lambda entry:entry["offer_id"])},
+                          "evidence":sorted(entries,key=lambda entry:(
+                              entry.get("offer_id",entry.get("fee_id")),"fee_id" in entry))},
                          ensure_ascii=False,sort_keys=True,separators=(",",":")).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
 
@@ -315,7 +326,9 @@ def validate_source(row,venues,checked):
         parsed=urlsplit(row["source_url"])
         if parsed.query or not parsed.path.lower().endswith((".jpg",".jpeg")):
             raise Error("JPEG source must be a direct image URL")
-    if row["source_format"] not in ("html_text_v1","fuoriluogo_google_sites_v1",
+    if row["source_format"] not in ("html_text_v1","html_text_images_v1",
+                                    "fuoriluogo_google_sites_v1",
+                                    "edit_porto_urbano_main_v1",
                                     "pdf_text_v1","pdf_image_v1","jpeg_image_v1",
                                     "json_menu_v1","mosto_taplist_v1"):
         raise Error("unsupported source format")
@@ -323,6 +336,12 @@ def validate_source(row,venues,checked):
         row["source_url"]!=FUORILUOGO_MENU_URL
         or row["use_review_reference"]!=FUORILUOGO_OWNER_URL):
         raise Error("unreviewed FuoriLuogo Google Sites source")
+    if row["source_format"]=="edit_porto_urbano_main_v1" and (
+        row["source_url"]!=EDIT_PORTO_MENU_URL
+        or row["use_review_reference"]!=EDIT_PORTO_OWNER_URL
+        or row["venue_key"]!=EDIT_PORTO_VENUE_KEY
+        or row["cell"]!=EDIT_PORTO_CELL):
+        raise Error("unreviewed EDIT Porto Urbano source")
     if row["source_url"]==YELLOW_BAR_MENU_URL and (
         row["venue_key"]!="n2244964954" or row["cell"]!="sr2yk"
         or row["source_format"]!="pdf_text_v1"
@@ -347,7 +366,9 @@ def validate_source(row,venues,checked):
         digest(row["renderer_sha256"])
         if row["source_url"]!=MOSTO_SOURCE_URL or row["use_review_reference"]!=MOSTO_OWNER_URL:
             raise Error("unreviewed Mosto branch or owner reference")
-    if row["source_format"] in ("html_text_v1","fuoriluogo_google_sites_v1",
+    if row["source_format"] in ("html_text_v1","html_text_images_v1",
+                                "fuoriluogo_google_sites_v1",
+                                "edit_porto_urbano_main_v1",
                                 "json_menu_v1","mosto_taplist_v1") and row["source_sha256"]!=row["source_text_sha256"]:
         raise Error("HTML text hashes differ")
     if day(row["source_checked_on"])>checked or day(row["use_reviewed_on"])>checked:
@@ -416,15 +437,41 @@ def validate_coverage(row,venues,sources,fees):
     if (row["status"]=="explicit_no_fee" and own) or (row["status"]=="documented_partial" and not own):
         raise Error("fee coverage contradicts fee rows")
 
+def validate_minimum_spend(row,venues,sources):
+    # A minimum is a conditional order requirement, not an additive fee or a drink price.
+    fields(row,("id","venue_key","cell","source_id","label","amount_minor",
+                "currency","currency_exponent","basis","applicability",
+                "condition_text","evidence_ref"))
+    identifier(row["id"]);link(row,venues,sources);text(row["label"],1,512)
+    if sources[row["source_id"]]["source_format"] not in (
+        "html_text_v1","html_text_images_v1","pdf_text_v1"):
+        raise Error("minimum spend needs reviewed text source")
+    integer(row["amount_minor"],1,100000000)
+    if not isinstance(row["currency"],str) or not re.fullmatch(r"[A-Z]{3}",row["currency"]):
+        raise Error("invalid minimum-spend currency")
+    integer(row["currency_exponent"],0,3)
+    if row["basis"]!="person": raise Error("unsupported minimum-spend basis")
+    if row["applicability"]=="conditional":
+        text(row["condition_text"],3,500)
+    elif row["applicability"]=="all_orders":
+        if row["condition_text"] is not None: raise Error("minimum spend has unpaired condition")
+    else:
+        raise Error("invalid minimum-spend applicability")
+    text(row["evidence_ref"],3,300)
+
 def verify_image_pdf_offers(source,offers,fees,coverage):
-    """Bind each approved offer to one reviewed PDF page and normalized line."""
+    """Bind each approved offer and an explicitly printed service fee to PDF pages."""
     source_id=source["id"]
-    if any(row["source_id"]==source_id for row in fees+coverage):
-        raise Error("image PDF fees need separate reviewed source format")
+    if any(row["source_id"]==source_id for row in coverage):
+        raise Error("image PDF coverage needs separate reviewed source format")
     own=[row for row in offers if row["source_id"]==source_id]
-    entries={entry["offer_id"]:entry for entry in source["image_evidence"]}
+    own_fees=[row for row in fees if row["source_id"]==source_id]
+    entries={entry["offer_id"]:entry for entry in source["image_evidence"] if "offer_id" in entry}
+    fee_entries={entry["fee_id"]:entry for entry in source["image_evidence"] if "fee_id" in entry}
     if {row["id"] for row in own}!=set(entries):
         raise Error("image PDF offer evidence coverage mismatch")
+    if {row["id"] for row in own_fees}!=set(fee_entries):
+        raise Error("image PDF fee evidence coverage mismatch")
     for row in own:
         if row["price_context"]!="regular":
             raise Error("image PDF conditional prices need separate review")
@@ -433,6 +480,22 @@ def verify_image_pdf_offers(source,offers,fees,coverage):
         if row["evidence_ref"]!=f'PDF page {entry["page"]}: {line}':
             raise Error("image PDF offer page reference mismatch")
         verify_reviewed_image_line(row,line,"image PDF")
+    for row in own_fees:
+        entry=fee_entries[row["id"]]
+        line=entry["line"]
+        if row["evidence_ref"]!=f'PDF page {entry["page"]}: {line}':
+            raise Error("image PDF fee page reference mismatch")
+        # The image contract only admits this fully specified, unconditional
+        # percent service fee. Its printed minimum is carried in the label;
+        # clients display the fee separately and never calculate a bill total.
+        match=re.fullmatch(r"SERVIZIO\s+([0-9]+(?:[,.][0-9]+)?)\s*%\s+MIN\.?\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*€",line,re.I)
+        if not match or (row["fee_kind"],row["basis"],row["applicability"],row["condition_text"])!=("percent","bill","all_orders",None):
+            raise Error("image PDF fee is not a reviewed service charge")
+        from decimal import Decimal
+        rate=Decimal(match.group(1).replace(",","."))*100
+        minimum=int(Decimal(match.group(2).replace(",","."))*100)
+        if row["rate_bps"]!=rate or row["label"]!=f"Servizio (minimo EUR {minimum//100}.{minimum%100:02d})":
+            raise Error("image PDF service fee rate or minimum mismatch")
 
 def verify_reviewed_image_line(row,line,kind):
     """Check that reviewed image evidence names the exact offer, size and amount."""
@@ -473,8 +536,11 @@ def validate(raw):
     if not isinstance(raw,bytes) or not 1<=len(raw)<=MAX_MANIFEST: raise Error("manifest size")
     try: doc=json.loads(raw.decode("utf-8"),object_pairs_hook=pairs,parse_constant=constant)
     except (UnicodeError,ValueError) as exc: raise Error("invalid manifest JSON") from exc
-    fields(doc,("schema_version","batch_id","checked_on","data_version","venues",
-                "sources","offers","fees","fee_coverage"))
+    required=("schema_version","batch_id","checked_on","data_version","venues",
+              "sources","offers","fees","fee_coverage")
+    fields(doc,required+(("minimum_spends",) if "minimum_spends" in doc else ()))
+    # Preserve the exact bytes and hash of all existing version-one manifests.
+    doc.setdefault("minimum_spends",[])
     if type(doc["schema_version"]) is not int or doc["schema_version"]!=1:
         raise Error("invalid manifest version")
     if not isinstance(doc["batch_id"],str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{3,80}",doc["batch_id"]):
@@ -484,10 +550,11 @@ def validate(raw):
     if not isinstance(doc["data_version"],str) or not re.fullmatch(r"[0-9]{8}",doc["data_version"]):
         raise Error("invalid catalogue version")
     for attr,limit in (("venues",100),("sources",100),("offers",1000),
-                       ("fees",200),("fee_coverage",100)):
+                       ("fees",200),("fee_coverage",100),("minimum_spends",100)):
         if not isinstance(doc[attr],list) or len(doc[attr])>limit:
             raise Error("invalid collection")
-    if not doc["venues"] or not doc["sources"] or not (doc["offers"] or doc["fees"] or doc["fee_coverage"]):
+    if not doc["venues"] or not doc["sources"] or not (
+        doc["offers"] or doc["fees"] or doc["fee_coverage"] or doc["minimum_spends"]):
         raise Error("empty seed")
     venues={}
     for row in doc["venues"]:
@@ -510,18 +577,26 @@ def validate(raw):
         validate_coverage(row,venues,sources,doc["fees"])
         if row["venue_key"] in seen: raise Error("duplicate fee coverage")
         seen.add(row["venue_key"])
+    seen=set()
+    for row in doc["minimum_spends"]:
+        validate_minimum_spend(row,venues,sources)
+        if row["id"] in seen: raise Error("duplicate minimum-spend ID")
+        seen.add(row["id"])
     for src in sources.values():
         if src["source_format"]=="pdf_image_v1":
-            verify_image_pdf_offers(src,doc["offers"],doc["fees"],doc["fee_coverage"])
+            verify_image_pdf_offers(src,doc["offers"],doc["fees"],
+                                    doc["fee_coverage"]+doc["minimum_spends"])
         if src["source_format"]=="jpeg_image_v1":
-            verify_jpeg_image_offers(src,doc["offers"],doc["fees"],doc["fee_coverage"])
+            verify_jpeg_image_offers(src,doc["offers"],doc["fees"],
+                                     doc["fee_coverage"]+doc["minimum_spends"])
         if src["source_format"]=="mosto_taplist_v1" and any(
-            row["source_id"]==src["id"] for row in doc["fees"]+doc["fee_coverage"]):
+            row["source_id"]==src["id"] for row in
+            doc["fees"]+doc["fee_coverage"]+doc["minimum_spends"]):
             raise Error("Mosto fees need separate reviewed evidence")
     for src in sources.values():
         if src["use_review_status"]=="approved" and not any(
             row["source_id"]==src["id"]
-            for attr in ("offers","fees","fee_coverage") for row in doc[attr]):
+            for attr in ("offers","fees","fee_coverage","minimum_spends") for row in doc[attr]):
             raise Error("approved source without evidence row")
     return doc
 
@@ -582,10 +657,129 @@ def jpeg_dimensions(raw):
             pos+=length
     raise Error("incomplete JPEG")
 
+class HTMLTextImagesV1(HTMLParser):
+    """Pin normalized markup text and img alt/src in document order."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tokens=[]
+        self.text_parts=[]
+        self.ignored=0
+        self.length=0
+
+    def add_length(self,value):
+        self.length+=len(value)+1
+        if self.length>legacy.MAX_HTML_TEXT:
+            raise Error("HTML text and image attributes exceed limit")
+
+    def flush_text(self):
+        value=re.sub(r"\s+"," "," ".join(self.text_parts)).strip()
+        if value: self.tokens.append(["text",value])
+        self.text_parts=[]
+
+    def handle_starttag(self,tag,attrs):
+        if tag in ("script","style"): self.ignored+=1
+        if tag!="img" or self.ignored: return
+        selected={}
+        for name,value in attrs:
+            if name in ("alt","src"):
+                if name in selected: raise Error("duplicate image alt or src attribute")
+                selected[name]=value
+                if value is not None: self.add_length(value)
+        self.flush_text()
+        self.tokens.append(["img",selected.get("alt"),selected.get("src")])
+
+    def handle_endtag(self,tag):
+        if tag in ("script","style"): self.ignored=max(0,self.ignored-1)
+
+    def handle_data(self,data):
+        if not self.ignored:
+            self.add_length(data)
+            self.text_parts.append(data)
+
+def html_text_images_digest(raw):
+    try:
+        parser=HTMLTextImagesV1()
+        parser.feed(raw.decode("utf-8",errors="strict"))
+        parser.close()
+        parser.flush_text()
+        canonical=(json.dumps({"format":"html_text_images_v1","tokens":parser.tokens},
+                              ensure_ascii=False,sort_keys=True,separators=(",",":"))
+                   .encode("utf-8")) if parser.tokens else b""
+    except UnicodeError:
+        raise Error("invalid HTML source encoding") from None
+    if not canonical: raise Error("empty HTML text")
+    if len(canonical)>legacy.MAX_HTML_TEXT: raise Error("HTML text exceeds limit")
+    return hashlib.sha256(canonical).hexdigest()
+
+class EditPortoMainTextV1(HTMLParser):
+    """Pin only EDIT's single menu-bearing main, never its changing footer."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts=[]
+        self.main_count=0
+        self.in_main=False
+        self.ignored=0
+        self.length=0
+
+    def handle_starttag(self,tag,attrs):
+        if tag=="main":
+            if self.main_count: raise Error("invalid EDIT main section")
+            self.main_count=1
+            self.in_main=True
+        elif self.in_main and tag in ("script","style"):
+            self.ignored+=1
+
+    def handle_startendtag(self,tag,attrs):
+        if tag=="main": raise Error("invalid EDIT main section")
+        self.handle_starttag(tag,attrs)
+        self.handle_endtag(tag)
+
+    def handle_endtag(self,tag):
+        if tag=="main":
+            if not self.in_main or self.ignored:
+                raise Error("invalid EDIT main section")
+            self.in_main=False
+        elif self.in_main and tag in ("script","style"):
+            if not self.ignored: raise Error("invalid EDIT main section")
+            self.ignored-=1
+
+    def handle_data(self,data):
+        if self.in_main and not self.ignored:
+            self.length+=len(data)+1
+            if self.length>legacy.MAX_HTML_TEXT:
+                raise Error("HTML text exceeds limit")
+            self.parts.append(data)
+
+def edit_porto_main_digest(raw):
+    try:
+        parser=EditPortoMainTextV1()
+        parser.feed(raw.decode("utf-8",errors="strict"))
+        parser.close()
+    except UnicodeError:
+        raise Error("invalid HTML source encoding") from None
+    if parser.main_count!=1 or parser.in_main or parser.ignored:
+        raise Error("invalid EDIT main section")
+    canonical=re.sub(r"\s+"," "," ".join(parser.parts)).strip().encode("utf-8")
+    if not canonical: raise Error("empty EDIT main text")
+    if len(canonical)>legacy.MAX_HTML_TEXT: raise Error("HTML text exceeds limit")
+    return hashlib.sha256(canonical).hexdigest()
+
+def source_limit(fmt):
+    return MAX_PDF_SOURCE if fmt in ("pdf_text_v1","pdf_image_v1") else MAX_SOURCE
+
 def source_digests(raw,fmt,image_evidence=None,page_count=None):
-    if len(raw)>MAX_SOURCE: raise Error("source too large")
+    if len(raw)>source_limit(fmt): raise Error("source too large")
     if fmt=="html_text_v1":
-        result=legacy.source_digest(raw,"html_text_v1")
+        try:
+            result=legacy.source_digest(raw,fmt)
+        except legacy.Error as exc:
+            raise Error(str(exc)) from None
+        return result,result
+    if fmt=="html_text_images_v1":
+        result=html_text_images_digest(raw)
+        return result,result
+    if fmt=="edit_porto_urbano_main_v1":
+        result=edit_porto_main_digest(raw)
         return result,result
     if fmt=="fuoriluogo_google_sites_v1":
         try:
@@ -990,7 +1184,9 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
         return mosto_source_identity(row,transport,cache,offers)
     key=(row["source_url"],row["source_format"],row.get("source_text_sha256"))
     if key not in cache:
-        content_kind={"html_text_v1":"html","fuoriluogo_google_sites_v1":"html",
+        content_kind={"html_text_v1":"html","html_text_images_v1":"html",
+                      "fuoriluogo_google_sites_v1":"html",
+                      "edit_porto_urbano_main_v1":"html",
                       "pdf_text_v1":"pdf",
                       "pdf_image_v1":"pdf","jpeg_image_v1":"jpeg",
                       "json_menu_v1":"json"}[row["source_format"]]
@@ -998,7 +1194,7 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
         # Redirects, HTTP errors, and changed content are never retried or accepted.
         for attempt in range(2):
             try:
-                source_raw=public_fetch(transport,row["source_url"],MAX_SOURCE,content_kind)
+                source_raw=public_fetch(transport,row["source_url"],source_limit(row["source_format"]),content_kind)
                 break
             except Error as exc:
                 if str(exc)!="public source timeout" or attempt:
@@ -1010,12 +1206,16 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
     hashes,source_raw,content_type=cache[key]
     if hashes!=(row["source_sha256"],row["source_text_sha256"]):
         if diagnostics is not None and row["source_format"] in (
-            "html_text_v1","fuoriluogo_google_sites_v1","pdf_text_v1"):
+            "html_text_v1","html_text_images_v1","fuoriluogo_google_sites_v1",
+            "edit_porto_urbano_main_v1",
+            "pdf_text_v1"):
             media_type=(content_type or "").split(";",1)[0].strip().lower()
             if len(media_type)>128 or not re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+",media_type):
                 media_type=None
-            if row["source_format"] in ("html_text_v1","fuoriluogo_google_sites_v1"):
-                # A text pin deliberately ignores variable HTML markup. Record
+            if row["source_format"] in (
+                "html_text_v1","html_text_images_v1","fuoriluogo_google_sites_v1",
+                "edit_porto_urbano_main_v1"):
+                # Normalized HTML pins ignore unrelated markup. Record
                 # only bounded metadata so a hosted mismatch can be diagnosed
                 # without exposing the fetched menu or changing the fail-closed gate.
                 diagnostics.append({
@@ -1115,10 +1315,14 @@ FIELDS={
          "currency","currency_exponent","rate_bps","applicability","condition_text",
          "status","source_id"),
   "coverage":("venue_key","cell","status","source_id"),
+  "minimum_spend":("id","venue_key","cell","label","amount_minor","currency",
+                   "currency_exponent","basis","applicability","condition_text",
+                   "status","source_id"),
 }
 TABLE={"venue":"mobile_menu_v2_venues","source":"mobile_menu_v2_sources",
        "offer":"mobile_menu_v2_offers","fee":"mobile_menu_v2_fees",
-       "coverage":"mobile_menu_v2_fee_coverage"}
+       "coverage":"mobile_menu_v2_fee_coverage",
+       "minimum_spend":"mobile_menu_v2_minimum_spends"}
 
 def rows_for_import(doc):
     rows=[]
@@ -1134,10 +1338,11 @@ def rows_for_import(doc):
     for row in doc["sources"]:
         if row["use_review_status"]=="approved":
             rows.append(("source",{key:row[key] for key in FIELDS["source"]}))
-    for kind,attr in (("offer","offers"),("fee","fees"),("coverage","fee_coverage")):
+    for kind,attr in (("offer","offers"),("fee","fees"),("coverage","fee_coverage"),
+                      ("minimum_spend","minimum_spends")):
         for source in doc[attr]:
             row={key:source[key] for key in FIELDS[kind] if key!="status"}
-            row["status"]="active" if kind in ("offer","fee") else source["status"]
+            row["status"]="active" if kind in ("offer","fee","minimum_spend") else source["status"]
             rows.append((kind,row))
     return rows
 

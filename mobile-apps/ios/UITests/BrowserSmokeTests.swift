@@ -325,8 +325,17 @@ final class BrowserSmokeTests: XCTestCase {
         waitForNativePageReady()
         let close = website.buttons["Chiudi"]
         XCTAssertTrue(close.exists); close.tap()
+        // A native menu offer can open a venue whose local web-map viewport has
+        // no legacy price. Mappa restores the retained priced city view.
+        app.buttons["tab.map"].tap()
         XCTAssertTrue(interactiveMap().waitForExistence(timeout: 15))
-        XCTAssertTrue(hasVisiblePositiveCoverage())
+        let restoredCoverage = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in self.hasVisiblePositiveCoverage() }, object: nil
+        )
+        let restoredResult = XCTWaiter.wait(for: [restoredCoverage], timeout: 45)
+        if restoredResult != .completed { attachState(named: "DoveBevo-discovery-return-map-no-coverage") }
+        XCTAssertEqual(restoredResult, .completed,
+                       "Mappa must restore a visible priced city view after closing a Discovery venue")
     }
 
     private func verifyLiveOwnerMenuVenueReadOnly() {

@@ -1,0 +1,30 @@
+# Spiller Milano Duomo: owner menu source review (20 November 2026)
+
+This is a **source-only candidate** for the apps-only menu catalogue. It adds no venue, public price, customer contribution, website change, or database write. The [immutable manifest](../../data/mobile-menu-v2-seeds/61276932c10d4174efb02a7f343123300aec282c1e2a887792a3799796eaca17.json) contains 63 individually referenced EUR drink offers, one separately represented service/cover fee, and partial fee coverage for an existing zero-offer venue. It is not a current-price guarantee.
+
+## Owner, venue, and date
+
+- [Spiller's official menu page](https://spillerbirrerie.it/menu/) explicitly labels its [direct PDF](https://spillerbirrerie.it/wp-content/uploads/2025/10/menu_spiller_inverno25_MILANO_CENA.pdf) **Milano Duomo**. PDF page 12 itself lists Milano Duomo, Via Larga 8. [Spiller's official contact page](https://spillerbirrerie.it/contatti/) lists the same branch and street address.
+- Roberto's current public static catalogue `20261119` has `n2356391600` exactly once in `u0nd9`, name `Spiller`, `Via Larga 8`, Milano, coordinates `45.4622, 9.19296`, city ID `62505581`. The [live OSM node](https://www.openstreetmap.org/node/2356391600) still gives `Spiller`, Via Larga 8, Milano, coordinates `45.4621982, 9.1929566`. The [live app-v2 venue read](https://www.dovebevo.com/api/mobile/v2/menu/venues/n2356391600?cell=u0nd9&limit=1) returned `stored_offer_count: 0`, zero offers and zero fees on 20 November 2026. Identity is exact; this candidate does not create a venue or duplicate existing customer prices.
+- The owner PDF returned HTTPS `application/pdf`, 8,407,900 bytes, SHA-256 `10fb3c8e0b863872531390d5ee78d1ed2777adc59fe0d8c99449ed91bc9f8053` on 20 November 2026. Importer `pdf_text_v1` normalized-text SHA-256 is `2d9326e167a5c65feb353f87bdbb292f6a2d0183b0386205ce4c69242566645a` using `pdftotext -layout -enc UTF-8` and whitespace collapse. The PDF metadata says created and modified **30 September 2025**. Its filename says `inverno25`, but the owner's current menu page still links it. This provenance must remain visible, and exact bytes and owner link must be rechecked before any import; a later menu or price may supersede it.
+- The publicly linked owner menu is the source for factual names, servings and prices with attribution. No open reuse license was identified; no PDF artwork, photographs, descriptions, or menu layout are copied into the app or manifest. Independent content-rights review remains a publication gate.
+
+## All included printed prices
+
+Every offer in the manifest has its own `evidence_ref` with PDF page, printed drink name, serving where shown, and EUR amount. The following compact inventory is an all-row cross-check; prices are in euros. No size has been inferred where the menu omits one.
+
+| PDF page | Printed drinks and explicit serving-price pairs | Offers |
+| --- | --- | ---: |
+| 2 | Forst Kronen 30 cl 4.20, 50 cl 6.00, 1 l 11.00; Forst V.I.P. Pils 20 cl 3.60, 40 cl 5.80, 1 l 11.50; Forst Felsenkeller 30 cl 4.80, 1 l 11.50; Forst Heller Bock 20 cl 4.20, 40 cl 6.30, 1 l 11.50; Forst Sixtus 20 cl 4.20, 40 cl 6.30, 1 l 11.50 | 14 |
+| 3 | Weihenstephan Hefe Weiss 30 cl 4.80, 50 cl 6.30, 1 l 11.50; Menabrea Ambrata 20 cl 4.20, 40 cl 6.30, 1 l 11.50; bottled Forst 1857 33 cl 6.00, Forst 0.0% Citrus & Herbs 33 cl 4.50, Forst 0.0% Analcolica 33 cl 4.50 | 9 |
+| 4 | Bottled Forst Weihenstephan Vitus 50 cl 7.00; Ter Lignum Whisky 4 cl 10.00 and 70 cl 72.00 | 3 |
+| 10 | Succhi di frutta 25 cl 3.50; Lipton Ice Tea pesca and limone 33 cl 3.90 each; Red Bull Energy Drink 25 cl 4.00; Pepsi Cola, Pepsi Cola Zero, 7Up, Schweppes tonica, arancia and limone 50 cl 3.90 each; natural or sparkling water 50 cl 2.00, 75 cl 3.50; espresso 1.50, decaffeinated/barley/ginseng coffee 1.70 each, caffè corretto 2.50; Johnny Walker Red Label 6.00 and Black Label 8.00; grappa secca and morbida 4.50 each, barricata 5.50 | 22 |
+| 11 | Lo Spiller con Forst V.I.P. Pils and Forst 1857 Mojito 9.00 each; bottled Spumante Moscato Dolce 25.00; Chardonnay Alto Adige, Prosecco DOC Bacio della Luna, Cabernet Sauvignon and Valpolicella Superiore Veneto bottle 28.00/glass 6.00 each; Gewürztraminer Alto Adige and Lagrein Alto Adige bottle 29.00/glass 6.00 each | 15 |
+
+Page 4 also shows a **special 2 l Forst Sixtus gift-format** at 22.00 takeaway and 27.00 at the venue. It is excluded because its gift/package and purchase-context difference could mislead an ordinary drink-price comparison. Page 11 prices cocktail *classes* (classic/premium/alcohol-free) without naming a specific drink, so those generic class rows are excluded. Page 10 likewise has generic “Liquori” and “Amari” lines without named products; those are excluded. The printed whisky and grappa lines on page 10 do not state serving volumes, so the manifest leaves volume null. The p11 wine table labels bottles and glasses but gives no volume, so the manifest preserves that distinction as `serving_label` only.
+
+## Fee and import boundary
+
+Page 11 prints **“Servizio e coperto: 2,00”** and says prices are in euro. Page 9 says the under-nine children's menu includes cover. The source does not say whether the 2.00 is per person, per table, or per bill, or when it applies. The manifest therefore records one separate EUR 2.00 fixed fee with `basis: unspecified`, `applicability: unknown`, and `documented_partial` coverage. It never adds the fee to an individual drink price or invents an all-orders total.
+
+The PDF is 19,292 bytes above the importer's current 8 MiB source limit. A separate owner-approved narrow cap change is required before the ordinary protected audit can fetch this exact PDF. This branch does not alter the cap, importer, workflow, app, or website. Before a seed, an independent reviewer must check all 63 rows and the fee, exact source hashes, owner link and current static/public venue identity; the protected database audit must then pass. Any source change or new evidence that the 2025 menu is obsolete requires a new manifest, not mutation of this immutable candidate.

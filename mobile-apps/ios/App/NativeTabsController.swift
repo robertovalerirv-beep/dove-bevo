@@ -66,7 +66,8 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
     private(set) lazy var favouritesNavigation = UINavigationController(rootViewController: favourites)
     private(set) lazy var discovery: DiscoveryViewController = {
         let controller = DiscoveryViewController(client: discoveryClient, onOpen: { [weak self] url in
-            self?.openVenueFromNative(url, source: 2)
+            guard let self else { return }
+            self.openVenueFromNative(url, source: 2, area: self.discovery.area ?? self.lastMapArea)
         }, onMap: { [weak self] in self?.selectedIndex = 0 })
         controller.isDestinationSelected = { [weak self] in self?.selectedIndex == 2 }
         controller.onReloadMenuChanged = { [weak self] in self?.refreshMoreMenu() }
@@ -256,9 +257,11 @@ final class NativeTabsController: UIViewController, UINavigationControllerDelega
         refreshBottomBar()
     }
 
-    func openVenueFromNative(_ url: URL, source: Int) {
+    func openVenueFromNative(_ url: URL, source: Int, area: DiscoveryArea? = nil) {
         guard (1...3).contains(source), SavedVenuePolicy.canonicalURL(url) != nil else { return }
-        let priorMap = pendingMapReturn ?? browser.lastMapRoute
+        // The website moves its map for city search without changing the URL.
+        // Discover already captured that centre before opening the native list.
+        let priorMap = (source == 2 ? MapReturnRoute.forArea(area) : nil) ?? pendingMapReturn ?? browser.lastMapRoute
         pendingMapReturn = nil
         browser.retireVenueActions()
         mapNavigation.popToRootViewController(animated: false)

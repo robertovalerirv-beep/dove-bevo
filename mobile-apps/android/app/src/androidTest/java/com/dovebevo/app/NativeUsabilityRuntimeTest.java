@@ -877,6 +877,41 @@ public final class NativeUsabilityRuntimeTest {
         });
     }
 
+    @Test public void discoveryVenueReturnsToMovedMapWithoutPreciseCoordinatesInUrl() throws Exception {
+        navigate(APP_HOME);
+        fixtureJavascript("document.body.insertAdjacentHTML('beforeend','<div id=\"app\"><div class=\"app\"><section class=\"map\" data-ready=\"true\" data-center=\"45.46427,9.19033\" data-zoom=\"14\"></section></div></div>')");
+        onMain(()->{
+            DiscoveryScreen home=new DiscoveryScreen(activity,
+                    url->invoke("openFromNative",new Class<?>[]{String.class,int.class},url,2),
+                    ()->(Boolean)get("foreground"),
+                    new DiscoveryLoader(new FavoritePricesClient((url,max,call)->{throw new IOException("Owned Discovery fixture has no network");},()->"2026-11-01"),task->activity.runOnUiThread(task)));
+            set("discovery",home);((FrameLayout)get("content")).addView(home.view());home.view().setVisibility(View.GONE);
+            activity.findViewById(R.id.home).performClick();
+        });
+        await(()->(Boolean)get("discoveryVisible")&&((DiscoveryScreen)get("discovery")).area()!=null);
+        onMain(()->{
+            DiscoveryArea moved=((DiscoveryScreen)get("discovery")).area();
+            assertEquals(45.46427,moved.lat,0.000001);
+            assertEquals(9.19033,moved.lon,0.000001);
+            assertEquals("City search changed the map without changing its URL",APP_HOME,get("lastMapRoute"));
+            invoke("openFromNative",new Class<?>[]{String.class,int.class},ONE,2);
+        });
+        await(()->APP_ONE.equals(web.getUrl())&&!(Boolean)get("loading"));
+        String city=APP_HOME+"?at=45.46,9.19";
+        onMain(()->{
+            assertEquals(city,get("pendingMapReturn"));
+            assertFalse(((String)get("pendingMapReturn")).contains("45.46427"));
+            assertFalse(((String)get("pendingMapReturn")).contains("9.19033"));
+            activity.findViewById(R.id.map_destination).performClick();
+        });
+        await(()->city.equals(web.getUrl())&&!(Boolean)get("loading")&&(Boolean)get("hasUsablePage"));
+        onMain(()->{
+            assertFalse((Boolean)get("discoveryVisible"));
+            assertNull(get("pendingMapReturn"));
+            assertEquals(0,get("returnDestination"));
+        });
+    }
+
     @Test public void sameDocumentVenueRouteRepublishesSavedDrinkState() throws Exception {
         String city=APP_HOME+"?at=45.46420%2C9.19000";
         navigate(city);

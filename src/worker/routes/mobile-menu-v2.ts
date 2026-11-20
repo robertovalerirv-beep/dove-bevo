@@ -74,6 +74,17 @@ type CoverageRow = Evidence & {
   status: "documented_partial" | "explicit_no_fee";
   fee_count: number;
 };
+type MinimumSpendRow = Evidence & {
+  id: string;
+  venue_key: string;
+  label: string;
+  amount_minor: number;
+  currency: string;
+  currency_exponent: number;
+  basis: "person";
+  applicability: "all_orders" | "conditional";
+  condition_text: string | null;
+};
 type Candidate = { venue_key: string; n: number };
 type Nearby = {
   name: string;
@@ -99,6 +110,16 @@ const FEE_COLS =
   "f.id, f.label, f.fee_kind, f.basis, f.amount_minor, f.currency," +
   " f.currency_exponent, f.rate_bps, f.applicability, f.condition_text, " +
   SOURCE;
+const MINIMUM_SPEND_COLS =
+  "ms.id, ms.venue_key, ms.label, ms.amount_minor, ms.currency," +
+  " ms.currency_exponent, ms.basis, ms.applicability, ms.condition_text, " +
+  SOURCE;
+const APPROVED_MINIMUM_SPEND =
+  " JOIN mobile_menu_v2_sources s ON s.id=ms.source_id" +
+  " AND s.venue_key=ms.venue_key AND s.cell=ms.cell AND s.use_review_status='approved'";
+const NO_MINIMUM_SPEND =
+  " NOT EXISTS (SELECT 1 FROM mobile_menu_v2_minimum_spends ms" +
+  " WHERE ms.venue_key=o.venue_key AND ms.cell=o.cell AND ms.status='active')";
 // The app's Birra media map price must not use a cheaper small draft serving.
 // Keep the full named menu (and the legacy website price path) unchanged.
 const SERVING_WORDS =
@@ -202,6 +223,19 @@ function fee(row: FeeRow) {
     source: source(row),
   };
 }
+function minimumSpend(row: MinimumSpendRow) {
+  return {
+    id: row.id,
+    label: row.label,
+    amount_minor: row.amount_minor,
+    currency: row.currency,
+    currency_exponent: row.currency_exponent,
+    basis: row.basis,
+    applicability: row.applicability,
+    condition: row.condition_text,
+    source: source(row),
+  };
+}
 function coverage(row: CoverageRow | null, feeCount: number) {
   if (!row) return { status: "unknown" as const, source: null };
   if (
@@ -232,6 +266,11 @@ function limit(value: string | undefined): number {
   const n = Number(value);
   if (n > 100) throw new ApiError("bad_request");
   return n;
+}
+function minimumSpendCapability(values: string[] | undefined): boolean {
+  if (values === undefined) return false;
+  if (values.length !== 1 || values[0] !== "1") throw new ApiError("bad_request");
+  return true;
 }
 function registryVenue(row: Registry): Venue {
   if (encodeGeohash(row.lat, row.lon, 5) !== row.cell) throw new ApiError("busy");
@@ -479,8 +518,22 @@ mobileMenuV2.get("/venues/:key", async (c) => {
   const cell = queryCell(c.req.query("cell"));
   const after = cursor(c.req.query("after"));
   const pageSize = limit(c.req.query("limit"));
+  const supportsMinimumSpend = minimumSpendCapability(c.req.queries("minimum_spend"));
   const place = await venue(c.env, key, cell);
   if (await blocked(c.env.DB, key)) throw new ApiError("not_found");
+  const minimumRows = await c.env.DB.prepare(
+    "SELECT " +
+      MINIMUM_SPEND_COLS +
+      " FROM mobile_menu_v2_minimum_spends ms" +
+      APPROVED_MINIMUM_SPEND +
+      " WHERE ms.venue_key=?1 AND ms.cell=?2 AND ms.status='active'" +
+      " ORDER BY ms.id LIMIT 101",
+  )
+    .bind(key, cell)
+    .all<MinimumSpendRow>();
+  if (minimumRows.results.length > 100) throw new ApiError("busy");
+  // Old installed clients cannot explain a minimum spend beside a base drink price.
+  if (!supportsMinimumSpend && minimumRows.results.length) throw new ApiError("not_found");
   const [rows, count, feeRows, feeState] = await Promise.all([
     c.env.DB.prepare(
       "SELECT " +
@@ -522,6 +575,7 @@ mobileMenuV2.get("/venues/:key", async (c) => {
       next_after: rows.results.length > pageSize ? slice.at(-1)?.id : null,
       fees: feeRows.results.map(fee),
       fee_coverage: coverage(feeState, feeRows.results.length),
+      minimum_spends: minimumRows.results.map(minimumSpend),
     },
     200,
     { "Cache-Control": "no-store" },
@@ -532,6 +586,7 @@ mobileMenuV2.get("/venues/:key", async (c) => {
 mobileMenuV2.get("/cells/:cell", async (c) => {
   const cell = queryCell(c.req.param("cell"));
   const after = c.req.query("after") === undefined ? "" : queryKey(c.req.query("after"));
+  const supportsMinimumSpend = minimumSpendCapability(c.req.queries("minimum_spend"));
   const requested = c.req.query("category");
   const requestedMany = c.req.query("categories");
   if (requested !== undefined && requestedMany !== undefined) throw new ApiError("bad_request");
@@ -561,6 +616,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
       categoryClause +
       " AND" +
       PUBLIC +
+      (supportsMinimumSpend ? "" : " AND" + NO_MINIMUM_SPEND) +
       " GROUP BY o.venue_key ORDER BY o.venue_key LIMIT 51",
   )
     .bind(cell, after, ...(codes ?? []))
@@ -703,6 +759,26 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
     .bind(cell, ...visibleKeys)
     .all<CoverageRow>();
   const states = new Map(stateRows.results.map((row) => [row.venue_key, row]));
+  const minimumRows = supportsMinimumSpend
+    ? await c.env.DB.prepare(
+        "SELECT " +
+          MINIMUM_SPEND_COLS +
+          " FROM mobile_menu_v2_minimum_spends ms" +
+          APPROVED_MINIMUM_SPEND +
+          " WHERE ms.cell=? AND ms.status='active' AND ms.venue_key IN (" +
+          visibleKeys.map(() => "?").join(",") +
+          ") ORDER BY ms.venue_key,ms.id LIMIT 501",
+      )
+        .bind(cell, ...visibleKeys)
+        .all<MinimumSpendRow>()
+    : { results: [] as MinimumSpendRow[] };
+  if (minimumRows.results.length > 500) throw new ApiError("busy");
+  const minimumByVenue = new Map<string, ReturnType<typeof minimumSpend>[]>();
+  for (const row of minimumRows.results) {
+    const list = minimumByVenue.get(row.venue_key) ?? [];
+    list.push(minimumSpend(row));
+    minimumByVenue.set(row.venue_key, list);
+  }
   return c.json(
     {
       ...envelope,
@@ -717,6 +793,7 @@ mobileMenuV2.get("/cells/:cell", async (c) => {
           states.get(row.venue.key) ?? null,
           states.get(row.venue.key)?.fee_count ?? 0,
         ),
+        minimum_spends: minimumByVenue.get(row.venue.key) ?? [],
       })),
       next_after: candidates.results.length > 50 ? page.at(-1)?.venue_key : null,
       unresolved_venues: unresolved,

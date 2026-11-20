@@ -36,6 +36,37 @@ final class DiscoveryCardsTests: XCTestCase {
         XCTAssertTrue(card.accessibilityValue?.contains("Immagine illustrativa") == true)
     }
 
+    @MainActor func testMixedLegacyCardsShowVenueMinimumAndUnavailableConditionToVoiceOver() throws {
+        let observed = FavouritePrice(drink: "spritz", band: .normal, cents: 800,
+                                      observedOn: "2026-11-01", confirmations: 0, quarantined: false)
+        let minimum = "Consumazione minima 15,00 € a persona, solo se durante le partite in diretta."
+        let row = DiscoveryPresentedRow(key: "n123", name: "Locale vero",
+            url: try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")),
+            latitude: 45.4642, longitude: 9.19, location: "Milano", price: .legacy(observed),
+            venueConditionNotice: minimum)
+        let category = try XCTUnwrap(DrinkCategory.all.first { $0.code == "spritz" })
+        let featured = DiscoveryFeaturedCard(row: row, category: category)
+        let featuredText = descendants(featured).compactMap { ($0 as? UILabel)?.text }.joined(separator: " ")
+        XCTAssertTrue(featuredText.contains(minimum))
+        XCTAssertTrue(featured.accessibilityValue?.contains(minimum) == true)
+        XCTAssertTrue(featured.accessibilityValue?.contains("8,00 €") == true)
+        let ranked = DiscoveryVenueCell(style: .default, reuseIdentifier: nil)
+        ranked.configure(row: row, category: category, band: .normal, rank: 1, distance: "300 m",
+                         today: "2026-11-03", traits: .current)
+        let rankedText = descendants(ranked).compactMap { ($0 as? UILabel)?.text }.joined(separator: " ")
+        XCTAssertTrue(rankedText.contains(minimum))
+        XCTAssertTrue(ranked.accessibilityValue?.contains(minimum) == true)
+        XCTAssertTrue(ranked.accessibilityValue?.contains("8,00 €") == true)
+        let summary = DiscoveryCategorySummary(rows: [row], loading: false, today: "2026-11-03")
+        XCTAssertEqual(summary.headline, "Da 8,00 €")
+        XCTAssertTrue(summary.detail.contains(minimum))
+        var uncertain = row
+        uncertain.venueConditionNotice = "Condizioni del locale non verificate nei dati menu disponibili."
+        let fallback = DiscoveryFeaturedCard(row: uncertain, category: category)
+        XCTAssertTrue(fallback.accessibilityValue?.contains("non verificate") == true)
+        XCTAssertFalse(fallback.accessibilityValue?.contains("15,00") == true)
+    }
+
     @MainActor func testLongMenuFeaturedCardsMountWithoutCroppingAtStandardTextSize() throws {
         try assertLongMenuFeaturedCardsFit(textSize: .large, expectTwoVisibleCards: true)
     }
@@ -146,13 +177,13 @@ final class DiscoveryCardsTests: XCTestCase {
         let snapshot = DiscoverySnapshot(area: area, venues: [], unavailableCells: [],
             europe: EuropeSnapshot(venues: london.venues.merging(paris.venues) { first, _ in first }))
         let beer = snapshot.displayRows(drink: "beer_draft", band: .normal)
-        XCTAssertEqual(beer.count, 3)
+        XCTAssertEqual(beer.count, 2)
         let mixed = DiscoveryCategorySummary(rows: beer, loading: false)
-        XCTAssertEqual(mixed.headline, "3 prezzi")
+        XCTAssertEqual(mixed.headline, "2 prezzi")
         XCTAssertEqual(mixed.detail, "Valute o formati diversi")
         XCTAssertFalse(mixed.headline.contains("Da"))
-        let pint = try XCTUnwrap(beer.first { $0.price.group == "GBP|ml:500" })
-        let same = DiscoveryCategorySummary(rows: [pint], loading: false)
+        let medium = try XCTUnwrap(beer.first { $0.price.group == "GBP|ml:500" })
+        let same = DiscoveryCategorySummary(rows: [medium], loading: false)
         XCTAssertEqual(same.headline, "Da 6,50 £")
         XCTAssertTrue(same.detail.contains("GBP")); XCTAssertTrue(same.detail.contains("500 ml"))
         XCTAssertEqual(DiscoveryCategorySummary(rows: beer, loading: true).headline, "Caricamento…")
@@ -174,12 +205,13 @@ final class DiscoveryCardsTests: XCTestCase {
         XCTAssertTrue(summary.detail.contains("Da ricontrollare"))
     }
 
-    func testOwnerMenuSampleShowsItsExactItemSourceAndServingWithoutClaimingTotalCost() throws {
-        let price = MenuV2Price(id: "owner-spritz", venueName: "Actual venue", itemName: "Spritz della casa",
+    func testOwnerMenuSampleShowsItsExactItemSourceServingAndMinimumWithoutClaimingTotalCost() throws {
+        var price = MenuV2Price(id: "owner-spritz", venueName: "Actual venue", itemName: "Spritz della casa",
             category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
             servingLabel: "Calice", servingML: 200,
             origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu")), "2026-11-02"),
             feeNotice: "Altre spese non verificate.")
+        price.minimumSpendNotice = "Consumazione minima 15,00 € a persona, solo se durante le partite in diretta."
         let row = DiscoveryPresentedRow(key: "n123", name: "Actual venue",
             url: try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")),
             latitude: 45.46, longitude: 9.19, location: "Milano", price: .menuV2(price))
@@ -191,6 +223,8 @@ final class DiscoveryCardsTests: XCTestCase {
         let summary = DiscoveryCategorySummary(rows: [row], loading: false, today: "2026-11-03")
         XCTAssertEqual(summary.headline, "Da 5,50 €")
         XCTAssertTrue(summary.detail.contains("Menu verificato il 2026-11-02"))
+        XCTAssertTrue(summary.detail.contains(price.minimumSpendNotice))
+        XCTAssertFalse(summary.headline.contains("20,50"), "The minimum must never be added to the drink amount")
     }
 
     func testEqualGlassServingAcrossFeedsCanShowCheapestWithoutMixingCurrencyOrVolume() throws {

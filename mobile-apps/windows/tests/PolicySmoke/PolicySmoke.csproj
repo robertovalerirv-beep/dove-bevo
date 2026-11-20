@@ -15,5 +15,6 @@
     <Compile Include="../../EuropeDiscoveryClient.cs" Link="EuropeDiscoveryClient.cs" />
     <Compile Include="../../AreaVotesClient.cs" Link="AreaVotesClient.cs" />
     <Compile Include="../../BookmarkPriceClient.cs" Link="BookmarkPriceClient.cs" />
+    <Compile Include="../../PriceShareSnapshot.cs" Link="PriceShareSnapshot.cs" />
   </ItemGroup>
 </Project>

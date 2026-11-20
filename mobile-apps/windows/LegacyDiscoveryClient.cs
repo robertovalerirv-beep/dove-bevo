@@ -13,7 +13,7 @@ internal sealed record LegacyDiscoverySnapshot(IReadOnlyList<DiscoveryRow> Rows,
 // Reading it here keeps Windows Scopri in step with the phone apps.
 internal static class LegacyDiscoveryClient
 {
-    private sealed record Venue(string Name, string City);
+    private sealed record Venue(string Name, string City, double Latitude, double Longitude);
     private static readonly HttpClient Client = new(new HttpClientHandler
     {
         AllowAutoRedirect = false,
@@ -134,8 +134,8 @@ internal static class LegacyDiscoveryClient
                 var key = Key(row[0], "u");
                 var name = Text(row[1], 1, 120);
                 Integer(row[2], 0, 4);
-                Coordinates(row[3], row[4], cell);
-                Require(venues.TryAdd(key, new Venue(name, "")), "Duplicate venue");
+                var (latitude, longitude) = Coordinates(row[3], row[4], cell);
+                Require(venues.TryAdd(key, new Venue(name, "", latitude, longitude)), "Duplicate venue");
             }
             foreach (var row in pending.EnumerateArray())
             {
@@ -177,7 +177,8 @@ internal static class LegacyDiscoveryClient
                     pendingKeys.Contains(key) || !venues.TryGetValue(key, out var venue)) continue;
                 rows.Add(new DiscoveryRow(key, cell, venue.Name, venue.City, drink,
                     DiscoveryClient.Categories.Single(value => value.Code == drink).Name, amount, "EUR", 2,
-                    hour == 1 ? "happy_hour" : "regular", null, null, date));
+                    hour == 1 ? "happy_hour" : "regular", null, null, date,
+                    Latitude: venue.Latitude, Longitude: venue.Longitude));
             }
             return rows;
         }
@@ -214,10 +215,11 @@ internal static class LegacyDiscoveryClient
             var key = Key(row[0], "nwr");
             var name = Text(row[1], 1, 120);
             Integer(row[2], 0, 4);
-            Coordinates(row[3], row[4], cell);
+            var (latitude, longitude) = Coordinates(row[3], row[4], cell);
             Text(row[5], 0, 240);
             var cityIndex = Integer(row[6], -1, cities.Count - 1);
-            Require(venues.TryAdd(key, new Venue(name, cityIndex < 0 ? "" : cities[(int)cityIndex])),
+            Require(venues.TryAdd(key, new Venue(name, cityIndex < 0 ? "" : cities[(int)cityIndex],
+                latitude, longitude)),
                 "Duplicate venue");
         }
         return venues;
@@ -248,12 +250,15 @@ internal static class LegacyDiscoveryClient
         return number;
     }
 
-    private static void Coordinates(JsonElement latitude, JsonElement longitude, string cell)
+    private static (double Latitude, double Longitude) Coordinates(
+        JsonElement latitude, JsonElement longitude, string cell)
     {
-        Require(latitude.ValueKind == JsonValueKind.Number && longitude.ValueKind == JsonValueKind.Number &&
-                latitude.TryGetDouble(out var lat) && longitude.TryGetDouble(out var lon) &&
-                double.IsFinite(lat) && double.IsFinite(lon) && lat is >= -90 and <= 90 &&
+        if (latitude.ValueKind != JsonValueKind.Number || longitude.ValueKind != JsonValueKind.Number ||
+            !latitude.TryGetDouble(out var lat) || !longitude.TryGetDouble(out var lon))
+            throw new InvalidDataException("Invalid coordinates");
+        Require(double.IsFinite(lat) && double.IsFinite(lon) && lat is >= -90 and <= 90 &&
                 lon is >= -180 and <= 180 && DiscoveryArea.Geohash(lat, lon) == cell, "Invalid coordinates");
+        return (lat, lon);
     }
 
     private static DateOnly Date(JsonElement value, DateOnly today)

@@ -415,8 +415,11 @@ public final class MainActivity extends ComponentActivity {
 
     private void openFromNative(String url,int source) {
         if(!foreground||destroyed||BrowserPolicy.target(url)!=BrowserPolicy.Target.INTERNAL)return;
+        DiscoveryArea current=discovery==null?null:discovery.area();
+        String capturedReturn=source==RETURN_DISCOVERY
+                ?MapReturnRoute.forArea(current!=null?current:selectedArea):null;
         showMap(false);
-        pendingMapReturn=lastMapRoute;
+        pendingMapReturn=capturedReturn!=null?capturedReturn:lastMapRoute;
         returnDestination=source;
         navigate(url);
         updateToolbar();

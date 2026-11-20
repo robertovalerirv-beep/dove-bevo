@@ -18,8 +18,10 @@ import {
   loadMobileCell,
   menuMoney,
   mobileMenuVenue,
+  sameVenueIdentity,
   type MenuPage,
   type MenuFee,
+  type MenuMinimumSpend,
   type MenuOffer,
 } from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
@@ -212,6 +214,11 @@ function PriceItem({
         hidden={featured}
         aria-expanded={expanded}
         aria-controls={actionsId}
+        aria-label={
+          currentLang() === "en"
+            ? `${expanded ? "Hide" : "Show"} price actions for ${name}: ${inReview ? "confirm or report" : "confirm, change or report"}`
+            : `${expanded ? "Nascondi" : "Mostra"} le azioni per ${name}: ${inReview ? "conferma o segnala" : "conferma, modifica o segnala"} il prezzo`
+        }
         onClick={() => {
           setExpanded(!expanded);
         }}
@@ -221,9 +228,9 @@ function PriceItem({
             ? "Hide actions"
             : "Price actions"
           : expanded
-            ? "Nascondi azioni"
-            : "Azioni sul prezzo"}
-        <span class="sr-only"> · {name}</span>
+            ? "Chiudi azioni"
+            : "Azioni prezzo"}
+        <span class="mobile-price__chevron" aria-hidden="true" />
       </button>
       <span ref={controls} id={actionsId} class="price__actions" hidden={!showActions}>
         <button
@@ -292,6 +299,10 @@ function menuFeeAmount(fee: MenuFee): string {
   return `${amount} ${basis}`;
 }
 
+function menuMinimumAmount(minimum: MenuMinimumSpend): string {
+  return `${menuMoney(minimum.amount_minor, minimum.currency, minimum.currency_exponent)} a persona`;
+}
+
 export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
   const savedDrinkKeys = useNativeSavedDrinks();
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
@@ -304,7 +315,11 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [menu, setMenu] = useState<MenuPage | null>(null);
+  const [responseMenu, setMenu] = useState<MenuPage | null>(null);
+  // A separately loaded legacy venue can disagree with the v2 response.
+  // Do not present that response or its conditions as this venue's menu.
+  const menu =
+    responseMenu && venue && sameVenueIdentity(venue, responseMenu.venue) ? responseMenu : null;
   const [menuLoading, setMenuLoading] = useState(true);
   const [menuFailed, setMenuFailed] = useState(false);
   const [menuMoreBusy, setMenuMoreBusy] = useState(false);
@@ -609,6 +624,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           venue={{ key: venueKey, cell, country: "IT" }}
           focus={savedFocus}
           offerFocus={savedOfferFocus}
+          spotlightOfferId={featuredOffer?.id ?? null}
           mapFocus={focus}
           mapOfferId={mapSample?.id ?? null}
           hasLegacyPrices={active.length > 0}
@@ -656,6 +672,27 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
             <p>Il menu consultato dichiara che non ci sono supplementi.</p>
           )}
         </div>
+      </section>
+    ) : null;
+  const minimumSection =
+    menu && menu.minimum_spends.length > 0 ? (
+      <section class="mobile-menu-v2__minimum" aria-label="Consumazione minima">
+        <h3>Consumazione minima</h3>
+        <p>Questa soglia riguarda la spesa a persona, non è un supplemento per ogni drink.</p>
+        <ul>
+          {menu.minimum_spends.map((minimum) => (
+            <li key={minimum.id}>
+              <span>{minimum.label}</span>
+              <strong>{menuMinimumAmount(minimum)}</strong>
+              {minimum.applicability === "conditional" && minimum.condition && (
+                <small>Solo se: {minimum.condition}</small>
+              )}
+              <a href={minimum.source.url} target="_blank" rel="noopener noreferrer">
+                Fonte verificata il {minimum.source.checked_on}
+              </a>
+            </li>
+          ))}
+        </ul>
       </section>
     ) : null;
   const sheet = (
@@ -718,9 +755,6 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                         .filter(Boolean)
                         .join(" · ")}
                     </small>
-                    <small class="mobile-menu-v2__meta">
-                      Prezzo del drink da menu, non totale pagato. Supplementi separati.
-                    </small>
                     <div class="mobile-menu-v2__quick-actions">
                       {nativeOfferSave && mobileOfferIdPattern.test(featuredOffer.id) && (
                         <NativeSaveAction
@@ -737,6 +771,9 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                         />
                       )}
                     </div>
+                    <small class="mobile-menu-v2__meta">
+                      Prezzo del drink da menu, non totale pagato. Supplementi separati.
+                    </small>
                     <a
                       class="mobile-menu-v2__source"
                       href={featuredOffer.source.url}
@@ -750,6 +787,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               </section>
             )}
           </div>
+          {minimumSection}
           {active.length > 0 && (
             <h3 class="section-title">
               {featuredOffer
@@ -758,6 +796,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   : "Prezzi segnalati dai clienti"
                 : it.bar.prices}
             </h3>
+          )}
+          {active.length > 0 && !menu && (
+            <p class="hint" role="status" data-testid="legacy-conditions-unverified">
+              Condizioni del locale da verificare: il prezzo del drink potrebbe non essere la spesa
+              totale a persona.
+            </p>
           )}
           {pricesFailed && (
             <p class="hint" role="alert">
@@ -781,7 +825,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
           )}
           <ul class="prices">
             {shown.flatMap((row, index) => [
-              index === 1 && (
+              index === 1 && !featuredOffer && (
                 <li key="other-prices" class="mobile-price-section" role="presentation">
                   {currentLang() === "en" ? "Other prices" : "Altri prezzi"}
                 </li>
@@ -795,7 +839,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                 tier={tier(row)}
                 nativeDrinkSave={nativeDrinkSave}
                 savedDrinkKeys={savedDrinkKeys}
-                featured={index === 0 && (!savedFocus || savedFound)}
+                featured={index === 0 && !featuredOffer && (!savedFocus || savedFound)}
               />,
             ])}
           </ul>

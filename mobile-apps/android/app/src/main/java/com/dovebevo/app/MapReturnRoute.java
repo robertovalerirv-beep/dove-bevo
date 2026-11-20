@@ -1,10 +1,18 @@
 package com.dovebevo.app;
 
 import java.net.URI;
+import java.util.Locale;
 
 /** Retain only a trusted map city route when a native list opens a venue. */
 final class MapReturnRoute {
     private MapReturnRoute() {}
+
+    static String forArea(DiscoveryArea area) {
+        if (area == null) return null;
+        // Captured map/Locate position is only a city-level hint in a URL.
+        String route = MobileEntry.HOME + "?at=" + String.format(Locale.ROOT, "%.2f,%.2f", area.lat, area.lon);
+        return valid(route) ? route : null;
+    }
 
     static boolean valid(String raw) {
         if (BrowserPolicy.target(raw) != BrowserPolicy.Target.INTERNAL) return false;

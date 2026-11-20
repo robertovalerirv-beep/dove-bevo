@@ -32,6 +32,15 @@ interface Detail {
     applicability: string;
   }[];
   fee_coverage: { status: string };
+  minimum_spends: {
+    id: string;
+    amount_minor: number;
+    currency: string;
+    basis: string;
+    applicability: string;
+    condition: string | null;
+    source: { id: string; url: string };
+  }[];
 }
 interface Cell {
   category?: string | null;
@@ -49,6 +58,7 @@ interface Cell {
       context: { kind: string; condition: string | null };
       source: { url: string; text_sha256: string; checked_on: string };
     }[];
+    minimum_spends: { id: string; amount_minor: number; condition: string | null }[];
   }[];
   unresolved_venues: number;
 }
@@ -153,6 +163,15 @@ function addFee(
     sourceId,
   );
 }
+function addMinimumSpend(id: string, key: string, cell: string, sourceId: string) {
+  return env.DB.prepare(
+    "INSERT INTO mobile_menu_v2_minimum_spends" +
+      " (id,venue_key,cell,label,amount_minor,currency,currency_exponent,basis," +
+      " applicability,condition_text,status,source_id)" +
+      " VALUES (?1,?2,?3,'Consumazione minima',1500,'EUR',2,'person'," +
+      " 'conditional','Durante le partite in diretta','active',?4)",
+  ).bind(id, key, cell, sourceId);
+}
 async function registerForeign() {
   await env.DB.prepare(
     "INSERT INTO mobile_menu_v2_venues" +
@@ -221,6 +240,7 @@ async function ownerRow(options: OwnerOptions = {}): Promise<string> {
 beforeEach(async () => {
   // Immutable source snapshots intentionally remain; every test uses a new UUID.
   await env.DB.batch([
+    env.DB.prepare("DELETE FROM mobile_menu_v2_minimum_spends"),
     env.DB.prepare("DELETE FROM mobile_menu_v2_fee_coverage"),
     env.DB.prepare("DELETE FROM mobile_menu_v2_fees"),
     env.DB.prepare("DELETE FROM mobile_menu_v2_offers"),
@@ -231,6 +251,51 @@ beforeEach(async () => {
 });
 
 describe("app-only named menu v2", () => {
+  it("hides conditional-minimum venues from old clients and gives capable clients a separate sourced notice", async () => {
+    const sourceId = await addSource(ITALY.key, ITALY.cell);
+    await env.DB.batch([
+      addOffer("fixture-minimum-offer", ITALY.key, ITALY.cell, sourceId, {
+        category: "spritz",
+        amount: 450,
+      }),
+      addMinimumSpend("fixture-minimum-15", ITALY.key, ITALY.cell, sourceId),
+    ]);
+    const venuePath = "/api/mobile/v2/menu/venues/" + ITALY.key + "?cell=" + ITALY.cell;
+    const cellPath = "/api/mobile/v2/menu/cells/" + ITALY.cell + "?category=spritz";
+    expect((await get(venuePath)).status).toBe(404);
+    const oldCell = await get(cellPath);
+    expect(oldCell.status).toBe(200);
+    expect((await oldCell.json<Cell>()).venues.some((row) => row.key === ITALY.key)).toBe(false);
+    expect((await get(venuePath + "&minimum_spend=0")).status).toBe(400);
+    expect((await get(cellPath + "&minimum_spend=2")).status).toBe(400);
+    expect((await get(venuePath + "&minimum_spend=1&minimum_spend=1")).status).toBe(400);
+
+    const venueResponse = await get(venuePath + "&minimum_spend=1");
+    expect(venueResponse.status, await venueResponse.clone().text()).toBe(200);
+    const venue = await venueResponse.json<Detail>();
+    expect(venue.offers.at(0)?.amount_minor).toBe(450);
+    expect(venue.fees).toEqual([]);
+    expect(venue.minimum_spends).toMatchObject([
+      {
+        id: "fixture-minimum-15",
+        amount_minor: 1500,
+        currency: "EUR",
+        basis: "person",
+        applicability: "conditional",
+        condition: "Durante le partite in diretta",
+        source: { id: sourceId, url: "https://official.example/test-menu" },
+      },
+    ]);
+    const cellResponse = await get(cellPath + "&minimum_spend=1");
+    expect(cellResponse.status, await cellResponse.clone().text()).toBe(200);
+    const cell = await cellResponse.json<Cell>();
+    const shown = cell.venues.find((row) => row.key === ITALY.key);
+    expect(shown?.sample_offers.at(0)?.amount_minor).toBe(450);
+    expect(shown?.minimum_spends).toMatchObject([
+      { id: "fixture-minimum-15", amount_minor: 1500, condition: "Durante le partite in diretta" },
+    ]);
+  });
+
   it("keeps separate named drinks, unknown volume, original currency and legacy responses", async () => {
     const sourceId = await addSource(ITALY.key, ITALY.cell);
     await env.DB.batch([

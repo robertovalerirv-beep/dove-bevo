@@ -4,6 +4,23 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 public final class MapReturnRouteTest {
+    @Test public void capturedMapAreaUsesCityPrecisionOnly() throws Exception {
+        DiscoveryArea milan = new DiscoveryArea(45.46427, 9.19033, 14);
+        String city = MapReturnRoute.forArea(milan);
+        assertEquals(MobileEntry.HOME + "?at=45.46,9.19", city);
+        assertTrue(MapReturnRoute.valid(city));
+        assertFalse(city.contains("45.46427"));
+        assertFalse(city.contains("9.19033"));
+
+        DiscoveryArea london = new DiscoveryArea(51.50745, -0.12783, 14);
+        String foreign = MapReturnRoute.forArea(london);
+        assertEquals(MobileEntry.HOME + "?at=51.51,-0.13", foreign);
+        assertTrue(MapReturnRoute.valid(foreign));
+        assertFalse(foreign.contains("51.50745"));
+        assertFalse(foreign.contains("-0.12783"));
+        assertNull(MapReturnRoute.forArea(null));
+    }
+
     @Test public void retainsOnlyTrustedCityOrHomeMap() {
         assertTrue(MapReturnRoute.valid(MobileEntry.HOME));
         assertTrue(MapReturnRoute.valid(MobileEntry.HOME+"?at=45.4642,9.1900"));

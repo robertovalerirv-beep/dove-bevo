@@ -73,7 +73,8 @@ struct FavouriteComparisonRow {
     static func sorted(saved: [SavedVenue], snapshot: FavouriteComparisonSnapshot?, drink: String, band: ComparisonBand) -> [FavouriteComparisonRow] {
         saved.flatMap { entry -> [FavouriteComparisonRow] in
             if let venue = snapshot?.europe?.venues[entry.url.lastPathComponent], venue.url == entry.url {
-                let variants = venue.prices.filter { $0.drink == drink && $0.band == band && !$0.quarantined }
+                let variants = venue.prices.filter { $0.drink == drink && $0.band == band && !$0.quarantined &&
+                    (drink != "beer_draft" || DiscoverySnapshot.isMediumDraftBeer(label: nil, ml: $0.serving.ml)) }
                 if variants.isEmpty { return [FavouriteComparisonRow(saved: entry, current: nil, price: nil, unavailable: false, europeVenue: venue)] }
                 return variants.map { FavouriteComparisonRow(saved: entry, current: nil, price: nil, unavailable: false, europeVenue: venue, europePrice: $0) }
             }

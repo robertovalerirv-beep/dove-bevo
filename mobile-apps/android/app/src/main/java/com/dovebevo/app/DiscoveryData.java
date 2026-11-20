@@ -137,12 +137,16 @@ final class DiscoveryData {
             if(!seen.add(venue.key)){result.entrySet().removeIf(entry->entry.getValue().venue.key.equals(venue.key));duplicate.add(venue.key);continue;}
             String conditionNotice=cell.conditionNotice(venue.key);
             for(MenuV2Prices.Price offer:cell.menu.getOrDefault(venue.key,Collections.emptyList())){
-                if(!offer.category.equals(drink.code)||offer.band!=band)continue;
+                if(!offer.category.equals(drink.code)||offer.band!=band||
+                        drink==RecommendationDrink.BEER_DRAFT&&!MediumBeerServing.matches(offer.servingLabel,offer.servingML))continue;
                 String identity=venue.key+"/menu/"+offer.group();Row prior=result.get(identity);
                 if(prior==null||offer.amountMinor<prior.amount())result.put(identity,new Row(venue,offer,area));
             }
             if(cell.approved.europe!=null&&cell.approved.europe.owns(venue.key)){
-                for(EuropePrices.Price price:cell.approved.europe.selected(venue.key,drink,band))result.put(venue.key+"/"+price.group(),new Row(venue,null,price,area,conditionNotice));
+                for(EuropePrices.Price price:cell.approved.europe.selected(venue.key,drink,band)){
+                    if(drink==RecommendationDrink.BEER_DRAFT&&!MediumBeerServing.matches(null,price.serving.ml))continue;
+                    result.put(venue.key+"/"+price.group(),new Row(venue,null,price,area,conditionNotice));
+                }
                 continue;
             }
             FavoriteComparison.Price price=cell.approved.prices.get(venue.key+"/"+drink.code+"/"+band);

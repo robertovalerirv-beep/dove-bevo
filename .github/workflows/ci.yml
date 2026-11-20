@@ -67,12 +67,7 @@ jobs:
       # Canonical DNS has been unreliable. Keep signed Ubuntu archive checks and give APT independent HTTPS mirrors
       # with explicit failover order; the kernel.org mirror alone timed out before the browser tests could start.
       - name: Ubuntu archive mirrors with failover
-        run: |
-          printf '%s\tpriority:%s\n' \
-            'https://mirrors.edge.kernel.org/ubuntu' 1 \
-            'https://mirrors.ocf.berkeley.edu/ubuntu' 2 \
-            'https://mirrors.mit.edu/ubuntu' 3 |
-            sudo tee /etc/apt/apt-mirrors.txt
+        run: printf '%s\tpriority:%s\n' 'https://mirrors.edge.kernel.org/ubuntu' 1 'https://mirrors.ocf.berkeley.edu/ubuntu' 2 'https://mirrors.mit.edu/ubuntu' 3 | sudo tee /etc/apt/apt-mirrors.txt
       - run: npx playwright install --with-deps chromium webkit
       - name: App presentation interaction regressions
         run: node --test mobile-apps/presentation/tests/*.test.mjs
@@ -96,12 +91,7 @@ jobs:
           node-version: 24
       # The same ordered mirror list keeps an unavailable archive host from blocking the OSM fixture check.
       - name: Ubuntu archive mirrors with failover
-        run: |
-          printf '%s\tpriority:%s\n' \
-            'https://mirrors.edge.kernel.org/ubuntu' 1 \
-            'https://mirrors.ocf.berkeley.edu/ubuntu' 2 \
-            'https://mirrors.mit.edu/ubuntu' 3 |
-            sudo tee /etc/apt/apt-mirrors.txt
+        run: printf '%s\tpriority:%s\n' 'https://mirrors.edge.kernel.org/ubuntu' 1 'https://mirrors.ocf.berkeley.edu/ubuntu' 2 'https://mirrors.mit.edu/ubuntu' 3 | sudo tee /etc/apt/apt-mirrors.txt
       - run: sudo apt-get update && sudo apt-get install -y osmium-tool
       - run: osmium cat tests/fixtures/osm/sample.osm -o "$RUNNER_TEMP/sample.osm.pbf"
       - run: scripts/osm-import/import.sh "$RUNNER_TEMP/sample.osm.pbf" "$RUNNER_TEMP/data" fixture

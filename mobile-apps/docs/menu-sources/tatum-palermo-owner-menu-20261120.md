@@ -1,0 +1,19 @@
+# Tatum Art Jazz Club, Palermo: owner drink-menu candidate
+
+This is a **source-only app-menu candidate**, not a public price import. Roberto's existing catalogue contains Tatum Art Jazz Club as OSM node `n5569099365`, cell `sqc8b`, Palermo static city ID `67253662`, at 38.11416, 13.3611, Via della Università 38. The [live app-only venue route](https://www.dovebevo.com/api/mobile/v2/menu/venues/n5569099365?cell=sqc8b&limit=1) returned zero stored offers, zero fees, and unknown fee coverage on 20 November 2026. [OSM node 5569099365](https://www.openstreetmap.org/node/5569099365) is a bar named Tatum Art Jazz Club at 38.1141627, 13.3610973 with street Via della Università and civic number 38. [The owner page](https://www.tatumart.it/menu/) says Via dell'Università, 38, Palermo. That spelling variation does not change the street/civic venue match; the manifest retains the existing catalogue's address.
+
+The first-party [menu page](https://www.tatumart.it/menu/) returned HTTP 200 with no redirect using the importer's `DoveBevoMenuAudit/1` user agent. Two direct GETs returned the same 185,495 HTML bytes, raw SHA-256 `4bcc9978dbab8b0dc1d8378559822087e2446f7d396457150716bdd787545d38`. The importer's `html_text_v1` visible-text digest is `4cd7634a2d023ab640507ef865c7bd6241661225c1f143e8f730b050989ec9b6`, pinned in the manifest. The page does not state a menu-effective or update date; 20 November is the observation date, not a claim that prices took effect then. The site's robots file permits normal fetching of `/menu/`. No explicit restriction on factual reuse was found on the menu page; this bounded check is not a general licence. Only short printed drink names, EUR prices and labelled serving/section facts are retained. No images, descriptions, Google data or customer contributions are copied.
+
+The [immutable manifest](../../data/mobile-menu-v2-seeds/f740d4ee34e133e09b16f35cdbe162dc721e3e06412e4f6ef8f9ce507351d052.json) stages **32 regular EUR offers**:
+
+| Owner menu section | Offers | Treatment |
+| --- | ---: | --- |
+| Cocktail 8€ | 17 | The printed group price applies to each listed named cocktail; only Negroni and Negroni Sbagliato receive dedicated drink categories. Owner spelling, including `Vhiskey Sour`, is preserved. |
+| Analcolici 6€ | 2 | Cinnammon Passion and Fruit Punch, categorized as alcohol-free. |
+| Soft Drink 4€ | 5 | Five individually named soft drinks; the adjacent ambiguous `Acqua ½ 1 1,5` row is excluded. |
+| Birre in Bottiglia | 2 | Printed bottled beers at €5, labelled Bottiglia and not marked as draft beer. |
+| Vini, Bicchiere | 6 | Five still wines at €6 and Prosecco at €7, each explicitly labelled Bicchiere. Separate bottle prices are excluded. |
+
+No cover, service fee, minimum spend or fee-free claim is printed in the checked drink menu. Fee coverage remains **unknown**. The app's price scope is menu item only, not a recent customer receipt or full-bill quote. Other menu sections such as food, spirits and bottle wine remain outside this candidate.
+
+Local `import_v2.validate` passed for the exact manifest bytes, whose filename equals their SHA-256. A section-bounded check matched all 32 names to the owner's visible text, including each bottled beer and wine-glass amount and the three printed group prices. Independent all-row/source/identity/fee review and exact-head CI are still required. Before any public import, a protected read-only audit must verify the live source digest, current static catalogue, zero-offer baseline, moderation and customer-data guards. Only a separate guarded seed on the same reviewed main commit may publish app-only rows, followed by exact public API and app readback. The source-only PR does not write the live database or Roberto's website.

@@ -10,6 +10,10 @@ Each JPEG source has `image_evidence`, one `{ "offer_id": "offer-id", "line": "B
 
 ## Manifest
 
+Fetched PDF menu bodies are capped at 9 MiB. HTML, JSON, JPEG and supporting
+owner pages retain the 8 MiB cap. Both limits apply before source hashing;
+the exact PDF bytes and extracted text must still match the reviewed pins.
+
 Store a UTF-8 JSON manifest at `mobile-apps/data/mobile-menu-v2-seeds/<SHA-256-of-exact-file>.json`. Version 1 has `batch_id`, `checked_on`, `data_version`, and arrays `venues`, `sources`, `offers`, `fees`, `fee_coverage`. It may also have a `minimum_spends` array; older exact manifests remain valid without that field. The importer validates exact object fields and rejects duplicate JSON keys. Use one immutable source row per venue/source-text snapshot. A later changed menu or held-to-approved use decision needs a new source ID and new manifest; D1 rejects UPDATE/DELETE of source snapshots.
 
 A venue uses either:

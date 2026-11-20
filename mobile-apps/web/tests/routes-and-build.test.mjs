@@ -214,6 +214,11 @@ test("compile-time seams preserve original source and reject upstream drift", ()
   assert.match(transformApp(app), /mobileMenuPin\(v, drinks\)/);
   assert.match(
     transformApp(app),
+    /menuPin\?\.replace\(\/ MENU\$\/, ""\) \?\? ""/,
+    "Mobile map labels omit menu provenance before any price or selected cork is drawn",
+  );
+  assert.match(
+    transformApp(app),
     /const minimumPin = price \|\| menuPin \? mobileMinimumPin\(v\) : null/,
   );
   assert.match(

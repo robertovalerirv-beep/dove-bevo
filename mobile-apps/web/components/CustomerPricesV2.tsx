@@ -352,18 +352,22 @@ export function CustomerPricesV2({
           : !offerFocus && !focus && mapCategoryIndex(offer) !== -1
             ? 3
             : 4;
-  const orderedOffers = [...offers].sort((a, b) => {
-    const priority = offerPriority(a) - offerPriority(b);
-    if (priority) return priority;
-    if (offerPriority(a) !== 3) return 0;
-    return (
-      mapCategoryIndex(a) - mapCategoryIndex(b) ||
+  // Owner menu prices are facts in their original currencies. Keep the
+  // selected drink in its separate spotlight, then sort every listed price
+  // by currency and numeric amount, including newly loaded menu pages.
+  const orderedOffers = [...offers].sort(
+    (a, b) =>
       a.currency.localeCompare(b.currency) ||
-      a.currency_exponent - b.currency_exponent ||
-      a.amount_minor - b.amount_minor ||
-      a.id.localeCompare(b.id)
-    );
-  });
+      a.amount_minor * 10 ** b.currency_exponent - b.amount_minor * 10 ** a.currency_exponent ||
+      offerPriority(a) - offerPriority(b) ||
+      mapCategoryIndex(a) - mapCategoryIndex(b) ||
+      (a.serving.ml ?? Number.MAX_SAFE_INTEGER) - (b.serving.ml ?? Number.MAX_SAFE_INTEGER) ||
+      (a.serving.label ?? "").localeCompare(b.serving.label ?? "") ||
+      a.name.localeCompare(b.name) ||
+      a.context.kind.localeCompare(b.context.kind) ||
+      (a.context.condition ?? "").localeCompare(b.context.condition ?? "") ||
+      a.id.localeCompare(b.id),
+  );
   const spotlightMenuOffer =
     spotlightOfferId === null
       ? undefined
@@ -769,6 +773,13 @@ export function CustomerPricesV2({
       )}
       {listedOffers.length > 0 && (
         <>
+          {menu?.next_after && (
+            <p class="hint mobile-menu-v2__sort-scope">
+              {english
+                ? "Loaded menu prices are in ascending order within each currency. Load more drinks to see the rest of the menu."
+                : "Prezzi del menu caricati in ordine crescente per valuta. Carica altri drink per vedere il resto del menu."}
+            </p>
+          )}
           {!spotlightMenuOffer && (
             <ul class="mobile-menu-v2__offers">
               {(compactMenu ? listedOffers.slice(0, 1) : listedOffers).map((offer) =>

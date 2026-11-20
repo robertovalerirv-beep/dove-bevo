@@ -274,14 +274,18 @@ def image_review_digest(raw_pdf_sha256,entries):
         raise Error("invalid image PDF evidence")
     seen=set()
     for entry in entries:
-        fields(entry,("offer_id","page","line"))
-        offer_id=identifier(entry["offer_id"])
+        if not isinstance(entry,dict) or ("offer_id" in entry)==("fee_id" in entry):
+            raise Error("invalid image PDF evidence target")
+        target="offer_id" if "offer_id" in entry else "fee_id"
+        fields(entry,(target,"page","line"))
+        item_id=identifier(entry[target])
         integer(entry["page"],1,MAX_IMAGE_PAGES)
         text(entry["line"],3,220)
-        if offer_id in seen: raise Error("duplicate image PDF evidence")
-        seen.add(offer_id)
+        if (target,item_id) in seen: raise Error("duplicate image PDF evidence")
+        seen.add((target,item_id))
     canonical=json.dumps({"pdf_sha256":raw_pdf_sha256,
-                          "evidence":sorted(entries,key=lambda entry:entry["offer_id"])},
+                          "evidence":sorted(entries,key=lambda entry:(
+                              entry.get("offer_id",entry.get("fee_id")),"fee_id" in entry))},
                          ensure_ascii=False,sort_keys=True,separators=(",",":")).encode("utf-8")
     return hashlib.sha256(canonical).hexdigest()
 
@@ -456,14 +460,18 @@ def validate_minimum_spend(row,venues,sources):
     text(row["evidence_ref"],3,300)
 
 def verify_image_pdf_offers(source,offers,fees,coverage):
-    """Bind each approved offer to one reviewed PDF page and normalized line."""
+    """Bind each approved offer and an explicitly printed service fee to PDF pages."""
     source_id=source["id"]
-    if any(row["source_id"]==source_id for row in fees+coverage):
-        raise Error("image PDF fees need separate reviewed source format")
+    if any(row["source_id"]==source_id for row in coverage):
+        raise Error("image PDF coverage needs separate reviewed source format")
     own=[row for row in offers if row["source_id"]==source_id]
-    entries={entry["offer_id"]:entry for entry in source["image_evidence"]}
+    own_fees=[row for row in fees if row["source_id"]==source_id]
+    entries={entry["offer_id"]:entry for entry in source["image_evidence"] if "offer_id" in entry}
+    fee_entries={entry["fee_id"]:entry for entry in source["image_evidence"] if "fee_id" in entry}
     if {row["id"] for row in own}!=set(entries):
         raise Error("image PDF offer evidence coverage mismatch")
+    if {row["id"] for row in own_fees}!=set(fee_entries):
+        raise Error("image PDF fee evidence coverage mismatch")
     for row in own:
         if row["price_context"]!="regular":
             raise Error("image PDF conditional prices need separate review")
@@ -472,6 +480,22 @@ def verify_image_pdf_offers(source,offers,fees,coverage):
         if row["evidence_ref"]!=f'PDF page {entry["page"]}: {line}':
             raise Error("image PDF offer page reference mismatch")
         verify_reviewed_image_line(row,line,"image PDF")
+    for row in own_fees:
+        entry=fee_entries[row["id"]]
+        line=entry["line"]
+        if row["evidence_ref"]!=f'PDF page {entry["page"]}: {line}':
+            raise Error("image PDF fee page reference mismatch")
+        # The image contract only admits this fully specified, unconditional
+        # percent service fee. Its printed minimum is carried in the label;
+        # clients display the fee separately and never calculate a bill total.
+        match=re.fullmatch(r"SERVIZIO\s+([0-9]+(?:[,.][0-9]+)?)\s*%\s+MIN\.?\s*([0-9]+(?:[,.][0-9]{1,2})?)\s*€",line,re.I)
+        if not match or (row["fee_kind"],row["basis"],row["applicability"],row["condition_text"])!=("percent","bill","all_orders",None):
+            raise Error("image PDF fee is not a reviewed service charge")
+        from decimal import Decimal
+        rate=Decimal(match.group(1).replace(",","."))*100
+        minimum=int(Decimal(match.group(2).replace(",","."))*100)
+        if row["rate_bps"]!=rate or row["label"]!=f"Servizio (minimo EUR {minimum//100}.{minimum%100:02d})":
+            raise Error("image PDF service fee rate or minimum mismatch")
 
 def verify_reviewed_image_line(row,line,kind):
     """Check that reviewed image evidence names the exact offer, size and amount."""

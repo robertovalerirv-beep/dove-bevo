@@ -35,6 +35,48 @@ def transport_with_pdf(pdf=MENU_PDF):
 
 
 class ImagePdfTests(unittest.TestCase):
+    def test_printed_service_fee_and_minimum_are_bound_to_pdf_page(self):
+        doc=image_manifest()
+        source=doc["sources"][0]
+        fee={"id":"fee-test-1","venue_key":doc["venues"][0]["venue_key"],
+             "cell":doc["venues"][0]["cell"],"source_id":source["id"],
+             "label":"Servizio (minimo EUR 1.00)","fee_kind":"percent","basis":"bill",
+             "amount_minor":None,"currency":None,"currency_exponent":None,
+             "rate_bps":1000,"applicability":"all_orders","condition_text":None,
+             "evidence_ref":"PDF page 1: SERVIZIO 10% MIN.1€"}
+        doc["fees"]=[fee]
+        source["image_evidence"].append({"fee_id":fee["id"],"page":1,
+                                         "line":"SERVIZIO 10% MIN.1€"})
+        source["source_text_sha256"]=core.image_review_digest(
+            source["source_sha256"],source["image_evidence"])
+        self.assertEqual(core.validate(raw(doc))["fees"],[fee])
+        transport=transport_with_pdf()
+        receipt=core.execute(raw(doc),transport)
+        self.assertTrue(receipt["complete"],receipt["errors"])
+        self.assertEqual([row["outcome"] for row in receipt["rows"]],
+                         ["eligible_at_read"]*3)
+        self.assertEqual(transport.db.execute(
+            "SELECT COUNT(*) FROM mobile_menu_v2_fees").fetchone()[0],0)
+        for label,mutate in (
+            ("missing evidence",lambda d:d["sources"][0]["image_evidence"].pop()),
+            ("wrong rate",lambda d:d["fees"][0].update(rate_bps=1200)),
+            ("missing minimum",lambda d:d["fees"][0].update(label="Servizio")),
+            ("wrong minimum",lambda d:d["fees"][0].update(label="Servizio (minimo EUR 2.00)")),
+            ("conditional",lambda d:d["fees"][0].update(applicability="conditional",condition_text="Evening")),
+            ("unreviewed fee coverage",lambda d:d["fee_coverage"].append({
+                "venue_key":d["venues"][0]["venue_key"],"cell":d["venues"][0]["cell"],
+                "source_id":d["sources"][0]["id"],"status":"documented_partial",
+                "evidence_ref":"PDF page 1: SERVIZIO 10% MIN.1€"})),
+        ):
+            with self.subTest(label=label):
+                changed=copy.deepcopy(doc)
+                mutate(changed)
+                if label=="missing evidence":
+                    changed["sources"][0]["source_text_sha256"]=core.image_review_digest(
+                        changed["sources"][0]["source_sha256"],
+                        changed["sources"][0]["image_evidence"])
+                with self.assertRaises(core.Error):core.validate(raw(changed))
+
     def test_review_digest_is_independent_of_evidence_order(self):
         entries=[{"offer_id":"one","page":1,"line":"Spritz EUR 7.50"},
                  {"offer_id":"two","page":2,"line":"Beer EUR 5.00"}]

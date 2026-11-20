@@ -729,6 +729,10 @@ Require(sortedCurrencies.Select(row => $"{row.Currency}:{row.AmountMinor}:{row.E
     "Scopri must preserve distinct exponents and sort numeric prices within original-currency sections");
 var localOffer = legacyRows.Single(row => row.Key == "n123");
 var localCustomer = legacyRows.Single(row => row.Key == "u1");
+Require(localOffer.SourceSummary.StartsWith("Prezzo registrato il ") &&
+    localOffer.Display.Contains("Prezzo registrato il ") &&
+    !localOffer.SourceSummary.Contains("cliente") && !localOffer.Display.Contains("cliente"),
+    "legacy prices without a source must not invent customer provenance");
 var featured = FeaturedDiscoveryCards.FromRows([
     localOffer,
     localOffer with { AmountMinor = 600 }, // A second drink at the same venue must not displace its first ranked price.
@@ -768,11 +772,11 @@ using var customerLondonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
 var customerLondon = EuropeDiscoveryClient.ParseCell(customerLondonPage, "gcpvj", "spritz",
     parsedCatalog.Version, parsedCatalog.Venues).Single();
 Require(customerLondon.Display.Contains("9,00 GBP") &&
-    customerLondon.Display.Contains("Segnalato da un cliente") &&
+    customerLondon.Display.Contains("Prezzo registrato il ") &&
     customerLondon.Display.Contains("Da confermare") && customerLondon.SourceUrl is null &&
     customerLondon.Serving == "" && !customerLondon.Display.Contains("Drink singolo") &&
     !customerLondon.Display.Contains(" ·  · "),
-    "customer-reported European price must retain provenance and review state");
+    "European price with no source URL must retain its review state without invented attribution");
 using var hiddenLondonPage = JsonDocument.Parse(JsonSerializer.Serialize(new {
     schema_version = 1, catalog_version = "test-v1", rows = londonPrices,
     hidden = new[] { "n123" }, legacy_venues = Array.Empty<string>(),

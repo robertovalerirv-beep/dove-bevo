@@ -143,7 +143,9 @@ final class MenuShareOffer {
     static String normalized(String value){return value.replace('\u00a0',' ').replace('\u202f',' ');}
     static String displayServing(MenuV2Prices.Price price){
         String base=price.servingLabel!=null?price.servingLabel:price.servingML==null?"":price.servingML+" ml";
-        String context=price.band==1?"Happy hour":price.band<0?price.condition==null?"Prezzo condizionato":"Solo con: "+price.condition:"";
+        String context=price.band==1?(price.condition==null?"Happy hour":"Happy hour · "+price.condition):
+            price.band<0?(price.condition==null?"Prezzo condizionato":"Solo con: "+price.condition):
+            price.condition==null?"":price.condition;
         return base.isEmpty()?context:context.isEmpty()?base:base+" · "+context;
     }
     private static String clean(Object value,int max,boolean empty)throws IOException{

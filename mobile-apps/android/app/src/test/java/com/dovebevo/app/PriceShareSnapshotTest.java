@@ -57,4 +57,18 @@ public class PriceShareSnapshotTest {
         assertNull(MenuShareOffer.decode(offerJson().replace("Menu verificato il 2026-11-02","Menu verificato il ieri"),OFFER_URL,OFFER_URL,4,4));
         assertNull(MenuShareOffer.decode(offerJson(),URL,URL,4,4));
     }
+    @Test public void liveHappyHourAndRegularConditionsMustMatchVisibleOffer(){
+        String happy=offerJson().replace("\"serving\":\"Drink singolo\"","\"serving\":\"Drink singolo · Happy hour · 17:00–19:00\"");
+        MenuShareOffer capturedHappy=MenuShareOffer.decode(happy,OFFER_URL,OFFER_URL,4,4);assertNotNull(capturedHappy);
+        MenuV2Prices.Price liveHappy=new MenuV2Prices.Price("offer:1","Locale reale","Spritz della casa","spritz",1,550,"EUR",2,
+            "Drink singolo",null,false,"2026-11-02","Spese non verificate",null,"17:00–19:00",null,"");
+        MenuV2Prices.Venue happyVenue=new MenuV2Prices.Venue("n123","u0nd9","Locale reale","Spese non verificate",java.util.List.of(liveHappy));
+        assertNotNull(PriceShareSnapshot.fromMenu(capturedHappy,OFFER_URL,happyVenue));
+        assertNull(PriceShareSnapshot.fromMenu(MenuShareOffer.decode(happy.replace("17:00–19:00","18:00–19:00"),OFFER_URL,OFFER_URL,4,4),OFFER_URL,happyVenue));
+        String regular=offerJson().replace("\"serving\":\"Drink singolo\"","\"serving\":\"Drink singolo · Solo al banco\"");
+        MenuShareOffer capturedRegular=MenuShareOffer.decode(regular,OFFER_URL,OFFER_URL,4,4);assertNotNull(capturedRegular);
+        MenuV2Prices.Price liveRegular=new MenuV2Prices.Price("offer:1","Locale reale","Spritz della casa","spritz",0,550,"EUR",2,
+            "Drink singolo",null,false,"2026-11-02","Spese non verificate",null,"Solo al banco",null,"");
+        assertNotNull(PriceShareSnapshot.fromMenu(capturedRegular,OFFER_URL,new MenuV2Prices.Venue("n123","u0nd9","Locale reale","Spese non verificate",java.util.List.of(liveRegular))));
+    }
 }

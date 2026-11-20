@@ -89,11 +89,13 @@ final class PriceShareTests: XCTestCase {
          "serving": "Drink singolo", "provenance": "Prezzo del drink da menu, non totale pagato. Supplementi separati. Menu verificato il 2026-11-02",
          "location": "Milano"]
     }
-    private func ownerMenu(amount: Int = 550, day: String = "2026-11-02") -> MenuV2Venue {
-        let price = MenuV2Price(id: "offer:1", venueName: "Locale reale", itemName: "Spritz della casa",
-            category: "spritz", band: .normal, amountMinor: amount, currency: "EUR", exponent: 2,
+    private func ownerMenu(amount: Int = 550, day: String = "2026-11-02",
+                           band: ComparisonBand? = .normal, condition: String? = nil) -> MenuV2Venue {
+        var price = MenuV2Price(id: "offer:1", venueName: "Locale reale", itemName: "Spritz della casa",
+            category: "spritz", band: band, amountMinor: amount, currency: "EUR", exponent: 2,
             servingLabel: "Drink singolo", servingML: nil, origin: .ownerMenu(URL(string: "https://example.org/menu")!, day),
             feeNotice: "Altre spese del locale non verificate; controlla la scheda del locale.")
+        price.condition = condition
         return MenuV2Venue(key: "n123", cell: "u0nd9", name: "Locale reale", offers: [price],
             feeNotice: price.feeNotice)
     }
@@ -117,6 +119,17 @@ final class PriceShareTests: XCTestCase {
         XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument)?.verified(in: ownerMenu()))
         changed = offerFields(); changed["private"] = "value"
         XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument))
+    }
+    func testOwnerMenuShareRetainsOnlyLiveMatchedHappyHourAndRegularConditions() throws {
+        var happy = offerFields(); happy["serving"] = "Drink singolo · Happy hour · 17:00–19:00"
+        let capturedHappy = try XCTUnwrap(MenuShareOffer.parse(happy, currentURL: offerDocument))
+        XCTAssertNil(capturedHappy.verified(in: ownerMenu(band: .happyHour)))
+        let verifiedHappy = try XCTUnwrap(capturedHappy.verified(in: ownerMenu(band: .happyHour, condition: "17:00–19:00")))
+        XCTAssertTrue(verifiedHappy.accessibilityDescription.contains("Happy hour · 17:00–19:00"))
+        var regular = offerFields(); regular["serving"] = "Drink singolo · Solo al banco"
+        let capturedRegular = try XCTUnwrap(MenuShareOffer.parse(regular, currentURL: offerDocument))
+        XCTAssertNil(capturedRegular.verified(in: ownerMenu()))
+        XCTAssertNotNil(capturedRegular.verified(in: ownerMenu(condition: "Solo al banco")))
     }
 
     @MainActor func testRetiredHiddenChangedPageAndOldCallbacksCannotPresentStalePoster() {

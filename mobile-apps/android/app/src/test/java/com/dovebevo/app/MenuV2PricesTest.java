@@ -57,6 +57,19 @@ public final class MenuV2PricesTest {
         assertEquals("Calice · 200 ml",MenuV2Prices.Price.displayServing("Calice",200));
         assertEquals("Formato non dichiarato",MenuV2Prices.Price.displayServing(null,null));
     }
+    @Test public void ownerMenuDecoderRetainsHappyHourAndRegularConditionsForExactShare()throws Exception {
+        String happy=offer("a1","happy_hour",550).replace("\"condition\":null","\"condition\":\"17:00–19:00\"");
+        String regular=offer("a2","regular",650).replace("\"condition\":null","\"condition\":\"Solo al banco\"");
+        MenuV2Prices client=new MenuV2Prices((url,max,call)->{
+            if(url.contains("customer-prices"))throw new IOException("No customer fixture");
+            return bytes(menu(happy+","+regular,2,null));
+        });
+        MenuV2Prices.Venue venue=client.load(SavedVenueStore.reference(VENUE,"Saved"),call());
+        assertEquals("17:00–19:00",venue.prices.get(0).condition);
+        assertEquals(1,venue.prices.get(0).band);
+        assertEquals("Solo al banco",venue.prices.get(1).condition);
+        assertEquals(0,venue.prices.get(1).band);
+    }
     @Test public void lastOfferAfter149RowsCanBeVerifiedForExactFavourite()throws Exception {
         SavedVenueStore.Venue venue=SavedVenueStore.reference(VENUE,"Saved actual name");
         StringBuilder first=new StringBuilder(),last=new StringBuilder();

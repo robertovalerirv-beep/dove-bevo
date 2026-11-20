@@ -128,9 +128,9 @@ struct MenuShareOffer: Equatable {
     private static func displayServing(_ price: MenuV2Price) -> String {
         let base = price.servingLabel ?? price.servingML.map { "\($0) ml" } ?? ""
         let context: String
-        if price.band == .happyHour { context = "Happy hour" }
+        if price.band == .happyHour { context = ["Happy hour", price.condition].compactMap { $0 }.joined(separator: " · ") }
         else if price.band == nil { context = price.condition.map { "Solo con: \($0)" } ?? "Prezzo condizionato" }
-        else { context = "" }
+        else { context = price.condition ?? "" }
         return [base, context].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }

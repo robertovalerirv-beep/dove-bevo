@@ -27,7 +27,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@cloudflare/vite-plugin": "1.63.1",
-    "@cloudflare/vitest-plugin": "1.4.3",
+    "@cloudflare/vitest-plugin": "1.4.10",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.0",
     "@preact/preset-vite": "2.10.6",

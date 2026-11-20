@@ -1,4 +1,4 @@
-# Bar San Jacopino Firenze: owner QR menu candidate
+# Bar San Jacopino Firenze: owner QR cocktail candidate
 
 This is a **source-only, app-only candidate** for Roberto's existing venue. It does not change the website, customer prices, or production menu database. No price is represented as a customer observation, a verified visit, or a discount.
 
@@ -11,12 +11,12 @@ This is a **source-only, app-only candidate** for Roberto's existing venue. It d
 
 ## Transcription and limits
 
-- The candidate holds **41 exact EUR offer variants**: ten named `COCKTAIL` prices, five `VINI` glass/bottle variants, twelve `BIANCHI` variants, and fourteen `ROSSI` variants. A glass and a bottle are separate offers. The source's image labels explicitly say `Prezzo a bicchiere` and `Prezzo a bottiglia`; the manifest preserves those labels as `bicchiere` and `bottiglia`. No volume is stated, so `serving_ml` is null.
-- The named item and amount come from the live owner menu. Examples include Mojito EUR 6, Negroni EUR 6, Prosecco Cuvée Extra Dry EUR 3.50/glass and EUR 15/bottle, Chianti EUR 3/glass and EUR 12/bottle, and Brunello di Montalcino EUR 48/bottle. These are menu facts only. Descriptions, photos and recipe text are excluded.
-- Coffee, soft drinks, food and the `MENÙ DEL GIORNO` are outside this focused 41-row alcoholic-drink batch; their absence does not imply the venue does not sell them. No mandatory fee or explicit no-fee statement appears in the checked drink sections. Fee coverage remains **unknown**.
+- The candidate holds **ten exact EUR cocktail prices** from the visible `COCKTAIL` section, including Mojito EUR 6 and Negroni EUR 6. No serving volume is printed for these items, so serving fields are null. These are menu facts only; descriptions, photos and recipe text are excluded.
+- **Thirty-one wine glass/bottle variants are held and absent from the manifest.** Their distinction is carried by image `src`/`alt` attributes (`Prezzo a bicchiere` versus `Prezzo a bottiglia`) that the current `html_text_v1` visible-text digest does not bind. A source hash based only on visible text cannot safely attest those attributes. No wine offer should be added until a separately reviewed attribute-aware pin is implemented and tested. The held variants are not a public import candidate.
+- Coffee, soft drinks, food and the `MENÙ DEL GIORNO` are also outside this focused cocktail batch; their absence does not imply the venue does not sell them. No mandatory fee or explicit no-fee statement appears in the checked cocktail section. Fee coverage remains **unknown**.
 
 ## Freshness and release hold
 
 The QR page carries no menu revision date. On 20 November the home page's `Il nostro menu` link pointed to `/menu-completo/`, which returned 404, while the separate `/qrcode/menu` page remained live. The site body names `Elisa&Charlie SAS di Enrico Chen & C.` but the footer still contains an older 2020 business name. These facts do not establish a different venue, but they make independent current-source/rights review important. The manifest only stages an immutable source candidate; it must not be seeded on the strength of this writer's transcription alone.
 
-Before any public write, an independent reviewer must compare **all 41 rows** with the pinned owner page, resolve the page-freshness concern, verify the current static cell and source hash, then run the protected read-only audit on the reviewed main commit. Inspect duplicates, reports/hidden status, source pin and fee scope in its receipt. Only a successful exact audit may precede a separate guarded seed and 41/41 public readback. Do not overwrite customer contributions.
+Before any public write, an independent reviewer must compare **all ten cocktail rows** with the pinned owner page, resolve the page-freshness concern, verify the current static cell and source hash, then run the protected read-only audit on the reviewed main commit. Inspect duplicates, reports/hidden status, source pin and fee scope in its receipt. Only a successful exact audit may precede a separate guarded seed and 10/10 public readback. Do not overwrite customer contributions. The 31 held wine variants require a different source-pinning contract and are not part of this candidate.

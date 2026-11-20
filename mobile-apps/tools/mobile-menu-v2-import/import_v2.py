@@ -61,7 +61,8 @@ BLOCKED = ("leggimenu.it","yhop.beer","metropolita.it",
            "junglejuicebrewing.com","google.com","googleapis.com",
            "googleusercontent.com")
 TABLES = ("mobile_menu_v2_venues","mobile_menu_v2_sources","mobile_menu_v2_offers",
-          "mobile_menu_v2_fees","mobile_menu_v2_fee_coverage","venues_hidden",
+          "mobile_menu_v2_fees","mobile_menu_v2_fee_coverage",
+          "mobile_menu_v2_minimum_spends","venues_hidden",
           "mobile_venues_moderation","reports","prices_current","price_obs",
           "venues_user")
 MAX_MANIFEST = 2*1024*1024
@@ -416,6 +417,27 @@ def validate_coverage(row,venues,sources,fees):
     if (row["status"]=="explicit_no_fee" and own) or (row["status"]=="documented_partial" and not own):
         raise Error("fee coverage contradicts fee rows")
 
+def validate_minimum_spend(row,venues,sources):
+    # A minimum is a conditional order requirement, not an additive fee or a drink price.
+    fields(row,("id","venue_key","cell","source_id","label","amount_minor",
+                "currency","currency_exponent","basis","applicability",
+                "condition_text","evidence_ref"))
+    identifier(row["id"]);link(row,venues,sources);text(row["label"],1,512)
+    if sources[row["source_id"]]["source_format"] not in ("html_text_v1","pdf_text_v1"):
+        raise Error("minimum spend needs reviewed text source")
+    integer(row["amount_minor"],1,100000000)
+    if not isinstance(row["currency"],str) or not re.fullmatch(r"[A-Z]{3}",row["currency"]):
+        raise Error("invalid minimum-spend currency")
+    integer(row["currency_exponent"],0,3)
+    if row["basis"]!="person": raise Error("unsupported minimum-spend basis")
+    if row["applicability"]=="conditional":
+        text(row["condition_text"],3,500)
+    elif row["applicability"]=="all_orders":
+        if row["condition_text"] is not None: raise Error("minimum spend has unpaired condition")
+    else:
+        raise Error("invalid minimum-spend applicability")
+    text(row["evidence_ref"],3,300)
+
 def verify_image_pdf_offers(source,offers,fees,coverage):
     """Bind each approved offer to one reviewed PDF page and normalized line."""
     source_id=source["id"]
@@ -473,8 +495,11 @@ def validate(raw):
     if not isinstance(raw,bytes) or not 1<=len(raw)<=MAX_MANIFEST: raise Error("manifest size")
     try: doc=json.loads(raw.decode("utf-8"),object_pairs_hook=pairs,parse_constant=constant)
     except (UnicodeError,ValueError) as exc: raise Error("invalid manifest JSON") from exc
-    fields(doc,("schema_version","batch_id","checked_on","data_version","venues",
-                "sources","offers","fees","fee_coverage"))
+    required=("schema_version","batch_id","checked_on","data_version","venues",
+              "sources","offers","fees","fee_coverage")
+    fields(doc,required+(("minimum_spends",) if "minimum_spends" in doc else ()))
+    # Preserve the exact bytes and hash of all existing version-one manifests.
+    doc.setdefault("minimum_spends",[])
     if type(doc["schema_version"]) is not int or doc["schema_version"]!=1:
         raise Error("invalid manifest version")
     if not isinstance(doc["batch_id"],str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{3,80}",doc["batch_id"]):
@@ -484,10 +509,11 @@ def validate(raw):
     if not isinstance(doc["data_version"],str) or not re.fullmatch(r"[0-9]{8}",doc["data_version"]):
         raise Error("invalid catalogue version")
     for attr,limit in (("venues",100),("sources",100),("offers",1000),
-                       ("fees",200),("fee_coverage",100)):
+                       ("fees",200),("fee_coverage",100),("minimum_spends",100)):
         if not isinstance(doc[attr],list) or len(doc[attr])>limit:
             raise Error("invalid collection")
-    if not doc["venues"] or not doc["sources"] or not (doc["offers"] or doc["fees"] or doc["fee_coverage"]):
+    if not doc["venues"] or not doc["sources"] or not (
+        doc["offers"] or doc["fees"] or doc["fee_coverage"] or doc["minimum_spends"]):
         raise Error("empty seed")
     venues={}
     for row in doc["venues"]:
@@ -510,18 +536,26 @@ def validate(raw):
         validate_coverage(row,venues,sources,doc["fees"])
         if row["venue_key"] in seen: raise Error("duplicate fee coverage")
         seen.add(row["venue_key"])
+    seen=set()
+    for row in doc["minimum_spends"]:
+        validate_minimum_spend(row,venues,sources)
+        if row["id"] in seen: raise Error("duplicate minimum-spend ID")
+        seen.add(row["id"])
     for src in sources.values():
         if src["source_format"]=="pdf_image_v1":
-            verify_image_pdf_offers(src,doc["offers"],doc["fees"],doc["fee_coverage"])
+            verify_image_pdf_offers(src,doc["offers"],doc["fees"],
+                                    doc["fee_coverage"]+doc["minimum_spends"])
         if src["source_format"]=="jpeg_image_v1":
-            verify_jpeg_image_offers(src,doc["offers"],doc["fees"],doc["fee_coverage"])
+            verify_jpeg_image_offers(src,doc["offers"],doc["fees"],
+                                     doc["fee_coverage"]+doc["minimum_spends"])
         if src["source_format"]=="mosto_taplist_v1" and any(
-            row["source_id"]==src["id"] for row in doc["fees"]+doc["fee_coverage"]):
+            row["source_id"]==src["id"] for row in
+            doc["fees"]+doc["fee_coverage"]+doc["minimum_spends"]):
             raise Error("Mosto fees need separate reviewed evidence")
     for src in sources.values():
         if src["use_review_status"]=="approved" and not any(
             row["source_id"]==src["id"]
-            for attr in ("offers","fees","fee_coverage") for row in doc[attr]):
+            for attr in ("offers","fees","fee_coverage","minimum_spends") for row in doc[attr]):
             raise Error("approved source without evidence row")
     return doc
 
@@ -1115,10 +1149,14 @@ FIELDS={
          "currency","currency_exponent","rate_bps","applicability","condition_text",
          "status","source_id"),
   "coverage":("venue_key","cell","status","source_id"),
+  "minimum_spend":("id","venue_key","cell","label","amount_minor","currency",
+                   "currency_exponent","basis","applicability","condition_text",
+                   "status","source_id"),
 }
 TABLE={"venue":"mobile_menu_v2_venues","source":"mobile_menu_v2_sources",
        "offer":"mobile_menu_v2_offers","fee":"mobile_menu_v2_fees",
-       "coverage":"mobile_menu_v2_fee_coverage"}
+       "coverage":"mobile_menu_v2_fee_coverage",
+       "minimum_spend":"mobile_menu_v2_minimum_spends"}
 
 def rows_for_import(doc):
     rows=[]
@@ -1134,10 +1172,11 @@ def rows_for_import(doc):
     for row in doc["sources"]:
         if row["use_review_status"]=="approved":
             rows.append(("source",{key:row[key] for key in FIELDS["source"]}))
-    for kind,attr in (("offer","offers"),("fee","fees"),("coverage","fee_coverage")):
+    for kind,attr in (("offer","offers"),("fee","fees"),("coverage","fee_coverage"),
+                      ("minimum_spend","minimum_spends")):
         for source in doc[attr]:
             row={key:source[key] for key in FIELDS[kind] if key!="status"}
-            row["status"]="active" if kind in ("offer","fee") else source["status"]
+            row["status"]="active" if kind in ("offer","fee","minimum_spend") else source["status"]
             rows.append((kind,row))
     return rows
 

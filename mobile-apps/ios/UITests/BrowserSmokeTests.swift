@@ -124,10 +124,26 @@ final class BrowserSmokeTests: XCTestCase {
         XCTAssertTrue(app.buttons["tab.home"].isSelected)
         XCTAssertFalse(app.buttons["browser.saveVenue"].exists)
         XCTAssertTrue(app.buttons["tab.recommendations"].isEnabled)
+        assertFourBottomTabsHittable()
         attachState(named: "DoveBevo-native-discovery-choose-map-area")
         app.buttons["tab.map"].tap()
         XCTAssertFalse(app.navigationBars["Dove bevo"].exists)
         XCTAssertTrue(app.buttons["tab.map"].isSelected)
+        assertFourBottomTabsHittable()
+    }
+
+    private func assertFourBottomTabsHittable() {
+        let bar = app.descendants(matching: .any)["native.bottomNavigation"]
+        XCTAssertTrue(bar.exists)
+        let visibleWindow = app.windows.firstMatch.frame.insetBy(dx: -1, dy: -1)
+        let visibleBar = bar.frame.insetBy(dx: -1, dy: -1)
+        for identifier in ["tab.home", "tab.map", "tab.favorites", "tab.recommendations"] {
+            let button = bar.buttons[identifier]
+            XCTAssertTrue(button.exists, identifier)
+            XCTAssertTrue(visibleBar.contains(button.frame), "\(identifier) extends outside the native bar")
+            XCTAssertTrue(visibleWindow.contains(button.frame), "\(identifier) is off screen")
+            XCTAssertTrue(button.isHittable, "\(identifier) must be tappable after a destination switch")
+        }
     }
 
     /// This deliberately requires live HTTPS website readiness. A native
@@ -292,8 +308,9 @@ final class BrowserSmokeTests: XCTestCase {
             self.app.staticTexts["discovery.loaded"].exists || self.app.staticTexts["discovery.partial"].exists
         }, object: nil)
         let result = XCTWaiter.wait(for: [loaded], timeout: 65)
-        attachState(named: "DoveBevo-live-native-discovery-prices-read-only")
         XCTAssertEqual(result, .completed, "Discovery must load actual prices from the current public map neighbourhood")
+        assertFourBottomTabsHittable()
+        attachState(named: "DoveBevo-live-native-discovery-prices-read-only")
         XCTAssertFalse(app.staticTexts["discovery.chooseArea"].exists)
         XCTAssertGreaterThan(table.cells.count, 0, "The current live map area must yield a real nearby price for the selected drink")
         let drinkSelector = app.buttons["discovery.drinkSelector"]

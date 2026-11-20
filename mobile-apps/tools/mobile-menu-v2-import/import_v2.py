@@ -6,6 +6,7 @@ import argparse
 import datetime as dt
 import decimal
 import hashlib
+from html.parser import HTMLParser
 import importlib.util
 import ipaddress
 import json
@@ -619,13 +620,70 @@ def jpeg_dimensions(raw):
             pos+=length
     raise Error("incomplete JPEG")
 
+class HTMLTextImagesV1(HTMLParser):
+    """Pin normalized markup text and img alt/src in document order."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.tokens=[]
+        self.text_parts=[]
+        self.ignored=0
+        self.length=0
+
+    def add_length(self,value):
+        self.length+=len(value)+1
+        if self.length>legacy.MAX_HTML_TEXT:
+            raise Error("HTML text and image attributes exceed limit")
+
+    def flush_text(self):
+        value=re.sub(r"\s+"," "," ".join(self.text_parts)).strip()
+        if value: self.tokens.append(["text",value])
+        self.text_parts=[]
+
+    def handle_starttag(self,tag,attrs):
+        if tag in ("script","style"): self.ignored+=1
+        if tag!="img" or self.ignored: return
+        selected={}
+        for name,value in attrs:
+            if name in ("alt","src"):
+                if name in selected: raise Error("duplicate image alt or src attribute")
+                selected[name]=value
+                if value is not None: self.add_length(value)
+        self.flush_text()
+        self.tokens.append(["img",selected.get("alt"),selected.get("src")])
+
+    def handle_endtag(self,tag):
+        if tag in ("script","style"): self.ignored=max(0,self.ignored-1)
+
+    def handle_data(self,data):
+        if not self.ignored:
+            self.add_length(data)
+            self.text_parts.append(data)
+
+def html_text_images_digest(raw):
+    try:
+        parser=HTMLTextImagesV1()
+        parser.feed(raw.decode("utf-8",errors="strict"))
+        parser.close()
+        parser.flush_text()
+        canonical=(json.dumps({"format":"html_text_images_v1","tokens":parser.tokens},
+                              ensure_ascii=False,sort_keys=True,separators=(",",":"))
+                   .encode("utf-8")) if parser.tokens else b""
+    except UnicodeError:
+        raise Error("invalid HTML source encoding") from None
+    if not canonical: raise Error("empty HTML text")
+    if len(canonical)>legacy.MAX_HTML_TEXT: raise Error("HTML text exceeds limit")
+    return hashlib.sha256(canonical).hexdigest()
+
 def source_digests(raw,fmt,image_evidence=None,page_count=None):
     if len(raw)>MAX_SOURCE: raise Error("source too large")
-    if fmt in ("html_text_v1","html_text_images_v1"):
+    if fmt=="html_text_v1":
         try:
             result=legacy.source_digest(raw,fmt)
         except legacy.Error as exc:
             raise Error(str(exc)) from None
+        return result,result
+    if fmt=="html_text_images_v1":
+        result=html_text_images_digest(raw)
         return result,result
     if fmt=="fuoriluogo_google_sites_v1":
         try:

@@ -17,8 +17,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 env:
-  IMPORTER_SHA256: b554c8846810868781dbb3bc8145c7c94b14f06776190d93d012eb0d750e09bb
-  TRANSPORT_SHA256: 14ba8427c9e1a40465a9e2d9023bd388d516d9159da6ea740a0029af24e37925
+  IMPORTER_SHA256: d29247aa7baeeabd663cb743faedbc751f1f53344dbca6728f5610443501f939
+  TRANSPORT_SHA256: 147a6051c66dd8523ec0d634ab18976e4a0ccf33efec5873d2d921bc6a300239
 jobs:
   preservation:
     runs-on: ubuntu-24.04

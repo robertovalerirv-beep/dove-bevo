@@ -61,66 +61,15 @@ class HTMLTextV1(HTMLParser):
             self.parts.append(data)
 
 
-class HTMLTextImagesV1(HTMLParser):
-    """Pin normalized markup text and image meaning in document order.
-
-    Text is coalesced across ordinary markup, but image tokens split text runs
-    so moving a glass/bottle label to a different menu row changes the hash.
-    """
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
-        self.tokens = []
-        self.text_parts = []
-        self.ignored = 0
-        self.length = 0
-
-    def add_length(self, value):
-        self.length += len(value) + 1
-        if self.length > MAX_HTML_TEXT: raise Error("HTML text and image attributes exceed limit")
-
-    def flush_text(self):
-        value = re.sub(r"\s+", " ", " ".join(self.text_parts)).strip()
-        if value: self.tokens.append(["text", value])
-        self.text_parts = []
-
-    def handle_starttag(self, tag, attrs):
-        if tag in ("script", "style"):
-            self.ignored += 1
-        if tag != "img" or self.ignored: return
-        selected = {}
-        for name, value in attrs:
-            if name in ("alt", "src"):
-                if name in selected: raise Error("duplicate image alt or src attribute")
-                selected[name] = value
-                if value is not None: self.add_length(value)
-        self.flush_text()
-        self.tokens.append(["img", selected.get("alt"), selected.get("src")])
-
-    def handle_endtag(self, tag):
-        if tag in ("script", "style"): self.ignored = max(0, self.ignored - 1)
-
-    def handle_data(self, data):
-        if not self.ignored:
-            self.add_length(data)
-            self.text_parts.append(data)
-
-
 def source_digest(raw, source_format="raw"):
     if len(raw) > MAX_SOURCE_BYTES: raise Error("source exceeds limit")
     if source_format == "raw": return hashlib.sha256(raw).hexdigest()
-    if source_format not in ("html_text_v1", "html_text_images_v1"):
-        raise Error("invalid source format")
+    if source_format != "html_text_v1": raise Error("invalid source format")
     try:
-        parser = HTMLTextV1() if source_format == "html_text_v1" else HTMLTextImagesV1()
+        parser = HTMLTextV1()
         parser.feed(raw.decode("utf-8", errors="strict"))
         parser.close()
-        if source_format == "html_text_v1":
-            canonical = re.sub(r"\s+", " ", " ".join(parser.parts)).strip().encode("utf-8")
-        else:
-            parser.flush_text()
-            canonical = json.dumps({"format":source_format,"tokens":parser.tokens},
-                                   ensure_ascii=False,sort_keys=True,
-                                   separators=(",", ":")).encode("utf-8") if parser.tokens else b""
+        canonical = re.sub(r"\s+", " ", " ".join(parser.parts)).strip().encode("utf-8")
     except UnicodeError:
         raise Error("invalid HTML source encoding") from None
     if not canonical: raise Error("empty HTML text")

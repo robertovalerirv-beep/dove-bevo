@@ -1411,10 +1411,12 @@ test("an in-progress menu price editor survives arrival of the selected later-pa
       .getByRole("dialog")
       .getByRole("link", { name: /^Locale di prova/ })
       .click();
-    const high = f.page
+    const more = f.page
       .getByRole("region", { name: "Prezzi dal menu online" })
-      .locator(".mobile-menu-v2__offer")
-      .filter({ hasText: "The Dome Spritz" });
+      .locator(".mobile-menu-v2__more-offers:not(.mobile-menu-v2__selected-details)");
+    await more.locator(":scope > summary").click();
+    const high = more.locator(".mobile-menu-v2__offer").filter({ hasText: "The Dome Spritz" });
+    await high.locator(".mobile-menu-v2__offer-details > summary").click();
     await high.getByRole("button", { name: "Prezzo diverso? Aggiorna" }).click();
     const amount = high.getByLabel("Importo pagato (EUR)");
     await amount.fill("11,10");

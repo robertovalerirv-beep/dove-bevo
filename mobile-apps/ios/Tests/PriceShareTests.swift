@@ -224,6 +224,18 @@ final class PriceShareTests: XCTestCase {
         _ = try await evaluate(web, "document.querySelectorAll('#price')[1].remove();const unrelated=document.createElement('dialog');unrelated.textContent='Owned unrelated modal';document.body.append(unrelated);unrelated.showModal();true")
         let background = try await evaluate(web, "(\(PriceShareReader.script))===null")
         XCTAssertTrue(background as? Bool == true, "The underlying venue is implicitly inert behind any other modal")
+        _ = try await evaluate(web, #"""
+            document.querySelectorAll('dialog')[1].close();document.querySelectorAll('dialog')[1].remove();
+            document.querySelectorAll('[data-dovebevo-share]')[0].remove();
+            history.replaceState({}, '', '?path=%2Fbar%2Fn123&c=u0nd9&offer=offer:1');
+            const row=document.createElement('li');row.className='mobile-menu-v2__offer--focused';row.dataset.testid='featured-menu-price';
+            row.innerHTML='<span class="mobile-menu-v2__name">Spritz della casa<small>Prezzo da menu</small></span><strong class="mobile-menu-v2__amount">5,50 €</strong><small class="mobile-menu-v2__meta">Drink singolo</small><small class="mobile-menu-v2__meta">Prezzo del drink da menu, non totale pagato. Supplementi separati.</small><a class="mobile-menu-v2__source" href="https://example.org/menu">Menu verificato il 2026-11-02</a>';
+            document.querySelector('.scontrino__paper').appendChild(row);true
+            """#)
+        let menu = try await evaluate(web, MenuShareReader.script)
+        XCTAssertNotNil(MenuShareOffer.parse(menu, currentURL: offerDocument))
+        _ = try await evaluate(web, "document.querySelector('[data-testid=featured-menu-price]').hidden=true;true")
+        XCTAssertTrue(try await evaluate(web, "(\(MenuShareReader.script))===null") as? Bool == true)
     }
 
     @MainActor private func evaluate(_ web: WKWebView, _ script: String) async throws -> Any {

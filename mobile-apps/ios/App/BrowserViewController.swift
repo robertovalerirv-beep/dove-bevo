@@ -807,7 +807,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         let context = shareCapture.begin(documentURL: documentURL)
         let timeout = DispatchWorkItem { [weak self] in
             guard let self, self.shareCapture.finish(context, currentURL: self.webView.url,
-                active: self.canSharePage && self.isBookmarkInteractionActive) else { return }
+                active: self.canSharePage && self.isBookmarkInteractionActive && self.presentedViewController == nil) else { return }
             self.shareTimeout = nil
             self.presentSharedURL(publicURL)
         }
@@ -815,7 +815,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: timeout)
         webView.evaluateJavaScript(PriceShareReader.script, in: nil, in: .defaultClient) { [weak self] result in
             guard let self, self.shareCapture.isCurrent(context, currentURL: self.webView.url,
-                active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL != nil) else { return }
+                active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL != nil && self.presentedViewController == nil) else { return }
             if case .success(let value) = result,
                let snapshot = PriceShareSnapshot.parse(value, currentURL: documentURL) {
                 guard self.shareCapture.finish(context, currentURL: self.webView.url, active: true) else { return }
@@ -831,7 +831,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private func captureMenuShare(context: PriceShareCapture.Context, documentURL: URL, fallbackURL: URL) {
         webView.evaluateJavaScript(MenuShareReader.script, in: nil, in: .defaultClient) { [weak self] result in
             guard let self, self.shareCapture.isCurrent(context, currentURL: self.webView.url,
-                active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL != nil) else { return }
+                active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL != nil && self.presentedViewController == nil) else { return }
             guard case .success(let value) = result,
                   let offer = MenuShareOffer.parse(value, currentURL: documentURL),
                   let venueURL = MobileEntry.publicVenue(documentURL),
@@ -842,7 +842,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             self.shareTimeout?.cancel()
             let timeout = DispatchWorkItem { [weak self] in
                 guard let self, self.shareCapture.finish(context, currentURL: self.webView.url,
-                    active: self.canSharePage && self.isBookmarkInteractionActive) else { return }
+                    active: self.canSharePage && self.isBookmarkInteractionActive && self.presentedViewController == nil) else { return }
                 self.shareMenuRequest?.cancel(); self.shareMenuRequest = nil; self.shareTimeout = nil
                 self.presentSharedURL(fallbackURL)
             }
@@ -850,7 +850,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: timeout)
             let handle = self.menuClient.load([provisional]) { [weak self] loaded in
                 guard let self, self.shareCapture.finish(context, currentURL: self.webView.url,
-                    active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL == venueURL) else { return }
+                    active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL == venueURL && self.presentedViewController == nil) else { return }
                 self.shareTimeout?.cancel(); self.shareTimeout = nil; self.shareMenuRequest = nil
                 guard let venue = loaded.venues[venueURL], let snapshot = offer.verified(in: venue) else {
                     self.presentSharedURL(fallbackURL); return

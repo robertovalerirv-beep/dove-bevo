@@ -72,6 +72,7 @@ TABLES = ("mobile_menu_v2_venues","mobile_menu_v2_sources","mobile_menu_v2_offer
           "venues_user")
 MAX_MANIFEST = 2*1024*1024
 MAX_SOURCE = 8*1024*1024
+MAX_PDF_SOURCE = 9*1024*1024
 MAX_IMAGE_PAGES = 100
 
 class Error(Exception):
@@ -739,8 +740,11 @@ def edit_porto_main_digest(raw):
     if len(canonical)>legacy.MAX_HTML_TEXT: raise Error("HTML text exceeds limit")
     return hashlib.sha256(canonical).hexdigest()
 
+def source_limit(fmt):
+    return MAX_PDF_SOURCE if fmt in ("pdf_text_v1","pdf_image_v1") else MAX_SOURCE
+
 def source_digests(raw,fmt,image_evidence=None,page_count=None):
-    if len(raw)>MAX_SOURCE: raise Error("source too large")
+    if len(raw)>source_limit(fmt): raise Error("source too large")
     if fmt=="html_text_v1":
         try:
             result=legacy.source_digest(raw,fmt)
@@ -1166,7 +1170,7 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
         # Redirects, HTTP errors, and changed content are never retried or accepted.
         for attempt in range(2):
             try:
-                source_raw=public_fetch(transport,row["source_url"],MAX_SOURCE,content_kind)
+                source_raw=public_fetch(transport,row["source_url"],source_limit(row["source_format"]),content_kind)
                 break
             except Error as exc:
                 if str(exc)!="public source timeout" or attempt:

@@ -56,7 +56,8 @@ class EditPortoMainTests(unittest.TestCase):
             with self.subTest(footer=body is WITH_NEW_FOOTER), \
                  mock.patch.object(core, "public_fetch", return_value=body):
                 self.assertEqual(core.source_identity(source(), object(), {}, []), "verified")
-        for changed in (HTML.replace(b"6,00", b"7,00"),
+        for changed in (HTML.replace(b"IPA", b"STOUT"),
+                        HTML.replace(b"6,00", b"7,00"),
                         HTML.replace(b"2,00", b"3,00")):
             with self.subTest(changed=changed[:80]), \
                  mock.patch.object(core, "public_fetch", return_value=changed), \

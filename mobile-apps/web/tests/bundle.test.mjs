@@ -2177,13 +2177,12 @@ test("selected drink venue keeps a selectable dot below price-label zoom", async
     await f.page.waitForFunction(
       () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14,
     );
-    await f.page.waitForFunction(
-      () => {
-        const selected = document.querySelector(".map__canvas")?.getAttribute("data-selected-price") ?? "";
-        const shown = document.querySelector("section.map")?.getAttribute("data-prices-shown") ?? "";
-        return selected.startsWith("5,50 €") && shown.split("|").includes(selected);
-      },
-    );
+    await f.page.waitForFunction(() => {
+      const selected =
+        document.querySelector(".map__canvas")?.getAttribute("data-selected-price") ?? "";
+      const shown = document.querySelector("section.map")?.getAttribute("data-prices-shown") ?? "";
+      return selected.startsWith("5,50 €") && shown.split("|").includes(selected);
+    });
     await f.page.screenshot({ path: path.join(output, "selected-drink-zoomed-cork-fixture.png") });
     assert.deepEqual(f.writes, []);
     assert.deepEqual(f.errors, []);

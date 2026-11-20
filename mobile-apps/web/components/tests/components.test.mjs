@@ -699,6 +699,13 @@ test("three price actions retain a phone row across languages and confirmation s
         path: path.join(here, "../../test-results", `price-actions-${width}-fixture.png`),
       });
     }
+    await f.page.evaluate(() => {
+      document.documentElement.style.fontSize = "18px";
+    });
+    await assertActionRow(actions);
+    await f.page.evaluate(() => {
+      document.documentElement.style.fontSize = "";
+    });
     await f.page.evaluate(() => window.sheetFixture.setConfirmation("hold"));
     await actions.first().click();
     await f.page.waitForFunction(

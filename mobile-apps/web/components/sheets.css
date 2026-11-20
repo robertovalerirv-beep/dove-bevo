@@ -1730,6 +1730,15 @@
   box-shadow: 0 -6px 16px rgb(255 255 255 / 90%);
 }
 @media (max-width: 359px) {
+  .scontrino.mobile-venue .price__actions {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.25em), 1fr));
+    /* Free a few pixels at 320px while still growing with enlarged system text. */
+    font-size: clamp(12px, calc(1rem - 4px), 2rem);
+  }
+  .scontrino.mobile-venue .price__actions .btn {
+    padding-inline: 2px;
+    overflow-wrap: anywhere;
+  }
   .scontrino.mobile-venue .mobile-price--featured {
     grid-template-columns: 42px minmax(0, 1fr) auto;
     gap: 4px 7px;

@@ -37,10 +37,11 @@ export function transformApp(source) {
     "useState<string[]>([DEFAULT_DRINK])",
     "useState<string[]>(mobileInitialDrinks())",
   );
+  // Home is the map's responsive Italy overview, never a deep-linked or searched city.
   result = once(
     result,
     "  const pendingMove = useRef<[number, number, number] | null>(initialAt);",
-    "  const pendingMove = useRef<[number, number, number] | null>(initialAt);\n  const mobileHomeView = useRef<[number, number, number] | null>(initialAt);",
+    "  const pendingMove = useRef<[number, number, number] | null>(initialAt);\n  const mobileHomeView = useRef<[number, number, number] | null>(null);",
   );
   // The native Map tab starts its Italy map immediately; the static preview covers tile loading.
   result = once(result, "useState(initialAt !== null)", "useState(true)");
@@ -115,12 +116,7 @@ export function transformApp(source) {
   result = once(
     result,
     "  async function nearMe() {",
-    '  function resetMobileMapHome() {\n    if (route.name === "bar") {\n      history.replaceState(null, "", mobileURL("/"));\n      setRoute(parseRoute());\n    }\n    setMessage(null);\n    const target = mobileHomeView.current;\n    if (target) moveTo(...target);\n    else ensureMap();\n  }\n\n  async function nearMe() {',
-  );
-  result = once(
-    result,
-    "    moveTo(place[2], place[3], 14);",
-    "    mobileHomeView.current = [place[2], place[3], 14];\n    moveTo(place[2], place[3], 14);",
+    '  function resetMobileMapHome() {\n    history.replaceState(null, "", mobileURL("/"));\n    if (route.name === "bar") setRoute(parseRoute());\n    setMessage(null);\n    const target = mobileHomeView.current;\n    if (target) moveTo(...target);\n    else { pendingMove.current = null; ensureMap(); }\n  }\n\n  async function nearMe() {',
   );
   result = once(result, "venues={everyVenue}", "venues={legacyPriceVenues(everyVenue)}");
   result = once(

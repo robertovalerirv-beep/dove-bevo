@@ -115,7 +115,7 @@ final class DiscoveryViewController: UITableViewController {
         statusLabel.font = .preferredFont(forTextStyle: .subheadline)
         statusLabel.textColor = NativeAppearance.muted
         statusLabel.adjustsFontForContentSizeCategory = true
-        featuredHeading.text = "Prezzi nella zona"
+        featuredHeading.text = "Per te"
         featuredHeading.font = .preferredFont(forTextStyle: .headline)
         featuredHeading.adjustsFontForContentSizeCategory = true
         featuredHeading.textColor = NativeAppearance.ink
@@ -282,6 +282,7 @@ final class DiscoveryViewController: UITableViewController {
     }
     private func configureFeatured(width: CGFloat) {
         featuredWidth = width
+        featuredHeading.text = "Per te · \(drink.name)"
         featuredHeading.isHidden = featuredRows.isEmpty
         illustrationLabel.isHidden = featuredRows.isEmpty
         featuredStrip.configure(rows: featuredRows, category: drink, availableWidth: width,
@@ -304,7 +305,9 @@ final class DiscoveryViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
-    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? { rows.isEmpty ? nil : "Prezzi crescenti per valuta" }
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        rows.isEmpty ? nil : "Prezzi disponibili · in ordine crescente per valuta"
+    }
     static func currencyHeading(_ currency: String) -> String {
         switch currency {
         case "EUR": return "EUR · €"

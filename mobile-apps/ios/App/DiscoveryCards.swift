@@ -181,10 +181,10 @@ enum DiscoveryPriceCaveat {
         isAccessibilityElement = true
         accessibilityTraits = .button
         accessibilityHint = "Apre questo locale nella mappa"
-        backgroundColor = NativeAppearance.surface
+        backgroundColor = .white
         layer.cornerRadius = 16
         layer.borderWidth = 1
-        layer.borderColor = NativeAppearance.muted.withAlphaComponent(0.25).cgColor
+        layer.borderColor = NativeAppearance.line.cgColor
         clipsToBounds = true
 
         artwork.image = NativeDrinkArtwork.image(category.code)
@@ -209,8 +209,8 @@ enum DiscoveryPriceCaveat {
         drinkLabel.textColor = NativeAppearance.ink
         venueLabel.font = .preferredFont(forTextStyle: .caption1, compatibleWith: traits)
         venueLabel.textColor = NativeAppearance.muted
-        priceLabel.font = .preferredFont(forTextStyle: .headline, compatibleWith: traits)
-        priceLabel.textColor = NativeAppearance.ink
+        priceLabel.font = .preferredFont(forTextStyle: .title2, compatibleWith: traits)
+        priceLabel.textColor = NativeAppearance.accentText
         servingLabel.font = .preferredFont(forTextStyle: .caption2, compatibleWith: traits)
         servingLabel.textColor = NativeAppearance.muted
         evidenceLabel.font = .preferredFont(forTextStyle: .caption2, compatibleWith: traits)
@@ -393,6 +393,7 @@ enum DiscoveryPriceCaveat {
     private let location = UILabel()
     private let amount = UILabel()
     private let evidence = UILabel()
+    private var rankWidth: NSLayoutConstraint!
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -402,12 +403,14 @@ enum DiscoveryPriceCaveat {
         currencyTitle.accessibilityTraits = .header
         currencyTitle.isHidden = true
         rank.font = .preferredFont(forTextStyle: .caption1); rank.textAlignment = .center
-        rank.textColor = NativeAppearance.accentText
+        rank.textColor = NativeAppearance.onAccent
+        rank.backgroundColor = NativeAppearance.accent
+        rank.layer.cornerRadius = 9; rank.clipsToBounds = true
         photo.contentMode = .scaleAspectFill; photo.clipsToBounds = true; photo.layer.cornerRadius = 8
         photo.isAccessibilityElement = false
         name.font = .preferredFont(forTextStyle: .headline)
         location.font = .preferredFont(forTextStyle: .caption1); location.textColor = NativeAppearance.muted
-        amount.font = .preferredFont(forTextStyle: .headline); amount.textColor = NativeAppearance.ink
+        amount.font = .preferredFont(forTextStyle: .title3); amount.textColor = NativeAppearance.accentText
         amount.setContentCompressionResistancePriority(.required, for: .horizontal)
         evidence.font = .preferredFont(forTextStyle: .caption1); evidence.textColor = NativeAppearance.muted
         for label in [rank, name, location, amount, evidence] {
@@ -418,15 +421,20 @@ enum DiscoveryPriceCaveat {
         let row = UIStackView(arrangedSubviews: [rank, photo, title]); row.spacing = 8; row.alignment = .top
         let card = UIStackView(arrangedSubviews: [currencyTitle, row, evidence]); card.axis = .vertical; card.spacing = 4
         card.translatesAutoresizingMaskIntoConstraints = false; contentView.addSubview(card)
+        rankWidth = rank.widthAnchor.constraint(equalToConstant: 20)
         NSLayoutConstraint.activate([
             card.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 12),
             card.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -12),
             card.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
             card.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
-            rank.widthAnchor.constraint(equalToConstant: 18), photo.widthAnchor.constraint(equalToConstant: 30),
+            rankWidth, photo.widthAnchor.constraint(equalToConstant: 30),
             photo.heightAnchor.constraint(equalToConstant: 40), contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 48)
         ])
-        backgroundConfiguration = NativeAppearance.card()
+        var background = NativeAppearance.card()
+        background.backgroundColor = .white
+        background.strokeColor = NativeAppearance.line
+        background.strokeWidth = 1
+        backgroundConfiguration = background
         isAccessibilityElement = true
     }
 
@@ -436,7 +444,9 @@ enum DiscoveryPriceCaveat {
                    distance: String, today: String, traits: UITraitCollection, currencyHeading: String? = nil) {
         currencyTitle.text = currencyHeading
         currencyTitle.isHidden = currencyHeading == nil
-        rank.text = String(number); photo.image = NativeDrinkArtwork.image(category.code)
+        rank.text = String(number)
+        rankWidth.constant = max(20, ceil(rank.intrinsicContentSize.width + 8))
+        photo.image = NativeDrinkArtwork.image(category.code)
         name.text = row.name; amount.text = row.price.amount
         location.text = [row.location, "\(distance) dal centro mappa"].filter { !$0.isEmpty }.joined(separator: " · ")
         let menuServing: String?

@@ -7,6 +7,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private let progressView = UIProgressView(progressViewStyle: .bar)
     private let offlineLabel = UILabel()
     private let loadingView = UIScrollView()
+    private let loadingSpinner = UIActivityIndicatorView(style: .large)
     private let loadingContent = UIStackView()
     private let errorView = UIScrollView()
     private let errorContent = UIStackView()
@@ -342,12 +343,10 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             progressView.trailingAnchor.constraint(equalTo: body.trailingAnchor)
         ])
 
-        let spinner = UIActivityIndicatorView(style: .large)
-        spinner.accessibilityIdentifier = "browser.loading.spinner"
-        spinner.startAnimating()
+        loadingSpinner.accessibilityIdentifier = "browser.loading.spinner"
         let loadingLabel = label("Caricamento di Dove bevo…", style: .body)
         loadingLabel.accessibilityIdentifier = "browser.loading.message"
-        loadingContent.addArrangedSubview(spinner)
+        loadingContent.addArrangedSubview(loadingSpinner)
         loadingContent.addArrangedSubview(loadingLabel)
         configureLoadingOverlay()
         loadingView.accessibilityIdentifier = "browser.loading"
@@ -428,6 +427,15 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
             loadingContent.leadingAnchor.constraint(greaterThanOrEqualTo: content.leadingAnchor, constant: 16),
             loadingContent.trailingAnchor.constraint(lessThanOrEqualTo: content.trailingAnchor, constant: -16)
         ])
+    }
+
+    private func setLoadingVisible(_ visible: Bool) {
+        loadingView.isHidden = !visible
+        if visible {
+            loadingSpinner.startAnimating()
+        } else {
+            loadingSpinner.stopAnimating()
+        }
     }
 
     private func configureErrorOverlay() {
@@ -522,7 +530,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         invalidateBookmarkCapture()
         lastWebsiteURL = url
         setErrorVisible(false)
-        loadingView.isHidden = hasLoadedPage
+        setLoadingVisible(!hasLoadedPage)
         let request = URLRequest(url: url)
         if let websiteLoader { navigationState.begin(websiteLoader(webView, request)) }
         else { navigationState.begin(webView.load(request)) }
@@ -629,7 +637,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         if errorView.isHidden && webView.isLoading && !navigationState.isStopped {
             navigationState.stop()
             webView.stopLoading()
-            loadingView.isHidden = true
+            setLoadingVisible(false)
             progressView.isHidden = true
             updateLoadingControl(false)
             updateMoreMenu()
@@ -936,7 +944,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     }
 
     private func showError(title: String, message: String) {
-        loadingView.isHidden = true
+        setLoadingVisible(false)
         progressView.isHidden = true
         errorTitle.text = title
         errorMessage.text = message
@@ -1199,7 +1207,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         NSLog("DoveBevo: navigation provisional-start")
         #endif
         setErrorVisible(false)
-        loadingView.isHidden = hasLoadedPage
+        setLoadingVisible(!hasLoadedPage)
         progressView.setProgress(0, animated: false)
         progressView.isHidden = false
         updateLoadingControl(true)
@@ -1259,7 +1267,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         NSLog("DoveBevo: navigation finish")
         #endif
         hasLoadedPage = usable
-        loadingView.isHidden = true
+        setLoadingVisible(false)
         setErrorVisible(false)
         progressView.isHidden = true
         updateLoadingControl(false)

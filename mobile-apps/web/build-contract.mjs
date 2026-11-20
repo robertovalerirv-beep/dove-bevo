@@ -79,12 +79,7 @@ export function transformApp(source) {
   result = once(
     result,
     "              {status}\n            </p>",
-    '              {status}\n              {!pinning && inView.some((v) => !bestPrice(v, drinks) && mobileMenuPin(v, drinks)) && (\n                <span class="mobile-menu-map-note">{drinks.length ? "M+ = prezzo del drink da menu; coperto e supplementi esclusi" : "Numeri sulla mappa = voci di menu verificate o prezzi segnalati; non sono prezzi medi"}</span>\n              )}\n            </p>',
-  );
-  result = once(
-    result,
-    "              {status}\n              {!pinning",
-    '              {rawStatus === it.map.zoomIn ? (\n                <button type="button" class="mobile-zoom-search" aria-label={it.search.open}\n                  onClick={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }}>\n                  {status}\n                </button>\n              ) : status}\n              {!pinning',
+    '              {rawStatus === it.map.zoomIn ? (\n                <button type="button" class="mobile-zoom-search" aria-label={it.search.open}\n                  onClick={() => { setSearchHint(undefined); setSheet("search"); ensureMap(); }}>\n                  {status}\n                </button>\n              ) : status}\n            </p>',
   );
   result = once(
     result,

@@ -33,6 +33,10 @@ MOSTO_SOURCE_URL = "https://mo5.it/m/alvino"
 MOSTO_OWNER_URL = "https://www.mosto.beer/sedi/alvino/"
 FUORILUOGO_MENU_URL = "https://www.fuoriluogo.org/menu"
 FUORILUOGO_OWNER_URL = "https://www.fuoriluogo.org/"
+EDIT_PORTO_MENU_URL = "https://editspace.com/menu-edit-porto-urbano"
+EDIT_PORTO_OWNER_URL = "https://editspace.com/hubs/edit-porto-urbano"
+EDIT_PORTO_VENUE_KEY = "n11049343309"
+EDIT_PORTO_CELL = "u0j2r"
 YELLOW_BAR_MENU_URL = ("https://drive.usercontent.google.com/download?"
                        "id=15wX_FusoJscsC_S4WMUJhoukDx6ligee&export=download")
 YELLOW_BAR_OWNER_URL = ("https://yellowsquare.com/rome/eat-and-party/"
@@ -319,6 +323,7 @@ def validate_source(row,venues,checked):
             raise Error("JPEG source must be a direct image URL")
     if row["source_format"] not in ("html_text_v1","html_text_images_v1",
                                     "fuoriluogo_google_sites_v1",
+                                    "edit_porto_urbano_main_v1",
                                     "pdf_text_v1","pdf_image_v1","jpeg_image_v1",
                                     "json_menu_v1","mosto_taplist_v1"):
         raise Error("unsupported source format")
@@ -326,6 +331,12 @@ def validate_source(row,venues,checked):
         row["source_url"]!=FUORILUOGO_MENU_URL
         or row["use_review_reference"]!=FUORILUOGO_OWNER_URL):
         raise Error("unreviewed FuoriLuogo Google Sites source")
+    if row["source_format"]=="edit_porto_urbano_main_v1" and (
+        row["source_url"]!=EDIT_PORTO_MENU_URL
+        or row["use_review_reference"]!=EDIT_PORTO_OWNER_URL
+        or row["venue_key"]!=EDIT_PORTO_VENUE_KEY
+        or row["cell"]!=EDIT_PORTO_CELL):
+        raise Error("unreviewed EDIT Porto Urbano source")
     if row["source_url"]==YELLOW_BAR_MENU_URL and (
         row["venue_key"]!="n2244964954" or row["cell"]!="sr2yk"
         or row["source_format"]!="pdf_text_v1"
@@ -352,6 +363,7 @@ def validate_source(row,venues,checked):
             raise Error("unreviewed Mosto branch or owner reference")
     if row["source_format"] in ("html_text_v1","html_text_images_v1",
                                 "fuoriluogo_google_sites_v1",
+                                "edit_porto_urbano_main_v1",
                                 "json_menu_v1","mosto_taplist_v1") and row["source_sha256"]!=row["source_text_sha256"]:
         raise Error("HTML text hashes differ")
     if day(row["source_checked_on"])>checked or day(row["use_reviewed_on"])>checked:
@@ -674,6 +686,59 @@ def html_text_images_digest(raw):
     if len(canonical)>legacy.MAX_HTML_TEXT: raise Error("HTML text exceeds limit")
     return hashlib.sha256(canonical).hexdigest()
 
+class EditPortoMainTextV1(HTMLParser):
+    """Pin only EDIT's single menu-bearing main, never its changing footer."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts=[]
+        self.main_count=0
+        self.in_main=False
+        self.ignored=0
+        self.length=0
+
+    def handle_starttag(self,tag,attrs):
+        if tag=="main":
+            if self.main_count: raise Error("invalid EDIT main section")
+            self.main_count=1
+            self.in_main=True
+        elif self.in_main and tag in ("script","style"):
+            self.ignored+=1
+
+    def handle_startendtag(self,tag,attrs):
+        if tag=="main": raise Error("invalid EDIT main section")
+        self.handle_starttag(tag,attrs)
+        self.handle_endtag(tag)
+
+    def handle_endtag(self,tag):
+        if tag=="main":
+            if not self.in_main or self.ignored:
+                raise Error("invalid EDIT main section")
+            self.in_main=False
+        elif self.in_main and tag in ("script","style"):
+            if not self.ignored: raise Error("invalid EDIT main section")
+            self.ignored-=1
+
+    def handle_data(self,data):
+        if self.in_main and not self.ignored:
+            self.length+=len(data)+1
+            if self.length>legacy.MAX_HTML_TEXT:
+                raise Error("HTML text exceeds limit")
+            self.parts.append(data)
+
+def edit_porto_main_digest(raw):
+    try:
+        parser=EditPortoMainTextV1()
+        parser.feed(raw.decode("utf-8",errors="strict"))
+        parser.close()
+    except UnicodeError:
+        raise Error("invalid HTML source encoding") from None
+    if parser.main_count!=1 or parser.in_main or parser.ignored:
+        raise Error("invalid EDIT main section")
+    canonical=re.sub(r"\s+"," "," ".join(parser.parts)).strip().encode("utf-8")
+    if not canonical: raise Error("empty EDIT main text")
+    if len(canonical)>legacy.MAX_HTML_TEXT: raise Error("HTML text exceeds limit")
+    return hashlib.sha256(canonical).hexdigest()
+
 def source_digests(raw,fmt,image_evidence=None,page_count=None):
     if len(raw)>MAX_SOURCE: raise Error("source too large")
     if fmt=="html_text_v1":
@@ -684,6 +749,9 @@ def source_digests(raw,fmt,image_evidence=None,page_count=None):
         return result,result
     if fmt=="html_text_images_v1":
         result=html_text_images_digest(raw)
+        return result,result
+    if fmt=="edit_porto_urbano_main_v1":
+        result=edit_porto_main_digest(raw)
         return result,result
     if fmt=="fuoriluogo_google_sites_v1":
         try:
@@ -1090,6 +1158,7 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
     if key not in cache:
         content_kind={"html_text_v1":"html","html_text_images_v1":"html",
                       "fuoriluogo_google_sites_v1":"html",
+                      "edit_porto_urbano_main_v1":"html",
                       "pdf_text_v1":"pdf",
                       "pdf_image_v1":"pdf","jpeg_image_v1":"jpeg",
                       "json_menu_v1":"json"}[row["source_format"]]
@@ -1110,12 +1179,14 @@ def source_identity(row,transport,cache,offers,diagnostics=None):
     if hashes!=(row["source_sha256"],row["source_text_sha256"]):
         if diagnostics is not None and row["source_format"] in (
             "html_text_v1","html_text_images_v1","fuoriluogo_google_sites_v1",
+            "edit_porto_urbano_main_v1",
             "pdf_text_v1"):
             media_type=(content_type or "").split(";",1)[0].strip().lower()
             if len(media_type)>128 or not re.fullmatch(r"[a-z0-9.+-]+/[a-z0-9.+-]+",media_type):
                 media_type=None
             if row["source_format"] in (
-                "html_text_v1","html_text_images_v1","fuoriluogo_google_sites_v1"):
+                "html_text_v1","html_text_images_v1","fuoriluogo_google_sites_v1",
+                "edit_porto_urbano_main_v1"):
                 # Normalized HTML pins ignore unrelated markup. Record
                 # only bounded metadata so a hosted mismatch can be diagnosed
                 # without exposing the fetched menu or changing the fail-closed gate.

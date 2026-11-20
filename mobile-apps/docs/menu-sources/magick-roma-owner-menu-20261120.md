@@ -1,0 +1,20 @@
+# The Magick Bar Roma: owner menu source candidate
+
+This source-only app candidate changes no public prices, customer submissions, Roberto website source, backend contract or database schema. The [17-offer immutable manifest](../../data/mobile-menu-v2-seeds/bf2d4a56130b63d4a542f8a1f83a546637483669404c16e3294aa2424416acd1.json) is named for the SHA-256 of its exact UTF-8 bytes.
+
+## Existing venue and owner source
+
+- Roberto's published [20261119 Roma cell](https://www.dovebevo.com/data/20261119/v/sr2y7.json) contains existing n4798279234, The Magick Bar, kind 1, at 41.91956, 12.46993, Lungotevere Guglielmo Oberdan 2, Roma, city ID 72959652. The [app-only venue route](https://www.dovebevo.com/api/mobile/v2/menu/venues/n4798279234?cell=sr2y7&limit=1) returned stored_offer_count 0 on 20 November 2026. This manifest creates no venue.
+- [OSM node 4798279234](https://www.openstreetmap.org/node/4798279234) names The Magick Bar, has the same street and house number and links the owner domain. The owner's [QR bar-menu page](https://themagickbar.com/qr-menu/qr-menu-bar/) directly links the PDF. Its final contact page prints the same street address.
+
+## Source and exact price facts
+
+- The [owner-hosted 2026 bar-menu PDF](https://themagickbar.com/wp-content/uploads/2026/05/2026-MENU-BAR.pdf.pdf) was fetched directly without redirect using DoveBevoMenuAudit/1 on 20 November 2026: HTTP 200, application/pdf, 1,352,815 bytes, raw SHA-256 d05a5c572ca7a0ffb717c6861094b0a0cbfb7322a810d52c5377b34788b45638. HTTP Last-Modified was 14 June 2026. The PDF has 8 pages and title 2026 MENU BAR.pdf; its owner-hosted linked page is current. The importer's pdf_text_v1 normalised text SHA-256 is 9bbcc59d269d1c002763455f843d2abc3811ed0d311906d3a73b9b9bdd8ff393 using local Poppler pdftotext -layout -enc UTF-8; protected Linux must independently reproduce both hashes.
+- The manifest retains 14 individually priced wines by the glass: p6 three Rossi and two Rosati; p7 four Bolle and five Bianchi. The printed first price on each of those rows is the glass price; the second is the bottle price, as explained by the p3 Vini al calice/Vini in bottiglia and Bollicine al calice/Bollicine in bottiglia price headings. The p6/p7 rendered pages and extracted layout were inspected during staging. Each offer's evidence pointer gives its page, printed first price and excluded second bottle price.
+- Two named p4 MOCKTAIL drinks each print EUR 12 and are alcohol_free; p3 Acqua prints EUR 3 with no serving size, retained with a null serving label. All amounts are original EUR and have no invented payment date, confirmation, bottle conversion or review count.
+- Excluded are p3 broad price ranges, all bottle-column prices, p4 six named cocktails, p5 beers with unstated serving/type, ambiguous soft-drink groupings, food and unrelated text. These exclusions mean coverage is partial. The PDF does not state a service fee, no-fee promise or minimum spend; fee coverage remains unknown, not zero.
+- The owner's robots file has no menu restriction for this audit user agent, but robots access is not a reuse licence. No express reuse licence was found. Only discrete factual names, EUR prices, printed serving scope and source references are recorded; PDF descriptions, images and design are not copied.
+
+## Gate before public import
+
+An independent reviewer must compare all 17 offers with the exact pinned PDF, verify the owner/OSM/static identity and source-use basis, and confirm the glass/bottle mapping and possible service conditions. Exact-head CI must pass. After merge to canonical GitHub main, the separate protected read-only importer audit must verify production identity, source bytes/text, hidden/reported state and customer conflicts. Only a successful inspected audit may be followed by a distinct guarded seed and exact public readback. This draft alone does not add prices to the app.

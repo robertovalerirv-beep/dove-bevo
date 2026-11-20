@@ -381,15 +381,29 @@ def stage_offers(doc,transport):
 def final_sql():
     comparisons=" OR ".join(
         f"o.{field} IS NOT json_extract(e.value,'$.{field}')" for field in OFFER_FIELDS)
+    baseline_comparisons=" OR ".join(
+        f"o.{field} IS NOT json_extract(b.value,'$[{index}]')"
+        for index,field in enumerate(OFFER_FIELDS))
+    source_comparisons=" OR ".join(
+        f"s.{field} IS NOT json_extract(x.value,'$[{index}]')"
+        for index,field in enumerate(SOURCE_FIELDS))
     return """WITH expected_ids AS MATERIALIZED (
       SELECT value AS id FROM json_each(?1)
     ), targets AS MATERIALIZED (
       SELECT value FROM json_each(?2)
+    ), baseline AS MATERIALIZED (
+      SELECT value FROM json_each(?7)
+    ), source_snapshots AS MATERIALIZED (
+      SELECT value FROM json_each(?8)
     ), guard AS MATERIALIZED (
       SELECT (
         (SELECT COUNT(*) FROM expected_ids)=266
         AND (SELECT COUNT(DISTINCT id) FROM expected_ids)=266
         AND (SELECT COUNT(*) FROM targets)=12
+        AND (SELECT COUNT(*) FROM baseline)=266
+        AND (SELECT COUNT(DISTINCT json_extract(value,'$[0]')) FROM baseline)=266
+        AND (SELECT COUNT(*) FROM source_snapshots)=2
+        AND (SELECT COUNT(DISTINCT json_extract(value,'$[0]')) FROM source_snapshots)=2
         AND (SELECT COUNT(*) FROM mobile_menu_v2_offers
              WHERE venue_key=?3 AND cell=?4 AND status='active')=266
         AND NOT EXISTS (SELECT id FROM mobile_menu_v2_offers
@@ -399,12 +413,10 @@ def final_sql():
           mobile_menu_v2_offers WHERE venue_key=?3 AND cell=?4 AND status='active')
         AND NOT EXISTS (SELECT 1 FROM targets e LEFT JOIN mobile_menu_v2_offers o
           ON o.id=json_extract(e.value,'$.id') WHERE o.id IS NULL OR """+comparisons+""")
-        AND EXISTS (SELECT 1 FROM mobile_menu_v2_sources WHERE id=?5
-          AND venue_key=?3 AND cell=?4 AND use_review_status='approved'
-          AND source_text_sha256=?6 AND source_url=?7)
-        AND EXISTS (SELECT 1 FROM mobile_menu_v2_sources WHERE id=?8
-          AND venue_key=?3 AND cell=?4 AND use_review_status='approved'
-          AND source_text_sha256=?9 AND source_url=?7)
+        AND NOT EXISTS (SELECT 1 FROM baseline b LEFT JOIN mobile_menu_v2_offers o
+          ON o.id=json_extract(b.value,'$[0]') WHERE o.id IS NULL OR """+baseline_comparisons+""")
+        AND NOT EXISTS (SELECT 1 FROM source_snapshots x LEFT JOIN mobile_menu_v2_sources s
+          ON s.id=json_extract(x.value,'$[0]') WHERE s.id IS NULL OR """+source_comparisons+""")
         AND NOT EXISTS (SELECT 1 FROM venues_hidden WHERE venue_key=?3)
         AND NOT EXISTS (SELECT 1 FROM mobile_venues_moderation WHERE venue_key=?3)
         AND NOT EXISTS (SELECT 1 FROM reports WHERE venue_key=?3)
@@ -415,11 +427,11 @@ def final_sql():
         AND NOT EXISTS (SELECT 1 FROM mobile_menu_v2_customer_entries
           WHERE offer_id IN (SELECT json_extract(value,'$.id') FROM targets))
         AND (SELECT COUNT(*) FROM mobile_menu_v2_customer_entries
-             WHERE venue_key=?3)=?10
+             WHERE venue_key=?3)=?5
       ) AS ok
     )
     UPDATE mobile_menu_v2_offers SET status=CASE
-      WHEN id IN (SELECT value FROM json_each(?11)) THEN 'removed' ELSE 'active' END
+      WHEN id IN (SELECT value FROM json_each(?6)) THEN 'removed' ELSE 'active' END
     WHERE id IN (SELECT json_extract(value,'$.id') FROM targets)
       AND (SELECT ok FROM guard)=1
     RETURNING id,status"""
@@ -428,10 +440,13 @@ def final_sql():
 def final_params(doc,state):
     old={x["id"]:x for x in doc["retire"]}
     targets=[old[x["id"]] for x in doc["retire"]]+doc["add"]
-    return [canonical(doc["active_ids"]),canonical(targets),VENUE,CELL,PRIOR_ID,
-            doc["prior_source"]["source_text_sha256"],SOURCE_URL,
-            doc["new_source"]["id"],doc["new_source"]["source_text_sha256"],
-            state["guards"]["customer_entries"],canonical(list(old))]
+    baseline=[[row[field] for field in OFFER_FIELDS]
+              for row in sorted(doc["old_offers"],key=lambda row:row["id"])]
+    sources=[[row[field] for field in SOURCE_FIELDS]
+             for row in (doc["prior_source"],doc["new_source"])]
+    return [canonical(doc["active_ids"]),canonical(targets),VENUE,CELL,
+            state["guards"]["customer_entries"],canonical(list(old)),
+            canonical(baseline),canonical(sources)]
 
 
 def validate_audit_receipt(receipt,doc):

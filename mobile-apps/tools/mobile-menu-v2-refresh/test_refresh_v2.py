@@ -215,6 +215,34 @@ class RefreshTest(unittest.TestCase):
                 self.assertEqual(t.query(r.final_sql(),r.final_params(self.doc,state)),[])
                 self.assertEqual(t.db.execute("SELECT COUNT(*) FROM mobile_menu_v2_offers WHERE status='removed'").fetchone()[0],0)
 
+    def test_retained_offer_field_race_blocks_atomic_switch(self):
+        state=self.staged()
+        retained="birrifugio-roma-20261111-3407"
+        self.assertNotIn(retained,{x["id"] for x in self.doc["retire"]})
+        self.t.db.execute("UPDATE mobile_menu_v2_offers SET amount_minor=amount_minor+1 WHERE id=?",
+                          (retained,))
+        self.t.db.commit()
+        self.assertEqual(self.switch(state),[])
+        self.assertEqual(self.t.db.execute("SELECT COUNT(*) FROM mobile_menu_v2_offers WHERE status='active'").fetchone()[0],266)
+        self.assertEqual(self.t.db.execute("SELECT COUNT(*) FROM mobile_menu_v2_offers WHERE status='review'").fetchone()[0],5)
+
+    def test_full_source_field_race_blocks_atomic_switch(self):
+        for source_id,field,value in ((r.PRIOR_ID,"source_checked_on","2026-11-12"),
+                                      (self.doc["new_source"]["id"],"use_review_basis","changed review")):
+            with self.subTest(source=source_id):
+                t=SQLiteTransport(self.doc)
+                self.addCleanup(t.db.close)
+                r.stage_source(self.doc,t);r.stage_offers(self.doc,t)
+                state=r.private_state(self.doc,t)
+                # The real source table has an immutability trigger. Remove it only
+                # in this race test to prove the final SQL guard is independently sound.
+                t.db.execute("DROP TRIGGER mobile_menu_v2_source_immutable_update")
+                t.db.execute(f"UPDATE mobile_menu_v2_sources SET {field}=? WHERE id=?",
+                             (value,source_id))
+                t.db.commit()
+                self.assertEqual(t.query(r.final_sql(),r.final_params(self.doc,state)),[])
+                self.assertEqual(t.db.execute("SELECT COUNT(*) FROM mobile_menu_v2_offers WHERE status='removed'").fetchone()[0],0)
+
     def test_customer_entry_race_blocks_switch_without_deleting_entry(self):
         state=self.staged()
         self.t.db.execute("INSERT INTO mobile_menu_v2_customer_entries (id,venue_key,offer_id) VALUES (?,?,?)",
@@ -277,6 +305,13 @@ class RefreshTest(unittest.TestCase):
         changed[120]={**changed[120],"amount_minor":9999}
         with self.assertRaises(r.Error):
             PUBLIC_READBACK(self.doc,PublicPages(changed))
+
+    def test_final_statement_stays_within_documented_d1_limits(self):
+        state=self.staged()
+        self.assertLess(len(r.final_sql().encode("utf-8")),100_000)
+        params=r.final_params(self.doc,state)
+        self.assertLessEqual(len(params),100)
+        self.assertLess(max(len(x.encode("utf-8")) for x in params if isinstance(x,str)),2_000_000)
 
 
 if __name__=="__main__": unittest.main()

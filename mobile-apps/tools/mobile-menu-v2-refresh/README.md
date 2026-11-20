@@ -22,8 +22,9 @@ changed rows and leave exactly 264 active. A lost response causes readback,
 never an immediate second write. A later `verify` tag is read-only.
 
 The publication statement checks the complete sorted set of 266 active IDs,
-all 12 target rows and their exact fields, the old and new approved source
-snapshots, zero venue moderation/reports, no customer observation referencing
+every field of all 266 reviewed baseline offers (including the 259 retained
+offers), all 12 target rows, every field of both approved source snapshots,
+zero venue moderation/reports, no customer observation referencing
 one of the 12 changed offers, and an unchanged customer-entry count. The
 preflight also checks every baseline offer against the SHA-pinned old seed,
 the current public static venue, OSM node version and address, and two exact

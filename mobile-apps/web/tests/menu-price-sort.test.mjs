@@ -9,7 +9,7 @@ import { chromium, webkit } from "@playwright/test";
 /* global window */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const root = path.resolve(here, "../../../..");
+const root = path.resolve(here, "../../..");
 let browser;
 let files;
 
@@ -41,7 +41,11 @@ before(async () => {
     build: {
       outDir,
       emptyOutDir: false,
-      lib: { entry: path.join(here, "fixture.tsx"), formats: ["es"], fileName: "fixture" },
+      lib: {
+        entry: path.join(root, "mobile-apps/web/components/tests/fixture.tsx"),
+        formats: ["es"],
+        fileName: "fixture",
+      },
       cssCodeSplit: false,
       rolldownOptions: { output: { assetFileNames: "[name][extname]" } },
     },

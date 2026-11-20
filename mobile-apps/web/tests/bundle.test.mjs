@@ -1562,7 +1562,13 @@ test("customer-report failure is compact beside existing prices and retries with
     await f.page.screenshot({
       path: path.join(output, "app-customer-reports-partial-outage-320-fixture.png"),
     });
+    const retriedCustomerReports = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/customer-prices/venues/n123") &&
+        response.status() === 200,
+    );
     await warning.getByRole("button", { name: "Riprova" }).click();
+    await retriedCustomerReports;
     await warning.waitFor({ state: "hidden" });
     assert.equal(options.customerGets.length, 2);
     assert.match(await price.innerText(), /5,00/);
@@ -1592,7 +1598,13 @@ test("customer-report outage remains clear and retryable when no price is visibl
       await error.innerText(),
       /Le segnalazioni dei clienti sono temporaneamente indisponibili/,
     );
+    const retriedCustomerReports = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/customer-prices/venues/n123") &&
+        response.status() === 200,
+    );
     await error.getByRole("button", { name: "Riprova" }).click();
+    await retriedCustomerReports;
     await error.waitFor({ state: "hidden" });
     assert.equal(options.customerGets.length, 2);
     assert.deepEqual(f.writes, []);
@@ -1747,9 +1759,17 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
   const options = { menu: true, menuUnavailable: true, cellRequests: [] };
   const f = await fixture({ width: 390, height: 844 }, options);
   try {
+    const initialMenuFailure = f.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
+        !new URL(response.url()).searchParams.get("categories") &&
+        response.status() === 503,
+      { timeout: 15000 },
+    );
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     const all = (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true });
     await all.click();
+    await initialMenuFailure;
     assert.equal(await f.page.locator(".mobile-drink-all").getAttribute("aria-pressed"), "true");
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
@@ -2071,6 +2091,10 @@ test("a selection inheriting a pending recovery does not start a second recovery
       .getByRole("checkbox", { name: "Spritz", exact: true })
       .check({ force: true });
     await combinedSampleHeld;
+    options.releaseCombinedSample();
+    await f.page.waitForFunction(() =>
+      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
+    );
     const recoveryFailure = f.page.waitForResponse(
       (response) =>
         response.url().includes("/api/mobile/v2/menu/cells/u0nd9") &&
@@ -2080,10 +2104,6 @@ test("a selection inheriting a pending recovery does not start a second recovery
     );
     options.releaseRecoveryIdentity();
     await recoveryFailure;
-    options.releaseCombinedSample();
-    await f.page.waitForFunction(() =>
-      document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
-    );
     assert.match(
       await f.page.locator("section.map").getAttribute("data-prices-shown"),
       /7,50.*MENU/,

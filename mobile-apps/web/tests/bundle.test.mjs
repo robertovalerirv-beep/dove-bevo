@@ -1273,7 +1273,13 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
       "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fmaaaaaaaaaaaaaaaaaaaaaaaa&c=u0nd9",
     );
     await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
-    assert.match(await f.page.locator(".bar__kind").innerText(), /Locale · Milano/);
+    assert.match(await f.page.locator(".bar__kind").innerText(), /Locale · Milano/i);
+    assert.equal(
+      await f.page
+        .locator(".bar__kind")
+        .evaluate((element) => getComputedStyle(element).textTransform),
+      "uppercase",
+    );
     assert.match(
       await f.page.getByTestId("featured-menu-price").innerText(),
       /Spritz speciale[\s\S]*7,50\s€/,

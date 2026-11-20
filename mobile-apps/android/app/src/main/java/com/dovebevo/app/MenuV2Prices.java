@@ -229,7 +229,7 @@ final class MenuV2Prices {
                 Map<?,?> source=obj(offer.get("source"));String sourceURL=httpsURL(source.get("url"));
                 String day=sourceDay(source);
                 prices.add(new Price(id,name,item,category,band,money.amount,money.currency,money.exponent,
-                        serving.label,serving.ml,false,day,feeNotice,null,band<0?condition:null,sourceURL,minimum));
+                        serving.label,serving.ml,false,day,feeNotice,null,condition,sourceURL,minimum));
             }
             venues.add(new CellVenue(key,cell,name,address,city,lat,lon,prices,minimum));
         }
@@ -264,7 +264,7 @@ final class MenuV2Prices {
             String condition=context.get("condition")==null?null:text(context.get("condition"),500,null);
             String day=sourceDay(offer.get("source"));
             prices.add(new Price(id,name,item,category,band,money.amount,money.currency,money.exponent,serving.label,serving.ml,false,day,fees,
-                    null,band<0?condition:null,null,minimum));
+                    null,condition,null,minimum));
         }
         if(next!=null&&(prices.isEmpty()||!next.equals(prices.get(prices.size()-1).id)))throw NativeJson.invalid();
         return new MenuPage(name,next,fees,minimum,count,prices);

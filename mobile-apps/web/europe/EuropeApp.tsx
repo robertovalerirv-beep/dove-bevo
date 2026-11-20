@@ -877,6 +877,18 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
                 {selectedVenue.city} · {selectedVenue.currency} (
                 {selectedVenue.currency === "GBP" ? "£" : "€"})
               </p>
+              <p class="mobile-venue__filter-context">
+                <span>{t("Drink sulla mappa", "Map drink")}</span>
+                <strong>
+                  {it.drinks[selectedFocus?.drink ?? drink] ?? selectedFocus?.drink ?? drink}
+                </strong>
+                <small>
+                  {t(
+                    "Qui sotto trovi anche gli altri drink del locale.",
+                    "Other drinks at this venue are listed below.",
+                  )}
+                </small>
+              </p>
               <h3 class="section-title">{it.bar.prices}</h3>
               {venueRows.length === 0 && <p class="hint">{it.bar.noPrices}</p>}
               {selectedFocus && !savedFound && (

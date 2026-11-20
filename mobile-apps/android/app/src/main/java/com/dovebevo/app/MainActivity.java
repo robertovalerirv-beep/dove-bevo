@@ -121,6 +121,7 @@ public final class MainActivity extends ComponentActivity {
     private AlertDialog privacyDialog;
     private android.app.Dialog shareDialog, informationDialog;
     private long shareCapture;
+    private MenuV2Loader.Batch shareMenuBatch;
     private TestLabPolicy testLabPolicy;
     private String mobileThemeScript;
     private long presentationRequest;
@@ -913,6 +914,7 @@ public final class MainActivity extends ComponentActivity {
     }
     private void retireSharePresentation() {
         drinkCapture++;if(savedDrinks!=null)savedDrinks.dismiss();
+        if(shareMenuBatch!=null){shareMenuBatch.cancel();shareMenuBatch=null;}
         shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}
     }
     private void readFeaturedDrink(java.util.function.Consumer<PriceShareSnapshot> completion) {
@@ -936,11 +938,40 @@ public final class MainActivity extends ComponentActivity {
         try{source.evaluateJavascript(PriceShareSnapshot.SCRIPT,result->{
             if(finished[0]||!canSharePrice(source,captured,epoch,request))return;finished[0]=true;
             PriceShareSnapshot snapshot=PriceShareSnapshot.decode(result,captured,source.getUrl(),epoch,venueCaptureEpoch);
-            if(snapshot==null){shareUrl();return;}
+            if(snapshot==null){captureMenuShare(source,captured,epoch,request);return;}
             if(shareDialog!=null)shareDialog.dismiss();
             shareDialog=PriceShareUi.show(this,snapshot,()->canSharePrice(source,captured,epoch,request));
         });}catch(RuntimeException unavailable){if(!finished[0]&&canSharePrice(source,captured,epoch,request)){finished[0]=true;shareUrl();}}
     }
+    private void captureMenuShare(WebView source,String captured,long epoch,long request){
+        final boolean[] evaluated={false};
+        source.postDelayed(()->{
+            if(evaluated[0]||!canSharePrice(source,captured,epoch,request))return;
+            evaluated[0]=true;shareCapture++;shareUrl();
+        },5000);
+        try{source.evaluateJavascript(MenuShareOffer.SCRIPT,result->{
+            if(evaluated[0]||!canSharePrice(source,captured,epoch,request))return;
+            evaluated[0]=true;
+            MenuShareOffer offer=MenuShareOffer.decode(result,captured,source.getUrl(),epoch,venueCaptureEpoch);
+            String venueURL=MobileEntry.publicVenue(captured);
+            SavedVenueStore.Venue provisional=venueURL==null?null:SavedVenueStore.reference(venueURL,"Locale "+offerKey(captured));
+            if(offer==null||provisional==null||offerVerifier==null){shareUrl();return;}
+            try{shareMenuBatch=offerVerifier.load(java.util.Collections.singletonList(provisional),values->{
+                if(!canSharePrice(source,captured,epoch,request))return;
+                shareMenuBatch=null;
+                PriceShareSnapshot snapshot=PriceShareSnapshot.fromMenu(offer,captured,values.get(venueURL));
+                if(snapshot==null){shareUrl();return;}
+                if(shareDialog!=null)shareDialog.dismiss();
+                shareDialog=PriceShareUi.show(this,snapshot,()->canSharePrice(source,captured,epoch,request));
+            });
+            source.postDelayed(()->{
+                if(shareMenuBatch==null||!canSharePrice(source,captured,epoch,request))return;
+                shareMenuBatch.cancel();shareMenuBatch=null;shareCapture++;shareUrl();
+            },15000);
+            }catch(IOException unavailable){shareUrl();}
+        });}catch(RuntimeException unavailable){if(canSharePrice(source,captured,epoch,request))shareUrl();}
+    }
+    private static String offerKey(String captured){String venue=MobileEntry.publicVenue(captured);return venue==null?"":java.net.URI.create(venue).getPath().substring(5);}
     private void shareUrl() {
         if (!testLabPolicy.allowsExternalActions()) { toast(R.string.test_lab_external_disabled); return; }
         String url = BrowserPolicy.shareUrl(website == null ? null : website.getUrl());
@@ -1407,6 +1438,7 @@ public final class MainActivity extends ComponentActivity {
     @Override protected void onPause() {
         presentationRequest++;
         searchPending=false;searchOpening=false;searchCallbackGeneration++;
+        if(shareMenuBatch!=null){shareMenuBatch.cancel();shareMenuBatch=null;}
         shareCapture++;if(shareDialog!=null){shareDialog.dismiss();shareDialog=null;}if(informationDialog!=null){informationDialog.dismiss();informationDialog=null;}
         discoveryCapture++;
         venueCaptureEpoch++;
@@ -1452,6 +1484,7 @@ public final class MainActivity extends ComponentActivity {
     }
     @Override protected void onDestroy() {
         presentationRequest++;
+        if(shareMenuBatch!=null){shareMenuBatch.cancel();shareMenuBatch=null;}
         shareCapture++;if(shareDialog!=null)shareDialog.dismiss();if(informationDialog!=null)informationDialog.dismiss();
         discoveryCapture++;
         venueCaptureEpoch++;

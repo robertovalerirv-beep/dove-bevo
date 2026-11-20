@@ -47,6 +47,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
     private var bookmarkTimeout: DispatchWorkItem?
     private var mapAreaTimeout: DispatchWorkItem?
     private var shareTimeout: DispatchWorkItem?
+    private var shareMenuRequest: RecommendationRequest?
     private let shareCapture = PriceShareCapture()
     private var mapAreaGeneration = UUID()
     private var bookmarkLifecycleActive = true
@@ -99,6 +100,7 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         bookmarkTimeout?.cancel()
         mapAreaTimeout?.cancel()
         shareTimeout?.cancel()
+        shareMenuRequest?.cancel()
         NotificationCenter.default.removeObserver(self)
         monitor.cancel()
         observations.forEach { $0.invalidate() }
@@ -805,27 +807,65 @@ final class BrowserViewController: UIViewController, WKNavigationDelegate, WKUID
         let context = shareCapture.begin(documentURL: documentURL)
         let timeout = DispatchWorkItem { [weak self] in
             guard let self, self.shareCapture.finish(context, currentURL: self.webView.url,
-                active: self.canSharePage && self.isBookmarkInteractionActive) else { return }
+                active: self.canSharePage && self.isBookmarkInteractionActive && self.presentedViewController == nil) else { return }
             self.shareTimeout = nil
             self.presentSharedURL(publicURL)
         }
         shareTimeout = timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: timeout)
         webView.evaluateJavaScript(PriceShareReader.script, in: nil, in: .defaultClient) { [weak self] result in
-            guard let self, self.shareCapture.finish(context, currentURL: self.webView.url,
-                active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL != nil) else { return }
-            self.shareTimeout?.cancel(); self.shareTimeout = nil
-            guard case .success(let value) = result,
-                  let snapshot = PriceShareSnapshot.parse(value, currentURL: documentURL) else {
-                self.presentSharedURL(publicURL); return
+            guard let self, self.shareCapture.isCurrent(context, currentURL: self.webView.url,
+                active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL != nil && self.presentedViewController == nil) else { return }
+            if case .success(let value) = result,
+               let snapshot = PriceShareSnapshot.parse(value, currentURL: documentURL) {
+                guard self.shareCapture.finish(context, currentURL: self.webView.url, active: true) else { return }
+                self.shareTimeout?.cancel(); self.shareTimeout = nil
+                let preview = PriceShareViewController(snapshot: snapshot, publicURL: publicURL)
+                self.present(UINavigationController(rootViewController: preview), animated: true)
+            } else {
+                self.captureMenuShare(context: context, documentURL: documentURL, fallbackURL: publicURL)
             }
-            let preview = PriceShareViewController(snapshot: snapshot, publicURL: publicURL)
-            self.present(UINavigationController(rootViewController: preview), animated: true)
+        }
+    }
+
+    private func captureMenuShare(context: PriceShareCapture.Context, documentURL: URL, fallbackURL: URL) {
+        webView.evaluateJavaScript(MenuShareReader.script, in: nil, in: .defaultClient) { [weak self] result in
+            guard let self, self.shareCapture.isCurrent(context, currentURL: self.webView.url,
+                active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL != nil && self.presentedViewController == nil) else { return }
+            guard case .success(let value) = result,
+                  let offer = MenuShareOffer.parse(value, currentURL: documentURL),
+                  let venueURL = MobileEntry.publicVenue(documentURL),
+                  let provisional = try? SavedVenuePolicy.venue(url: venueURL, label: "Locale \(offer.venueKey)") else {
+                self.shareCapture.invalidate(); self.shareTimeout?.cancel(); self.shareTimeout = nil
+                self.presentSharedURL(fallbackURL); return
+            }
+            self.shareTimeout?.cancel()
+            let timeout = DispatchWorkItem { [weak self] in
+                guard let self, self.shareCapture.finish(context, currentURL: self.webView.url,
+                    active: self.canSharePage && self.isBookmarkInteractionActive && self.presentedViewController == nil) else { return }
+                self.shareMenuRequest?.cancel(); self.shareMenuRequest = nil; self.shareTimeout = nil
+                self.presentSharedURL(fallbackURL)
+            }
+            self.shareTimeout = timeout
+            DispatchQueue.main.asyncAfter(deadline: .now() + 15, execute: timeout)
+            let handle = self.menuClient.load([provisional]) { [weak self] loaded in
+                guard let self, self.shareCapture.finish(context, currentURL: self.webView.url,
+                    active: self.canSharePage && self.isBookmarkInteractionActive && self.usableVenueURL == venueURL && self.presentedViewController == nil) else { return }
+                self.shareTimeout?.cancel(); self.shareTimeout = nil; self.shareMenuRequest = nil
+                guard let venue = loaded.venues[venueURL], let snapshot = offer.verified(in: venue) else {
+                    self.presentSharedURL(fallbackURL); return
+                }
+                let preview = PriceShareViewController(snapshot: snapshot, publicURL: documentURL)
+                self.present(UINavigationController(rootViewController: preview), animated: true)
+            }
+            if self.shareCapture.isCurrent(context, currentURL: self.webView.url, active: true) {
+                self.shareMenuRequest = handle
+            } else { handle.cancel() }
         }
     }
 
     private func invalidateShareCapture() {
-        shareTimeout?.cancel(); shareTimeout = nil; shareCapture.invalidate()
+        shareTimeout?.cancel(); shareTimeout = nil; shareMenuRequest?.cancel(); shareMenuRequest = nil; shareCapture.invalidate()
     }
 
     private func presentSharedURL(_ url: URL) {

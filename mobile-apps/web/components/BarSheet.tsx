@@ -593,6 +593,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
   const venueKind = venueKey.startsWith("m") && venue.kind === 0 ? "Locale" : it.kinds[venue.kind];
+  const mapDrink = savedFocus?.drink ?? (focus.length === 1 ? focus[0] : null);
   const heroOffer = menu?.offers.find(matchesMenu);
   const heroDrink =
     savedOfferFocus !== null
@@ -711,6 +712,17 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               </p>
             )}
             {venue.addr && <p class="bar__addr">{venue.addr}</p>}
+            {mapDrink && (
+              <p class="mobile-venue__filter-context">
+                <span>{currentLang() === "en" ? "Map drink" : "Drink sulla mappa"}</span>
+                <strong>{it.drinks[mapDrink] ?? mapDrink}</strong>
+                <small>
+                  {currentLang() === "en"
+                    ? "Other drinks at this venue are listed below."
+                    : "Qui sotto trovi anche gli altri drink del locale."}
+                </small>
+              </p>
+            )}
             {/* The hours of a verified bar come before the prices (SPEC 7.2, D-34). */}
             {venue.verified && prices?.o && <HoursList hours={prices.o} />}
           </header>

@@ -312,7 +312,8 @@ enum MenuV2JSON {
                                     band: band, amountMinor: amount.0, currency: amount.1, exponent: amount.2,
                                     servingLabel: serving.0, servingML: serving.1,
                                     origin: .ownerMenu(evidence.0, evidence.1), feeNotice: fee)
-            offer.condition = kind == "conditional" ? condition : nil
+            // The public row also displays regular and happy-hour conditions.
+            offer.condition = condition
             offer.minimumSpendNotice = minimum
             offers.append(offer)
         }

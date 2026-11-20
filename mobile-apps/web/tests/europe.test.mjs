@@ -941,7 +941,7 @@ test("European map Home returns to the current city after zoom and a city switch
   try {
     await openLondon(f, false);
     const map = f.page.locator(".europe-map");
-    const home = f.page.getByRole("button", { name: "Vista iniziale della città" });
+    const home = f.page.getByRole("button", { name: "Vista iniziale della mappa" });
     await f.page.waitForFunction(
       () => document.querySelector(".europe-map")?.getAttribute("data-ready") === "true",
     );

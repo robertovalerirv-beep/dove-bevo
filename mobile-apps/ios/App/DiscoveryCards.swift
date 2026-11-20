@@ -50,10 +50,16 @@ struct DiscoveryCategorySummary: Equatable {
                     } ?? true
                 } else { source = "Origine non disponibile"; old = true }
             }
+            let minimum: String?
+            if case .menuV2(let price) = lowest.price, !price.minimumSpendNotice.isEmpty {
+                minimum = price.minimumSpendNotice
+            } else {
+                minimum = lowest.venueConditionNotice
+            }
             headline = "Da \(lowest.price.amount)"
             detail = "\(first.price.groupLabel) · \(source)" + (old ? " · Da ricontrollare" : "")
                 + (partial ? " · Zona parziale" : "")
-                + (lowest.venueConditionNotice.map { " · \($0)" } ?? "")
+                + (minimum.map { " · \($0)" } ?? "")
         } else {
             headline = count; detail = "Valute o formati diversi" + (partial ? " · Zona parziale" : "")
         }

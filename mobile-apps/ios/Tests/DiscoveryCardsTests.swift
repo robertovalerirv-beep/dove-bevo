@@ -205,12 +205,13 @@ final class DiscoveryCardsTests: XCTestCase {
         XCTAssertTrue(summary.detail.contains("Da ricontrollare"))
     }
 
-    func testOwnerMenuSampleShowsItsExactItemSourceAndServingWithoutClaimingTotalCost() throws {
-        let price = MenuV2Price(id: "owner-spritz", venueName: "Actual venue", itemName: "Spritz della casa",
+    func testOwnerMenuSampleShowsItsExactItemSourceServingAndMinimumWithoutClaimingTotalCost() throws {
+        var price = MenuV2Price(id: "owner-spritz", venueName: "Actual venue", itemName: "Spritz della casa",
             category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
             servingLabel: "Calice", servingML: 200,
             origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu")), "2026-11-02"),
             feeNotice: "Altre spese non verificate.")
+        price.minimumSpendNotice = "Consumazione minima 15,00 € a persona, solo se durante le partite in diretta."
         let row = DiscoveryPresentedRow(key: "n123", name: "Actual venue",
             url: try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")),
             latitude: 45.46, longitude: 9.19, location: "Milano", price: .menuV2(price))
@@ -222,6 +223,8 @@ final class DiscoveryCardsTests: XCTestCase {
         let summary = DiscoveryCategorySummary(rows: [row], loading: false, today: "2026-11-03")
         XCTAssertEqual(summary.headline, "Da 5,50 €")
         XCTAssertTrue(summary.detail.contains("Menu verificato il 2026-11-02"))
+        XCTAssertTrue(summary.detail.contains(price.minimumSpendNotice))
+        XCTAssertFalse(summary.headline.contains("20,50"), "The minimum must never be added to the drink amount")
     }
 
     func testEqualGlassServingAcrossFeedsCanShowCheapestWithoutMixingCurrencyOrVolume() throws {

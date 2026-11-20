@@ -76,7 +76,7 @@ final class DiscoveryScreen {
         featuredTitle=text("Per te",18);NativeAppearance.title(featuredTitle);heading(featuredTitle);featuredTitle.setVisibility(View.GONE);featuredTitle.setPadding(0,dp(4),0,dp(4));body.addView(featuredTitle);
         HorizontalScrollView featuredScroll=new HorizontalScrollView(activity);featuredScroll.setTag("discovery.featuredScroll");featuredScroll.setHorizontalScrollBarEnabled(false);featuredScroll.setFillViewport(false);featuredScroll.setVisibility(View.GONE);
         featured=new LinearLayout(activity);featured.setTag("discovery.featured");featured.setOrientation(LinearLayout.HORIZONTAL);featuredScroll.addView(featured,new ScrollView.LayoutParams(-2,-2));body.addView(featuredScroll,new LinearLayout.LayoutParams(-1,-2));
-        TextView resultsTitle=text("Prezzi più bassi qui · per valuta",18);NativeAppearance.title(resultsTitle);heading(resultsTitle);resultsTitle.setPadding(0,dp(2),0,dp(3));body.addView(resultsTitle);
+        TextView resultsTitle=text("Prezzi disponibili · in ordine crescente per valuta",18);NativeAppearance.title(resultsTitle);heading(resultsTitle);resultsTitle.setPadding(0,dp(2),0,dp(3));body.addView(resultsTitle);
         rows=new LinearLayout(activity);rows.setId(R.id.discovery_rows);rows.setOrientation(LinearLayout.VERTICAL);rows.setPadding(0,dp(4),0,0);body.addView(rows);
         disclosure=text("",12);disclosure.setTag("discovery.disclosure");NativeAppearance.muted(disclosure);disclosure.setPadding(0,dp(8),0,dp(2));disclosure.setVisibility(View.GONE);body.addView(disclosure);
     }

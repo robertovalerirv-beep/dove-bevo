@@ -198,7 +198,7 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
-                        <TextBlock Text="Prezzi più bassi qui · per valuta" FontSize="17" FontWeight="Bold"
+                        <TextBlock Text="Prezzi disponibili · in ordine crescente per valuta" FontSize="17" FontWeight="Bold"
                                    Margin="0,2,0,4" />
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,12,0,0">

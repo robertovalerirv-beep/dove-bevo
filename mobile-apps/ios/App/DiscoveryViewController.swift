@@ -306,7 +306,7 @@ final class DiscoveryViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { rows.count }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        rows.isEmpty ? nil : "Prezzi più bassi qui · per valuta"
+        rows.isEmpty ? nil : "Prezzi disponibili · in ordine crescente per valuta"
     }
     static func currencyHeading(_ currency: String) -> String {
         switch currency {

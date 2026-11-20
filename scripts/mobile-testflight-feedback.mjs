@@ -16,6 +16,7 @@ const MAX_IMAGES = 40;
 const MAX_JSON_BYTES = 1024 * 1024;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_TOTAL_IMAGE_BYTES = 40 * 1024 * 1024;
+const IMAGE_FETCH_BUDGET_MS = 120000;
 const initial = new URL(ORIGIN + PATH);
 initial.searchParams.set("limit", "200");
 initial.searchParams.set("sort", "-createdDate");
@@ -162,6 +163,7 @@ export async function auditFeedback(
   auth = tokenFor,
   publicKeyPem,
   diagnostic = () => {},
+  now = () => globalThis.performance.now(),
 ) {
   diagnostic("auth", 0);
   const token = auth(env);
@@ -205,15 +207,26 @@ export async function auditFeedback(
   let imageBytes = 0;
   const images = [];
   const imageFailures = {};
+  const imageDeadline = now() + IMAGE_FETCH_BUDGET_MS;
+  const markUnavailable = (row, reason) => {
+    imageFailures[reason] = (imageFailures[reason] ?? 0) + 1;
+    row.record.unavailable_screenshot_count += 1;
+    diagnostic("image_unavailable", 0);
+  };
   for (const [recordIndex, row] of rows.entries()) {
     for (const [imageIndex, url] of row.images.entries()) {
       diagnostic("image_request", 0);
       if (++expectedImageCount > MAX_IMAGES) throw new Error("Too many feedback images");
+      const timeRemaining = imageDeadline - now();
+      if (timeRemaining <= 0) {
+        markUnavailable(row, "budget_exhausted");
+        continue;
+      }
       try {
         const response = await transport(url.href, {
           method: "GET",
           redirect: "error",
-          signal: globalThis.AbortSignal.timeout(20000),
+          signal: globalThis.AbortSignal.timeout(Math.min(20000, Math.ceil(timeRemaining))),
           headers: { Accept: "image/*" },
         });
         diagnostic("image_response", response.status);
@@ -234,10 +247,7 @@ export async function auditFeedback(
         row.record.screenshots.push(filename);
       } catch (error) {
         if (error?.message === "Feedback images too large") throw error;
-        const reason = imageFailureClass(error);
-        imageFailures[reason] = (imageFailures[reason] ?? 0) + 1;
-        row.record.unavailable_screenshot_count += 1;
-        diagnostic("image_unavailable", 0);
+        markUnavailable(row, imageFailureClass(error));
       }
     }
   }

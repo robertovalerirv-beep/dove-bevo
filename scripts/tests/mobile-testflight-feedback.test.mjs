@@ -150,6 +150,52 @@ test("encrypts incomplete metadata when signed screenshots cannot be fetched", a
   });
 });
 
+test("stops image requests when the global fetch budget is exhausted", async () => {
+  await withOutput(async (file) => {
+    const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 3072 });
+    const skippedImage = "https://is1-ssl.mzstatic.com/feedback/skipped.png";
+    let elapsed = 0;
+    let imageCalls = 0;
+    const fetcher = async (url) => {
+      if (url === skippedImage) throw new Error("Image budget was ignored");
+      if (url === image) {
+        imageCalls += 1;
+        elapsed = 120000;
+        return new globalThis.Response(Buffer.from([137, 80, 78, 71]), {
+          status: 200,
+          headers: { "content-type": "image/png" },
+        });
+      }
+      return json({
+        data: [record("row_1", [{ url: image }, { url: skippedImage }])],
+        included: [],
+        links: {},
+      });
+    };
+    const result = await auditFeedback(
+      {},
+      file,
+      fetcher,
+      () => "ephemeral-token",
+      publicKey.export({ type: "spki", format: "pem" }),
+      () => {},
+      () => elapsed,
+    );
+    assert.equal(imageCalls, 1);
+    assert.equal(result.complete, false);
+    assert.equal(result.image_expected_count, 2);
+    assert.equal(result.image_count, 1);
+    assert.equal(result.image_unavailable_count, 1);
+    assert.deepEqual(result.image_unavailable_reasons, { budget_exhausted: 1 });
+    const payload = decryptFeedback(
+      await readFile(file, "utf8"),
+      privateKey.export({ type: "pkcs8", format: "pem" }),
+    );
+    assert.equal(payload.result.feedback[0].screenshot_count, 2);
+    assert.equal(payload.result.feedback[0].unavailable_screenshot_count, 1);
+  });
+});
+
 test("rejects foreign pagination and image hosts before contacting them", async () => {
   await withOutput(async (file) => {
     let calls = 0;

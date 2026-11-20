@@ -1258,13 +1258,12 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
     await openDrinks(f.page);
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
-    await f.page.locator(".mobile-menu-map-note").waitFor();
     await f.page.waitForFunction(
       () =>
         document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
       { timeout: 30000 },
     );
-    assert.match(await f.page.locator(".mobile-menu-map-note").innerText(), /supplementi esclusi/);
+    assert.equal(await f.page.locator(".mobile-menu-map-note").count(), 0);
     await f.page.goto(
       "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fmaaaaaaaaaaaaaaaaaaaaaaaa&c=u0nd9",
     );
@@ -1596,27 +1595,22 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
       { timeout: 30000 },
     );
     assert.match(await f.page.getByTestId("map-status").innerText(), /3\/4 con prezzo/);
-    assert.match(
-      await f.page.locator(".mobile-menu-map-note").innerText(),
-      /voci di menu verificate/,
-    );
+    assert.equal(await f.page.locator(".mobile-menu-map-note").count(), 0);
     for (const width of [320, 390, 430]) {
       await f.page.setViewportSize({ width, height: 700 });
       const card = await f.page.getByTestId("map-status").boundingBox();
-      const note = await f.page.locator(".mobile-menu-map-note").boundingBox();
       const add = await f.page.locator(".mobile-map-actions__toggle").boundingBox();
       const locate = await f.page.locator(".top__row > .icon-btn").boundingBox();
       const language = await f.page.locator(".map__lang").boundingBox();
       const list = await f.page.locator(".map__list").boundingBox();
-      assert.ok(card && note && add && locate && language && list);
-      assert.ok(note.y >= card.y && note.y + note.height <= card.y + card.height);
+      assert.ok(card && add && locate && language && list);
       assert.ok(
         card.y + card.height + 8 <= add.y,
-        `Summary overlaps Add at ${width}px: ${JSON.stringify({ card, note, add, locate })}`,
+        `Summary overlaps Add at ${width}px: ${JSON.stringify({ card, add, locate })}`,
       );
       assert.ok(
         locate.x + locate.width + 8 <= add.x && Math.abs(locate.y - add.y) <= 2,
-        `Locate overlaps Add at ${width}px: ${JSON.stringify({ card, note, add, locate })}`,
+        `Locate overlaps Add at ${width}px: ${JSON.stringify({ card, add, locate })}`,
       );
       assert.ok(
         language.x + language.width + 8 <= card.x,
@@ -1643,13 +1637,8 @@ test("Tutti reveals uncategorized verified menus without inventing a drink price
     for (const width of [320, 390, 430]) {
       await f.page.setViewportSize({ width, height: 700 });
       const largeCard = await f.page.getByTestId("map-status").boundingBox();
-      const largeNote = await f.page.locator(".mobile-menu-map-note").boundingBox();
       const largeAdd = await f.page.locator(".mobile-map-actions__toggle").boundingBox();
-      assert.ok(largeCard && largeNote && largeAdd);
-      assert.ok(
-        largeNote.y >= largeCard.y &&
-          largeNote.y + largeNote.height <= largeCard.y + largeCard.height,
-      );
+      assert.ok(largeCard && largeAdd);
       assert.ok(
         largeCard.y + largeCard.height + 8 <= largeAdd.y,
         `Large text overlaps Add at ${width}px`,
@@ -1722,7 +1711,7 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("PREZZI"),
     );
     assert.equal(await f.page.locator(".map__retry").count(), 0);
-    assert.match(await f.page.locator(".mobile-menu-map-note").innerText(), /prezzi segnalati/);
+    assert.equal(await f.page.locator(".mobile-menu-map-note").count(), 0);
     const initialAllRequests = options.cellRequests.filter(
       (request) => request.cell === "u0nd9" && request.categories.length === 0,
     ).length;
@@ -1730,7 +1719,7 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
     options.menuUnavailable = false;
     await openDrinks(f.page);
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
-    await f.page.locator(".mobile-menu-map-note").waitFor();
+    assert.equal(await f.page.locator(".mobile-menu-map-note").count(), 0);
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
     );

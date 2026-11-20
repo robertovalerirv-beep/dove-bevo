@@ -26,7 +26,8 @@ struct SavedDrinkRow {
     static func rows(_ saved: [SavedDrink], snapshot: FavouriteComparisonSnapshot?, menuSnapshot: MenuV2Snapshot? = nil) -> [SavedDrinkRow] {
         saved.flatMap { entry -> [SavedDrinkRow] in
             let base = FavouriteComparisonRow.sorted(saved: [entry.venue], snapshot: snapshot, drink: entry.drink, band: entry.band)
-            let menu = menuSnapshot?.venues[entry.venue.url]?.offers.filter { $0.category == entry.drink && $0.band == entry.band } ?? []
+            let menu = menuSnapshot?.venues[entry.venue.url]?.offers.filter { $0.category == entry.drink && $0.band == entry.band &&
+                (entry.drink != "beer_draft" || DiscoverySnapshot.isMediumDraftBeer(label: $0.servingLabel, ml: $0.servingML)) } ?? []
             let baseToShow = menu.isEmpty ? base : base.filter { $0.displayPrice != nil }
             let fallback = base.first!
             return menu.map { SavedDrinkRow(saved: entry, comparison: fallback, menuPrice: $0) }

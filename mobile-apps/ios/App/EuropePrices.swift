@@ -114,6 +114,7 @@ struct DiscoveryPresentedRow {
     let key: String; let name: String; let url: URL
     let latitude: Double; let longitude: Double; let location: String
     let price: NativeComparablePrice
+    var venueConditionNotice: String? = nil
 }
 
 enum EuropeJSON {

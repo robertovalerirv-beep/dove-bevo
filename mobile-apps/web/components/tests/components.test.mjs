@@ -316,6 +316,21 @@ async function fixture(options = {}) {
                 },
               ],
           fee_coverage: { status: "documented_partial", source },
+          minimum_spends: options.minimumSpend
+            ? [
+                {
+                  id: "minimum-1",
+                  label: "Consumazione minima",
+                  amount_minor: 1500,
+                  currency: "EUR",
+                  currency_exponent: 2,
+                  basis: "person",
+                  applicability: "conditional",
+                  condition: "durante le partite in diretta",
+                  source,
+                },
+              ]
+            : [],
         },
       });
     }
@@ -1075,6 +1090,28 @@ test("source-backed drink menu keeps original item, condition, fee and page boun
     await menu.getByText("Analcolico").waitFor();
     assert.equal(await menu.locator(".mobile-menu-v2__offer").count(), 3);
     assert.equal(await menu.getByRole("button", { name: "Vedi altri drink" }).count(), 0);
+    assert.deepEqual(f.writes, []);
+  } finally {
+    await f.close();
+  }
+});
+
+test("conditional minimum spend is visible beside prices and never added to a drink", async () => {
+  const f = await fixture({ minimumSpend: true });
+  try {
+    await f.page.evaluate(() => window.sheetFixture.bar());
+    const minimum = f.page.getByRole("region", { name: "Consumazione minima" });
+    await minimum.waitFor();
+    assert.match(
+      await minimum.innerText(),
+      /15,00\s*€ a persona[\s\S]*durante le partite in diretta/,
+    );
+    assert.match(await minimum.innerText(), /non è un supplemento per ogni drink/);
+    assert.match(
+      await f.page.getByRole("region", { name: "Prezzi dal menu online" }).innerText(),
+      /7,50\s*€/,
+    );
+    assert.equal(await minimum.getByRole("link", { name: /Fonte verificata il/ }).count(), 1);
     assert.deepEqual(f.writes, []);
   } finally {
     await f.close();

@@ -2,7 +2,7 @@
 
 Riferimento per post, reel e storie. Vale insieme a `02-voce.md` (regole di voce e parole vietate D-31); in caso di dubbio prevalgono quelle, tranne dove questo file dichiara una deroga (solo emoji 18+, sotto). Grafica solo dal kit del brand (`tokens.json`, `fonts/`, `components/`, `assets/`). I file dei contenuti (immagini, video) non stanno nel repository.
 
-Ultimo allineamento: 09/11/2026, con le decisioni di Roberto in chat (i reel hanno audio: voce e musica; dal 4° contenuto i reel hanno un protagonista, Bevino, che compare anche nei caroselli; dal 6° contenuto Bevino ha un amico, Franco; dal 7° i caroselli mostrano i dati di copertura per città).
+Ultimo allineamento: 20/11/2026 (reel di Bevino a Roma e note sui prompt di Veo 3.1); prima il 09/11/2026, con le decisioni di Roberto in chat (i reel hanno audio: voce e musica; dal 4° contenuto i reel hanno un protagonista, Bevino, che compare anche nei caroselli; dal 6° contenuto Bevino ha un amico, Franco; dal 7° i caroselli mostrano i dati di copertura per città).
 
 ## Account
 
@@ -84,6 +84,7 @@ Per maggiorenni.
   - **Impostazioni opengen:** proporzioni 9:16 (il campo vince sul testo del prompt, nelle prime prove era 16:9) e miglioramento automatico del prompt spento, altrimenti riscrive i divieti.
   - **Niente scritte nel video:** il modello inventa insegne e iscrizioni (sull'arco di Porta Romana era comparso «ARCO PORTA ROMANA»). Il prompt le vieta; la schermata vera del sito si sovrappone nel montaggio.
   - **Durata:** 8 s per clip con Veo 3.1 Lite, circa 15–20 parole di battute. L'inglese rende meglio per le descrizioni; l'italiano va bene per le battute.
+  - **Battuta lunga, scena vuota (20/11/2026):** con molte parole e molte azioni (tram, risata, occhiolino, musica) la voce non si capiva. Funziona meglio così: personaggio fermo, strada vuota e sfocata, telecamera ferma, solo la voce senza musica né rumori («fast, clear, lips clearly moving, no pauses»). La musica si aggiunge nel montaggio. Il sito si scrive «dovebevo punto com» perché la voce lo legga bene. Clip da 4 s: 8–10 parole.
 - **Nei caroselli** (dal 03/11/2026) compare in grafica ferma, con contorno crema da adesivo perché resti leggibile sul fondo `spritz`; personaggio disegnato a mano in SVG dalla stessa descrizione, non ancora nel kit del brand.
 - Valgono tutti i limiti fissi: prezzi solo reali e controllati il giorno, nessuna enfasi sul bere molto.
 
@@ -101,7 +102,8 @@ Dati di Instagram al 27/10/2026, ore 13:19 (35 follower, 1.001 visualizzazioni i
 | 03/11/2026 | Post | «Ma chi li scrive i prezzi sulla mappa?»: carosello a dialogo con Bevino, come si segna un prezzo e come si aggiunge un bar mancante, «Prezzi inventati: nessuno»; messaggio: chiunque può inserire, basta che sia reale (caption: «Alla cassa ti dicono la cifra e tu annuisci…», con invito a taggare il locale mancante) | da rilevare |
 | 05/11/2026 | Reel | Bevino e Franco passeggiano a Porta Romana verso le 18: Franco, che ha fatto da guida tutto il pomeriggio, propone una birra e dice a Bevino di aprire dovebevo.com; Bevino trova un locale vicino, raggiungibile a piedi in pochi minuti con «Indicazioni». Fatto con opengen | da rilevare |
 | 09/11/2026 | Post | «Quanto costa davvero il tuo drink?»: carosello a quattro slide, introduzione con Affare · Giusto · Salato e lo scontrino `?,??`; classifica della copertura per città (Sestri Levante 22 %, Legnano 14 %, Milano 7 %, Torino 3 %, Roma 1 %); obiettivo di Milano al 31 % (47 bar su 150, griglia); richiesta «Hai pagato? Segnalo.» con «Segna un prezzo» e «Aggiungi un bar». Dati `/admin` del 09/11: 138 bar con un prezzo, 39 città, 381 prezzi | da rilevare |
+| 20/11/2026 (previsto 17:30–18) | Reel | 10° contenuto. Bevino arriva a Roma Termini alle 17 per lavoro, l'indomani ha una riunione importante e non conosce un posto: chiama Franco, che è di Milano e di Roma non sa niente, e gli dice di aprire dovebevo.com, che mostra tutti i locali vicini anche in una città che non conosci, «tanto paga il capo». Tre clip con Veo 3.1 (8 + 8 + 4 s), un personaggio per clip. Caption: «Sei a Roma per lavoro. Sono le 17…», invito a mandarlo «al collega che parte lunedì» | da rilevare |
 
 Dati di Instagram al 10/11/2026 (export «Insight sull'account» 10/10–09/11 e profilo): 152 follower, 44 seguiti, 7 post, 15.730 visualizzazioni in 30 giorni, 9.508 account raggiunti, 1.924 visualizzazioni dei reel (4 reel nell'export, due sponsorizzati), 162 like, 4 commenti, 13 repost, 75 condivisioni, 22 salvataggi. Follower: 75,7 % uomini, 39,2 % tra 25 e 34 anni, 31,2 % tra 35 e 44, Milano 40,9 %. Tocchi sul link e dati per singolo contenuto: da rilevare.
 
-Ordine dei contenuti nel feed al 09/11/2026: 1° carosello (24/10), 2° reel (24/10), 3° carosello (26/10), 4° reel con Bevino (02/11), 5° carosello «Ma chi li scrive» (03/11), 6° reel con Bevino e Franco a Porta Romana (05/11), 7° carosello «Quanto costa davvero il tuo drink?» (09/11). Le storie non contano.
+Ordine dei contenuti nel feed al 09/11/2026: 1° carosello (24/10), 2° reel (24/10), 3° carosello (26/10), 4° reel con Bevino (02/11), 5° carosello «Ma chi li scrive» (03/11), 6° reel con Bevino e Franco a Porta Romana (05/11), 7° carosello «Quanto costa davvero il tuo drink?» (09/11). L'8° e il 9° contenuto non sono ancora registrati qui; il 10° è il reel di Bevino a Roma (20/11). Le storie non contano.

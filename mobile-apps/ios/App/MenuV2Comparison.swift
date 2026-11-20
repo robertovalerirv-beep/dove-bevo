@@ -88,6 +88,7 @@ struct MenuV2CellVenue: Equatable {
     let city: String
     let matchingOfferCount: Int
     let samples: [MenuV2Price]
+    var minimumSpendNotice: String = ""
     var url: URL { URL(string: "https://www.dovebevo.com/bar/\(key)?c=\(cell)")! }
 }
 struct MenuV2CellPage {
@@ -274,7 +275,8 @@ enum MenuV2JSON {
             venues.append(MenuV2CellVenue(key: key, cell: cell, name: name,
                                           latitude: latitude, longitude: longitude,
                                           address: address, city: city,
-                                          matchingOfferCount: count, samples: decoded.offers))
+                                          matchingOfferCount: count, samples: decoded.offers,
+                                          minimumSpendNotice: decoded.minimumSpendNotice))
         }
         guard venues.map(\.key) == venues.map(\.key).sorted(),
               next == nil || (next != after && (venues.last?.key ?? "") <= next!),

@@ -53,6 +53,7 @@ struct DiscoveryCategorySummary: Equatable {
             headline = "Da \(lowest.price.amount)"
             detail = "\(first.price.groupLabel) · \(source)" + (old ? " · Da ricontrollare" : "")
                 + (partial ? " · Zona parziale" : "")
+                + (lowest.venueConditionNotice.map { " · \($0)" } ?? "")
         } else {
             headline = count; detail = "Valute o formati diversi" + (partial ? " · Zona parziale" : "")
         }
@@ -184,7 +185,7 @@ enum DiscoveryPriceCaveat {
         priceLabel.text = row.price.amount
         servingLabel.text = row.price.groupLabel
         let evidenceParts: [String?] = [DiscoveryFeaturedEvidence.text(for: row.price, today: today),
-                                        DiscoveryPriceCaveat.visible(for: row.price)]
+                                        DiscoveryPriceCaveat.visible(for: row.price), row.venueConditionNotice]
         evidenceLabel.text = evidenceParts.compactMap { $0 }.joined(separator: " · ")
         drinkLabel.font = .preferredFont(forTextStyle: .subheadline, compatibleWith: traits)
         drinkLabel.textColor = NativeAppearance.ink
@@ -423,7 +424,7 @@ enum DiscoveryPriceCaveat {
         let menuServing: String?
         if case .menuV2 = row.price { menuServing = row.price.groupLabel } else { menuServing = nil }
         let evidenceParts: [String?] = [menuServing, row.price.details(today: today),
-                                        DiscoveryPriceCaveat.condition(for: row.price)]
+                                        DiscoveryPriceCaveat.condition(for: row.price), row.venueConditionNotice]
         evidence.text = evidenceParts.compactMap { $0 }.joined(separator: " · ")
         accessibilityLabel = row.name
         let section = currencyHeading.map { "\($0). " } ?? ""

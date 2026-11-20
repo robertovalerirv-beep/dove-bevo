@@ -74,6 +74,42 @@ final class DiscoveryTests: XCTestCase {
         XCTAssertTrue(normal.isOld(today: "2026-10-29"))
     }
 
+    func testVerifiedVenueMinimumFollowsLegacyDrinkWithoutChangingItsAmountAndUnavailableDataIsExplicit() throws {
+        let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))
+        let reported = FavouritePrice(drink: "spritz", band: .normal, cents: 800,
+                                      observedOn: "2026-11-01", confirmations: 0, quarantined: false)
+        let venue = discoveryVenue("n123", name: "Locale vero", prices: [reported])
+        var menuPrice = MenuV2Price(id: "owner-1", venueName: "Locale vero", itemName: "Spritz della casa",
+                                    category: "spritz", band: .normal, amountMinor: 550, currency: "EUR", exponent: 2,
+                                    servingLabel: "Calice", servingML: 200,
+                                    origin: .ownerMenu(try XCTUnwrap(URL(string: "https://bar.example/menu")), "2026-11-03"),
+                                    feeNotice: "Altre spese non verificate.")
+        let minimum = "Consumazione minima 15,00 € a persona, solo se durante le partite in diretta."
+        menuPrice.minimumSpendNotice = minimum
+        let checked = MenuV2CellVenue(key: "n123", cell: "u0nd9", name: "Locale vero", latitude: 45.4642,
+                                      longitude: 9.19, address: "", city: "Milano", matchingOfferCount: 1,
+                                      samples: [menuPrice], minimumSpendNotice: minimum)
+        var snapshot = DiscoverySnapshot(area: area, venues: [venue], unavailableCells: [])
+        snapshot.menu = ["n123": checked]
+        let rows = snapshot.displayRows(drink: "spritz", band: .normal)
+        let legacy = try XCTUnwrap(rows.first { if case .legacy = $0.price { return true }; return false })
+        XCTAssertEqual(legacy.price.amount, "8,00 €")
+        XCTAssertEqual(legacy.venueConditionNotice, minimum)
+        XCTAssertFalse(legacy.price.amount.contains("23,00"))
+        let noMenu = DiscoverySnapshot(area: area, venues: [venue], unavailableCells: [],
+                                       menuUnavailableCells: ["u0nd9"])
+        let uncertain = try XCTUnwrap(noMenu.displayRows(drink: "spritz", band: .normal).first)
+        XCTAssertTrue(uncertain.venueConditionNotice?.contains("non verificate") == true)
+        XCTAssertFalse(uncertain.venueConditionNotice?.contains("15,00") == true)
+        snapshot.menu = ["n123": MenuV2CellVenue(key: "n123", cell: "u0nd9", name: "Altro locale",
+            latitude: 45.4642, longitude: 9.19, address: "", city: "Milano", matchingOfferCount: 1,
+            samples: [menuPrice], minimumSpendNotice: minimum)]
+        XCTAssertTrue(snapshot.displayRows(drink: "spritz", band: .normal)
+            .first { if case .legacy = $0.price { return true }; return false }?
+            .venueConditionNotice?.contains("non verificate") == true,
+            "Mismatched venue identity must not attach another venue's minimum")
+    }
+
     func testDefaultDiscoveryMergesOwnerMenuSamplesWithReportedPricesWithoutInventingCoverage() throws {
         let transport = DelayedComparisonTransport()
         let area = try XCTUnwrap(DiscoveryArea(latitude: 45.4642, longitude: 9.19, zoom: 14))

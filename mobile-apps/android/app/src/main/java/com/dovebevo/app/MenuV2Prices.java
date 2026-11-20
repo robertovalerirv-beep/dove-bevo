@@ -86,9 +86,10 @@ final class MenuV2Prices {
     }
     /** Verified venue metadata and a bounded set of actual named menu samples in one map cell. */
     static final class CellVenue {
-        final String key,cell,name,address,city;final double lat,lon;final List<Price> samples;
-        CellVenue(String key,String cell,String name,String address,String city,double lat,double lon,List<Price> samples){
+        final String key,cell,name,address,city,minimumSpendNotice;final double lat,lon;final List<Price> samples;
+        CellVenue(String key,String cell,String name,String address,String city,double lat,double lon,List<Price> samples,String minimumSpendNotice){
             this.key=key;this.cell=cell;this.name=name;this.address=address;this.city=city;this.lat=lat;this.lon=lon;
+            this.minimumSpendNotice=minimumSpendNotice;
             this.samples=Collections.unmodifiableList(new ArrayList<>(samples));
         }
     }
@@ -230,7 +231,7 @@ final class MenuV2Prices {
                 prices.add(new Price(id,name,item,category,band,money.amount,money.currency,money.exponent,
                         serving.label,serving.ml,false,day,feeNotice,null,band<0?condition:null,sourceURL,minimum));
             }
-            venues.add(new CellVenue(key,cell,name,address,city,lat,lon,prices));
+            venues.add(new CellVenue(key,cell,name,address,city,lat,lon,prices,minimum));
         }
         return new CellPage(venues,next,partial);
     }

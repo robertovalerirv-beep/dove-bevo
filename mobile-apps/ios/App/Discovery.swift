@@ -62,15 +62,32 @@ struct DiscoverySnapshot {
     var menuUnavailableCells: Set<String> = []
     var partialCells: Set<String> { unavailableCells.union(menuUnavailableCells) }
 
+    /// A cell sample proves a venue's minimum only when its identity matches
+    /// the other price feed. Missing or ambiguous menu data stays explicit.
+    private func conditionNotice(key: String, cell: String, name: String,
+                                 latitude: Double, longitude: Double) -> String? {
+        guard let checked = menu[key], checked.cell == cell, checked.name == name,
+              abs(checked.latitude - latitude) <= 0.0005,
+              abs(checked.longitude - longitude) <= 0.0005 else {
+            return "Condizioni del locale non verificate nei dati menu disponibili."
+        }
+        return checked.minimumSpendNotice.isEmpty ? nil : checked.minimumSpendNotice
+    }
+
     func displayRows(drink: String, band: ComparisonBand) -> [DiscoveryPresentedRow] {
         let original = rows(drink: drink, band: band).filter { europe?.venues[$0.venue.key] == nil }.map { row in
             DiscoveryPresentedRow(key: row.venue.key, name: row.venue.name, url: row.venue.url, latitude: row.venue.latitude,
-                longitude: row.venue.longitude, location: [row.venue.address, row.venue.city ?? ""].filter { !$0.isEmpty }.joined(separator: " · "), price: .legacy(row.price))
+                longitude: row.venue.longitude, location: [row.venue.address, row.venue.city ?? ""].filter { !$0.isEmpty }.joined(separator: " · "),
+                price: .legacy(row.price),
+                venueConditionNotice: conditionNotice(key: row.venue.key, cell: row.venue.cell, name: row.venue.name,
+                                                      latitude: row.venue.latitude, longitude: row.venue.longitude))
         }
         let added = (europe?.venues.values.map { $0 } ?? []).flatMap { venue in
             venue.prices.filter { $0.drink == drink && $0.band == band && !$0.quarantined }.map { price in
                 DiscoveryPresentedRow(key: venue.key, name: venue.name, url: venue.url, latitude: venue.latitude, longitude: venue.longitude,
-                    location: venue.city, price: .europe(price))
+                    location: venue.city, price: .europe(price),
+                    venueConditionNotice: conditionNotice(key: venue.key, cell: venue.cell, name: venue.name,
+                                                          latitude: venue.latitude, longitude: venue.longitude))
             }
         }
         let ownerMenus = menu.values.flatMap { venue in

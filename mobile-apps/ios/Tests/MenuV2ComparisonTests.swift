@@ -94,6 +94,8 @@ final class MenuV2ComparisonTests: XCTestCase {
         let cell = try XCTUnwrap(MenuV2JSON.cellPage(cellPage(sample, minimum: true),
                                                      cell: self.cell, categories: categories, after: nil))
         let visible = try XCTUnwrap(cell.venues.first?.samples.first)
+        XCTAssertEqual(cell.venues.first?.minimumSpendNotice, page.minimumSpendNotice,
+                       "The venue minimum must remain available for other price feeds")
         XCTAssertTrue(DiscoveryPriceCaveat.visible(for: .menuV2(visible))?.contains("15,00 €") == true)
         XCTAssertTrue(visible.evidence.contains("durante le partite in diretta"))
         XCTAssertTrue(try ComparisonEndpoint.menuV2(key: venueKey, cell: self.cell, after: nil)

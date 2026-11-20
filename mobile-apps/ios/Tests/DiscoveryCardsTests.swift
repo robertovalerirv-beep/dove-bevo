@@ -36,6 +36,37 @@ final class DiscoveryCardsTests: XCTestCase {
         XCTAssertTrue(card.accessibilityValue?.contains("Immagine illustrativa") == true)
     }
 
+    @MainActor func testMixedLegacyCardsShowVenueMinimumAndUnavailableConditionToVoiceOver() throws {
+        let observed = FavouritePrice(drink: "spritz", band: .normal, cents: 800,
+                                      observedOn: "2026-11-01", confirmations: 0, quarantined: false)
+        let minimum = "Consumazione minima 15,00 € a persona, solo se durante le partite in diretta."
+        let row = DiscoveryPresentedRow(key: "n123", name: "Locale vero",
+            url: try XCTUnwrap(URL(string: "https://www.dovebevo.com/bar/n123?c=u0nd9")),
+            latitude: 45.4642, longitude: 9.19, location: "Milano", price: .legacy(observed),
+            venueConditionNotice: minimum)
+        let category = try XCTUnwrap(DrinkCategory.all.first { $0.code == "spritz" })
+        let featured = DiscoveryFeaturedCard(row: row, category: category)
+        let featuredText = descendants(featured).compactMap { ($0 as? UILabel)?.text }.joined(separator: " ")
+        XCTAssertTrue(featuredText.contains(minimum))
+        XCTAssertTrue(featured.accessibilityValue?.contains(minimum) == true)
+        XCTAssertTrue(featured.accessibilityValue?.contains("8,00 €") == true)
+        let ranked = DiscoveryVenueCell(style: .default, reuseIdentifier: nil)
+        ranked.configure(row: row, category: category, band: .normal, rank: 1, distance: "300 m",
+                         today: "2026-11-03", traits: .current)
+        let rankedText = descendants(ranked).compactMap { ($0 as? UILabel)?.text }.joined(separator: " ")
+        XCTAssertTrue(rankedText.contains(minimum))
+        XCTAssertTrue(ranked.accessibilityValue?.contains(minimum) == true)
+        XCTAssertTrue(ranked.accessibilityValue?.contains("8,00 €") == true)
+        let summary = DiscoveryCategorySummary(rows: [row], loading: false, today: "2026-11-03")
+        XCTAssertEqual(summary.headline, "Da 8,00 €")
+        XCTAssertTrue(summary.detail.contains(minimum))
+        var uncertain = row
+        uncertain.venueConditionNotice = "Condizioni del locale non verificate nei dati menu disponibili."
+        let fallback = DiscoveryFeaturedCard(row: uncertain, category: category)
+        XCTAssertTrue(fallback.accessibilityValue?.contains("non verificate") == true)
+        XCTAssertFalse(fallback.accessibilityValue?.contains("15,00") == true)
+    }
+
     @MainActor func testLongMenuFeaturedCardsMountWithoutCroppingAtStandardTextSize() throws {
         try assertLongMenuFeaturedCardsFit(textSize: .large, expectTwoVisibleCards: true)
     }

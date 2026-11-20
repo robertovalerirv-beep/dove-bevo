@@ -34,6 +34,10 @@ import UIKit
                 let target = CGRect(x: photoBox.midX - photo.size.width * scale / 2, y: photoBox.midY - photo.size.height * scale / 2,
                     width: photo.size.width * scale, height: photo.size.height * scale)
                 photo.draw(in: target)
+            } else {
+                UIColor(red: 1, green: 0.92, blue: 0.80, alpha: 1).setFill()
+                context.fill(photoBox)
+                UIImage(named: "BrandMark")?.draw(in: CGRect(x: photoBox.midX - 110, y: photoBox.midY - 110, width: 220, height: 220))
             }
             context.cgContext.restoreGState()
             let pill = CGRect(x: 620, y: 536, width: 368, height: 88)
@@ -50,7 +54,7 @@ import UIKit
             draw(value.venueName, style: venueStyle)
             if !location.isEmpty { draw(location, style: detailStyle) }
             draw(value.provenance, style: detailStyle)
-            draw(value.confirmationLabel, style: detailStyle)
+            if value.menuDetails == nil { draw(value.confirmationLabel, style: detailStyle) }
             if let tier = value.tierLabel {
                 let color: UIColor = value.tier == "affare" ? UIColor(red: 0.14, green: 0.43, blue: 0.21, alpha: 1)
                     : value.tier == "salato" ? UIColor(red: 0.65, green: 0.17, blue: 0.22, alpha: 1) : NativeAppearance.ink

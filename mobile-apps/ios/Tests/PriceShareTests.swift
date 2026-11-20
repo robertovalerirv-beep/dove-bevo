@@ -82,6 +82,43 @@ final class PriceShareTests: XCTestCase {
         XCTAssertNil(PriceShareSnapshot.parse(fields(), currentURL: URLPolicy.homeURL))
     }
 
+    private var offerDocument: URL { URL(string: document.absoluteString + "&offer=offer:1")! }
+    private func offerFields() -> [String: Any] {
+        ["kind": "offer", "href": offerDocument.absoluteString, "venue": "n123", "venueName": "Locale reale",
+         "offer": "offer:1", "drinkName": "Spritz della casa", "amountLabel": "5,50\u{00A0}€",
+         "serving": "Drink singolo", "provenance": "Prezzo del drink da menu, non totale pagato. Supplementi separati. Menu verificato il 2026-11-02",
+         "location": "Milano"]
+    }
+    private func ownerMenu(amount: Int = 550, day: String = "2026-11-02") -> MenuV2Venue {
+        let price = MenuV2Price(id: "offer:1", venueName: "Locale reale", itemName: "Spritz della casa",
+            category: "spritz", band: .normal, amountMinor: amount, currency: "EUR", exponent: 2,
+            servingLabel: "Drink singolo", servingML: nil, origin: .ownerMenu(URL(string: "https://example.org/menu")!, day),
+            feeNotice: "Altre spese del locale non verificate; controlla la scheda del locale.")
+        return MenuV2Venue(key: "n123", cell: "u0nd9", name: "Locale reale", offers: [price],
+            feeNotice: price.feeNotice)
+    }
+    func testSelectedOwnerMenuShareChecksFreshPriceDateAndFees() throws {
+        let captured = try XCTUnwrap(MenuShareOffer.parse(offerFields(), currentURL: offerDocument))
+        let snapshot = try XCTUnwrap(captured.verified(in: ownerMenu()))
+        XCTAssertEqual(snapshot.amount, "5,50 €"); XCTAssertTrue(snapshot.provenance.contains("Altre spese del locale non verificate"))
+        XCTAssertTrue(snapshot.accessibilityDescription.contains("Prezzo da menu"))
+        XCTAssertFalse(snapshot.accessibilityDescription.contains("conferme"))
+        XCTAssertFalse(snapshot.accessibilityDescription.contains("Affare"))
+        XCTAssertNil(captured.verified(in: ownerMenu(amount: 650)))
+        XCTAssertNil(captured.verified(in: ownerMenu(day: "2026-11-03")))
+    }
+    func testOwnerMenuShareRejectsStaleRouteAndUnverifiedClaims() {
+        XCTAssertNil(MenuShareOffer.parse(offerFields(), currentURL: document))
+        var changed = offerFields(); changed["offer"] = "other"
+        XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument))
+        changed = offerFields(); changed["provenance"] = "Menu verificato ieri"
+        XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument))
+        changed = offerFields(); changed["amountLabel"] = "5,50 £"
+        XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument)?.verified(in: ownerMenu()))
+        changed = offerFields(); changed["private"] = "value"
+        XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument))
+    }
+
     @MainActor func testRetiredHiddenChangedPageAndOldCallbacksCannotPresentStalePoster() {
         let state = PriceShareCapture()
         let first = state.begin(documentURL: document)

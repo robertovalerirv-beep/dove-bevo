@@ -30,4 +30,31 @@ public class PriceShareSnapshotTest {
     @Test public void bandConfirmationAndTierMustBeExact(){assertNull(read(json().replace("\"hh\":\"0\"","\"hh\":\"2\"")));assertNull(read(json().replace("\"confirmations\":\"0\"","\"confirmations\":\"1000001\"")));assertNull(read(json().replace("neutro","inventato")));}
     @Test public void oversizedOrControlTextIsRejected(){assertNull(read(json().replace("Locale reale","Locale\\nreale")));assertNull(read(json().replace("London","x".repeat(121))));assertNull(read(json().replace("Dal menu online · verificato il 02/11/2026 · Aperol Spritz","x".repeat(1025))));}
     @Test public void duplicateExtraOrMissingFieldsAreRejected(){assertNull(read(json().replace("\"version\":\"1\"","\"version\":\"1\",\"version\":\"1\"")));assertNull(read(json().replace("\"version\":\"1\"","\"version\":\"1\",\"private\":\"value\"")));assertNull(read(json().replace("\"location\":\"London\"","\"other\":\"London\"")));}
+    private static final String OFFER_URL=URL+"&offer=offer:1";
+    private static String offerJson(){return """
+        {"kind":"offer","href":"https://www.dovebevo.com/mobile/?path=%2Fbar%2Fn123&c=u0nd9&offer=offer:1","venue":"n123","venueName":"Locale reale","offer":"offer:1","drinkName":"Spritz della casa","amountLabel":"5,50 €","serving":"Drink singolo","provenance":"Prezzo del drink da menu, non totale pagato. Supplementi separati. Menu verificato il 2026-11-02","location":"Milano"}
+        """;}
+    private static MenuV2Prices.Venue menu(int amount,String day){
+        MenuV2Prices.Price price=new MenuV2Prices.Price("offer:1","Locale reale","Spritz della casa","spritz",0,amount,"EUR",2,
+            "Drink singolo",null,false,day,"Altre spese del locale non verificate; controlla la scheda del locale.",null,null,
+            "https://example.org/menu","");
+        return new MenuV2Prices.Venue("n123","u0nd9","Locale reale","Altre spese del locale non verificate; controlla la scheda del locale.",java.util.List.of(price));
+    }
+    @Test public void selectedOwnerMenuOfferRequiresFreshMatchingPriceAndKeepsFeeNotice(){
+        MenuShareOffer captured=MenuShareOffer.decode(offerJson(),OFFER_URL,OFFER_URL,4,4);assertNotNull(captured);
+        PriceShareSnapshot result=PriceShareSnapshot.fromMenu(captured,OFFER_URL,menu(550,"2026-11-02"));assertNotNull(result);
+        assertTrue(result.menuPrice);assertEquals("5,50 €",result.amountLabel());assertTrue(result.provenance.contains("Altre spese del locale non verificate"));
+        assertFalse(result.accessibilityDescription().contains("conferme"));assertFalse(result.accessibilityDescription().contains("Affare"));
+        assertNull(PriceShareSnapshot.fromMenu(captured,OFFER_URL,menu(650,"2026-11-02")));
+        assertNull(PriceShareSnapshot.fromMenu(captured,OFFER_URL,menu(550,"2026-11-03")));
+    }
+    @Test public void selectedOwnerMenuOfferRejectsWrongRouteAndDomClaims(){
+        assertNull(MenuShareOffer.decode(offerJson(),OFFER_URL,OFFER_URL,4,5));
+        assertNull(MenuShareOffer.decode(offerJson(),OFFER_URL,URL,4,4));
+        assertNull(MenuShareOffer.decode(offerJson().replace("\"offer\":\"offer:1\"","\"offer\":\"other\""),OFFER_URL,OFFER_URL,4,4));
+        MenuShareOffer wrongCurrency=MenuShareOffer.decode(offerJson().replace("5,50 €","5,50 £"),OFFER_URL,OFFER_URL,4,4);
+        assertNotNull(wrongCurrency);assertNull(PriceShareSnapshot.fromMenu(wrongCurrency,OFFER_URL,menu(550,"2026-11-02")));
+        assertNull(MenuShareOffer.decode(offerJson().replace("Menu verificato il 2026-11-02","Menu verificato il ieri"),OFFER_URL,OFFER_URL,4,4));
+        assertNull(MenuShareOffer.decode(offerJson(),URL,URL,4,4));
+    }
 }

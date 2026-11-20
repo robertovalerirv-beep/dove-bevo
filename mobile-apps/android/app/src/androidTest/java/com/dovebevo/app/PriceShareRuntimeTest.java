@@ -33,12 +33,28 @@ public class PriceShareRuntimeTest {
       <dialog class="sheet sheet--bare" aria-label="Locale reale" style="position:fixed;top:20px;left:10px;margin:0;width:280px"><div class="sheet__body"><article class="scontrino"><div class="scontrino__paper"><h2 class="scontrino__name">Locale reale</h2>
       <section data-dovebevo-share="1" data-version="1" data-venue="n123" data-venue-name="Locale reale" data-drink="spritz" data-drink-name="Spritz" data-hh="0" data-amount-minor="1300" data-currency="GBP" data-serving="drink" data-provenance="Dal menu online · verificato il 02/11/2026 · Aperol Spritz" data-confirmations="0" data-tier="neutro" data-location="London">£13.00</section></div></article></div></dialog><script>document.querySelector('dialog').showModal()</script></body></html>
       """;
+    private static final String OFFER_URL=URL+"&offer=offer:1";
+    private static final String OFFER_HTML="""
+      <!doctype html><html data-dovebevo-mobile-shell="1"><meta name="viewport" content="width=device-width, initial-scale=1"><body>
+      <section class="map" data-selected="n123"></section>
+      <dialog class="sheet sheet--bare" aria-label="Locale reale" style="position:fixed;top:20px;left:10px;margin:0;width:280px"><div class="sheet__body"><article class="scontrino"><div class="scontrino__paper"><h2 class="scontrino__name">Locale reale</h2>
+      <ul><li class="mobile-menu-v2__offer--focused" data-testid="featured-menu-price"><span class="mobile-menu-v2__name">Spritz della casa<small>Prezzo da menu</small></span><strong class="mobile-menu-v2__amount">5,50 €</strong><small class="mobile-menu-v2__meta">Drink singolo</small><small class="mobile-menu-v2__meta">Prezzo del drink da menu, non totale pagato. Supplementi separati.</small><a class="mobile-menu-v2__source" href="https://example.org/menu">Menu verificato il 2026-11-02</a></li></ul>
+      </div></article></div></dialog><script>document.querySelector('dialog').showModal()</script></body></html>
+      """;
     @Before public void setUp(){rules=instrumentation.getTargetContext().getSharedPreferences("dovebevo_rules",0);hadPrevious=rules.contains("accepted_rules_version");previous=rules.getString("accepted_rules_version",null);assertTrue(rules.edit().remove("accepted_rules_version").commit());activity=(MainActivity)instrumentation.startActivitySync(new Intent(instrumentation.getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK));}
     @After public void tearDown(){onMain(()->{setField("website",null);if(web!=null)web.destroy();activity.finish();});SharedPreferences.Editor edit=rules.edit();if(hadPrevious)edit.putString("accepted_rules_version",previous);else edit.remove("accepted_rules_version");assertTrue(edit.commit());}
     @Test public void actualVisibleDomBindsVenueAndHiddenOrWrongHeadingFallsBack()throws Exception {
         load();String raw=evaluate(PriceShareSnapshot.SCRIPT);PriceShareSnapshot snapshot=PriceShareSnapshot.decode(raw,URL,URL,1,1);assertNotNull(raw,snapshot);assertEquals("£13.00",snapshot.amountLabel());
         evaluate("document.querySelector('h2').textContent='Other venue'");assertEquals("null",evaluate(PriceShareSnapshot.SCRIPT));
         evaluate("document.querySelector('h2').textContent='Locale reale';document.querySelector('[data-dovebevo-share]').hidden=true");assertEquals("null",evaluate(PriceShareSnapshot.SCRIPT));
+    }
+    @Test public void selectedOwnerMenuReaderRequiresVisibleFocusedRowAndModal()throws Exception {
+        load(OFFER_URL,OFFER_HTML);
+        assertNotNull(MenuShareOffer.decode(evaluate(MenuShareOffer.SCRIPT),OFFER_URL,OFFER_URL,1,1));
+        evaluate("document.querySelector('li').hidden=true");assertEquals("null",evaluate(MenuShareOffer.SCRIPT));
+        evaluate("document.querySelector('li').hidden=false;document.querySelector('h2').textContent='Wrong venue'");assertEquals("null",evaluate(MenuShareOffer.SCRIPT));
+        evaluate("document.querySelector('h2').textContent='Locale reale';document.querySelector('dialog').close();document.querySelector('dialog').setAttribute('open','')");
+        assertEquals("null",evaluate(MenuShareOffer.SCRIPT));
     }
     @Test public void nonmodalOrCoveredVenueSheetCannotSupplyShareData()throws Exception {
         load();assertNotNull(PriceShareSnapshot.decode(evaluate(PriceShareSnapshot.SCRIPT),URL,URL,1,1));
@@ -120,7 +136,8 @@ public class PriceShareRuntimeTest {
     }
     private android.view.View findAction(android.view.View view,String label){if(label.contentEquals(view.getContentDescription()==null?"":view.getContentDescription()))return view;if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++){android.view.View found=findAction(group.getChildAt(i),label);if(found!=null)return found;}}return null;}
     private String allText(android.view.View view){StringBuilder text=new StringBuilder();if(view instanceof android.widget.TextView)text.append(((android.widget.TextView)view).getText());if(view instanceof android.view.ViewGroup){android.view.ViewGroup group=(android.view.ViewGroup)view;for(int i=0;i<group.getChildCount();i++)text.append(' ').append(allText(group.getChildAt(i)));}return text.toString();}
-    private void load()throws Exception{CountDownLatch loaded=new CountDownLatch(1);onMain(()->{web=new HoldingWebView(activity);web.getSettings().setJavaScriptEnabled(true);web.getSettings().setBlockNetworkLoads(true);web.setWebViewClient(new WebViewClient(){@Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view,android.webkit.WebResourceRequest request){String body=URL.equals(request.getUrl().toString())?HTML:"";return new android.webkit.WebResourceResponse("text/html","UTF-8",new java.io.ByteArrayInputStream(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}@Override public void onPageFinished(WebView view,String url){if(URL.equals(url))loaded.countDown();}});activity.setContentView(web);web.loadUrl(URL);});assertTrue("Owned DOM load deadline",loaded.await(5,TimeUnit.SECONDS));}
+    private void load()throws Exception{load(URL,HTML);}
+    private void load(String target,String html)throws Exception{CountDownLatch loaded=new CountDownLatch(1);onMain(()->{web=new HoldingWebView(activity);web.getSettings().setJavaScriptEnabled(true);web.getSettings().setBlockNetworkLoads(true);web.setWebViewClient(new WebViewClient(){@Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view,android.webkit.WebResourceRequest request){String body=target.equals(request.getUrl().toString())?html:"";return new android.webkit.WebResourceResponse("text/html","UTF-8",new java.io.ByteArrayInputStream(body.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}@Override public void onPageFinished(WebView view,String url){if(target.equals(url))loaded.countDown();}});activity.setContentView(web);web.loadUrl(target);});assertTrue("Owned DOM load deadline",loaded.await(5,TimeUnit.SECONDS));}
     private String evaluate(String script)throws Exception{CountDownLatch done=new CountDownLatch(1);AtomicReference<String> result=new AtomicReference<>();onMain(()->web.evaluateJavascript(script,value->{result.set(value);done.countDown();}));assertTrue("Owned DOM callback deadline",done.await(5,TimeUnit.SECONDS));return result.get();}
     private void onMain(Runnable action){instrumentation.runOnMainSync(action);instrumentation.waitForIdleSync();}
 }

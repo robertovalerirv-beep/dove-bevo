@@ -623,7 +623,7 @@ jobs:
 
   internal-android-build:
     name: Sign Android bundle for internal testing only
-    needs: [internal-android-checks, internal-ios-checks]
+    needs: [internal-android-checks]
     if: >-
       github.event_name == 'push' && github.ref_type == 'tag' &&
       (startsWith(github.ref, 'refs/tags/mobile-testing/v') ||
@@ -657,7 +657,7 @@ jobs:
 
   internal-ios-build:
     name: Sign and upload TestFlight Internal Only build
-    needs: [internal-android-checks, internal-ios-checks]
+    needs: [internal-ios-checks]
     if: >-
       github.event_name == 'push' && github.ref_type == 'tag' &&
       startsWith(github.ref, 'refs/tags/mobile-testing/v') &&
@@ -704,7 +704,7 @@ jobs:
 
   ios-external-beta-build:
     name: Sign and upload candidate for external TestFlight testing
-    needs: [internal-android-checks, internal-ios-checks]
+    needs: [internal-ios-checks]
     if: >-
       github.event_name == 'push' && github.ref_type == 'tag' &&
       startsWith(github.ref, 'refs/tags/mobile-beta/v') &&

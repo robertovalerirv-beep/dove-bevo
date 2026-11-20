@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     private bool saveBusy;
     private string? pendingExactBookmark;
     private string lastTrustedUrl = NavigationPolicy.Home;
+    private int shareCaptureGeneration;
     private NativeReturnDestination returnDestination;
 
     public MainWindow() => InitializeComponent();
@@ -86,6 +87,7 @@ public partial class MainWindow : Window
 
     private void Browser_NavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
+        shareCaptureGeneration++;
         if (e.Uri.Contains("save_offer=", StringComparison.Ordinal) ||
             e.Uri.Contains("save_drink=", StringComparison.Ordinal) ||
             e.Uri.Contains("save_customer=", StringComparison.Ordinal) ||
@@ -132,6 +134,7 @@ public partial class MainWindow : Window
 
     private void RememberMapRoute()
     {
+        shareCaptureGeneration++;
         if (!ready) return;
         mapRoutes.Observe(CurrentBrowserRoute());
         // SourceChanged/HistoryChanged also cover same-document venue navigation.
@@ -205,6 +208,7 @@ public partial class MainWindow : Window
 
     private void Browser_ProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
     {
+        shareCaptureGeneration++;
         ShowError("Il browser si è interrotto. Premi Riprova per riaprire Dove Bevo.");
         ready = false;
     }
@@ -281,11 +285,13 @@ public partial class MainWindow : Window
     // a native panel is open; otherwise the panel is interactive but invisible.
     private void ShowWebsiteIfNoOverlay()
     {
-        Website.Visibility = ready && ErrorPanel.Visibility != Visibility.Visible &&
+        var visibility = ready && ErrorPanel.Visibility != Visibility.Visible &&
             DiscoveryPanel.Visibility != Visibility.Visible &&
             FavouritesPanel.Visibility != Visibility.Visible &&
             RecommendationsPanel.Visibility != Visibility.Visible
             ? Visibility.Visible : Visibility.Hidden;
+        if (Website.Visibility != visibility) shareCaptureGeneration++;
+        Website.Visibility = visibility;
     }
 
     private void Navigate(string address, string? exactBookmark = null,
@@ -434,18 +440,76 @@ public partial class MainWindow : Window
         else await StartBrowser();
     }
 
-    private void Share_Click(object sender, RoutedEventArgs e)
+    private async void Share_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            var current = Website.Source;
+            var current = CurrentBrowserRoute();
+            if (ready && Website.Visibility == Visibility.Visible &&
+                NavigationPolicy.IsTrusted(current) && current is not null &&
+                current.AbsolutePath is "/mobile/" or "/mobile/index.html" &&
+                current.Query.Contains("path=", StringComparison.Ordinal))
+            {
+                var captured = current.AbsoluteUri;
+                var generation = ++shareCaptureGeneration;
+                var script = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory,
+                    "PriceShareReader.js"));
+                var raw = await Website.CoreWebView2.ExecuteScriptAsync(script);
+                if (generation != shareCaptureGeneration || Website.Visibility != Visibility.Visible ||
+                    CurrentBrowserRoute()?.AbsoluteUri != captured) return;
+                var snapshot = PriceShareSnapshot.Parse(raw, captured, CurrentBrowserRoute()?.AbsoluteUri);
+                var offer = snapshot is null
+                    ? PriceShareOfferSnapshot.Parse(raw, captured, CurrentBrowserRoute()?.AbsoluteUri) : null;
+                if (offer is not null)
+                {
+                    var cell = new Uri(captured).Query.TrimStart('?').Split('&')
+                        .FirstOrDefault(pair => pair.StartsWith("c=", StringComparison.Ordinal))?[2..];
+                    if (cell is null)
+                    {
+                        StatusText.Text = "Prezzo del menu non verificabile ora.";
+                        return;
+                    }
+                    StatusText.Text = "Verifica del prezzo del menu…";
+                    using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                    BookmarkPriceResult? latest;
+                    if (offer.OfferId.Length > 0)
+                    {
+                        var actionUrl = $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{offer.VenueKey}&c={cell}&save_offer={Uri.EscapeDataString(offer.OfferId)}";
+                        if (!NavigationPolicy.TrySaveAction(actionUrl, captured, out _))
+                        {
+                            StatusText.Text = "Prezzo del menu non verificabile ora.";
+                            return;
+                        }
+                        latest = await bookmarkPrices.RefreshAsync(new Bookmark(offer.VenueKey,
+                            offer.VenueName, offer.DrinkName, captured, actionUrl), deadline.Token);
+                    }
+                    else latest = (await bookmarkPrices.ResolveOfferForShareAsync(offer, cell, deadline.Token))?.Price;
+                    if (generation != shareCaptureGeneration || Website.Visibility != Visibility.Visible ||
+                        CurrentBrowserRoute()?.AbsoluteUri != captured) return;
+                    if (latest is null || !offer.MatchesVerified(latest))
+                    {
+                        StatusText.Text = "Il prezzo del menu è cambiato. Ricarica il locale e riprova.";
+                        return;
+                    }
+                }
+                PriceShareWindow? preview = snapshot is not null ? new PriceShareWindow(snapshot, captured)
+                    : offer is not null ? new PriceShareWindow(offer, captured) : null;
+                if (preview is null)
+                {
+                    StatusText.Text = "Apri un locale con un prezzo visibile per creare l'immagine.";
+                    return;
+                }
+                preview.Owner = this;
+                preview.ShowDialog();
+                return;
+            }
             Clipboard.SetText(ready && NavigationPolicy.IsTrusted(current)
                 ? current!.AbsoluteUri : lastTrustedUrl);
             StatusText.Text = "Link copiato. Puoi condividerlo.";
         }
         catch (Exception)
         {
-            StatusText.Text = "Non riesco a copiare il link.";
+            StatusText.Text = "Condivisione non disponibile. Riprova dopo aver aperto il prezzo.";
         }
     }
 

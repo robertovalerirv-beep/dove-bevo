@@ -9,7 +9,10 @@ using System.Text.RegularExpressions;
 namespace DoveBevo.Windows;
 
 internal sealed record BookmarkPriceResult(string Price, string? VerifiedCategory,
-    string? VerifiedServing);
+    string? VerifiedServing, string? OfferName = null, string? SourceCheckedOn = null,
+    string? DisplayMeta = null);
+
+internal sealed record OfferShareMatch(string Id, BookmarkPriceResult Price);
 
 /// <summary>Refreshes an exact private favourite from public GET routes; it never submits a price.</summary>
 internal sealed class BookmarkPriceClient
@@ -114,7 +117,8 @@ internal sealed class BookmarkPriceClient
                 (after is null ? "" : "&after=" + Uri.EscapeDataString(after));
             using var page = await ReadAsync(endpoint, cancellation);
             var result = ParseOffer(page, action);
-            if (result.Price is not null) return new(result.Price, result.Category, result.Serving);
+            if (result.Price is not null) return new(result.Price, result.Category, result.Serving,
+                result.Name, result.SourceCheckedOn, result.DisplayMeta);
             if (result.Next is null) return new("Prezzo non disponibile ora", null, null);
             if (result.Next == after) throw new InvalidDataException("Repeated offer cursor");
             after = result.Next;
@@ -122,7 +126,68 @@ internal sealed class BookmarkPriceClient
         throw new InvalidDataException("Offer page limit");
     }
 
-    internal static (string? Price, string? Next, string? Category, string? Serving) ParseOffer(
+    /// <summary>Resolve an unlinked saved spotlight only when exactly one live menu offer matches it.</summary>
+    internal async Task<OfferShareMatch?> ResolveOfferForShareAsync(
+        PriceShareOfferSnapshot snapshot, string cell, CancellationToken cancellation)
+    {
+        if (!Regex.IsMatch(cell, "^[0-9b-hjkmnp-z]{5}$", RegexOptions.CultureInvariant))
+            return null;
+        OfferShareMatch? unique = null;
+        string? after = null;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var index = 0; index < 10; index++)
+        {
+            var endpoint = $"https://www.dovebevo.com/api/mobile/v2/menu/venues/{snapshot.VenueKey}?cell={cell}&limit=100&minimum_spend=1" +
+                (after is null ? "" : "&after=" + Uri.EscapeDataString(after));
+            using var page = await ReadAsync(endpoint, cancellation);
+            var (matches, next) = ParseOffersForShare(page, snapshot, cell);
+            foreach (var match in matches)
+            {
+                if (unique is not null) return null;
+                unique = match;
+            }
+            if (next is null) return unique;
+            if (!seen.Add(next)) throw new InvalidDataException("Repeated offer cursor");
+            after = next;
+        }
+        throw new InvalidDataException("Offer page limit");
+    }
+
+    internal static (IReadOnlyList<OfferShareMatch> Matches, string? Next) ParseOffersForShare(
+        JsonDocument page, PriceShareOfferSnapshot snapshot, string cell)
+    {
+        var root = page.RootElement;
+        var venue = root.GetProperty("venue");
+        if (root.GetProperty("schema_version").GetInt32() != 2 ||
+            root.GetProperty("price_scope").GetString() != "menu_item_only" ||
+            venue.GetProperty("key").GetString() != snapshot.VenueKey ||
+            venue.GetProperty("cell").GetString() != cell ||
+            venue.GetProperty("name").GetString() != snapshot.VenueName)
+            throw new InvalidDataException("Offer identity mismatch");
+        var matches = new List<OfferShareMatch>();
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var offer in root.GetProperty("offers").EnumerateArray())
+        {
+            var id = offer.GetProperty("id").GetString();
+            if (id is null || !Regex.IsMatch(id, "^[A-Za-z0-9._:-]{1,128}$", RegexOptions.CultureInvariant) ||
+                !ids.Add(id)) throw new InvalidDataException("Duplicate or invalid offer identity");
+            if (offer.GetProperty("name").GetString() != snapshot.DrinkName) continue;
+            var action = new SaveAction(snapshot.VenueKey, cell, "offer", id, null, null, null, "");
+            var found = ParseOffer(page, action);
+            if (found.Price is null) continue;
+            var price = new BookmarkPriceResult(found.Price, found.Category, found.Serving,
+                found.Name, found.SourceCheckedOn, found.DisplayMeta);
+            if (snapshot.MatchesVerified(price)) matches.Add(new OfferShareMatch(id, price));
+        }
+        var cursor = root.GetProperty("next_after");
+        var next = cursor.ValueKind == JsonValueKind.Null ? null : cursor.GetString();
+        if (next is not null && (!Regex.IsMatch(next, "^[A-Za-z0-9._:-]{1,128}$", RegexOptions.CultureInvariant) ||
+            !ids.Contains(next))) throw new InvalidDataException("Invalid offer cursor");
+        return (matches, next);
+    }
+
+    internal static (string? Price, string? Next, string? Category, string? Serving,
+        string? Name, string? SourceCheckedOn, string? DisplayMeta) ParseOffer(
         JsonDocument page, SaveAction action)
     {
         var root = page.RootElement;
@@ -135,6 +200,9 @@ internal sealed class BookmarkPriceClient
         string? price = null;
         string? category = null;
         string? serving = null;
+        string? name = null;
+        string? sourceCheckedOn = null;
+        string? displayMeta = null;
         var minimum = DiscoveryClient.MinimumSpendNotice(root);
         foreach (var offer in root.GetProperty("offers").EnumerateArray())
         {
@@ -146,10 +214,52 @@ internal sealed class BookmarkPriceClient
                 (minimum.Length == 0 ? "" : " · " + minimum);
             category = VerifiedOfferCategory(offer);
             serving = VerifiedOfferServing(offer);
+            displayMeta = OfferDisplayMeta(offer);
+            if (offer.TryGetProperty("name", out var nameValue) && nameValue.ValueKind == JsonValueKind.String)
+            {
+                var candidate = nameValue.GetString();
+                if (candidate is { Length: >= 1 and <= 512 } && candidate == candidate.Trim() &&
+                    !candidate.Any(char.IsControl)) name = candidate;
+            }
+            if (offer.TryGetProperty("source", out var source) && source.ValueKind == JsonValueKind.Object &&
+                source.TryGetProperty("checked_on", out var checkedValue) &&
+                checkedValue.ValueKind == JsonValueKind.String)
+            {
+                var checkedDay = checkedValue.GetString();
+                if (DateOnly.TryParseExact(checkedDay, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out _)) sourceCheckedOn = checkedDay;
+            }
         }
         var cursor = root.GetProperty("next_after");
         return (price, cursor.ValueKind == JsonValueKind.Null ? null : cursor.GetString(),
-            category, serving);
+            category, serving, name, sourceCheckedOn, displayMeta);
+    }
+
+    private static string? OfferDisplayMeta(JsonElement offer)
+    {
+        if (!offer.TryGetProperty("serving", out var serving) || serving.ValueKind != JsonValueKind.Object ||
+            !offer.TryGetProperty("context", out var context) || context.ValueKind != JsonValueKind.Object)
+            return null;
+        var label = serving.TryGetProperty("label", out var labelValue) &&
+            labelValue.ValueKind == JsonValueKind.String ? labelValue.GetString() : null;
+        var ml = serving.TryGetProperty("ml", out var mlValue) &&
+            mlValue.ValueKind == JsonValueKind.Number && mlValue.TryGetInt32(out var amount) && amount > 0
+            ? amount.ToString(CultureInfo.InvariantCulture) + " ml" : "";
+        var format = label ?? ml;
+        var kind = context.TryGetProperty("kind", out var kindValue) &&
+            kindValue.ValueKind == JsonValueKind.String ? kindValue.GetString() : null;
+        var condition = context.TryGetProperty("condition", out var conditionValue) &&
+            conditionValue.ValueKind == JsonValueKind.String ? conditionValue.GetString() : null;
+        if (format.Length > 256 || condition is { Length: > 500 } ||
+            (condition is not null && condition.Any(char.IsControl))) return null;
+        var contextText = kind switch {
+            "regular" => condition ?? "",
+            "happy_hour" => string.Join(" · ", new[] { "Happy hour", condition }.Where(value => !string.IsNullOrEmpty(value))),
+            "conditional" => condition is null ? "Prezzo condizionato" : "Solo con: " + condition,
+            _ => null
+        };
+        return contextText is null ? null : string.Join(" · ",
+            new[] { format, contextText }.Where(value => !string.IsNullOrEmpty(value)));
     }
 
     internal static string? VerifiedOfferServing(JsonElement offer)

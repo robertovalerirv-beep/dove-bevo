@@ -25,6 +25,11 @@ final class DiscoveryControllerTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(first.bounds.height, 48)
         XCTAssertLessThanOrEqual(first.bounds.height, 115, "Full-width evidence must not turn simple rows into large cards")
         XCTAssertTrue(first.accessibilityValue?.contains("5,50 €") == true)
+        let visibleEvidence = descendants(first).compactMap { ($0 as? UILabel)?.text }.joined(separator: " ")
+        XCTAssertTrue(visibleEvidence.contains("Condizioni da verificare"))
+        XCTAssertFalse(visibleEvidence.contains("Condizioni del locale non verificate nei dati menu disponibili."))
+        XCTAssertTrue(first.accessibilityValue?.contains("Condizioni del locale non verificate nei dati menu disponibili.") == true,
+                      "VoiceOver must retain the full uncertainty even when the visible compact row uses a short cue")
         mounted.attach(to: self, name: "Scopri-populated")
     }
 
@@ -51,6 +56,11 @@ final class DiscoveryControllerTests: XCTestCase {
         XCTAssertEqual(first.accessibilityIdentifier, "discovery.featured.n901")
         XCTAssertTrue(first.accessibilityLabel?.contains("Locale fixture A") == true)
         XCTAssertTrue(first.accessibilityValue?.contains("5,50 €") == true)
+        let visibleEvidence = descendants(first).compactMap { ($0 as? UILabel)?.text }.joined(separator: " ")
+        XCTAssertTrue(visibleEvidence.contains("Condizioni da verificare"))
+        XCTAssertFalse(visibleEvidence.contains("Condizioni del locale non verificate nei dati menu disponibili."))
+        XCTAssertTrue(first.accessibilityValue?.contains("Condizioni del locale non verificate nei dati menu disponibili.") == true,
+                      "VoiceOver must retain the full uncertainty even when the visible compact row uses a short cue")
         XCTAssertTrue(first.accessibilityValue?.contains("Formato non dichiarato") == true)
         first.sendActions(for: .touchUpInside)
         XCTAssertEqual(opened, URL(string: "https://www.dovebevo.com/bar/n901?c=u0nd9"))

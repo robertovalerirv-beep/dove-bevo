@@ -91,7 +91,14 @@ final class FavoriteComparison {
         for(SavedVenueStore.Venue venue:saved){Cell data=cells.get(cell(venue.url));String key=key(venue.url),name=data==null?null:data.names.get(key);
             if(data!=null&&data.europe!=null&&data.europe.owns(key)){
                 List<EuropePrices.Price> variants=data.europe.selected(key,drink,band);
-                if(name!=null&&!variants.isEmpty()){for(EuropePrices.Price price:variants)rows.add(new Row(venue,name,null,price,State.AVAILABLE));continue;}
+                if(name!=null&&!variants.isEmpty()){
+                    boolean added=false;
+                    for(EuropePrices.Price price:variants){
+                        if(drink==RecommendationDrink.BEER_DRAFT&&!MediumBeerServing.matches(null,price.serving.ml))continue;
+                        rows.add(new Row(venue,name,null,price,State.AVAILABLE));added=true;
+                    }
+                    if(added)continue;
+                }
                 rows.add(new Row(venue,name==null?venue.label:name,null,name==null?State.UNAVAILABLE:State.MISSING));continue;
             }
             Price price=name==null?null:data.prices.get(pair(key,drink,band));rows.add(new Row(venue,name==null?venue.label:name,price,name==null?State.UNAVAILABLE:price==null?State.MISSING:State.AVAILABLE));}

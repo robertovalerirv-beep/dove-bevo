@@ -18,8 +18,10 @@ import {
   loadMobileCell,
   menuMoney,
   mobileMenuVenue,
+  sameVenueIdentity,
   type MenuPage,
   type MenuFee,
+  type MenuMinimumSpend,
   type MenuOffer,
 } from "../menu-v2";
 import { CustomerPricesV2 } from "./CustomerPricesV2";
@@ -297,6 +299,10 @@ function menuFeeAmount(fee: MenuFee): string {
   return `${amount} ${basis}`;
 }
 
+function menuMinimumAmount(minimum: MenuMinimumSpend): string {
+  return `${menuMoney(minimum.amount_minor, minimum.currency, minimum.currency_exponent)} a persona`;
+}
+
 export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
   const savedDrinkKeys = useNativeSavedDrinks();
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
@@ -309,7 +315,11 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [menu, setMenu] = useState<MenuPage | null>(null);
+  const [responseMenu, setMenu] = useState<MenuPage | null>(null);
+  // A separately loaded legacy venue can disagree with the v2 response.
+  // Do not present that response or its conditions as this venue's menu.
+  const menu =
+    responseMenu && venue && sameVenueIdentity(venue, responseMenu.venue) ? responseMenu : null;
   const [menuLoading, setMenuLoading] = useState(true);
   const [menuFailed, setMenuFailed] = useState(false);
   const [menuMoreBusy, setMenuMoreBusy] = useState(false);
@@ -664,6 +674,27 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         </div>
       </section>
     ) : null;
+  const minimumSection =
+    menu && menu.minimum_spends.length > 0 ? (
+      <section class="mobile-menu-v2__minimum" aria-label="Consumazione minima">
+        <h3>Consumazione minima</h3>
+        <p>Questa soglia riguarda la spesa a persona, non è un supplemento per ogni drink.</p>
+        <ul>
+          {menu.minimum_spends.map((minimum) => (
+            <li key={minimum.id}>
+              <span>{minimum.label}</span>
+              <strong>{menuMinimumAmount(minimum)}</strong>
+              {minimum.applicability === "conditional" && minimum.condition && (
+                <small>Solo se: {minimum.condition}</small>
+              )}
+              <a href={minimum.source.url} target="_blank" rel="noopener noreferrer">
+                Fonte verificata il {minimum.source.checked_on}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null;
   const sheet = (
     <Sheet title={venue.name} onClose={onClose} bare>
       <div class="scontrino mobile-venue">
@@ -756,6 +787,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
               </section>
             )}
           </div>
+          {minimumSection}
           {active.length > 0 && (
             <h3 class="section-title">
               {featuredOffer
@@ -764,6 +796,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   : "Prezzi segnalati dai clienti"
                 : it.bar.prices}
             </h3>
+          )}
+          {active.length > 0 && !menu && (
+            <p class="hint" role="status" data-testid="legacy-conditions-unverified">
+              Condizioni del locale da verificare: il prezzo del drink potrebbe non essere la spesa
+              totale a persona.
+            </p>
           )}
           {pricesFailed && (
             <p class="hint" role="alert">

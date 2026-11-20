@@ -54,7 +54,12 @@ public final class DiscoveryRuntimeTest {
     }
     @Test public void drinkDropdownExposesNineCategoriesAndKeepsBandWithoutNewRequests()throws Exception {
         partialOne=true;show(false,new DiscoveryArea(45.4642,9.19,14));awaitLoaded();int before=requests.get();
-        onMain(()->{assertNotNull(activity.findViewById(R.id.discovery_drink));assertTrue(rows().getChildAt(0).getHeight()>0);assertTrue(rows().getChildAt(0).getHeight()<=Math.round(120*activity.getResources().getDisplayMetrics().density));
+        onMain(()->{assertNotNull(activity.findViewById(R.id.discovery_drink));LinearLayout first=(LinearLayout)rows().getChildAt(0);assertTrue(first.getHeight()>0);
+            // The required legacy-price condition notice adds a visible line to the compact row.
+            assertTrue("Condition scope must remain visible",first.getChildAt(2) instanceof TextView);
+            assertTrue("Condition scope must remain visible",((TextView)first.getChildAt(2)).getText().toString().contains("Condizioni del locale non verificate"));
+            assertEquals(View.VISIBLE,first.getChildAt(2).getVisibility());
+            assertTrue("Compact row with condition notice is too tall: "+first.getHeight(),first.getHeight()<=Math.round(160*activity.getResources().getDisplayMetrics().density));
             assertNull(activity.findViewById(android.R.id.content).findViewWithTag("discovery.categoryCarousel"));
             Spinner dropdown=activity.findViewById(R.id.discovery_drink);
             dropdown.setSelection(RecommendationDrink.BEER_DRAFT.ordinal());});

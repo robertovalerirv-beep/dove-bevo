@@ -187,6 +187,8 @@
                                                                TextTrimming="CharacterEllipsis" />
                                                     <TextBlock Text="{Binding Price}" FontSize="20" FontWeight="Bold"
                                                                Foreground="#1B1611" Margin="0,7,0,0" />
+                                                    <TextBlock Text="{Binding MinimumSpend}" FontSize="11" Foreground="#8A421B"
+                                                               TextWrapping="Wrap" Margin="0,3,0,0" />
                                                     <TextBlock Text="{Binding Details}" FontSize="11" Foreground="#5E554B"
                                                                TextTrimming="CharacterEllipsis" />
                                                 </StackPanel>

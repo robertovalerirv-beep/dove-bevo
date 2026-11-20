@@ -67,7 +67,8 @@ final class SavedVenuesViewController: UITableViewController {
         var words = notice.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let customerPrefix = "spese del locale secondo il menu:"
         if words.hasPrefix(customerPrefix) { words = String(words.dropFirst(customerPrefix.count)).trimmingCharacters(in: .whitespacesAndNewlines) }
-        if words.isEmpty || words == "nessuna spesa obbligatoria dichiarata dalla fonte." { return "" }
+        if words.isEmpty || words == "nessun supplemento obbligatorio dichiarato dalla fonte." ||
+            words == "nessuna spesa obbligatoria dichiarata dalla fonte." { return "" }
         let separate = words.contains("spese separate:")
         let partial = words.contains("copertura delle spese parziale") || words.contains("documentate solo in parte")
         let unknown = words.contains("non verificate")
@@ -497,6 +498,7 @@ final class SavedVenuesViewController: UITableViewController {
             if let live {
                 let detail = isStale(menuDay(live)) ? "Da riconfermare: oltre 90 giorni" : ""
                 content.secondaryText = [live.amount + (warning.isEmpty ? "" : " · \(warning)"),
+                                         live.minimumSpendNotice,
                                          feeCue,
                                          [live.currency, serving].filter { !$0.isEmpty }.joined(separator: " · "),
                                          live.evidence, detail]
@@ -506,7 +508,7 @@ final class SavedVenuesViewController: UITableViewController {
                 content.secondaryText = [serving, state].filter { !$0.isEmpty }.joined(separator: "\n")
             }
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning, feeCue: feeCue)
+            content.secondaryTextProperties.numberOfLines = live?.minimumSpendNotice.isEmpty == false ? 0 : detailLineLimit(showing: warning, feeCue: feeCue)
             content.textToSecondaryTextVerticalPadding = 4
             content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
@@ -525,6 +527,7 @@ final class SavedVenuesViewController: UITableViewController {
             let feeCue = live.map { feeScopeCue($0.feeNotice) } ?? ""
             if let live {
                 var details = ["Menu del locale: \(live.amount)" + (warning.isEmpty ? "" : " · \(warning)"),
+                               live.minimumSpendNotice,
                                feeCue,
                                [live.currency, live.serving].filter { !$0.isEmpty }.joined(separator: " · "),
                                live.evidence]
@@ -554,7 +557,7 @@ final class SavedVenuesViewController: UITableViewController {
                 content.secondaryText = [savedServing, state].filter { !$0.isEmpty }.joined(separator: "\n")
             }
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning, feeCue: feeCue)
+            content.secondaryTextProperties.numberOfLines = live?.minimumSpendNotice.isEmpty == false ? 0 : detailLineLimit(showing: warning, feeCue: feeCue)
             content.textToSecondaryTextVerticalPadding = 4
             content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content
@@ -573,6 +576,7 @@ final class SavedVenuesViewController: UITableViewController {
             let feeCue = feeScopeCue(menuPrice.feeNotice)
             content.secondaryText = "\(menuPrice.amount) · \(saved.band.name)" +
                 (warning.isEmpty ? "" : " · \(warning)") + "\n" +
+                (menuPrice.minimumSpendNotice.isEmpty ? "" : "\(menuPrice.minimumSpendNotice)\n") +
                 (feeCue.isEmpty ? "" : "\(feeCue)\n") +
                 [menuPrice.itemName, menuPrice.currency, menuPrice.serving].filter { !$0.isEmpty }.joined(separator: " · ") +
                 "\n" + [menuPrice.evidence,
@@ -580,7 +584,7 @@ final class SavedVenuesViewController: UITableViewController {
                     .filter { !$0.isEmpty }.joined(separator: "\n")
             content.textProperties.font = .preferredFont(forTextStyle: .headline, compatibleWith: traitCollection)
             content.secondaryTextProperties.font = .preferredFont(forTextStyle: .body, compatibleWith: traitCollection)
-            content.secondaryTextProperties.numberOfLines = detailLineLimit(showing: warning, feeCue: feeCue)
+            content.secondaryTextProperties.numberOfLines = menuPrice.minimumSpendNotice.isEmpty ? detailLineLimit(showing: warning, feeCue: feeCue) : 0
             content.textToSecondaryTextVerticalPadding = 4
             content.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 12)
             cell.contentConfiguration = content

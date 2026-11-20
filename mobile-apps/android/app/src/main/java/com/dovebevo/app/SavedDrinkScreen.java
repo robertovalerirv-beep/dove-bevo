@@ -131,7 +131,7 @@ final class SavedDrinkScreen {
             String amount=named!=null?named.amount():!busy&&!menuBusy&&price.available()?NativePricePresentation.amount(price.price,price.mobilePrice):"Prezzo non disponibile";
             String format=named!=null?named.currency+(named.serving().isEmpty()?"":" · "+named.serving())
                     :price.available()?NativePricePresentation.groupLabel(price.price,price.mobilePrice):"";
-            String warnings=named!=null?warningLabels(named.band<0,oldMenuDay(named.day),named.feeNotice)
+            String warnings=named!=null?warningLabels(named.band<0,oldMenuDay(named.day),named)
                     :warningLabels(false,price.available()&&(price.mobilePrice!=null?price.mobilePrice.old:price.price.old));
             compactCard(card,named!=null?named.name:NativePricePresentation.category(item.drink),venueName,amount,format,warnings,open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
@@ -180,7 +180,7 @@ final class SavedDrinkScreen {
             if(current!=null)format=current.currency+(format.isEmpty()?"":" · "+format);
             compactCard(card,item.name,menu==null?item.venue.label:menu.name,
                     current==null?"Prezzo non disponibile":current.amount(),format,
-                    current==null?"":warningLabels(current.band<0,oldMenuDay(current.day),current.feeNotice),open,remove);
+                    current==null?"":warningLabels(current.band<0,oldMenuDay(current.day),current),open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleCustomers=0;
@@ -211,7 +211,7 @@ final class SavedDrinkScreen {
             if(current!=null)format=current.currency+(format.isEmpty()?"":" · "+format);
             compactCard(card,item.name,menu==null?item.venue.label:menu.name,
                     current==null?"Prezzo non disponibile":current.amount(),format,
-                    current==null?"":warningLabels(false,oldMenuDay(current.day),current.feeNotice),open,remove);
+                    current==null?"":warningLabels(false,oldMenuDay(current.day),current),open,remove);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(8);rows.addView(card,size);
         }
         int visibleEurope=0;
@@ -284,9 +284,11 @@ final class SavedDrinkScreen {
     private static String warningLabels(boolean conditional,boolean old){
         return (conditional?"Con condizioni":"")+(conditional&&old?" · ":"")+(old?"Da riverificare":"");
     }
-    private static String warningLabels(boolean conditional,boolean old,String feeNotice){
-        String ageAndCondition=warningLabels(conditional,old),fee=feeScopeCue(feeNotice);
-        return ageAndCondition.isEmpty()?fee:fee.isEmpty()?ageAndCondition:ageAndCondition+" · "+fee;
+    private static String warningLabels(boolean conditional,boolean old,MenuV2Prices.Price price){
+        String ageAndCondition=warningLabels(conditional,old),fee=feeScopeCue(price.feeNotice);
+        String withMinimum=price.minimumSpendNotice.isEmpty()?ageAndCondition:
+                ageAndCondition.isEmpty()?price.minimumSpendNotice:ageAndCondition+" · "+price.minimumSpendNotice;
+        return withMinimum.isEmpty()?fee:fee.isEmpty()?withMinimum:withMinimum+" · "+fee;
     }
     /** Short, source-derived cue only; the exact fee amount and scope stay in expanded evidence. */
     private static String feeScopeCue(String notice){
@@ -294,7 +296,8 @@ final class SavedDrinkScreen {
         String words=notice.trim().toLowerCase(java.util.Locale.ROOT);
         String customerPrefix="spese del locale secondo il menu:";
         if(words.startsWith(customerPrefix))words=words.substring(customerPrefix.length()).trim();
-        if(words.equals("nessuna spesa obbligatoria dichiarata dalla fonte."))return "";
+        if(words.equals("nessun supplemento obbligatorio dichiarato dalla fonte.")||
+                words.equals("nessuna spesa obbligatoria dichiarata dalla fonte."))return "";
         boolean separate=words.contains("spese separate:");
         boolean partial=words.contains("copertura delle spese parziale")||words.contains("documentate solo in parte");
         boolean unknown=words.contains("non verificate");

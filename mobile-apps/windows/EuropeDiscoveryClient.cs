@@ -7,7 +7,8 @@ using System.Text.RegularExpressions;
 
 namespace DoveBevo.Windows;
 
-internal sealed record EuropeVenue(string Key, string Cell, string Name, string City, string Currency);
+internal sealed record EuropeVenue(string Key, string Cell, string Name, string City,
+    string Currency, double Latitude, double Longitude);
 internal sealed record EuropeDiscoverySnapshot(IReadOnlyList<DiscoveryRow> Rows,
     int UnavailableCells, bool CatalogUnavailable, IReadOnlySet<string> Governed,
     IReadOnlySet<string> Hidden, IReadOnlySet<string> Legacy, IReadOnlySet<string> ResolvedCells)
@@ -105,7 +106,8 @@ internal static class EuropeDiscoveryClient
                 DiscoveryArea.Geohash(latitude, longitude) != cell ||
                 country is not ("IT" or "GB" or "FR" or "ES" or "DE") ||
                 currency != (country == "GB" ? "GBP" : "EUR") ||
-                !venues.TryAdd(key, new EuropeVenue(key, cell, name, city, currency)))
+                !venues.TryAdd(key, new EuropeVenue(key, cell, name, city, currency,
+                    latitude, longitude)))
                 throw new InvalidDataException("Invalid European catalogue venue");
         }
         return (version, venues);
@@ -172,7 +174,7 @@ internal static class EuropeDiscoveryClient
             result.Add(new DiscoveryRow(key, cell, venue.Name, venue.City, drink, name, amount,
                 venue.Currency, 2, hh == 1 ? "happy_hour" : "regular",
                 status == "quarantined" ? "Da confermare" : null, source, day,
-                serving.Label, true));
+                serving.Label, true, Latitude: venue.Latitude, Longitude: venue.Longitude));
         }
         return result;
     }

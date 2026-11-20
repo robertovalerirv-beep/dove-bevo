@@ -63,6 +63,39 @@ public final class DiscoveryMenuV2Test {
         assertFalse(result.partial);assertTrue(result.menuSamples);
         assertEquals(1,result.cells.get("u0nd9").menu.get("n123").size());
     }
+    @Test public void cellSampleCarriesConditionalMinimumWithoutInflatingDrinkPrice()throws Exception {
+        String source="{\"id\":\"s-min\",\"url\":\"https://bar.example/menu\",\"text_sha256\":\""
+                +"a".repeat(64)+"\",\"checked_on\":\"2026-11-02\"}";
+        String minimum="{\"id\":\"minimum-1\",\"label\":\"Consumazione minima\",\"amount_minor\":1500,\"currency\":\"EUR\",\"currency_exponent\":2,\"basis\":\"person\",\"applicability\":\"conditional\",\"condition\":\"durante le partite in diretta\",\"source\":"+source+"}";
+        String page=one().replace("\"sample_offers\":", "\"minimum_spends\":["+minimum+"],\"sample_offers\":");
+        MenuV2Prices.Price price=load(page).venues.get(0).samples.get(0);
+        assertEquals("5,50 £",price.amount());
+        assertTrue(price.minimumSpendNotice.contains("15,00 € a persona"));
+        assertTrue(price.evidence().contains("durante le partite in diretta"));
+        DiscoveryData.Venue venue=new DiscoveryData.Venue("n123","Uno","u0nd9","Via A","Milano",45.4642,9.19);
+        DiscoveryData.Row featured=new DiscoveryData.Row(venue,price,new DiscoveryArea(45.4642,9.19,14));
+        String spoken=DiscoveryScreen.featuredAccessibilityLabel(featured,RecommendationDrink.SPRITZ,"Menu verificato 03/11/2026");
+        assertTrue("Drink amount stays separate in TalkBack",spoken.contains("5,50 £"));
+        assertTrue("Conditional minimum is spoken",spoken.contains("15,00 € a persona"));
+        assertTrue("Applicability is spoken",spoken.contains("durante le partite in diretta"));
+        assertFalse("Minimum is not added to drink price",spoken.contains("20,50"));
+        DiscoveryData.Cell legacy=DiscoveryData.parse(DiscoveryTest.bytes(DiscoveryTest.STATIC),
+                DiscoveryTest.bytes(DiscoveryTest.PRICES),"u0nd9","2026-11-03");
+        DiscoveryArea area=new DiscoveryArea(45.4642,9.19,14);
+        DiscoveryData.Cell mixed=DiscoveryData.withMenu(legacy,load(page));
+        DiscoveryData.Row reported=DiscoveryData.rows(Collections.singletonMap("u0nd9",mixed),area,RecommendationDrink.SPRITZ,0)
+                .stream().filter(row->row.venue.key.equals("n123")&&row.menuPrice==null).findFirst().orElseThrow();
+        assertEquals("Customer drink amount stays EUR 8",800,reported.amount());
+        assertTrue(DiscoveryScreen.priceCaveat(reported).contains("15,00 € a persona"));
+        assertTrue(DiscoveryScreen.featuredAccessibilityLabel(reported,RecommendationDrink.SPRITZ,"Segnalato 28/10/2026")
+                .contains("durante le partite in diretta"));
+        DiscoveryData.Row unavailable=DiscoveryData.rows(Collections.singletonMap("u0nd9",DiscoveryData.withoutMenu(legacy)),
+                area,RecommendationDrink.SPRITZ,0).stream().filter(row->row.venue.key.equals("n123")).findFirst().orElseThrow();
+        assertTrue(DiscoveryScreen.priceCaveat(unavailable).contains("non verificate"));
+        assertFalse(DiscoveryScreen.priceCaveat(unavailable).contains("15,00"));
+        assertTrue(MenuV2Prices.cellEndpoint("u0nd9",null).contains("minimum_spend=1"));
+        assertFalse(MenuV2Prices.allowed(MenuV2Prices.cellEndpoint("u0nd9",null).replace("&minimum_spend=1","")));
+    }
     @Test public void wrongIdentityOrSourceIsExcludedWhileLegacyCanRemain()throws Exception {
         assertThrows(IOException.class,()->load(one().replace("\"country\":\"IT\"","\"country\":\"FR\"")));
         assertThrows(IOException.class,()->load(one().replace("https://source.example/menu","http://source.example/menu")));

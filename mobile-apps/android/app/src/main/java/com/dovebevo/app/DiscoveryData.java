@@ -20,24 +20,41 @@ final class DiscoveryData {
     }
     static final class Cell {
         final Map<String,Venue> venues;final FavoriteComparison.Cell approved;final Map<String,List<MenuV2Prices.Price>> menu;
+        final Map<String,String> menuConditions;
         final boolean menuAvailable,menuSamples;
         Cell(Map<String,Venue> venues,FavoriteComparison.Cell approved){this(venues,approved,Collections.emptyMap(),true);}
         Cell(Map<String,Venue> venues,FavoriteComparison.Cell approved,Map<String,List<MenuV2Prices.Price>> menu,boolean menuAvailable){
-            this(venues,approved,menu,menuAvailable,false);
+            this(venues,approved,menu,Collections.emptyMap(),menuAvailable,false);
         }
         Cell(Map<String,Venue> venues,FavoriteComparison.Cell approved,Map<String,List<MenuV2Prices.Price>> menu,boolean menuAvailable,boolean menuSamples){
+            this(venues,approved,menu,Collections.emptyMap(),menuAvailable,menuSamples);
+        }
+        Cell(Map<String,Venue> venues,FavoriteComparison.Cell approved,Map<String,List<MenuV2Prices.Price>> menu,
+             Map<String,String> menuConditions,boolean menuAvailable,boolean menuSamples){
             this.venues=Collections.unmodifiableMap(new LinkedHashMap<>(venues));this.approved=approved;
             this.menu=Collections.unmodifiableMap(new LinkedHashMap<>(menu));this.menuAvailable=menuAvailable;this.menuSamples=menuSamples;
+            this.menuConditions=Collections.unmodifiableMap(new LinkedHashMap<>(menuConditions));
+        }
+        String conditionNotice(String key){
+            if(menuConditions.containsKey(key)){
+                String known=menuConditions.get(key);return known.isEmpty()?null:known;
+            }
+            return "Condizioni del locale non verificate nei dati menu disponibili.";
         }
     }
     static final class Row {
         final Venue venue;final FavoriteComparison.Price price;final EuropePrices.Price mobilePrice;
-        final MenuV2Prices.Price menuPrice;final double metres;
+        final MenuV2Prices.Price menuPrice;final double metres;final String venueConditionNotice;
         Row(Venue venue,FavoriteComparison.Price price,DiscoveryArea area){this(venue,price,null,null,area);}
         Row(Venue venue,FavoriteComparison.Price price,EuropePrices.Price mobilePrice,DiscoveryArea area){this(venue,price,mobilePrice,null,area);}
+        Row(Venue venue,FavoriteComparison.Price price,EuropePrices.Price mobilePrice,DiscoveryArea area,String notice){this(venue,price,mobilePrice,null,area,notice);}
         Row(Venue venue,MenuV2Prices.Price menuPrice,DiscoveryArea area){this(venue,null,null,menuPrice,area);}
         private Row(Venue venue,FavoriteComparison.Price price,EuropePrices.Price mobilePrice,MenuV2Prices.Price menuPrice,DiscoveryArea area){
+            this(venue,price,mobilePrice,menuPrice,area,null);
+        }
+        private Row(Venue venue,FavoriteComparison.Price price,EuropePrices.Price mobilePrice,MenuV2Prices.Price menuPrice,DiscoveryArea area,String notice){
             this.venue=venue;this.price=price;this.mobilePrice=mobilePrice;this.menuPrice=menuPrice;metres=area.metres(venue.lat,venue.lon);
+            this.venueConditionNotice=notice;
         }
         /** Match the app's original-currency and serving groups across the
          * mobile catalogue and named-menu feeds; legacy size stays unknown. */
@@ -72,7 +89,7 @@ final class DiscoveryData {
         FavoriteComparison.Cell approved=legacy==null?
                 new FavoriteComparison.Cell(Collections.emptyMap(),Collections.emptyMap(),false):legacy.approved;
         Map<String,Venue> venues=new LinkedHashMap<>();if(legacy!=null)venues.putAll(legacy.venues);
-        Map<String,List<MenuV2Prices.Price>> prices=new LinkedHashMap<>();
+        Map<String,List<MenuV2Prices.Price>> prices=new LinkedHashMap<>();Map<String,String> conditions=new LinkedHashMap<>();
         boolean ambiguous=false;
         for(MenuV2Prices.CellVenue item:menu.venues){
             Venue known=venues.get(item.key);
@@ -83,10 +100,11 @@ final class DiscoveryData {
             }
             if(known==null)venues.put(item.key,new Venue(item.key,item.name,item.cell,item.address,item.city,item.lat,item.lon));
             prices.put(item.key,item.samples);
+            conditions.put(item.key,item.minimumSpendNotice);
         }
-        return new Cell(venues,approved,prices,!menu.partial&&!ambiguous,true);
+        return new Cell(venues,approved,prices,conditions,!menu.partial&&!ambiguous,true);
     }
-    static Cell withoutMenu(Cell legacy){return new Cell(legacy.venues,legacy.approved,legacy.menu,false);}
+    static Cell withoutMenu(Cell legacy){return new Cell(legacy.venues,legacy.approved,legacy.menu,legacy.menuConditions,false,legacy.menuSamples);}
     static Cell withEurope(Cell legacy,EuropePrices.Cell mobile){
         FavoriteComparison.Cell approved=FavoriteComparison.withEurope(legacy==null?null:legacy.approved,mobile);Map<String,Venue> venues=new LinkedHashMap<>();
         if(legacy!=null)for(Venue v:legacy.venues.values())if(approved.names.containsKey(v.key))venues.put(v.key,v);
@@ -117,17 +135,22 @@ final class DiscoveryData {
         for(Cell cell:cells.values())for(Venue venue:cell.venues.values()) {
             if(duplicate.contains(venue.key))continue;
             if(!seen.add(venue.key)){result.entrySet().removeIf(entry->entry.getValue().venue.key.equals(venue.key));duplicate.add(venue.key);continue;}
+            String conditionNotice=cell.conditionNotice(venue.key);
             for(MenuV2Prices.Price offer:cell.menu.getOrDefault(venue.key,Collections.emptyList())){
-                if(!offer.category.equals(drink.code)||offer.band!=band)continue;
+                if(!offer.category.equals(drink.code)||offer.band!=band||
+                        drink==RecommendationDrink.BEER_DRAFT&&!MediumBeerServing.matches(offer.servingLabel,offer.servingML))continue;
                 String identity=venue.key+"/menu/"+offer.group();Row prior=result.get(identity);
                 if(prior==null||offer.amountMinor<prior.amount())result.put(identity,new Row(venue,offer,area));
             }
             if(cell.approved.europe!=null&&cell.approved.europe.owns(venue.key)){
-                for(EuropePrices.Price price:cell.approved.europe.selected(venue.key,drink,band))result.put(venue.key+"/"+price.group(),new Row(venue,null,price,area));
+                for(EuropePrices.Price price:cell.approved.europe.selected(venue.key,drink,band)){
+                    if(drink==RecommendationDrink.BEER_DRAFT&&!MediumBeerServing.matches(null,price.serving.ml))continue;
+                    result.put(venue.key+"/"+price.group(),new Row(venue,null,price,area,conditionNotice));
+                }
                 continue;
             }
             FavoriteComparison.Price price=cell.approved.prices.get(venue.key+"/"+drink.code+"/"+band);
-            if(price!=null)result.put(venue.key,new Row(venue,price,area));
+            if(price!=null)result.put(venue.key,new Row(venue,price,null,area,conditionNotice));
         }
         return rankRows(new ArrayList<>(result.values()));
     }

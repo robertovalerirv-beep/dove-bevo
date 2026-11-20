@@ -47,10 +47,11 @@ public final class EuropePricesTest {
         assertEquals(2,rows.size());assertNull(rows.get(0).price);assertEquals(175,rows.get(0).mobilePrice.serving.ml.intValue());assertEquals(720,rows.get(0).amount());assertEquals(250,rows.get(1).mobilePrice.serving.ml.intValue());assertEquals("Owned London fixture",rows.get(0).name);
         assertTrue(FavoriteComparison.rows(saved(),Collections.singletonMap("gcpvj",cell),RecommendationDrink.SPRITZ,0).get(0).state==FavoriteComparison.State.MISSING);
     }
-    @Test public void discoveryRetainsBeer250500AndHappyHourAndActualGeography()throws Exception {
+    @Test public void discoveryComparesMediumBeerOnlyAndKeepsOtherVenueFacts()throws Exception {
         EuropePrices.Cell mobile=cell(beer(250,600,0)+","+beer(500,800,0)+","+beer(500,500,1));DiscoveryData.Cell cell=DiscoveryData.withEurope(null,mobile);DiscoveryArea area=new DiscoveryArea(51.5074,-0.1278,14);
         List<DiscoveryData.Row> normal=DiscoveryData.rows(Collections.singletonMap("gcpvj",cell),area,RecommendationDrink.BEER_DRAFT,0);
-        assertEquals(2,normal.size());assertEquals(250,normal.get(0).mobilePrice.serving.ml.intValue());assertEquals(500,normal.get(1).mobilePrice.serving.ml.intValue());assertNull(normal.get(0).price);assertEquals("London",normal.get(0).venue.city);assertEquals(0,normal.get(0).metres,0.01);
+        assertEquals(1,normal.size());assertEquals(500,normal.get(0).mobilePrice.serving.ml.intValue());assertNull(normal.get(0).price);assertEquals("London",normal.get(0).venue.city);assertEquals(0,normal.get(0).metres,0.01);
+        assertEquals(3,mobile.prices.size());
         List<DiscoveryData.Row> hh=DiscoveryData.rows(Collections.singletonMap("gcpvj",cell),area,RecommendationDrink.BEER_DRAFT,1);assertEquals(1,hh.size());assertEquals(500,hh.get(0).amount());
     }
     @Test public void hiddenAndLegacyArraysOverrideEvenActiveRows()throws Exception {

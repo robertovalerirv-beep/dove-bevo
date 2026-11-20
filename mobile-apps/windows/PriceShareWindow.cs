@@ -11,6 +11,9 @@ namespace DoveBevo.Windows;
 /// <summary>Local image preview and export. Opening this window has no public side effect.</summary>
 internal sealed class PriceShareWindow : Window
 {
+    private sealed record Card(string VenueName, string DrinkName, string AmountLabel,
+        string ServingLabel, string BandLabel, string Provenance, string? ConfirmationLabel,
+        string? TierLabel, string Location, string? Drink);
     private static readonly Brush Ink = Brush("#111A22");
     private static readonly Brush Muted = Brush("#52606A");
     private static readonly Brush Cream = Brush("#FFFAF0");
@@ -20,6 +23,15 @@ internal sealed class PriceShareWindow : Window
     private readonly TextBlock feedback = new() { Foreground = Ink, Margin = new Thickness(12, 8, 12, 0) };
 
     internal PriceShareWindow(PriceShareSnapshot snapshot, string publicUrl)
+        : this(new Card(snapshot.VenueName, snapshot.DrinkName, snapshot.AmountLabel,
+            snapshot.ServingLabel, snapshot.BandLabel, snapshot.Provenance,
+            snapshot.ConfirmationLabel, snapshot.TierLabel, snapshot.Location, snapshot.Drink), publicUrl) { }
+
+    internal PriceShareWindow(PriceShareOfferSnapshot snapshot, string publicUrl)
+        : this(new Card(snapshot.VenueName, snapshot.DrinkName, snapshot.AmountLabel,
+            snapshot.Serving, "", snapshot.Provenance, null, null, snapshot.Location, null), publicUrl) { }
+
+    private PriceShareWindow(Card snapshot, string publicUrl)
     {
         this.publicUrl = publicUrl;
         poster = RenderPoster(snapshot);
@@ -42,7 +54,8 @@ internal sealed class PriceShareWindow : Window
         panel.Children.Add(actions);
         var preview = new Image {
             Source = poster, Stretch = Stretch.Uniform, Margin = new Thickness(20),
-            ToolTip = "Illustrazione del drink, non foto del locale"
+            ToolTip = snapshot.Drink is null ? "Logo Dove Bevo, non foto del drink o del locale"
+                : "Illustrazione del drink, non foto del locale"
         };
         var scroll = new ScrollViewer { Content = preview, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         panel.Children.Add(scroll);
@@ -97,7 +110,7 @@ internal sealed class PriceShareWindow : Window
         catch (Exception) { feedback.Text = "Non riesco a salvare l'immagine. Scegli un'altra cartella."; }
     }
 
-    private static BitmapSource RenderPoster(PriceShareSnapshot value)
+    private static BitmapSource RenderPoster(Card value)
     {
         const double width = 1080;
         const double textWidth = 952;
@@ -109,9 +122,10 @@ internal sealed class PriceShareWindow : Window
         };
         if (details.Length > 0) lines.Add((Line(details, 29, FontWeights.Normal, Muted, textWidth), 18));
         lines.Add((Line(value.Provenance, 29, FontWeights.Normal, Muted, textWidth), 18));
-        lines.Add((Line(value.ConfirmationLabel, 29, FontWeights.Normal, Muted, textWidth), 18));
+        if (value.ConfirmationLabel is { } confirmations)
+            lines.Add((Line(confirmations, 29, FontWeights.Normal, Muted, textWidth), 18));
         if (value.TierLabel is { } tier)
-            lines.Add((Line(tier, 32, FontWeights.SemiBold, value.Tier == "affare" ? Green : Ink, textWidth), 18));
+            lines.Add((Line(tier, 32, FontWeights.SemiBold, tier == "Affare" ? Green : Ink, textWidth), 18));
         var height = Math.Max(1100, 700 + lines.Sum(item => item.Text.Height + item.Gap) + 105);
         var visual = new DrawingVisual();
         using (var drawing = visual.RenderOpen())
@@ -121,14 +135,21 @@ internal sealed class PriceShareWindow : Window
             drawing.DrawText(Line("Dove Bevo", 44, FontWeights.Bold, Ink, 600), new Point(154, 44));
             drawing.DrawText(Line("Prezzi reali. Persone reali.", 25, FontWeights.Normal, Ink, 700), new Point(154, 96));
             var photoBox = new Rect(64, 162, textWidth, 490);
-            var art = Artwork(ImageName(value.Drink));
-            var scale = Math.Max(photoBox.Width / art.PixelWidth, photoBox.Height / art.PixelHeight);
-            var image = new Rect(photoBox.X + (photoBox.Width - art.PixelWidth * scale) / 2,
-                photoBox.Y + (photoBox.Height - art.PixelHeight * scale) / 2,
-                art.PixelWidth * scale, art.PixelHeight * scale);
-            drawing.PushClip(new RectangleGeometry(photoBox, 28, 28));
-            drawing.DrawImage(art, image);
-            drawing.Pop();
+            var art = Artwork(value.Drink is null ? "brand-mark.png" : ImageName(value.Drink));
+            drawing.DrawRoundedRectangle(Brushes.White, null, photoBox, 28, 28);
+            if (value.Drink is null)
+                drawing.DrawImage(art, new Rect(photoBox.X + (photoBox.Width - 300) / 2,
+                    photoBox.Y + (photoBox.Height - 300) / 2, 300, 300));
+            else
+            {
+                var scale = Math.Max(photoBox.Width / art.PixelWidth, photoBox.Height / art.PixelHeight);
+                var image = new Rect(photoBox.X + (photoBox.Width - art.PixelWidth * scale) / 2,
+                    photoBox.Y + (photoBox.Height - art.PixelHeight * scale) / 2,
+                    art.PixelWidth * scale, art.PixelHeight * scale);
+                drawing.PushClip(new RectangleGeometry(photoBox, 28, 28));
+                drawing.DrawImage(art, image);
+                drawing.Pop();
+            }
             drawing.DrawRoundedRectangle(Brushes.White, null, new Rect(620, 540, 368, 88), 44, 44);
             drawing.DrawText(Line(value.AmountLabel, 48, FontWeights.Bold, Ink, 330), new Point(644, 552));
             var y = 700.0;
@@ -137,7 +158,8 @@ internal sealed class PriceShareWindow : Window
                 drawing.DrawText(text, new Point(64, y));
                 y += text.Height + gap;
             }
-            drawing.DrawText(Line("Immagine illustrativa del drink, non foto del locale", 22,
+            drawing.DrawText(Line(value.Drink is null ? "Logo Dove Bevo, non foto del drink o del locale"
+                    : "Immagine illustrativa del drink, non foto del locale", 22,
                 FontWeights.Normal, Muted, textWidth), new Point(64, height - 56));
         }
         var bitmap = new RenderTargetBitmap((int)width, (int)Math.Ceiling(height),

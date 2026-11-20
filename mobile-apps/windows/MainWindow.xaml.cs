@@ -458,12 +458,39 @@ public partial class MainWindow : Window
                 if (generation != shareCaptureGeneration || Website.Visibility != Visibility.Visible ||
                     CurrentBrowserRoute()?.AbsoluteUri != captured) return;
                 var snapshot = PriceShareSnapshot.Parse(raw, captured, CurrentBrowserRoute()?.AbsoluteUri);
-                if (snapshot is null)
+                var offer = snapshot is null
+                    ? PriceShareOfferSnapshot.Parse(raw, captured, CurrentBrowserRoute()?.AbsoluteUri) : null;
+                if (offer is not null)
+                {
+                    var cell = new Uri(captured).Query.TrimStart('?').Split('&')
+                        .FirstOrDefault(pair => pair.StartsWith("c=", StringComparison.Ordinal))?[2..];
+                    var actionUrl = $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{offer.VenueKey}&c={cell}&save_offer={Uri.EscapeDataString(offer.OfferId)}";
+                    if (!NavigationPolicy.TrySaveAction(actionUrl, captured, out _))
+                    {
+                        StatusText.Text = "Prezzo del menu non verificabile ora.";
+                        return;
+                    }
+                    StatusText.Text = "Verifica del prezzo del menu…";
+                    using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                    var latest = await bookmarkPrices.RefreshAsync(new Bookmark(offer.VenueKey,
+                        offer.VenueName, offer.DrinkName, captured, actionUrl), deadline.Token);
+                    if (generation != shareCaptureGeneration || Website.Visibility != Visibility.Visible ||
+                        CurrentBrowserRoute()?.AbsoluteUri != captured) return;
+                    if (!offer.MatchesVerified(latest))
+                    {
+                        StatusText.Text = "Il prezzo del menu è cambiato. Ricarica il locale e riprova.";
+                        return;
+                    }
+                }
+                PriceShareWindow? preview = snapshot is not null ? new PriceShareWindow(snapshot, captured)
+                    : offer is not null ? new PriceShareWindow(offer, captured) : null;
+                if (preview is null)
                 {
                     StatusText.Text = "Apri un locale con un prezzo visibile per creare l'immagine.";
                     return;
                 }
-                new PriceShareWindow(snapshot, captured) { Owner = this }.ShowDialog();
+                preview.Owner = this;
+                preview.ShowDialog();
                 return;
             }
             Clipboard.SetText(ready && NavigationPolicy.IsTrusted(current)

@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 namespace DoveBevo.Windows;
 
 internal sealed record BookmarkPriceResult(string Price, string? VerifiedCategory,
-    string? VerifiedServing);
+    string? VerifiedServing, string? OfferName = null, string? SourceCheckedOn = null);
 
 /// <summary>Refreshes an exact private favourite from public GET routes; it never submits a price.</summary>
 internal sealed class BookmarkPriceClient
@@ -114,7 +114,8 @@ internal sealed class BookmarkPriceClient
                 (after is null ? "" : "&after=" + Uri.EscapeDataString(after));
             using var page = await ReadAsync(endpoint, cancellation);
             var result = ParseOffer(page, action);
-            if (result.Price is not null) return new(result.Price, result.Category, result.Serving);
+            if (result.Price is not null) return new(result.Price, result.Category, result.Serving,
+                result.Name, result.SourceCheckedOn);
             if (result.Next is null) return new("Prezzo non disponibile ora", null, null);
             if (result.Next == after) throw new InvalidDataException("Repeated offer cursor");
             after = result.Next;
@@ -122,7 +123,8 @@ internal sealed class BookmarkPriceClient
         throw new InvalidDataException("Offer page limit");
     }
 
-    internal static (string? Price, string? Next, string? Category, string? Serving) ParseOffer(
+    internal static (string? Price, string? Next, string? Category, string? Serving,
+        string? Name, string? SourceCheckedOn) ParseOffer(
         JsonDocument page, SaveAction action)
     {
         var root = page.RootElement;
@@ -135,6 +137,8 @@ internal sealed class BookmarkPriceClient
         string? price = null;
         string? category = null;
         string? serving = null;
+        string? name = null;
+        string? sourceCheckedOn = null;
         var minimum = DiscoveryClient.MinimumSpendNotice(root);
         foreach (var offer in root.GetProperty("offers").EnumerateArray())
         {
@@ -146,10 +150,24 @@ internal sealed class BookmarkPriceClient
                 (minimum.Length == 0 ? "" : " · " + minimum);
             category = VerifiedOfferCategory(offer);
             serving = VerifiedOfferServing(offer);
+            if (offer.TryGetProperty("name", out var nameValue) && nameValue.ValueKind == JsonValueKind.String)
+            {
+                var candidate = nameValue.GetString();
+                if (candidate is { Length: >= 1 and <= 512 } && candidate == candidate.Trim() &&
+                    !candidate.Any(char.IsControl)) name = candidate;
+            }
+            if (offer.TryGetProperty("source", out var source) && source.ValueKind == JsonValueKind.Object &&
+                source.TryGetProperty("checked_on", out var checkedValue) &&
+                checkedValue.ValueKind == JsonValueKind.String)
+            {
+                var checkedDay = checkedValue.GetString();
+                if (DateOnly.TryParseExact(checkedDay, "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out _)) sourceCheckedOn = checkedDay;
+            }
         }
         var cursor = root.GetProperty("next_after");
         return (price, cursor.ValueKind == JsonValueKind.Null ? null : cursor.GetString(),
-            category, serving);
+            category, serving, name, sourceCheckedOn);
     }
 
     internal static string? VerifiedOfferServing(JsonElement offer)

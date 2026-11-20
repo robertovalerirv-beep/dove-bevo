@@ -70,7 +70,7 @@ internal sealed record PriceShareSnapshot(
         catch (JsonException) { return null; }
     }
 
-    private static string? Text(JsonElement value, string key, int maximum, bool empty = false)
+    internal static string? Text(JsonElement value, string key, int maximum, bool empty = false)
     {
         var item = value.GetProperty(key);
         if (item.ValueKind != JsonValueKind.String) return null;
@@ -125,4 +125,70 @@ internal sealed record PriceShareSnapshot(
         return focus.Length == 0 || focus.Length == 2 &&
             focus.Contains("drink=" + drink) && focus.Contains("hh=" + hh);
     }
+}
+
+/// <summary>The selected owner-menu spotlight has no share marker; capture its rendered public row.</summary>
+internal sealed record PriceShareOfferSnapshot(string VenueKey, string VenueName, string OfferId,
+    string DrinkName, string AmountLabel, string Serving, string Provenance, string Location)
+{
+    private static readonly HashSet<string> Fields = [
+        "kind", "href", "venue", "venueName", "offer", "drinkName", "amountLabel",
+        "serving", "provenance", "location"
+    ];
+
+    internal bool MatchesVerified(BookmarkPriceResult result) =>
+        result.OfferName == DrinkName &&
+        result.SourceCheckedOn is { } checkedOn &&
+        Provenance.EndsWith("Menu verificato il " + checkedOn, StringComparison.Ordinal) &&
+        NormalizeAmount(result.Price.Split(" · ", 2)[0]) == NormalizeAmount(AmountLabel);
+
+    internal static PriceShareOfferSnapshot? Parse(string? json, string? captured, string? current)
+    {
+        if (json is null || json.Length > 8192 || captured is null || current != captured ||
+            !Uri.TryCreate(captured, UriKind.Absolute, out var address) ||
+            address.AbsolutePath is not ("/mobile/" or "/mobile/index.html")) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 4 });
+            if (document.RootElement.ValueKind != JsonValueKind.Object) return null;
+            var properties = document.RootElement.EnumerateObject().ToArray();
+            if (properties.Length != Fields.Count ||
+                properties.Select(property => property.Name).ToHashSet(StringComparer.Ordinal).Count != Fields.Count ||
+                properties.Any(property => !Fields.Contains(property.Name))) return null;
+            var root = document.RootElement;
+            if (PriceShareSnapshot.Text(root, "kind", 5) != "offer" ||
+                PriceShareSnapshot.Text(root, "href", 600) != captured) return null;
+            var venue = PriceShareSnapshot.Text(root, "venue", 30);
+            var offer = PriceShareSnapshot.Text(root, "offer", 128);
+            if (venue is null || offer is null || !NavigationPolicy.TryVenue(captured, venue, out _) ||
+                !Regex.IsMatch(offer, "^[A-Za-z0-9._:-]{1,128}$", RegexOptions.CultureInvariant) ||
+                !address.Query.TrimStart('?').Split('&').Contains("offer=" + Uri.EscapeDataString(offer))) return null;
+            var name = PriceShareSnapshot.Text(root, "venueName", 512);
+            var drink = PriceShareSnapshot.Text(root, "drinkName", 512);
+            var amount = PriceShareSnapshot.Text(root, "amountLabel", 32);
+            var serving = PriceShareSnapshot.Text(root, "serving", 600, true);
+            var provenance = PriceShareSnapshot.Text(root, "provenance", 240);
+            var location = PriceShareSnapshot.Text(root, "location", 200, true);
+            if (name is null || drink is null || amount is null || serving is null ||
+                provenance is null || location is null || !ValidAmount(amount) ||
+                !Regex.IsMatch(provenance,
+                    "^Prezzo del drink da menu, non totale pagato\\. Supplementi separati\\. Menu verificato il [0-9]{4}-[0-9]{2}-[0-9]{2}$",
+                    RegexOptions.CultureInvariant)) return null;
+            return new(venue, name, offer, drink, amount, serving, provenance, location);
+        }
+        catch (JsonException) { return null; }
+    }
+
+    private static bool ValidAmount(string label)
+    {
+        var normalized = NormalizeAmount(label);
+        if (!Regex.IsMatch(normalized,
+                "^(?:0|[1-9][0-9]{0,2}(?:\\.[0-9]{3})*|[1-9][0-9]*)(?:,[0-9]{1,3})? [€£]$",
+                RegexOptions.CultureInvariant)) return false;
+        return decimal.TryParse(normalized[..^2], NumberStyles.AllowThousands | NumberStyles.AllowDecimalPoint,
+            CultureInfo.GetCultureInfo("it-IT"), out var amount) && amount is > 0 and <= 100_000_000;
+    }
+
+    private static string NormalizeAmount(string label) =>
+        label.Replace('\u00A0', ' ').Replace('\u202F', ' ');
 }

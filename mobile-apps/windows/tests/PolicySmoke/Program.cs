@@ -96,6 +96,39 @@ Require(PriceShareSnapshot.Parse(shareGbp, shareGbpVenue, shareGbpVenue)?.Amount
 var focusedShare = shareVenue + "&drink=negroni&hh=0";
 Require(PriceShareSnapshot.Parse(shareRaw.Replace(shareVenue, focusedShare), focusedShare, focusedShare) is null,
     "focused drink route must not share a different featured row");
+var ownerOfferUrl = shareVenue + "&offer=menu-123";
+var ownerOfferRaw = JsonSerializer.Serialize(new {
+    kind = "offer", href = ownerOfferUrl, venue = "n123", venueName = "Bar Milano",
+    offer = "menu-123", drinkName = "Spritz della casa", amountLabel = "8,50\u00A0€",
+    serving = "50 cl · Happy hour",
+    provenance = "Prezzo del drink da menu, non totale pagato. Supplementi separati. Menu verificato il 2026-11-19",
+    location = "Bar · Milano"
+});
+var ownerOffer = PriceShareOfferSnapshot.Parse(ownerOfferRaw, ownerOfferUrl, ownerOfferUrl);
+Require(ownerOffer is {
+    OfferId: "menu-123", AmountLabel: "8,50\u00A0€", DrinkName: "Spritz della casa" },
+    "selected owner-menu offer must retain its original displayed amount");
+Require(ownerOffer!.MatchesVerified(new BookmarkPriceResult(
+    "8,50 € · prezzo da menu, supplementi separati", null, null, "Spritz della casa", "2026-11-19")) &&
+    !ownerOffer!.MatchesVerified(new BookmarkPriceResult(
+        "9,50 € · prezzo da menu, supplementi separati", null, null, "Spritz della casa", "2026-11-19")) &&
+    !ownerOffer!.MatchesVerified(new BookmarkPriceResult(
+        "8,50 € · prezzo da menu, supplementi separati", null, null, "Altro drink", "2026-11-19")) &&
+    !ownerOffer!.MatchesVerified(new BookmarkPriceResult(
+        "8,50 € · prezzo da menu, supplementi separati", null, null, "Spritz della casa", "2026-11-18")),
+    "owner-menu image must match the exact live public offer name, amount and source date");
+Require(PriceShareOfferSnapshot.Parse(ownerOfferRaw.Replace("\"offer\":\"menu-123\"", "\"offer\":\"menu-456\""), ownerOfferUrl, ownerOfferUrl) is null,
+    "owner-menu image must reject a different offer in the same venue");
+Require(PriceShareOfferSnapshot.Parse(ownerOfferRaw.Replace("8,50", "8,50 EUR"), ownerOfferUrl, ownerOfferUrl) is null,
+    "owner-menu image must not relabel a currency");
+Require(PriceShareOfferSnapshot.Parse(ownerOfferRaw.Replace("non totale pagato", "totale pagato"), ownerOfferUrl, ownerOfferUrl) is null,
+    "owner-menu image must retain the menu-only price caveat");
+Require(PriceShareOfferSnapshot.Parse(ownerOfferRaw, ownerOfferUrl, shareVenue) is null,
+    "owner-menu image must retire when the focused offer route changes");
+Require(PriceShareOfferSnapshot.Parse(ownerOfferRaw.Replace(JsonSerializer.Serialize("8,50\u00A0€"),
+    JsonSerializer.Serialize("13,00\u00A0£")),
+    ownerOfferUrl, ownerOfferUrl)?.AmountLabel == "13,00\u00A0£",
+    "owner-menu image must preserve the displayed GBP amount");
 
 Require(NavigationPolicy.TryFocusedVenue(
     "https://www.dovebevo.com/bar/n123?c=u0nd9", "n123", "spritz", 0, out var focusedItalian)
@@ -314,10 +347,12 @@ using var namedNegroni = JsonDocument.Parse(JsonSerializer.Serialize(new {
     venue = new { key = "n123", cell = "u0nd9" },
     offers = new[] { new { id = "menu-123", name = "Negroni della casa",
         category = "negroni", serving = new { label = (string?)null, ml = (int?)null },
-        amount_minor = 1000, currency = "EUR", currency_exponent = 2 } },
+        amount_minor = 1000, currency = "EUR", currency_exponent = 2,
+        source = new { checked_on = "2026-11-19" } } },
     next_after = (string?)null,
 }));
-Require(BookmarkPriceClient.ParseOffer(namedNegroni, offerAction!).Category == "negroni",
+Require(BookmarkPriceClient.ParseOffer(namedNegroni, offerAction!) is {
+    Category: "negroni", Name: "Negroni della casa", SourceCheckedOn: "2026-11-19" },
     "named Negroni must use the verified menu category");
 using var poundDraft = JsonDocument.Parse(JsonSerializer.Serialize(new {
     schema_version = 2, price_scope = "menu_item_only",

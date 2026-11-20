@@ -720,8 +720,8 @@
       "id": "altotasso-bologna-20261120-001-birra-spina",
       "name": "Malastrana Original Pils",
       "price_context": "regular",
-      "serving_label": "Spina",
-      "serving_ml": null,
+      "serving_label": "LT 0,5",
+      "serving_ml": 500,
       "source_id": "src-altotasso-bologna-bd51e581e4fa",
       "venue_key": "n3645643530"
     },

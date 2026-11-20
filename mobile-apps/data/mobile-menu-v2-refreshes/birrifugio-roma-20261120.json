@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "kind": "source_only_app_menu_refresh_candidate",
+  "review_status": "independent_review_required",
+  "batch_id": "birrifugio-roma-current-menu-refresh-20261120",
+  "checked_on": "2026-11-20",
+  "venue": {
+    "venue_key": "n3631760159",
+    "cell": "sr2y5",
+    "name": "Birrifugio",
+    "address": "Via Federico Rosazza 4",
+    "city": "Roma",
+    "country": "IT",
+    "lat": 41.8775735,
+    "lon": 12.4660827,
+    "identity_url": "https://www.openstreetmap.org/node/3631760159",
+    "osm_version": 3,
+    "owner_menu_contact": "Via Federico Rosazza 4-6, 00153 Roma; trastevere@birrifugio.com"
+  },
+  "source": {
+    "id": "src-birrifugio-trastevere-155daaa3c0ef",
+    "venue_key": "n3631760159",
+    "cell": "sr2y5",
+    "url": "https://www.birrifugiotrastevere.com/menu/",
+    "format": "html_text_v1",
+    "normalized_sha256": "155daaa3c0ef8c99a909d21cdd2903eccb9d11a8729ffba195d0fc9e88011e31",
+    "captured_raw_sha256": "db3ac9bfb2ce633da6a6c10866ffa9269543ed6d7dc33b5f2ab199d1c46e1045",
+    "captured_bytes": 1801871,
+    "checked_on": "2026-11-20",
+    "captured_twice_identical": true,
+    "fee_coverage": "unknown"
+  },
+  "preconditions": {
+    "prior_manifest_sha256": "60bf65995177d7d00b098833518a6280b2089041ae9711bde6056979e91d14b7",
+    "prior_source_id": "src-birrifugio-trastevere-041684462ee8",
+    "expected_active_offers": 266,
+    "expected_active_offer_ids_sha256": "15f31e903593a6b3ef77901fdf004338167d84919989d28eb3662436c0bd1ff7",
+    "expected_retained_unchanged_offers": 259,
+    "expected_removed_offers": 7,
+    "expected_new_offers": 5,
+    "expected_active_after": 264
+  },
+  "retire_offers": [
+    {
+      "id": "birrifugio-roma-20261111-3406",
+      "owner_product_id": 3406,
+      "expected_status": "active",
+      "expected_name": "MARRY ME IN RIO",
+      "expected_amount_minor": 600,
+      "expected_currency": "EUR",
+      "expected_source_id": "src-birrifugio-trastevere-041684462ee8",
+      "reason": "product ID absent from two identical current owner-menu captures"
+    },
+    {
+      "id": "birrifugio-roma-20261111-3411",
+      "owner_product_id": 3411,
+      "expected_status": "active",
+      "expected_name": "BOCK",
+      "expected_amount_minor": 600,
+      "expected_currency": "EUR",
+      "expected_source_id": "src-birrifugio-trastevere-041684462ee8",
+      "reason": "product ID absent from two identical current owner-menu captures"
+    },
+    {
+      "id": "birrifugio-roma-20261111-3423",
+      "owner_product_id": 3423,
+      "expected_status": "active",
+      "expected_name": "BANANA REPUBLIC",
+      "expected_amount_minor": 600,
+      "expected_currency": "EUR",
+      "expected_source_id": "src-birrifugio-trastevere-041684462ee8",
+      "reason": "product ID absent from two identical current owner-menu captures"
+    },
+    {
+      "id": "birrifugio-roma-20261111-3604",
+      "owner_product_id": 3604,
+      "expected_status": "active",
+      "expected_name": "MC IVORS",
+      "expected_amount_minor": 800,
+      "expected_currency": "EUR",
+      "expected_source_id": "src-birrifugio-trastevere-041684462ee8",
+      "reason": "product ID absent from two identical current owner-menu captures"
+    },
+    {
+      "id": "birrifugio-roma-20261111-3730",
+      "owner_product_id": 3730,
+      "expected_status": "active",
+      "expected_name": "BAYLES",
+      "expected_amount_minor": 400,
+      "expected_currency": "EUR",
+      "expected_source_id": "src-birrifugio-trastevere-041684462ee8",
+      "reason": "product ID absent from two identical current owner-menu captures"
+    },
+    {
+      "id": "birrifugio-roma-20261111-3849",
+      "owner_product_id": 3849,
+      "expected_status": "active",
+      "expected_name": "KYRA",
+      "expected_amount_minor": 600,
+      "expected_currency": "EUR",
+      "expected_source_id": "src-birrifugio-trastevere-041684462ee8",
+      "reason": "product ID absent from two identical current owner-menu captures"
+    },
+    {
+      "id": "birrifugio-roma-20261111-3850",
+      "owner_product_id": 3850,
+      "expected_status": "active",
+      "expected_name": "MARZEN",
+      "expected_amount_minor": 600,
+      "expected_currency": "EUR",
+      "expected_source_id": "src-birrifugio-trastevere-041684462ee8",
+      "reason": "product ID absent from two identical current owner-menu captures"
+    }
+  ],
+  "new_offers": [
+    {
+      "id": "birrifugio-roma-20261120-3419",
+      "owner_product_id": 3419,
+      "venue_key": "n3631760159",
+      "cell": "sr2y5",
+      "source_id": "src-birrifugio-trastevere-155daaa3c0ef",
+      "name": "MOSQUITO KILLER",
+      "category": "beer_draft",
+      "serving_label": "PINTA 0,4",
+      "serving_ml": null,
+      "amount_minor": 600,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "regular",
+      "condition_text": null,
+      "evidence_ref": "Owner HTML product 3419 (BIRRE ALLA SPINA): MOSQUITO KILLER | 6€ | Dimensione: PINTA 0,4"
+    },
+    {
+      "id": "birrifugio-roma-20261120-3448",
+      "owner_product_id": 3448,
+      "venue_key": "n3631760159",
+      "cell": "sr2y5",
+      "source_id": "src-birrifugio-trastevere-155daaa3c0ef",
+      "name": "KING OF FOOLS",
+      "category": "beer_draft",
+      "serving_label": "CALICE 0,33",
+      "serving_ml": null,
+      "amount_minor": 600,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "regular",
+      "condition_text": null,
+      "evidence_ref": "Owner HTML product 3448 (BIRRE ALLA SPINA): KING OF FOOLS | 6€ | Dimensione: CALICE 0,33"
+    },
+    {
+      "id": "birrifugio-roma-20261120-3893",
+      "owner_product_id": 3893,
+      "venue_key": "n3631760159",
+      "cell": "sr2y5",
+      "source_id": "src-birrifugio-trastevere-155daaa3c0ef",
+      "name": "WODAN",
+      "category": "beer_draft",
+      "serving_label": "WILLY 0,5",
+      "serving_ml": null,
+      "amount_minor": 600,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "regular",
+      "condition_text": null,
+      "evidence_ref": "Owner HTML product 3893 (BIRRE ALLA SPINA): WODAN | 6€ | Dimensione: WILLY 0,5"
+    },
+    {
+      "id": "birrifugio-roma-20261120-3615-calice",
+      "owner_product_id": 3615,
+      "venue_key": "n3631760159",
+      "cell": "sr2y5",
+      "source_id": "src-birrifugio-trastevere-155daaa3c0ef",
+      "name": "PECORINO DOC BIOLOGICO",
+      "category": "wine_glass",
+      "serving_label": "Calice",
+      "serving_ml": null,
+      "amount_minor": 600,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "regular",
+      "condition_text": null,
+      "evidence_ref": "Owner HTML product 3615 (BIANCHI): PECORINO DOC BIOLOGICO | card 6€ / 20€ | popup Calice: 6€"
+    },
+    {
+      "id": "birrifugio-roma-20261120-3615-bottiglia",
+      "owner_product_id": 3615,
+      "venue_key": "n3631760159",
+      "cell": "sr2y5",
+      "source_id": "src-birrifugio-trastevere-155daaa3c0ef",
+      "name": "PECORINO DOC BIOLOGICO",
+      "category": null,
+      "serving_label": "Bottiglia",
+      "serving_ml": null,
+      "amount_minor": 2000,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "price_context": "regular",
+      "condition_text": null,
+      "evidence_ref": "Owner HTML product 3615 (BIANCHI): PECORINO DOC BIOLOGICO | card 6€ / 20€ | popup Bottiglia: 20€"
+    }
+  ],
+  "preservation": {
+    "allow_only": [
+      "insert one immutable app-only source",
+      "insert five new app-only offers",
+      "set exactly seven matching app-only offer statuses from active to removed"
+    ],
+    "forbid": [
+      "legacy customer price edits",
+      "website edits",
+      "venue edits",
+      "other offer edits",
+      "fee assertions",
+      "new Cloudflare resources"
+    ],
+    "guard_requirements": [
+      "fresh source digest and venue identity recheck",
+      "transactional dry run and all-row expected-field compare",
+      "abort on extra or missing active offers",
+      "customer and moderation preservation check",
+      "public exact 264-row readback after approved apply"
+    ]
+  }
+}

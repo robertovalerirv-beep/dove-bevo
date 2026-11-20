@@ -246,7 +246,7 @@ final class DiscoveryScreen {
             if(row.menuPrice!=null&&row.menuPrice.sourceUrl!=null)details.addView(text("Fonte: "+row.menuPrice.sourceUrl,12));
             if(old)details.addView(text(menu?NativePricePresentation.menuWarning():activity.getString(R.string.favorites_old),13));
             Button disclosure=new Button(activity);disclosure.setId(R.id.discovery_details);disclosure.setText("⌄");disclosure.setContentDescription("Dettagli prezzo per "+row.venue.name);NativeAppearance.button(disclosure,false);disclosure.setMinWidth(dp(44));disclosure.setMinimumWidth(dp(44));disclosure.setOnClickListener(v->{boolean expand=details.getVisibility()!=View.VISIBLE;details.setVisibility(expand?View.VISIBLE:View.GONE);disclosure.setText(expand?"⌃":"⌄");disclosure.setContentDescription((expand?"Nascondi dettagli prezzo per ":"Dettagli prezzo per ")+row.venue.name);});summary.addView(disclosure,new LinearLayout.LayoutParams(-2,-2));card.addView(summary);
-            String caveat=priceCaveat(row.menuPrice);
+            String caveat=priceCaveat(row);
             if(caveat!=null){TextView warning=text(caveat,12);NativeAppearance.muted(warning);card.addView(warning);}
             card.addView(details);
             LinearLayout.LayoutParams size=new LinearLayout.LayoutParams(-1,-2);size.bottomMargin=dp(6);rows.addView(card,size);
@@ -272,15 +272,33 @@ final class DiscoveryScreen {
         if(price==null)return null;
         String lower=price.feeNotice.toLowerCase(Locale.ROOT),scope="";
         if(lower.contains("spese separate"))scope="Spese separate indicate dal menu";
-        if(lower.contains("nessuna spesa obbligatoria"))scope=appendScope(scope,"Nessuna spesa obbligatoria dichiarata");
+        if(lower.contains("nessun supplemento obbligatorio"))scope=appendScope(scope,"Nessun supplemento obbligatorio dichiarato");
         if(lower.contains("non verificate")||lower.contains("non verificati"))scope=appendScope(scope,"Altre spese non verificate");
         if(lower.contains("documentate solo in parte")||lower.contains("copertura delle spese parziale"))scope=appendScope(scope,"Spese documentate solo in parte");
         if(scope.isEmpty()&&!lower.isEmpty())scope="Spese del locale: vedi dettaglio";
         String condition=price.condition==null||price.condition.isEmpty()?"":"Condizioni: "+price.condition;
-        String visible=appendScope(condition,scope);return visible.isEmpty()?null:visible;
+        String visible=appendScope(condition,price.minimumSpendNotice);
+        visible=appendScope(visible,scope);return visible.isEmpty()?null:visible;
+    }
+    static String priceCaveat(DiscoveryData.Row row){
+        return row.menuPrice!=null?priceCaveat(row.menuPrice):row.venueConditionNotice;
     }
     private static String appendScope(String first,String next){return first.isEmpty()?next:next.isEmpty()?first:first+" · "+next;}
     static String currencyHeading(String currency){return currency.equals("EUR")?"EUR · €":currency.equals("GBP")?"GBP · £":currency;}
+    /** The featured card is one TalkBack target, so its spoken label must include
+     * every material price condition hidden with its descendants. */
+    static String featuredAccessibilityLabel(DiscoveryData.Row row,RecommendationDrink selected,CharSequence source){
+        StringBuilder label=new StringBuilder("Apri ").append(featuredDrinkName(row,selected)).append(" da ").append(row.venue.name)
+                .append(", ").append(row.amountLabel()).append(", ").append(row.groupLabel()).append(", ").append(source);
+        if(row.menuPrice!=null){
+            MenuV2Prices.Price price=row.menuPrice;
+            if(price.condition!=null&&!price.condition.isEmpty())label.append(". Prezzo soggetto a condizioni: ").append(price.condition);
+            if(price.minimumSpendNotice!=null&&!price.minimumSpendNotice.isEmpty())label.append(". ").append(price.minimumSpendNotice);
+            if(price.feeNotice!=null&&!price.feeNotice.isEmpty())label.append(". ").append(price.feeNotice);
+        }
+        else if(row.venueConditionNotice!=null&&!row.venueConditionNotice.isEmpty())label.append(". ").append(row.venueConditionNotice);
+        return label.toString();
+    }
     /** An ordered preview of the same read-only rows shown below, never a synthetic deal. */
     private void addFeatured(DiscoveryData.Row row){
         LinearLayout card=new LinearLayout(activity);card.setOrientation(LinearLayout.VERTICAL);card.setTag(row.venue.url());NativeAppearance.discoveryCard(card);card.setPadding(dp(8),dp(8),dp(8),dp(8));
@@ -293,10 +311,9 @@ final class DiscoveryScreen {
         TextView serving=text(row.groupLabel(),12);NativeAppearance.muted(serving);card.addView(serving);
         String date=row.day();String formatted=date.substring(8)+"/"+date.substring(5,7)+"/"+date.substring(0,4);
         TextView source=text((row.menuSource()?"Menu verificato ":"Segnalato ")+formatted+(row.old()?row.menuSource()?" · Menu da ricontrollare":" · Datato":""),11);NativeAppearance.muted(source);card.addView(source);
-        String caveat=priceCaveat(row.menuPrice);
+        String caveat=priceCaveat(row);
         if(caveat!=null){TextView warning=text(caveat,11);NativeAppearance.muted(warning);card.addView(warning);}
-        card.setClickable(true);card.setFocusable(true);card.setMinimumHeight(dp(48));card.setContentDescription("Apri "+drinkName+" da "+row.venue.name+", "+row.amountLabel()+", "+row.groupLabel()+", "+source.getText()+
-                (row.menuPrice==null?"":", "+(row.menuPrice.condition==null?"":"Prezzo soggetto a condizioni: "+row.menuPrice.condition+". ")+row.menuPrice.feeNotice));
+        card.setClickable(true);card.setFocusable(true);card.setMinimumHeight(dp(48));card.setContentDescription(featuredAccessibilityLabel(row,drink,source.getText()));
         card.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
         card.setOnClickListener(v->{if(usable()&&!busy&&snapshot!=null)navigate.accept(row.venue.url());});
     }

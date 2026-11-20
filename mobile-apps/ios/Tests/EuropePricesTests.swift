@@ -26,7 +26,7 @@ final class EuropePricesTests: XCTestCase {
         }
     }
 
-    func testAllRealServingVariantsAndCurrencyGroupsSurviveWithoutLegacyCasting() throws {
+    func testComparableBeerAndAllOtherServingVariantsKeepOriginalCurrencies() throws {
         let catalog = try EuropeFixtures.catalog()
         let london = try EuropeJSON.resolve(EuropeFixtures.cell("gcpvj"), catalog: catalog, cell: "gcpvj", today: "2026-11-02", checkedToday: "2026-11-02")
         let paris = try EuropeJSON.resolve(EuropeFixtures.cell("u09tv"), catalog: catalog, cell: "u09tv", today: "2026-11-02", checkedToday: "2026-11-02")
@@ -34,9 +34,11 @@ final class EuropePricesTests: XCTestCase {
         let saved = [ComparisonFixtures.saved("n1001", cell: "gcpvj"), ComparisonFixtures.saved("n2001", cell: "u09tv")]
         let snapshot = FavouriteComparisonSnapshot(venues: [:], unavailable: [], europe: europe)
         let beer = FavouriteComparisonRow.sorted(saved: saved, snapshot: snapshot, drink: "beer_draft", band: .normal)
-        XCTAssertEqual(beer.count, 3)
+        XCTAssertEqual(beer.count, 2)
         XCTAssertTrue(beer.allSatisfy { $0.price == nil && $0.europePrice != nil }, "Never coerce foreign prices into legacy cents")
-        XCTAssertEqual(Set(beer.compactMap { $0.displayPrice?.group }), ["GBP|ml:250", "GBP|ml:500", "EUR|ml:500"])
+        XCTAssertEqual(Set(beer.compactMap { $0.displayPrice?.group }), ["GBP|ml:500", "EUR|ml:500"])
+        XCTAssertEqual(london.venues["n1001"]?.prices.filter { $0.drink == "beer_draft" }.count, 2,
+                       "The 250 ml menu fact remains available in venue detail")
         XCTAssertEqual(beer.first?.europePrice?.currency, "EUR", "Group order is separate from cross-currency amount ranking")
         let wine = FavouriteComparisonRow.sorted(saved: [saved[0]], snapshot: snapshot, drink: "wine_glass", band: .normal)
         XCTAssertEqual(wine.compactMap { $0.europePrice?.serving.ml }, [175, 250])
@@ -53,7 +55,7 @@ final class EuropePricesTests: XCTestCase {
         XCTAssertEqual(spritz.groupLabel, "GBP")
         let area = try XCTUnwrap(DiscoveryArea(latitude: 51.5074, longitude: -0.1278, zoom: 14))
         let discovery = DiscoverySnapshot(area: area, venues: [], unavailableCells: [], europe: europe)
-        XCTAssertEqual(discovery.displayRows(drink: "beer_draft", band: .normal).count, 3)
+        XCTAssertEqual(discovery.displayRows(drink: "beer_draft", band: .normal).count, 2)
         XCTAssertTrue(NativeComparablePrice.legacy(FavouritePrice(drink: "beer_draft", band: .normal, cents: 500, observedOn: "2026-11-01", confirmations: 0, quarantined: false)).groupLabel.contains("Formato non dichiarato"))
     }
 
@@ -177,7 +179,7 @@ final class EuropePricesTests: XCTestCase {
             guard case .mobilePrices(let cell) = try transport.call(index).endpoint else { return XCTFail("Unexpected legacy read") }
             try transport.complete(index, .success(EuropeFixtures.cell(cell))); index += 1
         }
-        XCTAssertEqual(output?.displayRows(drink: "beer_draft", band: .normal).count, 2)
+        XCTAssertEqual(output?.displayRows(drink: "beer_draft", band: .normal).count, 1)
         XCTAssertEqual(output?.displayRows(drink: "wine_glass", band: .normal).count, 2)
         XCTAssertTrue(output?.unavailableCells.isEmpty == true, "A validated catalogue establishes complete-empty foreign neighbour cells")
         let failedTransport = DelayedComparisonTransport()
@@ -233,8 +235,8 @@ final class EuropePricesTests: XCTestCase {
         var opened: URL?
         let controller = SavedVenuesViewController(store: store, client: service, activityCheck: { true }) { opened = $0 }
         controller.loadViewIfNeeded(); controller.beginAppearanceTransition(true, animated: false); controller.endAppearanceTransition()
-        XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 2)
-        let index = IndexPath(row: 1, section: 0)
+        XCTAssertEqual(controller.tableView(controller.tableView, numberOfRowsInSection: 0), 1)
+        let index = IndexPath(row: 0, section: 0)
         let row = controller.tableView(controller.tableView, cellForRowAt: index)
         let content = try XCTUnwrap(row.contentConfiguration as? UIListContentConfiguration)
         XCTAssertEqual(content.text, "London fixture")

@@ -212,6 +212,14 @@ test("compile-time seams preserve original source and reject upstream drift", ()
   assert.match(transformApp(app), /useState<string\[\]>\(mobileInitialDrinks\(\)\)/);
   assert.match(transformApp(app), /loadMobileCell\(cell, drinks\)/);
   assert.match(transformApp(app), /mobileMenuPin\(v, drinks\)/);
+  assert.match(
+    transformApp(app),
+    /const minimumPin = price \|\| menuPin \? mobileMinimumPin\(v\) : null/,
+  );
+  assert.match(
+    transformApp(app),
+    /const label = priceLabel \+ \(minimumPin \? ` · \$\{minimumPin\}` : ""\)/,
+  );
   assert.match(transformApp(app), /MobileMapActions onAddPrice/);
   assert.match(
     transformApp(app),

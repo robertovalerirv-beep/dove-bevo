@@ -117,6 +117,18 @@ enum DiscoveryFeaturedEvidence {
 /// A short, truthful warning beside a menu price. The exact venue fee text
 /// remains in the ranked row and VoiceOver description.
 enum DiscoveryPriceCaveat {
+    /// Keep the full uncertainty in VoiceOver and venue details, while the
+    /// compact card uses a short cue that fits beside ordinary price evidence.
+    static func compactVenueCondition(_ notice: String?) -> String? {
+        guard let notice else { return nil }
+        return notice == "Condizioni del locale non verificate nei dati menu disponibili."
+            ? "Condizioni da verificare"
+            : notice
+    }
+    static func fullConditionIfCompacted(_ notice: String?) -> String {
+        guard let notice, compactVenueCondition(notice) != notice else { return "" }
+        return notice
+    }
     static func condition(for value: NativeComparablePrice) -> String? {
         guard case .menuV2(let price) = value, let condition = price.condition, !condition.isEmpty else { return nil }
         return "Prezzo soggetto a condizioni: \(condition)"
@@ -191,7 +203,7 @@ enum DiscoveryPriceCaveat {
         priceLabel.text = row.price.amount
         servingLabel.text = row.price.groupLabel
         let evidenceParts: [String?] = [DiscoveryFeaturedEvidence.text(for: row.price, today: today),
-                                        DiscoveryPriceCaveat.visible(for: row.price), row.venueConditionNotice]
+                                        DiscoveryPriceCaveat.visible(for: row.price), DiscoveryPriceCaveat.compactVenueCondition(row.venueConditionNotice)]
         evidenceLabel.text = evidenceParts.compactMap { $0 }.joined(separator: " · ")
         drinkLabel.font = .preferredFont(forTextStyle: .subheadline, compatibleWith: traits)
         drinkLabel.textColor = NativeAppearance.ink
@@ -227,7 +239,7 @@ enum DiscoveryPriceCaveat {
             stack.leadingAnchor.constraint(equalTo: leadingAnchor), stack.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
         accessibilityLabel = "\(item), \(row.name)"
-        accessibilityValue = "\(row.price.amount). \(row.price.groupLabel). \(evidenceLabel.text ?? ""). \(DiscoveryPriceCaveat.full(for: row.price) ?? "") Immagine illustrativa del drink."
+        accessibilityValue = "\(row.price.amount). \(row.price.groupLabel). \(evidenceLabel.text ?? ""). \(DiscoveryPriceCaveat.fullConditionIfCompacted(row.venueConditionNotice)) \(DiscoveryPriceCaveat.full(for: row.price) ?? "") Immagine illustrativa del drink."
     }
 
     /// Size the shared strip for the longest real item instead of cropping its
@@ -430,11 +442,11 @@ enum DiscoveryPriceCaveat {
         let menuServing: String?
         if case .menuV2 = row.price { menuServing = row.price.groupLabel } else { menuServing = nil }
         let evidenceParts: [String?] = [menuServing, row.price.details(today: today),
-                                        DiscoveryPriceCaveat.condition(for: row.price), row.venueConditionNotice]
+                                        DiscoveryPriceCaveat.condition(for: row.price), DiscoveryPriceCaveat.compactVenueCondition(row.venueConditionNotice)]
         evidence.text = evidenceParts.compactMap { $0 }.joined(separator: " · ")
         accessibilityLabel = row.name
         let section = currencyHeading.map { "\($0). " } ?? ""
-        accessibilityValue = "\(section)\(number) nel formato \(row.price.groupLabel). \(category.name) · \(band.name)\n\(row.price.amount)\n\(location.text ?? "")\n\(evidence.text ?? ""). Immagine illustrativa del drink."
+        accessibilityValue = "\(section)\(number) nel formato \(row.price.groupLabel). \(category.name) · \(band.name)\n\(row.price.amount)\n\(location.text ?? "")\n\(evidence.text ?? ""). \(DiscoveryPriceCaveat.fullConditionIfCompacted(row.venueConditionNotice)) Immagine illustrativa del drink."
         accessibilityHint = "Apre questo locale nella mappa"
         // Narrow or large-type layouts put the exact amount above the evidence,
         // rather than compressing the venue name into an unreadable column.

@@ -29,6 +29,17 @@ internal sealed record DiscoveryRow(string Key, string Cell, string Venue, strin
     string? Serving = null, bool IsEurope = false, string MinimumSpendNotice = "",
     double? Latitude = null, double? Longitude = null)
 {
+    public string PriceLabel => (AmountMinor / Math.Pow(10, Exponent))
+        .ToString("N" + Exponent, CultureInfo.GetCultureInfo("it-IT")) + " " + Currency;
+    public string VenueLocation => City.Length == 0 ? "Località non indicata" : City;
+    public string DrinkSummary => Drink + (Serving is { Length: > 0 } ? " · " + Serving : "") +
+        (Context == "regular" ? "" : Context == "happy_hour" ? " · Happy hour" : " · Condizione");
+    public string SourceSummary => SourceUrl is null
+        ? $"Segnalato da un cliente il {CheckedOn:dd/MM/yyyy}"
+        : $"Menu: {new Uri(SourceUrl).DnsSafeHost} · verificato {CheckedOn:dd/MM/yyyy}";
+    public string ConditionsSummary => string.Join(" · ", new[] { Condition, MinimumSpendNotice }
+        .Where(value => !string.IsNullOrWhiteSpace(value)));
+
     public string Display
     {
         get

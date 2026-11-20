@@ -434,6 +434,24 @@ Require(legacyRows.Count == 2 && legacyRows.All(row => row.SourceUrl is null && 
         row.Display.Contains("5,50 EUR") && row.FocusedVenue() is not null) &&
     legacyRows.Any(row => row.Key == "u1" && row.Venue == "Customer Bar"),
     "Italian customer prices missing from Windows discovery");
+var guardedAtLegacy = guardedOffer with { Key = "n123", Venue = "Test Bar" };
+var qualifiedLegacy = DiscoveryClient.QualifyAdditionalRows([guardedAtLegacy], legacyRows);
+var sameVenueLegacy = qualifiedLegacy.Single(row => row.Key == "n123");
+Require(sameVenueLegacy.AmountMinor == 550 &&
+    sameVenueLegacy.MinimumSpendNotice == guardedAtLegacy.MinimumSpendNotice &&
+    sameVenueLegacy.Display.Contains("5,50 EUR") &&
+    sameVenueLegacy.Display.Contains("15,00 EUR a persona") &&
+    FeaturedDiscoveryCards.FromRows([sameVenueLegacy]).Single().MinimumSpend ==
+        guardedAtLegacy.MinimumSpendNotice,
+    "same-venue customer and featured prices must announce the separate owner minimum");
+Require(qualifiedLegacy.Single(row => row.Key == "u1").MinimumSpendNotice ==
+    DiscoveryClient.UnverifiedConditionsNotice &&
+    DiscoveryClient.QualifyAdditionalRows([], legacyRows).All(row =>
+        row.Display.Contains(DiscoveryClient.UnverifiedConditionsNotice)),
+    "a filtered-out venue or unavailable v2 read must not look free of other conditions");
+Require(DiscoveryClient.QualifyAdditionalRows([offer with { Key = "n123" }], legacyRows)
+        .Single(row => row.Key == "n123").MinimumSpendNotice.Length == 0,
+    "an exact checked venue without a minimum must not get a fabricated caveat");
 var staleArea = new DiscoveryArea(45.4642, 9.1900, 14);
 var resultGate = new DiscoveryResultGate();
 var priorLoad = resultGate.Begin(staleArea);

@@ -82,6 +82,56 @@ final class PriceShareTests: XCTestCase {
         XCTAssertNil(PriceShareSnapshot.parse(fields(), currentURL: URLPolicy.homeURL))
     }
 
+    private var offerDocument: URL { URL(string: document.absoluteString + "&offer=offer:1")! }
+    private func offerFields() -> [String: Any] {
+        ["kind": "offer", "href": offerDocument.absoluteString, "venue": "n123", "venueName": "Locale reale",
+         "offer": "offer:1", "drinkName": "Spritz della casa", "amountLabel": "5,50\u{00A0}€",
+         "serving": "Drink singolo", "provenance": "Prezzo del drink da menu, non totale pagato. Supplementi separati. Menu verificato il 2026-11-02",
+         "location": "Milano"]
+    }
+    private func ownerMenu(amount: Int = 550, day: String = "2026-11-02",
+                           band: ComparisonBand? = .normal, condition: String? = nil) -> MenuV2Venue {
+        var price = MenuV2Price(id: "offer:1", venueName: "Locale reale", itemName: "Spritz della casa",
+            category: "spritz", band: band, amountMinor: amount, currency: "EUR", exponent: 2,
+            servingLabel: "Drink singolo", servingML: nil, origin: .ownerMenu(URL(string: "https://example.org/menu")!, day),
+            feeNotice: "Altre spese del locale non verificate; controlla la scheda del locale.")
+        price.condition = condition
+        return MenuV2Venue(key: "n123", cell: "u0nd9", name: "Locale reale", offers: [price],
+            feeNotice: price.feeNotice)
+    }
+    func testSelectedOwnerMenuShareChecksFreshPriceDateAndFees() throws {
+        let captured = try XCTUnwrap(MenuShareOffer.parse(offerFields(), currentURL: offerDocument))
+        let snapshot = try XCTUnwrap(captured.verified(in: ownerMenu()))
+        XCTAssertEqual(snapshot.amount, "5,50 €"); XCTAssertTrue(snapshot.provenance.contains("Altre spese del locale non verificate"))
+        XCTAssertTrue(snapshot.accessibilityDescription.contains("Prezzo da menu"))
+        XCTAssertFalse(snapshot.accessibilityDescription.contains("conferme"))
+        XCTAssertFalse(snapshot.accessibilityDescription.contains("Affare"))
+        XCTAssertNil(captured.verified(in: ownerMenu(amount: 650)))
+        XCTAssertNil(captured.verified(in: ownerMenu(day: "2026-11-03")))
+    }
+    func testOwnerMenuShareRejectsStaleRouteAndUnverifiedClaims() {
+        XCTAssertNil(MenuShareOffer.parse(offerFields(), currentURL: document))
+        var changed = offerFields(); changed["offer"] = "other"
+        XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument))
+        changed = offerFields(); changed["provenance"] = "Menu verificato ieri"
+        XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument))
+        changed = offerFields(); changed["amountLabel"] = "5,50 £"
+        XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument)?.verified(in: ownerMenu()))
+        changed = offerFields(); changed["private"] = "value"
+        XCTAssertNil(MenuShareOffer.parse(changed, currentURL: offerDocument))
+    }
+    func testOwnerMenuShareRetainsOnlyLiveMatchedHappyHourAndRegularConditions() throws {
+        var happy = offerFields(); happy["serving"] = "Drink singolo · Happy hour · 17:00–19:00"
+        let capturedHappy = try XCTUnwrap(MenuShareOffer.parse(happy, currentURL: offerDocument))
+        XCTAssertNil(capturedHappy.verified(in: ownerMenu(band: .happyHour)))
+        let verifiedHappy = try XCTUnwrap(capturedHappy.verified(in: ownerMenu(band: .happyHour, condition: "17:00–19:00")))
+        XCTAssertTrue(verifiedHappy.accessibilityDescription.contains("Happy hour · 17:00–19:00"))
+        var regular = offerFields(); regular["serving"] = "Drink singolo · Solo al banco"
+        let capturedRegular = try XCTUnwrap(MenuShareOffer.parse(regular, currentURL: offerDocument))
+        XCTAssertNil(capturedRegular.verified(in: ownerMenu()))
+        XCTAssertNotNil(capturedRegular.verified(in: ownerMenu(condition: "Solo al banco")))
+    }
+
     @MainActor func testRetiredHiddenChangedPageAndOldCallbacksCannotPresentStalePoster() {
         let state = PriceShareCapture()
         let first = state.begin(documentURL: document)
@@ -187,6 +237,19 @@ final class PriceShareTests: XCTestCase {
         _ = try await evaluate(web, "document.querySelectorAll('#price')[1].remove();const unrelated=document.createElement('dialog');unrelated.textContent='Owned unrelated modal';document.body.append(unrelated);unrelated.showModal();true")
         let background = try await evaluate(web, "(\(PriceShareReader.script))===null")
         XCTAssertTrue(background as? Bool == true, "The underlying venue is implicitly inert behind any other modal")
+        _ = try await evaluate(web, #"""
+            document.querySelectorAll('dialog')[1].close();document.querySelectorAll('dialog')[1].remove();
+            document.querySelectorAll('[data-dovebevo-share]')[0].remove();
+            history.replaceState({}, '', '?path=%2Fbar%2Fn123&c=u0nd9&offer=offer:1');
+            const row=document.createElement('li');row.className='mobile-menu-v2__offer--focused';row.dataset.testid='featured-menu-price';
+            row.innerHTML='<span class="mobile-menu-v2__name">Spritz della casa<small>Prezzo da menu</small></span><strong class="mobile-menu-v2__amount">5,50 €</strong><small class="mobile-menu-v2__meta">Drink singolo</small><small class="mobile-menu-v2__meta">Prezzo del drink da menu, non totale pagato. Supplementi separati.</small><a class="mobile-menu-v2__source" href="https://example.org/menu">Menu verificato il 2026-11-02</a>';
+            document.querySelector('.scontrino__paper').appendChild(row);true
+            """#)
+        let menu = try await evaluate(web, MenuShareReader.script)
+        XCTAssertNotNil(MenuShareOffer.parse(menu, currentURL: offerDocument))
+        _ = try await evaluate(web, "document.querySelector('[data-testid=featured-menu-price]').hidden=true;true")
+        let hiddenMenu = try await evaluate(web, "(\(MenuShareReader.script))===null")
+        XCTAssertTrue(hiddenMenu as? Bool == true)
     }
 
     @MainActor private func evaluate(_ web: WKWebView, _ script: String) async throws -> Any {

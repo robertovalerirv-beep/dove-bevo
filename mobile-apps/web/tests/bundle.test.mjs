@@ -886,53 +886,51 @@ test("map search stays usable above a short keyboard viewport and after closing"
   }
 });
 
-test("map Home restores the selected city viewport after zoom without clearing the drink", async () => {
+test("map Home restores the launch overview after city search and location without clearing the drink", async () => {
   const f = await fixture({ width: 390, height: 700 });
   try {
-    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.route("**/data/*/places.json", (route) =>
+      route.fulfill({ json: [[62505581, "Milano", 45.4642, 9.19, 3]] }),
+    );
+    await f.page.goto("https://mobile.fixture.test/mobile/");
     const map = f.page.locator("section.map");
     await f.page.waitForFunction(() => {
       const element = document.querySelector("section.map");
       return (
         element?.getAttribute("data-ready") === "true" &&
-        Math.abs(Number(element.getAttribute("data-zoom")) - 14) < 0.1
+        Number(element.getAttribute("data-zoom")) > 0 &&
+        Number(element.getAttribute("data-zoom")) < 10
       );
     });
-    const start = await map.getAttribute("data-center");
+    const overview = {
+      center: await map.getAttribute("data-center"),
+      zoom: await map.getAttribute("data-zoom"),
+    };
+    assert.ok(overview.center && overview.zoom);
     const drink = await f.page.locator(".mobile-drink-menu__summary").innerText();
-    const box = await map.boundingBox();
-    assert.ok(box);
-    await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await f.page.mouse.wheel(0, 650);
-    await f.page.waitForFunction(
-      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) < 14,
-    );
-    await f.page.getByRole("button", { name: "Vista iniziale della città" }).click();
-    await f.page.waitForFunction(() => {
+    await f.page.locator('button[data-dovebevo-search="1"]').click();
+    await f.page.getByRole("dialog").getByRole("button", { name: /^Milano/ }).first().click();
+    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 13.9);
+    const home = f.page.getByRole("button", { name: "Vista iniziale della mappa" });
+    await home.click();
+    await f.page.waitForFunction(({ center, zoom }) => {
       const element = document.querySelector("section.map");
       return (
-        element?.getAttribute("data-center") === "45.46420,9.19000" &&
-        Math.abs(Number(element.getAttribute("data-zoom")) - 14) < 0.1
+        element?.getAttribute("data-center") === center &&
+        element.getAttribute("data-zoom") === zoom
       );
-    });
-    assert.equal(await map.getAttribute("data-center"), start);
-    await f.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await f.page.mouse.down();
-    await f.page.mouse.move(box.x + box.width / 2 + 70, box.y + box.height / 2 + 35, {
-      steps: 8,
-    });
-    await f.page.mouse.up();
-    await f.page.waitForFunction(
-      () =>
-        document.querySelector("section.map")?.getAttribute("data-center") !== "45.46420,9.19000",
-    );
-    await f.page.getByRole("button", { name: "Vista iniziale della città" }).click();
-    await f.page.waitForFunction(
-      () =>
-        document.querySelector("section.map")?.getAttribute("data-center") === "45.46420,9.19000",
-    );
+    }, overview);
+    await f.page.context().setGeolocation({ latitude: 43.7696, longitude: 11.2558 });
+    await f.page.context().grantPermissions(["geolocation"], { origin: "https://mobile.fixture.test" });
+    await f.page.getByRole("button", { name: "Vicino a me" }).click();
+    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14.9);
+    await home.click();
+    await f.page.waitForFunction(({ center, zoom }) => {
+      const element = document.querySelector("section.map");
+      return element?.getAttribute("data-center") === center && element.getAttribute("data-zoom") === zoom;
+    }, overview);
     assert.equal(await f.page.locator(".mobile-drink-menu__summary").innerText(), drink);
-    assert.equal(new URL(f.page.url()).searchParams.get("at"), "45.4642,9.19");
+    assert.equal(new URL(f.page.url()).searchParams.has("at"), false);
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
   } finally {
@@ -940,14 +938,19 @@ test("map Home restores the selected city viewport after zoom without clearing t
   }
 });
 
-test("Italian map Home command closes a selected venue and returns to the chosen city", async () => {
+test("Italian map Home closes a selected venue and returns to the launch overview", async () => {
   const f = await fixture();
   try {
-    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.goto("https://mobile.fixture.test/mobile/");
     const map = f.page.locator("section.map");
-    await f.page.waitForFunction(() =>
-      Boolean(document.querySelector("section.map")?.getAttribute("data-center")),
-    );
+    await f.page.waitForFunction(() => document.querySelector("section.map")?.getAttribute("data-ready") === "true");
+    const overview = {
+      center: await map.getAttribute("data-center"),
+      zoom: await map.getAttribute("data-zoom"),
+    };
+    assert.ok(overview.center && overview.zoom);
+    await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
+    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 13.9);
     const drink = await f.page.locator(".mobile-drink-menu__summary").innerText();
     await f.page.locator(".map__list").click();
     await f.page
@@ -958,15 +961,16 @@ test("Italian map Home command closes a selected venue and returns to the chosen
     const historyLength = await f.page.evaluate(() => history.length);
     // The venue dialog covers the map row, so dispatch the same Home command directly.
     await f.page.evaluate(() => document.querySelector(".mobile-map-home").click());
-    await f.page.waitForFunction(() => {
+    await f.page.waitForFunction(({ center, zoom }) => {
       const element = document.querySelector("section.map");
       return (
         element?.getAttribute("data-selected") === "" &&
-        element.getAttribute("data-center") === "45.46420,9.19000" &&
-        Math.abs(Number(element.getAttribute("data-zoom")) - 14) < 0.1
+        element.getAttribute("data-center") === center &&
+        element.getAttribute("data-zoom") === zoom
       );
-    });
+    }, overview);
     assert.equal(new URL(f.page.url()).searchParams.has("path"), false);
+    assert.equal(new URL(f.page.url()).searchParams.has("at"), false);
     assert.equal(await f.page.evaluate(() => history.length), historyLength);
     assert.equal(await map.getAttribute("data-selected"), "");
     assert.equal(await f.page.locator("h2.scontrino__name").count(), 0);

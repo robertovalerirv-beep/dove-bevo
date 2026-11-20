@@ -81,8 +81,9 @@ export const steps: readonly Step[] = [
 export const ciOnly: readonly { command: string; reason: string }[] = [
   { command: "npm ci", reason: "verify runs on the dependencies already installed" },
   {
-    command: "echo 'https://mirrors.edge.kernel.org/ubuntu' | sudo tee /etc/apt/apt-mirrors.txt",
-    reason: "GitHub runner setup",
+    command:
+      "printf '%s\\tpriority:%s\\n' 'https://mirrors.edge.kernel.org/ubuntu' 1 'https://mirrors.ocf.berkeley.edu/ubuntu' 2 'https://mirrors.mit.edu/ubuntu' 3 | sudo tee /etc/apt/apt-mirrors.txt",
+    reason: "GitHub runner Ubuntu archive mirror setup with failover",
   },
   {
     command: "npx playwright install --with-deps chromium webkit",

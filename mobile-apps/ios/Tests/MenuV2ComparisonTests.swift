@@ -80,6 +80,21 @@ final class MenuV2ComparisonTests: XCTestCase {
                        "https://www.dovebevo.com/api/mobile/v2/menu/cells/u0nd9?categories=\(categories.joined(separator: ","))&minimum_spend=1")
     }
 
+    func testOwnerMenuDecoderRetainsRegularAndHappyHourConditionsForExactShare() throws {
+        var happy = offer("a1", context: "happy_hour", cents: 550)
+        happy["context"] = ["kind": "happy_hour", "condition": "17:00–19:00"]
+        var regular = offer("a2", context: "regular", cents: 650)
+        regular["context"] = ["kind": "regular", "condition": "Solo al banco"]
+        let page = try XCTUnwrap(MenuV2JSON.menuPage(menu([happy, regular], count: 2, next: nil),
+                                                    key: venueKey, cell: cell))
+        XCTAssertEqual(page.offers.map(\.condition), ["17:00–19:00", "Solo al banco"])
+        XCTAssertEqual(page.offers.map(\.band), [.happyHour, .normal])
+        happy["currency"] = "EUR"
+        let parsedCell = try XCTUnwrap(MenuV2JSON.cellPage(cellPage(happy), cell: cell,
+                                                       categories: DrinkCategory.all.map(\.code), after: nil))
+        XCTAssertEqual(parsedCell.venues.first?.samples.first?.condition, "17:00–19:00")
+    }
+
     func testConditionalMinimumIsSeparateFromDrinkAndFeeAndVisibleInDiscovery() throws {
         var sample = offer("spritz-1", context: "regular", cents: 450)
         sample["currency"] = "EUR"

@@ -1273,7 +1273,13 @@ test("approved owner menu venue appears as a menu price pin and opens read-only 
       "https://mobile.fixture.test/mobile/?path=%2Fbar%2Fmaaaaaaaaaaaaaaaaaaaaaaaa&c=u0nd9",
     );
     await f.page.getByRole("heading", { name: "Locale da menu" }).waitFor();
-    assert.match(await f.page.locator(".bar__kind").innerText(), /Locale · Milano/);
+    assert.match(await f.page.locator(".bar__kind").innerText(), /Locale · Milano/i);
+    assert.equal(
+      await f.page
+        .locator(".bar__kind")
+        .evaluate((element) => getComputedStyle(element).textTransform),
+      "uppercase",
+    );
     assert.match(
       await f.page.getByTestId("featured-menu-price").innerText(),
       /Spritz speciale[\s\S]*7,50\s€/,
@@ -1776,7 +1782,14 @@ test("v2 outage preserves legacy map and retries fresh Tutti after recovery", as
     assert.ok(initialAllRequests >= 1);
     options.menuUnavailable = false;
     await openDrinks(f.page);
+    const selectedSample = f.page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/mobile/v2/menu/cells/u0nd9" &&
+        new URL(response.url()).searchParams.get("categories") === "spritz",
+      { timeout: 8000 },
+    );
     await f.page.getByRole("checkbox", { name: "Spritz", exact: true }).check({ force: true });
+    assert.equal((await selectedSample).status(), 200, "Recovered selected menu request");
     assert.equal(await f.page.locator(".mobile-menu-map-note").count(), 0);
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
@@ -2012,10 +2025,18 @@ test("concurrent drink selections share one failed full-menu recovery read", asy
         ).length === 2,
       { timeout: 8000 },
     );
-    options.releaseOldIdentity();
-    // Release the held sample before waiting for the recovery failure: the
-    // product's bounded request timeout must not expire because of this test.
+    const selectedSample = f.page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/mobile/v2/menu/cells/u0nd9" &&
+        new URL(response.url()).searchParams.get("categories") === "gin_tonic,spritz",
+      { timeout: 8000 },
+    );
+    // The concurrent selections are already in flight. Complete their held
+    // selected sample before triggering identity recovery, within the app's
+    // bounded request window, then verify the failed recovery cannot erase it.
     options.releaseCombinedSample();
+    assert.equal((await selectedSample).status(), 200, "Concurrent selected menu request");
+    options.releaseOldIdentity();
     await recoveryFailure;
     assert.equal(
       options.cellRequests.filter(
@@ -2089,7 +2110,14 @@ test("a selection inheriting a pending recovery does not start a second recovery
       .getByRole("checkbox", { name: "Spritz", exact: true })
       .check({ force: true });
     await combinedSampleHeld;
+    const selectedSample = f.page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/api/mobile/v2/menu/cells/u0nd9" &&
+        new URL(response.url()).searchParams.get("categories") === "gin_tonic,spritz",
+      { timeout: 8000 },
+    );
     options.releaseCombinedSample();
+    assert.equal((await selectedSample).status(), 200, "Pending-recovery selected menu request");
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
     );

@@ -409,6 +409,30 @@ test("European venue preserves identity, explicit pounds and source-check proven
     await f.page.locator("h2.scontrino__name").waitFor();
     assert.equal(new URL(f.page.url()).searchParams.get("path"), "/bar/n1001");
     await f.page.screenshot({ path: path.join(output, "europe-venue-fixture.png") });
+    await f.page.setViewportSize({ width: 320, height: 568 });
+    const visual = await f.page.locator(".europe-venue").evaluate((element) => {
+      const sheet = element.closest(".sheet__body");
+      const card = element.querySelector(".scontrino__paper");
+      const featured = element.querySelector(".mobile-price--featured .price__value");
+      const footer = element.querySelector(".bar__actions");
+      return {
+        overflow: sheet.scrollWidth - sheet.clientWidth,
+        canScroll: sheet.scrollHeight > sheet.clientHeight,
+        cardBackground: getComputedStyle(card).backgroundColor,
+        priceSize: Number.parseFloat(getComputedStyle(featured).fontSize),
+        footerPosition: getComputedStyle(footer).position,
+      };
+    });
+    assert.ok(visual.overflow <= 1, JSON.stringify(visual));
+    assert.equal(visual.canScroll, true);
+    assert.equal(visual.cardBackground, "rgb(255, 255, 255)");
+    assert.ok(visual.priceSize >= 25, JSON.stringify(visual));
+    assert.equal(visual.footerPosition, "sticky");
+    assert.match(
+      await f.page.locator(".europe-venue .mobile-venue__filter-context").innerText(),
+      /Drink sulla mappa[\s\S]*Birra media[\s\S]*altri drink/,
+    );
+    await f.page.screenshot({ path: path.join(output, "europe-venue-320-fixture.png") });
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
   } finally {

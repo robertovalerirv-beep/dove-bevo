@@ -464,19 +464,29 @@ public partial class MainWindow : Window
                 {
                     var cell = new Uri(captured).Query.TrimStart('?').Split('&')
                         .FirstOrDefault(pair => pair.StartsWith("c=", StringComparison.Ordinal))?[2..];
-                    var actionUrl = $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{offer.VenueKey}&c={cell}&save_offer={Uri.EscapeDataString(offer.OfferId)}";
-                    if (!NavigationPolicy.TrySaveAction(actionUrl, captured, out _))
+                    if (cell is null)
                     {
                         StatusText.Text = "Prezzo del menu non verificabile ora.";
                         return;
                     }
                     StatusText.Text = "Verifica del prezzo del menu…";
                     using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-                    var latest = await bookmarkPrices.RefreshAsync(new Bookmark(offer.VenueKey,
-                        offer.VenueName, offer.DrinkName, captured, actionUrl), deadline.Token);
+                    BookmarkPriceResult? latest;
+                    if (offer.OfferId.Length > 0)
+                    {
+                        var actionUrl = $"https://www.dovebevo.com/mobile/?path=%2Fbar%2F{offer.VenueKey}&c={cell}&save_offer={Uri.EscapeDataString(offer.OfferId)}";
+                        if (!NavigationPolicy.TrySaveAction(actionUrl, captured, out _))
+                        {
+                            StatusText.Text = "Prezzo del menu non verificabile ora.";
+                            return;
+                        }
+                        latest = await bookmarkPrices.RefreshAsync(new Bookmark(offer.VenueKey,
+                            offer.VenueName, offer.DrinkName, captured, actionUrl), deadline.Token);
+                    }
+                    else latest = (await bookmarkPrices.ResolveOfferForShareAsync(offer, cell, deadline.Token))?.Price;
                     if (generation != shareCaptureGeneration || Website.Visibility != Visibility.Visible ||
                         CurrentBrowserRoute()?.AbsoluteUri != captured) return;
-                    if (!offer.MatchesVerified(latest))
+                    if (latest is null || !offer.MatchesVerified(latest))
                     {
                         StatusText.Text = "Il prezzo del menu è cambiato. Ricarica il locale e riprova.";
                         return;

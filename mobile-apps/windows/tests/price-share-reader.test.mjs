@@ -10,7 +10,8 @@ const headingSelector = ":scope > .sheet__body > .scontrino > .scontrino__paper 
 
 function capture({ url = venue, hidden = false, duplicate = false, selected = "n123",
   headingName = "Bar Milano", save = "link", offerName = "Spritz della casa",
-  offerHidden = false } = {}) {
+  offerHidden = false, ownerSpotlight = false, bothVisible = false } = {}) {
+  const offerRoute = ownerSpotlight || new URL(url).searchParams.has("offer");
   const element = (extra = {}) => ({
     isConnected: true, hidden: false, inert: false, parentElement: null,
     getAttribute: () => null,
@@ -60,19 +61,18 @@ function capture({ url = venue, hidden = false, duplicate = false, selected = "n
   }[selector] ?? []);
   sheet.querySelectorAll = (selector) => ({
     [headingSelector]: [heading],
-    'li.mobile-menu-v2__offer--focused[data-testid="featured-menu-price"]': [offerRow],
+    'li.mobile-menu-v2__offer--focused[data-testid="featured-menu-price"]': offerRoute || bothVisible ? [offerRow] : [],
   }[selector] ?? []);
   sheet.querySelector = (selector) => selector === ".scontrino__paper .bar__kind" ? place : null;
   sheet.contains = (node) => node === marker;
   const map = element({ getAttribute: (key) => key === "data-selected" ? selected : null });
-  const offerRoute = new URL(url).searchParams.has("offer");
   const document = {
     visibilityState: "visible",
     documentElement: { getAttribute: (key) => key === "data-dovebevo-mobile-shell" ? "1" : null },
     querySelectorAll(selector) {
       if (selector === "section.map[data-selected]") return [map];
       if (selector === "dialog.sheet.sheet--bare[open]" || selector === "dialog[open]") return [sheet];
-      if (selector === '[data-dovebevo-share="1"]') return offerRoute ? []
+      if (selector === '[data-dovebevo-share="1"]') return offerRoute && !bothVisible ? []
         : duplicate ? [marker, element({ parentElement: paper })] : [marker];
       return [];
     },
@@ -106,9 +106,23 @@ test("reads the selected owner-menu offer without inventing confirms or a catego
   assert.equal(capture({ url: offered, save: "saved" })?.offer, "menu-123");
 });
 
+test("reads a map-selected owner-menu price on the ordinary two-param venue route", () => {
+  const unsaved = capture({ ownerSpotlight: true });
+  assert.equal(unsaved?.kind, "offer");
+  assert.equal(unsaved?.href, venue);
+  assert.equal(unsaved?.offer, "menu-123");
+  assert.equal(unsaved?.amountLabel, "8,50 €");
+  const saved = capture({ ownerSpotlight: true, save: "saved" });
+  assert.equal(saved?.kind, "offer");
+  assert.equal(saved?.offer, ""); // Native resolves this visible row by an exact unique live menu match.
+  assert.equal(capture({ ownerSpotlight: true, save: "wrong" })?.offer, "menu-456");
+  assert.equal(capture({ url: offered, save: "wrong" }), null);
+});
+
 test("rejects hidden, duplicate, foreign, and stale venue price markers", () => {
   assert.equal(capture({ hidden: true }), null);
   assert.equal(capture({ duplicate: true }), null);
+  assert.equal(capture({ bothVisible: true }), null);
   assert.equal(capture({ selected: "n124" }), null);
   assert.equal(capture({ headingName: "Other Bar" }), null);
   assert.equal(capture({ url: "https://www.dovebevo.com/mobile/" }), null);

@@ -48,10 +48,11 @@
     ":scope > .sheet__body > .scontrino > .scontrino__paper h2.scontrino__name")].filter(visible);
   const markers = [...document.querySelectorAll('[data-dovebevo-share="1"]')].filter(visible);
   if (headings.length !== 1 || headings[0].textContent.trim() !== sheets[0].getAttribute("aria-label")) return null;
-  if (offerId !== null) {
+  const spotlight = [...sheets[0].querySelectorAll(
+    'li.mobile-menu-v2__offer--focused[data-testid="featured-menu-price"]')].filter(visible);
+  if (markers.length > 0 && spotlight.length > 0) return null;
+  if (offerId !== null || (parts.length === 2 && markers.length === 0 && spotlight.length === 1)) {
     if (markers.length !== 0) return null;
-    const spotlight = [...sheets[0].querySelectorAll(
-      'li.mobile-menu-v2__offer--focused[data-testid="featured-menu-price"]')].filter(visible);
     if (spotlight.length !== 1) return null;
     const row = spotlight[0];
     const names = [...row.querySelectorAll(":scope > .mobile-menu-v2__name")].filter(visible);
@@ -66,19 +67,23 @@
     if (!name || name.length > 512 || !/^Menu verificato il [0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(source[0].textContent.trim()) ||
         notes[1].textContent.trim() !== "Prezzo del drink da menu, non totale pagato. Supplementi separati.") return null;
     const save = saves[0];
+    let selectedOffer = offerId || "";
     if (save.tagName === "A") {
       const target = new URL(save.getAttribute("href") || "", location.href);
       if (target.origin !== url.origin || target.pathname !== "/mobile/" || target.hash ||
           [...target.searchParams].length !== 3 ||
           target.searchParams.getAll("path").length !== 1 || target.searchParams.get("path") !== `/bar/${selected[1]}` ||
           target.searchParams.getAll("c").length !== 1 || target.searchParams.get("c") !== url.searchParams.get("c") ||
-          target.searchParams.getAll("save_offer").length !== 1 || target.searchParams.get("save_offer") !== offerId) return null;
+          target.searchParams.getAll("save_offer").length !== 1) return null;
+      selectedOffer = target.searchParams.get("save_offer") || "";
+      if (!/^[A-Za-z0-9._:-]{1,128}$/.test(selectedOffer) ||
+          (offerId !== null && selectedOffer !== offerId)) return null;
     } else if (save.tagName !== "SPAN" || save.getAttribute("data-saved") !== "true" ||
         save.getAttribute("aria-label") !== `${name} da ${headings[0].textContent.trim()}: nei preferiti`) return null;
     const place = sheets[0].querySelector(".scontrino__paper .bar__kind");
     return {
       kind: "offer", href: url.href, venue: selected[1],
-      venueName: headings[0].textContent.trim(), offer: offerId, drinkName: name,
+      venueName: headings[0].textContent.trim(), offer: selectedOffer, drinkName: name,
       amountLabel: amounts[0].textContent.trim(), serving: notes[0].textContent.trim(),
       provenance: `${notes[1].textContent.trim()} ${source[0].textContent.trim()}`,
       location: visible(place) ? place.textContent.trim() : "",

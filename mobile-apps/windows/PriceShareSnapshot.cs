@@ -139,6 +139,7 @@ internal sealed record PriceShareOfferSnapshot(string VenueKey, string VenueName
     internal bool MatchesVerified(BookmarkPriceResult result) =>
         result.OfferName == DrinkName &&
         result.SourceCheckedOn is { } checkedOn &&
+        result.DisplayMeta == Serving &&
         Provenance.EndsWith("Menu verificato il " + checkedOn, StringComparison.Ordinal) &&
         NormalizeAmount(result.Price.Split(" · ", 2)[0]) == NormalizeAmount(AmountLabel);
 
@@ -159,10 +160,14 @@ internal sealed record PriceShareOfferSnapshot(string VenueKey, string VenueName
             if (PriceShareSnapshot.Text(root, "kind", 5) != "offer" ||
                 PriceShareSnapshot.Text(root, "href", 600) != captured) return null;
             var venue = PriceShareSnapshot.Text(root, "venue", 30);
-            var offer = PriceShareSnapshot.Text(root, "offer", 128);
+            var offer = PriceShareSnapshot.Text(root, "offer", 128, true);
             if (venue is null || offer is null || !NavigationPolicy.TryVenue(captured, venue, out _) ||
-                !Regex.IsMatch(offer, "^[A-Za-z0-9._:-]{1,128}$", RegexOptions.CultureInvariant) ||
-                !address.Query.TrimStart('?').Split('&').Contains("offer=" + Uri.EscapeDataString(offer))) return null;
+                offer.Length > 0 && !Regex.IsMatch(offer, "^[A-Za-z0-9._:-]{1,128}$", RegexOptions.CultureInvariant))
+                return null;
+            var query = address.Query.TrimStart('?').Split('&');
+            if (query.Length == 3
+                ? offer.Length == 0 || !query.Contains("offer=" + Uri.EscapeDataString(offer))
+                : query.Length != 2) return null;
             var name = PriceShareSnapshot.Text(root, "venueName", 512);
             var drink = PriceShareSnapshot.Text(root, "drinkName", 512);
             var amount = PriceShareSnapshot.Text(root, "amountLabel", 32);

@@ -2017,6 +2017,9 @@ test("concurrent drink selections share one failed full-menu recovery read", asy
       { timeout: 8000 },
     );
     options.releaseOldIdentity();
+    // Release the held sample before waiting for the recovery failure: the
+    // product's bounded request timeout must not expire because of this test.
+    options.releaseCombinedSample();
     await recoveryFailure;
     assert.equal(
       options.cellRequests.filter(
@@ -2025,7 +2028,6 @@ test("concurrent drink selections share one failed full-menu recovery read", asy
       2,
       "The first selection makes exactly one recovery read after the held failure",
     );
-    options.releaseCombinedSample();
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
     );

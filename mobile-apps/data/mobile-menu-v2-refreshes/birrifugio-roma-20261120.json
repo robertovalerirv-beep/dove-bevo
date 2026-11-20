@@ -35,6 +35,7 @@
     "prior_source_id": "src-birrifugio-trastevere-041684462ee8",
     "expected_active_offers": 266,
     "expected_active_offer_ids_sha256": "15f31e903593a6b3ef77901fdf004338167d84919989d28eb3662436c0bd1ff7",
+    "expected_active_offer_ids_sha256_algorithm": "SHA-256 of UTF-8 sorted offer IDs joined by LF with a final LF",
     "expected_retained_unchanged_offers": 259,
     "expected_removed_offers": 7,
     "expected_new_offers": 5,

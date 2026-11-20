@@ -32,6 +32,6 @@ These retirements identify exact old product cards, not a blanket deletion by na
 
 ## Required approval and guarded application
 
-The candidate JSON is `mobile-apps/data/mobile-menu-v2-refreshes/birrifugio-roma-20261120.json`. Its status is `independent_review_required`. An independent reviewer must check all twelve affected row facts, both wine price pairings, source/venue identity, and current source hash. The source page may change again; an exact production recheck is mandatory.
+The candidate JSON is `mobile-apps/data/mobile-menu-v2-refreshes/birrifugio-roma-20261120.json`. Its baseline ID digest is SHA-256 of the sorted UTF-8 active offer IDs joined by LF with a final LF. Its status is `independent_review_required`. An independent reviewer must check all twelve affected row facts, both wine price pairings, source/venue identity, and current source hash. The source page may change again; an exact production recheck is mandatory.
 
 A future guarded workflow must require the current source digest and OSM identity, prove the 266 expected active IDs and seven expected active row fields, preserve the 259 unchanged offers, and check customer/moderation state. It may only insert one immutable app-only source and five new app-only offers, then mark exactly the seven reviewed app-only offers `removed` transactionally. It must abort on any mismatch, never touch legacy/customer data, and verify exactly 264 active public offers afterward. No existing importer or live database was changed in this PR.

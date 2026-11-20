@@ -148,7 +148,7 @@ export function transformApp(source) {
   result = once(
     result,
     '        const price = bestPrice(v, drinks);\n        const label = price\n          ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`\n          : "";',
-    '        const price = bestPrice(v, drinks);\n        const menuPin = price ? null : mobileMenuPin(v, drinks);\n        const minimumPin = price || menuPin ? mobileMinimumPin(v) : null;\n        const priceLabel = price\n          ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`\n          : menuPin ?? "";\n        const label = priceLabel + (minimumPin ? ` · ${minimumPin}` : "");',
+    '        const price = bestPrice(v, drinks);\n        const menuPin = price ? null : mobileMenuPin(v, drinks);\n        const minimumPin = price || menuPin ? mobileMinimumPin(v) : null;\n        const priceLabel = price\n          ? `${formatPrice(price[3])}${price[2] === 1 ? ` ${it.bar.happyHour}` : ""}`\n          : menuPin?.replace(/ MENU$/, "") ?? "";\n        const label = priceLabel + (minimumPin ? ` · ${minimumPin}` : "");',
   );
   result = once(
     result,

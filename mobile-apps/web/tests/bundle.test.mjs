@@ -470,10 +470,9 @@ test("single drink dropdown switches map filters without lateral scroll", async 
     await f.page.waitForFunction(() =>
       document.querySelector("section.map")?.getAttribute("data-prices-shown")?.includes("7,50"),
     );
-    assert.match(
-      await f.page.locator("section.map").getAttribute("data-prices-shown"),
-      /7,50.*MENU/,
-    );
+    const mapLabels = await f.page.locator("section.map").getAttribute("data-prices-shown");
+    assert.match(mapLabels, /7,50.*€/);
+    assert.doesNotMatch(mapLabels, /MENU/);
     assert.ok(options.cellRequests.some((request) => request.categories.join(",") === "spritz"));
     await f.page.screenshot({ path: path.join(output, "map-default-spritz-fixture.png") });
     await (await openDrinks(f.page)).getByRole("button", { name: "Tutti", exact: true }).click();
@@ -1312,6 +1311,11 @@ test("the selected map menu price leads venue detail ahead of unrelated customer
       assert.match(await listRow.innerText(), /7,50\s*€[\s\S]*Dal menu del locale/);
       await listRow.click();
       await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
+      assert.match(
+        await f.page.locator(".maplibregl-map").getAttribute("data-selected-price"),
+        /^7,50\s*€$/,
+        "The selected price cork keeps the price without the redundant menu caption",
+      );
       const featured = f.page.getByTestId("featured-menu-price");
       await featured.waitFor();
       const selectedMenuActions = f.page.getByTestId("selected-menu-actions");
@@ -1898,9 +1902,10 @@ test("a selected sourced price appears while full identity recovery is still pen
       null,
       { timeout: 30000 },
     );
-    assert.match(
+    assert.match(await f.page.locator("section.map").getAttribute("data-prices-shown"), /7,50.*€/);
+    assert.doesNotMatch(
       await f.page.locator("section.map").getAttribute("data-prices-shown"),
-      /7,50.*MENU/,
+      /MENU/,
     );
     assert.equal(
       options.cellRequests.filter(
@@ -1917,9 +1922,10 @@ test("a selected sourced price appears while full identity recovery is still pen
     );
     options.releaseRecoveryIdentity();
     await recoveryFailure;
-    assert.match(
+    assert.match(await f.page.locator("section.map").getAttribute("data-prices-shown"), /7,50.*€/);
+    assert.doesNotMatch(
       await f.page.locator("section.map").getAttribute("data-prices-shown"),
-      /7,50.*MENU/,
+      /MENU/,
     );
     assert.deepEqual(f.errors, []);
     assert.deepEqual(f.writes, []);
@@ -2096,9 +2102,10 @@ test("a selection inheriting a pending recovery does not start a second recovery
     );
     options.releaseRecoveryIdentity();
     await recoveryFailure;
-    assert.match(
+    assert.match(await f.page.locator("section.map").getAttribute("data-prices-shown"), /7,50.*€/);
+    assert.doesNotMatch(
       await f.page.locator("section.map").getAttribute("data-prices-shown"),
-      /7,50.*MENU/,
+      /MENU/,
     );
     assert.equal(
       options.cellRequests.filter(

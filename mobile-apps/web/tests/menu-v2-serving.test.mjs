@@ -231,6 +231,85 @@ test("a failed menu read leaves a customer price visibly unverified", async () =
   }
 });
 
+test("a menu identity mismatch never qualifies another venue's customer price", async () => {
+  const previousFetch = globalThis.fetch;
+  const minimum = {
+    id: "minimum-1",
+    label: "Consumazione minima",
+    amount_minor: 1500,
+    currency: "EUR",
+    currency_exponent: 2,
+    basis: "person",
+    applicability: "all_orders",
+    condition: null,
+    source: {
+      id: "source-1",
+      url: "https://menu.example/conditions",
+      text_sha256: "a".repeat(64),
+      checked_on: "2026-11-20",
+    },
+  };
+  try {
+    for (const [cell, mismatch] of [
+      ["u0ndf", { name: "Another bar" }],
+      ["u0ndg", { lat: 45.461 }],
+      ["u0ndh", { lon: 9.191 }],
+      ["u0ndj", { cell: "u0ndb" }],
+    ]) {
+      const legacy = {
+        ...venue([], [["n123", "spritz", 0, 550, "2026-11-20", 0, 0]]),
+        cell,
+        ...mismatch,
+      };
+      const owner = {
+        key: "n123",
+        cell,
+        name: "Fixture bar",
+        kind: 1,
+        lat: 45.46,
+        lon: 9.19,
+        address: null,
+        city: "Milano",
+        country: "IT",
+        identity_url: "https://www.openstreetmap.org/node/123",
+        identity_kind: "osm",
+        matching_offer_count: 1,
+        sample_offers: [],
+        fee_coverage: { status: "unknown", source: null },
+        minimum_spends: [minimum],
+      };
+      globalThis.__doveLegacyCell = [legacy];
+      globalThis.fetch = async () =>
+        new globalThis.Response(
+          JSON.stringify({
+            schema_version: 2,
+            coverage: { complete: false, basis: "verified_source_items_only" },
+            price_scope: "menu_item_only",
+            cell,
+            category: null,
+            categories: null,
+            venues: [owner],
+            next_after: null,
+            unresolved_venues: 0,
+          }),
+          { headers: { "content-type": "application/json" } },
+        );
+      await loadMobileCell(cell, []);
+      let resolved;
+      for (let attempt = 0; attempt < 15; attempt++) {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 10));
+        resolved = (await loadMobileCell(cell, []))[0];
+      }
+      assert.equal(resolved.prices[0][3], 550);
+      assert.match(mobileMinimumPin(resolved), /Condizioni.*verificare/);
+      assert.equal(resolved.mobileMenuCount, undefined);
+    }
+  } finally {
+    globalThis.fetch = previousFetch;
+    delete globalThis.__doveLegacyCell;
+  }
+});
+
 test("400–600 ml and explicit medium labels show their sourced menu amount", () => {
   for (const serving of [
     { ml: 400, label: "40 cl" },

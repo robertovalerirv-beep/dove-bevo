@@ -18,6 +18,7 @@ import {
   loadMobileCell,
   menuMoney,
   mobileMenuVenue,
+  sameVenueIdentity,
   type MenuPage,
   type MenuFee,
   type MenuMinimumSpend,
@@ -314,7 +315,11 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [menu, setMenu] = useState<MenuPage | null>(null);
+  const [responseMenu, setMenu] = useState<MenuPage | null>(null);
+  // A separately loaded legacy venue can disagree with the v2 response.
+  // Do not present that response or its conditions as this venue's menu.
+  const menu =
+    responseMenu && venue && sameVenueIdentity(venue, responseMenu.venue) ? responseMenu : null;
   const [menuLoading, setMenuLoading] = useState(true);
   const [menuFailed, setMenuFailed] = useState(false);
   const [menuMoreBusy, setMenuMoreBusy] = useState(false);
@@ -791,6 +796,12 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   : "Prezzi segnalati dai clienti"
                 : it.bar.prices}
             </h3>
+          )}
+          {active.length > 0 && !menu && (
+            <p class="hint" role="status" data-testid="legacy-conditions-unverified">
+              Condizioni del locale da verificare: il prezzo del drink potrebbe non essere la spesa
+              totale a persona.
+            </p>
           )}
           {pricesFailed && (
             <p class="hint" role="alert">

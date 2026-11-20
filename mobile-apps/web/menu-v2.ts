@@ -121,6 +121,20 @@ export type MenuFee = MenuPage["fees"][number];
 export type MenuMinimumSpend = MenuPage["minimum_spends"][number];
 export type MenuVenue = MenuPage["venue"];
 
+/** A menu may qualify a legacy price only for the same mapped venue. */
+export function sameVenueIdentity(
+  legacy: Pick<Venue, "key" | "cell" | "name" | "lat" | "lon">,
+  menu: Pick<MenuVenue, "key" | "cell" | "name" | "lat" | "lon">,
+): boolean {
+  return (
+    legacy.key === menu.key &&
+    legacy.cell === menu.cell &&
+    legacy.name === menu.name &&
+    Math.abs(legacy.lat - menu.lat) <= 0.0005 &&
+    Math.abs(legacy.lon - menu.lon) <= 0.0005
+  );
+}
+
 async function json(response: Response): Promise<unknown> {
   if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
   if (!response.headers.get("content-type")?.includes("application/json"))
@@ -408,6 +422,10 @@ export function loadMobileCell(cell: string, selectedDrinks: readonly string[]):
                 const known = merged.get(row.key);
                 if (!known && (row.identity_kind !== "owner_verified" || !row.key.startsWith("m")))
                   continue;
+                const matchingRows = [...venues, ...filtered].filter(
+                  (venue) => venue.key === row.key,
+                );
+                if (matchingRows.some((venue) => !sameVenueIdentity(known ?? row, venue))) continue;
                 const venue = known ?? mobileMenuVenue(row);
                 merged.set(row.key, {
                   ...venue,

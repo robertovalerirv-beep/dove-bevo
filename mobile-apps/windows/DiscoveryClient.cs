@@ -26,7 +26,8 @@ internal sealed record DiscoveryLocation(string Name, DiscoveryArea Area, string
 internal sealed record DiscoveryRow(string Key, string Cell, string Venue, string City,
     string DrinkCode, string Drink, long AmountMinor, string Currency, int Exponent,
     string Context, string? Condition, string? SourceUrl, DateOnly CheckedOn,
-    string? Serving = null, bool IsEurope = false, string MinimumSpendNotice = "")
+    string? Serving = null, bool IsEurope = false, string MinimumSpendNotice = "",
+    double? Latitude = null, double? Longitude = null)
 {
     public string Display
     {
@@ -229,11 +230,16 @@ internal sealed class DiscoveryClient
         IEnumerable<DiscoveryRow> additionalRows)
     {
         var known = menuRows.GroupBy(row => (row.Key, row.Cell))
-            .ToDictionary(group => group.Key, group => group.First().MinimumSpendNotice);
+            .ToDictionary(group => group.Key, group => group.ToArray());
         return additionalRows.Select(row => row with
         {
-            MinimumSpendNotice = known.TryGetValue((row.Key, row.Cell), out var notice)
-                ? notice : UnverifiedConditionsNotice,
+            MinimumSpendNotice = known.TryGetValue((row.Key, row.Cell), out var offers) &&
+                row.Latitude is double lat && row.Longitude is double lon &&
+                offers.All(offer => offer.Venue == row.Venue &&
+                    offer.MinimumSpendNotice == offers[0].MinimumSpendNotice &&
+                    offer.Latitude is double menuLat && offer.Longitude is double menuLon &&
+                    Math.Abs(lat - menuLat) <= 0.0005 && Math.Abs(lon - menuLon) <= 0.0005)
+                ? offers[0].MinimumSpendNotice : UnverifiedConditionsNotice,
         }).ToArray();
     }
 
@@ -294,6 +300,12 @@ internal sealed class DiscoveryClient
                 venue.GetProperty("matching_offer_count").GetInt32() < 1)
                 throw new InvalidDataException("Menu venue mismatch");
             var name = Text(venue.GetProperty("name"), 2, 512);
+            var latitude = venue.GetProperty("lat").GetDouble();
+            var longitude = venue.GetProperty("lon").GetDouble();
+            if (!double.IsFinite(latitude) || latitude is < -90 or > 90 ||
+                !double.IsFinite(longitude) || longitude is < -180 or > 180 ||
+                DiscoveryArea.Geohash(latitude, longitude) != cell)
+                throw new InvalidDataException("Menu venue coordinates mismatch");
             var cityElement = venue.GetProperty("city");
             var city = cityElement.ValueKind == JsonValueKind.Null ? "" : Text(cityElement, 2, 200);
             var minimum = MinimumSpendNotice(venue);
@@ -327,7 +339,7 @@ internal sealed class DiscoveryClient
                 if (serving == "Formato non dichiarato") serving = null;
                 rows.Add(new DiscoveryRow(key, cell, name, city, category, drink, amount,
                     currency, exponent, kind, condition, sourceUrl, day, serving,
-                    MinimumSpendNotice: minimum));
+                    MinimumSpendNotice: minimum, Latitude: latitude, Longitude: longitude));
             }
         }
         var next = root.GetProperty("next_after").ValueKind == JsonValueKind.Null

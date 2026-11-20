@@ -225,6 +225,8 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
         ...venue,
         key: "n123",
         name: "Locale di prova",
+        lat: 45.4642,
+        lon: 9.19,
         matching_offer_count: options.staticMenuMixed ? 9 : 1,
       };
       return route.fulfill({
@@ -274,10 +276,14 @@ async function fixture(viewport = { width: 390, height: 844 }, options = {}) {
           venue: {
             key: staticVenue ? "n123" : "maaaaaaaaaaaaaaaaaaaaaaaa",
             cell: "u0nd9",
-            name: staticVenue ? "Locale di prova" : "Locale da menu",
+            name: staticVenue
+              ? options.detailIdentityMismatch
+                ? "Altro locale"
+                : "Locale di prova"
+              : "Locale da menu",
             kind: 0,
-            lat: 45.4695,
-            lon: 9.188,
+            lat: staticVenue ? 45.4642 : 45.4695,
+            lon: staticVenue ? 9.19 : 9.188,
             address: "Via nuova 1",
             city: "Milano",
             country: "IT",
@@ -1470,6 +1476,34 @@ test("empty menu-linked customer section does not deny an existing legacy price"
     assert.deepEqual(f.errors, []);
   } finally {
     await f.close();
+  }
+});
+
+test("an unavailable or mismatched menu keeps the legacy price and announces unknown conditions", async () => {
+  for (const option of [{ detailUnavailable: true }, { detailIdentityMismatch: true }]) {
+    const f = await fixture(
+      { width: 390, height: 844 },
+      { menu: true, staticMenu: true, customerEmpty: true, ...option },
+    );
+    try {
+      const detailDone = f.page.waitForResponse(
+        (response) => new URL(response.url()).pathname === "/api/mobile/v2/menu/venues/n123",
+      );
+      await f.page.goto("https://mobile.fixture.test/mobile/?path=%2Fbar%2Fn123&c=u0nd9");
+      await detailDone;
+      await f.page.getByRole("heading", { name: "Locale di prova" }).waitFor();
+      const caveat = f.page.getByTestId("legacy-conditions-unverified");
+      await caveat.waitFor();
+      assert.equal(await caveat.getAttribute("role"), "status");
+      assert.match(await caveat.innerText(), /Condizioni del locale da verificare/);
+      assert.match(await f.page.locator(".prices .price").first().innerText(), /5,50|5,00/);
+      assert.equal(await f.page.getByRole("region", { name: "Prezzi dal menu online" }).count(), 0);
+      assert.equal(await f.page.getByRole("region", { name: "Consumazione minima" }).count(), 0);
+      assert.deepEqual(f.writes, []);
+      assert.deepEqual(f.errors, []);
+    } finally {
+      await f.close();
+    }
   }
 });
 

@@ -355,6 +355,7 @@ var menu = new
         new
         {
             key = "n10781209907", cell = "u0nd9", name = "The Dome", city = "Milano",
+            lat = 45.4635, lon = 9.18839,
             matching_offer_count = 1,
             sample_offers = new[]
             {
@@ -399,6 +400,7 @@ var draftPage = JsonSerializer.SerializeToUtf8Bytes(new {
     categories = new[] { "beer_draft" },
     venues = new[] { new {
         key = "n123", cell = "u0nd9", name = "Test Bar", city = "Milano",
+        lat = 45.4635, lon = 9.18839,
         matching_offer_count = draftSamples.Length,
         sample_offers = draftSamples.Select(sample => new {
             name = sample.Name, category = "beer_draft", amount_minor = 650,
@@ -449,9 +451,23 @@ Require(qualifiedLegacy.Single(row => row.Key == "u1").MinimumSpendNotice ==
     DiscoveryClient.QualifyAdditionalRows([], legacyRows).All(row =>
         row.Display.Contains(DiscoveryClient.UnverifiedConditionsNotice)),
     "a filtered-out venue or unavailable v2 read must not look free of other conditions");
-Require(DiscoveryClient.QualifyAdditionalRows([offer with { Key = "n123" }], legacyRows)
+Require(DiscoveryClient.QualifyAdditionalRows([offer with { Key = "n123", Venue = "Test Bar" }], legacyRows)
         .Single(row => row.Key == "n123").MinimumSpendNotice.Length == 0,
     "an exact checked venue without a minimum must not get a fabricated caveat");
+foreach (var mismatched in new[] {
+    guardedAtLegacy with { Venue = "Another Bar" },
+    guardedAtLegacy with { Latitude = guardedAtLegacy.Latitude + 0.001 },
+    guardedAtLegacy with { Longitude = guardedAtLegacy.Longitude + 0.001 },
+    guardedAtLegacy with { Latitude = null },
+})
+    Require(DiscoveryClient.QualifyAdditionalRows([mismatched], legacyRows)
+            .Single(row => row.Key == "n123").MinimumSpendNotice ==
+            DiscoveryClient.UnverifiedConditionsNotice,
+        "mismatched menu identity must not qualify another venue's customer price");
+Require(DiscoveryClient.QualifyAdditionalRows([guardedAtLegacy],
+        [legacyRows.Single(row => row.Key == "n123") with { Cell = "u0ndb" }])
+        .Single().MinimumSpendNotice == DiscoveryClient.UnverifiedConditionsNotice,
+    "mismatched cell must not qualify a customer price");
 var staleArea = new DiscoveryArea(45.4642, 9.1900, 14);
 var resultGate = new DiscoveryResultGate();
 var priorLoad = resultGate.Begin(staleArea);

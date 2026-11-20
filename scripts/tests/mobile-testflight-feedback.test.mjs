@@ -105,7 +105,8 @@ test("encrypts incomplete metadata when signed screenshots cannot be fetched", a
     const missingTransport = "https://is1-ssl.mzstatic.com/feedback/unavailable-transport.png";
     const missingHttp = "https://is1-ssl.mzstatic.com/feedback/unavailable-http.png";
     const fetcher = async (url) => {
-      if (url === missingTransport) throw new TypeError("private signed image URL must stay hidden");
+      if (url === missingTransport)
+        throw new TypeError("private signed image URL must stay hidden");
       if (url === missingHttp) return new globalThis.Response("private response", { status: 503 });
       if (url === image)
         return new globalThis.Response(Buffer.from([137, 80, 78, 71]), {
@@ -137,10 +138,7 @@ test("encrypts incomplete metadata when signed screenshots cannot be fetched", a
     const saved = await readFile(file, "utf8");
     for (const sensitive of ["Ricerca non visibile", missingTransport, missingHttp, "private"])
       assert.ok(!saved.includes(sensitive));
-    const payload = decryptFeedback(
-      saved,
-      privateKey.export({ type: "pkcs8", format: "pem" }),
-    );
+    const payload = decryptFeedback(saved, privateKey.export({ type: "pkcs8", format: "pem" }));
     assert.deepEqual(payload.result.feedback[0].screenshots, ["feedback-001-1.png"]);
     assert.equal(payload.result.feedback[0].screenshot_count, 2);
     assert.equal(payload.result.feedback[0].unavailable_screenshot_count, 1);

@@ -106,6 +106,35 @@ class Fake:
         return [dict(row) for row in self.db.execute(sql,params).fetchall()]
 
 class ImportTests(unittest.TestCase):
+    def test_pdf_headroom_does_not_expand_html_json_or_image_source_limit(self):
+        self.assertEqual(core.MAX_SOURCE,8*1024*1024)
+        self.assertEqual(core.MAX_PDF_SOURCE,9*1024*1024)
+        self.assertTrue(core.MAX_SOURCE<8_407_900<=core.MAX_PDF_SOURCE)
+        with mock.patch.object(core,"MAX_SOURCE",32), mock.patch.object(core,"MAX_PDF_SOURCE",64):
+            pdf=b"%PDF-"+b"x"*40
+            transport=Fake()
+            transport.public["https://example.org/menu"]=pdf
+            self.assertEqual(core.public_fetch(transport,"https://example.org/menu",
+                                               core.source_limit("pdf_text_v1"),"pdf"),pdf)
+            with self.assertRaises(core.Error):
+                core.public_fetch(transport,"https://example.org/menu",
+                                  core.source_limit("html_text_v1"),"pdf")
+            with mock.patch.object(core.subprocess,"run",return_value=subprocess.CompletedProcess(
+                [],0,b"Spiller beer price EUR 5.50",b"")):
+                hashes=core.source_digests(pdf,"pdf_text_v1")
+            self.assertEqual(hashes[0],hashlib.sha256(pdf).hexdigest())
+            with self.assertRaisesRegex(core.Error,"source too large"):
+                core.source_digests(pdf,"html_text_v1")
+            with self.assertRaisesRegex(core.Error,"source too large"):
+                core.source_digests(b"%PDF-"+b"x"*60,"pdf_text_v1")
+            source=copy.deepcopy(SOURCE)
+            source.update({"source_format":"pdf_text_v1",
+                           "source_sha256":hashes[0],"source_text_sha256":hashes[1]})
+            with mock.patch.object(core,"public_fetch",return_value=pdf) as fetched, \
+                 mock.patch.object(core,"source_digests",return_value=hashes):
+                self.assertEqual(core.source_identity(source,transport,{},[OFFER]),"verified")
+            self.assertEqual(fetched.call_args.args[2],64)
+
     def test_conditional_minimum_spend_is_separate_source_bound_and_idempotent(self):
         doc=manifest()
         source=copy.deepcopy(SOURCE)

@@ -1,0 +1,148 @@
+name: Guarded mobile menu v2 refresh
+on:
+  pull_request:
+    paths:
+      - "mobile-apps/tools/mobile-menu-v2-refresh/**"
+      - ".github/workflows/mobile-menu-v2-refresh.yml"
+  push:
+    tags:
+      - "mobile-menu-v2-refresh-audit/*"
+      - "mobile-menu-v2-refresh-apply/*"
+      - "mobile-menu-v2-refresh-verify/*"
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+env:
+  REFRESH_SHA256: 3a7c8e6285a67aba109651eaf37433b1ff7e002911e70cffc84277579ac9304d
+  IMPORTER_SHA256: 679520e475ddc9a5bb2703f1c81539df4730ae02404eed93466f837c3329461f
+  TRANSPORT_SHA256: 147a6051c66dd8523ec0d634ab18976e4a0ccf33efec5873d2d921bc6a300239
+
+jobs:
+  preservation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify exact refresh code and guard tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' "$REFRESH_SHA256" mobile-apps/tools/mobile-menu-v2-refresh/refresh_v2.py | sha256sum --check --strict
+          printf '%s  %s\n' "$IMPORTER_SHA256" mobile-apps/tools/mobile-menu-v2-import/import_v2.py | sha256sum --check --strict
+          printf '%s  %s\n' "$TRANSPORT_SHA256" mobile-apps/tools/menu-seed/live_import.py | sha256sum --check --strict
+          python3 -I -S -B -m unittest discover -s mobile-apps/tools/mobile-menu-v2-refresh -p 'test_*.py' -v
+
+  reviewed-refresh:
+    needs: preservation
+    if: >-
+      github.repository == 'robertovalerirv-beep/dove-bevo' &&
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      (startsWith(github.ref, 'refs/tags/mobile-menu-v2-refresh-audit/') ||
+       startsWith(github.ref, 'refs/tags/mobile-menu-v2-refresh-apply/') ||
+       startsWith(github.ref, 'refs/tags/mobile-menu-v2-refresh-verify/'))
+    concurrency:
+      group: dovebevo-one-off-menu-refresh
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Pin reviewed main commit and exact candidate
+        id: pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+          if [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-refresh-audit/([0-9a-f]{64})$ ]]; then
+            mode=audit; manifest_sha="${BASH_REMATCH[1]}"
+          elif [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-refresh-apply/([0-9a-f]{64})-([1-9][0-9]*)-([1-9][0-9]*)$ ]]; then
+            mode=apply; manifest_sha="${BASH_REMATCH[1]}"
+            printf '%s\n' "${BASH_REMATCH[2]}" > "$RUNNER_TEMP/audit-run-id"
+            printf '%s\n' "${BASH_REMATCH[3]}" > "$RUNNER_TEMP/audit-attempt"
+          elif [[ "$GITHUB_REF_NAME" =~ ^mobile-menu-v2-refresh-verify/([0-9a-f]{64})$ ]]; then
+            mode=verify; manifest_sha="${BASH_REMATCH[1]}"
+          else
+            exit 2
+          fi
+          manifest="mobile-apps/data/mobile-menu-v2-refreshes/birrifugio-roma-20261120.json"
+          test -f "$manifest"
+          printf '%s  %s\n' "$manifest_sha" "$manifest" | sha256sum --check --strict
+          printf '%s  %s\n' "$REFRESH_SHA256" mobile-apps/tools/mobile-menu-v2-refresh/refresh_v2.py | sha256sum --check --strict
+          printf '%s  %s\n' "$IMPORTER_SHA256" mobile-apps/tools/mobile-menu-v2-import/import_v2.py | sha256sum --check --strict
+          printf '%s  %s\n' "$TRANSPORT_SHA256" mobile-apps/tools/menu-seed/live_import.py | sha256sum --check --strict
+          printf 'mode=%s\nmanifest_sha=%s\nmanifest=%s\n' "$mode" "$manifest_sha" "$manifest" >> "$GITHUB_OUTPUT"
+      - name: Bind apply to a successful exact audit artifact
+        if: steps.pin.outputs.mode == 'apply'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST_SHA: ${{ steps.pin.outputs.manifest_sha }}
+        run: |
+          set -euo pipefail
+          audit_run="$(cat "$RUNNER_TEMP/audit-run-id")"
+          audit_attempt="$(cat "$RUNNER_TEMP/audit-attempt")"
+          audit_tag="mobile-menu-v2-refresh-audit/$MANIFEST_SHA"
+          audit_ref="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$audit_tag" --jq '.object.sha')"
+          test "$audit_ref" = "$GITHUB_SHA"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$audit_run" |
+            jq -e --arg sha "$GITHUB_SHA" --arg tag "$audit_tag" --argjson attempt "$audit_attempt" '
+              .name == "Guarded mobile menu v2 refresh" and
+              .path == ".github/workflows/mobile-menu-v2-refresh.yml" and
+              .head_sha == $sha and .head_branch == $tag and
+              .event == "push" and .conclusion == "success" and
+              .run_attempt == $attempt' >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$audit_run/jobs?per_page=100" |
+            jq -e 'any(.jobs[]; .name == "reviewed-refresh" and .conclusion == "success")' >/dev/null
+          mkdir -p "$RUNNER_TEMP/pinned-audit"
+          gh run download "$audit_run" --repo "$GITHUB_REPOSITORY" \
+            --name "mobile-menu-v2-refresh-audit-$audit_run-$audit_attempt" \
+            --dir "$RUNNER_TEMP/pinned-audit"
+          test -f "$RUNNER_TEMP/pinned-audit/refresh-receipt.json"
+          jq -e --arg sha "$MANIFEST_SHA" '
+            .complete == true and .mode == "audit" and .state == "pre" and
+            .manifest_sha256 == $sha and .active_count == 266 and
+            .new_review_count >= 0 and .new_review_count <= 5' \
+            "$RUNNER_TEMP/pinned-audit/refresh-receipt.json" >/dev/null
+      - name: Audit, apply or verify exact refresh
+        shell: bash
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          MODE: ${{ steps.pin.outputs.mode }}
+          MANIFEST: ${{ steps.pin.outputs.manifest }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/refresh-receipt.json"
+          if test "$MODE" = apply; then
+            python3 -I -S -B mobile-apps/tools/mobile-menu-v2-refresh/refresh_v2.py \
+              --manifest "$MANIFEST" --receipt "$receipt" --apply \
+              --audit-receipt "$RUNNER_TEMP/pinned-audit/refresh-receipt.json"
+          elif test "$MODE" = verify; then
+            python3 -I -S -B mobile-apps/tools/mobile-menu-v2-refresh/refresh_v2.py \
+              --manifest "$MANIFEST" --receipt "$receipt" --verify-post
+          else
+            python3 -I -S -B mobile-apps/tools/mobile-menu-v2-refresh/refresh_v2.py \
+              --manifest "$MANIFEST" --receipt "$receipt"
+          fi
+          jq -e --arg mode "$MODE" '.complete == true and .mode ==
+              (if $mode == "verify" then "verify_post" else $mode end) and
+              (if $mode == "audit" then .state == "pre" and .active_count == 266
+               else .state == "post" and .active_count == 264 and .public_offer_count == 264 end)' \
+              "$receipt" >/dev/null
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: mobile-menu-v2-refresh-${{ steps.pin.outputs.mode }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/refresh-receipt.json
+          retention-days: 30
+          if-no-files-found: warn

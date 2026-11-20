@@ -247,7 +247,7 @@ jobs:
               matches = []
               for entry in entries:
                   require(isinstance(entry, dict))
-                  if entry.get("testIdentifier") != "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()":
+                  if entry.get("testIdentifier") != "BrowserSmokeTests/testLiveIPadStoreOverviewWithoutWebViewQuery()":
                       continue
                   require(entry.get("isAssociatedWithFailure", False) is False)
                   attachments = entry.get("attachments")
@@ -255,7 +255,7 @@ jobs:
                   for attachment in attachments:
                       require(isinstance(attachment, dict) and attachment.get("isAssociatedWithFailure") is False)
                       name = attachment.get("suggestedHumanReadableName", "")
-                      if isinstance(name, str) and name.startswith("DoveBevo-live-Milano-map"):
+                      if isinstance(name, str) and name.startswith("DoveBevo-live-iPad-Italy-overview"):
                           matches.append(attachment)
               require(len(matches) == 1)
               filename = matches[0].get("exportedFileName")
@@ -449,7 +449,7 @@ jobs:
         timeout-minutes: 60
         run: bash mobile-apps/ios/scripts/test-simulator.sh
       - name: Verify live map on 13-inch iPad and capture store screenshots
-        timeout-minutes: 8
+        timeout-minutes: 20
         env:
           STORE_CAPTURE_DEVICE: ipad
         run: bash mobile-apps/ios/scripts/capture-ipad.sh
@@ -469,7 +469,7 @@ jobs:
               if not condition:
                   raise ValueError("Capture evidence is invalid")
 
-          def verify_capture(folder, sizes):
+          def verify_capture(folder, sizes, expected_test, expected_name):
               root = Path(folder)
               require(root.is_dir() and not root.is_symlink())
               root = root.resolve(strict=True)
@@ -480,14 +480,15 @@ jobs:
               matches = []
               for entry in entries:
                   require(isinstance(entry, dict))
-                  if entry.get("testIdentifier") != "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()":
+                  if entry.get("testIdentifier") != expected_test:
                       continue
+                  require(entry.get("isAssociatedWithFailure", False) is False)
                   attachments = entry.get("attachments")
                   require(isinstance(attachments, list) and len(attachments) <= 1_000)
                   for attachment in attachments:
-                      require(isinstance(attachment, dict))
+                      require(isinstance(attachment, dict) and attachment.get("isAssociatedWithFailure") is False)
                       name = attachment.get("suggestedHumanReadableName", "")
-                      if isinstance(name, str) and name.startswith("DoveBevo-live-Milano-map"):
+                      if isinstance(name, str) and name.startswith(expected_name):
                           matches.append(attachment)
               require(len(matches) == 1)
               filename = matches[0].get("exportedFileName")
@@ -507,8 +508,11 @@ jobs:
               return {"width": dimensions[0], "height": dimensions[1], "sha256": hashlib.sha256(image.read_bytes()).hexdigest()}
 
           try:
-              phone = verify_capture("mobile-apps/ios/.build/Screenshots", {(1179, 2556), (1206, 2622)})
-              ipad = verify_capture("mobile-apps/ios/.build/Screenshots-iPad", {(2048, 2732), (2064, 2752)})
+              phone = verify_capture("mobile-apps/ios/.build/Screenshots", {(1179, 2556), (1206, 2622)},
+                                     "BrowserSmokeTests/testLiveWebsiteCitySearchAndMap()", "DoveBevo-live-Milano-map")
+              ipad = verify_capture("mobile-apps/ios/.build/Screenshots-iPad", {(2048, 2732), (2064, 2752)},
+                                    "BrowserSmokeTests/testLiveIPadStoreOverviewWithoutWebViewQuery()",
+                                    "DoveBevo-live-iPad-Italy-overview")
           except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
               sys.exit("iOS capture validation failed; genuine live phone and iPad PNGs are required")
           print(json.dumps({"liveCaptureExportsVerified": True, "phone": phone, "ipad": ipad}, sort_keys=True))

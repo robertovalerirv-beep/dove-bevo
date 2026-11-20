@@ -1,10 +1,12 @@
 // App Review delivery is deliberately separate from the read-only Apple audit.
 // A real iPhone recording and operator attestation are required before --upload/--submit.
 import { createHash } from "node:crypto";
+import { Buffer } from "node:buffer";
 import { createReadStream } from "node:fs";
 import { open, readFile, stat } from "node:fs/promises";
 import { basename, isAbsolute } from "node:path";
-import { pathToFileURL } from "node:url";
+import { setTimeout as delay } from "node:timers/promises";
+import { pathToFileURL, URL } from "node:url";
 import {
   APP_ID,
   VERSION_ID,
@@ -80,12 +82,18 @@ async function jsonResponse(response, expectedStatus) {
 
 function apiClient(env, transport) {
   return async (method, path, payload) => {
-    if (!/^\/v1\/[A-Za-z0-9/?=&%,.\[\]-]+$/.test(path) || path.includes(".."))
+    if (
+      !path.startsWith("/v1/") ||
+      path.includes("..") ||
+      path.includes("//") ||
+      path.includes("#") ||
+      /[\r\n]/.test(path)
+    )
       failure("APPLE_API_PATH_INVALID");
     const response = await transport(API + path, {
       method,
       redirect: "error",
-      signal: AbortSignal.timeout(30000),
+      signal: globalThis.AbortSignal.timeout(30000),
       headers: {
         Authorization: `Bearer ${tokenFor(env)}`,
         Accept: "application/json",
@@ -101,7 +109,7 @@ export async function inspectVideo(videoPath) {
   if (typeof videoPath !== "string" || !isAbsolute(videoPath))
     failure("RECORDING_PATH_MUST_BE_ABSOLUTE");
   const fileName = basename(videoPath);
-  if (!/^[A-Za-z0-9][A-Za-z0-9_. -]{0,150}\.mp4$/i.test(fileName))
+  if (!/^[A-Za-z0-9][A-Za-z0-9_. -]{0,150}\.(mp4|mov|m4v)$/i.test(fileName))
     failure("RECORDING_FILENAME_INVALID");
   const file = await stat(videoPath);
   if (!file.isFile() || !Number.isSafeInteger(file.size) || file.size < 16 || file.size > MAX_VIDEO)
@@ -219,11 +227,22 @@ export function validateUploadOperations(operations, fileSize) {
 }
 
 async function readStore(api) {
+  const currentPage = await api(
+    "GET",
+    `/v1/apps/${APP_ID}/appStoreVersions?filter[versionString]=${VERSION}&filter[platform]=IOS&limit=50&fields[appStoreVersions]=platform,versionString,appStoreState,appVersionState`,
+  );
+  if (
+    !Array.isArray(currentPage.data) ||
+    currentPage.data.length !== 1 ||
+    (currentPage.meta?.paging?.total !== undefined && currentPage.meta.paging.total !== 1)
+  )
+    failure("APPLE_VERSION_DISCOVERY_AMBIGUOUS");
+  resource(currentPage.data[0], "appStoreVersions", VERSION_ID);
   const version = resource(
     (
       await api(
         "GET",
-        `/v1/appStoreVersions/${VERSION_ID}?include=app,build&fields[appStoreVersions]=app,build,platform,versionString,appStoreState`,
+        `/v1/appStoreVersions/${VERSION_ID}?include=app,build&fields[appStoreVersions]=app,build,platform,versionString,appStoreState,appVersionState`,
       )
     ).data,
     "appStoreVersions",
@@ -233,7 +252,8 @@ async function readStore(api) {
   if (
     version.attributes?.platform !== "IOS" ||
     version.attributes?.versionString !== VERSION ||
-    version.attributes?.appStoreState !== "PREPARE_FOR_SUBMISSION"
+    (version.attributes?.appVersionState ?? version.attributes?.appStoreState) !==
+      "PREPARE_FOR_SUBMISSION"
   )
     failure("APPLE_VERSION_NOT_READY");
   const buildId = relation(version, "build", "builds").id;
@@ -306,7 +326,7 @@ async function uploadPart(op, videoPath, transport) {
   const response = await transport(op.url, {
     method: "PUT",
     redirect: "error",
-    signal: AbortSignal.timeout(600000),
+    signal: globalThis.AbortSignal.timeout(600000),
     headers: op.headers,
     body: createReadStream(videoPath, { start: op.offset, end: op.offset + op.length - 1 }),
     duplex: "half",
@@ -372,7 +392,7 @@ async function uploadRecording(api, transport, store, recording, videoPath) {
     failure("APPLE_COMMIT_UNCERTAIN_READ_BACK_BEFORE_RETRY");
   let state = committed.attributes.assetDeliveryState.state;
   for (let attempt = 0; attempt < 10 && state === "UPLOAD_COMPLETE"; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await delay(2000);
     const check = resource(
       (
         await api(
@@ -462,6 +482,18 @@ async function submissionItems(api, submissionId) {
   return data;
 }
 
+function requireReadyTargetItems(submission) {
+  if (!submission) return;
+  if (submission.attributes.state !== "READY_FOR_REVIEW")
+    failure("APPLE_SUBMISSION_STATE_NOT_READY");
+  if (
+    submission.items.length > 1 ||
+    (submission.items.length === 1 &&
+      submission.items[0].relationships?.appStoreVersion?.data?.id !== VERSION_ID)
+  )
+    failure("APPLE_SUBMISSION_ITEMS_AMBIGUOUS");
+}
+
 async function submitReview(api) {
   let submission = await findSubmission(api);
   if (submission && ["WAITING_FOR_REVIEW", "IN_REVIEW"].includes(submission.attributes.state))
@@ -470,8 +502,7 @@ async function submitReview(api) {
       state: submission.attributes.state,
       alreadySubmitted: true,
     };
-  if (submission && submission.attributes.state !== "READY_FOR_REVIEW")
-    failure("APPLE_SUBMISSION_STATE_NOT_READY");
+  requireReadyTargetItems(submission);
   if (!submission) {
     submission = resource(
       (
@@ -511,7 +542,7 @@ async function submitReview(api) {
     items[0].relationships.appStoreVersion.data.id !== VERSION_ID
   )
     failure("APPLE_SUBMISSION_ITEMS_AMBIGUOUS");
-  const updated = resource(
+  resource(
     (
       await api("PATCH", `/v1/reviewSubmissions/${submission.id}`, {
         data: { type: "reviewSubmissions", id: submission.id, attributes: { submitted: true } },
@@ -571,8 +602,7 @@ export async function runAppleReview(
   )
     failure("APPLE_ATTACHMENT_NOT_COMPLETE_OR_MISMATCH");
   const currentSubmission = await findSubmission(api);
-  if (currentSubmission && currentSubmission.attributes.state !== "READY_FOR_REVIEW")
-    failure("APPLE_SUBMISSION_STATE_NOT_READY");
+  requireReadyTargetItems(currentSubmission);
   const evidence = evidenceFor(recording, operatorEvidence, attachmentId);
   const notes = await applyReview(env, {
     evidence,
@@ -609,15 +639,21 @@ async function main(args) {
   }
   const bytes = await readFile(args[4]);
   if (bytes.length > 8192) failure("RECORDING_EVIDENCE_INVALID");
-  const result = await runAppleReview(process.env, {
-    videoPath: args[2],
-    operatorEvidence: JSON.parse(bytes.toString("utf8")),
-    attachmentId,
-    mode,
-  });
   const output = await open(args[0], "wx", 0o600);
   try {
-    await output.writeFile(JSON.stringify(result, null, 2) + "\n");
+    await output.writeFile(JSON.stringify({ state: "PENDING_PROVIDER_READBACK", mode }) + "\n");
+    await output.sync();
+    const result = await runAppleReview(process.env, {
+      videoPath: args[2],
+      operatorEvidence: JSON.parse(bytes.toString("utf8")),
+      attachmentId,
+      mode,
+    });
+    const receipt = JSON.stringify(result, null, 2) + "\n";
+    const written = await output.write(receipt, 0, "utf8");
+    if (written.bytesWritten !== Buffer.byteLength(receipt))
+      failure("APPLE_RECEIPT_WRITE_UNCERTAIN_READ_BACK_BEFORE_RETRY");
+    await output.truncate(Buffer.byteLength(receipt));
     await output.sync();
   } finally {
     await output.close();

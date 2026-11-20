@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
+import { spawnSync } from "node:child_process";
 import { generateKeyPairSync } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
+import { fileURLToPath, URL } from "node:url";
 import { APP_ID, VERSION_ID } from "../mobile-apple-review.mjs";
 import {
   inspectVideo,
@@ -18,7 +21,7 @@ const env = {
 };
 const link = (type, id) => ({ data: { type, id } });
 const json = (data, status = 200) =>
-  new Response(JSON.stringify(data), {
+  new globalThis.Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
   });
@@ -35,9 +38,9 @@ const operatorEvidence = {
   reviewerViewed: true,
 };
 
-async function fixture(run) {
+async function fixture(run, extension = "mp4") {
   const dir = await mkdtemp(join(process.cwd(), ".test-review-"));
-  const videoPath = join(dir, "review-demo.mp4");
+  const videoPath = join(dir, `review-demo.${extension}`);
   try {
     await writeFile(videoPath, demo);
     return await run(videoPath);
@@ -91,8 +94,8 @@ function mockApple(
       const buffers = [];
       for await (const part of options.body) buffers.push(part);
       state.chunks.push({ offset, bytes: Buffer.concat(buffers) });
-      if (offset === failPart) return new Response("upload failed", { status: 500 });
-      return new Response(null, { status: 200 });
+      if (offset === failPart) return new globalThis.Response("upload failed", { status: 500 });
+      return new globalThis.Response(null, { status: 200 });
     }
     if (options.method === "GET" && url.pathname === `/v1/appStoreVersions/${VERSION_ID}`)
       return json({
@@ -106,6 +109,11 @@ function mockApple(
           },
           relationships: { app: link("apps", APP_ID), build: link("builds", "build-604") },
         },
+      });
+    if (options.method === "GET" && url.pathname === `/v1/apps/${APP_ID}/appStoreVersions`)
+      return json({
+        data: [{ type: "appStoreVersions", id: VERSION_ID }],
+        meta: { paging: { total: 1 } },
       });
     if (options.method === "GET" && url.pathname === "/v1/builds/build-604")
       return json({
@@ -210,6 +218,15 @@ test("upload operations require secure, complete and nonoverlapping byte ranges"
   );
   assert.throws(() => validateUploadOperations([{ ...good[0], length: 6 }, good[1]], 10));
   assert.throws(() => validateUploadOperations([good[0]], 10));
+});
+
+test("original iPhone MOV and M4V files pass the container preflight", async () => {
+  for (const extension of ["mov", "m4v"])
+    await fixture(async (videoPath) => {
+      const recording = await inspectVideo(videoPath);
+      assert.equal(recording.fileName, `review-demo.${extension}`);
+      assert.equal(recording.fileSize, demo.length);
+    }, extension);
 });
 
 test("audit is read only and reports an unfinished attachment", async () =>
@@ -346,6 +363,48 @@ test("a previous unresolved submission stops before review notes are changed", a
     assert(state.calls.every(({ method }) => method === "GET"));
   }));
 
+test("a READY submission with extra items stops before review notes are changed", async () =>
+  fixture(async (videoPath) => {
+    const recording = await inspectVideo(videoPath);
+    const { state, transport } = mockApple(recording, {
+      initialAttachment: {
+        type: "appStoreReviewAttachments",
+        id: "attach-604",
+        attributes: {
+          fileName: recording.fileName,
+          fileSize: recording.fileSize,
+          assetDeliveryState: { state: "COMPLETE" },
+          sourceFileChecksum: recording.md5,
+        },
+        relationships: { appStoreReviewDetail: link("appStoreReviewDetails", "detail-604") },
+      },
+      initialSubmission: {
+        type: "reviewSubmissions",
+        id: "submission-604",
+        attributes: { state: "READY_FOR_REVIEW" },
+      },
+    });
+    state.items = [
+      {
+        type: "reviewSubmissionItems",
+        id: "item-604",
+        relationships: { appStoreVersion: link("appStoreVersions", VERSION_ID) },
+      },
+      { type: "reviewSubmissionItems", id: "item-other", relationships: {} },
+    ];
+    await assert.rejects(
+      runAppleReview(env, {
+        videoPath,
+        operatorEvidence,
+        attachmentId: "attach-604",
+        mode: "submit",
+        transport,
+      }),
+      /APPLE_SUBMISSION_ITEMS_AMBIGUOUS/,
+    );
+    assert(state.calls.every(({ method }) => method === "GET"));
+  }));
+
 test("completed recording follows notes and submission with one version item", async () =>
   fixture(async (videoPath) => {
     const recording = await inspectVideo(videoPath);
@@ -377,4 +436,36 @@ test("completed recording follows notes and submission with one version item", a
       ).length,
       1,
     );
+  }));
+
+test("CLI reserves its receipt before credentials or network and never overwrites one", async () =>
+  fixture(async (videoPath) => {
+    const dir = join(videoPath, "..");
+    const evidencePath = join(dir, "operator.json");
+    const receiptPath = join(dir, "receipt.json");
+    const script = fileURLToPath(new URL("../mobile-apple-review-submit.mjs", import.meta.url));
+    await writeFile(evidencePath, JSON.stringify(operatorEvidence));
+    const cleanEnv = { ...process.env };
+    delete cleanEnv.DOVEBEVO_ASC_KEY_ID;
+    delete cleanEnv.DOVEBEVO_ASC_ISSUER_ID;
+    delete cleanEnv.DOVEBEVO_ASC_PRIVATE_KEY;
+    const args = [
+      script,
+      receiptPath,
+      "--video",
+      videoPath,
+      "--evidence",
+      evidencePath,
+      "--upload",
+    ];
+    const first = spawnSync(process.execPath, args, { env: cleanEnv, encoding: "utf8" });
+    assert.equal(first.status, 1);
+    assert.deepEqual(JSON.parse(await readFile(receiptPath, "utf8")), {
+      state: "PENDING_PROVIDER_READBACK",
+      mode: "upload",
+    });
+    await writeFile(receiptPath, "PRESERVE\n");
+    const second = spawnSync(process.execPath, args, { env: cleanEnv, encoding: "utf8" });
+    assert.equal(second.status, 1);
+    assert.equal(await readFile(receiptPath, "utf8"), "PRESERVE\n");
   }));

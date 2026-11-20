@@ -1,0 +1,21 @@
+# Smile Tree, Torino: owner cocktail-menu candidate
+
+This is a **source-only app-menu candidate**, not a public price import. The [live app-only venue route](https://www.dovebevo.com/api/mobile/v2/menu/venues/n5345204623?cell=u0j2q&limit=1) returned the existing Smile Tree venue with zero stored offers, zero fees and unknown fee coverage on 20 November 2026. The immutable manifest stages **24 regular EUR cocktail prices** from the venue's own menu. It does not alter Roberto's website, customer contributions or the public database.
+
+## Identity and source
+
+The existing [OSM node 5345204623](https://www.openstreetmap.org/node/5345204623) names Smile Tree at 45.0764666, 7.6787224, gives `https://smiletreetorino.com/` as its website and `+39 331 1848136` as its phone. The owner's [current cocktail page](https://smiletreetorino.com/it/cocktail-aperitivi-apericena-quadrilatero-torino/) links the exact [three-page menu PDF](https://smiletreetorino.com/wp-content/uploads/2026/03/SmileTree_menu.pdf), and the owner's [new-menu article](https://smiletreetorino.com/it/il-nuovo-menu-di-smile-tree/) identifies the same bar, menu and phone. This direct website and phone match is strong identity evidence. **Civic suffix differs:** OSM and the existing app catalogue say Piazza della Consolata **9b**, while owner pages say **9C**. The candidate preserves the catalogue's 9b address; no OSM or app address is silently corrected. An independent reviewer should assess the discrepancy before publishing.
+
+Two direct PDF GETs returned HTTP 200 and the same **13,141,506 bytes** with raw SHA-256 `9930eae7cf0dc48ca1c5680b76240ccbcced0f7ef5817a35a2a9b0f69045fbc7`. The server reports `application/pdf`, last modified 26 March 2026 11:17:03 GMT. PDF metadata reports three pages and creation on 24 March 2026. This establishes source observation, not a price-effective date. The PDF is image-only (`pdftotext` yields no words), so all three pages were rendered and every selected name/price was manually checked. The importer's `pdf_image_v1` page-evidence digest is `9047e9494269478516dd196192a6d2210e51a5f2894ed3bcd64b10e9de44bec7`; each manifest row names its source page and printed name/amount.
+
+| PDF page | Named cocktails | Price distribution | Notes |
+| --- | ---: | --- | --- |
+| 1 | 10 | 8 at €14; 2 at €13 | Un Americano in Persia and Icaro are explicitly marked analcolico. Matsuri Negroni and Spritz Bergarè have specific app categories. |
+| 2 | 10 | 5 at €15; 4 at €14; 1 at €13 | La Milonga is explicitly marked analcolico. |
+| 3 | 4 | 1 at €15; 2 at €14; 1 at €13 | Midori No-Hi is explicitly marked analcolico. |
+
+Only short factual drink names, printed EUR prices, page locations and alcohol-free labels are retained. No menu image, recipe, description, photo or Google data is copied. The owner pages checked did not state a restriction on those factual fields; this bounded check is not a licence for the PDF artwork. The page-3 AperiTree *table aperitivo plus cocktail* at €20 between 19:00 and 21:30 is a distinct package, not an individual drink price or minimum spend; it is excluded. Generic bottled beer/juice/water categories and unpriced spirits are also excluded because no named drink can be identified. The menu does not establish that cover or service charges are absent, so fee coverage stays **unknown**. These are menu observations, not customer receipts or final bills.
+
+## Release gate
+
+Local `import_v2.validate` passed for the exact [immutable manifest](../../data/mobile-menu-v2-seeds/4a87967c7e647aca041be0185efab55de229169746452f3f6a439d70dc959de1.json), whose filename is its SHA-256. The current importer caps image PDFs at **9 MiB**, while this legitimate source is 13.1 MB. A separate, reviewed bounded PDF-only cap change must land before a protected audit can fetch and verify these bytes. This source-only candidate must remain unpublished until an independent reviewer checks all rows, the address discrepancy and the source-use decision; then protected read-only audit must verify the live source, static catalogue, zero-offer baseline and moderation/customer-data guards at the exact main commit. Only a separate guarded seed can publish app-only offers, followed by exact public API and app readback.

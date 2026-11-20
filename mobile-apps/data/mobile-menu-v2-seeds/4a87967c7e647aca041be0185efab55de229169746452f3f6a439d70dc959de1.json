@@ -1,0 +1,556 @@
+{
+  "batch_id": "smile-tree-torino-owner-menu-20261120",
+  "checked_on": "2026-11-20",
+  "data_version": "20261119",
+  "fee_coverage": [],
+  "fees": [],
+  "minimum_spends": [],
+  "offers": [
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: La Tomatina dei Savoia | EUR 14.00",
+      "id": "smile-tree-torino-20261120-001",
+      "name": "La Tomatina dei Savoia",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: Sirtaki | EUR 14.00",
+      "id": "smile-tree-torino-20261120-002",
+      "name": "Sirtaki",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": "negroni",
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: Matsuri Negroni | EUR 14.00",
+      "id": "smile-tree-torino-20261120-003",
+      "name": "Matsuri Negroni",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": "spritz",
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: Spritz Bergarè | EUR 14.00",
+      "id": "smile-tree-torino-20261120-004",
+      "name": "Spritz Bergarè",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1300,
+      "category": "alcohol_free",
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: Un Americano in Persia | EUR 13.00",
+      "id": "smile-tree-torino-20261120-005",
+      "name": "Un Americano in Persia",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: Pot-Pourri | EUR 14.00",
+      "id": "smile-tree-torino-20261120-006",
+      "name": "Pot-Pourri",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: Citrus Circus | EUR 14.00",
+      "id": "smile-tree-torino-20261120-007",
+      "name": "Citrus Circus",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: Holi Nectar | EUR 14.00",
+      "id": "smile-tree-torino-20261120-008",
+      "name": "Holi Nectar",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: Cinco De Mayo | EUR 14.00",
+      "id": "smile-tree-torino-20261120-009",
+      "name": "Cinco De Mayo",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1300,
+      "category": "alcohol_free",
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 1: Icaro | EUR 13.00",
+      "id": "smile-tree-torino-20261120-010",
+      "name": "Icaro",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1500,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: Lohri Masala | EUR 15.00",
+      "id": "smile-tree-torino-20261120-011",
+      "name": "Lohri Masala",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1500,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: Kellnerin | EUR 15.00",
+      "id": "smile-tree-torino-20261120-012",
+      "name": "Kellnerin",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: Vaso di Pandora | EUR 14.00",
+      "id": "smile-tree-torino-20261120-013",
+      "name": "Vaso di Pandora",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: Spasibo | EUR 14.00",
+      "id": "smile-tree-torino-20261120-014",
+      "name": "Spasibo",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1500,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: Gongfu Cha | EUR 15.00",
+      "id": "smile-tree-torino-20261120-015",
+      "name": "Gongfu Cha",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: Inti Raymi | EUR 14.00",
+      "id": "smile-tree-torino-20261120-016",
+      "name": "Inti Raymi",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1500,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: Tomorrowland | EUR 15.00",
+      "id": "smile-tree-torino-20261120-017",
+      "name": "Tomorrowland",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: Barcolana | EUR 14.00",
+      "id": "smile-tree-torino-20261120-018",
+      "name": "Barcolana",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1500,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: Barranquilla | EUR 15.00",
+      "id": "smile-tree-torino-20261120-019",
+      "name": "Barranquilla",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1300,
+      "category": "alcohol_free",
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 2: La Milonga | EUR 13.00",
+      "id": "smile-tree-torino-20261120-020",
+      "name": "La Milonga",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 3: Passione Alpina | EUR 14.00",
+      "id": "smile-tree-torino-20261120-021",
+      "name": "Passione Alpina",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1400,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 3: Essaouira | EUR 14.00",
+      "id": "smile-tree-torino-20261120-022",
+      "name": "Essaouira",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1500,
+      "category": null,
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 3: Junkanoo Jack | EUR 15.00",
+      "id": "smile-tree-torino-20261120-023",
+      "name": "Junkanoo Jack",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    },
+    {
+      "amount_minor": 1300,
+      "category": "alcohol_free",
+      "cell": "u0j2q",
+      "condition_text": null,
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "PDF page 3: Midori No-Hi | EUR 13.00",
+      "id": "smile-tree-torino-20261120-024",
+      "name": "Midori No-Hi",
+      "price_context": "regular",
+      "serving_label": null,
+      "serving_ml": null,
+      "source_id": "src-smile-tree-torino-9930eae7cf0d",
+      "venue_key": "n5345204623"
+    }
+  ],
+  "schema_version": 1,
+  "sources": [
+    {
+      "cell": "u0j2q",
+      "id": "src-smile-tree-torino-9930eae7cf0d",
+      "image_evidence": [
+        {
+          "line": "La Tomatina dei Savoia | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-001",
+          "page": 1
+        },
+        {
+          "line": "Sirtaki | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-002",
+          "page": 1
+        },
+        {
+          "line": "Matsuri Negroni | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-003",
+          "page": 1
+        },
+        {
+          "line": "Spritz Bergarè | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-004",
+          "page": 1
+        },
+        {
+          "line": "Un Americano in Persia | EUR 13.00",
+          "offer_id": "smile-tree-torino-20261120-005",
+          "page": 1
+        },
+        {
+          "line": "Pot-Pourri | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-006",
+          "page": 1
+        },
+        {
+          "line": "Citrus Circus | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-007",
+          "page": 1
+        },
+        {
+          "line": "Holi Nectar | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-008",
+          "page": 1
+        },
+        {
+          "line": "Cinco De Mayo | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-009",
+          "page": 1
+        },
+        {
+          "line": "Icaro | EUR 13.00",
+          "offer_id": "smile-tree-torino-20261120-010",
+          "page": 1
+        },
+        {
+          "line": "Lohri Masala | EUR 15.00",
+          "offer_id": "smile-tree-torino-20261120-011",
+          "page": 2
+        },
+        {
+          "line": "Kellnerin | EUR 15.00",
+          "offer_id": "smile-tree-torino-20261120-012",
+          "page": 2
+        },
+        {
+          "line": "Vaso di Pandora | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-013",
+          "page": 2
+        },
+        {
+          "line": "Spasibo | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-014",
+          "page": 2
+        },
+        {
+          "line": "Gongfu Cha | EUR 15.00",
+          "offer_id": "smile-tree-torino-20261120-015",
+          "page": 2
+        },
+        {
+          "line": "Inti Raymi | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-016",
+          "page": 2
+        },
+        {
+          "line": "Tomorrowland | EUR 15.00",
+          "offer_id": "smile-tree-torino-20261120-017",
+          "page": 2
+        },
+        {
+          "line": "Barcolana | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-018",
+          "page": 2
+        },
+        {
+          "line": "Barranquilla | EUR 15.00",
+          "offer_id": "smile-tree-torino-20261120-019",
+          "page": 2
+        },
+        {
+          "line": "La Milonga | EUR 13.00",
+          "offer_id": "smile-tree-torino-20261120-020",
+          "page": 2
+        },
+        {
+          "line": "Passione Alpina | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-021",
+          "page": 3
+        },
+        {
+          "line": "Essaouira | EUR 14.00",
+          "offer_id": "smile-tree-torino-20261120-022",
+          "page": 3
+        },
+        {
+          "line": "Junkanoo Jack | EUR 15.00",
+          "offer_id": "smile-tree-torino-20261120-023",
+          "page": 3
+        },
+        {
+          "line": "Midori No-Hi | EUR 13.00",
+          "offer_id": "smile-tree-torino-20261120-024",
+          "page": 3
+        }
+      ],
+      "page_count": 3,
+      "source_checked_on": "2026-11-20",
+      "source_format": "pdf_image_v1",
+      "source_sha256": "9930eae7cf0dc48ca1c5680b76240ccbcced0f7ef5817a35a2a9b0f69045fbc7",
+      "source_text_sha256": "9047e9494269478516dd196192a6d2210e51a5f2894ed3bcd64b10e9de44bec7",
+      "source_url": "https://smiletreetorino.com/wp-content/uploads/2026/03/SmileTree_menu.pdf",
+      "use_review_basis": "Owner-hosted March 2026 image-only PDF, all three pages manually read. Only short factual named cocktail prices and alcohol-free labels are retained, without art, recipes or photos. OSM venue website and phone match owner site; owner says 9C while OSM says 9b, so existing catalogue address is preserved. The EUR 20 AperiTree bundle, generic drinks and unpriced spirits are excluded. No fee-free or recent customer receipt claim. Independent row review and protected audit required.",
+      "use_review_reference": "https://smiletreetorino.com/it/il-nuovo-menu-di-smile-tree/",
+      "use_review_status": "approved",
+      "use_reviewed_on": "2026-11-20",
+      "venue_key": "n5345204623"
+    }
+  ],
+  "venues": [
+    {
+      "address": "Piazza della Consolata 9b",
+      "cell": "u0j2q",
+      "city": "Torino",
+      "country": "IT",
+      "geo_reference_hash_basis": null,
+      "geo_reference_sha256": null,
+      "geo_reference_url": null,
+      "identity_checked_on": "2026-11-20",
+      "identity_fingerprint": null,
+      "identity_kind": "osm_static",
+      "identity_url": "https://www.openstreetmap.org/node/5345204623",
+      "kind": 1,
+      "lat": 45.07647,
+      "lon": 7.67872,
+      "name": "Smile Tree",
+      "owner_page_sha256": null,
+      "static_city_id": 63621589,
+      "venue_key": "n5345204623"
+    }
+  ]
+}

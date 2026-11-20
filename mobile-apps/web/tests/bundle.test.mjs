@@ -909,8 +909,14 @@ test("map Home restores the launch overview after city search and location witho
     assert.ok(overview.center && overview.zoom);
     const drink = await f.page.locator(".mobile-drink-menu__summary").innerText();
     await f.page.locator('button[data-dovebevo-search="1"]').click();
-    await f.page.getByRole("dialog").getByRole("button", { name: /^Milano/ }).first().click();
-    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 13.9);
+    await f.page
+      .getByRole("dialog")
+      .getByRole("button", { name: /^Milano/ })
+      .first()
+      .click();
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 13.9,
+    );
     const home = f.page.getByRole("button", { name: "Vista iniziale della mappa" });
     await home.click();
     await f.page.waitForFunction(({ center, zoom }) => {
@@ -921,13 +927,20 @@ test("map Home restores the launch overview after city search and location witho
       );
     }, overview);
     await f.page.context().setGeolocation({ latitude: 43.7696, longitude: 11.2558 });
-    await f.page.context().grantPermissions(["geolocation"], { origin: "https://mobile.fixture.test" });
+    await f.page
+      .context()
+      .grantPermissions(["geolocation"], { origin: "https://mobile.fixture.test" });
     await f.page.getByRole("button", { name: "Vicino a me" }).click();
-    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14.9);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 14.9,
+    );
     await home.click();
     await f.page.waitForFunction(({ center, zoom }) => {
       const element = document.querySelector("section.map");
-      return element?.getAttribute("data-center") === center && element.getAttribute("data-zoom") === zoom;
+      return (
+        element?.getAttribute("data-center") === center &&
+        element.getAttribute("data-zoom") === zoom
+      );
     }, overview);
     assert.equal(await f.page.locator(".mobile-drink-menu__summary").innerText(), drink);
     assert.equal(new URL(f.page.url()).searchParams.has("at"), false);
@@ -943,14 +956,18 @@ test("Italian map Home closes a selected venue and returns to the launch overvie
   try {
     await f.page.goto("https://mobile.fixture.test/mobile/");
     const map = f.page.locator("section.map");
-    await f.page.waitForFunction(() => document.querySelector("section.map")?.getAttribute("data-ready") === "true");
+    await f.page.waitForFunction(
+      () => document.querySelector("section.map")?.getAttribute("data-ready") === "true",
+    );
     const overview = {
       center: await map.getAttribute("data-center"),
       zoom: await map.getAttribute("data-zoom"),
     };
     assert.ok(overview.center && overview.zoom);
     await f.page.goto("https://mobile.fixture.test/mobile/?at=45.4642,9.19");
-    await f.page.waitForFunction(() => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 13.9);
+    await f.page.waitForFunction(
+      () => Number(document.querySelector("section.map")?.getAttribute("data-zoom")) >= 13.9,
+    );
     const drink = await f.page.locator(".mobile-drink-menu__summary").innerText();
     await f.page.locator(".map__list").click();
     await f.page

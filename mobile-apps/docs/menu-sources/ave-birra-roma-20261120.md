@@ -4,8 +4,9 @@ This is a **source-only candidate** for Roberto's existing venue. It adds no
 venue, changes no customer price, and does not import public data. The
 content-addressed manifest is
 [`d2abd176bc98037469eed3097c5eb527d020d0641e7f5ff6b5df7be5020ef93d.json`](../../data/mobile-menu-v2-seeds/d2abd176bc98037469eed3097c5eb527d020d0641e7f5ff6b5df7be5020ef93d.json).
-Independent comparison of **all nine rows** with the pinned owner page and a
-protected read-only audit are required before any merge or seed.
+An independent reviewer compared **all nine rows** with the pinned owner page.
+A protected read-only audit on an exact reviewed `main` commit is still required
+before any public seed.
 
 ## Existing venue identity
 
@@ -53,4 +54,4 @@ Only factual names, servings and EUR prices are staged; no descriptions,
 photos or menu layout are copied. These observations are not legal clearance.
 The source is mutable: if the protected audit's fresh normalized hash differs,
 hold the batch for review rather than changing or reusing the source ID.
-There has been no database write, public contribution, push or pull request.
+This source-only change has made no database write or public contribution.

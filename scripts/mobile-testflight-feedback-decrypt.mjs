@@ -45,11 +45,31 @@ export function decryptFeedback(envelopeText, privateKeyPem) {
   if (
     payload?.result?.schema_version !== 1 ||
     payload.result.app_id !== "6827324444" ||
-    payload.result.complete !== true ||
+    typeof payload.result.complete !== "boolean" ||
     !Array.isArray(payload.result.feedback) ||
     payload.result.feedback.length > 200 ||
     !Array.isArray(payload.images) ||
-    payload.images.length > 40
+    payload.images.length > 40 ||
+    !Number.isInteger(payload.result.image_count) ||
+    !Number.isInteger(payload.result.image_expected_count) ||
+    !Number.isInteger(payload.result.image_unavailable_count) ||
+    payload.result.image_count !== payload.images.length ||
+    payload.result.image_expected_count !==
+      payload.result.image_count + payload.result.image_unavailable_count ||
+    payload.result.image_expected_count > 40 ||
+    payload.result.image_unavailable_count < 0 ||
+    payload.result.complete !== (payload.result.image_unavailable_count === 0) ||
+    payload.result.feedback_count !== payload.result.feedback.length ||
+    payload.result.feedback.some(
+      (row) =>
+        !Number.isInteger(row.screenshot_count) ||
+        !Number.isInteger(row.unavailable_screenshot_count) ||
+        row.screenshot_count < 0 ||
+        row.screenshot_count > 5 ||
+        row.unavailable_screenshot_count < 0 ||
+        !Array.isArray(row.screenshots) ||
+        row.screenshot_count !== row.screenshots.length + row.unavailable_screenshot_count,
+    )
   )
     throw new Error("Unexpected feedback payload");
   return payload;

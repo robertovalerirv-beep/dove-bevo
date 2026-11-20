@@ -3,15 +3,15 @@
 This is a **source-only** mobile-menu-v2 candidate for Roberto's existing
 Italian venue `srbj4/n3100479745`. It adds no venue, changes no customer
 price, and makes no public import. The immutable manifest is
-`329b11b86caa88627028133331888be5c32db01bbdf35aaf1513c497efe8d24f.json`.
+`a84d37f635a70e4fd1be79842b5042fad2c280b9c9d3207609d9297ea1d19f5a.json`.
 
 ## Exact venue identity
 
-- The published Dove Bevo catalogue version `20261108` has
+- The published Dove Bevo catalogue version `20261112` has
   `[n3100479745, English Empire, 2, 44.49598, 11.34975,
   "Via Zamboni 24a", 0]` in cell `srbj4`; city tuple zero is
   `[667350399, Bologna]`. Its public mobile-menu-v2 venue GET returned no
-  offers, fees or fee-coverage statement on 11 November 2026.
+  offers, fees or fee-coverage statement on 20 November 2026.
 - [OSM node 3100479745](https://www.openstreetmap.org/node/3100479745)
   names **English Empire**, tags it as a pub at Via Zamboni 24a, Bologna,
   and gives coordinates 44.4959780, 11.3497521. The
@@ -23,13 +23,20 @@ price, and makes no public import. The immutable manifest is
 ## Pinned owner pages and reviewed prices
 
 Both owner pages returned HTTP 200 directly, without redirects, on
-11 November 2026. The pins below use the importer's `html_text_v1` visible
+20 November 2026. The pins below use the importer's `html_text_v1` visible
 text normalization; they are **not** raw HTML-byte hashes.
 
 | Page | `html_text_v1` SHA-256 | Manifest rows |
 | --- | --- | ---: |
-| [Menu](https://www.empirebologna.it/menu) | `52f367193669f8dd89476d188d82515e7c499f07fa01c2c12918f39281c60abe` | 21 |
-| [Birre](https://www.empirebologna.it/birre) | `30aedf2365752e5091d383128f83e7a0c4e7e5d097fc69543351800e3abc86c3` | 22 |
+| [Menu](https://www.empirebologna.it/menu) | `31be2b409b718f89ffddded19eb4b6abdfac223459397557bb64bb748816ba46` | 21 |
+| [Birre](https://www.empirebologna.it/birre) | `d8f547c674865ceae6dfe90a7867b041cc48baee30ca3304bba342f5489c2c68` | 22 |
+
+Both normalized page hashes changed after the 11 November draft. A fresh
+comparison on 20 November found the same 43 named, sized, EUR price facts;
+the old source IDs and manifest are replaced rather than reused. The current
+pages also link a loyalty-card feature. The source change is not assumed to
+be limited to that link: an independent reviewer must check the full current
+pages and these new pins before this candidate can be merged or imported.
 
 The owner states that draft prices are printed **pint 0.5 l / half 0.25 l**.
 The 11 fixed listed draft names each have two separate offers:
@@ -80,15 +87,17 @@ above. A later contradictory live menu is a hold, not a reason to guess.
 
 The [owner's groups page](https://www.empirebologna.it/lauree-e-gruppi)
 offers a **separately booked group package** at EUR 15 per person, minimum
-eight people, including food and shared drinks. This is not a general
-per-person minimum spend or a supplement on each ordinary menu item. No
+eight people, including food and shared drinks. It also describes a booking
+deposit and optional cake service and private-party extras; none is an
+ordinary drink charge. This is not a general per-person minimum spend or a
+supplement on each ordinary menu item. No
 group-package price is imported or added to the individual drink amounts.
 The ordinary menu says there is no table service: customers order, pay and
 collect at the bar. That does **not** prove all possible fees are absent, so
 the manifest leaves fee coverage **unknown** and has no fee row.
 
 The owner's `robots.txt` explicitly allows `/` and restricts admin and
-booking-confirmation paths, not these menu pages. No source terms inspected
+confirmation/activation paths, not these menu pages. No source terms inspected
 granted reuse of the owner's photos, descriptions or layout. This one-off
 candidate carries only factual names, EUR amounts and printed serving sizes;
 it does not copy images, marketing prose or third-party reviews. An

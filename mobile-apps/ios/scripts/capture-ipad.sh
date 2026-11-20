@@ -10,12 +10,14 @@ case "$CAPTURE_DEVICE" in
         SCREENSHOTS="$IOS_ROOT/.build/Screenshots-iPad"
         INVENTORY="$IOS_ROOT/.build/iPadSimulatorInventory.json"
         CAPTURE_LABEL='13-inch iPad'
+        CAPTURE_TEST='testLiveIPadStoreOverviewWithoutWebViewQuery'
         ;;
     iphone-large)
         RESULT_BUNDLE="$IOS_ROOT/.build/iPhoneLargeScreenshots.xcresult"
         SCREENSHOTS="$IOS_ROOT/.build/Screenshots-iPhoneLarge"
         INVENTORY="$IOS_ROOT/.build/iPhoneLargeSimulatorInventory.json"
         CAPTURE_LABEL='large iPhone'
+        CAPTURE_TEST='testLiveWebsiteCitySearchAndMap'
         ;;
     *)
         printf 'STORE_CAPTURE_DEVICE must be ipad or iphone-large.\n' >&2
@@ -177,5 +179,5 @@ xcodebuild \
     -derivedDataPath "$IOS_ROOT/.build/DerivedData" \
     -resultBundlePath "$RESULT_BUNDLE" \
     -parallel-testing-enabled NO \
-    -only-testing:DoveBevoUITests/BrowserSmokeTests/testLiveWebsiteCitySearchAndMap \
+    -only-testing:DoveBevoUITests/BrowserSmokeTests/$CAPTURE_TEST \
     CODE_SIGNING_ALLOWED=NO test

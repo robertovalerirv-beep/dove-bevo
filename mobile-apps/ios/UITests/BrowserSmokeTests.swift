@@ -1,5 +1,6 @@
 import XCTest
 import CoreGraphics
+import UIKit
 
 final class BrowserSmokeTests: XCTestCase {
     private var app: XCUIApplication!
@@ -13,7 +14,8 @@ final class BrowserSmokeTests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launch()
-        acceptBundledRulesIfShown()
+        acceptBundledRulesIfShown(checkWebViewBeforeAccept:
+            !name.contains("testLiveIPadStoreOverviewWithoutWebViewQuery"))
     }
 
     override func tearDownWithError() throws {
@@ -143,6 +145,70 @@ final class BrowserSmokeTests: XCTestCase {
             XCTAssertTrue(visibleBar.contains(button.frame), "\(identifier) extends outside the native bar")
             XCTAssertTrue(visibleWindow.contains(button.frame), "\(identifier) is off screen")
             XCTAssertTrue(button.isHittable, "\(identifier) must be tappable after a destination switch")
+        }
+    }
+
+    /// A store screenshot must come from the running iPad app after its real
+    /// map tiles appear. Hosted iPad XCTest can stall while snapshotting the
+    /// WKWebView accessibility tree, so this capture reads screen pixels only.
+    func testLiveIPadStoreOverviewWithoutWebViewQuery() throws {
+        guard UIDevice.current.userInterfaceIdiom == .pad else {
+            throw XCTSkip("The store overview screenshot requires an iPad")
+        }
+        XCTAssertEqual(app.state, .runningForeground)
+        let deadline = Date().addingTimeInterval(360)
+        var lastScreen: XCUIScreenshot?
+        repeat {
+            let screen = XCUIScreen.main.screenshot()
+            lastScreen = screen
+            if Self.hasRenderedItalyMap(screen.image) {
+                XCTAssertEqual(app.state, .runningForeground)
+                let attachment = XCTAttachment(screenshot: screen)
+                attachment.name = "DoveBevo-live-iPad-Italy-overview"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+                return
+            }
+            Thread.sleep(forTimeInterval: 15)
+        } while Date() < deadline
+        if let lastScreen {
+            let diagnostic = XCTAttachment(screenshot: lastScreen)
+            diagnostic.name = "DoveBevo-iPad-map-not-ready"
+            diagnostic.lifetime = .keepAlways
+            add(diagnostic)
+        }
+        XCTFail("The genuine iPad screen never showed rendered Italy map tiles")
+    }
+
+    private static func hasRenderedItalyMap(_ image: UIImage) -> Bool {
+        guard let source = image.cgImage else { return false }
+        let side = 64
+        var pixels = [UInt8](repeating: 0, count: side * side * 4)
+        return pixels.withUnsafeMutableBytes { bytes in
+            guard let context = CGContext(data: bytes.baseAddress, width: side, height: side,
+                                          bitsPerComponent: 8, bytesPerRow: side * 4,
+                                          space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue |
+                                              CGBitmapInfo.byteOrder32Big.rawValue) else { return false }
+            context.interpolationQuality = .medium
+            context.draw(source, in: CGRect(x: 0, y: 0, width: side, height: side))
+            var colours = Set<UInt32>()
+            var waterPixels = 0
+            // The centre of the initial Italy view includes detailed land,
+            // roads and blue Mediterranean water. A blank loading view cannot
+            // satisfy both the colour diversity and water checks.
+            for row in 10..<54 {
+                for column in 5..<59 {
+                    let offset = (row * side + column) * 4
+                    let red = Int(bytes[offset])
+                    let green = Int(bytes[offset + 1])
+                    let blue = Int(bytes[offset + 2])
+                    colours.insert((UInt32(red >> 3) << 10) |
+                                   (UInt32(green >> 3) << 5) | UInt32(blue >> 3))
+                    if blue > red + 12 && blue > green + 6 { waterPixels += 1 }
+                }
+            }
+            return colours.count >= 24 && waterPixels >= 60
         }
     }
 
@@ -901,10 +967,12 @@ final class BrowserSmokeTests: XCTestCase {
         assertNoNativeRecovery()
     }
 
-    private func acceptBundledRulesIfShown() {
+    private func acceptBundledRulesIfShown(checkWebViewBeforeAccept: Bool = true) {
         let accept = app.buttons["welcome.accept"]
         guard accept.exists else { return }
-        XCTAssertFalse(app.webViews.firstMatch.exists, "The website must not be created before rules acceptance")
+        if checkWebViewBeforeAccept {
+            XCTAssertFalse(app.webViews.firstMatch.exists, "The website must not be created before rules acceptance")
+        }
         let scroll = app.scrollViews["welcome.scroll"]
         for _ in 0..<30 {
             if accept.isHittable { break }

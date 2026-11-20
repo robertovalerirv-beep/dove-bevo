@@ -527,12 +527,46 @@ test("small screens retain scroll access and 48 pixel price actions", async () =
     }));
     assert.ok(layout.contentWidth <= layout.width, JSON.stringify(layout));
     assert.ok(layout.contentHeight > layout.height, JSON.stringify(layout));
+    assert.match(
+      await f.page.locator(".mobile-venue__filter-context").innerText(),
+      /Drink sulla mappa[\s\S]*Spritz[\s\S]*altri drink/,
+    );
+    const visual = await f.page.locator(".scontrino.mobile-venue").evaluate((element) => {
+      const card = element.querySelector(".scontrino__paper");
+      const price = element.querySelector(".mobile-price--featured .price__value");
+      const actions = element.querySelector(".bar__actions");
+      return {
+        cardBackground: getComputedStyle(card).backgroundColor,
+        featuredPriceSize: Number.parseFloat(getComputedStyle(price).fontSize),
+        footerPosition: getComputedStyle(actions).position,
+        footerBottom: actions.getBoundingClientRect().bottom,
+        sheetBottom: element.closest(".sheet__body").getBoundingClientRect().bottom,
+      };
+    });
+    assert.equal(visual.cardBackground, "rgb(255, 255, 255)");
+    assert.ok(visual.featuredPriceSize >= 25, JSON.stringify(visual));
+    assert.equal(visual.footerPosition, "sticky");
+    assert.ok(visual.footerBottom <= visual.sheetBottom + 1, JSON.stringify(visual));
+    mkdirSync(path.join(here, "../../test-results"), { recursive: true });
+    await f.page.screenshot({
+      path: path.join(here, "../../test-results", "venue-card-320-fixture.png"),
+    });
     for (const button of await f.page
       .locator(".mobile-price--featured .price__actions .btn")
       .all()) {
       const box = await button.boundingBox();
       assert.ok(box && box.height >= 48);
     }
+    await f.page
+      .locator(".mobile-price--featured .price__actions")
+      .getByRole("button", { name: "È cambiato", exact: true })
+      .click();
+    assert.equal(
+      await f.page.evaluate(
+        () => window.sheetFixture.calls.filter((call) => call.kind === "changed").length,
+      ),
+      1,
+    );
     await f.page
       .getByRole("button", { name: "Segnala un problema con il bar", exact: true })
       .scrollIntoViewIfNeeded();
@@ -560,6 +594,7 @@ test("quick seen price and venue-drink-price navigation retain real callbacks", 
     const submit = f.page.locator('.mobile-price-form button[type="submit"]');
     await submit.scrollIntoViewIfNeeded();
     assert.ok((await submit.boundingBox())?.height >= 48);
+    assert.equal(await submit.evaluate((element) => getComputedStyle(element).position), "sticky");
     await f.page.setViewportSize({ width: 393, height: 700 });
     await f.page.getByRole("textbox", { name: "Prezzo" }).fill("5,50");
     assert.equal(await submit.isEnabled(), true);
@@ -664,6 +699,13 @@ test("three price actions retain a phone row across languages and confirmation s
         path: path.join(here, "../../test-results", `price-actions-${width}-fixture.png`),
       });
     }
+    await f.page.evaluate(() => {
+      document.documentElement.style.fontSize = "18px";
+    });
+    await assertActionRow(actions);
+    await f.page.evaluate(() => {
+      document.documentElement.style.fontSize = "";
+    });
     await f.page.evaluate(() => window.sheetFixture.setConfirmation("hold"));
     await actions.first().click();
     await f.page.waitForFunction(

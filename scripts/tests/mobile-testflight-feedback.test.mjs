@@ -66,6 +66,9 @@ test("encrypts all pages and images without exporting tester identity or signed 
     );
     assert.equal(result.feedback_count, 2);
     assert.equal(result.image_count, 1);
+    assert.equal(result.image_expected_count, 1);
+    assert.equal(result.image_unavailable_count, 0);
+    assert.equal(result.complete, true);
     const saved = await readFile(file, "utf8");
     for (const sensitive of ["Ricerca non visibile", "private@example.com", image])
       assert.ok(!saved.includes(sensitive));
@@ -75,6 +78,8 @@ test("encrypts all pages and images without exporting tester identity or signed 
     assert.equal(payload.result.feedback[0].comment, "Ricerca non visibile");
     assert.equal(payload.result.feedback[0].build, "72");
     assert.deepEqual(payload.result.feedback[0].screenshots, ["feedback-001-1.png"]);
+    assert.equal(payload.result.feedback[0].screenshot_count, 1);
+    assert.equal(payload.result.feedback[0].unavailable_screenshot_count, 0);
     assert.equal(payload.images[0].filename, "feedback-001-1.png");
     assert.throws(
       () => decryptFeedback(JSON.stringify({ ...envelope, tag: "AAAAAAAAAAAAAAAAAAAAAA==" }), pem),
@@ -91,6 +96,101 @@ test("encrypts all pages and images without exporting tester identity or signed 
         ),
     );
     assert.equal(seen.find((call) => call.url === image).options.headers.Authorization, undefined);
+  });
+});
+
+test("encrypts incomplete metadata when signed screenshots cannot be fetched", async () => {
+  await withOutput(async (file) => {
+    const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 3072 });
+    const missingTransport = "https://is1-ssl.mzstatic.com/feedback/unavailable-transport.png";
+    const missingHttp = "https://is1-ssl.mzstatic.com/feedback/unavailable-http.png";
+    const fetcher = async (url) => {
+      if (url === missingTransport)
+        throw new TypeError("private signed image URL must stay hidden");
+      if (url === missingHttp) return new globalThis.Response("private response", { status: 503 });
+      if (url === image)
+        return new globalThis.Response(Buffer.from([137, 80, 78, 71]), {
+          status: 200,
+          headers: { "content-type": "image/png" },
+        });
+      return json({
+        data: [
+          record("row_1", [{ url: image }, { url: missingTransport }], "build_72"),
+          record("row_2", [{ url: missingHttp }], "build_72"),
+        ],
+        included: [{ type: "builds", id: "build_72", attributes: { version: "72" } }],
+        links: {},
+      });
+    };
+    const result = await auditFeedback(
+      {},
+      file,
+      fetcher,
+      () => "ephemeral-token",
+      publicKey.export({ type: "spki", format: "pem" }),
+    );
+    assert.equal(result.complete, false);
+    assert.equal(result.feedback_count, 2);
+    assert.equal(result.image_count, 1);
+    assert.equal(result.image_expected_count, 3);
+    assert.equal(result.image_unavailable_count, 2);
+    assert.deepEqual(result.image_unavailable_reasons, { transport: 1, http_or_redirect: 1 });
+    const saved = await readFile(file, "utf8");
+    for (const sensitive of ["Ricerca non visibile", missingTransport, missingHttp, "private"])
+      assert.ok(!saved.includes(sensitive));
+    const payload = decryptFeedback(saved, privateKey.export({ type: "pkcs8", format: "pem" }));
+    assert.deepEqual(payload.result.feedback[0].screenshots, ["feedback-001-1.png"]);
+    assert.equal(payload.result.feedback[0].screenshot_count, 2);
+    assert.equal(payload.result.feedback[0].unavailable_screenshot_count, 1);
+    assert.equal(payload.result.feedback[1].screenshot_count, 1);
+    assert.equal(payload.result.feedback[1].unavailable_screenshot_count, 1);
+    assert.equal(payload.images.length, 1);
+  });
+});
+
+test("stops image requests when the global fetch budget is exhausted", async () => {
+  await withOutput(async (file) => {
+    const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 3072 });
+    const skippedImage = "https://is1-ssl.mzstatic.com/feedback/skipped.png";
+    let elapsed = 0;
+    let imageCalls = 0;
+    const fetcher = async (url) => {
+      if (url === skippedImage) throw new Error("Image budget was ignored");
+      if (url === image) {
+        imageCalls += 1;
+        elapsed = 120000;
+        return new globalThis.Response(Buffer.from([137, 80, 78, 71]), {
+          status: 200,
+          headers: { "content-type": "image/png" },
+        });
+      }
+      return json({
+        data: [record("row_1", [{ url: image }, { url: skippedImage }])],
+        included: [],
+        links: {},
+      });
+    };
+    const result = await auditFeedback(
+      {},
+      file,
+      fetcher,
+      () => "ephemeral-token",
+      publicKey.export({ type: "spki", format: "pem" }),
+      () => {},
+      () => elapsed,
+    );
+    assert.equal(imageCalls, 1);
+    assert.equal(result.complete, false);
+    assert.equal(result.image_expected_count, 2);
+    assert.equal(result.image_count, 1);
+    assert.equal(result.image_unavailable_count, 1);
+    assert.deepEqual(result.image_unavailable_reasons, { budget_exhausted: 1 });
+    const payload = decryptFeedback(
+      await readFile(file, "utf8"),
+      privateKey.export({ type: "pkcs8", format: "pem" }),
+    );
+    assert.equal(payload.result.feedback[0].screenshot_count, 2);
+    assert.equal(payload.result.feedback[0].unavailable_screenshot_count, 1);
   });
 });
 

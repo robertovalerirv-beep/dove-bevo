@@ -16,6 +16,7 @@ const MAX_IMAGES = 40;
 const MAX_JSON_BYTES = 1024 * 1024;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_TOTAL_IMAGE_BYTES = 40 * 1024 * 1024;
+const IMAGE_FETCH_BUDGET_MS = 120000;
 const initial = new URL(ORIGIN + PATH);
 initial.searchParams.set("limit", "200");
 initial.searchParams.set("sort", "-createdDate");
@@ -129,11 +130,30 @@ function feedbackRows(body) {
             ? item.attributes.osVersion.slice(0, 40)
             : null,
         comment: item.attributes.comment ?? "",
+        screenshot_count: images.length,
+        unavailable_screenshot_count: 0,
         screenshots: [],
       },
       images,
     };
   });
+}
+
+function imageFailureClass(error) {
+  if (error?.name === "TimeoutError" || error?.name === "AbortError") return "timeout";
+  if (error?.name === "TypeError") return "transport";
+  switch (error?.message) {
+    case "Feedback image read unavailable":
+      return "http_or_redirect";
+    case "Unexpected feedback image type":
+      return "content_type";
+    case "Missing feedback response body":
+      return "missing_body";
+    case "Feedback response too large":
+      return "size_limit";
+    default:
+      return "other";
+  }
 }
 
 export async function auditFeedback(
@@ -143,6 +163,7 @@ export async function auditFeedback(
   auth = tokenFor,
   publicKeyPem,
   diagnostic = () => {},
+  now = () => globalThis.performance.now(),
 ) {
   diagnostic("auth", 0);
   const token = auth(env);
@@ -182,44 +203,66 @@ export async function auditFeedback(
     next = body.links?.next ? validPageUrl(body.links.next) : null;
   }
   if (next) throw new Error("Feedback pagination incomplete");
-  let imageCount = 0;
+  let expectedImageCount = 0;
   let imageBytes = 0;
   const images = [];
+  const imageFailures = {};
+  const imageDeadline = now() + IMAGE_FETCH_BUDGET_MS;
+  const markUnavailable = (row, reason) => {
+    imageFailures[reason] = (imageFailures[reason] ?? 0) + 1;
+    row.record.unavailable_screenshot_count += 1;
+    diagnostic("image_unavailable", 0);
+  };
   for (const [recordIndex, row] of rows.entries()) {
     for (const [imageIndex, url] of row.images.entries()) {
       diagnostic("image_request", 0);
-      if (++imageCount > MAX_IMAGES) throw new Error("Too many feedback images");
-      const response = await transport(url.href, {
-        method: "GET",
-        redirect: "error",
-        signal: globalThis.AbortSignal.timeout(20000),
-        headers: { Accept: "image/*" },
-      });
-      diagnostic("image_response", response.status);
-      if (
-        response.status !== 200 ||
-        response.redirected ||
-        (response.url && response.url !== url.href)
-      )
-        throw new Error("Feedback image read unavailable");
-      diagnostic("image_decode", response.status);
-      const extension = imageExtension(response.headers.get("content-type") ?? "");
-      const filename = `feedback-${String(recordIndex + 1).padStart(3, "0")}-${imageIndex + 1}.${extension}`;
-      const bytes = await bytesOf(response, MAX_IMAGE_BYTES);
-      imageBytes += bytes.byteLength;
-      if (imageBytes > MAX_TOTAL_IMAGE_BYTES) throw new Error("Feedback images too large");
-      images.push({ filename, base64: bytes.toString("base64") });
-      row.record.screenshots.push(filename);
+      if (++expectedImageCount > MAX_IMAGES) throw new Error("Too many feedback images");
+      const timeRemaining = imageDeadline - now();
+      if (timeRemaining <= 0) {
+        markUnavailable(row, "budget_exhausted");
+        continue;
+      }
+      try {
+        const response = await transport(url.href, {
+          method: "GET",
+          redirect: "error",
+          signal: globalThis.AbortSignal.timeout(Math.min(20000, Math.ceil(timeRemaining))),
+          headers: { Accept: "image/*" },
+        });
+        diagnostic("image_response", response.status);
+        if (
+          response.status !== 200 ||
+          response.redirected ||
+          (response.url && response.url !== url.href)
+        )
+          throw new Error("Feedback image read unavailable");
+        diagnostic("image_decode", response.status);
+        const extension = imageExtension(response.headers.get("content-type") ?? "");
+        const filename = `feedback-${String(recordIndex + 1).padStart(3, "0")}-${imageIndex + 1}.${extension}`;
+        const bytes = await bytesOf(response, MAX_IMAGE_BYTES);
+        if (imageBytes + bytes.byteLength > MAX_TOTAL_IMAGE_BYTES)
+          throw new Error("Feedback images too large");
+        imageBytes += bytes.byteLength;
+        images.push({ filename, base64: bytes.toString("base64") });
+        row.record.screenshots.push(filename);
+      } catch (error) {
+        if (error?.message === "Feedback images too large") throw error;
+        markUnavailable(row, imageFailureClass(error));
+      }
     }
   }
+  const unavailableImageCount = expectedImageCount - images.length;
   const result = {
     schema_version: 1,
     app_id: APP_ID,
     checked_at: new Date().toISOString(),
-    complete: true,
+    complete: unavailableImageCount === 0,
     pages,
     feedback_count: rows.length,
-    image_count: imageCount,
+    image_count: images.length,
+    image_expected_count: expectedImageCount,
+    image_unavailable_count: unavailableImageCount,
+    image_unavailable_reasons: imageFailures,
     // Exclude tester identity, email, and expiring Apple image URLs.
     feedback: rows.map(({ record }) => record),
   };
@@ -262,7 +305,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     if (process.argv.length !== 3) throw new Error("Expected ciphertext file");
     const publicKey = await readFile(
-      new URL("./keys/testflight-feedback-audit-20261103-public.pem", import.meta.url),
+      new URL("./keys/testflight-feedback-audit-20261120-public.pem", import.meta.url),
       "utf8",
     );
     const result = await auditFeedback(
@@ -282,6 +325,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         complete: result.complete,
         feedback_count: result.feedback_count,
         image_count: result.image_count,
+        image_unavailable_count: result.image_unavailable_count,
       }) + "\n",
     );
   } catch (error) {

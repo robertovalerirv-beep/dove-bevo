@@ -55,6 +55,8 @@ final class NativeBottomBar: UIView {
         shouldGroupAccessibilityChildren = true
         isAccessibilityElement = false
         backgroundColor = NativeAppearance.chrome
+        setContentHuggingPriority(.required, for: .vertical)
+        setContentCompressionResistancePriority(.required, for: .vertical)
         let separator = UIView()
         separator.backgroundColor = NativeAppearance.line
         separator.translatesAutoresizingMaskIntoConstraints = false
@@ -95,6 +97,24 @@ final class NativeBottomBar: UIView {
     }
 
     required init?(coder: NSCoder) { return nil }
+
+    override var intrinsicContentSize: CGSize {
+        guard columns > 0, !buttons.isEmpty else {
+            return CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+        }
+        // The parent pins this bar to the safe-area bottom without a height
+        // constraint. When Dynamic Type changes four columns into two rows,
+        // expose both rows to Auto Layout instead of letting the second row
+        // extend below the screen.
+        let rowHeights = stride(from: 0, to: buttons.count, by: columns).map { first in
+            (first..<min(first + columns, buttons.count))
+                .map { minimumHeights[$0].constant }
+                .max() ?? 56
+        }
+        let spacing = CGFloat(max(0, rowHeights.count - 1)) * stack.spacing
+        return CGSize(width: UIView.noIntrinsicMetric,
+                      height: 8 + rowHeights.reduce(0, +) + spacing)
+    }
 
     static func columns(for usableWidth: CGFloat, fontScale: CGFloat) -> Int {
         // Each native target still has at least 56 points of horizontal room.
@@ -193,6 +213,8 @@ final class NativeBottomBar: UIView {
             button.accessibilityTraits = traits
         }
         button(for: .recommendations).accessibilityHint = "Mostra i drink consigliati da tutti in questa zona"
+        invalidateIntrinsicContentSize()
+        setNeedsLayout()
     }
 
     private func arrange(columns: Int) {

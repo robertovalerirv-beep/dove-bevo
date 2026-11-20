@@ -136,6 +136,34 @@ final class BottomNavigationControllerTests: XCTestCase {
             let originalButtons = bar.buttons
             let largeTextHeight = bar.bounds.height
             XCTAssertGreaterThanOrEqual(Set(frames.map { Int($0.minY.rounded()) }).count, 2)
+            // A destination switch can trigger the two-row layout after the
+            // parent has already measured the bar. Recheck the mounted frames
+            // at the actual 402-point iPhone width, not just initial mount.
+            window.frame = CGRect(x: 0, y: 0, width: 402, height: 874)
+            host.view.frame = window.bounds
+            for action in [BottomNavigationAction.home, .map, .favourites, .recommendations, .map] {
+                bar.button(for: action).sendActions(for: .touchUpInside)
+                window.layoutIfNeeded()
+                tabs.view.layoutIfNeeded()
+                bar.layoutIfNeeded()
+                window.layoutIfNeeded()
+                XCTAssertEqual(bar.bounds.width, 402, accuracy: 0.5)
+                XCTAssertGreaterThanOrEqual(bar.intrinsicContentSize.height, 124,
+                                            "Two large-text rows need space after \(action.title)")
+                XCTAssertGreaterThanOrEqual(bar.bounds.height + 0.5, bar.intrinsicContentSize.height,
+                                            "The parent must honour both rows after \(action.title)")
+                let switchedFrames = bar.buttons.map { $0.convert($0.bounds, to: bar) }
+                XCTAssertEqual(Set(switchedFrames.map { Int($0.minY.rounded()) }).count, 2)
+                for (index, frame) in switchedFrames.enumerated() {
+                    XCTAssertGreaterThanOrEqual(frame.width, 48)
+                    XCTAssertGreaterThanOrEqual(frame.height, 48)
+                    XCTAssertTrue(bar.bounds.insetBy(dx: -0.5, dy: -0.5).contains(frame),
+                                  "Button \(index) extends outside the bar after \(action.title)")
+                    let windowFrame = bar.buttons[index].convert(bar.buttons[index].bounds, to: window)
+                    XCTAssertTrue(window.bounds.insetBy(dx: -0.5, dy: -0.5).contains(windowFrame),
+                                  "Button \(index) is off screen after \(action.title)")
+                }
+            }
             host.setOverrideTraitCollection(UITraitCollection(preferredContentSizeCategory: .large), forChild: tabs)
             window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
             host.view.frame = window.bounds

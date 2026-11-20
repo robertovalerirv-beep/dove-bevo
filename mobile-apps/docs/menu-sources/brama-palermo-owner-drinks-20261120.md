@@ -1,0 +1,20 @@
+# Brama, Palermo: owner drink-menu candidate
+
+This is a **source-only app-menu candidate**, not a public price import. Roberto's existing static catalogue already contains Brama as OSM node `n11598357565`, cell `sqc8b`, Palermo city ID `67253662`, at `38.11911, 13.3646`. The [live app-only venue route](https://www.dovebevo.com/api/mobile/v2/menu/venues/n11598357565?cell=sqc8b&limit=1) returned **zero** stored offers, zero fees and unknown fee coverage on 20 November 2026. [OSM node 11598357565](https://www.openstreetmap.org/node/11598357565) names a bar at `38.1191145, 13.3646042`; reverse geocoding puts it on Via Giovanni Meli. [Brama's own site](https://bramacocktailcucina.it/) prints **Brama Cocktail & Cucina, Via Giovanni Meli 16/18, Palermo**, and publishes the drink menu on that same page. The manifest preserves the catalogue's null address rather than replacing it with a guessed static value.
+
+The first-party page returned HTTP 200 as UTF-8 HTML with the importer's `DoveBevoMenuAudit/1` user agent and no redirect. Its `html_text_v1` normalized SHA-256 was **`4a377d959bee3f90e76cc2d58a66e130e96e67a499d9e347fe0ea94d13e5aee6`** on two independent fetches. Raw HTML bytes changed between fetches while the normalized visible menu text remained identical; the manifest pins the normalized importer digest, as its existing HTML contract requires. The page contains no printed menu-effective date. `robots.txt` permits normal page fetching, and no explicit restriction on factual reuse was found on the owner page; this is a bounded source-use assessment, not a general licence. The candidate transcribes only short factual drink names, EUR amounts and printed serving/section labels, with source attribution. It copies no images, descriptions, Google data or customer contributions.
+
+The [immutable manifest](../../data/mobile-menu-v2-seeds/ab0fad366ee317f5860e5dc246356d2345bb1aa80a8ad42bfd37131cdc57df04.json) stages **39 regular EUR drink offers**:
+
+| Owner menu section | Offers | Treatment |
+| --- | ---: | --- |
+| SIGNATURES | 4 | Printed names and prices; `Olio - Tonic` is labelled gin and tonic in the owner's text. |
+| BEVANDE - SOFTDRINKS | 5 | Two printed water rows and three soft-drink rows. Slash-joined variants remain one printed menu item each; `250ML` is retained only on its adjacent CocaCola row. |
+| I CLASSICI | 12 | Exact named cocktail rows; no serving volume was printed. |
+| Analcolici | 4 | Non-alcoholic cocktails; `Gin Tonic 0` stays in the non-alcoholic category. |
+| Vini alla mescita | 6 | The printed section establishes by-the-glass service; the individual wine names and prices are preserved. |
+| BIRRE | 8 | Distinct printed rows, including `Ceres` and `Ceres Lager`; package/draught serving is unknown, so the draft-beer filter is not asserted. |
+
+The separate BIANCHI, ROSSI and BOLLICINE wine sections list 20 more prices, but do not explicitly label the serving basis; these are excluded rather than guessing a glass or bottle. The food section prints **Coperto 2,50**. Its applicability to bar drinks is unproven, so the candidate does not invent a service-fee row or claim fee-free prices. Fee coverage remains unknown and the app's price scope remains menu item only. No drink price is presented as a recent customer receipt.
+
+Local `import_v2.validate` passed on the exact manifest bytes; the filename equals their SHA-256. A source-text check found all 39 exact printed name/price pairings on the owner's normalized visible page. Before any protected import, an independent reviewer must check all rows, menu section/serving interpretation, source-use basis, OSM/static identity and the cover-charge scope. A protected read-only audit must then verify the live source digest, current static catalogue, zero-offer baseline and customer/moderation guards. Only a separate guarded seed on the same reviewed main commit may publish app-only rows, followed by exact public API and app readback. The source-only PR does not write to the live database or Roberto's website.

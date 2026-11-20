@@ -1,9 +1,25 @@
 {
   "batch_id": "offside-milano-owner-beer-menu-20261111",
-  "checked_on": "2026-11-11",
-  "data_version": "20261108",
+  "checked_on": "2026-11-20",
+  "data_version": "20261119",
   "fee_coverage": [],
   "fees": [],
+  "minimum_spends": [
+    {
+      "amount_minor": 1500,
+      "applicability": "conditional",
+      "basis": "person",
+      "cell": "u0ndb",
+      "condition_text": "Durante la trasmissione di eventi sportivi in diretta",
+      "currency": "EUR",
+      "currency_exponent": 2,
+      "evidence_ref": "Owner homepage: compulsory EUR 15 minimum consumption per person during live sports broadcasts",
+      "id": "offside-milano-20261120-minimum-live-sports",
+      "label": "Consumazione minima obbligatoria",
+      "source_id": "src-offside-milano-home-87a548a74048",
+      "venue_key": "n13543749848"
+    }
+  ],
   "offers": [
     {
       "amount_minor": 450,
@@ -462,7 +478,7 @@
       "currency_exponent": 2,
       "evidence_ref": "Owner beer page: PANASCÈ; EUR 7.00; solo media",
       "id": "offside-milano-20261111-029",
-      "name": "PANASCÈ",
+      "name": "PANASCÈ · Birra e Gazzosa",
       "price_context": "regular",
       "serving_label": "solo media",
       "serving_ml": null,
@@ -478,7 +494,7 @@
       "currency_exponent": 2,
       "evidence_ref": "Owner beer page: RADLER; EUR 7.00; solo media",
       "id": "offside-milano-20261111-030",
-      "name": "RADLER",
+      "name": "RADLER · Birra e Lemon",
       "price_context": "regular",
       "serving_label": "solo media",
       "serving_ml": null,
@@ -494,7 +510,7 @@
       "currency_exponent": 2,
       "evidence_ref": "Owner beer page: SNAKEBITE; EUR 4.50; piccola",
       "id": "offside-milano-20261111-031",
-      "name": "SNAKEBITE",
+      "name": "SNAKEBITE · Birra e Sidro",
       "price_context": "regular",
       "serving_label": "piccola",
       "serving_ml": null,
@@ -510,7 +526,7 @@
       "currency_exponent": 2,
       "evidence_ref": "Owner beer page: SNAKEBITE; EUR 7.50; media",
       "id": "offside-milano-20261111-032",
-      "name": "SNAKEBITE",
+      "name": "SNAKEBITE · Birra e Sidro",
       "price_context": "regular",
       "serving_label": "media",
       "serving_ml": null,
@@ -523,7 +539,7 @@
     {
       "cell": "u0ndb",
       "id": "src-offside-milano-beer-c6fba78b870f",
-      "source_checked_on": "2026-11-11",
+      "source_checked_on": "2026-11-20",
       "source_format": "html_text_v1",
       "source_sha256": "c6fba78b870f9bef8f30097413e76ccffe97073bf10d525d72ebfb1f2216162c",
       "source_text_sha256": "c6fba78b870f9bef8f30097413e76ccffe97073bf10d525d72ebfb1f2216162c",
@@ -532,6 +548,20 @@
       "use_review_reference": "https://www.offsidesportspub.it/",
       "use_review_status": "approved",
       "use_reviewed_on": "2026-11-11",
+      "venue_key": "n13543749848"
+    },
+    {
+      "cell": "u0ndb",
+      "id": "src-offside-milano-home-87a548a74048",
+      "source_checked_on": "2026-11-20",
+      "source_format": "html_text_v1",
+      "source_sha256": "87a548a740486d5fcd9b6607f9a69ebe2821554695cfed699c4b7c5986fa2ca9",
+      "source_text_sha256": "87a548a740486d5fcd9b6607f9a69ebe2821554695cfed699c4b7c5986fa2ca9",
+      "source_url": "https://www.offsidesportspub.it/",
+      "use_review_basis": "Owner-operated public HTTPS homepage states EUR 15 compulsory minimum consumption per person only during live sports. Transcribe only the factual amount, per-person basis, and condition, not protected text, images or layout. This is a minimum spend, not an additive fee; public seed remains held until released clients show it.",
+      "use_review_reference": "https://www.offsidesportspub.it/",
+      "use_review_status": "approved",
+      "use_reviewed_on": "2026-11-20",
       "venue_key": "n13543749848"
     }
   ],
@@ -544,7 +574,7 @@
       "geo_reference_hash_basis": null,
       "geo_reference_sha256": null,
       "geo_reference_url": null,
-      "identity_checked_on": "2026-11-11",
+      "identity_checked_on": "2026-11-20",
       "identity_fingerprint": null,
       "identity_kind": "osm_static",
       "identity_url": "https://www.openstreetmap.org/node/13543749848",

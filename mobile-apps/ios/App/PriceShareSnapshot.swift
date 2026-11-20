@@ -15,19 +15,21 @@ struct PriceShareSnapshot: Equatable {
     let confirmations: Int
     let tier: String
     let location: String
+    var menuDetails: MenuShareDetails? = nil
 
-    var amount: String { String(format: "%d,%02d %@", amountMinor / 100, amountMinor % 100, currency == "GBP" ? "£" : "€") }
+    var amount: String { menuDetails?.amount ?? String(format: "%d,%02d %@", amountMinor / 100, amountMinor % 100, currency == "GBP" ? "£" : "€") }
     var servingLabel: String {
+        if let menuDetails { return menuDetails.serving }
         if serving.isEmpty { return "Formato non dichiarato (dati precedenti)" }
         if ["drink", "drink singolo"].contains(serving.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()) { return "" }
         return serving
     }
-    var bandLabel: String { happyHour ? "Happy hour" : "Prezzo normale" }
+    var bandLabel: String { menuDetails == nil ? (happyHour ? "Happy hour" : "Prezzo normale") : "Prezzo da menu" }
     var confirmationLabel: String { confirmations == 1 ? "1 conferma" : "\(confirmations) conferme" }
-    var tierLabel: String? { ["affare": "Affare", "giusto": "Giusto", "salato": "Salato"][tier] }
+    var tierLabel: String? { menuDetails == nil ? ["affare": "Affare", "giusto": "Giusto", "salato": "Salato"][tier] : nil }
     var accessibilityDescription: String {
         [drinkName, amount, venueName, servingLabel, bandLabel, location, provenance,
-         confirmationLabel, tierLabel ?? "", "Immagine illustrativa del drink, non foto del locale"]
+         menuDetails == nil ? confirmationLabel : "", tierLabel ?? "", "Immagine illustrativa del drink, non foto del locale"]
             .filter { !$0.isEmpty }.joined(separator: ". ")
     }
 
@@ -54,7 +56,7 @@ struct PriceShareSnapshot: Equatable {
             confirmations: confirmations, tier: tier, location: location)
     }
 
-    private static func text(_ value: Any?, maximum: Int, allowEmpty: Bool = false) -> String? {
+    static func text(_ value: Any?, maximum: Int, allowEmpty: Bool = false) -> String? {
         guard let value = value as? String, value.utf16.count <= maximum,
               (allowEmpty || !value.isEmpty), value == value.trimmingCharacters(in: .whitespacesAndNewlines),
               !value.unicodeScalars.contains(where: { $0.value < 32 || (127...159).contains($0.value) || $0.value == 0xfffd || CharacterSet.newlines.contains($0) }) else { return nil }
@@ -65,6 +67,71 @@ struct PriceShareSnapshot: Equatable {
         guard let raw = value as? String, raw.range(of: #"\A(?:0|[1-9][0-9]{0,6})\z"#, options: .regularExpression) != nil,
               let number = Int(raw), (minimum...maximum).contains(number) else { return nil }
         return number
+    }
+}
+
+struct MenuShareDetails: Equatable { let amount: String; let serving: String }
+
+/// The row is captured from the selected modal, then checked against a fresh public API read.
+struct MenuShareOffer: Equatable {
+    let venueKey: String
+    let venueName: String
+    let offerID: String
+    let drinkName: String
+    let amount: String
+    let serving: String
+    let sourceDay: String
+    let location: String
+
+    static func parse(_ value: Any?, currentURL: URL) -> Self? {
+        guard let canonical = MobileEntry.publicVenue(currentURL),
+              let parts = URLComponents(url: currentURL, resolvingAgainstBaseURL: false)?.queryItems,
+              parts.count == 3, let focused = parts.first(where: { $0.name == "offer" })?.value,
+              focused.range(of: #"\A[A-Za-z0-9._:-]{1,128}\z"#, options: .regularExpression) != nil,
+              let fields = value as? [String: Any],
+              Set(fields.keys) == ["kind", "href", "venue", "venueName", "offer", "drinkName", "amountLabel", "serving", "provenance", "location"],
+              fields["kind"] as? String == "offer", fields["href"] as? String == currentURL.absoluteString,
+              fields["venue"] as? String == canonical.lastPathComponent,
+              fields["offer"] as? String == focused,
+              let venueName = PriceShareSnapshot.text(fields["venueName"], maximum: 512),
+              let drinkName = PriceShareSnapshot.text(fields["drinkName"], maximum: 512),
+              let amount = PriceShareSnapshot.text(fields["amountLabel"], maximum: 32),
+              let serving = PriceShareSnapshot.text(fields["serving"], maximum: 600, allowEmpty: true),
+              let provenance = PriceShareSnapshot.text(fields["provenance"], maximum: 240),
+              let location = PriceShareSnapshot.text(fields["location"], maximum: 200, allowEmpty: true),
+              provenance.range(of: #"\APrezzo del drink da menu, non totale pagato\. Supplementi separati\. Menu verificato il [0-9]{4}-[0-9]{2}-[0-9]{2}\z"#, options: .regularExpression) != nil,
+              normalized(amount).range(of: #"\A(?:0|[1-9][0-9]{0,6})(?:,[0-9]{1,3})? [€£]\z"#, options: .regularExpression) != nil else { return nil }
+        return Self(venueKey: canonical.lastPathComponent, venueName: venueName, offerID: focused,
+                    drinkName: drinkName, amount: amount, serving: serving,
+                    sourceDay: String(provenance.suffix(10)), location: location)
+    }
+
+    func verified(in venue: MenuV2Venue) -> PriceShareSnapshot? {
+        guard venue.key == venueKey, venue.name == venueName,
+              let price = venue.offers.first(where: { $0.id == offerID && $0.itemName == drinkName }),
+              case .ownerMenu(_, let checkedOn) = price.origin, checkedOn == sourceDay,
+              ["EUR", "GBP"].contains(price.currency), price.amountMinor > 0,
+              Self.normalized(price.amount) == Self.normalized(amount),
+              Self.displayServing(price) == serving else { return nil }
+        let evidence = "Prezzo del drink da menu, non totale pagato. Supplementi separati. Menu verificato il \(checkedOn). \(price.minimumSpendNotice) \(price.feeNotice)"
+        var result = PriceShareSnapshot(venueKey: venueKey, venueName: venueName, drink: price.category,
+            drinkName: price.itemName, happyHour: price.band == .happyHour, amountMinor: price.amountMinor,
+            currency: price.currency, serving: serving, provenance: evidence.trimmingCharacters(in: .whitespaces),
+            confirmations: 0, tier: "neutro", location: location)
+        result.menuDetails = MenuShareDetails(amount: price.amount, serving: serving)
+        return result
+    }
+
+    private static func normalized(_ value: String) -> String {
+        value.replacingOccurrences(of: "\u{00A0}", with: " ").replacingOccurrences(of: "\u{202F}", with: " ")
+    }
+    private static func displayServing(_ price: MenuV2Price) -> String {
+        let base = price.servingLabel ?? price.servingML.map { "\($0) ml" } ?? ""
+        let context: String
+        if price.band == .happyHour { context = ["Happy hour", price.condition].compactMap { $0 }.joined(separator: " · ") }
+        else if price.band == nil { context = price.condition.map { "Solo con: \($0)" } ?? "Prezzo condizionato" }
+        else { context = price.condition ?? "" }
+        return [base, context].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }
 
@@ -105,6 +172,55 @@ enum PriceShareReader {
     """#
 }
 
+enum MenuShareReader {
+    static let script = #"""
+    (() => {
+      "use strict";
+      if (window.top !== window || document.visibilityState !== "visible" ||
+          document.documentElement.getAttribute("data-dovebevo-mobile-shell") !== "1") return null;
+      const url = new URL(location.href);
+      if (url.protocol !== "https:" || !["www.dovebevo.com", "dovebevo.com"].includes(url.hostname) ||
+          url.username || url.password || url.port || url.hash ||
+          !["/mobile/", "/mobile/index.html"].includes(url.pathname) ||
+          !/^\?path=%2Fbar%2F(?:[nwru][1-9][0-9]{0,14}|m[0-9a-f]{24})&c=[0-9b-hjkmnp-z]{5}&offer=[A-Za-z0-9._:-]{1,128}$/.test(url.search)) return null;
+      const key = url.searchParams.get("path").slice(5);
+      const maps = document.querySelectorAll("section.map[data-selected]");
+      if (maps.length !== 1 || maps[0].getAttribute("data-selected") !== key ||
+          document.querySelectorAll("dialog[open]").length !== 1 ||
+          document.querySelectorAll("[data-dovebevo-share='1']").length !== 0) return null;
+      const sheet = document.querySelector("dialog.sheet.sheet--bare[open]");
+      if (!sheet || !sheet.matches(":modal")) return null;
+      const visible = node => {
+        if (!node || !node.isConnected || !node.getClientRects().length) return false;
+        for (let p = node; p; p = p.parentElement) {
+          const style = getComputedStyle(p);
+          if (p.hidden || p.inert || p.getAttribute("aria-hidden") === "true" ||
+              style.display === "none" || style.visibility !== "visible" || Number(style.opacity) <= 0) return false;
+        }
+        return true;
+      };
+      const headings = [...sheet.querySelectorAll(":scope > .sheet__body > .scontrino > .scontrino__paper h2.scontrino__name")].filter(visible);
+      const rows = [...sheet.querySelectorAll('li.mobile-menu-v2__offer--focused[data-testid="featured-menu-price"]')].filter(visible);
+      if (!visible(sheet) || headings.length !== 1 || rows.length !== 1 ||
+          headings[0].textContent.trim() !== sheet.getAttribute("aria-label")) return null;
+      const row = rows[0];
+      const one = selector => { const found = [...row.querySelectorAll(selector)].filter(visible); return found.length === 1 ? found[0] : null; };
+      const name = one(":scope > .mobile-menu-v2__name"), amount = one(":scope > .mobile-menu-v2__amount"),
+            source = one(":scope > .mobile-menu-v2__source");
+      const notes = [...row.querySelectorAll(":scope > .mobile-menu-v2__meta")].filter(visible);
+      if (!name || !amount || !source || notes.length !== 2 ||
+          notes[1].textContent.trim() !== "Prezzo del drink da menu, non totale pagato. Supplementi separati." ||
+          !/^Menu verificato il [0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(source.textContent.trim())) return null;
+      const drinkName = [...name.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(" ").trim();
+      const place = sheet.querySelector(".scontrino__paper .bar__kind");
+      return {kind:"offer",href:url.href,venue:key,venueName:headings[0].textContent.trim(),
+        offer:url.searchParams.get("offer"),drinkName,amountLabel:amount.textContent.trim(),
+        serving:notes[0].textContent.trim(),provenance:notes[1].textContent.trim()+" "+source.textContent.trim(),
+        location:visible(place)?place.textContent.trim():""};
+    })()
+    """#
+}
+
 /// Generation and exact document identity fence the asynchronous read and its
 /// timeout. A retired, hidden or navigated page cannot present stale content.
 @MainActor final class PriceShareCapture {
@@ -114,6 +230,9 @@ enum PriceShareReader {
         let value = Context(token: UUID(), documentURL: documentURL); pending = value; return value
     }
     func invalidate() { pending = nil }
+    func isCurrent(_ context: Context, currentURL: URL?, active: Bool) -> Bool {
+        pending == context && active && currentURL == context.documentURL
+    }
     func finish(_ context: Context, currentURL: URL?, active: Bool) -> Bool {
         guard pending == context else { return false }
         pending = nil

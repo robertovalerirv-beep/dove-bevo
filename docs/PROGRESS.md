@@ -45,6 +45,8 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 **Da verificare a mano dopo il deploy:** `/admin` → «Aggiorna» mostra i numeri; in DevTools `coverage` → 200.
 
+**Deploy bloccato dal download (stessa giornata):** il «Deploy staging» del merge #443 è rimasto 40 minuti (due tentativi) al passo «Download the extract», con `curl` ancora vivo alla cancellazione: file dell'Italia non in cache (la chiave è la data di Geofabrik) e download senza limiti. Il passo viene prima del build e non usa il codice del merge. Correzione solo al workflow: `timeout-minutes: 45` sul job, `20` sul download, `curl` che scarta e riprende (`-C -`) una connessione sotto 1 MB/s per 30 s, fino a 8 tentativi. Prova: server finto che si ferma dopo 1 MB → «Operation too slow» dopo 3 s, ripresa, file integro, uscita 0. Non provato su Geofabrik reale: la causa del blocco non è stata confermata.
+
 ---
 
 ## 2026-11-13 · README, SECURITY aggiornato e controllo del push affidabile (ramo `claude/missing-readme-discussion-a5dc8a`)

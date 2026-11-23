@@ -220,14 +220,14 @@
     "id": "M2-05",
     "milestone": "M2",
     "descrizione": "Inserimento in 4 tocchi più le cifre",
-    "verifica": "e2e: dalla mappa `Aggiungi prezzo` → primo bar proposto → Spritz → \"7,50\" → `Salva`: esattamente 4 tocchi; dopo 5 s il prezzo compare nella scheda",
+    "verifica": "e2e: dalla mappa `Aggiungi prezzo` → primo bar proposto → Spritz → \"7,50\" → `Salva`: esattamente 4 tocchi; subito dopo `Salva` si apre la scheda del bar e il prezzo compare appena il server risponde (SPEC 1.20)",
     "passes": true
   },
   {
     "id": "M2-06",
     "milestone": "M2",
     "descrizione": "Annulla senza scritture",
-    "verifica": "e2e: `Salva` poi `Annulla` entro 5 s → nessuna `POST /api/prices`; passaggio in background entro 5 s → invio con `keepalive`",
+    "verifica": "e2e (SPEC 1.20, l'Annulla non c'è più): dopo `Salva` nessun pulsante «Annulla» né barra di avanzamento e la `POST /api/prices` parte subito con `keepalive`, così chiudere l'app subito dopo non perde il prezzo; un errore riapre il passo Prezzo con le cifre ancora modificabili e il motivo (quota del giorno, troppi prezzi di fila, offline, servizio occupato, verifica anti-robot, prezzo in controllo, fuori limite)",
     "passes": true
   },
   {
@@ -339,7 +339,7 @@
     "id": "M3-16",
     "milestone": "M3",
     "descrizione": "Aggiungi un altro drink qui",
-    "verifica": "e2e: dopo `Salva` il messaggio offre \"Aggiungi un altro drink qui\"; il bar resta selezionato; più drink partono in un'unica `POST /api/prices` con l'Annulla di 5 s",
+    "verifica": "e2e (SPEC 1.20): dopo `Salva` si apre la scheda del bar, il cui «Aggiungi un prezzo qui» apre l'inserimento con il bar già scelto (direttamente ai drink); nessun messaggio «Aggiungi un altro drink qui»; ogni drink parte con la sua `POST /api/prices` e le quote e le righe D1 per prezzo non cambiano (M3-20)",
     "passes": true
   },
   {
@@ -528,21 +528,21 @@
     "id": "MB-10",
     "milestone": "MB",
     "descrizione": "Prezzi già visti in zona",
-    "verifica": "e2e: nel passo Prezzo compaiono i prezzi della cella per lo stesso drink; un tocco su uno sostituisce le cifre: esattamente 4 tocchi senza cifre; la riga con intervallo e mediana solo con ≥ 5 prezzi; nessuna richiesta in più",
+    "verifica": "e2e: nel passo Prezzo compaiono i prezzi della cella per lo stesso drink; un tocco su uno mette le sue cifre nel campo e non invia nulla, poi `Salva` (SPEC 1.20): esattamente 4 tocchi (`Aggiungi prezzo`, bar, drink, `Salva`) con il tocco sul prezzo al posto delle cifre; la riga con intervallo e mediana solo con ≥ 5 prezzi; nessuna richiesta in più",
     "passes": true
   },
   {
     "id": "MB-11",
     "milestone": "MB",
     "descrizione": "Timbro dopo `Salva`",
-    "verifica": "e2e: timbro con la data del giorno; `Annulla` entro 5 s → nessuna `POST /api/prices`; dopo 5 s una sola; passaggio in background → invio con `keepalive` (D-15); \"Aggiungi un altro drink qui\" (M3-16) presente; `UNDO_MS`, durata della barra di avanzamento e testi coincidono (unit)",
+    "verifica": "e2e (SPEC 1.20): dopo `Salva` nessun Timbro né riquadro sulla schermata: si apre la scheda del bar con il prezzo, «Prezzo salvato» è annunciato solo allo screen reader e il fuoco va sul nome del bar; una sola `POST /api/prices`, subito, con `keepalive` (D-15); se il prezzo uguale c'era già, un banner di una riga («Grazie, il prezzo inserito da te conferma il prezzo che era già presente.») che sparisce da solo; un prezzo in quarantena compare in «In verifica» con il motivo (D-10); `UNDO_MS` e la barra di avanzamento non esistono più (unit)",
     "passes": true
   },
   {
     "id": "MB-12",
     "milestone": "MB",
     "descrizione": "Tessera (D-29)",
-    "verifica": "e2e: timbri a 1, 5, 10, 25, 50 prezzi dal contatore esistente; nessuna chiave nuova in `localStorage`; nessuna richiesta in più",
+    "verifica": "e2e (SPEC 1.20): dopo `Salva` la Tessera non compare; il contatore esistente in `localStorage` cresce di 1 a ogni prezzo inviato e resta, con la data del primo uso, la sola chiave (serve all'invito di M4-09); nessuna chiave nuova; nessuna richiesta in più",
     "passes": true
   },
   {
@@ -717,7 +717,7 @@
     "id": "ME-01",
     "milestone": "ME",
     "descrizione": "Dizionario inglese completo e agganciato ai tipi",
-    "verifica": "unit: `src/app/i18n/en.ts` ha le stesse sezioni pubbliche di `it.ts` (tutte tranne `admin`), con gli stessi nomi e le stesse funzioni; `tsc -b` fallisce se manca una frase; ogni funzione dà un testo non vuoto con gli argomenti di prova; il testo dell'Annulla riporta i secondi da `UNDO_MS`",
+    "verifica": "unit: `src/app/i18n/en.ts` ha le stesse sezioni pubbliche di `it.ts` (tutte tranne `admin`), con gli stessi nomi e le stesse funzioni; `tsc -b` fallisce se manca una frase; ogni funzione dà un testo non vuoto con gli argomenti di prova; i messaggi d'errore di «Aggiungi prezzo» (SPEC 1.20) sono nelle due lingue",
     "passes": true
   },
   {
@@ -738,7 +738,7 @@
     "id": "ME-04",
     "milestone": "ME",
     "descrizione": "Tutte le viste pubbliche in inglese",
-    "verifica": "e2e: in English sono in inglese mappa, menu «Scegli cosa bere» (drink compresi), ricerca, Elenco, scheda bar, Aggiungi prezzo (Timbro, Annulla, Tessera), bar mancante, segnalazioni, invito all'installazione, messaggi di «Vicino a me» e di errore; nessun testo italiano residuo nelle viste pubbliche; screenshot 390×844 senza testi che escono dal bordo",
+    "verifica": "e2e: in English sono in inglese mappa, menu «Scegli cosa bere» (drink compresi), ricerca, Elenco, scheda bar, Aggiungi prezzo (passo Prezzo, messaggi d'errore, banner della conferma), bar mancante, segnalazioni, invito all'installazione, messaggi di «Vicino a me» e di errore; nessun testo italiano residuo nelle viste pubbliche; screenshot 390×844 senza testi che escono dal bordo",
     "passes": true
   },
   {

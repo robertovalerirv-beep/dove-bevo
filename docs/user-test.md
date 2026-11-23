@@ -16,8 +16,8 @@ Scopo: vedere se una persona che non conosce Dove bevo riesce a **trovare un pre
 |---|---|---|---|
 | 1 | «Sei in centro a Milano. Quanto costa uno spritz nei bar qui intorno?» | Sceglie «Scegli cosa bere», legge i prezzi sulla mappa, capisce i colori Affare, Giusto, Salato | Dice un prezzo e il bar, entro 60 s |
 | 2 | «Trova il bar [nome di un bar vicino a lui] e dimmi se ci sono prezzi.» | Usa la ricerca, apre la scheda | Apre la scheda giusta entro 45 s |
-| 3 | «Hai appena pagato uno spritz 7 euro in un bar. Segnalo.» | Aggiungi prezzo, bar, drink, cifre, Salva; vede il timbro | Finisce entro 40 s e al massimo 4 tocchi più le cifre |
-| 4 | «Hai cambiato idea sul prezzo che hai appena segnato.» | Trova Annulla entro 5 secondi | Annulla, oppure dice che non ha fatto in tempo |
+| 3 | «Hai appena pagato uno spritz 7 euro in un bar. Segnalo.» | Aggiungi prezzo, bar, drink, cifre, Salva; vede la scheda del bar con il suo prezzo | Finisce entro 40 s e al massimo 4 tocchi più le cifre |
+| 4 | «Hai sbagliato il prezzo che hai appena segnato. Correggilo.» | Nella scheda del bar, «È cambiato», cifre, Salva (dalla SPEC 1.20 non c'è più Annulla) | Corregge il prezzo entro 40 s senza aiuto |
 | 5 | «Questo prezzo ti sembra giusto? Fai qualcosa per dirlo.» | Conferma, «È cambiato» o segnala un errore | Usa «Confermo» o «Segnala un errore» senza aiuto |
 | 6 | «Il tuo bar preferito non c'è sulla mappa. Aggiungilo.» | Aggiungi locale, nome, tipo, pin | Invia la proposta entro 90 s |
 | 7 | «Fai in modo che l'app ti trovi vicino a te.» | «Vicino a me», permesso della posizione, pallino | Mappa centrata su di lui; capisce il pallino |

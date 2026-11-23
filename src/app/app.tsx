@@ -558,8 +558,8 @@ export function App({ loadMap }: Props) {
         return;
       }
       // Quarantined: no banner, the bar page says why in «In verifica» (D-10).
-      if (result?.status === "confirmed")
-        showToast(result.code === "already" ? it.add.alreadyThere : it.add.confirmedSame);
+      // The same price again, counted or not (author, already confirmed): one line of thanks (SPEC 1.20).
+      if (result?.status === "confirmed") showToast(it.add.confirmedSame);
       const before = priceCount();
       const after = addPrices(1, todayRome());
       // The second price, once: the moment someone shows they will come back (M4-09).

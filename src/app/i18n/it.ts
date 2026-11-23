@@ -157,7 +157,6 @@ export const it = {
     zoneRange: (min: string, max: string, median: string) =>
       `In zona va da ${min} a ${max} €, mediana ${median} €`,
     confirmedSame: "Grazie, il prezzo inserito da te conferma il prezzo che era già presente.",
-    alreadyThere: "Questo prezzo c'era già: niente da aggiungere.",
     verifying: "Un attimo, verifico che tu non sia un robot…",
     pendingBar: "Nuovo, da confermare",
     missingBar: "Non trovi il bar?",

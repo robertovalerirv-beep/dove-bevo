@@ -276,6 +276,41 @@ test("MB-11 the same price again: a one-line banner that goes away by itself", a
   await expect(banner).toHaveCount(0, { timeout: 10_000 });
 });
 
+test("MB-11 not counted (the author, or already confirmed): the same line of thanks", async ({
+  page,
+}) => {
+  await stubTurnstile(page);
+  await stubWrites(page, () => ({
+    status: 200,
+    json: { results: [{ status: "confirmed", code: "already" }] },
+  }));
+  await page.goto("/");
+  await goToMilano(page);
+  await saveFromMap(page, "6,70");
+  await expect(
+    page.getByRole("status").filter({
+      hasText: "Grazie, il prezzo inserito da te conferma il prezzo che era già presente.",
+    }),
+  ).toBeVisible();
+});
+
+test("MB-11 a price that goes in review: no banner, the bar page says why (D-10)", async ({
+  page,
+}) => {
+  await stubTurnstile(page);
+  const sent = await stubWrites(page, () => ({
+    status: 200,
+    json: { results: [{ status: "quarantined" }] },
+  }));
+  await page.goto("/");
+  await goToMilano(page);
+  await saveFromMap(page, "19,00");
+  await expect.poll(() => sent.length, { timeout: 2_000 }).toBe(1);
+  await expect(page.locator(".scontrino")).toBeVisible();
+  await page.waitForTimeout(500); // the answer has been read
+  await expect(page.locator(".toast")).toHaveCount(0); // only the read-out "Prezzo salvato"
+});
+
 test("M2-07 without the position, the nearest to the map centre", async ({ page }) => {
   await page.goto("/");
   await goToMilano(page); // centre: the Milano place node

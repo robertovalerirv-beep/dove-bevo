@@ -155,7 +155,6 @@ export const en: Dict = {
     zoneRange: (min, max, median) =>
       `In this area it ranges from ${min} to ${max} €, median ${median} €`,
     confirmedSame: "Thanks: the price you entered confirms the one that was already there.",
-    alreadyThere: "This price was already there: nothing to add.",
     verifying: "One moment, checking you're not a robot…",
     pendingBar: "New, to be confirmed",
     missingBar: "Can't find the bar?",

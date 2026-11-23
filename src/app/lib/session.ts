@@ -93,7 +93,9 @@ async function start(host: HTMLElement): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
   });
-  if (!response.ok) throw new SessionError(`session ${String(response.status)}`);
+  // 403: the token did not pass. A busy or limited service is not an anti-bot failure (SPEC 1.20).
+  if (response.status === 403) throw new SessionError("session 403");
+  if (!response.ok) throw new Error(`session ${String(response.status)}`);
   writeUntil(Date.now() + SESSION_MS);
 }
 

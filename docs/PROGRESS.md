@@ -45,6 +45,8 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 **Da verificare a mano dopo il deploy:** `/admin` → «Aggiorna» mostra i numeri; in DevTools `coverage` → 200.
 
+**Deploy bloccato dal download (stessa giornata, ADR 0051):** il «Deploy staging» del merge #443 è rimasto 40 minuti (due tentativi) al passo «Download the extract», con `curl` ancora vivo alla cancellazione. Dai log: la chiave della cache è la data del file di Geofabrik, quindi il primo deploy di ogni giornata scarica il file intero; il 20/11 lo stesso passo è durato 26 min 17 s (poi «Smoke test» fallito, cache non salvata) e 4 min 6 s, tutti gli altri deploy del giorno hanno trovato la cache (0 s, deploy in 3–4 min). Il passo viene prima del build e non usa il codice del merge. Correzione: il deploy ripristina l'estratto più recente dalla cache (nessuna richiesta a Geofabrik) e un workflow a parte, `refresh-osm-extract.yml`, lo scarica ogni giorno e lo salva subito; il download nel deploy resta solo come ultima risorsa, con limiti (50 min passo, 75 job, `curl` che riprende una connessione ferma). Prova: server finto che si ferma dopo 1 MB → ripresa, file integro. Non provato su Geofabrik reale né sul deploy vero: non è stato dimostrato perché il download del 23/11 non finisse.
+
 ---
 
 ## 2026-11-13 · README, SECURITY aggiornato e controllo del push affidabile (ramo `claude/missing-readme-discussion-a5dc8a`)

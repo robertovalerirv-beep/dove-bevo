@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
-import { UNDO_MS } from "@site/shared/config";
 import { createPortal } from "preact/compat";
 import { CATALOG as DRINKS, DEFAULT_DRINK } from "@site/shared/catalog";
 import { currentLang, it } from "@site/app/i18n/lang";
@@ -53,6 +52,8 @@ import { NativeSaveAction, useNativeSavedDrinks } from "../native-saved-drinks";
 import "./europe.css";
 
 const t = (italian: string, english: string) => (currentLang() === "en" ? english : italian);
+/** The Europe app keeps its own «Annulla» (SPEC 1.20 leaves it as it is): the seconds before a price leaves. */
+const EUROPE_UNDO_MS = 5_000;
 const EMPTY_ROWS: Price[] = [];
 const EMPTY_KEYS: string[] = [];
 interface Props {
@@ -395,7 +396,7 @@ export function EuropeApp({ catalog, initialCity, initialVenue, loadMap }: Props
     const immutable: Draft = { ...draft, venue: { ...draft.venue }, serving: { ...draft.serving } };
     const timer = holdableTimeout(() => {
       void sendPending();
-    }, UNDO_MS);
+    }, EUROPE_UNDO_MS);
     pending.current = { draft: immutable, timer, sent: false };
     setQueued(true);
     setForm(null);

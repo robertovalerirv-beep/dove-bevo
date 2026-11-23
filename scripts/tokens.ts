@@ -2,8 +2,6 @@
 // Pure: the CLI (build-tokens.mjs) does the I/O. Kit names are kept; what the kit does not define
 // (targets, switch, durations, fallbacks) is ours and lives in OWN below.
 
-import { UNDO_MS } from "../src/shared/config.ts";
-
 type Themed = { light: string; dark: string };
 interface TypeStyle {
   name: string;
@@ -80,7 +78,6 @@ const OWN = `  /* Ours, not in the kit (ADR 0023): targets, controls, motion, la
   --switch-knob: 20px;
   --switch-inset: 2px;
   --sheet-max-width: 640px;
-  --toast-duration: ${String(UNDO_MS / 1000)}s;
   --focus-width: 3px;
   --focus-offset: 2px;
   --press: 3px;

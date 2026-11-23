@@ -54,6 +54,8 @@ interface Props {
   focus: readonly string[];
   /** Tier of a price against its cell median (D-12), from the prices already loaded. */
   tier: (row: PriceRow) => Tier;
+  /** The cell median of the row's drink and band, when known: why a price is in review (D-10, SPEC 1.20). */
+  median: (row: PriceRow) => number | null;
   onVenue: (venue: Venue) => void;
   onClose: () => void;
 }
@@ -94,12 +96,14 @@ function PriceItem({
   nativeDrinkSave,
   savedDrinkKeys,
   featured = false,
+  median = null,
 }: {
   row: PriceRow;
   venue: Venue;
   actions: BarActions;
   inReview: boolean;
   tier: Tier;
+  median?: number | null;
   nativeDrinkSave: boolean;
   savedDrinkKeys: ReadonlySet<string>;
   featured?: boolean;
@@ -267,6 +271,11 @@ function PriceItem({
           {it.actions.report}
         </button>
       </span>
+      {inReview && (
+        <span class="hint price__note">
+          {it.bar.inReviewWhy(median === null ? null : formatPrice(median))}
+        </span>
+      )}
       {state === "already" && (
         <span class="hint price__note" role="status">
           {it.actions.alreadyHelp}
@@ -303,7 +312,16 @@ function menuMinimumAmount(minimum: MenuMinimumSpend): string {
   return `${menuMoney(minimum.amount_minor, minimum.currency, minimum.currency_exponent)} a persona`;
 }
 
-export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
+export function BarSheet({
+  venueKey,
+  cell,
+  actions,
+  focus,
+  tier,
+  median,
+  onVenue,
+  onClose,
+}: Props) {
   const savedDrinkKeys = useNativeSavedDrinks();
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
   const [nativeOfferSave, setNativeOfferSave] = useState(
@@ -516,7 +534,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
 
   if (venue === undefined) {
     return (
-      <Sheet title={it.bar.loading} onClose={onClose}>
+      <Sheet title={it.bar.loading} onClose={onClose} step="loading">
         <p class="hint" aria-live="polite">
           {it.bar.loading}
         </p>
@@ -542,7 +560,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         </Sheet>
       );
     return (
-      <Sheet title={it.bar.notFound} onClose={onClose}>
+      <Sheet title={it.bar.notFound} onClose={onClose} step="missing">
         <p class="hint">{it.bar.notFound}</p>
       </Sheet>
     );
@@ -697,7 +715,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
       </section>
     ) : null;
   const sheet = (
-    <Sheet title={venue.name} onClose={onClose} bare>
+    <Sheet title={venue.name} onClose={onClose} bare step="ready">
       <div class="scontrino mobile-venue">
         <DrinkHero drink={heroDrink} />
         <div class="scontrino__paper">
@@ -930,7 +948,6 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         {review.length > 0 && (
           <>
             <h3 class="section-title">{it.bar.inReview}</h3>
-            <p class="hint">{it.bar.inReviewHelp}</p>
             {savedOfferMissing && (
               <p class="hint" role="status" data-testid="saved-offer-unavailable">
                 Questo drink selezionato non è più disponibile nel menu verificato. Gli altri prezzi
@@ -946,6 +963,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   actions={actions}
                   inReview
                   tier="neutro"
+                  median={median(row)}
                   nativeDrinkSave={nativeDrinkSave}
                   savedDrinkKeys={savedDrinkKeys}
                 />

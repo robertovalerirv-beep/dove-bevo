@@ -1,7 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { test } from "./fixtures";
 import { readFileSync } from "node:fs";
-import { UNDO_MS } from "../../src/shared/config";
 import {
   DRINK_NAMES,
   DUOMO,
@@ -12,6 +11,8 @@ import {
   waitForBars,
   chooseDrinks,
   stubTurnstile,
+  stubWrites,
+  type StubAnswer,
 } from "./helpers";
 
 interface CellFile {
@@ -78,10 +79,9 @@ test.describe("with the position (Duomo)", () => {
     expect(chipNames).toEqual([...DRINK_NAMES]);
   });
 
-  test("M2-02 + M2-05 from a cold start: four taps plus the digits; Turnstile only after Salva", async ({
+  test("M2-02 + M2-05 from a cold start: four taps plus the digits; Turnstile only after Salva; then the bar page", async ({
     page,
   }) => {
-    test.slow(); // waits out the real undo window (UNDO_MS)
     const turnstile = await stubTurnstile(page);
     await page.goto("/"); // no prior tap: the map is still the static picture
 
@@ -96,31 +96,42 @@ test.describe("with the position (Duomo)", () => {
     await expect(page.getByRole("textbox", { name: "Prezzo in euro" })).toBeFocused();
     await page.keyboard.type("7,50"); // the digits
     expect(turnstile).toEqual([]); // nothing from Cloudflare until Salva
-    const saved = page.waitForRequest(
-      (r) => r.url().endsWith("/api/prices") && r.method() === "POST",
-      {
-        timeout: 20_000,
-      },
+    const saved = page.waitForResponse(
+      // The first try may get 401 (no session yet): the client runs Turnstile and sends again.
+      (r) =>
+        r.url().endsWith("/api/prices") && r.request().method() === "POST" && r.status() === 200,
+      { timeout: 20_000 },
     );
     await page.getByRole("button", { name: "Salva" }).click(); // 4
-    await expect(page.getByRole("status").filter({ hasText: "Prezzo salvato" })).toBeVisible();
+
+    // SPEC 1.20: no panel after Salva. The bar page opens, its name has the focus, and "Prezzo salvato"
+    // is only read out.
+    const sheet = page.getByRole("dialog", { name: "The View Milano" });
+    await expect(sheet.getByRole("heading", { name: "The View Milano" })).toBeFocused();
+    await expect(page).toHaveURL(/\/bar\/[nwr]\d+\?c=u0nd/);
+    await expect(page.locator(".toast-region .sr-only")).toHaveText("Prezzo salvato");
+    await expect(page.getByRole("button", { name: "Annulla" })).toHaveCount(0);
+    await expect(page.locator(".toast__progress, .stamp, .tessera")).toHaveCount(0);
     await expect.poll(() => turnstile.length).toBeGreaterThan(0); // loaded at the first contribution
 
-    const request = await saved; // after the UNDO_MS of "Annulla"
-    const body = request.postDataJSON() as { venue: string; cell: string; items: unknown[] };
+    const response = await saved;
+    const body = response.request().postDataJSON() as { items: unknown[] };
     expect(body.items).toEqual([{ drink: "spritz", hh: 0, price_cents: 750 }]);
-    expect((await request.response())?.status()).toBe(200);
-    await page.goto(`/bar/${body.venue}?c=${body.cell}`);
-    await expect(page.getByRole("listitem").filter({ hasText: "Spritz" }).first()).toContainText(
+    // The page shows the new price as soon as the Worker has it, without a reload by hand.
+    await expect(sheet.getByRole("listitem").filter({ hasText: "Spritz" }).first()).toContainText(
       "7,50 €",
     );
+
+    // «Indietro» of the phone: back to the map, where "Aggiungi prezzo" started.
+    await page.goBack();
+    await expect(page.getByRole("dialog", { name: "The View Milano" })).toHaveCount(0);
+    await expect(page).toHaveURL(/\/$/);
   });
 });
 
-test("M2-06 Annulla sends nothing; going to the background sends at once with keepalive", async ({
+test("M2-06 no Annulla: the price leaves at once, with keepalive, so closing the app does not lose it", async ({
   page,
 }) => {
-  test.slow(); // waits out the real undo window (UNDO_MS)
   await stubTurnstile(page);
   await page.addInitScript(() => {
     const original = window.fetch.bind(window);
@@ -133,86 +144,136 @@ test("M2-06 Annulla sends nothing; going to the background sends at once with ke
       return original(input, init);
     };
   });
-  const posts: string[] = [];
-  page.on("request", (r) => {
-    if (r.url().endsWith("/api/prices") && r.method() === "POST") posts.push(r.url());
-  });
+  const sent = await stubWrites(page);
   await page.goto("/");
   await goToMilano(page);
-
-  let call = 0;
-  const addSbagliato = async (price: string) => {
-    call++;
-    await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
-    try {
-      await barChoices(page).nth(2).click({ timeout: 25_000 });
-    } catch (error) {
-      // CI-only WebKit hang: print what moves on the page, then fail with the original error.
-      const state = await page.evaluate(async () => {
-        const button = document.querySelectorAll('[aria-label="Bar vicini"] button')[2];
-        const rects: string[] = [];
-        let mutations = 0;
-        const observer = new MutationObserver((list) => {
-          mutations += list.length;
-        });
-        observer.observe(document.body, { subtree: true, childList: true, attributes: true });
-        const map = document.querySelector('[aria-label="Mappa"]');
-        const before = map?.getAttribute("data-center") ?? "";
-        for (let i = 0; i < 6; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 300));
-          const r = button?.getBoundingClientRect();
-          rects.push(r ? [r.x, r.y, r.width, r.height].map(Math.round).join(",") : "none");
-        }
-        observer.disconnect();
-        return {
-          visibility: document.visibilityState,
-          rects,
-          mutationsIn1800ms: mutations,
-          mapMoved: before !== (map?.getAttribute("data-center") ?? ""),
-          disabled: button instanceof HTMLButtonElement ? button.disabled : "no button",
-          toasts: [...document.querySelectorAll(".toast")].map((el) => el.textContent),
-          topAtCentre: (() => {
-            const r = button?.getBoundingClientRect();
-            const top = r ? document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) : null;
-            return top ? `${top.tagName}.${top.className}` : "none";
-          })(),
-          animations: document.getAnimations().map((a) => `${a.constructor.name}:${a.playState}`),
-          buttons: document.querySelectorAll('[aria-label="Bar vicini"] button').length,
-          dialogs: document.querySelectorAll("dialog[open]").length,
-        };
-      });
-      console.log("M2-06 DIAG call " + String(call) + " " + JSON.stringify(state));
-      throw error;
-    }
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: /^Sbagliato/ })
-      .click();
-    await page.getByRole("textbox", { name: "Prezzo in euro" }).fill(price);
-    await page.getByRole("button", { name: "Salva" }).click();
-  };
-
-  await addSbagliato("8,00");
-  await page.getByRole("button", { name: "Annulla" }).click();
-  // The toast holds while it is pointed at (so it does not vanish under a finger or a cursor):
-  // move the pointer away, as a person would, or it stays over the next sheet and takes its clicks.
-  await page.mouse.move(0, 0);
-  await page.waitForTimeout(UNDO_MS + 1_500); // past the window: only asserts an absence
-  expect(posts).toEqual([]);
-  console.log(
-    "M2-06 toasts after the undo window: " +
-      JSON.stringify(await page.locator(".toast").allTextContents()),
-  );
-
-  await addSbagliato("8,20");
-  await page.evaluate(() => {
-    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
-  await expect.poll(() => posts.length, { timeout: 5_000 }).toBe(1);
+  await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+  await barChoices(page).nth(2).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^Sbagliato/ })
+    .click();
+  await page.getByRole("textbox", { name: "Prezzo in euro" }).fill("8,00");
+  await page.getByRole("button", { name: "Salva" }).click();
+  // Before SPEC 1.20 the request waited 5 s for «Annulla»: now it leaves at once.
+  await expect.poll(() => sent.length, { timeout: 2_000 }).toBe(1);
   expect(
     await page.evaluate(() => (window as unknown as { keepalive: boolean[] }).keepalive),
   ).toEqual([true]);
+  await expect(page.getByRole("button", { name: "Annulla" })).toHaveCount(0);
+  await expect(page.locator(".toast__progress")).toHaveCount(0);
+});
+
+/** From the map: the first proposed bar, Sbagliato, the digits, Salva. */
+async function saveFromMap(page: Page, price: string) {
+  await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
+  await expect(barChoices(page)).toHaveCount(5);
+  await barChoices(page).first().click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /^Sbagliato/ })
+    .click();
+  await page.getByRole("textbox", { name: "Prezzo in euro" }).fill(price);
+  await page.getByRole("button", { name: "Salva" }).click();
+}
+
+test("M2-06 a failure reopens the price step with the digits and the exact reason", async ({
+  page,
+}) => {
+  await stubTurnstile(page);
+  const rejected = (code: string): StubAnswer => ({
+    status: 200,
+    json: { results: [{ status: "rejected", code }] },
+  });
+  const error = (status: number, code: string, headers?: Record<string, string>): StubAnswer => ({
+    status,
+    headers,
+    json: { error: { code, message: "x" } },
+  });
+  let answer: () => StubAnswer = () => ({ status: 200, json: {} });
+  await stubWrites(page, () => answer());
+  await page.goto("/");
+  await goToMilano(page);
+
+  const cases: [StubAnswer, string][] = [
+    [
+      error(429, "rate_limited", { "Retry-After": "36000" }), // until midnight: the daily quota
+      "Oggi hai già segnato 30 prezzi, il massimo per un giorno. Potrai segnarne altri da mezzanotte.",
+    ],
+    [
+      error(429, "rate_limited", { "Retry-After": "60" }), // the burst limit
+      "Stai segnando molti prezzi di fila: aspetta un minuto e riprova.",
+    ],
+    [
+      error(503, "busy"),
+      "Il servizio è molto richiesto: il prezzo non è partito, riprova tra poco.",
+    ],
+    [
+      { status: 200, contentType: "text/html", body: "<!doctype html><title>Dove bevo</title>" },
+      "Il servizio è molto richiesto: il prezzo non è partito, riprova tra poco.",
+    ],
+    [
+      rejected("under_review"),
+      "Il prezzo di questo drink qui è stato segnalato ed è in controllo: per ora non si può cambiare.",
+    ],
+    [
+      rejected("out_of_range"),
+      "Sbagliato: accettiamo prezzi da 4,00 € a 20,00 €. Controlla le cifre.",
+    ],
+    [error(500, "internal"), "Non sono riuscito a salvare il prezzo: riprova tra poco."],
+  ];
+  for (const [i, [reply, text]] of cases.entries()) {
+    answer = () => reply;
+    const price = `6,${String(10 + i)}`;
+    await saveFromMap(page, price);
+    const step = page.getByRole("dialog").filter({ has: page.getByRole("textbox") });
+    await expect(step.getByRole("alert")).toHaveText(text);
+    await expect(step.getByRole("textbox", { name: "Prezzo in euro" })).toHaveValue(price);
+    await step.getByRole("button", { name: "Chiudi" }).first().click();
+    // The bar page opened by Salva is still under it: back to the map for the next case.
+    await page.goto("/");
+    await goToMilano(page);
+  }
+
+  // Offline: nothing is sent, the reason says so.
+  answer = () => ({ status: 200, json: { results: [{ status: "active" }] } });
+  await page.context().setOffline(true);
+  await saveFromMap(page, "6,40");
+  await expect(page.getByRole("alert").filter({ hasText: "Sei offline" })).toHaveText(
+    "Sei offline: il prezzo non è partito. Riprova quando torna la connessione.",
+  );
+  await page.context().setOffline(false);
+});
+
+test("M2-06 a Turnstile that does not pass says so and keeps the digits", async ({ page }) => {
+  await stubTurnstile(page, true);
+  // No session: the Worker asks for one (401), and the check fails.
+  await stubWrites(page, () => ({
+    status: 401,
+    json: { error: { code: "unauthorized", message: "x" } },
+  }));
+  await page.goto("/");
+  await goToMilano(page);
+  await saveFromMap(page, "6,50");
+  await expect(page.getByRole("alert").filter({ hasText: "robot" })).toHaveText(
+    "Non sono riuscito a verificare che tu non sia un robot: riprova.",
+  );
+  await expect(page.getByRole("textbox", { name: "Prezzo in euro" })).toHaveValue("6,50");
+});
+
+test("MB-11 the same price again: a one-line banner that goes away by itself", async ({ page }) => {
+  await stubTurnstile(page);
+  await stubWrites(page, () => ({ status: 200, json: { results: [{ status: "confirmed" }] } }));
+  await page.goto("/");
+  await goToMilano(page);
+  await saveFromMap(page, "6,60");
+  const banner = page.getByRole("status").filter({
+    hasText: "Grazie, il prezzo inserito da te conferma il prezzo che era già presente.",
+  });
+  await expect(banner).toBeVisible();
+  await expect(banner.getByRole("button")).toHaveCount(0); // nothing to press, nothing to wait for
+  await expect(page.getByRole("dialog").getByRole("heading", { level: 2 })).toBeVisible(); // the bar page
+  await expect(banner).toHaveCount(0, { timeout: 10_000 });
 });
 
 test("M2-07 without the position, the nearest to the map centre", async ({ page }) => {
@@ -266,7 +327,6 @@ test("M2-11 Confermo: one tap counts, a second tap of the same session does not"
 });
 
 test("the author confirming their own price is told it needs someone else", async ({ page }) => {
-  test.slow(); // waits out the real undo window (UNDO_MS)
   await stubTurnstile(page);
   await page.goto("/bar/w549495264?c=u0nd9"); // Motta
   await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
@@ -275,14 +335,12 @@ test("the author confirming their own price is told it needs someone else", asyn
     .getByRole("button", { name: /^Negroni/ })
     .click();
   await page.keyboard.type("8,00");
-  // The toast lands where the pointer last clicked; a hovered toast holds its countdown (WCAG 2.2.1).
-  await page.mouse.move(0, 0);
   const sent = page.waitForResponse(
     // The first try may get 401 (no session yet): the client runs Turnstile and sends again.
     (r) => r.url().endsWith("/api/prices") && r.request().method() === "POST" && r.status() === 200,
     { timeout: 30_000 },
   );
-  await page.keyboard.press("Enter"); // sent when the UNDO_MS of "Annulla" run out
+  await page.keyboard.press("Enter"); // sent at once (SPEC 1.20)
   await sent;
   await page.goto("/bar/w549495264?c=u0nd9");
   const row = page.getByRole("listitem").filter({ hasText: "Negroni" }).first();
@@ -307,10 +365,6 @@ test("M2-12 È cambiato opens the price step with bar, drink and band already ch
   await sheet.getByRole("textbox", { name: "Prezzo in euro" }).fill("9,50");
   const sent = page.waitForRequest((r) => r.url().endsWith("/api/prices") && r.method() === "POST");
   await sheet.getByRole("button", { name: "Salva" }).click();
-  await page.evaluate(() => {
-    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
   const body = (await sent).postDataJSON() as { venue: string; items: unknown[] };
   expect(body.venue).toBe("n13001337602");
   expect(body.items).toEqual([{ drink: "beer_draft", hh: 0, price_cents: 950 }]);
@@ -365,12 +419,17 @@ test("a bar report from a cold start: Turnstile gets a widget that is still in t
   await expect(page.getByRole("status").filter({ hasText: "la verifichiamo" })).toBeVisible();
 });
 
-test("M2-09 a quarantined price is shown in 'In verifica' and not on the map", async ({ page }) => {
+test("M2-09 a quarantined price is shown in 'In verifica' with its reason, and not on the map", async ({
+  page,
+}) => {
   await page.goto("/bar/w549495264?c=u0nd9"); // Motta: gin tonic 20,00 € quarantined (seed)
   const sheet = page.getByRole("dialog", { name: "Motta" });
   await expect(sheet.getByRole("heading", { name: "In verifica" })).toBeVisible();
-  await expect(sheet.getByRole("listitem").filter({ hasText: "Gin tonic" })).toContainText(
-    "20,00 €",
+  const row = sheet.getByRole("listitem").filter({ hasText: "Gin tonic" });
+  await expect(row).toContainText("20,00 €");
+  // Why it is not in the list (SPEC 1.20, D-10); the seed has no median for the gin tonic here.
+  await expect(row).toContainText(
+    "Molto diverso dagli altri prezzi della zona: entra in elenco e in mappa quando qualcun altro lo conferma.",
   );
   await sheet.getByRole("button", { name: "Chiudi" }).click();
   await goToMilano(page);
@@ -383,16 +442,14 @@ test("M2-09 a quarantined price is shown in 'In verifica' and not on the map", a
   ).not.toContain("20,00 €");
 });
 
-test("M3-16 'Aggiungi un altro drink qui': two drinks of the same bar leave in one request", async ({
+test("M3-16 another drink of the same bar: «Aggiungi un prezzo qui» of the page opened by Salva", async ({
   page,
 }) => {
-  test.slow(); // waits out the real undo window (UNDO_MS)
   await stubTurnstile(page);
-  const posts: { items: unknown[]; venue: string }[] = [];
-  page.on("request", (r) => {
-    if (r.url().endsWith("/api/prices") && r.method() === "POST")
-      posts.push(r.postDataJSON() as { items: unknown[]; venue: string });
-  });
+  const sent = (await stubWrites(page)) as {
+    items: unknown[];
+    venue: string;
+  }[];
   await page.goto("/bar/n13001316579?c=u0nd9");
   await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
   await page
@@ -401,8 +458,10 @@ test("M3-16 'Aggiungi un altro drink qui': two drinks of the same bar leave in o
     .click();
   await page.keyboard.type("3,00");
   await page.keyboard.press("Enter");
-  await page.getByRole("button", { name: "Aggiungi un altro drink qui" }).click();
-  // The bar stays selected: straight to the drinks.
+  await expect.poll(() => sent.length, { timeout: 2_000 }).toBe(1);
+  await expect(page.getByRole("button", { name: "Aggiungi un altro drink qui" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
+  // The bar stays chosen: straight to the drinks.
   await expect(page.getByRole("heading", { name: "Che cosa hai preso?" })).toBeVisible();
   await page
     .getByRole("dialog")
@@ -410,25 +469,21 @@ test("M3-16 'Aggiungi un altro drink qui': two drinks of the same bar leave in o
     .click();
   await page.keyboard.type("4,50");
   await page.keyboard.press("Enter");
-  await expect.poll(() => posts.length, { timeout: 25_000 }).toBe(1);
-  expect(posts[0]?.items).toEqual([
-    { drink: "water", hh: 0, price_cents: 300 },
-    { drink: "alcohol_free", hh: 0, price_cents: 450 },
+  await expect.poll(() => sent.length, { timeout: 2_000 }).toBe(2);
+  expect(sent.map((b) => b.items)).toEqual([
+    [{ drink: "water", hh: 0, price_cents: 300 }],
+    [{ drink: "alcohol_free", hh: 0, price_cents: 450 }],
   ]);
-  await page.waitForTimeout(1_000);
-  expect(posts).toHaveLength(1); // one request, not two
+  expect(sent.every((b) => b.venue === "n13001316579")).toBe(true);
 });
 
-test("Annulla works over the bar page and holds the countdown while focused (WCAG 2.2.1)", async ({
+test("Salva from the bar page stays on it: the focus on its name, no new history entry", async ({
   page,
 }) => {
-  test.slow(); // waits out the real undo window (UNDO_MS)
   await stubTurnstile(page);
-  const posts: string[] = [];
-  page.on("request", (r) => {
-    if (r.url().endsWith("/api/prices") && r.method() === "POST") posts.push(r.url());
-  });
+  const sent = await stubWrites(page);
   await page.goto("/bar/w549495264?c=u0nd9"); // Motta
+  const entries = await page.evaluate(() => history.length);
   await page.getByRole("button", { name: "Aggiungi un prezzo qui" }).click();
   await page
     .getByRole("dialog")
@@ -436,26 +491,20 @@ test("Annulla works over the bar page and holds the countdown while focused (WCA
     .click();
   await page.keyboard.type("3,00");
   await page.keyboard.press("Enter"); // Enter saves, like Salva
-  const undo = page.getByRole("button", { name: "Annulla" });
-  await expect(undo).toBeVisible();
-  await undo.focus();
-  await page.waitForTimeout(UNDO_MS + 1_500); // longer than the window: held while focused
-  expect(posts).toEqual([]); // held while focused
-  await undo.press("Enter"); // reachable from the keyboard: not under the bar page backdrop
-  await expect(page.getByRole("status").filter({ hasText: "Annullato" })).toBeVisible();
+  await expect.poll(() => sent.length, { timeout: 2_000 }).toBe(1);
   await expect(page.getByRole("heading", { name: "Motta" })).toBeFocused(); // not lost to <body>
-  await page.waitForTimeout(1_000);
-  expect(posts).toEqual([]);
+  await expect(page.getByRole("status").filter({ hasText: "Prezzo salvato" })).toHaveCount(1);
+  expect(await page.evaluate(() => history.length)).toBe(entries);
+  await expect(page).toHaveURL(/\/bar\/w549495264\?c=u0nd9$/);
 });
 
 // F3 of the brand package. These write a price, so they live with the other writes.
 test.describe("MB-10 MB-11 MB-12 with the position (Duomo)", () => {
   test.use({ geolocation: DUOMO, permissions: ["geolocation"] });
 
-  test("a price already seen in the zone saves in four taps; the Timbro, Copertura and Tessera appear", async ({
+  test("a price already seen in the zone fills the digits; Salva sends it: four taps, no panel", async ({
     page,
   }, info) => {
-    test.slow(); // waits out the real undo window (UNDO_MS)
     await stubTurnstile(page);
     await page.goto("/");
     await page.getByRole("button", { name: "Vicino a me" }).click();
@@ -483,70 +532,69 @@ test.describe("MB-10 MB-11 MB-12 with the position (Duomo)", () => {
     // Other write tests may have added prices in this zone: ours are there, the order is by price.
     await expect(seen.getByRole("button", { name: "7,50 €" })).toBeVisible();
     await expect(seen.getByRole("button", { name: "12,00 €" })).toBeVisible();
+    await expect(page.getByRole("dialog")).toContainText(
+      "Tocca un prezzo per metterlo nel campo, poi Salva.",
+    );
     await page.screenshot({ path: info.outputPath("mb-10-prezzi-visti.png") });
+
+    // The tap puts the digits in the field, in place of typing them: nothing leaves yet.
+    await seen.getByRole("button", { name: "7,50 €" }).click();
+    await expect(page.getByRole("textbox", { name: "Prezzo in euro" })).toHaveValue("7,50");
+    await page.waitForTimeout(500);
+    expect(posts).toEqual([]);
+
     const saved = page.waitForRequest(
       (r) => r.url().endsWith("/api/prices") && r.method() === "POST",
-      { timeout: 40_000 },
+      { timeout: 20_000 },
     );
-    await tap(seen.getByRole("button", { name: "7,50 €" }).click());
+    await tap(page.getByRole("button", { name: "Salva" }).click());
     expect(taps).toBe(4);
-    await page.mouse.move(0, 0); // a pointer resting on the toast holds the undo countdown (WCAG 2.2.1)
-
-    const stamp = page.getByRole("status").filter({ hasText: "Prezzo salvato" });
-    await expect(stamp).toBeVisible();
-    await expect(stamp).toContainText("Segnato. Il prossimo che passa sa già quanto spende.");
-    await expect(stamp).toContainText("Primo prezzo segnato.");
-    await expect(stamp.locator(".stamp__mark")).toHaveText(/^\d{1,2} [A-Z]{3}$/);
-    await expect(stamp).toContainText(/Copertura \+1: \d+ bar su \d+ qui hanno un prezzo/);
-    await page.screenshot({ path: info.outputPath("mb-11-timbro.png") });
-    expect(
-      await page.evaluate(() =>
-        Object.keys(localStorage)
-          .sort()
-          .map((k) => k),
-      ),
-    ).toEqual(["dovebevo-first-use", "dovebevo-prices"]);
-
     const request = await saved;
     const body = request.postDataJSON() as { items: { price_cents: number }[] };
     expect(body.items.map((i) => i.price_cents)).toEqual([750]);
+
+    // No Timbro, no Tessera: the bar page (MB-11, MB-12).
+    await expect(page.getByRole("heading", { name: "Straf Bar" })).toBeFocused();
+    await expect(page.locator(".stamp, .tessera, .toast__progress")).toHaveCount(0);
+    await page.screenshot({
+      path: info.outputPath("mb-11-scheda-dopo-salva.png"),
+    });
     // Only the contribution itself (and the session that comes with it) leaves the device.
     expect(posts.every((u) => /\/api\/(prices|session)$/.test(u))).toBe(true);
   });
 
-  test("Annulla takes the price back from the Tessera count", async ({ page }) => {
+  test("MB-12 the counter on the device still grows by one per price, with no new key", async ({
+    page,
+  }) => {
     await stubTurnstile(page);
+    await stubWrites(page);
     await page.goto("/");
     await page.getByRole("button", { name: "Vicino a me" }).click();
     await waitForBars(page);
-    await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
-    await page.getByRole("searchbox", { name: "Cerca il bar per nome" }).fill("Straf Bar");
-    await barChoices(page).filter({ hasText: "Straf Bar" }).first().click();
-    await page
-      .getByRole("dialog")
-      .getByRole("button", { name: /^Spritz/ })
-      .click();
-    await page.getByRole("textbox", { name: "Prezzo in euro" }).fill("7,00");
-    await page.getByRole("button", { name: "Salva" }).click();
-    await expect.poll(() => page.evaluate(() => localStorage.getItem("dovebevo-prices"))).toBe("1");
-    await page.getByRole("button", { name: "Annulla" }).click();
-    await expect.poll(() => page.evaluate(() => localStorage.getItem("dovebevo-prices"))).toBe("0");
+    const count = () => page.evaluate(() => localStorage.getItem("dovebevo-prices"));
+    expect(await count()).toBeNull();
+    await saveFromMap(page, "6,70");
+    await expect.poll(count).toBe("1");
+    await page.getByRole("dialog").getByRole("button", { name: "Chiudi" }).click();
+    await saveFromMap(page, "6,80");
+    await expect.poll(count).toBe("2");
+    await expect(page.locator(".tessera")).toHaveCount(0);
+    expect(await page.evaluate(() => Object.keys(localStorage).sort())).toEqual([
+      "dovebevo-first-use",
+      "dovebevo-prices",
+    ]);
   });
 });
 
 // M4-09: the invitation to install appears after the second price, once. Sbagliato, so the spritz
-// prices that MB-10 looks at are left alone.
+// prices that MB-10 looks at are left alone. Salva opens the bar page: the invitation is on the map,
+// seen when the page is closed.
 async function saveSbagliato(page: Page, price: string) {
-  await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
-  await expect(barChoices(page)).toHaveCount(5);
-  await barChoices(page).first().click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: /^Sbagliato/ })
-    .click();
-  await page.getByRole("textbox", { name: "Prezzo in euro" }).fill(price);
-  await page.getByRole("button", { name: "Salva" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Prezzo salvato" })).toBeVisible();
+  await saveFromMap(page, price);
+  const bar = page.getByRole("dialog").filter({ has: page.locator(".scontrino") });
+  await expect(bar.getByRole("heading", { level: 2 })).toBeVisible();
+  await bar.getByRole("button", { name: "Chiudi" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 /** Heights of the map and of the bottom bar: the map never changes size (M1-16). */
@@ -616,26 +664,25 @@ test.describe("M4-09 install hint on iPhone", () => {
   });
 });
 
-// The stamp after Salva is taller than a small screen: it must not leave it, or "Annulla" cannot be reached.
-test.describe("the Timbro on a small screen", () => {
+// After Salva nothing is drawn over the bar page, whatever the screen (SPEC 1.20).
+test.describe("after Salva on a small screen", () => {
   test.use({
     geolocation: DUOMO,
     permissions: ["geolocation"],
     viewport: { width: 320, height: 568 },
   });
 
-  test("stays inside the screen and Annulla can be reached", async ({ page }) => {
+  test("the bar page, with nothing over it", async ({ page }, info) => {
     await stubTurnstile(page);
+    await stubWrites(page);
     await page.goto("/");
-    await saveSbagliato(page, "6,60");
-    const toast = page.locator(".toast--stamp");
-    await expect(toast).toBeVisible();
-    const box = await toast.boundingBox();
+    await saveFromMap(page, "6,60");
+    const name = page.getByRole("dialog").getByRole("heading", { level: 2 });
+    await expect(name).toBeFocused();
+    await expect(page.locator(".toast")).toHaveCount(0);
+    const box = await name.boundingBox();
     expect(box?.y ?? -1).toBeGreaterThanOrEqual(0);
     expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(568);
-    const undo = page.getByRole("button", { name: "Annulla" });
-    await undo.hover(); // holds the countdown, so nothing is sent whatever the runner does
-    await undo.click();
-    await expect(page.getByRole("status").filter({ hasText: "Annullato" })).toBeVisible();
+    await page.screenshot({ path: info.outputPath("dopo-salva-320.png") });
   });
 });

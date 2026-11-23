@@ -26,6 +26,8 @@ interface Props {
   focus: readonly string[];
   /** Tier of a price against its cell median (D-12), from the prices already loaded. */
   tier: (row: PriceRow) => Tier;
+  /** The cell median of the row's drink and band, when known: why a price is in review (D-10). */
+  median: (row: PriceRow) => number | null;
   onVenue: (venue: Venue) => void;
   onClose: () => void;
 }
@@ -63,12 +65,14 @@ function PriceItem({
   actions,
   inReview,
   tier,
+  median = null,
 }: {
   row: PriceRow;
   venue: Venue;
   actions: BarActions;
   inReview: boolean;
   tier: Tier;
+  median?: number | null;
 }) {
   const [, drink, hh, cents, day, confirmations] = row;
   const id = `${row[0]}|${rowId(row)}|${String(cents)}`;
@@ -148,6 +152,11 @@ function PriceItem({
           {it.actions.report}
         </button>
       </span>
+      {inReview && (
+        <span class="hint price__note">
+          {it.bar.inReviewWhy(median === null ? null : formatPrice(median))}
+        </span>
+      )}
       {state === "already" && (
         <span class="hint price__note" role="status">
           {it.actions.alreadyHelp}
@@ -163,7 +172,16 @@ function PriceItem({
 }
 
 /** Bar page `/bar/<key>?c=<cell>` (SPEC 7.2). */
-export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClose }: Props) {
+export function BarSheet({
+  venueKey,
+  cell,
+  actions,
+  focus,
+  tier,
+  median,
+  onVenue,
+  onClose,
+}: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
@@ -188,7 +206,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
 
   if (venue === undefined) {
     return (
-      <Sheet title={it.bar.loading} onClose={onClose}>
+      <Sheet title={it.bar.loading} onClose={onClose} step="loading">
         <p class="hint" aria-live="polite">
           {it.bar.loading}
         </p>
@@ -197,7 +215,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   }
   if (venue === null) {
     return (
-      <Sheet title={it.bar.notFound} onClose={onClose}>
+      <Sheet title={it.bar.notFound} onClose={onClose} step="missing">
         <p class="hint">{it.bar.notFound}</p>
       </Sheet>
     );
@@ -209,7 +227,8 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
   const shown = showAll ? active : active.slice(0, VISIBLE_ROWS);
   const review = prices?.p.filter((p) => p[6] === 1) ?? [];
   return (
-    <Sheet title={venue.name} onClose={onClose} bare>
+    // step: once loaded, the focus moves to the bar's name (WCAG 2.4.3), also after Salva (SPEC 1.20).
+    <Sheet title={venue.name} onClose={onClose} bare step="ready">
       <div class="scontrino">
         <div class="scontrino__paper">
           <p class="bar__kind">{[it.kinds[venue.kind], venue.city].filter(Boolean).join(" · ")}</p>
@@ -286,7 +305,6 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
         {review.length > 0 && (
           <>
             <h3 class="section-title">{it.bar.inReview}</h3>
-            <p class="hint">{it.bar.inReviewHelp}</p>
             <ul class="prices">
               {review.map((row) => (
                 <PriceItem
@@ -296,6 +314,7 @@ export function BarSheet({ venueKey, cell, actions, focus, tier, onVenue, onClos
                   actions={actions}
                   inReview
                   tier="neutro"
+                  median={median(row)}
                 />
               ))}
             </ul>

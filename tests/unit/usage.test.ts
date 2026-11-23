@@ -1,30 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  addPrices,
-  dayBucket,
-  priceCount,
-  stampReached,
-  TESSERA_STEPS,
-} from "../../src/app/lib/usage";
+import { addPrices, dayBucket, priceCount } from "../../src/app/lib/usage";
 
-// MB-12 (D-29): Tessera stamps from the one counter kept on the device (SPEC 12).
-describe("stampReached", () => {
-  it("has the stamps of D-29", () => {
-    expect(TESSERA_STEPS).toEqual([1, 5, 10, 25, 50]);
-  });
-  it.each([
-    [0, 1, 1],
-    [1, 2, null],
-    [4, 5, 5],
-    [9, 10, 10],
-    [24, 25, 25],
-    [49, 50, 50],
-    [50, 51, null],
-    [0, 12, 10],
-  ])("%i → %i reaches %s", (before, after, step) => {
-    expect(stampReached(before, after)).toBe(step);
-  });
-});
+// MB-12 (D-29, SPEC 1.20): the Tessera is no longer shown; the one counter kept on the device stays,
+// for the invitation to install (SPEC 12, M4-09).
 
 describe("the counter", () => {
   const store = new Map<string, string>();

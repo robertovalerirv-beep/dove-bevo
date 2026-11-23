@@ -51,27 +51,23 @@ describe("MB-15 voice", () => {
   test("the brand phrases are in it.ts", () => {
     const phrases = [
       it.add.question,
-      it.add.stamp,
-      it.add.undo,
+      it.add.confirmedSame,
       it.map.coverage(42, 180),
       it.map.zoomIn,
       it.map.start,
       it.bar.stale("3 mesi fa"),
-      it.add.quota,
+      it.add.quotaDay,
       it.map.position.denied,
-      it.tessera.messages[5],
     ];
     expect(phrases).toEqual([
       "Quanto l'hai pagato?",
-      "Segnato. Il prossimo che passa sa già quanto spende.",
-      "Annulla",
+      "Grazie, il prezzo inserito da te conferma il prezzo che era già presente.",
       "42 bar su 180 qui hanno un prezzo",
       "Avvicinati per vedere i prezzi, o cerca una città.",
       "Clicca sulla mappa o cerca una città",
       "Visto 3 mesi fa. Ci sei passato? Confermalo.",
-      "Per oggi hai segnato tanto. Riprova dopo mezzanotte.",
+      "Oggi hai già segnato 30 prezzi, il massimo per un giorno. Potrai segnarne altri da mezzanotte.",
       "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città.",
-      "5 prezzi segnati. Sei di casa.",
     ]);
   });
 

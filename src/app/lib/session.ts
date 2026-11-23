@@ -41,6 +41,9 @@ function writeUntil(value: number): void {
     // memory only
   }
 }
+/** The anti-bot check did not pass (Turnstile or POST /api/session): the client says so in words (SPEC 1.20). */
+export class SessionError extends Error {}
+
 let pending: Promise<void> | null = null;
 let script: Promise<Turnstile> | null = null;
 
@@ -52,11 +55,11 @@ function loadTurnstile(): Promise<Turnstile> {
     tag.onload = () => {
       const api = (window as unknown as { turnstile?: Turnstile }).turnstile;
       if (api) resolve(api);
-      else reject(new Error("turnstile"));
+      else reject(new SessionError("turnstile"));
     };
     tag.onerror = () => {
       script = null;
-      reject(new Error("turnstile"));
+      reject(new SessionError("turnstile"));
     };
     document.head.append(tag);
   });
@@ -81,7 +84,7 @@ async function start(host: HTMLElement): Promise<void> {
       },
       "error-callback": () => {
         turnstile.remove(id);
-        reject(new Error("turnstile"));
+        reject(new SessionError("turnstile"));
       },
     });
   });
@@ -90,7 +93,7 @@ async function start(host: HTMLElement): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
   });
-  if (!response.ok) throw new Error(`session ${String(response.status)}`);
+  if (!response.ok) throw new SessionError(`session ${String(response.status)}`);
   writeUntil(Date.now() + SESSION_MS);
 }
 

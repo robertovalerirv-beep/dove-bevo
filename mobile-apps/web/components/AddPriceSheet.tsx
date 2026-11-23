@@ -76,7 +76,9 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
     }
     const limits = findDrink(drink);
     if (limits && (cents < limits.min || cents > limits.max)) {
-      setError(it.add.outOfRange(drinkName(drink).toLowerCase()));
+      setError(
+        it.add.outOfRange(drinkName(drink), formatPrice(limits.min), formatPrice(limits.max)),
+      );
       return;
     }
     onSave({ venue, drink, hh, cents });
@@ -254,7 +256,9 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
                       type="button"
                       class={`chip seen__price seen__price--${tier}`}
                       onClick={() => {
-                        onSave({ venue, drink, hh, cents });
+                        // SPEC 1.20: the tap fills the digits, then Salva (no «Annulla» any more).
+                        setText(bare(cents));
+                        setError("");
                       }}
                     >
                       {tier !== "neutro" && (

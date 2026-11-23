@@ -55,7 +55,7 @@ interface Props {
   /** Tier of a price against its cell median (D-12), from the prices already loaded. */
   tier: (row: PriceRow) => Tier;
   /** The cell median of the row's drink and band, when known: why a price is in review (D-10, SPEC 1.20). */
-  median: (row: PriceRow) => number | null;
+  median?: (row: PriceRow) => number | null;
   onVenue: (venue: Venue) => void;
   onClose: () => void;
 }
@@ -963,7 +963,7 @@ export function BarSheet({
                   actions={actions}
                   inReview
                   tier="neutro"
-                  median={median(row)}
+                  median={median?.(row) ?? null}
                   nativeDrinkSave={nativeDrinkSave}
                   savedDrinkKeys={savedDrinkKeys}
                 />

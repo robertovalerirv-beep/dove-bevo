@@ -33,6 +33,20 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
+## 2026-11-23 · Copertura in `/admin`: «Aggiorna» sempre in errore (ramo `claude/busy-bohr-520mln`, ADR 0050)
+
+**Segnalazione di Roberto:** «Aggiorna» della dashboard di copertura risponde sempre «Aggiornamento non riuscito, riprova.»
+
+**Diagnosi:** in DevTools `GET /api/admin/coverage` → 500 in ~300 ms (non 503: il Worker non è stato ucciso per CPU, ha lanciato un'eccezione). Il calcolo leggeva un file statico per ogni cella con prezzi più `places.json`; sul D1 vivo `SELECT COUNT(DISTINCT cell) … WHERE status='active'` → 58 celle, 231 bar: 59 sottorichieste contro le 50 del piano gratuito.
+
+**Fatto:** il file di cella si legge solo per i bar senza città salvata, al massimo 40 file (`COVERAGE_CELL_READS`); compromesso accettato nell'ADR 0050.
+
+**Prove:** i due test nuovi in `tests/worker/coverage.test.ts` falliscono sul codice di prima (58 bar contati 0 perché scartati dopo la lettura dei file; 60 letture contro un tetto di 41) e passano dopo; `npx vitest run tests/worker/coverage.test.ts` → 15/15.
+
+**Da verificare a mano dopo il deploy:** `/admin` → «Aggiorna» mostra i numeri; in DevTools `coverage` → 200.
+
+---
+
 ## 2026-11-13 · README, SECURITY aggiornato e controllo del push affidabile (ramo `claude/missing-readme-discussion-a5dc8a`)
 
 **Richiesta di Roberto:** il repository pubblico non aveva un README e la scheda Security era vecchia; poi, dopo una mattinata persa sul push, un controllo che non ricada negli stessi errori, in locale e su GitHub. Tutto in un solo commit. Nessuna modifica a SPEC, schema, API, D1 e interfaccia.

@@ -1,0 +1,53 @@
+# Keeps the Italy OSM extract in the Actions cache so that "Deploy staging" never downloads it (ADR 0051).
+# Geofabrik publishes a new extract every day around 08:53 UTC; this runs after it, and can be started by hand.
+name: Refresh OSM extract
+
+on:
+  schedule:
+    - cron: "37 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: refresh-osm-extract
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75 # a stuck download must fail (and show red), not hang
+    env:
+      PBF_URL: https://download.geofabrik.de/europe/italy-latest.osm.pbf
+    steps:
+      - name: Geofabrik extract date
+        id: pbf
+        run: |
+          set -o pipefail # default bash -e has no pipefail: a failed request must fail here
+          # italy-latest answers 307 to the dated file: follow it and keep the last Last-Modified.
+          modified="$(curl -fsSIL "$PBF_URL" | grep -i "^last-modified:" | tail -1 | cut -d" " -f2- | tr -d '\r')"
+          echo "key=osm-italy-$(date -u -d "$modified" +%Y%m%d%H%M)" >> "$GITHUB_OUTPUT"
+      - name: Is it already cached?
+        id: have
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/italy.osm.pbf
+          key: ${{ steps.pbf.outputs.key }}
+          lookup-only: true
+      # Measured: 4 min and 26 min on 20/11/2026. Slow is allowed (50 min); a stalled connection
+      # (under 300 KB/s for 60 s) is dropped and resumed from the same byte (-C -).
+      - name: Download the extract
+        if: steps.have.outputs.cache-hit != 'true'
+        timeout-minutes: 50
+        run: |
+          curl -fsSL -C - \
+            --connect-timeout 30 --speed-limit 300000 --speed-time 60 \
+            --retry 10 --retry-all-errors --retry-delay 5 \
+            -o "$RUNNER_TEMP/italy.osm.pbf" "$PBF_URL"
+      - name: Keep it for the deploys
+        if: steps.have.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/italy.osm.pbf
+          key: ${{ steps.pbf.outputs.key }}

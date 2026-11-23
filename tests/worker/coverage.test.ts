@@ -2,6 +2,7 @@ import { env, exports } from "cloudflare:workers";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CellPrices, Coverage } from "../../src/shared/api-types";
 import { coverageSnapshot, forgetCoverage } from "../../src/worker/lib/coverage";
+import { COVERAGE_CELL_READS } from "../../src/worker/config";
 import { COVERAGE_SQL } from "../../src/worker/lib/db";
 import { forgetCell } from "../../src/worker/lib/cell-cache";
 import { resetCoverageLimit } from "../../src/worker/routes/admin";
@@ -265,6 +266,57 @@ describe("cost of one calculation (M5-13, ADR 0022)", () => {
     const result = await env.DB.prepare(COVERAGE_SQL).all();
     expect(result.meta.rows_read).toBeLessThanOrEqual(rows + 10);
   }, 60_000);
+});
+
+describe("prices spread over many cells (ADR 0050)", () => {
+  it("58 cells with prices: answered 200, and no static file read for a bar with a stored city", async () => {
+    // Production on 23/11/2026: 58 cells, one ASSETS read each plus places.json went over the
+    // free plan's 50 subrequests and every "Aggiorna" was a 500.
+    const chars = "0123456789bcdefghjkmnpqrstuvwxyz";
+    const statements = [];
+    for (let i = 0; i < 58; i++) {
+      const cell = `u0${chars[Math.floor(i / 32)] ?? "0"}${chars[i % 32] ?? "0"}9`;
+      statements.push(
+        env.DB.prepare(
+          `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+           VALUES (?1, 'spritz', 0, ?2, ?3, 700, '2026-11-20', 0, 'active', 'manual')`,
+        ).bind(`n${String(900_000 + i)}`, cell, MILANO),
+      );
+    }
+    await env.DB.batch(statements);
+    forgetCoverage();
+    const assets = vi.spyOn(env.ASSETS, "fetch");
+    const body = await coverageSnapshot(env);
+    const reads = assets.mock.calls.length;
+    assets.mockRestore();
+    expect(body.bars).toBe(58);
+    expect(body.cities).toEqual([[MILANO, 58, 58, "2026-11-20"]]);
+    expect(reads).toBe(0);
+  });
+
+  it("bars without a city never read more cells than the cap, the rest count as without a city", async () => {
+    const statements = [];
+    const chars = "0123456789bcdefghjkmnpqrstuvwxyz";
+    for (let i = 0; i < 60; i++) {
+      const cell = `u0${chars[Math.floor(i / 32)] ?? "0"}${chars[i % 32] ?? "0"}9`;
+      statements.push(
+        env.DB.prepare(
+          `INSERT INTO prices_current (venue_key, drink, hh, cell, city, price_cents, observed_on, confirmations, status, source)
+           VALUES (?1, 'spritz', 0, ?2, NULL, 700, '2026-11-20', 0, 'active', 'manual')`,
+        ).bind(`n${String(900_000 + i)}`, cell),
+      );
+    }
+    await env.DB.batch(statements);
+    forgetCoverage();
+    const assets = vi.spyOn(env.ASSETS, "fetch");
+    const body = await coverageSnapshot(env);
+    const reads = assets.mock.calls.length;
+    assets.mockRestore();
+    expect(reads).toBeLessThanOrEqual(COVERAGE_CELL_READS + 1); // the cell cap plus places.json
+    // Cells read: their bars are in no static file (gone from OSM) and do not count; the cells
+    // beyond the cap are not checked and count as "without a city", never as an error.
+    expect(body.none[0]).toBe(60 - COVERAGE_CELL_READS);
+  });
 });
 
 describe("the figures are kept for a minute (ADR 0025)", () => {

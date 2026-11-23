@@ -57,8 +57,14 @@ jobs:
       # resumed from the same byte (-C -).
       - name: Download the extract (only if the cache held none)
         timeout-minutes: 50
+        env:
+          MATCHED: ${{ steps.pbf.outputs.cache-matched-key }}
         run: |
-          echo "Cached extract: '${{ steps.pbf.outputs.cache-matched-key }}'"
+          # Only keys written by refresh-osm-extract.yml are accepted (osm-italy- and 12 digits).
+          if [ -n "$MATCHED" ] && ! [[ "$MATCHED" =~ ^osm-italy-[0-9]{12}$ ]]; then
+            echo "Unexpected cache key: $MATCHED"; exit 1
+          fi
+          echo "Cached extract: '$MATCHED'"
           test -f "$RUNNER_TEMP/italy.osm.pbf" || curl -fsSL -C - \
             --connect-timeout 30 --speed-limit 300000 --speed-time 60 \
             --retry 10 --retry-all-errors --retry-delay 5 \

@@ -3,7 +3,7 @@ import type { PriceRow, VenuePrices } from "../../shared/api-types";
 import { it } from "../i18n/lang";
 import { loadCell, loadVenuePrices, type Venue } from "../lib/data";
 import { formatDate, formatPrice, todayRome } from "../lib/format";
-import { isStale, type Tier } from "../lib/tiers";
+import { cellMedian, isStale, type Tier } from "../lib/tiers";
 import { directionsUrl } from "../lib/geo";
 import { drinkIcon, Icon } from "./Icon";
 import { LegalLinks } from "./LegalLinks";
@@ -183,6 +183,9 @@ export function BarSheet({
   onClose,
 }: Props) {
   const [venue, setVenue] = useState<Venue | null | undefined>(undefined);
+  // The bars of this cell, already in memory: the median of «In verifica» also when the page is opened
+  // from a link, before the map has loaded the cell (D-10).
+  const [cellVenues, setCellVenues] = useState<Venue[]>([]);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -190,6 +193,7 @@ export function BarSheet({
     void loadCell(cell)
       .then((venues) => {
         // A proposed bar is public only once the admin approved it (ADR 0019): not here by its link.
+        setCellVenues(venues);
         const found = venues.find((v) => v.key === venueKey && !v.pending) ?? null;
         setVenue(found);
         if (found) onVenue(found);
@@ -314,7 +318,9 @@ export function BarSheet({
                   actions={actions}
                   inReview
                   tier="neutro"
-                  median={median(row)}
+                  median={
+                    median(row) ?? (row[2] === 0 ? cellMedian(cellVenues, cell, row[1]) : null)
+                  }
                 />
               ))}
             </ul>

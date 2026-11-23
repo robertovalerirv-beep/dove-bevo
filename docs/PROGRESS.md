@@ -33,6 +33,32 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
+## 2026-11-23 · «Salva» porta subito alla scheda del bar (ramo `claude/modest-fermi-1fjsrw`) · SPEC 1.20 · ADR 0050
+
+**Richiesta di Roberto:** il riquadro dopo «Salva» (Timbro, Annulla con la barra di 5 s, Tessera, «Aggiungi un altro drink qui») annoia più di quanto aiuti: dopo l'inserimento l'utente deve tornare subito alla scheda del bar. Scelte in chat: messaggi d'errore parlanti; prezzo uguale già presente → un banner breve di ringraziamento; prezzo in verifica → nella scheda, con il motivo; tocco su un prezzo già visto → riempie le cifre, poi «Salva»; app iOS e Android seguono il sito (l'app Europa no). Permesso esplicito di Roberto di riscrivere le verifiche di 8 voci.
+
+**Fatto**
+1. `src/app/app.tsx`: niente più richiesta in attesa né `visibilitychange`; `save()` chiude il foglio, apre `/bar/<key>?c=<cell>` (se non è già aperta), annuncia «Prezzo salvato» solo allo screen reader e invia subito con `keepalive`; `send()` distingue quota del giorno (`Retry-After` > 60), troppi di fila, offline, servizio occupato (503 o risposta non JSON), verifica anti-robot (`SessionError` in `src/app/lib/session.ts`, solo per Turnstile o 403), prezzo in controllo e limiti del drink. Il contatore in `localStorage` cresce solo a prezzo accettato (invito M4-09).
+2. `Toast.tsx`: una riga (misura `caption`) o un testo `.sr-only`; sopra un foglio aperto il banner va in alto, sullo sfondo (non copre i pulsanti della scheda). Via Timbro, Tessera, barra, `UNDO_MS`, `--toast-duration`, `formatStampDay`, `stampReached`.
+3. `AddPriceSheet.tsx`: il tocco su un prezzo già visto mette le cifre nel campo. `BarSheet.tsx`: ogni prezzo «In verifica» dice «Molto diverso dagli altri prezzi della zona (mediana X €)…», con la mediana calcolata dalla cella già in memoria; a scheda caricata il fuoco va sul nome. `Sheet.tsx`: un foglio prende il fuoco solo se è in cima (su WebKit la scheda sotto rubava il fuoco al passo Prezzo riaperto dopo un errore).
+4. `DAILY_PRICE_QUOTA` (30) in `src/shared/config.ts`, usato dal Worker; `it.ts` non può importare (lo legge `build-tokens.mjs`) e il test unit tiene il numero uguale.
+5. App native: stessi cambi in `mobile-apps/web/components/AddPriceSheet.tsx` e `BarSheet.tsx`, nuovo hash di `app.tsx` in `build-contract.mjs` (punti di aggancio invariati); l'app Europa tiene il suo Annulla con `EUROPE_UNDO_MS`.
+6. SPEC 1.20, verifiche di M2-05, M2-06, M3-16, MB-10, MB-11, MB-12, ME-01, ME-04 riscritte (nessuna voce tolta), tag `spec-approved-17`, ADR 0050, CHANGELOG, brand (`02-voce.md`, README, Timbro, Tessera), design system, `PRIVACY-NOTES.md`, `docs/user-test.md` (compito 4: correggere con «È cambiato»).
+
+**Test cambiati e perché (requisito cambiato con la 1.20):** `contribute.spec.ts` riscritto per il dopo-«Salva» (scheda aperta e fuoco, «Indietro» alla mappa, invio subito con `keepalive`, sette errori più offline e Turnstile, banner di conferma anche per «già contato», nessun banner in quarantena, motivo in «In verifica», un POST per drink, prezzo visto che riempie le cifre, contatore); `english-views.spec.ts`, `csp.spec.ts` (Turnstile ora parte dal 401 della prima richiesta, come col Worker vero); unit `after-save.test.ts` nuovo, `lang`, `voice`, `usage` aggiornati, `undo.test.ts` tolto. Ogni test nuovo è stato visto fallire sul codice di prima per il motivo giusto.
+
+**Revisioni:** `security-reviewer` OK. `spec-reviewer`: bloccante solo questa voce; corretti il testo «già contato», il messaggio robot per una sessione occupata e i documenti vecchi. `ux-a11y-reviewer`: due bloccanti (fuoco rubato su WebKit, banner sopra i pulsanti della scheda) corretti con test che li coprono; banner portato a `caption` (2 righe a 320 px, 1–2 a 390).
+
+**Prove**
+- Vitest 884/884 (unit e Worker); `tsc -b` (sito e `mobile-apps/web`), ESLint, Prettier verdi; `node scripts/check-feature-list.mjs` ok con `spec-approved-17` (129/134).
+- Playwright `contribute.spec.ts` 46/46 su Chromium e WebKit; con `english-views.spec.ts` 72/72; `csp.spec.ts` verde.
+- Screenshot del banner a 390, 360 e 320 px, due temi, due lingue, Chromium e WebKit (24): bordo inferiore a 74 px (93 a 320), foglio da 127 px; due in `docs/screenshots/salva/`.
+- `npm run verify` completo al push (risultato nel commit e nella PR).
+
+**Da verificare a mano (Roberto)**
+- iPhone: «Salva» porta alla scheda; primo prezzo della visita con Turnstile vero (la scheda è già aperta mentre la richiesta aspetta la verifica).
+- App iOS e Android dopo il build: stesso flusso.
+
 ## 2026-11-13 · README, SECURITY aggiornato e controllo del push affidabile (ramo `claude/missing-readme-discussion-a5dc8a`)
 
 **Richiesta di Roberto:** il repository pubblico non aveva un README e la scheda Security era vecchia; poi, dopo una mattinata persa sul push, un controllo che non ricada negli stessi errori, in locale e su GitHub. Tutto in un solo commit. Nessuna modifica a SPEC, schema, API, D1 e interfaccia.

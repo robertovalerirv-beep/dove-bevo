@@ -229,6 +229,10 @@ test("M2-06 a failure reopens the price step with the digits and the exact reaso
     const step = page.getByRole("dialog").filter({ has: page.getByRole("textbox") });
     await expect(step.getByRole("alert")).toHaveText(text);
     await expect(step.getByRole("textbox", { name: "Prezzo in euro" })).toHaveValue(price);
+    // The bar page that loads underneath must not take the focus from the field (WebKit did).
+    await expect(page.locator(".scontrino")).toBeAttached();
+    await page.waitForTimeout(300);
+    await expect(step.getByRole("textbox", { name: "Prezzo in euro" })).toBeFocused();
     await step.getByRole("button", { name: "Chiudi" }).first().click();
     // The bar page opened by Salva is still under it: back to the map for the next case.
     await page.goto("/");
@@ -272,6 +276,10 @@ test("MB-11 the same price again: a one-line banner that goes away by itself", a
   });
   await expect(banner).toBeVisible();
   await expect(banner.getByRole("button")).toHaveCount(0); // nothing to press, nothing to wait for
+  // Over the backdrop, above the sheet: never over the bar page's own buttons (WCAG 2.4.11).
+  const toast = await page.locator(".toast").boundingBox();
+  const sheet = await page.locator("dialog.sheet[open]").last().boundingBox();
+  expect((toast?.y ?? 0) + (toast?.height ?? 0)).toBeLessThanOrEqual(sheet?.y ?? 0);
   await expect(page.getByRole("dialog").getByRole("heading", { level: 2 })).toBeVisible(); // the bar page
   await expect(banner).toHaveCount(0, { timeout: 10_000 });
 });

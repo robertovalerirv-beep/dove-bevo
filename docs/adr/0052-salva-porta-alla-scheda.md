@@ -1,4 +1,4 @@
-# 0051 · «Salva» porta subito alla scheda del bar
+# 0052 · «Salva» porta subito alla scheda del bar
 
 - **Stato:** decisa da Roberto il 23/11/2026 in chat (piano approvato, permesso esplicito di cambiare le verifiche) · **Data:** 2026-11-23 · SPEC 1.20 · sostituisce, per il dopo-`Salva`, D-15 (Annulla di 5 s), il Timbro di MB-11 e la Tessera di D-29 (ADR 0023). Non cambia schema, API, D1 e scritture. Cambia i testi delle verifiche M2-05, M2-06, M3-16, MB-10, MB-11, MB-12, ME-01 e ME-04 in `docs/feature_list.json`, quindi la guardia passa al tag `spec-approved-17`.
 

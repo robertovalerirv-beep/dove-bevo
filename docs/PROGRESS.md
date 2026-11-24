@@ -33,7 +33,7 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
-## 2026-11-23 · «Salva» porta subito alla scheda del bar (ramo `claude/modest-fermi-1fjsrw`) · SPEC 1.20 · ADR 0051
+## 2026-11-23 · «Salva» porta subito alla scheda del bar (ramo `claude/modest-fermi-1fjsrw`) · SPEC 1.20 · ADR 0052
 
 **Richiesta di Roberto:** il riquadro dopo «Salva» (Timbro, Annulla con la barra di 5 s, Tessera, «Aggiungi un altro drink qui») annoia più di quanto aiuti: dopo l'inserimento l'utente deve tornare subito alla scheda del bar. Scelte in chat: messaggi d'errore parlanti; prezzo uguale già presente → un banner breve di ringraziamento; prezzo in verifica → nella scheda, con il motivo; tocco su un prezzo già visto → riempie le cifre, poi «Salva»; app iOS e Android seguono il sito (l'app Europa no). Permesso esplicito di Roberto di riscrivere le verifiche di 8 voci.
 
@@ -43,7 +43,7 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 3. `AddPriceSheet.tsx`: il tocco su un prezzo già visto mette le cifre nel campo. `BarSheet.tsx`: ogni prezzo «In verifica» dice «Molto diverso dagli altri prezzi della zona (mediana X €)…», con la mediana calcolata dalla cella già in memoria; a scheda caricata il fuoco va sul nome. `Sheet.tsx`: un foglio prende il fuoco solo se è in cima (su WebKit la scheda sotto rubava il fuoco al passo Prezzo riaperto dopo un errore).
 4. `DAILY_PRICE_QUOTA` (30) in `src/shared/config.ts`, usato dal Worker; `it.ts` non può importare (lo legge `build-tokens.mjs`) e il test unit tiene il numero uguale.
 5. App native: stessi cambi in `mobile-apps/web/components/AddPriceSheet.tsx` e `BarSheet.tsx`, nuovo hash di `app.tsx` in `build-contract.mjs` (punti di aggancio invariati); l'app Europa tiene il suo Annulla con `EUROPE_UNDO_MS`.
-6. SPEC 1.20, verifiche di M2-05, M2-06, M3-16, MB-10, MB-11, MB-12, ME-01, ME-04 riscritte (nessuna voce tolta), tag `spec-approved-17`, ADR 0051, CHANGELOG, brand (`02-voce.md`, README, Timbro, Tessera), design system, `PRIVACY-NOTES.md`, `docs/user-test.md` (compito 4: correggere con «È cambiato»).
+6. SPEC 1.20, verifiche di M2-05, M2-06, M3-16, MB-10, MB-11, MB-12, ME-01, ME-04 riscritte (nessuna voce tolta), tag `spec-approved-17`, ADR 0052, CHANGELOG, brand (`02-voce.md`, README, Timbro, Tessera), design system, `PRIVACY-NOTES.md`, `docs/user-test.md` (compito 4: correggere con «È cambiato»).
 
 **Test cambiati e perché (requisito cambiato con la 1.20):** `contribute.spec.ts` riscritto per il dopo-«Salva» (scheda aperta e fuoco, «Indietro» alla mappa, invio subito con `keepalive`, sette errori più offline e Turnstile, banner di conferma anche per «già contato», nessun banner in quarantena, motivo in «In verifica», un POST per drink, prezzo visto che riempie le cifre, contatore); `english-views.spec.ts`, `csp.spec.ts` (Turnstile ora parte dal 401 della prima richiesta, come col Worker vero); unit `after-save.test.ts` nuovo, `lang`, `voice`, `usage` aggiornati, `undo.test.ts` tolto. Ogni test nuovo è stato visto fallire sul codice di prima per il motivo giusto.
 
@@ -55,9 +55,12 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 - Screenshot del banner a 390, 360 e 320 px, due temi, due lingue, Chromium e WebKit (24): bordo inferiore a 74 px (93 a 320), foglio da 127 px; due in `docs/screenshots/salva/`.
 - `npm run verify` al push: lint, formattazione, typecheck, unit e worker, guardia della feature list, `npm audit`, e2e Chromium + WebKit + sicurezza (754 s) **verdi**. Le app native sono ferme a 116/137: 19 rossi erano miei (i test dei componenti mobili creavano la scheda senza la nuova prop `median`, ora facoltativa; due test controllavano il vecchio testo «prezzo insolito» e il salvataggio al tocco sul prezzo visto: requisito cambiato con la 1.20, test aggiornati). Dopo la correzione 135/137. I 2 rossi rimasti («Tutti reveals uncategorized verified menus…», «app map actions reclaim the footer…», `mobile-apps/web/tests/bundle.test.mjs`) falliscono uguali sul commit di partenza `2270545`, costruito in un worktree a parte: preesistenti, come nelle voci dell'11/11. Passi dopo, eseguiti a mano: build ok, shell 39 584 B (budget 51 200), Lighthouse mediana di 3 Performance 0,98, Accessibility/Best Practices/SEO 1, LCP 1,9 s, CLS 0. Push quindi con `--no-verify`, dichiarato qui; la CI di GitHub ripete tutto.
 
-**Da verificare a mano (Roberto)**
-- iPhone: «Salva» porta alla scheda; primo prezzo della visita con Turnstile vero (la scheda è già aperta mentre la richiesta aspetta la verifica).
-- App iOS e Android dopo il build: stesso flusso.
+**Deploy:** PR unita il 24/11/2026 (merge `bc53d80`); CI di `main` verde (run 1398) e «Deploy staging» verde (run 406, 08:47–08:49 UTC, con migrazioni e controllo finale); sul sito vivo i testi nuovi (`metterlo nel campo`, `Prezzo salvato`) ci sono e «hai 5 secondi per annullare» non c'è più. Il numero dell'ADR è 0052: `main` aveva già un ADR 0051 (il download dell'estratto OSM, #445), unito prima del mio; i due numeri uguali sono stati corretti dopo il merge.
+
+**Prove a mano (Roberto)**
+- Fatte il 24/11/2026, sul sito vivo dopo il deploy: «Salva» porta alla scheda del bar con il prezzo e senza riquadro; primo prezzo della visita con il Turnstile vero; prezzo già visto che riempie le cifre; prezzo già presente con la riga di ringraziamento. Esito riferito da Roberto: «funziona tutto alla perfezione». Il dispositivo non è stato indicato nella conferma.
+- **Ancora aperto:** app iOS e Android dopo il build, stesso flusso (non ricompilate, non provate).
+
 ## 2026-11-23 · Copertura in `/admin`: «Aggiorna» sempre in errore (ramo `claude/busy-bohr-520mln`, ADR 0050)
 
 **Segnalazione di Roberto:** «Aggiorna» della dashboard di copertura risponde sempre «Aggiornamento non riuscito, riprova.»

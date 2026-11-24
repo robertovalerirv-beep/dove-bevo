@@ -7,7 +7,7 @@ Il bar italiano ha tre oggetti che tutti riconoscono: il **tappo a corona**, il 
 - **Tappo a corona = il posto.** Il simbolo è un tappo con la punta di un segnaposto. Sulla mappa, il bar selezionato diventa un tappo.
 - **Pillola col prezzo = il dato.** Ogni prezzo è una pillola con bordo `ink`, ombra `shadow-stampa` e cifre in `mono`: si legge come un cartellino.
 - **Scontrino = la prova.** La scheda del bar è uno scontrino: cifre in colonna, data in `meta`, bordo inferiore seghettato. Comunica "questo l'ha pagato qualcuno, non è una stima".
-- **Timbro = il grazie** (fino alla SPEC 1.20). Dopo `Salva` compariva un timbro che si imprimeva. Dalla 1.20 (ADR 0051) `Salva` porta subito alla scheda del bar: il grazie è vedere il proprio prezzo sullo scontrino.
+- **Timbro = il grazie** (fino alla SPEC 1.20). Dopo `Salva` compariva un timbro che si imprimeva. Dalla 1.20 (ADR 0052) `Salva` porta subito alla scheda del bar: il grazie è vedere il proprio prezzo sullo scontrino.
 
 ## Colore
 

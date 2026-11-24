@@ -577,7 +577,7 @@ export function App({ loadMap }: Props) {
   }
 
   /**
-   * Salva (SPEC 1.20, ADR 0051): no panel. The bar page opens (from the map, a step back returns to it),
+   * Salva (SPEC 1.20, ADR 0052): no panel. The bar page opens (from the map, a step back returns to it),
    * "Prezzo salvato" is only read out, and the price leaves at once.
    */
   function save(draft: Draft) {

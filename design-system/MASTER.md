@@ -42,7 +42,7 @@ Anello `focus` pieno da 3 px con 2 px di distanza, così cade su `bg` o `surface
 | `DrinkChips` | `.chips` | una chip per drink e formato inseribile (SPEC 6), icona del drink; selezionata con `aria-pressed` |
 | `PricePill` | `.row__price` | stessa geometria dei pin su canvas |
 | `ReceiptSheet` | `BarSheet` | scontrino: bordo inferiore seghettato (`mask-image` SVG `data:` nel CSS), max 5 righe poi "Vedi tutti" |
-| `StampToast` | `Toast` | dalla SPEC 1.20 (ADR 0051) solo una riga che sparisce da sola, o un annuncio per lo screen reader; niente timbro né Annulla |
+| `StampToast` | `Toast` | dalla SPEC 1.20 (ADR 0052) solo una riga che sparisce da sola, o un annuncio per lo screen reader; niente timbro né Annulla |
 | `CoverageMeter` | pillola "N bar nella zona" | "X bar su N qui hanno un prezzo" |
 | `LoyaltyCard` | — | Tessera (D-29): non si mostra più dalla SPEC 1.20 |
 Icone: 24 px, tratto 2 px, inline con `currentColor`, decorative con `aria-hidden`; i 9 drink da `docs/brand/assets/Icone/`.

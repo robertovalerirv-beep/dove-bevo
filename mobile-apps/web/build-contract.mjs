@@ -3,7 +3,7 @@ import ts from "typescript";
 /* global structuredClone */
 
 const PINS = {
-  app: "9ad927c8c8e72d5b7795bdbd43635339aee9906db67a6209acc2dc36215efc51",
+  app: "08f4bc33b2a9d649c7790d23c018cd5bda8d6215ca1ca0601e6b0592d824020b",
   map: "6cf9a2d5b015865f9ec7c3b4e48da8e16f574edf061d2c5826a48ee04bd1027e",
 };
 const normalized = (source) => source.replaceAll("\r\n", "\n");

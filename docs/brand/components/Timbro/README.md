@@ -1,3 +1,5 @@
+> **Non più in uso dalla SPEC 1.20 (ADR 0052):** dopo `Salva` si apre la scheda del bar, senza timbro né Annulla. Il testo sotto resta come storia del kit.
+
 Il riscontro dopo `Salva`: un timbro si imprime con un rimbalzo di 260 ms, il testo conferma cosa è stato segnato.
 
 - Resta 5 secondi con "Annulla": l'invio parte allo scadere (comportamento già nella SPEC).

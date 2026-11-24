@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it as test, vi } from "vitest";
 import { it as italian } from "../../src/app/i18n/it";
-import { UNDO_MS } from "../../src/shared/config";
 
 // SPEC 1.11, D-36 (ADR 0038): the public interface also in English, the choice kept only in memory.
 
@@ -73,9 +72,17 @@ describe("ME-01 the English dictionary", () => {
     expect(same).toEqual([]);
   });
 
-  test("the text of «Undo» promises the seconds of UNDO_MS", async () => {
+  test("the reasons a price is not saved are in English too (SPEC 1.20)", async () => {
     const { en } = await import("../../src/app/i18n/en");
-    expect(en.add.seenHelp).toContain(`${String(UNDO_MS / 1000)} seconds`);
+    expect(en.add.quotaDay).toBe(
+      "You've already logged 30 prices today, the most for one day. You can log more from midnight.",
+    );
+    expect(en.add.offline).toBe(
+      "You're offline: the price wasn't sent. Try again when the connection is back.",
+    );
+    expect(en.add.outOfRange("Spritz", "2,50 €", "15,00 €")).toBe(
+      "Spritz: we accept prices from 2,50 € to 15,00 €. Check the digits.",
+    );
   });
 
   test("plurals follow English", async () => {
@@ -86,7 +93,6 @@ describe("ME-01 the English dictionary", () => {
     expect(en.bar.confirmations(1)).toBe("1 confirmation");
     expect(en.bar.confirmations(4)).toBe("4 confirmations");
     expect(en.bar.drinkCount(1)).toBe("1 drink");
-    expect(en.tessera.count(1)).toBe("1 price logged.");
   });
 });
 

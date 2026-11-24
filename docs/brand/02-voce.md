@@ -25,16 +25,14 @@
 
 - **Bottone primario:** "Segna un prezzo"
 - **Domanda nel tastierino:** "Quanto l'hai pagato?"
-- **Conferma (timbro):** "Segnato. Il prossimo che passa sa già quanto spende."
-- **Annulla nel timbro:** "Annulla" (5 secondi)
+- **Prezzo uguale già presente** (dalla SPEC 1.20, al posto del timbro e dell'Annulla): "Grazie, il prezzo inserito da te conferma il prezzo che era già presente."
 - **Copertura:** "42 bar su 180 qui hanno un prezzo"
 - **Zoom troppo basso:** "Avvicinati per vedere i prezzi, o cerca una città."
 - **Prezzo vecchio:** "Visto 3 mesi fa. Ci sei passato? Confermalo."
-- **Quota raggiunta:** "Per oggi hai segnato tanto. Riprova dopo mezzanotte."
+- **Quota raggiunta:** "Oggi hai già segnato 30 prezzi, il massimo per un giorno. Potrai segnarne altri da mezzanotte."
 - **Servizio sotto carico:** "C'è la fila al bancone. Riprova tra poco, intanto i prezzi già caricati restano qui."
 - **Posizione negata:** "Attiva la posizione per questo sito nelle impostazioni, oppure cerca una città."
 - **Bar proposto:** "Grazie. Roberto controlla che esista e poi compare sulla mappa."
-- **Tessera:** "5 prezzi segnati. Sei di casa."
 
 ## Social e creator
 

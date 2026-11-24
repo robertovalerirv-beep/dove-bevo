@@ -100,7 +100,9 @@ export const it = {
     prices: "Prezzi",
     noPrices: "Nessun prezzo ancora.",
     inReview: "In verifica",
-    inReviewHelp: "Prezzi insoliti: diventano visibili quando qualcun altro li conferma.",
+    /** Why a price is in review (D-10, SPEC 1.20): the median of the zone when it is known. */
+    inReviewWhy: (median: string | null) =>
+      `Molto diverso dagli altri prezzi della zona${median ? ` (mediana ${median})` : ""}: entra in elenco e in mappa quando qualcun altro lo conferma.`,
     confirmations: (n: number) =>
       n === 0 ? "Nessuna conferma" : n === 1 ? "1 conferma" : `${String(n)} conferme`,
     happyHour: "HH",
@@ -121,16 +123,6 @@ export const it = {
     dismiss: "Non ora",
     ok: "Ho capito",
   },
-  tessera: {
-    messages: {
-      1: "Primo prezzo segnato.",
-      5: "5 prezzi segnati. Sei di casa.",
-      10: "10 prezzi segnati. Il bancone ti conosce.",
-      25: "25 prezzi segnati. Ormai guidi tu la zona.",
-      50: "50 prezzi segnati. La mappa è anche tua.",
-    } as Record<number, string>,
-    count: (n: number) => (n === 1 ? "1 prezzo segnato." : `${String(n)} prezzi segnati.`),
-  },
   add: {
     open: "Aggiungi prezzo",
     addMissing: "Aggiungi locale",
@@ -145,27 +137,27 @@ export const it = {
     happyHour: "Happy hour",
     save: "Salva",
     badFormat: "Scrivi il prezzo in euro, per esempio 7,50.",
-    outOfRange: (drink: string) => `Ci sembra un prezzo insolito per ${drink}: controlla le cifre.`,
-    underReview: "Questo prezzo è in verifica: per ora non si può cambiare.",
-    quota: "Per oggi hai segnato tanto. Riprova dopo mezzanotte.",
-    network: "Non sono riuscito a salvare: controlla la connessione e riprova.",
+    // Why a price was not saved (SPEC 1.20): each failure says its reason; the digits stay in the field.
+    outOfRange: (drink: string, min: string, max: string) =>
+      `${drink}: accettiamo prezzi da ${min} a ${max}. Controlla le cifre.`,
+    underReview:
+      "Il prezzo di questo drink qui è stato segnalato ed è in controllo: per ora non si può cambiare.",
+    // 30 = DAILY_PRICE_QUOTA (this file has no imports: scripts read it; tests/unit/after-save.test.ts keeps them equal).
+    quotaDay:
+      "Oggi hai già segnato 30 prezzi, il massimo per un giorno. Potrai segnarne altri da mezzanotte.",
+    tooFast: "Stai segnando molti prezzi di fila: aspetta un minuto e riprova.",
+    offline: "Sei offline: il prezzo non è partito. Riprova quando torna la connessione.",
+    busy: "Il servizio è molto richiesto: il prezzo non è partito, riprova tra poco.",
+    robot: "Non sono riuscito a verificare che tu non sia un robot: riprova.",
+    failed: "Non sono riuscito a salvare il prezzo: riprova tra poco.",
+    /** Read out only (SPEC 1.20): after Salva the bar page is the confirmation. */
     saved: "Prezzo salvato",
-    stamp: "Segnato. Il prossimo che passa sa già quanto spende.",
-    stampDay: (day: string) => `Timbro del ${day}`,
-    coverageUp: (withPrice: number, total: number) =>
-      `Copertura +1: ${String(withPrice)} bar su ${String(total)} qui hanno un prezzo`,
     seenHere: "Prezzi già visti qui",
-    // The seconds are UNDO_MS (tests/unit/undo.test.ts keeps them equal).
-    seenHelp: "Tocca un prezzo per segnarlo subito: hai 5 secondi per annullare.",
+    seenHelp: "Tocca un prezzo per metterlo nel campo, poi Salva.",
     zoneRange: (min: string, max: string, median: string) =>
       `In zona va da ${min} a ${max} €, mediana ${median} €`,
-    undo: "Annulla",
-    undone: "Annullato",
-    quarantined: "Salvato: comparirà quando qualcun altro lo conferma.",
-    confirmedSame: "Grazie: hai confermato il prezzo che c'era già.",
-    alreadyThere: "Questo prezzo c'era già: niente da aggiungere.",
+    confirmedSame: "Grazie, il prezzo inserito da te conferma il prezzo che era già presente.",
     verifying: "Un attimo, verifico che tu non sia un robot…",
-    another: "Aggiungi un altro drink qui",
     pendingBar: "Nuovo, da confermare",
     missingBar: "Non trovi il bar?",
   },
@@ -437,7 +429,7 @@ export const it = {
           heading: "Cookie e dati sul telefono",
           paragraphs: [
             "Quando segni il primo prezzo riceviamo un solo cookie tecnico, che dura 30 minuti e serve a distinguere una persona da un programma automatico. Non serve un banner perché non traccia nessuno.",
-            "Sul telefono restano soltanto la data del primo uso e quanti prezzi hai segnato, per la Tessera e per l'invito a installare l'app. La data e il numero non vengono mai inviati: ai conteggi anonimi arriva soltanto una fascia di anzianità, per esempio «1-7 giorni».",
+            "Sul telefono restano soltanto la data del primo uso e quanti prezzi hai segnato, per l'invito a installare l'app. La data e il numero non vengono mai inviati: ai conteggi anonimi arriva soltanto una fascia di anzianità, per esempio «1-7 giorni».",
           ],
         },
         {

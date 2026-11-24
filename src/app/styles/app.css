@@ -426,9 +426,6 @@
   color: var(--ink-muted);
   font-size: var(--size-caption);
 }
-.toast__action + .toast__action {
-  margin-inline-start: var(--space-2);
-}
 
 /* Sheets */
 .sheet {
@@ -767,15 +764,14 @@
   margin: 0 auto;
   max-width: var(--sheet-max-width);
 }
-/* A small screen: the stamp may be taller than what is left above the bar; it scrolls instead of leaving
-   the screen, so "Annulla" is always reachable inside its few seconds (WCAG 1.4.10). */
-@media (max-height: 700px) {
-  .toast-region {
-    max-height: calc(100dvh - var(--toast-bottom, 0px) - var(--space-4));
-    overflow-y: auto;
-  }
+/* Over a sheet the toast goes to the top of the screen, over the backdrop: at the bottom it would cover
+   the sheet's own buttons («Indicazioni», «Aggiungi un prezzo qui»), SPEC 1.20, WCAG 2.4.11. */
+.sheet .toast-region {
+  top: var(--space-4);
+  bottom: auto;
 }
 .toast {
+  font: var(--type-caption);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -789,41 +785,6 @@
   background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow-stampa);
-}
-.toast__progress {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: var(--space-1);
-  width: 100%;
-  background: var(--spritz);
-  transform-origin: left;
-  animation: toast-progress var(--toast-duration) linear forwards;
-}
-.toast:hover .toast__progress,
-.toast:focus-within .toast__progress {
-  animation-play-state: paused;
-}
-@keyframes toast-progress {
-  to {
-    transform: scaleX(0);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .toast__progress {
-    display: none;
-  }
-}
-.toast__action {
-  min-height: var(--target);
-  min-width: var(--target);
-  border: 0;
-  background: none;
-  color: var(--spritz-text);
-  font: var(--type-label);
-  font-weight: var(--weight-bold);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 .turnstile-host {
   position: fixed;
@@ -1362,52 +1323,6 @@
   letter-spacing: var(--tracking-subtitle);
 }
 
-/* Timbro (MB-11): a postmark with today's date, pressed in with a bounce */
-.stamp {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex: 1;
-}
-.stamp__mark {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  border: 3px solid var(--spritz-text);
-  border-radius: 50%;
-  color: var(--spritz-text);
-  font: var(--type-meta);
-  font-weight: var(--weight-bold);
-  text-align: center;
-  transform: rotate(-12deg);
-  animation: stamp-press var(--dur-stamp, 260ms) cubic-bezier(0.3, 1.6, 0.5, 1) both;
-}
-.stamp__text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.stamp__line {
-  color: var(--ink-muted);
-}
-@keyframes stamp-press {
-  from {
-    transform: rotate(-30deg) scale(1.6);
-    opacity: 0;
-  }
-  to {
-    transform: rotate(-12deg) scale(1);
-    opacity: 1;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .stamp__mark {
-    animation: none;
-  }
-}
-
 /* Search (M4-12…15): combobox options, the matched part of a name, "no result" */
 .option {
   min-height: var(--target-row);
@@ -1494,66 +1409,6 @@
 }
 .scontrino .price__actions .btn:active:not(:disabled, [aria-disabled="true"]) {
   transform: none;
-}
-
-/* Timbro and Tessera after "Salva" (board 4 of the mockup): two paper cards and the next action */
-.toast--stamp {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  background: var(--bg);
-}
-.stamp-card,
-.tessera {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: var(--border-strong) solid var(--ink);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-stampa);
-}
-.stamp-card .stamp__text {
-  font-weight: var(--weight-regular);
-}
-.stamp__undo {
-  flex: none;
-  border-radius: var(--radius-pill);
-  background: var(--surface-2);
-}
-.tessera {
-  display: grid;
-}
-.tessera__title {
-  margin: 0;
-  font: var(--type-subtitle);
-  font-weight: var(--weight-bold);
-}
-.tessera__steps {
-  display: flex;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.tessera__steps li {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 2px dashed var(--ink-muted);
-  border-radius: 50%;
-  color: var(--ink-muted);
-  font: var(--type-meta);
-  font-weight: var(--weight-bold);
-}
-.tessera__steps .tessera__step--on {
-  border: 3px solid var(--spritz-text);
-  color: var(--spritz-text);
-}
-.stamp__more {
-  width: 100%;
 }
 
 /* Bar sheet as the mockup board 2: a grip, the receipt with the name inside, no title bar */
@@ -1804,12 +1659,6 @@
   :root:not([data-dovebevo-mobile-shell]) .map__status .meter {
     display: none;
   }
-}
-/* The stamp sits above the attribution, which is 16 px lower now that the bar is 16 px shorter. It keeps the height
-   above the bottom of the screen it had, because «Aggiungi un altro drink qui» opens the drinks sheet under it and a
-   lower stamp would cover the last drinks of the list (M3-16). */
-:root:not([data-dovebevo-mobile-shell]) .toast-region {
-  translate: 0 calc(-1 * var(--space-4));
 }
 /* The list icon is placed on the map; the slim rule above must not make it relative. */
 :root:not([data-dovebevo-mobile-shell]) .map__list.btn--slim {

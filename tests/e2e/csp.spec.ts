@@ -57,10 +57,15 @@ test.describe("with the position (Duomo)", () => {
   test("no CSP violations while saving a price: Turnstile loads through the Trusted Types policy", async ({
     page,
   }) => {
-    test.slow(); // waits out the undo window before the request leaves
     const violations = await watchCsp(page);
     const turnstile = await stubTurnstile(page);
-    const sent = await stubWrites(page);
+    // As the Worker does at the first contribution: no session yet (401), so Turnstile runs (M2-02).
+    let calls = 0;
+    const sent = await stubWrites(page, () =>
+      calls++ === 0
+        ? { status: 401, json: { error: { code: "unauthorized", message: "x" } } }
+        : { status: 200, json: { results: [{ status: "active" }] } },
+    );
     await page.goto("/");
     await page.getByRole("button", { name: "Aggiungi prezzo" }).click();
     await page.getByRole("list", { name: "Bar vicini" }).getByRole("button").first().click();
@@ -70,9 +75,10 @@ test.describe("with the position (Duomo)", () => {
       .click();
     await page.keyboard.type("7,50");
     await page.getByRole("button", { name: "Salva" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Prezzo salvato" })).toBeVisible();
+    // SPEC 1.20: the bar page opens at once and the price leaves at once.
+    await expect(page.locator(".scontrino")).toBeVisible();
     await expect.poll(() => turnstile.length).toBeGreaterThan(0);
-    await expect.poll(() => sent.length, { timeout: 20_000 }).toBe(1);
+    await expect.poll(() => sent.length, { timeout: 20_000 }).toBe(2); // the try, then with the session
     expect(await violations()).toEqual([]);
   });
 });

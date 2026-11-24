@@ -1,8 +1,8 @@
 import { render } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Place } from "../shared/api-types";
-import { CATALOG, DEFAULT_DRINK } from "../shared/catalog";
-import { APP_NAME, MIN_ZOOM_CELLS, UNDO_MS } from "../shared/config";
+import { CATALOG, DEFAULT_DRINK, findDrink } from "../shared/catalog";
+import { APP_NAME, MIN_ZOOM_CELLS } from "../shared/config";
 import { encodeGeohash, visibleCells } from "../shared/geohash";
 import type { PriceRow } from "../shared/api-types";
 import { CELL_PATTERN, distanceMeters, searchKey, VENUE_KEY_PATTERN } from "../shared/venue";
@@ -11,7 +11,7 @@ import { BarSheet, type BarActions } from "./components/BarSheet";
 import { PinPanel } from "./components/PinPanel";
 import { ProposeSheet, type Proposal } from "./components/ProposeSheet";
 import { ReportSheet, type Reason } from "./components/ReportSheet";
-import { Toast, type StampInfo } from "./components/Toast";
+import { Toast } from "./components/Toast";
 import { DrinkMenu } from "./components/DrinkMenu";
 import { LangMenu } from "./components/LangMenu";
 import { Icon } from "./components/Icon";
@@ -21,12 +21,12 @@ import { it } from "./i18n/lang";
 import { useLang } from "./lib/use-lang";
 import { bestPrice, invalidateCell, loadCell, ServiceBusy, type Venue } from "./lib/data";
 import { blockedHelp, locate, positionGranted } from "./lib/locate";
-import { ensureSession, postWithSession } from "./lib/session";
-import { formatPrice, formatStampDay, todayRome } from "./lib/format";
+import { postWithSession, SessionError } from "./lib/session";
+import { formatPrice, todayRome } from "./lib/format";
 import { installMode, promptInstall } from "./lib/install";
 import { currentTheme } from "./lib/theme";
 import { track } from "./lib/events";
-import { addPrices, dayBucket, priceCount, stampReached } from "./lib/usage";
+import { addPrices, dayBucket, priceCount } from "./lib/usage";
 import { cellMedian, coverage, isStale, tierOf } from "./lib/tiers";
 import { holdableTimeout, type HoldableTimer } from "./lib/timer";
 import type { MapView, VenueMap } from "./lib/maplibre-map";
@@ -44,6 +44,9 @@ function floating(className: string, role?: string): HTMLDivElement {
   if (role) element.setAttribute("role", role);
   return element;
 }
+/** Read each time: the connection can drop while a price is being sent. */
+const isOnline = () => navigator.onLine;
+
 /** Centre of the start view (the Italy picture), used when nothing better is known (D-16). */
 const ITALY_CENTER = { lat: 41.85, lon: 12.6 };
 
@@ -80,13 +83,6 @@ type CellsState = "idle" | "too-many" | "loading" | "error" | "busy" | "ready";
 /** What «Vicino a me» says in the status line: kept as a key, so it follows the language (SPEC 7.11). */
 type Notice = "locating" | "denied" | "unavailable" | "timeout";
 
-/** Prices saved for one bar, sent together as one request after the UNDO_MS of "Annulla" (D-15). */
-interface PendingSave {
-  drafts: Draft[];
-  timer: HoldableTimer;
-  sent: boolean;
-}
-
 type Proposing =
   | { step: "form"; name: string }
   | ({
@@ -122,12 +118,8 @@ export function App({ loadMap }: Props) {
   const [addOrigin, setAddOrigin] = useState<{ lat: number; lon: number } | null>(null);
   const [proposing, setProposing] = useState<Proposing | null>(null);
   const [reporting, setReporting] = useState<{ venue: Venue; row: PriceRow | null } | null>(null);
-  const [toast, setToast] = useState<{
-    text: string;
-    stamp?: StampInfo;
-    undo?: () => void;
-    more?: { label: string; run: () => void };
-  } | null>(null);
+  // `quiet`: read out only, nothing drawn ("Prezzo salvato", SPEC 1.20).
+  const [toast, setToast] = useState<{ text: string; quiet?: boolean } | null>(null);
   const viewedBars = useRef(new Set<string>());
   useEffect(() => {
     track("app_open", { day_bucket: dayBucket(todayRome()) });
@@ -137,7 +129,6 @@ export function App({ loadMap }: Props) {
   const turnstileHost = useMemo(() => floating("turnstile-host"), []);
   const toastRegion = useMemo(() => floating("toast-region", "status"), []);
   const toastTimer = useRef<HoldableTimer | null>(null);
-  const pendingSave = useRef<PendingSave | null>(null);
   const flewToBar = useRef(false);
   // The drinks the map is filtered on («Scegli cosa bere»): in catalog order, never empty, kept for the visit.
   const [drinks, setDrinks] = useState<string[]>([DEFAULT_DRINK]);
@@ -209,18 +200,6 @@ export function App({ loadMap }: Props) {
   useEffect(() => {
     map?.setLabel(it.map.canvas);
   }, [map, lang]);
-
-  // Going to the background is not a cancellation: send the pending price now (D-15).
-  useEffect(() => {
-    const onHide = () => {
-      if (document.visibilityState === "hidden" && pendingSave.current)
-        void send(pendingSave.current);
-    };
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      document.removeEventListener("visibilitychange", onHide);
-    };
-  }, []);
 
   useEffect(() => {
     const onPop = () => {
@@ -423,9 +402,8 @@ export function App({ loadMap }: Props) {
    * Only cell ids leave the device (SPEC 14).
    */
   function openAdd(prefill: Prefill | null) {
-    // A plain notice («Annullato», an error) must not stay over the bars of the new sheet; a toast with
-    // «Annulla» or «Aggiungi un altro drink» belongs to a price still waiting and stays.
-    if (toast && !toast.undo && !toast.more) {
+    // A notice must not stay over the bars of the new sheet.
+    if (toast) {
       toastTimer.current?.clear();
       setToast(null);
     }
@@ -460,26 +438,18 @@ export function App({ loadMap }: Props) {
     return turnstileHost;
   };
 
-  function showToast(
-    text: string,
-    undo?: () => void,
-    ms = 4000,
-    more?: { label: string; run: () => void },
-    stamp?: StampInfo,
-  ) {
+  function showToast(text: string, quiet = false, ms = 4000) {
     toastTimer.current?.clear();
-    setToast({ text, undo, more, stamp });
+    setToast({ text, quiet });
     toastTimer.current = holdableTimeout(() => {
       setToast(null);
     }, ms);
   }
 
-  /** While the toast is pointed at or focused, neither it nor the pending send times out. */
+  /** While the toast is pointed at or focused, it does not time out (WCAG 2.2.1). */
   function holdToast(held: boolean) {
-    for (const timer of [toastTimer.current, pendingSave.current?.timer]) {
-      if (held) timer?.hold();
-      else timer?.release();
-    }
+    if (held) toastTimer.current?.hold();
+    else toastTimer.current?.release();
   }
 
   // The legend stays above the attribution however many lines it takes (SPEC 2.8).
@@ -507,18 +477,10 @@ export function App({ loadMap }: Props) {
     }
     const hadFocus = toastRegion.contains(document.activeElement);
     render(
-      toast ? (
-        <Toast
-          text={toast.text}
-          stamp={toast.stamp}
-          onUndo={toast.undo}
-          more={toast.more}
-          onHold={holdToast}
-        />
-      ) : null,
+      toast ? <Toast text={toast.text} quiet={toast.quiet} onHold={holdToast} /> : null,
       toastRegion,
     );
-    // "Annulla" just disappeared under the focus: give it back to a sensible place (WCAG 2.4.3).
+    // The toast just disappeared under the focus: give it back to a sensible place (WCAG 2.4.3).
     if (hadFocus && !toastRegion.contains(document.activeElement)) {
       const fallback =
         layer === document.body
@@ -528,8 +490,7 @@ export function App({ loadMap }: Props) {
     }
   });
 
-  const drinkLabel = (code: string) => (it.drinks[code] ?? code).toLowerCase();
-
+  /** A failed save: the price step again, the digits still there, the reason written (SPEC 1.20). */
   function reopen(draft: Draft, error: string) {
     setAdding({
       prefill: {
@@ -542,15 +503,24 @@ export function App({ loadMap }: Props) {
     });
   }
 
-  /** Sends a saved price: after the UNDO_MS of "Annulla" or when the page goes to the background (D-15). */
-  async function send(entry: PendingSave) {
-    if (entry.sent) return;
-    entry.sent = true;
-    entry.timer.clear();
-    if (pendingSave.current === entry) pendingSave.current = null;
-    const [first] = entry.drafts;
-    if (!first) return;
-    const { venue } = first;
+  /** Why the Worker turned the price down, in words: under moderation, or outside the drink's limits. */
+  function refusal(draft: Draft, code: string | undefined): string {
+    const limits = findDrink(draft.drink);
+    if (code === "under_review" || !limits) return it.add.underReview;
+    return it.add.outOfRange(
+      it.drinks[draft.drink] ?? draft.drink,
+      formatPrice(limits.min),
+      formatPrice(limits.max),
+    );
+  }
+
+  /** Sends a saved price at once, with keepalive: closing the app right after does not lose it (D-15). */
+  async function send(draft: Draft) {
+    const { venue } = draft;
+    if (!isOnline()) {
+      reopen(draft, it.add.offline);
+      return;
+    }
     try {
       const response = await postWithSession(
         host(),
@@ -559,102 +529,68 @@ export function App({ loadMap }: Props) {
           venue: venue.key,
           cell: venue.cell,
           source: "manual",
-          items: entry.drafts.map((d) => ({
-            drink: d.drink,
-            hh: d.hh,
-            price_cents: d.cents,
-          })),
+          items: [{ drink: draft.drink, hh: draft.hh, price_cents: draft.cents }],
         },
         true,
       );
       if (response.status === 429) {
-        reopen(first, it.add.quota);
+        // The daily quota waits for midnight, the burst limit a minute at most (SPEC 13.3).
+        const wait = Number(response.headers.get("Retry-After"));
+        reopen(draft, wait > 60 ? it.add.quotaDay : it.add.tooFast);
+        return;
+      }
+      // A busy service, or the app page in place of the API (M3-19).
+      const json = response.headers.get("Content-Type")?.includes("application/json") ?? false;
+      if (response.status === 503 || (response.ok && !json)) {
+        reopen(draft, it.add.busy);
         return;
       }
       if (!response.ok) {
-        reopen(first, it.add.network);
+        reopen(draft, it.add.failed);
         return;
       }
       const { results } = (await response.json()) as {
         results: { status: string; code?: string }[];
       };
-      const rejected = results.findIndex((r) => r.status === "rejected");
-      const bad = entry.drafts[rejected];
-      if (bad) {
-        reopen(
-          bad,
-          results[rejected]?.code === "under_review"
-            ? it.add.underReview
-            : it.add.outOfRange(drinkLabel(bad.drink)),
-        );
+      const [result] = results;
+      if (result?.status === "rejected") {
+        reopen(draft, refusal(draft, result.code));
         return;
       }
-      if (results.some((r) => r.status === "quarantined")) showToast(it.add.quarantined);
-      else if (results.some((r) => r.status === "confirmed")) {
-        showToast(
-          results.every((r) => r.code === "already") ? it.add.alreadyThere : it.add.confirmedSame,
-        );
-      }
-      for (const d of entry.drafts) track("price_added", { source: "manual", drink: d.drink });
+      // Quarantined: no banner, the bar page says why in «In verifica» (D-10).
+      // The same price again, counted or not (author, already confirmed): one line of thanks (SPEC 1.20).
+      if (result?.status === "confirmed") showToast(it.add.confirmedSame);
+      const before = priceCount();
+      const after = addPrices(1, todayRome());
+      // The second price, once: the moment someone shows they will come back (M4-09).
+      if (before === 1 && after === 2) setInvite(installMode());
+      track("price_added", { source: "manual", drink: draft.drink });
       invalidateCell(venue.cell);
       setAttempt((n) => n + 1);
       setBarVersion((n) => n + 1);
-    } catch {
-      reopen(first, it.add.network);
+    } catch (error) {
+      reopen(
+        draft,
+        error instanceof SessionError ? it.add.robot : isOnline() ? it.add.failed : it.add.offline,
+      );
     }
   }
 
-  /** Saves a price; more drinks for the same bar join the same request (one POST, one "Annulla"). */
+  /**
+   * Salva (SPEC 1.20, ADR 0051): no panel. The bar page opens (from the map, a step back returns to it),
+   * "Prezzo salvato" is only read out, and the price leaves at once.
+   */
   function save(draft: Draft) {
     setAdding(null);
-    const previous = pendingSave.current;
-    const joins = previous && !previous.sent && previous.drafts[0]?.venue.key === draft.venue.key;
-    if (previous && !joins) void send(previous); // another bar: the earlier prices go now
-    previous?.timer.clear();
-    const entry: PendingSave = {
-      drafts: joins ? [...previous.drafts, draft] : [draft],
-      timer: holdableTimeout(() => void send(entry), UNDO_MS),
-      sent: false,
-    };
-    pendingSave.current = entry;
-    // The Timbro: today's date, the stamp line, Copertura +1 when this bar had no price for the
-    // chosen drink in the zone, and the Tessera when a stamp is reached (MB-11, MB-12).
-    const today = todayRome();
-    const before = priceCount();
-    const after = addPrices(1, today);
-    const lines: string[] = [it.add.stamp];
-    const countsHere = !bestPrice(draft.venue, drinks);
-    if (countsHere && inView.some((v) => v.key === draft.venue.key))
-      lines.push(it.add.coverageUp(zoneCoverage.withPrice + 1, zoneCoverage.total));
-    // The second price, once: the moment someone shows they will come back (M4-09).
-    if (before === 1 && after === 2) setInvite(installMode());
-    const step = stampReached(before, after);
-    const tessera = (step && it.tessera.messages[step]) || it.tessera.count(after);
+    const { venue } = draft;
+    if (route.name !== "bar" || route.key !== venue.key)
+      navigate(`/bar/${venue.key}?c=${venue.cell}`);
+    showToast(it.add.saved, true);
     // Android only; Safari has no vibrate().
     (navigator as { vibrate?: (ms: number) => boolean }).vibrate?.(20);
-    showToast(
-      it.add.saved,
-      () => {
-        entry.timer.clear();
-        entry.sent = true;
-        addPrices(-1, today);
-        if (pendingSave.current === entry) pendingSave.current = null;
-        showToast(it.add.undone);
-      },
-      UNDO_MS,
-      {
-        label: it.add.another,
-        run: () => {
-          entry.timer.hold(); // the batch waits while the next drink is typed
-          openAdd({ venue: draft.venue });
-        },
-      },
-      { day: formatStampDay(), lines, count: after, tessera },
-    );
-    // Turnstile only now, at the first contribution (M2-02), during the undo window; after the
-    // add sheet has closed, so its host lands in the layer that stays open.
+    // After the add sheet has closed, so a Turnstile host lands in the bar page, which stays open.
     setTimeout(() => {
-      ensureSession(host()).catch(() => undefined);
+      void send(draft);
     }, 0);
   }
 
@@ -1125,6 +1061,7 @@ export function App({ loadMap }: Props) {
           tier={(row) =>
             row[2] === 0 ? tierOf(row[3], cellMedian(allVenues, route.cell, row[1])) : "neutro"
           }
+          median={(row) => (row[2] === 0 ? cellMedian(allVenues, route.cell, row[1]) : null)}
           onVenue={(v) => {
             if (!viewedBars.current.has(v.key)) {
               viewedBars.current.add(v.key);
@@ -1149,7 +1086,6 @@ export function App({ loadMap }: Props) {
           }}
           onClose={() => {
             setAdding(null);
-            pendingSave.current?.timer.release(); // a held batch (another drink) goes on
           }}
         />
       )}

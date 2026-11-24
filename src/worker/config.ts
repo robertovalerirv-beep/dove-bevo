@@ -1,5 +1,7 @@
 // Worker configuration (SPEC 11, 13.3). Values, not logic.
-export const QUOTAS = { price: 30, confirm: 50, venue: 5, report: 20 } as const;
+import { DAILY_PRICE_QUOTA } from "../shared/config";
+
+export const QUOTAS = { price: DAILY_PRICE_QUOTA, confirm: 50, venue: 5, report: 20 } as const;
 export type QuotaKind = keyof typeof QUOTAS;
 
 /**

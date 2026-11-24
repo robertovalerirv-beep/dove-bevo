@@ -36,8 +36,12 @@ export function Sheet({ title, onClose, onBack, iconBack, step, bare, children }
   }, []);
   // Layout effect: still inside the tap that changed step, so phones open the keyboard on a field.
   // WebKit does not always honour autofocus inside showModal(), hence the explicit focus.
+  // Only the topmost sheet takes the focus: a page that finishes loading under another sheet (the bar
+  // page under the price step reopened after an error, SPEC 1.20) must not pull it away.
   useLayoutEffect(() => {
     const dialog = ref.current;
+    const open = document.querySelectorAll("dialog[open]");
+    if (dialog && open[open.length - 1] !== dialog) return;
     (dialog?.querySelector<HTMLElement>("[autofocus]") ?? dialog?.querySelector("h2"))?.focus();
   }, [step]);
   return (

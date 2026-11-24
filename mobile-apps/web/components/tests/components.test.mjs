@@ -454,7 +454,8 @@ test("price form keeps bounds, prefill errors, exact cents and happy-hour callba
       ),
       0,
     );
-    assert.match(await f.page.getByRole("alert").innerText(), /prezzo insolito/);
+    // SPEC 1.20: the limits of the drink are written in the message.
+    assert.match(await f.page.getByRole("alert").innerText(), /accettiamo prezzi da/);
     await f.page.getByRole("textbox", { name: "Prezzo in euro" }).fill("5,50");
     await f.page.getByRole("switch", { name: "Happy hour" }).click();
     await f.page.getByRole("button", { name: "Salva", exact: true }).click();
@@ -603,7 +604,14 @@ test("quick seen price and venue-drink-price navigation retain real callbacks", 
       path: path.join(here, "../../test-results", "add-price-393-fixture.png"),
     });
     await f.page.getByRole("switch", { name: "Happy hour" }).click();
+    // SPEC 1.20: a seen price fills the digits, nothing is saved until Salva.
     await f.page.getByRole("button", { name: /6,00 €/ }).click();
+    assert.equal(await f.page.getByRole("textbox", { name: "Prezzo" }).inputValue(), "6,00");
+    assert.deepEqual(
+      await f.page.evaluate(() => window.sheetFixture.calls.filter((call) => call.kind === "save")),
+      [],
+    );
+    await f.page.getByRole("button", { name: "Salva", exact: true }).click();
     assert.deepEqual(
       await f.page.evaluate(() => window.sheetFixture.calls.filter((call) => call.kind === "save")),
       [{ kind: "save", venue: "n123", drink: "spritz", hh: 1, cents: 600 }],

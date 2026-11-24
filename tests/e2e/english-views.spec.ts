@@ -1,6 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
-import { UNDO_MS } from "../../src/shared/config";
 import { box, chooseEnglish, expectNoItalian, langButton, langList } from "./english-helpers";
 import { test } from "./fixtures";
 import {
@@ -10,11 +9,12 @@ import {
   smallTargets,
   stubTurnstile,
   stubWrites,
+  type StubAnswer,
   THEME_HOURS,
 } from "./helpers";
 
 // What english.spec.ts leaves open of ME-03, ME-04, ME-06 and ME-07 (SPEC 1.13): the title of the map, the
-// Timbro, Undo, Tessera, install invitation, errors and the pin step in English; nothing leaving its box on
+// price step after Save, install invitation, errors and the pin step in English; nothing leaving its box on
 // any public view; Italian distances and the Italian admin; 48 px targets and axe on every public view.
 // Read-only: what would be saved is answered by a stub (stubWrites), nothing reaches the local D1.
 
@@ -22,7 +22,9 @@ const AXE = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
 
 const nearBars = (page: Page) =>
   page.getByRole("list", { name: "Nearby bars" }).getByRole("button");
-const stamp = (page: Page) => page.getByRole("status").filter({ hasText: "Price saved" });
+/** After Save (SPEC 1.20): the bar page, no panel; "Price saved" is only read out. */
+const barPage = (page: Page) =>
+  page.getByRole("dialog").filter({ has: page.locator(".scontrino") });
 const BARS_HERE = /\d+ of [1-9]\d* bars here have a price/;
 
 /** The page in English, the position found and the map running, near the Duomo. */
@@ -33,7 +35,7 @@ async function openNearMe(page: Page) {
   await expect(mapStatus(page)).toHaveText(BARS_HERE, { timeout: 30_000 });
 }
 
-/** Bar → drink → price → Save, for the nearest bar. The Timbro is on the screen at the end. */
+/** Bar → drink → price → Save, for the nearest bar. */
 async function savePrice(page: Page, drink: RegExp, price: string) {
   await page.getByRole("button", { name: "Add a price" }).click();
   await expect(nearBars(page)).toHaveCount(5);
@@ -41,7 +43,14 @@ async function savePrice(page: Page, drink: RegExp, price: string) {
   await page.getByRole("dialog").getByRole("button", { name: drink }).click();
   await page.getByRole("textbox", { name: "Price in euros" }).fill(price);
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(stamp(page)).toBeVisible();
+}
+
+/** Save, then the bar page that opens is closed: back on the map. */
+async function saveAndClose(page: Page, drink: RegExp, price: string) {
+  await savePrice(page, drink, price);
+  await expect(barPage(page).getByRole("heading", { level: 2 })).toBeVisible();
+  await barPage(page).getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 
 // ---- ME-03: the title and the language of the page ---------------------------------------------
@@ -75,9 +84,14 @@ test("ME-03 the title of the map is the same in both languages; html lang follow
 test.describe("ME-04 saving a price, in English", () => {
   test.use({ geolocation: DUOMO, permissions: ["geolocation"] });
 
-  test("the Timbro, the seconds to undo, the Tessera and Undo", async ({ page }, info) => {
+  test("a price already seen fills the field; after Save the bar page, in English", async ({
+    page,
+  }, info) => {
     await stubTurnstile(page);
-    const sent = await stubWrites(page);
+    const sent = await stubWrites(page, () => ({
+      status: 200,
+      json: { results: [{ status: "confirmed" }] },
+    }));
     await openNearMe(page);
     await page.getByRole("button", { name: "Add a price" }).click();
     await page.getByRole("searchbox", { name: "Search the bar by name" }).fill("Straf Bar");
@@ -86,33 +100,30 @@ test.describe("ME-04 saving a price, in English", () => {
       .getByRole("dialog")
       .getByRole("button", { name: /^Spritz/ })
       .click();
-    // The prices already seen in the zone, and how long there is to undo (UNDO_MS, in seconds).
     const seen = page.getByRole("list", { name: "Prices already seen here" });
     await expect(seen.getByRole("button", { name: "7,50 €" })).toBeVisible();
     await expect(page.getByRole("dialog")).toContainText(
-      `you have ${String(UNDO_MS / 1000)} seconds to undo`,
+      "Tap a price to put it in the field, then Save.",
     );
     await expectNoItalian(page);
     await seen.getByRole("button", { name: "7,50 €" }).click();
-    await page.mouse.move(0, 0); // a pointer resting on the toast holds the countdown
+    await expect(page.getByRole("textbox", { name: "Price in euros" })).toHaveValue("7,50");
+    expect(sent).toEqual([]); // the tap only fills the digits
+    await page.getByRole("button", { name: "Save" }).click();
 
-    const toast = stamp(page);
-    await expect(toast).toContainText(
-      "Logged. Whoever comes next already knows what they'll spend.",
-    );
-    await expect(toast).toContainText("First price logged."); // the Tessera
-    await expect(toast.locator(".stamp__mark")).toHaveText(/^\d{1,2} [A-Z]{3}$/); // the date keeps its format
-    await expect(toast.getByRole("button", { name: "Undo" })).toBeVisible();
+    await expect(barPage(page).getByRole("heading", { name: "Straf Bar" })).toBeFocused();
+    await expect(
+      page.getByRole("status").filter({
+        hasText: "Thanks: the price you entered confirms the one that was already there.",
+      }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Undo" })).toHaveCount(0);
     await expectNoItalian(page);
-    await page.screenshot({ path: info.outputPath("me-04-stamp.png") });
-
-    await toast.getByRole("button", { name: "Undo" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Undone" })).toBeVisible();
-    await page.waitForTimeout(500);
-    expect(sent).toEqual([]); // Undo sends nothing
+    await page.screenshot({ path: info.outputPath("me-04-dopo-save.png") });
+    expect(sent).toHaveLength(1);
   });
 
-  test("the second price: the Tessera count and the invitation to install", async ({ page }) => {
+  test("the second price: the invitation to install", async ({ page }) => {
     await stubTurnstile(page);
     await stubWrites(page);
     await openNearMe(page);
@@ -125,10 +136,9 @@ test.describe("ME-04 saving a price, in English", () => {
       );
     });
     const invite = page.getByRole("region", { name: "Install" });
-    await savePrice(page, /^Sbagliato/, "6,10");
+    await saveAndClose(page, /^Sbagliato/, "6,10");
     await expect(invite).toHaveCount(0);
-    await savePrice(page, /^Gin and tonic/, "6,20");
-    await expect(stamp(page)).toContainText("2 prices logged.");
+    await saveAndClose(page, /^Gin and tonic/, "6,20");
     await expect(invite).toBeVisible();
     await expect(invite).toContainText("Put Dove bevo on your Home screen: it opens faster.");
     await expect(invite.getByRole("button", { name: "Install" })).toBeVisible();
@@ -136,39 +146,46 @@ test.describe("ME-04 saving a price, in English", () => {
     await expectNoItalian(page);
   });
 
-  test("the errors of saving: an unusual price, too many today, no connection", async ({
+  test("the errors of saving: an unusual price, too many today, under review, a failure", async ({
     page,
   }) => {
-    test.slow(); // each one waits out the real undo window (UNDO_MS)
     await stubTurnstile(page);
-    let answer: () => { status: number; json: unknown } = () => ({ status: 200, json: {} });
+    let answer: () => StubAnswer = () => ({ status: 200, json: {} });
     await stubWrites(page, () => answer());
     await openNearMe(page);
-
-    // An unusual price comes back from the Worker as «rejected».
-    answer = () => ({ status: 200, json: { results: [{ status: "rejected" }] } });
-    await savePrice(page, /^Sbagliato/, "6,10");
-    const unusual = page.getByText(
-      "That looks like an unusual price for Sbagliato: check the digits.",
-    );
-    await expect(unusual).toBeVisible({ timeout: UNDO_MS + 15_000 });
-    await expectNoItalian(page);
-    await page.getByRole("button", { name: "Close" }).first().click();
-
-    answer = () => ({ status: 429, json: { error: { code: "rate_limited", message: "x" } } });
-    await savePrice(page, /^Sbagliato/, "6,20");
-    await expect(
-      page.getByText("You've logged a lot today. Try again after midnight."),
-    ).toBeVisible({ timeout: UNDO_MS + 15_000 });
-    await expectNoItalian(page);
-    await page.getByRole("button", { name: "Close" }).first().click();
-
-    answer = () => ({ status: 500, json: { error: { code: "internal", message: "x" } } });
-    await savePrice(page, /^Sbagliato/, "6,30");
-    await expect(
-      page.getByText("I couldn't save it: check your connection and try again."),
-    ).toBeVisible({ timeout: UNDO_MS + 15_000 });
-    await expectNoItalian(page);
+    const cases: [StubAnswer, string][] = [
+      [
+        { status: 200, json: { results: [{ status: "rejected", code: "out_of_range" }] } },
+        "Sbagliato: we accept prices from 4,00 € to 20,00 €. Check the digits.",
+      ],
+      [
+        {
+          status: 429,
+          headers: { "Retry-After": "36000" },
+          json: { error: { code: "rate_limited", message: "x" } },
+        },
+        "You've already logged 30 prices today, the most for one day. You can log more from midnight.",
+      ],
+      [
+        { status: 200, json: { results: [{ status: "rejected", code: "under_review" }] } },
+        "The price of this drink here was reported and is being checked: it can't be changed for now.",
+      ],
+      [
+        { status: 500, json: { error: { code: "internal", message: "x" } } },
+        "I couldn't save the price: try again shortly.",
+      ],
+    ];
+    for (const [i, [reply, text]] of cases.entries()) {
+      answer = () => reply;
+      await savePrice(page, /^Sbagliato/, `6,${String(10 + i)}`);
+      await expect(page.getByRole("alert").filter({ hasText: text })).toBeVisible();
+      await expectNoItalian(page);
+      // The price step is on top of the bar page that Save opened: close both.
+      await page.getByRole("dialog").last().getByRole("button", { name: "Close" }).first().click();
+      await expect(page.getByRole("dialog")).toHaveCount(1);
+      await barPage(page).getByRole("button", { name: "Close" }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+    }
   });
 });
 
@@ -304,13 +321,8 @@ async function walkEnglishViews(page: Page, check: (view: string) => Promise<voi
   await check("add a price: price");
   await page.getByRole("textbox", { name: "Price in euros" }).fill("6,10");
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(stamp(page)).toBeVisible();
-  await page.mouse.move(0, 0);
-  // axe reads the colour of the mark: not while it is still being pressed onto the page.
-  await page
-    .locator(".stamp__mark")
-    .evaluate((mark) => Promise.all(mark.getAnimations().map((a) => a.finished)));
-  await check("Timbro");
+  await expect(barPage(page).getByRole("heading", { level: 2 })).toBeFocused();
+  await check("bar page after Save");
 
   for (const path of ["/privacy", "/regole"]) {
     await page.goto(path);

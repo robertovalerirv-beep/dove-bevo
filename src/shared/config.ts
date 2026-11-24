@@ -10,8 +10,8 @@ export const CONTACT_EMAIL = "dovebevo@gmail.com";
  */
 export const MIN_ZOOM_CELLS = 13;
 
-/** "Annulla" after Salva (SPEC D-15): the price is sent when this runs out. One value for the timer, the progress bar and the texts. */
-export const UNDO_MS = 5_000;
+/** Prices one session (and one address) may enter per day (SPEC 13.3): the Worker's quota and the text that names it. */
+export const DAILY_PRICE_QUOTA = 30;
 
 /** Launch gate (ADR 0022): bars with a price in the Comune di Milano (OSM id of its place node). */
 export const LAUNCH_CITY_ID = 62505581;

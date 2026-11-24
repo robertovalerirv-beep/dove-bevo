@@ -102,7 +102,8 @@ export const en: Dict = {
     prices: "Prices",
     noPrices: "No prices yet.",
     inReview: "Under review",
-    inReviewHelp: "Unusual prices: they become visible when someone else confirms them.",
+    inReviewWhy: (median) =>
+      `Very different from the other prices in the area${median ? ` (median ${median})` : ""}: it goes in the list and on the map when someone else confirms it.`,
     confirmations: (n) =>
       n === 0 ? "No confirmations" : n === 1 ? "1 confirmation" : `${String(n)} confirmations`,
     happyHour: "HH",
@@ -123,16 +124,6 @@ export const en: Dict = {
     dismiss: "Not now",
     ok: "Got it",
   },
-  tessera: {
-    messages: {
-      1: "First price logged.",
-      5: "5 prices logged. You're a regular.",
-      10: "10 prices logged. The bar knows you.",
-      25: "25 prices logged. You run the area now.",
-      50: "50 prices logged. The map is yours too.",
-    },
-    count: (n) => (n === 1 ? "1 price logged." : `${String(n)} prices logged.`),
-  },
   add: {
     open: "Add a price",
     addMissing: "Add a place",
@@ -147,27 +138,24 @@ export const en: Dict = {
     happyHour: "Happy hour",
     save: "Save",
     badFormat: "Write the price in euros, for example 7,50.",
-    outOfRange: (drink) => `That looks like an unusual price for ${drink}: check the digits.`,
-    underReview: "This price is under review: it can't be changed for now.",
-    quota: "You've logged a lot today. Try again after midnight.",
-    network: "I couldn't save it: check your connection and try again.",
+    outOfRange: (drink, min, max) =>
+      `${drink}: we accept prices from ${min} to ${max}. Check the digits.`,
+    underReview:
+      "The price of this drink here was reported and is being checked: it can't be changed for now.",
+    quotaDay:
+      "You've already logged 30 prices today, the most for one day. You can log more from midnight.",
+    tooFast: "You're logging many prices in a row: wait a minute and try again.",
+    offline: "You're offline: the price wasn't sent. Try again when the connection is back.",
+    busy: "The service is very busy: the price wasn't sent, try again shortly.",
+    robot: "I couldn't check that you're not a robot: try again.",
+    failed: "I couldn't save the price: try again shortly.",
     saved: "Price saved",
-    stamp: "Logged. Whoever comes next already knows what they'll spend.",
-    stampDay: (day) => `Stamp of ${day}`,
-    coverageUp: (withPrice, total) =>
-      `Coverage +1: ${String(withPrice)} of ${String(total)} bars here have a price`,
     seenHere: "Prices already seen here",
-    // The seconds are UNDO_MS (tests/unit/lang.test.ts keeps them equal).
-    seenHelp: "Tap a price to log it right away: you have 5 seconds to undo.",
+    seenHelp: "Tap a price to put it in the field, then Save.",
     zoneRange: (min, max, median) =>
       `In this area it ranges from ${min} to ${max} €, median ${median} €`,
-    undo: "Undo",
-    undone: "Undone",
-    quarantined: "Saved: it will appear when someone else confirms it.",
-    confirmedSame: "Thanks: you confirmed the price that was already there.",
-    alreadyThere: "This price was already there: nothing to add.",
+    confirmedSame: "Thanks: the price you entered confirms the one that was already there.",
     verifying: "One moment, checking you're not a robot…",
-    another: "Add another drink here",
     pendingBar: "New, to be confirmed",
     missingBar: "Can't find the bar?",
   },
@@ -257,7 +245,7 @@ export const en: Dict = {
           heading: "Cookies and data on your phone",
           paragraphs: [
             "When you log your first price we set a single technical cookie, which lasts 30 minutes and is used to tell a person from an automated program. No banner is needed because it doesn't track anyone.",
-            "Only two things stay on your phone: the date of first use and how many prices you have logged, for the stamp card and for the invitation to install the app. The date and the number are never sent: the anonymous counts only receive an age band, for example “1-7 days”.",
+            "Only two things stay on your phone: the date of first use and how many prices you have logged, for the invitation to install the app. The date and the number are never sent: the anonymous counts only receive an age band, for example “1-7 days”.",
           ],
         },
         {

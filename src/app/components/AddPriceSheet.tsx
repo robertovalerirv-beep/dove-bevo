@@ -74,7 +74,9 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
     }
     const limits = findDrink(drink);
     if (limits && (cents < limits.min || cents > limits.max)) {
-      setError(it.add.outOfRange(drinkName(drink).toLowerCase()));
+      setError(
+        it.add.outOfRange(drinkName(drink), formatPrice(limits.min), formatPrice(limits.max)),
+      );
       return;
     }
     onSave({ venue, drink, hh, cents });
@@ -166,7 +168,8 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
     );
   }
 
-  // Prices already seen in this zone for the same drink (MB-10): one tap saves one.
+  // Prices already seen in this zone for the same drink (MB-10): one tap puts its digits in the field,
+  // then Salva (SPEC 1.20: with no «Annulla», a mistaken tap must not reach the map).
   const seen = seenPrices(venues, venue.cell, drink);
   const range = cellRange(venues, venue.cell, drink);
   const bare = (cents: number) => formatPrice(cents).replace(" €", "");
@@ -230,7 +233,8 @@ export function AddPriceSheet({ venues, origin, prefill, onSave, onPropose, onCl
                       type="button"
                       class={`chip seen__price seen__price--${tier}`}
                       onClick={() => {
-                        onSave({ venue, drink, hh, cents });
+                        setText(bare(cents));
+                        setError("");
                       }}
                     >
                       {tier !== "neutro" && (

@@ -130,13 +130,31 @@ const TURNSTILE_STUB = `window.turnstile = {
   remove() {}, reset() {},
 };`;
 
-export async function stubTurnstile(page: Page): Promise<string[]> {
+/** A Turnstile that never passes: the check fails as on a phone Cloudflare does not trust. */
+const TURNSTILE_FAILING = `window.turnstile = {
+  render(el, o) { setTimeout(() => o["error-callback"](), 50); return "w"; },
+  remove() {}, reset() {},
+};`;
+
+export async function stubTurnstile(page: Page, failing = false): Promise<string[]> {
   const requests: string[] = [];
   await page.route("https://challenges.cloudflare.com/**", (route) => {
     requests.push(route.request().url());
-    void route.fulfill({ contentType: "text/javascript", body: TURNSTILE_STUB });
+    void route.fulfill({
+      contentType: "text/javascript",
+      body: failing ? TURNSTILE_FAILING : TURNSTILE_STUB,
+    });
   });
   return requests;
+}
+
+/** What a stubbed write answers: JSON, or a raw body (e.g. the app page) with its headers. */
+export interface StubAnswer {
+  status: number;
+  json?: unknown;
+  body?: string;
+  contentType?: string;
+  headers?: Record<string, string>;
 }
 
 /**
@@ -145,7 +163,7 @@ export async function stubTurnstile(page: Page): Promise<string[]> {
  */
 export async function stubWrites(
   page: Page,
-  answer: () => { status: number; json: unknown } = () => ({
+  answer: () => StubAnswer = () => ({
     status: 200,
     json: { results: [{ status: "active" }] },
   }),

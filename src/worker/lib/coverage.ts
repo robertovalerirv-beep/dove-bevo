@@ -1,6 +1,6 @@
 // Coverage of the map per city (SPEC 7.9, ADR 0022): public bars with an active price.
 import type { Coverage } from "../../shared/api-types";
-import { COVERAGE_CACHE_MS } from "../config";
+import { COVERAGE_CACHE_MS, COVERAGE_CELL_READS } from "../config";
 import { getCoverageRows, isPublicBar } from "./db";
 import { nearestPlace, sortByLatitude, type SortedPlace } from "./nearest";
 import { cellFile, placesFile } from "./venues";
@@ -21,24 +21,26 @@ const CELL_FETCHES = 8;
 /**
  * Bars are stored with a city only when the static file had one within 15 km, and user bars never
  * had one. Whatever is missing is placed here by position (nearest place), so "no city" is left
- * only for a bar whose position cannot be found at all (ADR 0022). An OSM bar that is no longer in
- * the static file of its cell (a later import dropped it) is not on the map: its prices stay in D1
- * as history but it is not a bar with a price, and the admin list could not open it.
+ * only for a bar whose position cannot be found at all (ADR 0022). Only those bars need their cell
+ * file: one ASSETS read per cell is a subrequest, and the free plan allows 50 per request, so the
+ * reads stop at COVERAGE_CELL_READS (ADR 0050). An OSM bar without a city that is no longer in its
+ * read cell file (a later import dropped it) is not on the map and is not counted; a bar with a
+ * stored city is counted without that check, until the admin hides it.
  */
 export async function buildCoverage(env: Env): Promise<Coverage> {
   const { rows, hidden, users } = await getCoverageRows(env.DB);
   const approved = new Set(users.keys());
 
-  // The static files of every cell that holds an OSM bar with a price, read in parallel; only the
-  // positions of those bars are kept (ADR 0025).
+  // The static files of the cells holding an OSM bar with a price and no stored city, read in
+  // parallel and at most COVERAGE_CELL_READS of them; only the positions of those bars are kept.
   const wanted = new Map<string, Set<string>>();
   for (const r of rows) {
-    if (r.venue_key.startsWith("u")) continue;
+    if (r.city !== null || r.venue_key.startsWith("u")) continue;
     if (!isPublicBar(r.venue_key, approved, hidden)) continue;
     wanted.set(r.cell, (wanted.get(r.cell) ?? new Set()).add(r.venue_key));
   }
   const found = new Map<string, Map<string, { lat: number; lon: number }>>();
-  const cells = [...wanted.keys()];
+  const cells = [...wanted.keys()].slice(0, COVERAGE_CELL_READS);
   for (let i = 0; i < cells.length; i += CELL_FETCHES) {
     await Promise.all(
       cells.slice(i, i + CELL_FETCHES).map(async (cell) => {
@@ -63,10 +65,10 @@ export async function buildCoverage(env: Env): Promise<Coverage> {
   for (const r of rows) {
     active += r.n;
     if (!isPublicBar(r.venue_key, approved, hidden)) continue;
-    if (!r.venue_key.startsWith("u") && !position(r.venue_key, r.cell)) continue; // gone from OSM
     let city = r.city;
     if (city === null) {
       const at = position(r.venue_key, r.cell);
+      if (!at && found.has(r.cell)) continue; // gone from OSM
       city = at ? await nearest(at.lat, at.lon) : null;
     }
     members.push([city ?? 0, r.venue_key, r.cell]);

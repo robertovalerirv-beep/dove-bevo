@@ -33,7 +33,7 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
-## 2026-11-23 · «Salva» porta subito alla scheda del bar (ramo `claude/modest-fermi-1fjsrw`) · SPEC 1.20 · ADR 0050
+## 2026-11-23 · «Salva» porta subito alla scheda del bar (ramo `claude/modest-fermi-1fjsrw`) · SPEC 1.20 · ADR 0051
 
 **Richiesta di Roberto:** il riquadro dopo «Salva» (Timbro, Annulla con la barra di 5 s, Tessera, «Aggiungi un altro drink qui») annoia più di quanto aiuti: dopo l'inserimento l'utente deve tornare subito alla scheda del bar. Scelte in chat: messaggi d'errore parlanti; prezzo uguale già presente → un banner breve di ringraziamento; prezzo in verifica → nella scheda, con il motivo; tocco su un prezzo già visto → riempie le cifre, poi «Salva»; app iOS e Android seguono il sito (l'app Europa no). Permesso esplicito di Roberto di riscrivere le verifiche di 8 voci.
 
@@ -43,7 +43,7 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 3. `AddPriceSheet.tsx`: il tocco su un prezzo già visto mette le cifre nel campo. `BarSheet.tsx`: ogni prezzo «In verifica» dice «Molto diverso dagli altri prezzi della zona (mediana X €)…», con la mediana calcolata dalla cella già in memoria; a scheda caricata il fuoco va sul nome. `Sheet.tsx`: un foglio prende il fuoco solo se è in cima (su WebKit la scheda sotto rubava il fuoco al passo Prezzo riaperto dopo un errore).
 4. `DAILY_PRICE_QUOTA` (30) in `src/shared/config.ts`, usato dal Worker; `it.ts` non può importare (lo legge `build-tokens.mjs`) e il test unit tiene il numero uguale.
 5. App native: stessi cambi in `mobile-apps/web/components/AddPriceSheet.tsx` e `BarSheet.tsx`, nuovo hash di `app.tsx` in `build-contract.mjs` (punti di aggancio invariati); l'app Europa tiene il suo Annulla con `EUROPE_UNDO_MS`.
-6. SPEC 1.20, verifiche di M2-05, M2-06, M3-16, MB-10, MB-11, MB-12, ME-01, ME-04 riscritte (nessuna voce tolta), tag `spec-approved-17`, ADR 0050, CHANGELOG, brand (`02-voce.md`, README, Timbro, Tessera), design system, `PRIVACY-NOTES.md`, `docs/user-test.md` (compito 4: correggere con «È cambiato»).
+6. SPEC 1.20, verifiche di M2-05, M2-06, M3-16, MB-10, MB-11, MB-12, ME-01, ME-04 riscritte (nessuna voce tolta), tag `spec-approved-17`, ADR 0051, CHANGELOG, brand (`02-voce.md`, README, Timbro, Tessera), design system, `PRIVACY-NOTES.md`, `docs/user-test.md` (compito 4: correggere con «È cambiato»).
 
 **Test cambiati e perché (requisito cambiato con la 1.20):** `contribute.spec.ts` riscritto per il dopo-«Salva» (scheda aperta e fuoco, «Indietro» alla mappa, invio subito con `keepalive`, sette errori più offline e Turnstile, banner di conferma anche per «già contato», nessun banner in quarantena, motivo in «In verifica», un POST per drink, prezzo visto che riempie le cifre, contatore); `english-views.spec.ts`, `csp.spec.ts` (Turnstile ora parte dal 401 della prima richiesta, come col Worker vero); unit `after-save.test.ts` nuovo, `lang`, `voice`, `usage` aggiornati, `undo.test.ts` tolto. Ogni test nuovo è stato visto fallire sul codice di prima per il motivo giusto.
 
@@ -58,6 +58,19 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 **Da verificare a mano (Roberto)**
 - iPhone: «Salva» porta alla scheda; primo prezzo della visita con Turnstile vero (la scheda è già aperta mentre la richiesta aspetta la verifica).
 - App iOS e Android dopo il build: stesso flusso.
+## 2026-11-23 · Copertura in `/admin`: «Aggiorna» sempre in errore (ramo `claude/busy-bohr-520mln`, ADR 0050)
+
+**Segnalazione di Roberto:** «Aggiorna» della dashboard di copertura risponde sempre «Aggiornamento non riuscito, riprova.»
+
+**Diagnosi:** in DevTools `GET /api/admin/coverage` → 500 in ~300 ms (non 503: il Worker non è stato ucciso per CPU, ha lanciato un'eccezione). Il calcolo leggeva un file statico per ogni cella con prezzi più `places.json`; sul D1 vivo `SELECT COUNT(DISTINCT cell) … WHERE status='active'` → 58 celle, 231 bar: 59 sottorichieste contro le 50 del piano gratuito.
+
+**Fatto:** il file di cella si legge solo per i bar senza città salvata, al massimo 40 file (`COVERAGE_CELL_READS`); compromesso accettato nell'ADR 0050.
+
+**Prove:** i due test nuovi in `tests/worker/coverage.test.ts` falliscono sul codice di prima (58 bar contati 0 perché scartati dopo la lettura dei file; 60 letture contro un tetto di 41) e passano dopo; `npx vitest run tests/worker/coverage.test.ts` → 15/15.
+
+**Da verificare a mano dopo il deploy:** `/admin` → «Aggiorna» mostra i numeri; in DevTools `coverage` → 200.
+
+---
 
 ## 2026-11-13 · README, SECURITY aggiornato e controllo del push affidabile (ramo `claude/missing-readme-discussion-a5dc8a`)
 

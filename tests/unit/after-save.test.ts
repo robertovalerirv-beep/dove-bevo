@@ -4,7 +4,7 @@ import { en } from "../../src/app/i18n/en";
 import { it } from "../../src/app/i18n/it";
 import * as config from "../../src/shared/config";
 
-// SPEC 1.20 (ADR 0050): after Salva no panel and no «Annulla». The price leaves at once, the bar page
+// SPEC 1.20 (ADR 0051): after Salva no panel and no «Annulla». The price leaves at once, the bar page
 // opens, and a failure says exactly why.
 describe("no undo window", () => {
   test("UNDO_MS and the progress bar are gone", () => {

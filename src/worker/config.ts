@@ -37,6 +37,9 @@ export const COVERAGE_MIN_INTERVAL_MS = 10_000;
 /** The coverage figures are kept this long between two admin changes: the page asks often, D1 reads are shared (ADR 0025). */
 export const COVERAGE_CACHE_MS = 60_000;
 
+/** Cell files one coverage calculation may read: the free plan allows 50 subrequests (ADR 0050). */
+export const COVERAGE_CELL_READS = 40;
+
 /** Cities that get a page of their own for search engines (/milano, …), by URL slug (ADR 0025). */
 export const SEO_CITIES = {
   milano: "Milano",

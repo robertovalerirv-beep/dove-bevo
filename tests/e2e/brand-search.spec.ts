@@ -128,6 +128,29 @@ test("M4-14 a bar the admin hid: after the choice it says so", async ({ page }) 
   await expect(page.getByText("Questo locale non è più sulla mappa.").first()).toBeVisible();
 });
 
+test("a bar whose prices cannot be loaded says so, and never that the bar is gone", async ({
+  page,
+}) => {
+  const gone = page.getByText("Questo locale non è più sulla mappa.");
+  // The API cannot be reached: a network failure, or a crawler kept away from /api/ by robots.txt (ADR 0053).
+  await page.route("**/api/prices/u0nd9", (route) => route.abort());
+  await page.goto("/bar/n13001337602?c=u0nd9");
+  await expect(
+    page.getByText("Non riesco a caricare i prezzi. Controlla la connessione.").first(),
+  ).toBeVisible();
+  await expect(gone).toHaveCount(0);
+  // The free daily limit is over: HTML with status 200 instead of JSON (M3-19).
+  await page.unroute("**/api/prices/u0nd9");
+  await page.route("**/api/prices/u0nd9", (route) =>
+    route.fulfill({ contentType: "text/html", body: "<!doctype html>" }),
+  );
+  await page.reload();
+  await expect(
+    page.getByText("Il servizio è molto richiesto, riprova più tardi.").first(),
+  ).toBeVisible();
+  await expect(gone).toHaveCount(0);
+});
+
 test("M4-15 combobox: arrows, Enter, Esc, announced count, 48 px targets", async ({ page }) => {
   await page.goto("/");
   await openSearch(page);

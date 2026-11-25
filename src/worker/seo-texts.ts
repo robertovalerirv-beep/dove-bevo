@@ -42,19 +42,25 @@ export const seoText = {
     `${label}: mediana ${median}, da ${low} a ${high} (${prices(count)}).`,
   cityCheapest: (label: string) => `I più economici: ${label}`,
   cityAllBars: "Tutti i bar con un prezzo",
+  /** Link to a bar whose name the page has not looked up (beyond the files a page may open). */
+  unnamedBar: (city: string | null) => `Prezzi di un bar${city ? ` a ${city}` : ""}`,
   cityEmpty: (city: string) => `Per ${city} non ci sono ancora prezzi: puoi inserire il primo.`,
 
-  venueTitle: (name: string) => `${name}: prezzi di birra, spritz e cocktail`,
-  venueDescription: (name: string, summary: string) =>
-    `Prezzi segnalati dagli utenti da ${name}: ${summary}.`,
+  venueTitle: (name: string, city: string) =>
+    `${[name, city].filter(Boolean).join(", ")}: prezzi di birra, spritz e cocktail`,
+  venueDescription: (name: string, city: string, summary: string) =>
+    `Prezzi segnalati dagli utenti da ${name}${city ? ` a ${city}` : ""}: ${summary}.`,
   venueH1: (name: string) => `Prezzi da ${name}`,
   venueIntro: "Prezzi segnalati dalla community, con la data dell'ultima segnalazione.",
+  venueZone: (median: string) => `mediana in zona ${median}`,
+  venueNearby: "Altri bar con un prezzo in zona",
   venueLast: (day: string) => `Ultimo prezzo segnalato il ${day}.`,
 
   coverageTitle: `Copertura di ${APP_NAME}: città e bar mappati`,
   coverageDescription:
     "Le città coperte da Dove bevo, con il numero di bar che hanno almeno un prezzo segnalato.",
   coverageH1: "Copertura: città e bar con prezzi",
+  coverageElsewhere: "Altre zone",
   coverageLine: (city: string, barCount: number, priceCount: number) =>
     `${city}: ${bars(barCount)} con prezzo, ${prices(priceCount)}`,
 
@@ -62,45 +68,61 @@ export const seoText = {
   more: `Apri ${APP_NAME} per vedere la mappa e inserire un prezzo.`,
   hh: "happy hour",
 
+  // The two reads a bar page needs to draw itself stay open: without them a crawler that runs JavaScript
+  // saw "Questo locale non è più sulla mappa" on every bar (ADR 0053).
   robots: (origin: string) => `User-agent: *
 Allow: /
 Allow: /api/ai/cerca
+Allow: /api/prices/
+Allow: /api/venues/
 Disallow: /api/
 Disallow: /admin
 
 User-agent: GPTBot
 Allow: /
 Allow: /api/ai/cerca
+Allow: /api/prices/
+Allow: /api/venues/
 Disallow: /api/
 Disallow: /admin
 
 User-agent: OAI-SearchBot
 Allow: /
 Allow: /api/ai/cerca
+Allow: /api/prices/
+Allow: /api/venues/
 Disallow: /api/
 Disallow: /admin
 
 User-agent: PerplexityBot
 Allow: /
 Allow: /api/ai/cerca
+Allow: /api/prices/
+Allow: /api/venues/
 Disallow: /api/
 Disallow: /admin
 
 User-agent: ClaudeBot
 Allow: /
 Allow: /api/ai/cerca
+Allow: /api/prices/
+Allow: /api/venues/
 Disallow: /api/
 Disallow: /admin
 
 User-agent: Google-Extended
 Allow: /
 Allow: /api/ai/cerca
+Allow: /api/prices/
+Allow: /api/venues/
 Disallow: /api/
 Disallow: /admin
 
 User-agent: CCBot
 Allow: /
 Allow: /api/ai/cerca
+Allow: /api/prices/
+Allow: /api/venues/
 Disallow: /api/
 Disallow: /admin
 

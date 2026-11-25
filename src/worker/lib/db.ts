@@ -873,16 +873,24 @@ export async function getSeoCity(db: D1Database, cityIds: number[], limit: numbe
   };
 }
 
-/** Bars and prices per place, for the coverage page. */
-export async function getSeoCoverage(db: D1Database, limit: number) {
+/** A public bar with an active price, for the pages that link them all (ADR 0053). */
+export interface SeoBarRow {
+  venue_key: string;
+  cell: string;
+  city: number | null;
+  prices: number;
+}
+
+/** Every public bar with an active price: one scan, like the sitemap. */
+export async function getSeoBars(db: D1Database, limit: number): Promise<SeoBarRow[]> {
   const { results } = await db
     .prepare(
-      `SELECT city, COUNT(DISTINCT venue_key) AS bars, COUNT(*) AS prices FROM prices_current
-       WHERE status = 'active' AND city IS NOT NULL AND ${PUBLIC_BAR}
-       GROUP BY city ORDER BY bars DESC, city LIMIT ?1`,
+      `SELECT venue_key, MAX(cell) AS cell, MAX(city) AS city, COUNT(*) AS prices FROM prices_current
+       WHERE status = 'active' AND ${PUBLIC_BAR}
+       GROUP BY venue_key ORDER BY venue_key LIMIT ?1`,
     )
     .bind(limit)
-    .all<{ city: number; bars: number; prices: number }>();
+    .all<SeoBarRow>();
   return results;
 }
 

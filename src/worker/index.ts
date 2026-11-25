@@ -14,7 +14,7 @@ import { admin } from "./routes/admin";
 import { events } from "./routes/events";
 import { prices } from "./routes/prices";
 import { reports } from "./routes/reports";
-import { seo, seoPages } from "./routes/seo";
+import { apiNoindex, seo, seoPages } from "./routes/seo";
 import { session } from "./routes/session";
 import { venues } from "./routes/venues";
 import { mobileRecommendations } from "./routes/mobile-recommendations";
@@ -36,6 +36,7 @@ app.use(async (c, next) => {
 app.use(securityHeaders);
 // After securityHeaders: the tags and text for crawlers are added to the shell, then the headers are set.
 app.use(seoPages);
+app.use("/api/*", apiNoindex);
 app.use("/api/*", requireOrigin);
 // A deployed Worker with the development placeholder keys must not accept sessions or writes.
 app.on("POST", "/api/*", requireRealSecrets);

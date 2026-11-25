@@ -91,10 +91,11 @@ describe("sitemap.xml", () => {
         "INSERT INTO venues_hidden (venue_key, cell, name, day) VALUES ('n3', 'u0nd9', 'Non è un bar', '2026-10-01')",
       ),
     ]);
-    await price("n1", "spritz", 700);
+    await price("n10013246997", "spritz", 700);
     await price("n3", "spritz", 700); // hidden by the admin
     await price("u1", "spritz", 700, null); // approved user bar
     await price("u2", "spritz", 700, null); // proposed, not approved
+    await price("n999999999", "spritz", 700); // gone from OSM (ADR 0053)
     await price("n4", "spritz", 700, MILANO, "u0nd9", "quarantined");
     const response = await get("/sitemap.xml");
     expect(response.status).toBe(200);
@@ -104,16 +105,19 @@ describe("sitemap.xml", () => {
     expect(xml).toContain(`<loc>${ORIGIN}/copertura</loc>`);
     expect(xml).toContain(`<loc>${ORIGIN}/milano</loc>`);
     expect(xml).not.toContain(`<loc>${ORIGIN}/roma</loc>`); // no prices there
-    expect(xml).toContain(`<loc>${ORIGIN}/bar/n1?c=u0nd9</loc>`);
+    expect(xml).toContain(`<loc>${ORIGIN}/bar/n10013246997?c=u0nd9</loc>`);
     expect(xml).toContain(`<loc>${ORIGIN}/bar/u1?c=u0nd9</loc>`);
     // lastmod is the day of the latest price of the bar (ADR 0046); Google ignores changefreq and priority
-    expect(xml).toContain(`<loc>${ORIGIN}/bar/n1?c=u0nd9</loc>\n    <lastmod>2026-10-10</lastmod>`);
+    expect(xml).toContain(
+      `<loc>${ORIGIN}/bar/n10013246997?c=u0nd9</loc>\n    <lastmod>2026-10-10</lastmod>`,
+    );
     expect(xml).not.toContain("<changefreq>");
     expect(xml).not.toContain("<priority>");
     // pages with no real date carry no lastmod: an invented one would cost the trust of the crawler
     expect(xml).toContain(`<loc>${ORIGIN}/</loc>\n  </url>`);
     expect(xml).toContain(`<loc>${ORIGIN}/milano</loc>\n  </url>`);
-    for (const hidden of ["n3", "u2", "n4"]) expect(xml).not.toContain(`/bar/${hidden}?`);
+    for (const hidden of ["n3", "u2", "n4", "n999999999"])
+      expect(xml).not.toContain(`/bar/${hidden}?`);
     expect(xml).not.toContain("/admin");
     expect((xml.match(/<url>/g) ?? []).length).toBeLessThanOrEqual(5000);
   });
@@ -218,7 +222,9 @@ describe("pages for crawlers: tags, JSON-LD and plain text in the shell", () => 
     await price("n10081337586", "spritz", 800);
     await price("n10081337586", "beer_draft", 550, MILANO, "u0nd9", "active", 1);
     const html = await (await get("/bar/n10081337586")).text();
-    expect(html).toContain("<title>Bistrot Italia: prezzi di birra, spritz e cocktail</title>");
+    expect(html).toContain(
+      "<title>Bistrot Italia, Milano: prezzi di birra, spritz e cocktail</title>",
+    );
     expect(html).toContain(`<link rel="canonical" href="${ORIGIN}/bar/n10081337586?c=u0nd9" />`);
     expect(html).toContain("<h1>Prezzi da Bistrot Italia</h1>");
     expect(html).toContain("Corso Italia 35");

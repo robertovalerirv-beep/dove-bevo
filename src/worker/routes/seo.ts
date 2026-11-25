@@ -21,6 +21,7 @@ import {
   memSet,
   placeIndex,
   resolveNames,
+  withoutGone,
   type PageType,
   type SeoPage,
 } from "../lib/seo";
@@ -79,7 +80,9 @@ seo.get("/sitemap.xml", readLimit, async (c) => {
       ...slugs
         .filter((slug) => (index.byKey.get(slug) ?? []).some((id) => withPrices.has(id)))
         .map((slug) => entry(`${url.origin}/${slug}`)),
-      ...bars.map((b) => entry(`${url.origin}/bar/${b.venue_key}?c=${b.cell}`, b.lastmod)),
+      ...(await withoutGone(c.env, bars)).map((b) =>
+        entry(`${url.origin}/bar/${b.venue_key}?c=${b.cell}`, b.lastmod),
+      ),
     ].slice(0, SEO_LIMITS.sitemapUrls);
     const xml = `${XML_HEAD}${urls.join("\n")}\n</urlset>`;
     memSet(key, xml);
@@ -203,8 +206,11 @@ async function withinReadLimit(c: Ctx): Promise<boolean> {
   return (await c.env.READ_LIMITER.limit({ key })).success;
 }
 
-/** The page for a path, from memory, the edge or D1; null (never an error) when there is none. */
-async function pageFor(c: Ctx, url: URL, page: PageType): Promise<SeoPage | null> {
+/**
+ * The page for a path, from memory, the edge or D1; null when there is none (a bar that is gone or has
+ * no price), undefined when it cannot be known now (over the limit, D1 or a file down). Never an error.
+ */
+async function pageFor(c: Ctx, url: URL, page: PageType): Promise<SeoPage | null | undefined> {
   // host and full path: two cities, or two hosts, never share an entry (SEO rule S5)
   const key = `seo:${url.host}${url.pathname}`;
   const hot = memGet(key);
@@ -215,7 +221,7 @@ async function pageFor(c: Ctx, url: URL, page: PageType): Promise<SeoPage | null
     return edge;
   }
   // Over the limit: the plain shell, which every visitor and crawler can already read.
-  if (page.type !== "home" && !(await withinReadLimit(c))) return null;
+  if (page.type !== "home" && !(await withinReadLimit(c))) return undefined;
   try {
     const built = await buildPage(c.env, url.origin, page);
     memSet(key, built);
@@ -223,9 +229,17 @@ async function pageFor(c: Ctx, url: URL, page: PageType): Promise<SeoPage | null
     return built;
   } catch {
     console.error(JSON.stringify({ code: "seo_failed", page: page.type }));
-    return null;
+    return undefined;
   }
 }
+
+/** The bar is gone or has no price: nothing to find here yet, so it is not a search result (ADR 0053). */
+const injectNoindex = (response: Response): Response =>
+  new HTMLRewriter()
+    .on("head", {
+      element: (el) => void el.append('<meta name="robots" content="noindex" />', { html: true }),
+    })
+    .transform(response);
 
 function inject(response: Response, seoPage: SeoPage): Response {
   const title = escapeHtml(seoPage.title);
@@ -263,6 +277,12 @@ function inject(response: Response, seoPage: SeoPage): Response {
   );
 }
 
+/** The API answers serve the app and the drawing of a page: never search results themselves (ADR 0053). */
+export const apiNoindex: MiddlewareHandler<AppEnv> = async (c, next) => {
+  await next();
+  if (!c.res.headers.has("X-Robots-Tag")) c.header("X-Robots-Tag", "noindex");
+};
+
 /** Registered after securityHeaders: the CSP and the other headers are set on whatever it returns. */
 export const seoPages: MiddlewareHandler<AppEnv> = async (c, next) => {
   await next();
@@ -273,11 +293,12 @@ export const seoPages: MiddlewareHandler<AppEnv> = async (c, next) => {
     const page = detectPageType(url.pathname);
     if (!page) return;
     const seoPage = await pageFor(c, url, page);
-    if (!seoPage) return;
+    // Only a bar: a city without data is a page that will fill up.
+    if (seoPage === undefined || (seoPage === null && page.type !== "venue")) return;
     // The body changes: the old length and validator no longer describe it.
     c.res.headers.delete("Content-Length");
     c.res.headers.delete("ETag");
-    c.res = inject(c.res, seoPage);
+    c.res = seoPage ? inject(c.res, seoPage) : injectNoindex(c.res);
   } catch {
     // Never break a page for the sake of its tags (SEO rule S9): the shell is served as it is.
     console.error(JSON.stringify({ code: "seo_inject_failed" }));

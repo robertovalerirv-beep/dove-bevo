@@ -53,14 +53,22 @@ export type SeoCitySlug = keyof typeof SEO_CITIES;
 
 /** Limits on what the SEO pages and the open API expose (ADR 0025). */
 export const SEO_LIMITS = {
-  /** Bars in a sitemap, in the JSON-LD and in the pre-rendered text of one page. */
+  /** Bars in a sitemap, in the JSON-LD of one page and linked from a bar page (those of its cell). */
   sitemapUrls: 5000,
   barsPerPage: 30,
+  /** Bars linked by a city page and by /copertura (ADR 0053): every bar with a price, for a long while. */
+  hubLinks: 2000,
   /** Rows of the open API per page and the highest page. */
   aiPerPage: 100,
   aiMaxPage: 50,
   /** Cell files opened to put names on one page: each is parsed, and a free Worker has ~10 ms of CPU. */
   nameCells: 3,
+  /**
+   * The same for a city page and for /copertura, built at most once in memSeconds (ADR 0053). Each file
+   * is a subrequest and the free plan allows 50; on the live data of 25/11/2026 parsing all the 59 cells
+   * with a price (264 KB) takes 2.9 ms in all.
+   */
+  hubNameCells: 30,
   /** How long a built page lives in the isolate and at the edge, in seconds. */
   memSeconds: 300,
 } as const;

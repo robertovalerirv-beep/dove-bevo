@@ -33,6 +33,26 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
+## 2026-11-25 · Bar non indicizzati da Google: link, robots e schede (ramo `claude/indexing-issues-4418b7`) · ADR 0053
+
+**Richiesta di Roberto:** Search Console segnala 3 «Pagina con reindirizzamento» e 151 «Rilevata, ma attualmente non indicizzata»; il problema si ripropone con l'aumentare dei bar.
+
+**Causa (misurata, ADR 0053):** 151 schede mai aperte da Google; 166 dei 250 bar in sitemap senza nessun link interno (tetto di 30 bar e 3 celle per città, nessun link fuori dalle sei città, bar utente mai linkati); `robots.txt` vietava `/api/` e la scheda, disegnata da un crawler, diceva «Questo locale non è più sulla mappa». I 3 redirect sono 301 voluti: niente da fare.
+
+**Fatto:** i sei punti dell'ADR 0053. Nessuna modifica a SPEC, schema, API, scritture e `feature_list.json`.
+
+**Test cambiati perché è cambiato il requisito:** in `tests/worker/seo.test.ts` il titolo della scheda (ora con la città) e le chiavi del test della sitemap (`n1` non è nel file della cella: ora conta come sparito; al suo posto un bar vero, e in più un bar sparito che deve mancare).
+
+**Prove**
+- `tests/worker/seo-links.test.ts` (16 test nuovi): scritti prima, 14 falliti per il motivo giusto; il test del bar di una cella già in memoria scritto dopo una rilettura del diff, fallito e poi verde. Con `seo.test.ts`: 56 su 56.
+- E2E `brand-search.spec.ts`, «a bar whose prices cannot be loaded says so», Chromium e WebKit: verde; prima della correzione la stessa pagina sul sito vivo con `/api/**` bloccato diceva «Questo locale non è più sulla mappa».
+
+**Da verificare a mano dopo il deploy**
+- `curl -s https://www.dovebevo.com/robots.txt | grep -c "Allow: /api/venues/"` → 7; `curl -s https://www.dovebevo.com/milano | grep -o 'href="/bar/' | wc -l` → oltre 88.
+- Search Console, «Controllo URL» → «Testa URL pubblicato» su una scheda bar: lo screenshot mostra i prezzi. Non chiedere la convalida dei 3 redirect. Reinviare `sitemap.xml`; riguardare i numeri dopo 2–4 settimane.
+
+---
+
 ## 2026-11-23 · «Salva» porta subito alla scheda del bar (ramo `claude/modest-fermi-1fjsrw`) · SPEC 1.20 · ADR 0052
 
 **Richiesta di Roberto:** il riquadro dopo «Salva» (Timbro, Annulla con la barra di 5 s, Tessera, «Aggiungi un altro drink qui») annoia più di quanto aiuti: dopo l'inserimento l'utente deve tornare subito alla scheda del bar. Scelte in chat: messaggi d'errore parlanti; prezzo uguale già presente → un banner breve di ringraziamento; prezzo in verifica → nella scheda, con il motivo; tocco su un prezzo già visto → riempie le cifre, poi «Salva»; app iOS e Android seguono il sito (l'app Europa no). Permesso esplicito di Roberto di riscrivere le verifiche di 8 voci.

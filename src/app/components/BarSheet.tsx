@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import type { PriceRow, VenuePrices } from "../../shared/api-types";
 import { it } from "../i18n/lang";
-import { loadCell, loadVenuePrices, type Venue } from "../lib/data";
+import { loadCell, loadVenuePrices, ServiceBusy, type Venue } from "../lib/data";
 import { formatDate, formatPrice, todayRome } from "../lib/format";
 import { cellMedian, isStale, type Tier } from "../lib/tiers";
 import { directionsUrl } from "../lib/geo";
@@ -188,6 +188,7 @@ export function BarSheet({
   const [cellVenues, setCellVenues] = useState<Venue[]>([]);
   const [prices, setPrices] = useState<VenuePrices | null>(null);
   const [pricesFailed, setPricesFailed] = useState(false);
+  const [failed, setFailed] = useState<"busy" | "error" | null>(null);
   const [showAll, setShowAll] = useState(false);
   useEffect(() => {
     void loadCell(cell)
@@ -195,11 +196,12 @@ export function BarSheet({
         // A proposed bar is public only once the admin approved it (ADR 0019): not here by its link.
         setCellVenues(venues);
         const found = venues.find((v) => v.key === venueKey && !v.pending) ?? null;
+        setFailed(null);
         setVenue(found);
         if (found) onVenue(found);
       })
-      .catch(() => {
-        setVenue(null);
+      .catch((error: unknown) => {
+        setFailed(error instanceof ServiceBusy ? "busy" : "error");
       });
     loadVenuePrices(venueKey)
       .then(setPrices)
@@ -208,6 +210,15 @@ export function BarSheet({
       });
   }, [venueKey, cell]);
 
+  // A cell that cannot be read says nothing about the bar: «non è più sulla mappa» is only for a read one.
+  if (failed) {
+    const text = failed === "busy" ? it.map.busy : it.bar.pricesError;
+    return (
+      <Sheet title={text} onClose={onClose} step="failed">
+        <p class="hint">{text}</p>
+      </Sheet>
+    );
+  }
   if (venue === undefined) {
     return (
       <Sheet title={it.bar.loading} onClose={onClose} step="loading">

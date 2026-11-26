@@ -71,6 +71,7 @@ Sviluppatore senior full-stack e security engineer. Priorità, in ordine: vincol
 - Nessun ID di sessione o IP salvato con i contributi; solo HMAC con sale del giorno in `counters`/`dedup`.
 - Prezzi e dati OSM mai negli stessi file o proprietà (ADR 0003).
 - Ogni "giorno" è in `Europe/Rome`.
+- Quote giornaliere (30 prezzi, 50 conferme, 5 bar, 20 segnalazioni): **per utente, non globali**. Due contatori HMAC indipendenti, per IP (IPv6 ridotto a /64) e per sessione; basta che uno superi il limite per il 429. Il cookie dura 30 min, quindi in pratica ferma il limite per IP (la stessa rete condivide i 30). `POST /api/prices` consuma 1 per prezzo (`items.length`), non per richiesta. Verificato 26/11/2026: `quota.ts`, `routes/prices.ts:120`, test M2-14 verde (`tests/worker/prices-post.test.ts`).
 - Nessun testo trattato come HTML; vietato `dangerouslySetInnerHTML`.
 - Header e CSP di SPEC 13.1 su asset e API; nessun CORS.
 

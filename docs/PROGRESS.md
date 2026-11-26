@@ -33,6 +33,24 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 
 ---
 
+## 2026-11-25 · Locali della lista di contatto (Milano) presenti sul sito (ramo `claude/peaceful-maxwell-id1cpv`)
+
+**Richiesta di Roberto:** verificare che i 54 locali della lista per i gestori siano sul sito e aggiungere subito i mancanti, senza passare dall'approvazione.
+
+**Fatto**
+- Controllo con la stessa ricerca del sito (frammenti `s/` e `GET /api/venues/approved`, dati `20261123`) e con Nominatim: 20 locali già presenti (nel punto giusto, verificato con l'indirizzo); 34 assenti, quasi tutti perché su OSM hanno un altro tag (ristorante, centro culturale, ostello…) e l'import prende solo bar, caffè, pub, birrerie e discoteche.
+- Migrazione `0018_outreach_list_venues.sql`: i 34 entrano in `venues_user` come `approved` (come `addApprovedVenue` dell'admin), idempotente, con svuotamento di `cell_snapshot` delle 10 celle. Senza «Milano» nel nome (scelta di Roberto), salvo «Birrificio Milano», che è il nome vero.
+- Nessun comando D1 remoto: la migrazione parte con il deploy della CI.
+
+**Prove:** tutte le migrazioni applicate in ordine su SQLite (`node:sqlite`): 34 righe `approved` in 10 celle, 34 anche dopo una seconda esecuzione. `vitest` non eseguito (dipendenze non installate nel container): lo fa la CI.
+
+**Da verificare a mano (Roberto)**
+- Posizioni approssimate: Clèr Rooftop (solo la via), Masada (solo il viale), Cova Montenapoleone (stima da indirizzo), Flores Cócteles (stessa posizione di El Porteño, Via Speronari 4); tre sedi per Pandenus e tre per California Bakery. Correggibili da `/admin`.
+- Dopo il deploy, cercare 3–4 nomi sul sito prima di inviare le mail.
+- Se in seguito l'import OSM include uno di questi locali, comparirà due volte: nascondere il doppione da `/admin`.
+
+---
+
 ## 2026-11-25 · Bar non indicizzati da Google: link, robots e schede (ramo `claude/indexing-issues-4418b7`) · ADR 0053
 
 **Richiesta di Roberto:** Search Console segnala 3 «Pagina con reindirizzamento» e 151 «Rilevata, ma attualmente non indicizzata»; il problema si ripropone con l'aumentare dei bar.

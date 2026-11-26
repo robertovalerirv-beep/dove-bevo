@@ -105,22 +105,37 @@ jobs:
           URL: ${{ steps.deploy.outputs.url }}
           DATA_VERSION: ${{ steps.import.outputs.version }}
         run: |
-          # The new version takes a few seconds to answer everywhere: wait for its data_version.
-          for i in $(seq 1 40); do
-            curl -fsS "$URL/api/health" 2>/dev/null | grep -q "\"data_version\":\"$DATA_VERSION\"" && break
-            sleep 3
+          # The new version takes a few seconds to answer everywhere, and data_version is the OSM import date:
+          # it does not change on a code-only deploy, so it cannot tell the new version from the old one
+          # (run 410 of 26/11/2026 failed once, one second after the deploy, and passed on the retry).
+          # So the whole set of checks is retried, 6 times 15 s apart; a check that is really broken
+          # still fails the step. `&&` chains, not separate lines: `bash -e` does not stop inside a
+          # function called from an `if`, and the step would never go red.
+          smoke() {
+            set -x # the last command traced is the check that failed
+            # Capture first, then match: curl | grep -q can fail with EPIPE under pipefail.
+            health="$(curl -fsS "$URL/api/health")" &&
+              grep -q '"status":"ok"' <<<"$health" &&
+              grep -q "\"data_version\":\"$DATA_VERSION\"" <<<"$health" &&
+              curl -fsS -o /dev/null "$URL/" &&
+              shell_headers="$(curl -fsSI "$URL/")" &&
+              grep -qi '^content-security-policy:' <<<"$shell_headers" &&
+              api_headers="$(curl -fsSI "$URL/api/health")" &&
+              grep -qi '^strict-transport-security:' <<<"$api_headers" &&
+              cell_headers="$(curl -fsSI "$URL/data/$DATA_VERSION/v/u0nd9.json")" &&
+              grep -qi '^content-type: application/json' <<<"$cell_headers" && # not the SPA fallback
+              grep -qi '^cache-control: public, max-age=31536000, immutable' <<<"$cell_headers" &&
+              curl -fsS -o /dev/null "$URL/api/prices/u0nd9"
+          }
+          for attempt in 1 2 3 4 5 6; do
+            if smoke; then
+              set +x
+              echo "Smoke test passed (attempt $attempt of 6)"
+              exit 0
+            fi
+            set +x
+            echo "Smoke test attempt $attempt of 6 failed"
+            [ "$attempt" -lt 6 ] && sleep 15
           done
-          echo
-          # Capture first, then match: curl | grep -q can fail with EPIPE under pipefail.
-          health="$(curl -fsS "$URL/api/health")"
-          grep -q '"status":"ok"' <<<"$health"
-          curl -fsS -o /dev/null -w "shell: HTTP %{http_code}\n" "$URL/"
-          shell_headers="$(curl -fsSI "$URL/")"
-          grep -qi '^content-security-policy:' <<<"$shell_headers"
-          api_headers="$(curl -fsSI "$URL/api/health")"
-          grep -qi '^strict-transport-security:' <<<"$api_headers"
-          grep -q "\"data_version\":\"$DATA_VERSION\"" <<<"$health"
-          cell_headers="$(curl -fsSI "$URL/data/$DATA_VERSION/v/u0nd9.json")"
-          grep -qi '^content-type: application/json' <<<"$cell_headers" # not the SPA fallback
-          grep -qi '^cache-control: public, max-age=31536000, immutable' <<<"$cell_headers"
-          curl -fsS -o /dev/null -w "cell prices: HTTP %{http_code}\n" "$URL/api/prices/u0nd9"
+          echo "Smoke test failed after 6 attempts"
+          exit 1

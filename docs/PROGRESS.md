@@ -16,7 +16,7 @@ Copiati dalle voci indicate perché non finiscano dimenticati nell'archivio; lo 
 - **Cloudflare Queues (Roberto):** controllare che il Worker `dovebevo-staging` non sia più consumatore di `dovebevo-tasks` (voce del 29/10, ADR 0042).
 - **Legale (Roberto):** `/privacy` senza titolare del trattamento; privacy e regole in inglese sono una bozza da rileggere (`docs/release-checklist.md`, sezione F; voce del 28/10, ME-05).
 - **iPhone Safari:** l'effetto del download anticipato della mappa resta da misurare (voci dell'01/11 e del 02/11).
-- **Sicurezza, decisioni di SPEC (Roberto):** i quattro punti del pen test del 22/10 che cambiano la SPEC restano da decidere: prezzo in quarantena attivato dalla conferma di una seconda identità (D-10), rimozione con 4 segnalazioni distinte, prezzo «ultimo vince» sotto i 5 prezzi in cella, quote per IP aggirabili con molti prefissi IPv6 (`SECURITY.md`, «Rischi accettati»; ADR 0029; voci del 22/10 e del 24/10).
+- **Sicurezza, decisioni di SPEC:** chiuso il 26/11/2026, i quattro punti del pen test del 22/10 restano come sono (rischio accettato da Roberto, voce del 26/11; `SECURITY.md`, «Rischi accettati»).
 - **Sicurezza, GitHub (Roberto):** Environment `staging` con i segreti Cloudflare (poi `environment: staging` nel deploy: il 10/11 `deploy-staging.yml` non lo ha), scope del token Cloudflare, email privata su GitHub (voce del 22/10).
 - **Accessibilità, admin:** in `/admin`, «Trova un bar sulla mappa», il messaggio della ricerca non era in una regione `aria-live` (voce del 25/10, «Gestore verificato»).
 - **Controlli dopo il deploy mai registrati come fatti:** riga `OSM import <versione>: … , 0 skipped` nel log del deploy (29/10, ADR 0043); sezioni di `/admin` che si caricano senza far scattare il limite sulle GET (29/10, ADR 0044).
@@ -32,6 +32,24 @@ Non stanno in SPEC né negli ADR: chi tocca queste parti li legga prima.
 - **Indici D1 (19/10):** nessuna migrazione di indici; da rivalutare con le misure reali del sito vivo.
 
 ---
+
+## 2026-11-26 · Smoke test del deploy con tentativi e rischi del pen test decisi (ramo `claude/wonderful-johnson-pvglkt`)
+
+**Richiesta di Roberto:** verificare la segnalazione di Copilot sul deploy, controllare la repo, correggere ciò che serve.
+
+**Verificato, nessuna modifica**
+- La segnalazione di Copilot («`wrangler deploy` senza `--env` potrebbe pubblicare la configurazione di default») non si verifica: la build con `CLOUDFLARE_ENV=staging` scrive `dist/dovebevo/wrangler.json` con `name: dovebevo-staging`, il D1 e i limitatori di staging, e `wrangler deploy` segue `.wrangler/deploy/config.json`; nel log del run 410 l'URL è `dovebevo-staging.dovebevo.workers.dev`. Con una configurazione generata dalla build Wrangler rifiuta un `--env` diverso da quello della build (`cli.js`, `targetEnvironment`).
+- Controlli: 903 test su 903, `tsc -b`, ESLint, `check-config`, `check-workflows` verdi; nessun `innerHTML`/`eval`; SQL solo con parametri o costanti; nessun segreto nel repo; `npm audit --audit-level=high` verde (resta un `minimatch` moderato solo negli strumenti di lint).
+
+**Fatto**
+- `deploy-staging.yml`, Smoke test: il run 410 (26/11, commit `cf93441`) è fallito un secondo dopo il deploy e ha passato al secondo tentativo senza modifiche. Ipotesi, non provata: l'attesa su `data_version` non distingue la versione nuova dalla vecchia in un deploy di solo codice (è la data dell'import OSM). Ora tutti i controlli si ripetono fino a 6 volte a 15 s di distanza (`&&` in una funzione, perché `bash -e` non ferma una funzione chiamata da un `if`), e `set -x` mostra quale controllo è saltato. Un controllo davvero rotto fa comunque fallire il passo.
+- `SECURITY.md` e punto aperto qui sopra: i quattro punti del pen test del 22/10 (D-10 con seconda identità, 4 segnalazioni, «ultimo vince» sotto 5 prezzi, quote per IP con molti prefissi IPv6) restano come sono: rischio accettato da Roberto il 26/11/2026 in chat. Nessuna modifica a SPEC, codice, test, `feature_list.json`.
+
+**Prove:** il blocco dello smoke test estratto ed eseguito con `bash -e` contro il sito vivo: passa al tentativo 1 (exit 0); con `DATA_VERSION` sbagliato fallisce dopo 6 tentativi (exit 1) e la traccia indica `grep -q '"data_version":…'`. `prettier --check`, `check-workflows`, `check-config`, `vitest` su `check-config` e `ci-parity` (12 test) verdi. `npm run verify` e gli e2e non eseguiti: il cambio è solo CI e documenti. Il run 410 rilanciato (richiesta di Roberto, una volta) è passato: migrazioni, deploy e smoke test verdi.
+
+**Cosa verificare a mano:** al primo deploy dopo il merge, il passo «Smoke test» deve mostrare «Smoke test passed (attempt N of 6)».
+
+**Non fatto, proposto e non scelto:** `CLOUDFLARE_ENV: staging` anche nel passo Deploy (protezione in più, con un test in `check-config`); gestione degli errori di `siteverify` di Turnstile in `src/worker/routes/session.ts` (oggi 500 generico invece di `busy`).
 
 ## 2026-11-25 · Locali della lista di contatto (Milano) presenti sul sito (ramo `claude/peaceful-maxwell-id1cpv`)
 
